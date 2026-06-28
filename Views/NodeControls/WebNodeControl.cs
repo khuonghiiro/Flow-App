@@ -2281,8 +2281,11 @@ if (window.__elementInspector) {
             {
                 try
                 {
-                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                    if (isDisposed || !border.IsLoaded)
                         return;
+
+                    if (webViewForInit.CoreWebView2 == null)
+                    {
 
                     if (ShouldUseViewportLazyInit(border))
                     {
@@ -4170,6 +4173,16 @@ if (window.__elementInspector) {
                             System.Diagnostics.Debug.WriteLine($"[Blocked Request] Cleaned up payload cache for: {cleanupKey}");
                         }
                     }
+                    }
+
+                    webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (isDisposed || !border.IsLoaded) return;
+                        if (webViewForInit.Visibility != Visibility.Visible)
+                            webViewForInit.Visibility = Visibility.Visible;
+                        UpdateWebViewZoomForCanvasZoom();
+                        SyncWebViewPosition();
+                    }), DispatcherPriority.Loaded);
                 }
                 catch (Exception ex)
                 {

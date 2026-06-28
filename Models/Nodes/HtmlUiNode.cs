@@ -258,8 +258,8 @@ namespace FlowMy.Models.Nodes
             "    font-family: system-ui, -apple-system, Segoe UI, sans-serif;\n" +
             "}\n" +
             ".container {\n" +
-            "    max-width: 920px;\n" +
-            "    margin: 16px auto;\n" +
+            "    width: 100%;\n" +
+            "    box-sizing: border-box;\n" +
             "    padding: 16px;\n" +
             "}\n" +
             ".block {\n" +

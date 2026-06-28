@@ -1828,53 +1828,61 @@ namespace FlowMy.Views.NodeControls
                     {
                         try
                         {
-                            var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                            await EnsureCoreWebView2ThrottledAsync(wvInit, env);
-                            var core1 = TryGetCoreSafe(wvInit);
-                            if (core1 == null) return;
-                            AttachProcessFailedHandler(wvInit, isTab1: true);
-                            await WebCookiePortableBridge.TryConsumeAndApplyAsync(core1.CookieManager);
-                            core1.NavigationCompleted += (_, _) =>
+                            if (isDisposed) return;
+
+                            if (wvInit.CoreWebView2 == null)
                             {
-                                var url = core1.Source;
-                                if (!string.IsNullOrWhiteSpace(url) && url != "about:blank")
+                                var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                                await EnsureCoreWebView2ThrottledAsync(wvInit, env);
+                                var core1 = TryGetCoreSafe(wvInit);
+                                if (core1 == null) return;
+                                AttachProcessFailedHandler(wvInit, isTab1: true);
+                                await WebCookiePortableBridge.TryConsumeAndApplyAsync(core1.CookieManager);
+                                core1.NavigationCompleted += (_, _) =>
                                 {
-                                    node.WebTabUrl = url;
-                                    wvInit.Dispatcher.BeginInvoke(new Action(() =>
+                                    var url = core1.Source;
+                                    if (!string.IsNullOrWhiteSpace(url) && url != "about:blank")
                                     {
-                                        if (_addressBar != null && _addressBar.Text != url) _addressBar.Text = url;
-                                        // Update lock icon: https = locked, http = unlocked
-                                        if (lockIcon != null) lockIcon.Text = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "🔒" : "🔓";
-                                        SyncWebView1Position();
-                                    }), DispatcherPriority.Normal);
-                                }
-                            };
-                            if (!string.IsNullOrWhiteSpace(node.WebTabUrl)) core1.Navigate(node.WebTabUrl);
-                            else core1.Navigate("https://www.google.com");
-                            // Wire progress bar
-                            core1.NavigationStarting += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Visible), DispatcherPriority.Normal);
-                            core1.NavigationCompleted += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Collapsed), DispatcherPriority.Normal);
-                            // ✅ Tab1: chỉ track navigation state để progress bar + cookie load
-                            // (Không cần overlay nữa — Tab2/webView là separate WebView2)
-                            // Check PendingCookieText
-                            if (!string.IsNullOrWhiteSpace(node.PendingCookieText))
-                            {
-                                var ct = node.PendingCookieText; node.PendingCookieText = null;
-                                var navUrl = await SetCookiesFromTextAsync(core1, ct);
-                                if (!string.IsNullOrWhiteSpace(navUrl)) { node.WebTabUrl = navUrl; core1.Navigate(navUrl); if (_addressBar != null) _addressBar.Text = navUrl; }
-                            }
-                            // Check source node cookie
-                            if (string.IsNullOrWhiteSpace(node.PendingCookieText))
-                            {
-                                var ct2 = ResolveWebTabCookieText();
-                                if (!string.IsNullOrWhiteSpace(ct2))
+                                        node.WebTabUrl = url;
+                                        wvInit.Dispatcher.BeginInvoke(new Action(() =>
+                                        {
+                                            if (_addressBar != null && _addressBar.Text != url) _addressBar.Text = url;
+                                            // Update lock icon: https = locked, http = unlocked
+                                            if (lockIcon != null) lockIcon.Text = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "🔒" : "🔓";
+                                            SyncWebView1Position();
+                                        }), DispatcherPriority.Normal);
+                                    }
+                                };
+                                if (!string.IsNullOrWhiteSpace(node.WebTabUrl)) core1.Navigate(node.WebTabUrl);
+                                else core1.Navigate("https://www.google.com");
+                                // Wire progress bar
+                                core1.NavigationStarting += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Visible), DispatcherPriority.Normal);
+                                core1.NavigationCompleted += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Collapsed), DispatcherPriority.Normal);
+                                // ✅ Tab1: chỉ track navigation state để progress bar + cookie load
+                                // (Không cần overlay nữa — Tab2/webView là separate WebView2)
+                                // Check PendingCookieText
+                                if (!string.IsNullOrWhiteSpace(node.PendingCookieText))
                                 {
-                                    var navUrl2 = await SetCookiesFromTextAsync(core1, ct2);
-                                    if (!string.IsNullOrWhiteSpace(navUrl2)) { node.WebTabUrl = navUrl2; core1.Navigate(navUrl2); if (_addressBar != null) _addressBar.Text = navUrl2; }
+                                    var ct = node.PendingCookieText; node.PendingCookieText = null;
+                                    var navUrl = await SetCookiesFromTextAsync(core1, ct);
+                                    if (!string.IsNullOrWhiteSpace(navUrl)) { node.WebTabUrl = navUrl; core1.Navigate(navUrl); if (_addressBar != null) _addressBar.Text = navUrl; }
                                 }
+                                // Check source node cookie
+                                if (string.IsNullOrWhiteSpace(node.PendingCookieText))
+                                {
+                                    var ct2 = ResolveWebTabCookieText();
+                                    if (!string.IsNullOrWhiteSpace(ct2))
+                                    {
+                                        var navUrl2 = await SetCookiesFromTextAsync(core1, ct2);
+                                        if (!string.IsNullOrWhiteSpace(navUrl2)) { node.WebTabUrl = navUrl2; core1.Navigate(navUrl2); if (_addressBar != null) _addressBar.Text = navUrl2; }
+                                    }
+                                }
+                                RestartWebTabAutoRefreshTimer();
                             }
+
                             wvInit.Dispatcher.BeginInvoke(new Action(() =>
                             {
+                                if (isDisposed) return;
                                 // Only show if Tab1 is selected
                                 if (tab1Container.Visibility == Visibility.Visible)
                                 {
@@ -1883,7 +1891,6 @@ namespace FlowMy.Views.NodeControls
                                 }
                                 SyncWebView1Position();
                             }), DispatcherPriority.Loaded);
-                            RestartWebTabAutoRefreshTimer();
                         }
                         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[HtmlUiNode] RebuildTab1 init error: {ex.Message}"); }
                     };
@@ -2072,18 +2079,29 @@ namespace FlowMy.Views.NodeControls
             EventHandler? scaleChangedHandler = (_, _) =>
             {
                 if (isDisposed) return; // Guard: node đã unload, bỏ qua
-                
-                if (webView.Visibility != Visibility.Visible)
-                    webView.Visibility = Visibility.Visible;
+                if (NodeChrome.IsZooming)
+                {
+                    // Ẩn WebView2 khi đang zoom để tránh nháy
+                    if (webView.Visibility != Visibility.Collapsed)
+                        webView.Visibility = Visibility.Collapsed;
+                    if (_webViewTab1 != null && _webViewTab1.Visibility != Visibility.Collapsed)
+                        _webViewTab1.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    // Hiển thị lại và sync WebView2 sau khi zoom xong
+                    if (webView.Visibility != Visibility.Visible)
+                        webView.Visibility = Visibility.Visible;
 
-                // ✅ Update WebView2 zoom để giữ tỉ lệ với canvas zoom
-                UpdateWebViewZoomForCanvasZoom();
+                    // ✅ Update WebView2 zoom để giữ tỉ lệ với canvas zoom
+                    UpdateWebViewZoomForCanvasZoom();
 
-                SyncWebViewPosition();
-                // Restore Tab1 WebView2 visible after zoom (only if Tab1 was selected)
-                if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
-                    _webViewTab1.Visibility = Visibility.Visible;
-                SyncWebView1Position();
+                    SyncWebViewPosition();
+                    // Restore Tab1 WebView2 visible after zoom (only if Tab1 was selected)
+                    if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
+                        _webViewTab1.Visibility = Visibility.Visible;
+                    SyncWebView1Position();
+                }
             };
             var scaleDescriptor = DependencyPropertyDescriptor.FromProperty(ScaleTransform.ScaleXProperty, typeof(ScaleTransform));
             scaleDescriptor?.AddValueChanged(host.ScaleTransform, scaleChangedHandler);
@@ -2091,15 +2109,25 @@ namespace FlowMy.Views.NodeControls
             EventHandler? translateChangedHandler = (_, _) =>
             {
                 if (isDisposed) return; // Guard: node đã unload, bỏ qua
-                
-                if (webView.Visibility != Visibility.Visible)
-                    webView.Visibility = Visibility.Visible;
-
-                SyncWebViewPosition();
-                
-                if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
-                    _webViewTab1.Visibility = Visibility.Visible;
-                SyncWebView1Position();
+                if (host.IsPanning)
+                {
+                    // Ẩn WebView2 khi đang pan để tránh nháy
+                    if (webView.Visibility != Visibility.Collapsed)
+                        webView.Visibility = Visibility.Collapsed;
+                    if (_webViewTab1 != null && _webViewTab1.Visibility != Visibility.Collapsed)
+                        _webViewTab1.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    // Hiển thị lại và sync WebView2 sau khi pan xong
+                    if (webView.Visibility != Visibility.Visible)
+                        webView.Visibility = Visibility.Visible;
+                    SyncWebViewPosition();
+                    
+                    if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
+                        _webViewTab1.Visibility = Visibility.Visible;
+                    SyncWebView1Position();
+                }
             };
             var translateXDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.XProperty, typeof(TranslateTransform));
             var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
@@ -2109,17 +2137,32 @@ namespace FlowMy.Views.NodeControls
             EventHandler? renderingHandler = (_, _) =>
             {
                 if (isDisposed) return; // Guard: node đã unload, bỏ qua
+                // Không sync khi đang zoom để tránh nháy
                 if (NodeChrome.IsZooming)
                     return;
 
-                if (webView.Visibility != Visibility.Visible)
-                    webView.Visibility = Visibility.Visible;
-
-                SyncWebViewPosition();
-
-                if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
-                    _webViewTab1.Visibility = Visibility.Visible;
-                SyncWebView1Position();
+                // Ẩn WebView2 khi đang panning hoặc dragging node để tránh nháy
+                if (host.IsPanning || host.DraggedNode == node)
+                {
+                    if (webView.Visibility != Visibility.Collapsed)
+                        webView.Visibility = Visibility.Collapsed;
+                    if (_webViewTab1 != null && _webViewTab1.Visibility != Visibility.Collapsed)
+                        _webViewTab1.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    // Hiển thị lại và sync WebView2 sau khi dừng pan/drag
+                    if (webView.Visibility != Visibility.Visible)
+                    {
+                        webView.Visibility = Visibility.Visible;
+                        SyncWebViewPosition();
+                    }
+                    if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
+                    {
+                        _webViewTab1.Visibility = Visibility.Visible;
+                        SyncWebView1Position();
+                    }
+                }
             };
             System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
 
@@ -2182,6 +2225,10 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
+                    if (isDisposed || !border.IsLoaded) return;
+
+                    if (webViewForInit.CoreWebView2 == null)
+                    {
                     CoreWebView2Environment? env = null;
                     try
                     {
@@ -3592,12 +3639,15 @@ namespace FlowMy.Views.NodeControls
                     // Load HTML từ các tab
                     await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager);
                     await ReloadHtmlAsync();
+                    }
 
                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                     {
+                        if (isDisposed || !border.IsLoaded) return;
                         webViewForInit.Visibility = Visibility.Visible;
                         // ✅ Set zoom dựa trên canvas zoom hiện tại (để giữ tỉ lệ)
                         UpdateWebViewZoomForCanvasZoom();
+                        SyncWebViewPosition();
                     }), DispatcherPriority.Loaded);
                 }
                 catch (Exception ex)
