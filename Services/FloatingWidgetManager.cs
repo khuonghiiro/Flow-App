@@ -129,6 +129,16 @@ public sealed class FloatingWidgetManager
         lock (_lock) { return _activeWidgets.ContainsKey(nodeId); }
     }
 
+    /// <summary>Lấy FloatingWidgetWindow theo nodeId.</summary>
+    public FloatingWidgetWindow? GetWidget(string nodeId)
+    {
+        lock (_lock)
+        {
+            _activeWidgets.TryGetValue(nodeId, out var widget);
+            return widget;
+        }
+    }
+
     /// <summary>Toggle mở/đóng widget.</summary>
     public void ToggleWidget(WorkflowNode node, IWorkflowEditorHost host)
     {

@@ -507,6 +507,13 @@ namespace FlowMy.ViewModels
 
                         workflowWindow.Owner = null;
                         workflowWindow.ShowInTaskbar = true;
+
+                        // Đặt cửa sổ về giữa màn hình thay vì nằm ở toạ độ offscreen (-20000)
+                        workflowWindow.Width = 1440;
+                        workflowWindow.Height = 900;
+                        workflowWindow.Left = (SystemParameters.PrimaryScreenWidth - workflowWindow.Width) / 2;
+                        workflowWindow.Top = (SystemParameters.PrimaryScreenHeight - workflowWindow.Height) / 2;
+
                         if (!workflowWindow.IsVisible)
                             workflowWindow.Show();
                         else
@@ -955,9 +962,9 @@ namespace FlowMy.ViewModels
             }
             else
             {
-                // Show để Loaded event kích hoạt + workflow engine sống, sau đó ẩn lại
+                // Đã di chuyển ra ngoài màn hình qua PrepareWindowForHeadlessBackground, 
+                // chỉ cần Show() để kích hoạt Loaded event và giữ cửa sổ render ngầm.
                 workflowWindow.Show();
-                workflowWindow.Hide();
             }
         }
 
@@ -983,8 +990,12 @@ namespace FlowMy.ViewModels
         private static void PrepareWindowForHeadlessBackground(WorkflowEditorWindow workflowWindow)
         {
             workflowWindow.ShowInTaskbar = false;
-            workflowWindow.WindowState = WindowState.Minimized;
-            workflowWindow.Visibility = Visibility.Hidden;
+            workflowWindow.WindowState = WindowState.Normal;
+            workflowWindow.Left = -20000;
+            workflowWindow.Top = -20000;
+            workflowWindow.Width = 1440;
+            workflowWindow.Height = 900;
+            workflowWindow.Visibility = Visibility.Visible;
         }
 
         private void OnWidgetOpened(object? sender, string nodeId) => UpdateWidgetOpenState(nodeId, true);

@@ -339,9 +339,10 @@ namespace FlowMy.Views
                         }
                     }
 
-                    // Chế độ headless: phóng to Web/HtmlUi node để ưu tiên vùng render runtime,
+                    // Chế độ headless: phóng to Web node để ưu tiên vùng render runtime,
                     // nhưng chỉ đổi tạm và sẽ khôi phục lại khi mở debug.
-                    if (node.Type == NodeType.Web || node.Type == NodeType.HtmlUi)
+                    // HtmlUi giữ nguyên kích thước thiết kế để tránh sai lệch toạ độ macro/HTML form layout.
+                    if (node.Type == NodeType.Web)
                     {
                         ApplyHeadlessNodeSize(node, HeadlessWebNodeWidth, HeadlessWebNodeHeight);
                     }

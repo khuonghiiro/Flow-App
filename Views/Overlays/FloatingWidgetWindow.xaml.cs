@@ -41,6 +41,9 @@ public partial class FloatingWidgetWindow : Window
     private readonly FloatingWidgetWindowViewModel _viewModel;
     private FloatingWidgetConfig Config => _node.FloatingWidget!;
 
+    public WorkflowNode Node => _node;
+    public WebView2? WidgetWebView => _webView;
+
     // ── State ──
     private bool _isExpanded;
     private bool _isSlideHidden;    // Widget đã trượt vào cạnh (ẩn 1 phần)

@@ -19,6 +19,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     internal sealed class ActionCanVasNodeExecutor : INodeExecutor
     {
         private static readonly Dictionary<string, MacroPlaybackOverlay> _activePlaybackOverlays = new();
+        private static readonly Dictionary<string, Point> _lastKnownWebViewOffsets = new();
 
         public static bool IsVirtualLeftButtonDown { get; set; }
         public static bool IsPlaybackActive { get; set; }
@@ -820,7 +821,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     IsVirtualLeftButtonDown = true;
                                 }
 
-                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld, node, action);
                                 
                                 await Task.Delay(40);
                                 
@@ -831,7 +832,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     IsVirtualLeftButtonDown = false;
                                 }
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld, node, action);
                                 capturedHwnd = IntPtr.Zero;
                                 
                                 await Task.Delay(50);
@@ -853,7 +854,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     isLeftDown = true;
                                     IsVirtualLeftButtonDown = true;
                                 }
-                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld, node, action);
                                 break;
                             }
                             case "MouseUp":
@@ -861,7 +862,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld, node, action);
                                 capturedHwnd = IntPtr.Zero;
                                 if (action.Button == "Right") isRightDown = false;
                                 else
@@ -894,7 +895,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent) overlay?.AddTrailPoint(ax, ay);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld, node, action);
                                 break;
                             case "MouseScroll":
                             {
@@ -903,7 +904,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawScroll(ax, ay, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, action.ShiftHeld, action.CtrlHeld, action.AltHeld, node, action);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -1056,7 +1057,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             bool isHeadless,
             bool shiftHeld = false,
             bool ctrlHeld = false,
-            bool altHeld = false)
+            bool altHeld = false,
+            FlowMy.Models.WorkflowNode? macroNode = null,
+            FlowMy.Models.MacroAction? action = null)
         {
             VirtualScreenMousePosition = new Point(ax, ay);
             IntPtr targetHwnd = capturedHwnd;
@@ -1189,6 +1192,99 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             Microsoft.Web.WebView2.Wpf.WebView2? webView = ActiveVirtualCdpWebView;
                             bool isNativeHost = webView != null;
+                            FlowMy.Models.WorkflowNode? resolvedHostNode = null;
+
+                            if (webView == null && editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHostVal)
+                            {
+                                var vmVal = directHostVal.ViewModel;
+                                if (vmVal != null && macroNode != null && action != null)
+                                {
+                                    double canvasX;
+                                    double canvasY;
+                                    if (macroNode is FlowMy.Models.Nodes.ActionCanVasNode canvasNode)
+                                    {
+                                        double rx = Math.Clamp(action.RelX, 0.0, 1.0);
+                                        double ry = Math.Clamp(action.RelY, 0.0, 1.0);
+                                        if (action.RelX == 0 && action.RelY == 0 && (action.X != 0 || action.Y != 0))
+                                        {
+                                            canvasX = canvasNode.X + action.X;
+                                            canvasY = canvasNode.Y + action.Y;
+                                        }
+                                        else
+                                        {
+                                            canvasX = canvasNode.X + rx * canvasNode.BodyWidth;
+                                            canvasY = canvasNode.Y + ry * canvasNode.BodyHeight;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        var scale = directHostVal.ScaleTransform?.ScaleX ?? 1.0;
+                                        var txVal = directHostVal.TranslateTransform?.X ?? 0;
+                                        var tyVal = directHostVal.TranslateTransform?.Y ?? 0;
+                                        double logicalClientX = wpfPoint.X / dpiScaleX;
+                                        double logicalClientY = wpfPoint.Y / dpiScaleY;
+                                        canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
+                                        canvasY = (logicalClientY - CanvasLayoutOffset.Y - tyVal) / scale;
+                                    }
+
+                                    foreach (var n in vmVal.Nodes)
+                                    {
+                                        if (n == _executingMacroNode) continue;
+                                        if (n.Type == FlowMy.Models.NodeType.ActionCanVas) continue;
+
+                                        if (n.Type == FlowMy.Models.NodeType.Web || 
+                                            n.Type == FlowMy.Models.NodeType.HtmlUi ||
+                                            n.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                        {
+                                            double defaultW = 600;
+                                            double defaultH = 600;
+                                            if (n is FlowMy.Models.Nodes.HtmlUiNode htmlNode)
+                                            {
+                                                defaultW = htmlNode.Width;
+                                                defaultH = htmlNode.Height;
+                                            }
+                                            else if (n is FlowMy.Models.Nodes.WebNode webNode)
+                                            {
+                                                defaultW = webNode.Width;
+                                                defaultH = webNode.Height;
+                                            }
+
+                                            double nw = (n.Border != null && n.Border.ActualWidth > 0) ? n.Border.ActualWidth : defaultW;
+                                            double nh = (n.Border != null && n.Border.ActualHeight > 0) ? n.Border.ActualHeight : defaultH;
+                                            if (canvasX >= n.X && canvasX <= n.X + nw &&
+                                                canvasY >= n.Y && canvasY <= n.Y + nh)
+                                            {
+                                                if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(n.Id))
+                                                {
+                                                    var widget = FlowMy.Services.FloatingWidgetManager.Instance.GetWidget(n.Id);
+                                                    if (widget != null && widget.WidgetWebView != null)
+                                                    {
+                                                        webView = widget.WidgetWebView;
+                                                        resolvedHostNode = n;
+                                                        isNativeHost = true;
+                                                        break;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    var dialogWin = GetActiveDialog(n.Id);
+                                                    if (dialogWin != null)
+                                                    {
+                                                        var wvControl = FindWebView2InVisualTree(dialogWin);
+                                                        if (wvControl != null)
+                                                        {
+                                                            webView = wvControl;
+                                                            resolvedHostNode = n;
+                                                            isNativeHost = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             if (webView == null)
                             {
@@ -1245,14 +1341,45 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                                 if (canvasX >= n.X && canvasX <= n.X + nw &&
                                                     canvasY >= n.Y && canvasY <= n.Y + nh)
                                                 {
-                                                    var wvControl = FindWebView2InVisualTree(n.Border);
-                                                    if (wvControl != null)
+                                                    if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(n.Id))
                                                     {
-                                                        webView = wvControl;
-                                                        EnsureWebViewActiveInBackground(webView);
-                                                        isNativeHost = true;
-                                                        System.Diagnostics.Debug.WriteLine($"[MacroExecutor] ActiveVirtualCdpWebView fallback match node: {n.Title ?? n.Id} at ({canvasX:F0},{canvasY:F0})");
-                                                        break;
+                                                        var widget = FlowMy.Services.FloatingWidgetManager.Instance.GetWidget(n.Id);
+                                                        if (widget != null && widget.WidgetWebView != null)
+                                                        {
+                                                            webView = widget.WidgetWebView;
+                                                            resolvedHostNode = n;
+                                                            isNativeHost = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                    else
+                                                     {
+                                                         var dialogWin = GetActiveDialog(n.Id);
+                                                         if (dialogWin != null)
+                                                         {
+                                                             var wvControl = FindWebView2InVisualTree(dialogWin);
+                                                             if (wvControl != null)
+                                                             {
+                                                                 webView = wvControl;
+                                                                 resolvedHostNode = n;
+                                                                 isNativeHost = true;
+                                                                 break;
+                                                             }
+                                                         }
+                                                     }
+
+                                                    if (webView == null)
+                                                    {
+                                                        var wvControl = FindWebView2InVisualTree(n.Border);
+                                                        if (wvControl != null)
+                                                        {
+                                                            webView = wvControl;
+                                                            resolvedHostNode = n;
+                                                            EnsureWebViewActiveInBackground(webView);
+                                                            isNativeHost = true;
+                                                            System.Diagnostics.Debug.WriteLine($"[MacroExecutor] ActiveVirtualCdpWebView fallback match node: {n.Title ?? n.Id} at ({canvasX:F0},{canvasY:F0})");
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1275,9 +1402,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         var txVal = directHost.TranslateTransform?.X ?? 0;
                                         var tyVal = directHost.TranslateTransform?.Y ?? 0;
                                         
-                                        FlowMy.Models.WorkflowNode? hostNode = null;
+                                        FlowMy.Models.WorkflowNode? hostNode = resolvedHostNode;
                                         var vm = directHost.ViewModel;
-                                        if (vm != null)
+                                        if (hostNode == null && vm != null)
                                         {
                                             System.Windows.DependencyObject current = webView;
                                             while (current != null)
@@ -1301,22 +1428,85 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             double webViewOffsetY = 0;
                                             try
                                             {
-                                                var zeroInWebView = webView.TransformToAncestor(hostNode.Border).Transform(new Point(0, 0));
-                                                webViewOffsetX = zeroInWebView.X;
-                                                webViewOffsetY = zeroInWebView.Y;
+                                                var canvasWebView = FindWebView2InVisualTree(hostNode.Border);
+                                                if (canvasWebView != null)
+                                                {
+                                                    var zeroInWebView = canvasWebView.TransformToAncestor(hostNode.Border).Transform(new Point(0, 0));
+                                                    webViewOffsetX = zeroInWebView.X;
+                                                    webViewOffsetY = zeroInWebView.Y;
+                                                    _lastKnownWebViewOffsets[hostNode.Id] = new Point(webViewOffsetX, webViewOffsetY);
+                                                }
+                                                else if (_lastKnownWebViewOffsets.TryGetValue(hostNode.Id, out Point cachedOffset))
+                                                {
+                                                    webViewOffsetX = cachedOffset.X;
+                                                    webViewOffsetY = cachedOffset.Y;
+                                                }
+                                                else
+                                                {
+                                                    webViewOffsetX = 0;
+                                                    if (hostNode.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                                        webViewOffsetY = 32;
+                                                    else
+                                                        webViewOffsetY = 38;
+                                                }
                                             }
                                             catch
                                             {
-                                                webViewOffsetX = 0;
-                                                if (hostNode.Type == FlowMy.Models.NodeType.EmbedApplication)
-                                                    webViewOffsetY = 32;
+                                                if (_lastKnownWebViewOffsets.TryGetValue(hostNode.Id, out Point cachedOffset))
+                                                {
+                                                    webViewOffsetX = cachedOffset.X;
+                                                    webViewOffsetY = cachedOffset.Y;
+                                                }
                                                 else
-                                                    webViewOffsetY = 38;
+                                                {
+                                                    webViewOffsetX = 0;
+                                                    if (hostNode.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                                        webViewOffsetY = 32;
+                                                    else
+                                                        webViewOffsetY = 38;
+                                                }
                                             }
                                             
-                                            double webViewOffsetLogicalX = CanvasLayoutOffset.X + txVal + scale * (hostNode.X + webViewOffsetX);
-                                            double webViewOffsetLogicalY = CanvasLayoutOffset.Y + tyVal + scale * (hostNode.Y + webViewOffsetY);
-                                            wvPoint = new Point(wpfPoint.X - webViewOffsetLogicalX, wpfPoint.Y - webViewOffsetLogicalY);
+                                            bool isWidgetOpen = FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(hostNode.Id);
+                                            var activeDialog = GetActiveDialog(hostNode.Id);
+                                            bool isDialogOpen = activeDialog != null;
+
+                                            double canvasX;
+                                            double canvasY;
+                                            if (macroNode is FlowMy.Models.Nodes.ActionCanVasNode canvasNode)
+                                            {
+                                                double rx = Math.Clamp(action.RelX, 0.0, 1.0);
+                                                double ry = Math.Clamp(action.RelY, 0.0, 1.0);
+                                                if (action.RelX == 0 && action.RelY == 0 && (action.X != 0 || action.Y != 0))
+                                                {
+                                                    canvasX = canvasNode.X + action.X;
+                                                    canvasY = canvasNode.Y + action.Y;
+                                                }
+                                                else
+                                                {
+                                                    canvasX = canvasNode.X + rx * canvasNode.BodyWidth;
+                                                    canvasY = canvasNode.Y + ry * canvasNode.BodyHeight;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                canvasX = hostNode.X;
+                                                canvasY = hostNode.Y;
+                                            }
+
+                                            double relativeX = canvasX - hostNode.X - webViewOffsetX;
+                                            double relativeY = canvasY - hostNode.Y - webViewOffsetY;
+
+                                            if (isWidgetOpen || isDialogOpen)
+                                            {
+                                                wvPoint = new Point(relativeX, relativeY);
+                                            }
+                                            else
+                                            {
+                                                double webViewOffsetLogicalX = CanvasLayoutOffset.X + txVal + scale * (hostNode.X + webViewOffsetX);
+                                                double webViewOffsetLogicalY = CanvasLayoutOffset.Y + tyVal + scale * (hostNode.Y + webViewOffsetY);
+                                                wvPoint = new Point(wpfPoint.X - webViewOffsetLogicalX, wpfPoint.Y - webViewOffsetLogicalY);
+                                            }
                                         }
                                         else
                                         {
@@ -1808,6 +1998,28 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch { }
             return null;
+        }
+
+        private static System.Windows.Window? GetActiveDialog(string nodeId)
+        {
+            System.Windows.Window? matched = null;
+            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                if (System.Windows.Application.Current?.Windows == null) return;
+                foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                {
+                    if (win is FlowMy.Views.Overlays.BaseNodeDialog dialog)
+                    {
+                        var vm = dialog.DataContext as FlowMy.ViewModels.BaseNodeDialogViewModel;
+                        if (vm != null && vm.Node != null && string.Equals(vm.Node.Id, nodeId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            matched = win;
+                            break;
+                        }
+                    }
+                }
+            });
+            return matched;
         }
 
         private static Microsoft.Web.WebView2.Wpf.WebView2? FindWebView2InVisualTree(System.Windows.DependencyObject parent)
