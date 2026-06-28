@@ -4183,10 +4183,11 @@ Tag="ListOut">
         </Grid>
 
         <!-- Global loading gate: chặn thao tác khi workflow đang nạp -->
-        <Border Grid.RowSpan="2"
+        <Border x:Name="LoadingOverlay"
+                Grid.RowSpan="2"
                 Panel.ZIndex="9999"
-                Background="#80000000"
-                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                Background="{DynamicResource WindowBackgroundBrush}"
+                Visibility="Collapsed">
             <Grid>
                 <Border HorizontalAlignment="Center"
                         VerticalAlignment="Center"

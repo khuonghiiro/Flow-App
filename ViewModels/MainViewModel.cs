@@ -833,8 +833,7 @@ namespace FlowMy.ViewModels
             }
             else
             {
-                // Ẩn MainWindow khi mở WorkflowEditorWindow ở chế độ bình thường
-                mainWindow?.Hide();
+                // Sẽ ẩn MainWindow sau khi workflowWindow.Show() để tránh giật hình/mất focus OS
             }
 
             workflowWindow.Closed += async (_, __) =>
@@ -952,6 +951,7 @@ namespace FlowMy.ViewModels
             if (!headless)
             {
                 workflowWindow.Show();
+                mainWindow?.Hide(); // Ẩn MainWindow sau khi editor window đã được hiển thị để tránh chớp giật màn hình
             }
             else
             {

@@ -76,6 +76,7 @@ namespace FlowMy.ViewModels
         private ObservableCollection<string> savedWorkflows = new();
 
         private bool _isRefreshingAfterSave;
+        private string? _loadedWorkflowName;
 
         partial void OnCurrentWorkflowNameChanged(string value)
         {
@@ -3681,6 +3682,8 @@ namespace FlowMy.ViewModels
         private async Task LoadWorkflowAsync(string name)
         {
             if (string.IsNullOrWhiteSpace(name)) return;
+            if (string.Equals(name, _loadedWorkflowName, StringComparison.OrdinalIgnoreCase))
+                return;
 
             CancellationTokenSource? previousCts = null;
             var cts = new CancellationTokenSource();
@@ -3691,6 +3694,7 @@ namespace FlowMy.ViewModels
             try
             {
                 IsLoading = true;
+                _loadedWorkflowName = name;
                 var token = cts.Token;
                 var result = await Task.Run(() =>
                 {
@@ -3699,13 +3703,30 @@ namespace FlowMy.ViewModels
                 }, token);
 
                 if (token.IsCancellationRequested || !ReferenceEquals(_workflowLoadCts, cts))
+                {
+                    if (string.Equals(_loadedWorkflowName, name, StringComparison.OrdinalIgnoreCase))
+                        _loadedWorkflowName = null;
                     return;
+                }
 
-                if (result == null) return;
+                if (result == null)
+                {
+                    if (string.Equals(_loadedWorkflowName, name, StringComparison.OrdinalIgnoreCase))
+                        _loadedWorkflowName = null;
+                    return;
+                }
                 ApplyWorkflowLoadResult(result);
             }
-            catch (OperationCanceledException) { }
-            catch { }
+            catch (OperationCanceledException)
+            {
+                if (string.Equals(_loadedWorkflowName, name, StringComparison.OrdinalIgnoreCase))
+                    _loadedWorkflowName = null;
+            }
+            catch
+            {
+                if (string.Equals(_loadedWorkflowName, name, StringComparison.OrdinalIgnoreCase))
+                    _loadedWorkflowName = null;
+            }
             finally
             {
                 if (ReferenceEquals(_workflowLoadCts, cts))

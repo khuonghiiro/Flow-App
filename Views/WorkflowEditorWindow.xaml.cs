@@ -458,6 +458,11 @@ namespace FlowMy.Views
         {
             InitializeComponent();
 
+            if (viewModel != null && viewModel.IsLoading)
+            {
+                LoadingOverlay.Visibility = Visibility.Visible;
+            }
+
             DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
             _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
@@ -984,16 +989,6 @@ namespace FlowMy.Views
                 {
                     ApplyResponsiveInitialZoom(); // Áp dụng zoom tương ứng màn hình (chỉ fresh workflow)
                     ScrollToCenter();
-                }
-                else
-                {
-                    // Workflow đã có state lưu → re-apply để chắc chắn không bị layout pass đè.
-                    try
-                    {
-                        ZoomPanHandlerService.RestoreViewState(
-                            ViewModel!.ZoomLevel, ViewModel.PanX, ViewModel.PanY);
-                    }
-                    catch { }
                 }
 
                 // Initialize theme from saved preference BEFORE drawing grid
@@ -1873,6 +1868,7 @@ namespace FlowMy.Views
             {
                 if (ViewModel?.IsLoading == true)
                 {
+                    LoadingOverlay.Visibility = Visibility.Visible;
                     ClearVisualsForReload();
                     // Chỉ xóa undo/redo khi load workflow thật (không phải đang undo/redo restore)
                     if (!_isRestoringSnapshot)
@@ -1906,6 +1902,7 @@ namespace FlowMy.Views
                                 try { ZoomPanHandlerService.RestoreViewState(zoom, panX, panY); } catch { }
                                 try { _viewportCullingService?.ForceUpdate(); } catch { }
                                 try { UpdateMinimap(); } catch { }
+                                try { LoadingOverlay.Visibility = Visibility.Collapsed; } catch { }
                             }));
                             _viewportCullingService?.ForceUpdate();
                             UpdateMinimap();
