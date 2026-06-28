@@ -785,22 +785,26 @@ namespace FlowMy.ViewModels
 
                 e.Cancel = true;
                 _isRehidingHeadlessWindow.Add(workflowWindow);
-                try
+
+                workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
                 {
-                    var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
-                    workflowWindow.EnableHeadlessCanvasOptimizationForBackground(activeWidgetIds);
-                    PrepareWindowForHeadlessBackground(workflowWindow);
-                    var name = _headlessWorkflowWindows
-                        .FirstOrDefault(kv => ReferenceEquals(kv.Value, workflowWindow)).Key;
-                    if (!string.IsNullOrWhiteSpace(name))
+                    try
                     {
-                        SetHeadlessDebugVisibleForWorkflow(name, false);
+                        var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+                        workflowWindow.EnableHeadlessCanvasOptimizationForBackground(activeWidgetIds);
+                        PrepareWindowForHeadlessBackground(workflowWindow);
+                        var name = _headlessWorkflowWindows
+                            .FirstOrDefault(kv => ReferenceEquals(kv.Value, workflowWindow)).Key;
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            SetHeadlessDebugVisibleForWorkflow(name, false);
+                        }
                     }
-                }
-                finally
-                {
-                    _isRehidingHeadlessWindow.Remove(workflowWindow);
-                }
+                    finally
+                    {
+                        _isRehidingHeadlessWindow.Remove(workflowWindow);
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
             };
 
             // Preload workflow TRƯỚC khi Show() để tránh flash/viewport nhảy:
@@ -995,7 +999,6 @@ namespace FlowMy.ViewModels
             workflowWindow.Top = -20000;
             workflowWindow.Width = 1440;
             workflowWindow.Height = 900;
-            workflowWindow.Visibility = Visibility.Visible;
         }
 
         private void OnWidgetOpened(object? sender, string nodeId) => UpdateWidgetOpenState(nodeId, true);
