@@ -150,7 +150,6 @@ namespace FlowMy.Views.NodeControls
             {
                 Visibility = Visibility.Collapsed
             };
-            WebView2AirspaceClipper.ApplyRoundedCorners(webView, 10);
             var isDisposed = false; // Guard flag: set to true in Unloaded to stop deferred handlers
             Grid.SetRow(webView, 1);
 
@@ -1424,7 +1423,6 @@ namespace FlowMy.Views.NodeControls
                 {
                     // Tạo lại Tab1 WebView2
                     _webViewTab1 = new WebView2 { Visibility = Visibility.Collapsed };
-                    WebView2AirspaceClipper.ApplyRoundedCorners(_webViewTab1, 10);
 
                     // ── Address bar with lock icon + search suggestion popup ──
                     var urlPill = new Border

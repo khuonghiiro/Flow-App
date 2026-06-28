@@ -463,7 +463,6 @@ namespace FlowMy.Views.NodeControls
 
             var grid = new Grid();
             var webView = new WebView2();
-            WebView2AirspaceClipper.ApplyRoundedCorners(webView, 8);
 
             grid.Children.Add(webView);
             previewBorder.Child = grid;
@@ -487,7 +486,6 @@ namespace FlowMy.Views.NodeControls
                 webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
                     UpdateWebViewZoomForCanvasZoom(webView, host);
-                    WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
                 };
 
                 await RefreshPreviewHtmlAsync(node, host);
