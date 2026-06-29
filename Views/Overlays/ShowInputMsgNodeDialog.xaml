@@ -119,6 +119,7 @@
                                                                 <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                                                 <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                                           ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                          IsSynchronizedWithCurrentItem="False"
                                                                           SelectedValuePath="Key" DisplayMemberPath="DisplayName"
                                                                           SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
                                                             </StackPanel>
@@ -415,6 +416,7 @@
                                                             <TextBlock Text="Body output" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                                             <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                                       ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                      IsSynchronizedWithCurrentItem="False"
                                                                       SelectedValuePath="Key"
                                                                       DisplayMemberPath="DisplayName"
                                                                       SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"

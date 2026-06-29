@@ -923,6 +923,9 @@ namespace FlowMy.ViewModels
                 NodeType.AsyncTaskDispatchCollect => "Async Dispatch Collect",
                 NodeType.KeyScopedStore => "Key Scoped Store",
                 NodeType.BodyContainer => "square-dashed duotone-light",
+                NodeType.ShowInputMsg => "Nhập dữ liệu",
+                NodeType.BorderHighlight => "Border Highlight",
+                NodeType.ActionCanVas => "Action Canvas",
                 _ => type.ToString()
             };
         }
@@ -978,6 +981,9 @@ namespace FlowMy.ViewModels
                 NodeType.MacroRecorder => "chart-network light",
                 NodeType.TextScan => "camera-circle-ellipsis duotone-light",
                 NodeType.EmbedApplication => "desktop-arrow-down light",
+                NodeType.ShowInputMsg => "user-message regular",
+                NodeType.BorderHighlight => "bolt-lightning sharp-light",
+                NodeType.ActionCanVas => "display regular",
                 _ => "circle-question chisel-regular"
             };
         }
