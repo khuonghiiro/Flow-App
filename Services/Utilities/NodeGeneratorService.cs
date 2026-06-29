@@ -1432,6 +1432,8 @@ namespace FlowMy.Services.Utilities
             PatchServiceCollection(result, config);
             PatchTemplateNodeHandler(result, config);
             PatchWorkflowEditorXaml(result, config);
+            PatchBaseNodeDialogViewModel(result, config);
+            PatchNodeSearchComboBoxUserControl(result, config);
 
             return result;
         }
@@ -1791,6 +1793,94 @@ namespace FlowMy.Services.Utilities
                 result.ModifiedFiles.Add(path);
             }
             catch (Exception ex) { result.Errors.Add($"Lỗi PatchWorkflowEditorXaml: {ex.Message}"); }
+        }
+
+        private static void PatchBaseNodeDialogViewModel(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            if (!config.AddNewNodeType) return;
+
+            var path = Path.Combine(config.ProjectRoot, "ViewModels", "BaseNodeDialogViewModel.cs");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy BaseNodeDialogViewModel.cs."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var enumValue = $"NodeType.{config.EffectiveNodeTypeName}";
+                bool changed = false;
+
+                // 1. Thêm vào ResolveNodeTypeDisplayName
+                if (!content.Contains(enumValue + " =>"))
+                {
+                    var fallback = "_ => type.ToString()";
+                    var idx = content.IndexOf(fallback, StringComparison.Ordinal);
+                    if (idx >= 0)
+                    {
+                        var arm = $"{enumValue} => \"{config.Title}\",\r\n                ";
+                        content = content.Substring(0, idx) + arm + content.Substring(idx);
+                        changed = true;
+                    }
+                }
+
+                // 2. Thêm vào ResolveNodeIconKey
+                if (!content.Contains(enumValue + " =>"))
+                {
+                    var fallback = "_ => \"circle-question chisel-regular\"";
+                    var idx = content.IndexOf(fallback, StringComparison.Ordinal);
+                    if (idx >= 0)
+                    {
+                        var arm = $"{enumValue} => \"{config.IconKey}\",\r\n                ";
+                        content = content.Substring(0, idx) + arm + content.Substring(idx);
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    File.WriteAllText(path, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(path);
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"Lỗi PatchBaseNodeDialogViewModel: {ex.Message}");
+            }
+        }
+
+        private static void PatchNodeSearchComboBoxUserControl(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            if (!config.AddNewNodeType) return;
+
+            var path = Path.Combine(config.ProjectRoot, "Controls", "NodeSearchComboBoxUserControl.xaml.cs");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy NodeSearchComboBoxUserControl.xaml.cs."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var caseValue = $"\"{config.EffectiveNodeTypeName}\"";
+                bool changed = false;
+
+                if (!content.Contains(caseValue + " =>"))
+                {
+                    var fallback = "_ => \"cog\"";
+                    var idx = content.IndexOf(fallback, StringComparison.Ordinal);
+                    if (idx >= 0)
+                    {
+                        var arm = $"{caseValue} => \"{config.IconKey}\",\r\n                ";
+                        content = content.Substring(0, idx) + arm + content.Substring(idx);
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    File.WriteAllText(path, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(path);
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"Lỗi PatchNodeSearchComboBoxUserControl: {ex.Message}");
+            }
         }
 
         /// <summary>

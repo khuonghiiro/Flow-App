@@ -336,6 +336,9 @@ namespace FlowMy.Controls
                 "MacroRecorder" => "chart-network light",
                 "TextScan" => "camera-circle-ellipsis duotone-light",
                 "EmbedApplicationNode" => "desktop-arrow-down light",
+                "ShowInputMsg" => "user-message regular",
+                "BorderHighlight" => "bolt-lightning sharp-light",
+                "ActionCanVas" => "display regular",
                 _ => "cog"
             };
         }
