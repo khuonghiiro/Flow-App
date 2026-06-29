@@ -160,11 +160,11 @@ namespace FlowMy.Views.Overlays
 
             var border = new Border
             {
-                CornerRadius = new CornerRadius(16),
+                CornerRadius = new CornerRadius(8),
                 Margin = new Thickness(4),
                 Padding = new Thickness(10, 4, 10, 4),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                BorderThickness = new Thickness(1),
+                BorderThickness = new Thickness(0),
                 Background = baseBg,
                 BorderBrush = isSelected
                     ? activeRoyalPurple

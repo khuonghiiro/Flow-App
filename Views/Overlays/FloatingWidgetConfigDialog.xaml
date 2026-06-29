@@ -64,29 +64,41 @@
         </Border>
 
         <!-- Widget list + Node selector + Widget name -->
+        <!-- Widget list + Node selector + Widget name -->
         <Border Grid.Row="1"
                 Background="{DynamicResource CardColor}"
                 BorderBrush="{DynamicResource BorderColor}"
                 BorderThickness="1"
                 CornerRadius="10"
-                Padding="14,10"
+                Padding="14,12"
                 Margin="0,0,0,10">
-            <StackPanel>
-                <!-- Widget list (quản lý nhiều widget trong 1 workflow) -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="Widgets:"
-                               Foreground="{DynamicResource TextBrush}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"
-                               FontWeight="SemiBold"/>
-                    <Border Grid.Column="1"
-                            MinHeight="40"
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280"/> <!-- Left: Widget list -->
+                    <ColumnDefinition Width="20"/>  <!-- Gap -->
+                    <ColumnDefinition Width="*"/>   <!-- Right: Selection & name -->
+                </Grid.ColumnDefinitions>
+
+                <!-- LEFT SIDE: Widget List -->
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock Text="📋 Danh sách Widgets"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextBrush}"/>
+                        <TextBlock Text="Nhấp vào chip để chọn nhanh widget"
+                                   FontSize="10"
+                                   Opacity="0.6"
+                                   Foreground="{DynamicResource TextBrush}"/>
+                    </StackPanel>
+
+                    <Border Grid.Row="1"
+                            MinHeight="90"
                             MaxHeight="110">
                         <Border.Style>
                             <Style TargetType="Border">
@@ -113,61 +125,80 @@
                             </ItemsControl>
                         </ScrollViewer>
                     </Border>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
-                        <Button x:Name="RemoveWidgetButton"
+                </Grid>
+
+                <!-- RIGHT SIDE: Config Node & Name -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <!-- Row 1: Node selection -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0"
+                                   Text="Chọn Node:"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"/>
+                                   
+                        <controls:NodeSearchComboBoxUserControl Grid.Column="1"
+                                                                x:Name="NodeComboBox"
+                                                                Height="32"
+                                                                DisplayMemberPath="Title"
+                                                                SelectedValuePath="NodeId"
+                                                                PlaceholderText="Chọn node trong workflow..."
+                                                                SelectionChanged="NodeComboBox_SelectionChanged"/>
+                                                                
+                        <TextBlock Grid.Column="2"
+                                   x:Name="WidgetStatusText"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"
+                                   FontWeight="SemiBold"
+                                   FontSize="11"/>
+                    </Grid>
+
+                    <!-- Row 2: Widget Name -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0"
+                                   Text="Tên Widget:"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   VerticalAlignment="Top"
+                                   Margin="0,8,10,0"
+                                   FontWeight="SemiBold"/>
+                                   
+                        <TextBox Grid.Column="1"
+                                 x:Name="WidgetNameTextBox"
+                                 Style="{DynamicResource BaseTextBox}"
+                                 Height="52"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 VerticalContentAlignment="Top"
+                                 Padding="6,4"
+                                 ToolTip="Tên hiển thị của widget trong MainWindow launcher. Nếu trống sẽ dùng tên node."/>
+                                 
+                        <!-- Gỡ widget button -->
+                        <Button Grid.Column="2"
+                                x:Name="RemoveWidgetButton"
                                 Content="🗑 Gỡ widget"
-                                Style="{DynamicResource PrimaryButton}"
-                                Padding="10,5"
+                                Style="{DynamicResource DangerButton}"
+                                Height="36"
+                                Padding="12,0"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Center"
                                 Click="RemoveWidgetButton_Click"
-                                ToolTip="Xóa widget khỏi node đang chọn"/>
-                    </StackPanel>
-                </Grid>
-
-                <Grid Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="Node:"
-                               Foreground="{DynamicResource TextBrush}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"
-                               FontWeight="SemiBold"/>
-                    <controls:NodeSearchComboBoxUserControl Grid.Column="1"
-                                                            x:Name="NodeComboBox"
-                                                            Height="32"
-                                                            DisplayMemberPath="Title"
-                                                            SelectedValuePath="NodeId"
-                                                            PlaceholderText="Chọn node..."
-                                                            SelectionChanged="NodeComboBox_SelectionChanged"/>
-                    <TextBlock Grid.Column="2"
-                               x:Name="WidgetStatusText"
-                               VerticalAlignment="Center"
-                               Margin="12,0,0,0"
-                               Foreground="{DynamicResource TextBrush}"
-                               Opacity="0.75"/>
-                </Grid>
-
-                <Grid Margin="0,8,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="Tên widget:"
-                               Foreground="{DynamicResource TextBrush}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"
-                               FontWeight="SemiBold"/>
-                    <TextBox Grid.Column="1"
-                             x:Name="WidgetNameTextBox"
-                             Style="{DynamicResource BaseTextBox}"
-                             Height="30"
-                             ToolTip="Tên hiển thị của widget trong MainWindow launcher. Nếu trống sẽ dùng tên node."/>
-                </Grid>
-            </StackPanel>
+                                ToolTip="Xóa cấu hình widget khỏi node đang chọn"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- Settings -->
