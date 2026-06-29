@@ -1000,7 +1000,8 @@ namespace FlowMy.Views
                     {
                         VariableKey = v.VariableKey,
                         SourceNodeId = v.SourceNodeId,
-                        SourceOutputKey = v.SourceOutputKey
+                        SourceOutputKey = v.SourceOutputKey,
+                        UseClipboard = v.UseClipboard
                     }).ToList();
                 }
                 else

@@ -38,113 +38,127 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 foreach (var variable in outputNode.InputVariables)
                 {
                     var variableKey = variable.VariableKey?.Trim() ?? string.Empty;
-                    
-                    if (string.IsNullOrWhiteSpace(variableKey) ||
-                        string.IsNullOrWhiteSpace(variable.SourceNodeId) ||
-                        string.IsNullOrWhiteSpace(variable.SourceOutputKey))
+                    if (string.IsNullOrWhiteSpace(variableKey)) continue;
+
+                    string value = string.Empty;
+
+                    if (variable.UseClipboard)
                     {
-                        // Still add empty value for this variable key if key exists
-                        if (!string.IsNullOrWhiteSpace(variableKey))
+                        // Đợi 150ms để hệ điều hành và ứng dụng đích kịp xử lý thao tác Ctrl+C và ghi dữ liệu vào Clipboard
+                        await Task.Delay(150, env.CancellationToken);
+                        try
                         {
-                            variableValues[variableKey] = string.Empty;
-                        }
-                        continue;
-                    }
-
-                    // Find source node
-                    WorkflowNode? sourceNode = null;
-
-                    // Try direct connection first
-                    var upstreamConnection = connections
-                        .FirstOrDefault(c =>
-                            c.ToNode == outputNode &&
-                            c.FromNode != null &&
-                            c.FromNode.Id == variable.SourceNodeId);
-
-                    sourceNode = upstreamConnection?.FromNode;
-
-                    // Fallback: find node by ID in graph (for LoopBody scenarios)
-                    if (sourceNode == null)
-                    {
-                        sourceNode = connections
-                            .SelectMany(c => new[] { c.FromNode, c.ToNode })
-                            .FirstOrDefault(n => n != null && n.Id == variable.SourceNodeId);
-                    }
-
-                    // Resolve value from source node
-                    if (sourceNode != null)
-                    {
-                        string? scopedValue = null;
-                        var scopedFound = !string.IsNullOrWhiteSpace(env.ExecutionId)
-                            && env.Service.TryGetScopedNodeStringOutputForLookupChain(env.ExecutionId, sourceNode.Id, variable.SourceOutputKey, out scopedValue);
-
-                        // Runtime nodes in async/parallel branches must read scoped value of current execution only.
-                        // If scoped value is missing, falling back to shared UI state can leak stale data from other iterations.
-                        string value;
-                        if (scopedFound)
-                        {
-                            value = scopedValue ?? string.Empty;
-                        }
-                        else if (sourceNode is InputNode)
-                        {
-                            // InputNode can be static configuration and may not always have scoped snapshot.
-                            value = env.Service.ResolveDynamicValueForExecution(sourceNode, variable.SourceOutputKey, env);
-                        }
-                        else
-                        {
-                            value = string.Empty;
-                        }
-                        
-                        // Check if value is JSON object
-                        if (IsObjectValue(value))
-                        {
-                            // Parse JSON object and store both formatted string and parsed dictionary
-                            var parsedObject = ParseObjectToDictionary(value);
-                            if (parsedObject != null && parsedObject.Count > 0)
+                            Application.Current?.Dispatcher.Invoke(() =>
                             {
-                                variableObjects[variableKey] = parsedObject;
-                                variableValues[variableKey] = FormatObjectValue(value);
-                            }
-                            else
-                            {
-                                variableValues[variableKey] = "{}";
-                            }
+                                if (Clipboard.ContainsText())
+                                {
+                                    value = Clipboard.GetText() ?? string.Empty;
+                                }
+                            });
                         }
-                        // Check if value is array
-                        else if (IsArrayValue(value))
+                        catch (Exception ex)
                         {
-                            // Parse array and store both formatted string and parsed list
-                            var parsedArray = ParseArrayToList(value);
-                            if (parsedArray != null && parsedArray.Count > 0)
-                            {
-                                variableArrays[variableKey] = parsedArray;
-                                variableValues[variableKey] = FormatArrayValue(value);
-                            }
-                            else
-                            {
-                                variableValues[variableKey] = "[]";
-                            }
+                            System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to read from clipboard for variable {variableKey}: {ex.Message}");
                         }
-                        else
-                        {
-                            // Handle "—" as empty
-                            if (value == "—" || string.IsNullOrWhiteSpace(value))
-                            {
-                                variableValues[variableKey] = string.Empty;
-                            }
-                            else
-                            {
-                                variableValues[variableKey] = value ?? string.Empty;
-                            }
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"OutputNode: Resolved {variableKey} = '{variableValues[variableKey]}'");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"OutputNode: Source node not found: {variable.SourceNodeId}");
-                        variableValues[variableKey] = string.Empty;
+                        if (string.IsNullOrWhiteSpace(variable.SourceNodeId) ||
+                            string.IsNullOrWhiteSpace(variable.SourceOutputKey))
+                        {
+                            variableValues[variableKey] = string.Empty;
+                            continue;
+                        }
+
+                        // Find source node
+                        WorkflowNode? sourceNode = null;
+
+                        // Try direct connection first
+                        var upstreamConnection = connections
+                            .FirstOrDefault(c =>
+                                c.ToNode == outputNode &&
+                                c.FromNode != null &&
+                                c.FromNode.Id == variable.SourceNodeId);
+
+                        sourceNode = upstreamConnection?.FromNode;
+
+                        // Fallback: find node by ID in graph (for LoopBody scenarios)
+                        if (sourceNode == null)
+                        {
+                            sourceNode = connections
+                                .SelectMany(c => new[] { c.FromNode, c.ToNode })
+                                .FirstOrDefault(n => n != null && n.Id == variable.SourceNodeId);
+                        }
+
+                        // Resolve value from source node
+                        if (sourceNode != null)
+                        {
+                            string? scopedValue = null;
+                            var scopedFound = !string.IsNullOrWhiteSpace(env.ExecutionId)
+                                && env.Service.TryGetScopedNodeStringOutputForLookupChain(env.ExecutionId, sourceNode.Id, variable.SourceOutputKey, out scopedValue);
+
+                            // Runtime nodes in async/parallel branches must read scoped value of current execution only.
+                            // If scoped value is missing, falling back to shared UI state can leak stale data from other iterations.
+                            if (scopedFound)
+                            {
+                                value = scopedValue ?? string.Empty;
+                            }
+                            else if (sourceNode is InputNode)
+                            {
+                                // InputNode can be static configuration and may not always have scoped snapshot.
+                                value = env.Service.ResolveDynamicValueForExecution(sourceNode, variable.SourceOutputKey, env);
+                            }
+                            else
+                            {
+                                value = string.Empty;
+                            }
+                        }
                     }
+
+                    // Check if value is JSON object
+                    if (IsObjectValue(value))
+                    {
+                        // Parse JSON object and store both formatted string and parsed dictionary
+                        var parsedObject = ParseObjectToDictionary(value);
+                        if (parsedObject != null && parsedObject.Count > 0)
+                        {
+                            variableObjects[variableKey] = parsedObject;
+                            variableValues[variableKey] = FormatObjectValue(value);
+                        }
+                        else
+                        {
+                            variableValues[variableKey] = "{}";
+                        }
+                    }
+                    // Check if value is array
+                    else if (IsArrayValue(value))
+                    {
+                        // Parse array and store both formatted string and parsed list
+                        var parsedArray = ParseArrayToList(value);
+                        if (parsedArray != null && parsedArray.Count > 0)
+                        {
+                            variableArrays[variableKey] = parsedArray;
+                            variableValues[variableKey] = FormatArrayValue(value);
+                        }
+                        else
+                        {
+                            variableValues[variableKey] = "[]";
+                        }
+                    }
+                    else
+                    {
+                        // Handle "—" as empty
+                        if (value == "—" || string.IsNullOrWhiteSpace(value))
+                        {
+                            variableValues[variableKey] = string.Empty;
+                        }
+                        else
+                        {
+                            variableValues[variableKey] = value;
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"OutputNode: Resolved {variableKey} = '{variableValues[variableKey]}'");
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"OutputNode: Total variables resolved: {variableValues.Count}");

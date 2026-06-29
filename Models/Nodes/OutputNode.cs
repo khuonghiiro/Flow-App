@@ -48,6 +48,8 @@ namespace FlowMy.Models.Nodes
             }
         }
 
+        private bool _useClipboard = false;
+
         /// <summary>
         /// The output key from the source node.
         /// </summary>
@@ -59,6 +61,22 @@ namespace FlowMy.Models.Nodes
                 if (_sourceOutputKey != value)
                 {
                     _sourceOutputKey = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// When true, retrieve data from clipboard instead of source node output.
+        /// </summary>
+        public bool UseClipboard
+        {
+            get => _useClipboard;
+            set
+            {
+                if (_useClipboard != value)
+                {
+                    _useClipboard = value;
                     OnPropertyChanged();
                 }
             }

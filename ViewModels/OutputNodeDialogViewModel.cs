@@ -31,6 +31,9 @@ namespace FlowMy.ViewModels
         private string _selectedSourceOutputKey = string.Empty;
 
         [ObservableProperty]
+        private bool _useClipboard = false;
+
+        [ObservableProperty]
         private ObservableCollection<WorkflowDataSourceOption> _availableSourceNodes = new();
 
         [ObservableProperty]
@@ -53,6 +56,7 @@ namespace FlowMy.ViewModels
             _variableKey = variable.VariableKey;
             _selectedSourceNodeId = variable.SourceNodeId;
             _selectedSourceOutputKey = variable.SourceOutputKey;
+            _useClipboard = variable.UseClipboard;
 
             // Load available source nodes
             RefreshAvailableSources();
@@ -187,6 +191,13 @@ namespace FlowMy.ViewModels
         {
             // Sync to variable
             _variable.VariableKey = value;
+            _onVariableChanged?.Invoke();
+        }
+
+        partial void OnUseClipboardChanged(bool value)
+        {
+            // Sync to variable
+            _variable.UseClipboard = value;
             _onVariableChanged?.Invoke();
         }
 
@@ -370,6 +381,8 @@ namespace FlowMy.ViewModels
                 _outputNode.SaveToClipboard = value;
             }
         }
+
+
 
         protected override void OnSaveTitle()
         {

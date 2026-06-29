@@ -385,7 +385,8 @@ public sealed partial class FileWorkflowPersistenceService
                             {
                                 VariableKey = v.TryGetValue("VariableKey", out var vk) ? vk?.ToString() ?? string.Empty : string.Empty,
                                 SourceNodeId = v.TryGetValue("SourceNodeId", out var sni) ? sni?.ToString() ?? string.Empty : string.Empty,
-                                SourceOutputKey = v.TryGetValue("SourceOutputKey", out var sok) ? sok?.ToString() ?? string.Empty : string.Empty
+                                SourceOutputKey = v.TryGetValue("SourceOutputKey", out var sok) ? sok?.ToString() ?? string.Empty : string.Empty,
+                                UseClipboard = v.TryGetValue("UseClipboard", out var uc) && bool.TryParse(uc?.ToString(), out var ucb) ? ucb : false
                             }).ToList();
                         }
                     }
@@ -415,7 +416,8 @@ public sealed partial class FileWorkflowPersistenceService
                                     {
                                         VariableKey = v.TryGetValue("VariableKey", out var vk) ? vk?.ToString() ?? string.Empty : string.Empty,
                                         SourceNodeId = v.TryGetValue("SourceNodeId", out var sni) ? sni?.ToString() ?? string.Empty : string.Empty,
-                                        SourceOutputKey = v.TryGetValue("SourceOutputKey", out var sok) ? sok?.ToString() ?? string.Empty : string.Empty
+                                        SourceOutputKey = v.TryGetValue("SourceOutputKey", out var sok) ? sok?.ToString() ?? string.Empty : string.Empty,
+                                        UseClipboard = v.TryGetValue("UseClipboard", out var uc) && bool.TryParse(uc?.ToString(), out var ucb) ? ucb : false
                                     }).ToList();
                                 }
                             }
@@ -945,7 +947,8 @@ public sealed partial class FileWorkflowPersistenceService
                 {
                     VariableKey = v.VariableKey,
                     SourceNodeId = v.SourceNodeId,
-                    SourceOutputKey = v.SourceOutputKey
+                    SourceOutputKey = v.SourceOutputKey,
+                    UseClipboard = v.UseClipboard
                 }).ToList());
                 dict["InputVariables"] = variablesJson;
             }

@@ -112,6 +112,12 @@ namespace FlowMy.Services.Interaction
             if (repeatCount < 1) repeatCount = 1;
             if (delayMs < 0) delayMs = 0;
 
+            // Giải phóng tất cả phím modifier trước khi mô phỏng để tránh xung đột với phím vật lý đang giữ bởi người dùng
+            if (targetHwnd == IntPtr.Zero || mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                ReleaseAllModifiers();
+            }
+
             var key = ParseKey(keyText);
             var vk = key.HasValue ? KeyInterop.VirtualKeyFromKey(key.Value) : 0;
             bool isModifier = vk == 0x10 || vk == 0xA0 || vk == 0xA1 || // Shift
@@ -455,6 +461,12 @@ namespace FlowMy.Services.Interaction
             if (string.IsNullOrWhiteSpace(hotkeyText)) return;
             if (repeatCount < 1) repeatCount = 1;
             if (delayMs < 0) delayMs = 0;
+
+            // Giải phóng tất cả phím modifier trước khi mô phỏng để tránh xung đột với phím vật lý đang giữ bởi người dùng
+            if (targetHwnd == IntPtr.Zero || mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                ReleaseAllModifiers();
+            }
 
             var keys = ParseHotkey(hotkeyText);
             if (keys == null || (keys.Modifiers.Count == 0 && keys.MainKeys.Count == 0))
