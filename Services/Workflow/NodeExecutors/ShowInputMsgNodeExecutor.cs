@@ -306,6 +306,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private bool _isShownAndActive = false;
         private DateTime _showTime = DateTime.MinValue;
         private IntPtr _previousForegroundHwnd = IntPtr.Zero;
+        private string? _lastLoadedHtml = null;
 
         public ShowInputMsgPopupWindow(ShowInputMsgNode node)
         {
@@ -362,6 +363,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Escape pressed. Hiding window. Id={_node?.Id}");
                     _isShownAndActive = false;
+                    ClearInputsInWebView();
                     RestorePreviousForegroundWindow();
                     Hide();
                     _tcs?.TrySetResult(false);
@@ -382,6 +384,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 
                 _isShownAndActive = false;
+                ClearInputsInWebView();
                 RestorePreviousForegroundWindow();
                 Hide();
                 _tcs?.TrySetResult(false);
@@ -407,6 +410,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     RestorePreviousForegroundWindow();
                 }
             };
+        }
+
+        private void ClearInputsInWebView()
+        {
+            try
+            {
+                if (_webView.CoreWebView2 != null)
+                {
+                    _ = _webView.CoreWebView2.ExecuteScriptAsync(@"
+                        (function() {
+                            try {
+                                var forms = document.querySelectorAll('form');
+                                for (var i = 0; i < forms.length; i++) {
+                                    forms[i].reset();
+                                }
+                                var inputs = document.querySelectorAll('input:not([type=""hidden""]):not([type=""submit""]):not([type=""button""]), textarea');
+                                for (var i = 0; i < inputs.length; i++) {
+                                    inputs[i].value = '';
+                                }
+                            } catch (e) {}
+                        })();
+                    ");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] ClearInputsInWebView error: {ex.Message}");
+            }
         }
 
         internal void RestorePreviousForegroundWindow()
@@ -452,6 +483,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             e.Cancel = true;
             System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Closing intercepted. Hiding window. Id={_node?.Id}");
             _isShownAndActive = false;
+            ClearInputsInWebView();
             RestorePreviousForegroundWindow();
             Hide();
             _tcs?.TrySetResult(false);
@@ -504,19 +536,55 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
                     _webView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
                     _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                    _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+                    _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
                 }
 
-                await Dispatcher.InvokeAsync(() =>
+                if (_lastLoadedHtml == htmlContent)
                 {
-                    try
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] HTML content is identical. Skipping NavigateToString to avoid reloading.");
+                    await Dispatcher.InvokeAsync(async () =>
                     {
-                        _webView.CoreWebView2.NavigateToString(htmlContent);
-                    }
-                    catch (Exception navEx)
+                        try
+                        {
+                            ClearInputsInWebView();
+                            _webView.Focus();
+                            if (_webView.CoreWebView2 != null)
+                            {
+                                await _webView.CoreWebView2.ExecuteScriptAsync(@"
+                                    (function() {
+                                        var el = document.querySelector('textarea, input:not([type=""hidden""]):not([type=""submit""]):not([type=""button""])');
+                                        if (el) {
+                                            el.focus();
+                                            if (typeof el.select === 'function') {
+                                                el.select();
+                                            }
+                                        }
+                                    })();
+                                ");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Error focusing cached WebView2: {ex.Message}");
+                        }
+                    });
+                }
+                else
+                {
+                    _lastLoadedHtml = htmlContent;
+                    await Dispatcher.InvokeAsync(() =>
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] NavigateToString error: {navEx}");
-                    }
-                }, System.Windows.Threading.DispatcherPriority.Background);
+                        try
+                        {
+                            _webView.CoreWebView2.NavigateToString(htmlContent);
+                        }
+                        catch (Exception navEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] NavigateToString error: {navEx}");
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Background);
+                }
             }
             catch (Exception ex)
             {
@@ -554,6 +622,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
                     _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
                     _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                    _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
                 });
             }
             else
@@ -561,9 +630,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
                 _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
                 _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
             }
 
             System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InitializeWebViewInternalAsync: WebView2 fully initialized.");
+        }
+
+        private void CoreWebView2_NavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    _webView.Focus();
+                    _ = _webView.CoreWebView2?.ExecuteScriptAsync(@"
+                        (function() {
+                            var el = document.querySelector('textarea, input:not([type=""hidden""]):not([type=""submit""]):not([type=""button""])');
+                            if (el) {
+                                el.focus();
+                                if (typeof el.select === 'function') {
+                                    el.select();
+                                }
+                            }
+                        })();
+                    ");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] NavigationCompleted focus error: {ex.Message}");
+                }
+            });
         }
 
         private async void CoreWebView2_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
@@ -605,6 +701,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] HandleSubmitAsync: reading DOM outputs. Id={_node?.Id}");
             await UpdateOutputsFromDomAsync();
             _isShownAndActive = false;
+            ClearInputsInWebView();
             _tcs?.TrySetResult(true);
             RestorePreviousForegroundWindow();
             Hide();
