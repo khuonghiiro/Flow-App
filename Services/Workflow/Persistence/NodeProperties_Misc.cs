@@ -473,6 +473,24 @@ public sealed partial class FileWorkflowPersistenceService
                 macroRecorderNode.TargetProcessName = tpnObj?.ToString() ?? "";
             if (properties.TryGetValue("TargetWindowTitle", out var twtObj))
                 macroRecorderNode.TargetWindowTitle = twtObj?.ToString() ?? "";
+
+            if (properties.TryGetValue("MouseMoveDelayMs", out var mmdmObj) && int.TryParse(mmdmObj?.ToString(), out var mmdm))
+                macroRecorderNode.MouseMoveDelayMs = mmdm;
+            if (properties.TryGetValue("KeyPressDelayMs", out var kpdmObj) && int.TryParse(kpdmObj?.ToString(), out var kpdm))
+                macroRecorderNode.KeyPressDelayMs = kpdm;
+            if (properties.TryGetValue("MouseClickDelayMs", out var mcdmObj) && int.TryParse(mcdmObj?.ToString(), out var mcdm))
+                macroRecorderNode.MouseClickDelayMs = mcdm;
+            if (properties.TryGetValue("MouseScrollDelayMs", out var msdmObj) && int.TryParse(msdmObj?.ToString(), out var msdm))
+                macroRecorderNode.MouseScrollDelayMs = msdm;
+
+            if (properties.TryGetValue("SkipMouseMove", out var smmObj) && bool.TryParse(smmObj?.ToString(), out var smm))
+                macroRecorderNode.SkipMouseMove = smm;
+            if (properties.TryGetValue("SkipKeyPress", out var skpObj) && bool.TryParse(skpObj?.ToString(), out var skp))
+                macroRecorderNode.SkipKeyPress = skp;
+            if (properties.TryGetValue("SkipMouseClick", out var smcObj) && bool.TryParse(smcObj?.ToString(), out var smc))
+                macroRecorderNode.SkipMouseClick = smc;
+            if (properties.TryGetValue("SkipMouseScroll", out var smsObj) && bool.TryParse(smsObj?.ToString(), out var sms))
+                macroRecorderNode.SkipMouseScroll = sms;
     }
 
     private static void RestoreBorderHighlightNodeProperties(BorderHighlightNode borderHighlightNode, Dictionary<string, object> properties)
@@ -1061,6 +1079,15 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["TargetProcessName"] = macroNode.TargetProcessName;
             if (!string.IsNullOrEmpty(macroNode.TargetWindowTitle))
                 dict["TargetWindowTitle"] = macroNode.TargetWindowTitle;
+
+            dict["MouseMoveDelayMs"] = macroNode.MouseMoveDelayMs;
+            dict["KeyPressDelayMs"] = macroNode.KeyPressDelayMs;
+            dict["MouseClickDelayMs"] = macroNode.MouseClickDelayMs;
+            dict["MouseScrollDelayMs"] = macroNode.MouseScrollDelayMs;
+            dict["SkipMouseMove"] = macroNode.SkipMouseMove;
+            dict["SkipKeyPress"] = macroNode.SkipKeyPress;
+            dict["SkipMouseClick"] = macroNode.SkipMouseClick;
+            dict["SkipMouseScroll"] = macroNode.SkipMouseScroll;
     }
 
     private static void GetBorderHighlightNodeProperties(BorderHighlightNode borderHighlightNode, Dictionary<string, object> dict)

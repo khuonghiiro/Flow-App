@@ -3376,6 +3376,35 @@ namespace FlowMy.ViewModels
                 if (properties.TryGetValue("ShowMouseTrail", out var smtObj) &&
                     bool.TryParse(smtObj?.ToString(), out var smt))
                     macroRecorderRestoreNode.ShowMouseTrail = smt;
+
+                if (properties.TryGetValue("CountdownSeconds", out var csObj) && int.TryParse(csObj?.ToString(), out var cs))
+                    macroRecorderRestoreNode.CountdownSeconds = cs;
+                if (properties.TryGetValue("StayOnTargetAfterExecution", out var staeObj) && bool.TryParse(staeObj?.ToString(), out var stae))
+                    macroRecorderRestoreNode.StayOnTargetAfterExecution = stae;
+                if (properties.TryGetValue("ExecutionMode", out var emObj) && Enum.TryParse<MacroExecutionMode>(emObj?.ToString(), out var em))
+                    macroRecorderRestoreNode.ExecutionMode = em;
+                if (properties.TryGetValue("TargetProcessName", out var tpnObj))
+                    macroRecorderRestoreNode.TargetProcessName = tpnObj?.ToString() ?? "";
+                if (properties.TryGetValue("TargetWindowTitle", out var twtObj))
+                    macroRecorderRestoreNode.TargetWindowTitle = twtObj?.ToString() ?? "";
+
+                if (properties.TryGetValue("MouseMoveDelayMs", out var mmdmObj) && int.TryParse(mmdmObj?.ToString(), out var mmdm))
+                    macroRecorderRestoreNode.MouseMoveDelayMs = mmdm;
+                if (properties.TryGetValue("KeyPressDelayMs", out var kpdmObj) && int.TryParse(kpdmObj?.ToString(), out var kpdm))
+                    macroRecorderRestoreNode.KeyPressDelayMs = kpdm;
+                if (properties.TryGetValue("MouseClickDelayMs", out var mcdmObj) && int.TryParse(mcdmObj?.ToString(), out var mcdm))
+                    macroRecorderRestoreNode.MouseClickDelayMs = mcdm;
+                if (properties.TryGetValue("MouseScrollDelayMs", out var msdmObj) && int.TryParse(msdmObj?.ToString(), out var msdm))
+                    macroRecorderRestoreNode.MouseScrollDelayMs = msdm;
+
+                if (properties.TryGetValue("SkipMouseMove", out var smmObj) && bool.TryParse(smmObj?.ToString(), out var smm))
+                    macroRecorderRestoreNode.SkipMouseMove = smm;
+                if (properties.TryGetValue("SkipKeyPress", out var skpObj) && bool.TryParse(skpObj?.ToString(), out var skp))
+                    macroRecorderRestoreNode.SkipKeyPress = skp;
+                if (properties.TryGetValue("SkipMouseClick", out var smcObj) && bool.TryParse(smcObj?.ToString(), out var smc))
+                    macroRecorderRestoreNode.SkipMouseClick = smc;
+                if (properties.TryGetValue("SkipMouseScroll", out var smsObj) && bool.TryParse(smsObj?.ToString(), out var sms))
+                    macroRecorderRestoreNode.SkipMouseScroll = sms;
             }
 
             // Dynamic input selections (source node + output key)
@@ -3581,6 +3610,21 @@ namespace FlowMy.ViewModels
                 dict["RepeatCount"] = macroRecorderNode.RepeatCount;
                 dict["VisualPlaybackMode"] = macroRecorderNode.VisualPlaybackMode.ToString();
                 dict["ShowMouseTrail"] = macroRecorderNode.ShowMouseTrail;
+
+                dict["CountdownSeconds"] = macroRecorderNode.CountdownSeconds;
+                dict["StayOnTargetAfterExecution"] = macroRecorderNode.StayOnTargetAfterExecution;
+                dict["ExecutionMode"] = macroRecorderNode.ExecutionMode.ToString();
+                dict["TargetProcessName"] = macroRecorderNode.TargetProcessName;
+                dict["TargetWindowTitle"] = macroRecorderNode.TargetWindowTitle;
+
+                dict["MouseMoveDelayMs"] = macroRecorderNode.MouseMoveDelayMs;
+                dict["KeyPressDelayMs"] = macroRecorderNode.KeyPressDelayMs;
+                dict["MouseClickDelayMs"] = macroRecorderNode.MouseClickDelayMs;
+                dict["MouseScrollDelayMs"] = macroRecorderNode.MouseScrollDelayMs;
+                dict["SkipMouseMove"] = macroRecorderNode.SkipMouseMove;
+                dict["SkipKeyPress"] = macroRecorderNode.SkipKeyPress;
+                dict["SkipMouseClick"] = macroRecorderNode.SkipMouseClick;
+                dict["SkipMouseScroll"] = macroRecorderNode.SkipMouseScroll;
             }
 
             // Dynamic input selections (persist minimal config)

@@ -1204,6 +1204,21 @@ namespace FlowMy.Views
                 dstMacro.TitleDisplayMode = srcMacro.TitleDisplayMode;
                 dstMacro.TitleColorMode = srcMacro.TitleColorMode;
                 dstMacro.TitleColorKey = srcMacro.TitleColorKey;
+
+                dstMacro.CountdownSeconds = srcMacro.CountdownSeconds;
+                dstMacro.StayOnTargetAfterExecution = srcMacro.StayOnTargetAfterExecution;
+                dstMacro.ExecutionMode = srcMacro.ExecutionMode;
+                dstMacro.TargetProcessName = srcMacro.TargetProcessName;
+                dstMacro.TargetWindowTitle = srcMacro.TargetWindowTitle;
+
+                dstMacro.MouseMoveDelayMs = srcMacro.MouseMoveDelayMs;
+                dstMacro.KeyPressDelayMs = srcMacro.KeyPressDelayMs;
+                dstMacro.MouseClickDelayMs = srcMacro.MouseClickDelayMs;
+                dstMacro.MouseScrollDelayMs = srcMacro.MouseScrollDelayMs;
+                dstMacro.SkipMouseMove = srcMacro.SkipMouseMove;
+                dstMacro.SkipKeyPress = srcMacro.SkipKeyPress;
+                dstMacro.SkipMouseClick = srcMacro.SkipMouseClick;
+                dstMacro.SkipMouseScroll = srcMacro.SkipMouseScroll;
             }
 
             if (source is ActionCanVasNode srcAction && node is ActionCanVasNode dstAction)
@@ -1252,6 +1267,10 @@ namespace FlowMy.Views
             else if (node is NotificationNode notificationNode)
             {
                 notificationNode.NotifyTitleChanged();
+            }
+            else if (node is MacroRecorderNode macroNode)
+            {
+                macroNode.NotifyTitleChanged();
             }
             else if (node is ListOutNode listOutNode)
             {

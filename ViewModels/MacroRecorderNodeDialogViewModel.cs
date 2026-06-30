@@ -24,6 +24,27 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private int    _countdownSeconds;
         [ObservableProperty] private bool   _stayOnTargetAfterExecution;
 
+        // Speed override and skip properties
+        [ObservableProperty] private int    _mouseMoveDelayMs = -1;
+        [ObservableProperty] private int    _keyPressDelayMs = -1;
+        [ObservableProperty] private int    _mouseClickDelayMs = -1;
+        [ObservableProperty] private int    _mouseScrollDelayMs = -1;
+
+        [ObservableProperty] private bool   _skipMouseMove;
+        [ObservableProperty] private bool   _skipKeyPress;
+        [ObservableProperty] private bool   _skipMouseClick;
+        [ObservableProperty] private bool   _skipMouseScroll;
+
+        public bool IsMouseMoveDelayEnabled => !SkipMouseMove;
+        public bool IsKeyPressDelayEnabled => !SkipKeyPress;
+        public bool IsMouseClickDelayEnabled => !SkipMouseClick;
+        public bool IsMouseScrollDelayEnabled => !SkipMouseScroll;
+
+        partial void OnSkipMouseMoveChanged(bool value) => OnPropertyChanged(nameof(IsMouseMoveDelayEnabled));
+        partial void OnSkipKeyPressChanged(bool value) => OnPropertyChanged(nameof(IsKeyPressDelayEnabled));
+        partial void OnSkipMouseClickChanged(bool value) => OnPropertyChanged(nameof(IsMouseClickDelayEnabled));
+        partial void OnSkipMouseScrollChanged(bool value) => OnPropertyChanged(nameof(IsMouseScrollDelayEnabled));
+
         // Target App properties
         [ObservableProperty] private string _selectedExecutionMode;
         [ObservableProperty] private WindowInfo? _selectedTargetWindow;
@@ -71,6 +92,15 @@ namespace FlowMy.ViewModels
             _countdownSeconds        = node.CountdownSeconds;
             _stayOnTargetAfterExecution = node.StayOnTargetAfterExecution;
 
+            _mouseMoveDelayMs        = node.MouseMoveDelayMs;
+            _keyPressDelayMs         = node.KeyPressDelayMs;
+            _mouseClickDelayMs       = node.MouseClickDelayMs;
+            _mouseScrollDelayMs      = node.MouseScrollDelayMs;
+            _skipMouseMove           = node.SkipMouseMove;
+            _skipKeyPress            = node.SkipKeyPress;
+            _skipMouseClick          = node.SkipMouseClick;
+            _skipMouseScroll         = node.SkipMouseScroll;
+
             _selectedExecutionMode   = node.ExecutionMode == MacroExecutionMode.TargetApp ? "Chỉ định Ứng dụng" : "Tự do (Toàn màn hình)";
 
             LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
@@ -103,6 +133,22 @@ namespace FlowMy.ViewModels
                         ShowMouseTrail = node.ShowMouseTrail;
                     else if (e.PropertyName == nameof(MacroRecorderNode.StayOnTargetAfterExecution))
                         StayOnTargetAfterExecution = node.StayOnTargetAfterExecution;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.MouseMoveDelayMs))
+                        MouseMoveDelayMs = node.MouseMoveDelayMs;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.KeyPressDelayMs))
+                        KeyPressDelayMs = node.KeyPressDelayMs;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.MouseClickDelayMs))
+                        MouseClickDelayMs = node.MouseClickDelayMs;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.MouseScrollDelayMs))
+                        MouseScrollDelayMs = node.MouseScrollDelayMs;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.SkipMouseMove))
+                        SkipMouseMove = node.SkipMouseMove;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.SkipKeyPress))
+                        SkipKeyPress = node.SkipKeyPress;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.SkipMouseClick))
+                        SkipMouseClick = node.SkipMouseClick;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.SkipMouseScroll))
+                        SkipMouseScroll = node.SkipMouseScroll;
                     else if (e.PropertyName == nameof(MacroRecorderNode.ExecutionMode))
                         SelectedExecutionMode = node.ExecutionMode == MacroExecutionMode.TargetApp ? "Chỉ định Ứng dụng" : "Tự do (Toàn màn hình)";
                     else if (e.PropertyName == nameof(MacroRecorderNode.TargetProcessName) || e.PropertyName == nameof(MacroRecorderNode.TargetWindowTitle))
@@ -196,6 +242,30 @@ namespace FlowMy.ViewModels
 
             if (_macroRecorderNode.TargetWindowTitle != newTargetTitle)
             { _macroRecorderNode.TargetWindowTitle = newTargetTitle; needSync = true; }
+
+            if (_macroRecorderNode.MouseMoveDelayMs != MouseMoveDelayMs)
+            { _macroRecorderNode.MouseMoveDelayMs = MouseMoveDelayMs; needSync = true; }
+
+            if (_macroRecorderNode.KeyPressDelayMs != KeyPressDelayMs)
+            { _macroRecorderNode.KeyPressDelayMs = KeyPressDelayMs; needSync = true; }
+
+            if (_macroRecorderNode.MouseClickDelayMs != MouseClickDelayMs)
+            { _macroRecorderNode.MouseClickDelayMs = MouseClickDelayMs; needSync = true; }
+
+            if (_macroRecorderNode.MouseScrollDelayMs != MouseScrollDelayMs)
+            { _macroRecorderNode.MouseScrollDelayMs = MouseScrollDelayMs; needSync = true; }
+
+            if (_macroRecorderNode.SkipMouseMove != SkipMouseMove)
+            { _macroRecorderNode.SkipMouseMove = SkipMouseMove; needSync = true; }
+
+            if (_macroRecorderNode.SkipKeyPress != SkipKeyPress)
+            { _macroRecorderNode.SkipKeyPress = SkipKeyPress; needSync = true; }
+
+            if (_macroRecorderNode.SkipMouseClick != SkipMouseClick)
+            { _macroRecorderNode.SkipMouseClick = SkipMouseClick; needSync = true; }
+
+            if (_macroRecorderNode.SkipMouseScroll != SkipMouseScroll)
+            { _macroRecorderNode.SkipMouseScroll = SkipMouseScroll; needSync = true; }
 
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);

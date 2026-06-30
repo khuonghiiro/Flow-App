@@ -3,6 +3,7 @@ using FlowMy.Services.Interaction;
 using FlowMy.Views.Overlays;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
@@ -346,6 +347,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     try
                     {
                         overlay = new MacroPlaybackOverlay();
+                        overlay.Topmost = true;
                         // TargetApp: tell overlay NOT to go fullscreen in Loaded
                         if (macroNode.ExecutionMode == MacroExecutionMode.TargetApp)
                             overlay.PrepareForTargetMode();
@@ -480,14 +482,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                         overlay?.UpdateProgress(cycle + 1, cycles, i + 1, actions.Count);
 
-                        // Delay by delta timestamp (skip first action)
+                        // ─── Skip logic — bỏ qua hoàn toàn action nếu checkbox được check ───
+                        string skipActType = actions[i].Type;
+                        if (skipActType == "MouseMove" && macroNode.SkipMouseMove) continue;
+                        if (skipActType == "KeyPress" && macroNode.SkipKeyPress) continue;
+                        if ((skipActType == "MouseClick" || skipActType == "MouseDown" || skipActType == "MouseUp") && macroNode.SkipMouseClick) continue;
+                        if (skipActType == "MouseScroll" && macroNode.SkipMouseScroll) continue;
+
+                        // Delay by delta timestamp (skip first action or apply override)
                         if (i > 0)
                         {
                             long delta = actions[i].Timestamp - actions[i - 1].Timestamp;
+
+                            // Apply speed override based on action type
+                            int overrideDelay = -1;
+                            string actType = actions[i].Type;
+                            if (actType == "MouseMove") overrideDelay = macroNode.MouseMoveDelayMs;
+                            else if (actType == "KeyPress") overrideDelay = macroNode.KeyPressDelayMs;
+                            else if (actType == "MouseClick" || actType == "MouseDown" || actType == "MouseUp") overrideDelay = macroNode.MouseClickDelayMs;
+                            else if (actType == "MouseScroll") overrideDelay = macroNode.MouseScrollDelayMs;
+
+                            if (overrideDelay >= 0)
+                            {
+                                delta = overrideDelay;
+                            }
+
                             if (delta > 0)
                             {
-                                int delayMs = (int)Math.Min(delta, int.MaxValue);
-                                await Task.Delay(delayMs, env.CancellationToken);
+                                await Task.Delay((int)Math.Min(delta, int.MaxValue), env.CancellationToken);
                             }
                         }
 

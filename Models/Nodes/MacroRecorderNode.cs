@@ -49,6 +49,18 @@ namespace FlowMy.Models
         private int _countdownSeconds = 3;
         private bool _stayOnTargetAfterExecution = true;
 
+        // ─── Speed Override Settings ───
+        private int _mouseMoveDelayMs = -1;
+        private int _keyPressDelayMs = -1;
+        private int _mouseClickDelayMs = -1;
+        private int _mouseScrollDelayMs = -1;
+
+        // ─── Skip Settings ───
+        private bool _skipMouseMove = false;
+        private bool _skipKeyPress = false;
+        private bool _skipMouseClick = false;
+        private bool _skipMouseScroll = false;
+
         // ── Background Mode ─────────────────────────────────────────────────────
         private bool _useBackgroundMode = false;
         private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
@@ -258,6 +270,118 @@ namespace FlowMy.Models
             {
                 if (_stayOnTargetAfterExecution == value) return;
                 _stayOnTargetAfterExecution = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Tốc độ di chuyển chuột (ms, -1 = giữ gốc).
+        /// </summary>
+        public int MouseMoveDelayMs
+        {
+            get => _mouseMoveDelayMs;
+            set
+            {
+                if (_mouseMoveDelayMs == value) return;
+                _mouseMoveDelayMs = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Tốc độ nhấn phím (ms, -1 = giữ gốc).
+        /// </summary>
+        public int KeyPressDelayMs
+        {
+            get => _keyPressDelayMs;
+            set
+            {
+                if (_keyPressDelayMs == value) return;
+                _keyPressDelayMs = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Tốc độ click chuột (ms, -1 = giữ gốc).
+        /// </summary>
+        public int MouseClickDelayMs
+        {
+            get => _mouseClickDelayMs;
+            set
+            {
+                if (_mouseClickDelayMs == value) return;
+                _mouseClickDelayMs = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Tốc độ scroll chuột (ms, -1 = giữ gốc).
+        /// </summary>
+        public int MouseScrollDelayMs
+        {
+            get => _mouseScrollDelayMs;
+            set
+            {
+                if (_mouseScrollDelayMs == value) return;
+                _mouseScrollDelayMs = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Bỏ qua di chuyển chuột.
+        /// </summary>
+        public bool SkipMouseMove
+        {
+            get => _skipMouseMove;
+            set
+            {
+                if (_skipMouseMove == value) return;
+                _skipMouseMove = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Bỏ qua nhấn phím.
+        /// </summary>
+        public bool SkipKeyPress
+        {
+            get => _skipKeyPress;
+            set
+            {
+                if (_skipKeyPress == value) return;
+                _skipKeyPress = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Bỏ qua click chuột.
+        /// </summary>
+        public bool SkipMouseClick
+        {
+            get => _skipMouseClick;
+            set
+            {
+                if (_skipMouseClick == value) return;
+                _skipMouseClick = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Bỏ qua scroll chuột.
+        /// </summary>
+        public bool SkipMouseScroll
+        {
+            get => _skipMouseScroll;
+            set
+            {
+                if (_skipMouseScroll == value) return;
+                _skipMouseScroll = value;
                 OnPropertyChanged();
             }
         }
