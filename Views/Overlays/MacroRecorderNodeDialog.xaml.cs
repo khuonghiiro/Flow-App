@@ -185,6 +185,56 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        // ─── Button: Copy JSON ────────────────────────────────────────────────────
+
+        private void CopyJsonButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_viewModel.MacroDataJson))
+                {
+                    Clipboard.SetText(_viewModel.MacroDataJson);
+                    MessageBox.Show("Đã copy dữ liệu macro JSON vào Clipboard!", "Copy thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Không thể copy dữ liệu:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ─── Button: Paste JSON ───────────────────────────────────────────────────
+
+        private void PasteJsonButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Clipboard.ContainsText())
+                {
+                    string content = Clipboard.GetText();
+                    if (!IsValidJsonArray(content))
+                    {
+                        MessageBox.Show(
+                            "Dữ liệu trong Clipboard không hợp lệ. Nội dung phải là một JSON array (ví dụ: [{...}, {...}]).",
+                            "Lỗi paste JSON",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        return;
+                    }
+                    _viewModel.MacroDataJson = content;
+                    MessageBox.Show("Đã dán dữ liệu macro từ Clipboard thành công!", "Paste thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Clipboard đang trống hoặc không chứa văn bản.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Không thể dán dữ liệu:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         // ─── Helpers ──────────────────────────────────────────────────────────────
 
         private void UpdateVisualModeHint()

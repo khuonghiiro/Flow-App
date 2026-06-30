@@ -178,7 +178,27 @@ namespace FlowMy.ViewModels
         }
 
         partial void OnMacroDataJsonChanged(string value)
-            => OnPropertyChanged(nameof(CanExportJson));
+        {
+            OnPropertyChanged(nameof(CanExportJson));
+            OnPropertyChanged(nameof(MacroDataJsonSummary));
+        }
+
+        /// <summary>
+        /// Truncated version of MacroDataJson to prevent UI thread lag when loading large datasets.
+        /// </summary>
+        public string MacroDataJsonSummary
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(MacroDataJson))
+                    return "[]";
+                if (MacroDataJson.Length > 1000)
+                {
+                    return MacroDataJson.Substring(0, 1000) + $"\r\n... [Dữ liệu đã lược bớt để tăng tốc độ hiển thị, tổng cộng {MacroDataJson.Length:N0} ký tự. Dữ liệu thực tế khi chạy vẫn đầy đủ.]";
+                }
+                return MacroDataJson;
+            }
+        }
 
         /// <summary>
         /// Flush ShowMouseTrail vào node ngay lập tức (không chờ Save button).

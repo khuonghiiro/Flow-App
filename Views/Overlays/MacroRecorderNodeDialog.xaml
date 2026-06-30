@@ -401,32 +401,59 @@
                                              TextWrapping="Wrap"
                                              VerticalScrollBarVisibility="Auto"
                                              IsReadOnly="True"
-                                             Text="{Binding MacroDataJson, Mode=OneWay}"
+                                             Text="{Binding MacroDataJsonSummary, Mode=OneWay}"
                                              Margin="0,0,0,10"/>
 
-                                    <!-- Export / Import JSON buttons -->
+                                    <!-- Copy / Paste / Export / Import JSON buttons -->
                                     <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="8"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="8"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Button x:Name="ExportJsonButton"
-                                                Grid.Column="0"
-                                                Content="📤 Export JSON"
+                                        
+                                        <!-- Row 0: Copy & Paste -->
+                                        <Button x:Name="CopyJsonButton"
+                                                Grid.Row="0" Grid.Column="0"
+                                                Content="📋 Copy JSON"
                                                 Height="30"
                                                 FontSize="12"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Cursor="Hand"
                                                 IsEnabled="{Binding CanExportJson}"
-                                                Click="ExportJsonButton_Click"/>
+                                                Click="CopyJsonButton_Click"/>
 
-                                        <Button x:Name="ImportJsonButton"
-                                                Grid.Column="2"
-                                                Content="📥 Import JSON"
+                                        <Button x:Name="PasteJsonButton"
+                                                Grid.Row="0" Grid.Column="2"
+                                                Content="📋 Paste JSON"
                                                 Height="30"
                                                 FontSize="12"
                                                 Style="{DynamicResource PrimaryButton}"
+                                                Cursor="Hand"
+                                                Click="PasteJsonButton_Click"/>
+
+                                        <!-- Row 2: Export & Import -->
+                                        <Button x:Name="ExportJsonButton"
+                                                Grid.Row="2" Grid.Column="0"
+                                                Content="📤 Export JSON"
+                                                Height="30"
+                                                FontSize="12"
+                                                Style="{DynamicResource SecondaryButton}"
+                                                Cursor="Hand"
+                                                IsEnabled="{Binding CanExportJson}"
+                                                Click="ExportJsonButton_Click"/>
+
+                                        <Button x:Name="ImportJsonButton"
+                                                Grid.Row="2" Grid.Column="2"
+                                                Content="📥 Import JSON"
+                                                Height="30"
+                                                FontSize="12"
+                                                Style="{DynamicResource SecondaryButton}"
                                                 Cursor="Hand"
                                                 Click="ImportJsonButton_Click"/>
                                     </Grid>
