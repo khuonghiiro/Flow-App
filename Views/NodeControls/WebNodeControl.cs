@@ -427,13 +427,9 @@ namespace FlowMy.Views.NodeControls
             // Áp dụng GPU optimization cho grid (tự động kiểm tra GPU)
             GpuOptimizationHelper.ApplyToElement(grid);
 
-            var webView = new WebView2
-            {
-                // Ẩn WebView2 ban đầu để tránh block UI thread khi khởi tạo
-                Visibility = Visibility.Collapsed
-            };
+            WebView2 webView = null!;
+            Action InitializeWebView = null!;
             var isDisposed = false;
-            Grid.SetRow(webView, 1);
 
             // JS injection bridge: when workflow runs WebNodeExecutor it sets node.PendingJavaScript.
             // WebNodeControl listens and executes the script into WebView2.
@@ -1118,6 +1114,14 @@ namespace FlowMy.Views.NodeControls
                             MarkActivity();
                             RestartSleepModeTimer();
                         }), DispatcherPriority.Background);
+                    }
+                    else if (string.Equals(e.PropertyName, nameof(WebNode.CacheMode), StringComparison.Ordinal) ||
+                             string.Equals(e.PropertyName, nameof(WebNode.CustomCacheName), StringComparison.Ordinal))
+                    {
+                        border.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            InitializeWebView();
+                        }), DispatcherPriority.Normal);
                     }
                 };
             }
@@ -2276,82 +2280,153 @@ if (window.__elementInspector) {
                 }
             }
 
-            var webViewForInit = webView;
-            webViewForInit.Loaded += async (s, e) =>
+            InitializeWebView = () =>
             {
-                try
+                if (webView != null)
                 {
-                    if (isDisposed || !border.IsLoaded)
-                        return;
+                    grid.Children.Remove(webView);
+                    try { webView.Dispose(); } catch { }
+                    webView = null!;
+                }
 
-                    if (webViewForInit.CoreWebView2 == null)
-                    {
+                webView = new WebView2
+                {
+                    Visibility = Visibility.Collapsed
+                };
+                Grid.SetRow(webView, 1);
+                grid.Children.Add(webView);
 
-                    if (ShouldUseViewportLazyInit(border))
-                    {
-                        var waitCycles = 0;
-                        while (!isDisposed &&
-                               border.IsLoaded &&
-                               border.Visibility != Visibility.Visible &&
-                               waitCycles < 300)
-                        {
-                            await Task.Delay(50);
-                            waitCycles++;
-                        }
-                    }
+                webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+                webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
 
-                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
-                        return;
+                if (GpuDetectionHelper.IsGpuAvailable)
+                {
+                    RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
+                    RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
+                    webView.CacheMode = null; // Tránh ghosting
+                }
 
-                    // Stagger init để tránh nhiều node WebView2 giành UI thread cùng lúc khi vừa load workflow.
-                    var staggerDelayMs = GetInitStaggerDelayMs();
-                    if (staggerDelayMs > 0)
-                        await Task.Delay(staggerDelayMs);
-
-                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
-                        return;
-
-                    CoreWebView2Environment? env = null;
+                var webViewForInit = webView;
+                webViewForInit.Loaded += async (s, e) =>
+                {
                     try
                     {
-                        // Ưu tiên dùng CoreWebView2Environment dùng chung (pre-init)
-                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                    }
-                    catch (Exception envEx)
-                    {
-                        // Nếu shared env lỗi (ví dụ warm-up fail), fallback về CreateAsync như cũ
-                        System.Diagnostics.Debug.WriteLine($"Shared WebView2 env error, fallback per-node: {envEx.Message}");
+                        if (isDisposed || !border.IsLoaded)
+                            return;
 
-                        var cachePathFallback = WebNodeCacheHelper.GetSharedRuntimeCachePath();
-                        var optionsFallback = new CoreWebView2EnvironmentOptions();
-                        var browserArgsFallback = new StringBuilder();
-
-                        // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
-                        browserArgsFallback.Append("--disable-background-timer-throttling ");
-                        browserArgsFallback.Append("--disable-backgrounding-occluded-windows ");
-                        browserArgsFallback.Append("--disable-renderer-backgrounding ");
-                        browserArgsFallback.Append("--calculate-native-win-occlusion=false ");
-
-                        if (GpuDetectionHelper.IsGpuAvailable)
+                        if (webViewForInit.CoreWebView2 == null)
                         {
-                            browserArgsFallback.Append("--enable-gpu-rasterization ");
-                            browserArgsFallback.Append("--enable-zero-copy ");
-                            browserArgsFallback.Append("--enable-features=VaapiVideoDecoder ");
-                            browserArgsFallback.Append("--ignore-gpu-blacklist ");
-                            browserArgsFallback.Append("--enable-accelerated-2d-canvas ");
-                            browserArgsFallback.Append("--enable-accelerated-video-decode ");
+
+                        if (ShouldUseViewportLazyInit(border))
+                        {
+                            var waitCycles = 0;
+                            while (!isDisposed &&
+                                   border.IsLoaded &&
+                                   border.Visibility != Visibility.Visible &&
+                                   waitCycles < 300)
+                            {
+                                await Task.Delay(50);
+                                waitCycles++;
+                            }
+                        }
+
+                        if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
+                            return;
+
+                        // Stagger init để tránh nhiều node WebView2 giành UI thread cùng lúc khi vừa load workflow.
+                        var staggerDelayMs = GetInitStaggerDelayMs();
+                        if (staggerDelayMs > 0)
+                            await Task.Delay(staggerDelayMs);
+
+                        if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                            return;
+
+                        CoreWebView2Environment? env = null;
+                        if (node.CacheMode == "Isolated")
+                        {
+                            try
+                            {
+                                var cachePath = WebNodeCacheHelper.GetProfileCachePath(node.CustomCacheName);
+                                Directory.CreateDirectory(cachePath);
+
+                                var options = new CoreWebView2EnvironmentOptions();
+                                var browserArgs = new StringBuilder();
+
+                                // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
+                                browserArgs.Append("--disable-background-timer-throttling ");
+                                browserArgs.Append("--disable-backgrounding-occluded-windows ");
+                                browserArgs.Append("--disable-renderer-backgrounding ");
+                                browserArgs.Append("--calculate-native-win-occlusion=false ");
+
+                                if (GpuDetectionHelper.IsGpuAvailable)
+                                {
+                                    browserArgs.Append("--enable-gpu-rasterization ");
+                                    browserArgs.Append("--enable-zero-copy ");
+                                    browserArgs.Append("--enable-features=VaapiVideoDecoder ");
+                                    browserArgs.Append("--ignore-gpu-blacklist ");
+                                    browserArgs.Append("--enable-accelerated-2d-canvas ");
+                                    browserArgs.Append("--enable-accelerated-video-decode ");
+                                }
+                                else
+                                {
+                                    browserArgs.Append("--disable-gpu ");
+                                }
+
+                                options.AdditionalBrowserArguments = browserArgs.ToString().Trim();
+                                env = await CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                            }
+                            catch (Exception isolatedEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Failed to create isolated WebView2 env: {isolatedEx.Message}");
+                                try
+                                {
+                                    env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                                }
+                                catch { }
+                            }
                         }
                         else
                         {
-                            browserArgsFallback.Append("--disable-gpu ");
+                            try
+                            {
+                                // Ưu tiên dùng CoreWebView2Environment dùng chung (pre-init)
+                                env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                            }
+                            catch (Exception envEx)
+                            {
+                                // Nếu shared env lỗi (ví dụ warm-up fail), fallback về CreateAsync như cũ
+                                System.Diagnostics.Debug.WriteLine($"Shared WebView2 env error, fallback per-node: {envEx.Message}");
+
+                                var cachePathFallback = WebNodeCacheHelper.GetSharedRuntimeCachePath();
+                                var optionsFallback = new CoreWebView2EnvironmentOptions();
+                                var browserArgsFallback = new StringBuilder();
+
+                                // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
+                                browserArgsFallback.Append("--disable-background-timer-throttling ");
+                                browserArgsFallback.Append("--disable-backgrounding-occluded-windows ");
+                                browserArgsFallback.Append("--disable-renderer-backgrounding ");
+                                browserArgsFallback.Append("--calculate-native-win-occlusion=false ");
+
+                                if (GpuDetectionHelper.IsGpuAvailable)
+                                {
+                                    browserArgsFallback.Append("--enable-gpu-rasterization ");
+                                    browserArgsFallback.Append("--enable-zero-copy ");
+                                    browserArgsFallback.Append("--enable-features=VaapiVideoDecoder ");
+                                    browserArgsFallback.Append("--ignore-gpu-blacklist ");
+                                    browserArgsFallback.Append("--enable-accelerated-2d-canvas ");
+                                    browserArgsFallback.Append("--enable-accelerated-video-decode ");
+                                }
+                                else
+                                {
+                                    browserArgsFallback.Append("--disable-gpu ");
+                                }
+
+                                optionsFallback.AdditionalBrowserArguments = browserArgsFallback.ToString().Trim();
+                                env = await CoreWebView2Environment.CreateAsync(null, cachePathFallback, optionsFallback);
+                            }
                         }
 
-                        optionsFallback.AdditionalBrowserArguments = browserArgsFallback.ToString().Trim();
-
-                        env = await CoreWebView2Environment.CreateAsync(null, cachePathFallback, optionsFallback);
-                    }
-
-                    await EnsureCoreWebView2ThrottledAsync(webViewForInit, env);
+                        await EnsureCoreWebView2ThrottledAsync(webViewForInit, env);
 
                     // ⚠️ CRITICAL: Phải set filter và subscribe events TRƯỚC KHI navigate
                     // để đảm bảo bắt được TẤT CẢ requests bao gồm cả XHR từ JavaScript
@@ -4204,6 +4279,10 @@ if (window.__elementInspector) {
                     }
                 }
             };
+            };
+
+            // Gọi khởi tạo WebView2 lần đầu
+            InitializeWebView();
 
             string ResolveUrlPattern(WebNode webNode, string pattern)
             {

@@ -1,6 +1,7 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Workflow;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
@@ -122,6 +123,72 @@ namespace FlowMy.ViewModels
         /// <summary>Options cho ComboBox đơn vị thời gian auto-reload.</summary>
         public List<string> AutoReloadUnitOptions { get; } = new() { "ms", "s", "phút" };
 
+        // Profile & Cache Configuration
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsIsolatedMode))]
+        private string _cacheMode = "Shared";
+
+        [ObservableProperty]
+        private string _customCacheName = "Shared";
+
+        [ObservableProperty]
+        private string _newProfileNameInput = string.Empty;
+
+        public ObservableCollection<string> AvailableProfiles { get; } = new();
+
+        public bool IsIsolatedMode => CacheMode == "Isolated";
+
+        partial void OnCacheModeChanged(string value)
+        {
+            _webNode.CacheMode = value ?? "Shared";
+            if (value == "Shared")
+            {
+                CustomCacheName = "Shared";
+            }
+            _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
+        }
+
+        partial void OnCustomCacheNameChanged(string value)
+        {
+            _webNode.CustomCacheName = value ?? "Shared";
+            _webNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
+        }
+
+        [RelayCommand]
+        private void CreateNewProfile()
+        {
+            var name = NewProfileNameInput?.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                System.Windows.MessageBox.Show("Vui lòng nhập tên profile hợp lệ.", "Thông báo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            // Loại bỏ các ký tự không hợp lệ cho tên thư mục
+            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+            foreach (var c in invalidChars)
+            {
+                name = name.Replace(c, '_');
+            }
+            name = name.Replace(' ', '_'); // Thay khoảng trắng bằng gạch dưới cho sạch
+
+            if (name.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                System.Windows.MessageBox.Show("Không thể đặt tên profile trùng với 'Shared'.", "Thông báo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            if (AvailableProfiles.Contains(name))
+            {
+                System.Windows.MessageBox.Show("Profile này đã tồn tại.", "Thông báo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            AvailableProfiles.Add(name);
+            CustomCacheName = name;
+            NewProfileNameInput = string.Empty;
+        }
+
         // Sync ngay về node khi user thay đổi (không cần chờ OnSaveTitle / dialog đóng)
         partial void OnAutoReloadEnabledChanged(bool value) => _webNode.AutoReloadEnabled = value;
         partial void OnAutoReloadIntervalValueChanged(double value) => _webNode.AutoReloadIntervalValue = value;
@@ -212,6 +279,23 @@ namespace FlowMy.ViewModels
             SleepIdleTimeoutUnit = _webNode.SleepIdleTimeoutUnit ?? "s";
             AutoReloadIntervalValue = _webNode.AutoReloadIntervalValue;
             AutoReloadIntervalUnit = _webNode.AutoReloadIntervalUnit;
+
+            // Load available profiles
+            var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+            AvailableProfiles.Clear();
+            foreach (var p in profiles)
+            {
+                AvailableProfiles.Add(p);
+            }
+
+            CacheMode = _webNode.CacheMode ?? "Shared";
+            CustomCacheName = _webNode.CustomCacheName ?? "Shared";
+
+            // Đảm bảo CustomCacheName được thêm vào danh sách hiển thị
+            if (!string.IsNullOrEmpty(CustomCacheName) && !AvailableProfiles.Contains(CustomCacheName))
+            {
+                AvailableProfiles.Add(CustomCacheName);
+            }
 
             // ⚠️ CRITICAL: Refresh available nodes TRƯỚC KHI load mappings và JS options
             RefreshAvailableNodes();

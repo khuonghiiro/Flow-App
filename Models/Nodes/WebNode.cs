@@ -347,6 +347,10 @@ namespace FlowMy.Models.Nodes
         // Runtime-only: pending JS to execute in WebView2
         private string? _pendingJavaScript;
 
+        // Cache & Profile configuration
+        private string _cacheMode = "Shared"; // "Shared" | "Isolated"
+        private string _customCacheName = "Shared"; // Tên thư mục cache độc lập
+
         public WebNode()
         {
             Type = NodeType.Web;
@@ -598,6 +602,24 @@ namespace FlowMy.Models.Nodes
         {
             get => _cookieText;
             set { if (_cookieText != value) { _cookieText = value; OnPropertyChanged(); } }
+        }
+
+        #endregion
+
+        #region Profile & Cache configuration
+
+        /// <summary>Chế độ Cache: Shared (dùng chung) hoặc Isolated (độc lập)</summary>
+        public string CacheMode
+        {
+            get => _cacheMode;
+            set { if (_cacheMode != value) { _cacheMode = value ?? "Shared"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Tên profile cache độc lập</summary>
+        public string CustomCacheName
+        {
+            get => _customCacheName;
+            set { if (_customCacheName != value) { _customCacheName = value ?? "Shared"; OnPropertyChanged(); } }
         }
 
         #endregion

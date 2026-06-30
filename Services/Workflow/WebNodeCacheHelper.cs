@@ -49,6 +49,54 @@ public static class WebNodeCacheHelper
     }
 
     /// <summary>
+    /// Quét và trả về danh sách các Profile Cache hiện có (tên các thư mục con trong BaseCacheDir)
+    /// </summary>
+    public static List<string> GetAvailableCacheProfiles()
+    {
+        var profiles = new List<string> { "Shared" }; // Mặc định luôn có Shared
+        try
+        {
+            if (Directory.Exists(BaseCacheDir))
+            {
+                var subDirs = Directory.GetDirectories(BaseCacheDir);
+                foreach (var dir in subDirs)
+                {
+                    var name = Path.GetFileName(dir);
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    // Loại bỏ Shared
+                    if (name.Equals("Shared", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    // Loại bỏ thư mục tạm/offline assets
+                    if (name.StartsWith("_", StringComparison.Ordinal)) continue;
+
+                    // Loại bỏ các ID node tự động (thường là GUID)
+                    if (Guid.TryParse(name, out _)) continue;
+
+                    profiles.Add(name);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Lỗi quét danh sách cache: {ex.Message}");
+        }
+        return profiles;
+    }
+
+    /// <summary>
+    /// Tạo đường dẫn cache tương ứng với tên profile
+    /// </summary>
+    public static string GetProfileCachePath(string profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName) || profileName.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetSharedRuntimeCachePath(); // Trỏ về ".../Cache/Shared"
+        }
+        return Path.Combine(BaseCacheDir, profileName); // Trỏ về ".../Cache/profileName"
+    }
+
+    /// <summary>
     /// Thư mục cache WebNode khi lưu workflow (workflowsDir + workflowName + "_webcache").
     /// </summary>
     public static string GetWorkflowWebCacheDir(string workflowsDir, string workflowName)

@@ -91,6 +91,54 @@
                             </Grid>
                         </StackPanel>
                     </Border>
+ 
+                    <!-- 🌐 Cấu hình Profile & Cache -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🌐 Cấu hình Profile &amp; Cache" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            
+                            <TextBlock Text="Chế độ chạy trình duyệt" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox SelectedValue="{Binding CacheMode, Mode=TwoWay}"
+                                      SelectedValuePath="Tag"
+                                      Style="{DynamicResource BaseComboBox}" Height="32" Margin="0,0,0,8}">
+                                <ComboBoxItem Content="Dùng chung (Shared Cookie/Session)" Tag="Shared"/>
+                                <ComboBoxItem Content="Độc lập (Isolated Profile riêng)" Tag="Isolated"/>
+                            </ComboBox>
+
+                            <StackPanel IsEnabled="{Binding IsIsolatedMode}">
+                                <TextBlock Text="Chọn Profile hiện có" 
+                                           Foreground="{DynamicResource TextMuted}" 
+                                           FontSize="10" Margin="0,0,0,4"/>
+                                <ComboBox Height="32" Margin="0,0,0,8"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding AvailableProfiles}"
+                                          SelectedItem="{Binding CustomCacheName, Mode=TwoWay}"/>
+
+                                <TextBlock Text="Tạo tên Profile mới" 
+                                           Foreground="{DynamicResource TextMuted}" 
+                                           FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding NewProfileNameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                             ToolTip="Nhập tên nhận diện (vd: Acc_Gmail_1)"/>
+                                    <Button Grid.Column="2" Content="Tạo mới" Width="80" Height="32"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            Command="{Binding CreateNewProfileCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
                     <!-- 💤 Chế độ nghỉ -->
                     <Border Background="{DynamicResource WindowBackground}"

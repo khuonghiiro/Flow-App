@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -130,6 +130,12 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("BlockAllRequestsAfterFirstMatch", out var baaObj) && baaObj != null &&
                 bool.TryParse(baaObj.ToString(), out var baaVal))
                 webNode.BlockAllRequestsAfterFirstMatch = baaVal;
+
+            // Restore Profile & Cache configuration
+            if (properties.TryGetValue("CacheMode", out var cmObj))
+                webNode.CacheMode = cmObj?.ToString() ?? "Shared";
+            if (properties.TryGetValue("CustomCacheName", out var ccnObj))
+                webNode.CustomCacheName = ccnObj?.ToString() ?? "Shared";
 
             // Restore per-domain CSS zoom if available
             if (properties.TryGetValue("Web_LastHost", out var whObj))
@@ -719,6 +725,10 @@ public sealed partial class FileWorkflowPersistenceService
 
                 // Block all requests after first match
                 dict["BlockAllRequestsAfterFirstMatch"] = webNode.BlockAllRequestsAfterFirstMatch;
+
+                // Profile & Cache configuration
+                dict["CacheMode"] = webNode.CacheMode ?? "Shared";
+                dict["CustomCacheName"] = webNode.CustomCacheName ?? "Shared";
 
                 // Serialize per-domain CSS zoom for WebNode
                 if (!string.IsNullOrWhiteSpace(webNode.LastHost))
