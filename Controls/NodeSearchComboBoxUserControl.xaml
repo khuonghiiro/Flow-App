@@ -57,14 +57,15 @@
                               Grid.Column="0"
                               BorderThickness="0"
                               Cursor="Hand"
-                              IsChecked="{Binding IsDropDownOpen, ElementName=Root, Mode=TwoWay}">
+                              IsChecked="{Binding IsDropDownOpen, ElementName=Root, Mode=TwoWay}"
+                              Tag="{Binding ElementName=Root}">
                     <ToggleButton.ToolTip>
-                        <ToolTip Content="{Binding SelectedDisplayText, ElementName=Root}">
+                        <ToolTip Content="{Binding PlacementTarget.Tag.SelectedDisplayText, RelativeSource={RelativeSource Self}}">
                             <ToolTip.Style>
                                 <Style TargetType="ToolTip">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasSelection, ElementName=Root}" Value="True">
+                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.HasSelection, RelativeSource={RelativeSource AncestorType=ToolTip}}" Value="True">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -92,9 +93,10 @@
                 <Grid Grid.Column="0" Margin="8,5,6,5" IsHitTestVisible="False">
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center"
-                                Visibility="{Binding HasSelection, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
+                                Visibility="{Binding HasSelection, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Tag="{Binding ElementName=Root}">
                         <StackPanel.ToolTip>
-                            <ToolTip Content="{Binding SelectedDisplayText, ElementName=Root}" />
+                            <ToolTip Content="{Binding PlacementTarget.Tag.SelectedDisplayText, RelativeSource={RelativeSource Self}}" />
                         </StackPanel.ToolTip>
                         <Border Width="18"
                                 Height="18"
