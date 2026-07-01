@@ -82,11 +82,16 @@
                     </Border>
                     <!-- Thumbnail + Name (center, horizontal) -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="36" Height="36" Margin="0,0,6,0"
+                        <!-- Container cố định width=56 → title luôn thẳng hàng (Photoshop-style) -->
+                        <Border Width="56" Margin="0,0,6,0"
                                 BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
                                 CornerRadius="3" ClipToBounds="True"
-                                Background="{StaticResource ipSurface}">
+                                Background="{StaticResource ipSurface}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!-- Image: MaxWidth=52 (ảnh ngang), MaxHeight=44 (ảnh dọc), tỉ lệ Uniform -->
                             <Image Stretch="Uniform" Source="{Binding Thumbnail}"
+                                   MaxWidth="52" MaxHeight="44"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                    RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Border>
                         <TextBlock Text="{Binding Name}" Foreground="{StaticResource ipText}"
@@ -162,13 +167,15 @@
             BorderThickness="1,0,0,0">
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- ═══ SCROLLABLE CONTENT ═══ -->
+            <!-- ═══ SCROLLABLE CONTENT (Tools, Brush, Color) ═══ -->
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
+                          HorizontalScrollBarVisibility="Disabled"
+                          MaxHeight="400">
                 <StackPanel Margin="5,4,5,6">
 
                     <!-- ══════ TOOLS ══════ -->
@@ -411,56 +418,65 @@
                                 </StackPanel>
                             </DockPanel>
 
-                            <!-- ══════ LAYERS ══════ -->
-                            <Border Padding="6,4,6,2" CornerRadius="3" Margin="0,6,0,3"
-                                    Background="{StaticResource ipSurface}">
-                                <DockPanel>
-                                    <Border DockPanel.Dock="Left" BorderBrush="{StaticResource ipAccent}"
-                                            BorderThickness="2,0,0,0" Padding="5,0,0,0">
-                                        <TextBlock Text="LAYERS" FontSize="9" FontWeight="Bold"
-                                                   Foreground="{StaticResource ipMuted}"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                                HorizontalAlignment="Right">
-                                        <Button Content="＋" ToolTip="Thêm layer" Style="{StaticResource IpMiniBtn}"
-                                                FontSize="13" Click="BtnAddLayer_Click"/>
-                                        <Button Content="−" ToolTip="Xoá layer" Style="{StaticResource IpMiniBtn}"
-                                                FontSize="14" Click="BtnRemoveLayer_Click"/>
-                                        <Rectangle Width="1" Fill="{StaticResource ipBorder}"
-                                                   Margin="2,3" VerticalAlignment="Stretch"/>
-                                        <Button Content="▲" ToolTip="Lên" Style="{StaticResource IpMiniBtn}"
-                                                FontSize="8" Click="BtnMoveUp_Click"/>
-                                        <Button Content="▼" ToolTip="Xuống" Style="{StaticResource IpMiniBtn}"
-                                                FontSize="8" Click="BtnMoveDown_Click"/>
-                                    </StackPanel>
-                                </DockPanel>
-                            </Border>
-
-                            <!-- Layer list -->
-                            <Border Background="{StaticResource ipSurface}" CornerRadius="4"
-                                    BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
-                                    Padding="2" MinHeight="40" MaxHeight="360">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Disabled">
-                                    <ItemsControl x:Name="LayersList"
-                                                  ItemTemplate="{StaticResource LayerItemTemplate}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Vertical"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Border>
                         </StackPanel>
                     </Border>
 
                 </StackPanel>
             </ScrollViewer>
 
+            <!-- ═══ LAYERS (Row 1 = fill remaining space) ═══ -->
+            <Grid Grid.Row="1" Margin="5,0,5,4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- LAYERS header -->
+                <Border Grid.Row="0" Padding="6,4,6,2" CornerRadius="3" Margin="0,4,0,3"
+                        Background="{StaticResource ipSurface}">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" BorderBrush="{StaticResource ipAccent}"
+                                BorderThickness="2,0,0,0" Padding="5,0,0,0">
+                            <TextBlock Text="LAYERS" FontSize="9" FontWeight="Bold"
+                                       Foreground="{StaticResource ipMuted}"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <Button Content="＋" ToolTip="Thêm layer" Style="{StaticResource IpMiniBtn}"
+                                    FontSize="13" Click="BtnAddLayer_Click"/>
+                            <Button Content="−" ToolTip="Xoá layer" Style="{StaticResource IpMiniBtn}"
+                                    FontSize="14" Click="BtnRemoveLayer_Click"/>
+                            <Rectangle Width="1" Fill="{StaticResource ipBorder}"
+                                       Margin="2,3" VerticalAlignment="Stretch"/>
+                            <Button Content="▲" ToolTip="Lên" Style="{StaticResource IpMiniBtn}"
+                                    FontSize="8" Click="BtnMoveUp_Click"/>
+                            <Button Content="▼" ToolTip="Xuống" Style="{StaticResource IpMiniBtn}"
+                                    FontSize="8" Click="BtnMoveDown_Click"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- Layer list — fills all remaining height -->
+                <Border Grid.Row="1" Background="{StaticResource ipSurface}" CornerRadius="4"
+                        BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
+                        Padding="2">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="LayersList"
+                                      ItemTemplate="{StaticResource LayerItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Vertical"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+
             <!-- ═══ BOTTOM: UNDO/REDO ═══ -->
-            <Border Grid.Row="1" Padding="5,3"
+            <Border Grid.Row="2" Padding="5,3"
                     BorderBrush="{StaticResource ipBorderLight}" BorderThickness="0,1,0,0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
