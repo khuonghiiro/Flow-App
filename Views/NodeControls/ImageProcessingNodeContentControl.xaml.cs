@@ -84,6 +84,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             InitializeComponent();
+            EditorPanel.DocumentModified += OnEditorDocumentModified;
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
             var iconConv = new IconKeyToPathConverter();
@@ -954,7 +955,6 @@ namespace FlowMy.Views.NodeControls
             }
 
             EditorPanel.SetDocument(_node.EditorDoc);
-            EditorPanel.DocumentModified += OnEditorDocumentModified;
         }
 
         private void OnEditorDocumentModified()

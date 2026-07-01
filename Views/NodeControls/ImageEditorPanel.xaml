@@ -32,7 +32,9 @@
             <Border x:Name="LayerItemBd" Padding="4,4" Margin="0,1" CornerRadius="4"
                     Background="Transparent" Cursor="Hand" BorderThickness="1.5"
                     BorderBrush="Transparent"
-                    MouseLeftButtonDown="LayerItem_MouseLeftButtonDown">
+                    MouseLeftButtonDown="LayerItem_MouseLeftButtonDown"
+                    MouseMove="LayerItem_MouseMove"
+                    MouseLeftButtonUp="LayerItem_MouseLeftButtonUp">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Style.Triggers>

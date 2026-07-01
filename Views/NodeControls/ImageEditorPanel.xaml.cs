@@ -20,6 +20,12 @@ namespace FlowMy.Views.NodeControls
         private EditorDocument? _doc;
         private string _activeTool = "Brush";
         private readonly Dictionary<string, Border> _toolBorders = new();
+        
+        // Drag reorder layers state fields
+        private EditorLayer? _draggedLayer;
+        private int _dragStartIndex = -1;
+        private Point _dragStartPoint;
+        private bool _isDraggingLayer;
 
         public ImageEditorPanel()
         {
@@ -77,8 +83,34 @@ namespace FlowMy.Views.NodeControls
         {
             if (_doc == null) return;
             // Hiển thị reversed: top layer ở trên (giống Photoshop)
-            LayersList.ItemsSource = new System.Collections.ObjectModel.ObservableCollection<EditorLayer>(
-                _doc.Layers.Reverse());
+            var targetList = _doc.Layers.Reverse().ToList();
+
+            if (LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
+            {
+                // Đồng bộ phần tử in-place để tránh huỷ container (giữ mouse capture khi kéo thả)
+                for (int i = 0; i < targetList.Count; i++)
+                {
+                    var item = targetList[i];
+                    int curIdx = currentCollection.IndexOf(item);
+                    if (curIdx == -1)
+                    {
+                        currentCollection.Insert(i, item);
+                    }
+                    else if (curIdx != i)
+                    {
+                        currentCollection.Move(curIdx, i);
+                    }
+                }
+                while (currentCollection.Count > targetList.Count)
+                {
+                    currentCollection.RemoveAt(currentCollection.Count - 1);
+                }
+            }
+            else
+            {
+                LayersList.ItemsSource = new System.Collections.ObjectModel.ObservableCollection<EditorLayer>(targetList);
+            }
+
             SyncActiveLayerHighlight();
         }
 
@@ -122,7 +154,86 @@ namespace FlowMy.Views.NodeControls
                 SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
+
+                // Setup drag state
+                _draggedLayer = layer;
+                _dragStartIndex = _doc.Layers.IndexOf(layer);
+                _dragStartPoint = e.GetPosition(this);
+                _isDraggingLayer = false;
+
+                fe.CaptureMouse();
+                e.Handled = true;
             }
+        }
+
+        private void LayerItem_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_doc == null || _draggedLayer == null || e.LeftButton != MouseButtonState.Pressed) return;
+
+            if (!_isDraggingLayer)
+            {
+                Point currentPos = e.GetPosition(this);
+                if (Math.Abs(currentPos.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(currentPos.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    _isDraggingLayer = true;
+                }
+            }
+
+            if (_isDraggingLayer && sender is FrameworkElement fe)
+            {
+                // Tìm item bên dưới con trỏ chuột
+                Point pt = e.GetPosition(LayersList);
+                var hitResult = VisualTreeHelper.HitTest(LayersList, pt);
+                if (hitResult != null)
+                {
+                    DependencyObject obj = hitResult.VisualHit;
+                    while (obj != null && obj != LayersList)
+                    {
+                        if (obj is FrameworkElement hitFe && hitFe.DataContext is EditorLayer targetLayer)
+                        {
+                            if (targetLayer != _draggedLayer)
+                            {
+                                int fromIdx = _doc.Layers.IndexOf(_draggedLayer);
+                                int toIdx = _doc.Layers.IndexOf(targetLayer);
+                                if (fromIdx >= 0 && toIdx >= 0 && fromIdx != toIdx)
+                                {
+                                    // Move item trực tiếp trong ObservableCollection để có visual feedback tức thì
+                                    _doc.Layers.Move(fromIdx, toIdx);
+                                }
+                            }
+                            break;
+                        }
+                        obj = VisualTreeHelper.GetParent(obj);
+                    }
+                }
+            }
+        }
+
+        private void LayerItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+            {
+                fe.ReleaseMouseCapture();
+            }
+
+            if (_doc != null && _draggedLayer != null && _isDraggingLayer)
+            {
+                int finalIndex = _doc.Layers.IndexOf(_draggedLayer);
+                if (finalIndex >= 0 && _dragStartIndex >= 0 && finalIndex != _dragStartIndex)
+                {
+                    // Tạm thời move ngược lại index ban đầu trước khi add command vào history
+                    _doc.Layers.Move(finalIndex, _dragStartIndex);
+
+                    var cmd = new LayerReorderCommand(_doc, _dragStartIndex, finalIndex);
+                    _doc.History.Execute(cmd);
+                    OnDocumentModified();
+                }
+            }
+
+            _draggedLayer = null;
+            _dragStartIndex = -1;
+            _isDraggingLayer = false;
         }
 
         private void LayerVisibilityToggle_Click(object sender, MouseButtonEventArgs e)
