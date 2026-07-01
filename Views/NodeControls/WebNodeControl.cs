@@ -1411,10 +1411,28 @@ namespace FlowMy.Views.NodeControls
             };
             System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
 
-            // ── TOP BAR (modernized) ─────────────────────────────────────────
+            // Determine theme/brightness aware colors to match the node background perfectly
+            var overlayColor = Color.FromArgb(40, 255, 255, 255);
+            var textBrush = Brushes.White;
+            var pillBg = Color.FromArgb(50, 0, 0, 0);
+            var pillBorder = Color.FromArgb(40, 255, 255, 255);
+
+            if (node.NodeBrush is SolidColorBrush scb)
+            {
+                double brightness = (scb.Color.R * 299 + scb.Color.G * 587 + scb.Color.B * 114) / 1000.0;
+                if (brightness > 130)
+                {
+                    overlayColor = Color.FromArgb(30, 0, 0, 0);
+                    textBrush = Brushes.Black;
+                    pillBg = Color.FromArgb(30, 255, 255, 255);
+                    pillBorder = Color.FromArgb(40, 0, 0, 0);
+                }
+            }
+
+            // ── TOP BAR (modernized to blend with the node background) ─────────
             var topBar = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(55, 255, 255, 255)),
+                Background = new SolidColorBrush(overlayColor),
                 Padding = new Thickness(6, 5, 6, 5),
                 CornerRadius = new CornerRadius(10, 10, 0, 0),
                 VerticalAlignment = VerticalAlignment.Top
@@ -1425,13 +1443,12 @@ namespace FlowMy.Views.NodeControls
             topBarGrid.VerticalAlignment = VerticalAlignment.Top;
             topBarGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             topBarGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            // Columns: [back+fwd] [url pill] [F5] [Go] [clearRefresh] [viewport expand]
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // 0: nav btns
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // 1: url
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // 2: F5
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // 3: Go
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // 4: Clear+Refresh
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // 5: phóng to khung nhìn
+            
+            // Columns: [navPanel] [urlPill] [viewportExpandBtn] [refreshBtn]
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 0: navPanel (◀ ▶ ⟳)
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });   // 1: url address bar
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 2: phóng to vừa khung
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 3: làm mới/xóa cache (🗑)
 
             // Slim gradient progress bar (row 1, spans all)
             var progressBar = new ProgressBar
@@ -1440,35 +1457,63 @@ namespace FlowMy.Views.NodeControls
                 Margin = new Thickness(0, 3, 0, 0),
                 Visibility = Visibility.Collapsed,
                 IsIndeterminate = true,
-                Foreground = node.NodeBrush ?? (Application.Current.TryFindResource("BurgundyWineBrush") as Brush)
+                Foreground = node.NodeBrush ?? (Application.Current.TryFindResource("PrimaryBrush") as Brush 
+                                                 ?? Application.Current.TryFindResource("BurgundyWineBrush") as Brush)
             };
             Grid.SetRow(progressBar, 1);
-            Grid.SetColumnSpan(progressBar, 6);
+            Grid.SetColumnSpan(progressBar, 4);
             topBarGrid.Children.Add(progressBar);
 
-            // ── Back / Forward nav buttons (col 0) ──────────────────────────
-            static Button MakeNavBtn(string content, string tip)
+            // Helper to create circular toolbar buttons with custom hover states
+            Button CreateToolbarButton(string content, string tip, double width = 28, double height = 28, double fontSize = 13, FontFamily? fontFamily = null, CornerRadius? cornerRadius = null)
             {
-                return new Button
+                var btn = new Button
                 {
                     Content = content,
                     ToolTip = tip,
-                    Width = 26,
-                    Height = 26,
-                    FontSize = 13,
+                    Width = width,
+                    Height = height,
+                    FontSize = fontSize,
                     Padding = new Thickness(0),
-                    Margin = new Thickness(0, 0, 2, 0),
                     Cursor = Cursors.Hand,
-                    Background = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
-                    Foreground = Brushes.White,
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
-                    BorderThickness = new Thickness(1),
-                    VerticalAlignment = VerticalAlignment.Center
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Foreground = textBrush
                 };
+                if (fontFamily != null)
+                {
+                    btn.FontFamily = fontFamily;
+                }
+                
+                var template = new ControlTemplate(typeof(Button));
+                var factory = new FrameworkElementFactory(typeof(Border));
+                factory.Name = "border";
+                factory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+                factory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+                factory.SetBinding(Border.BorderThicknessProperty, new System.Windows.Data.Binding("BorderThickness") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+                factory.SetValue(Border.CornerRadiusProperty, cornerRadius ?? new CornerRadius(width / 2));
+                
+                var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+                contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                factory.AppendChild(contentFactory);
+                template.VisualTree = factory;
+                
+                var trigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+                var hoverBgColor = textBrush == Brushes.Black ? Color.FromArgb(25, 0, 0, 0) : Color.FromArgb(40, 255, 255, 255);
+                trigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(hoverBgColor), "border"));
+                template.Triggers.Add(trigger);
+                
+                btn.Template = template;
+                return btn;
             }
 
-            var backBtn = MakeNavBtn("◀", "Quay lại");
-            var fwdBtn  = MakeNavBtn("▶", "Tiến tới");
+            // ── Back / Forward / Reload nav buttons (col 0) ──────────────────
+            var backBtn = CreateToolbarButton("◀", "Quay lại", 26, 26, 11);
+            var fwdBtn  = CreateToolbarButton("▶", "Tiến tới", 26, 26, 11);
+            var f5Btn   = CreateToolbarButton("⟳", "Tải lại trang (F5)", 26, 26, 13);
+            
             backBtn.Click += (s, e) =>
             {
                 try { if (webView.CoreWebView2?.CanGoBack == true) webView.CoreWebView2.GoBack(); } catch { }
@@ -1476,6 +1521,10 @@ namespace FlowMy.Views.NodeControls
             fwdBtn.Click += (s, e) =>
             {
                 try { if (webView.CoreWebView2?.CanGoForward == true) webView.CoreWebView2.GoForward(); } catch { }
+            };
+            f5Btn.Click += (s, e) =>
+            {
+                try { webView.CoreWebView2?.Reload(); } catch { }
             };
 
             var navPanel = new StackPanel
@@ -1486,35 +1535,36 @@ namespace FlowMy.Views.NodeControls
             };
             navPanel.Children.Add(backBtn);
             navPanel.Children.Add(fwdBtn);
+            navPanel.Children.Add(f5Btn);
             Grid.SetRow(navPanel, 0);
             Grid.SetColumn(navPanel, 0);
             topBarGrid.Children.Add(navPanel);
 
             // ── URL address bar pill (col 1) ─────────────────────────────────
-            // Outer pill border wrapping lock icon + text box
             var urlPill = new Border
             {
                 CornerRadius = new CornerRadius(14),
-                Background = new SolidColorBrush(Color.FromArgb(70, 0, 0, 0)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                Background = new SolidColorBrush(pillBg),
+                BorderBrush = new SolidColorBrush(pillBorder),
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(8, 0, 6, 0),
-                Margin = new Thickness(0, 0, 6, 0),
+                Padding = new Thickness(8, 0, 4, 0),
+                Margin = new Thickness(6, 0, 6, 0),
                 Height = 28,
                 VerticalAlignment = VerticalAlignment.Center
             };
             var urlPillInner = new Grid();
-            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
+            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // 0: lock
+            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // 1: urlBox
+            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // 2: goBtn
 
             var lockIcon = new TextBlock
             {
                 Text = "🔒",
-                FontSize = 11,
+                FontSize = 10,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 5, 0),
-                Opacity = 0.7
+                Foreground = textBrush,
+                Opacity = 0.6
             };
             Grid.SetColumn(lockIcon, 0);
             urlPillInner.Children.Add(lockIcon);
@@ -1528,43 +1578,83 @@ namespace FlowMy.Views.NodeControls
                 Background = Brushes.Transparent,
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
-                Foreground = Brushes.White,
-                CaretBrush = Brushes.White,
+                Foreground = textBrush,
+                CaretBrush = textBrush,
                 SelectionBrush = new SolidColorBrush(Color.FromArgb(100, 100, 180, 255))
             };
             Grid.SetColumn(urlBox, 1);
             urlPillInner.Children.Add(urlBox);
+
+            var goBtn = CreateToolbarButton("→", "Đi tới (Enter)", 22, 22, 13);
+            Grid.SetColumn(goBtn, 2);
+            urlPillInner.Children.Add(goBtn);
+
             urlPill.Child = urlPillInner;
             Grid.SetRow(urlPill, 0);
             Grid.SetColumn(urlPill, 1);
             topBarGrid.Children.Add(urlPill);
 
+            // ── Viewport Expand button (col 2) ──────────────────────────────
+            var viewportExpandBtn = CreateToolbarButton("\uE740", "Phóng to vừa khung nhìn", 26, 26, 13, ViewportExpandIconFont);
+            Grid.SetRow(viewportExpandBtn, 0);
+            Grid.SetColumn(viewportExpandBtn, 2);
+            topBarGrid.Children.Add(viewportExpandBtn);
+
+            // ── Clear-cache Refresh button (col 3) ──────────────────────────
+            var refreshBtn = CreateToolbarButton("", "Làm mới (xóa cookies + cache + storage rồi load lại)", 26, 26, 12, cornerRadius: new CornerRadius(5));
+            refreshBtn.BorderThickness = new Thickness(1);
+            refreshBtn.BorderBrush = new SolidColorBrush(textBrush == Brushes.White ? Color.FromArgb(80, 255, 255, 255) : Color.FromArgb(80, 0, 0, 0));
+            refreshBtn.Background = new SolidColorBrush(textBrush == Brushes.White ? Color.FromArgb(30, 255, 255, 255) : Color.FromArgb(30, 0, 0, 0));
+
+            var iconConverter = new FlowMy.Converters.IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(null, typeof(Uri), "trash-xmark light", System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            var trashIcon = new FlowMy.Controls.SvgViewboxEx
+            {
+                Source = iconUri,
+                Width = 14,
+                Height = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Fill = textBrush
+            };
+            refreshBtn.Content = trashIcon;
+
+            Grid.SetRow(refreshBtn, 0);
+            Grid.SetColumn(refreshBtn, 3);
+            topBarGrid.Children.Add(refreshBtn);
+
             // ── Google Suggest Autocomplete Popup (khai báo trước để dùng trong event handlers) ──
+            var popupBg = textBrush == Brushes.White ? Color.FromRgb(0x28, 0x2C, 0x34) : Color.FromRgb(0xFA, 0xFA, 0xFA);
+            var popupFg = textBrush == Brushes.White ? Brushes.White : Brushes.Black;
+            var popupBorder = textBrush == Brushes.White ? Color.FromArgb(100, 255, 255, 255) : Color.FromArgb(100, 0, 0, 0);
+            var popupHoverBg = textBrush == Brushes.White ? Color.FromArgb(60, 100, 180, 255) : Color.FromArgb(40, 100, 180, 255);
+            var popupSelectedBg = textBrush == Brushes.White ? Color.FromArgb(90, 100, 180, 255) : Color.FromArgb(70, 100, 180, 255);
+
             var suggestListBox = new ListBox
             {
-                Background = new SolidColorBrush(Color.FromRgb(0x28, 0x2C, 0x34)),
-                Foreground = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
+                Background = new SolidColorBrush(popupBg),
+                Foreground = popupFg,
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
                 MaxHeight = 240,
                 FontSize = 12,
                 Padding = new Thickness(0)
             };
-            // Attached property phải set riêng (không thể dùng trong object initializer)
             ScrollViewer.SetHorizontalScrollBarVisibility(suggestListBox, ScrollBarVisibility.Disabled);
 
-            // Style từng item trong danh sách
             var itemStyle = new Style(typeof(ListBoxItem));
             itemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(10, 6, 10, 6)));
             itemStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
-            itemStyle.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            itemStyle.Setters.Add(new Setter(Control.ForegroundProperty, popupFg));
             itemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
             itemStyle.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
+            
             var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromArgb(60, 100, 180, 255))));
+            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(popupHoverBg)));
             itemStyle.Triggers.Add(hoverTrigger);
+            
             var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
-            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromArgb(90, 100, 180, 255))));
+            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(popupSelectedBg)));
             itemStyle.Triggers.Add(selectedTrigger);
             suggestListBox.ItemContainerStyle = itemStyle;
 
@@ -1577,12 +1667,12 @@ namespace FlowMy.Views.NodeControls
                 PopupAnimation = PopupAnimation.Fade,
                 Child = new Border
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(0x28, 0x2C, 0x34)),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
+                    Background = new SolidColorBrush(popupBg),
+                    BorderBrush = new SolidColorBrush(popupBorder),
                     BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(0, 0, 8, 8),
                     Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    { Color = Colors.Black, BlurRadius = 12, ShadowDepth = 3, Opacity = 0.5 },
+                    { Color = Colors.Black, BlurRadius = 12, ShadowDepth = 3, Opacity = 0.3 },
                     Child = suggestListBox
                 },
                 HorizontalOffset = 0
@@ -1813,66 +1903,10 @@ namespace FlowMy.Views.NodeControls
                 try { webView.CoreWebView2.Navigate(searchUrl); node.ExtractUrl = searchUrl; } catch { }
             }
 
-            // ── F5 quick reload button (col 2) ─────────────────────────────
-            var f5Btn = new Button
-            {
-                Content = "⟳",
-                Width = 28,
-                Height = 28,
-                FontSize = 14,
-                Padding = new Thickness(0),
-                Margin = new Thickness(0, 0, 4, 0),
-                Cursor = Cursors.Hand,
-                ToolTip = "Tải lại trang (F5)",
-                Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-                Foreground = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            f5Btn.Click += (s, e) =>
-            {
-                try { webView.CoreWebView2?.Reload(); } catch { }
-            };
-            Grid.SetRow(f5Btn, 0);
-            Grid.SetColumn(f5Btn, 2);
-            topBarGrid.Children.Add(f5Btn);
 
-            // ── Go button (col 3) ───────────────────────────────────────────
-            var goBtn = new Button
-            {
-                Content = "→",
-                Width = 32,
-                Height = 28,
-                FontSize = 14,
-                Padding = new Thickness(0),
-                Margin = new Thickness(0, 0, 4, 0),
-                Cursor = Cursors.Hand,
-                ToolTip = "Điều hướng tới URL",
-                Style = Application.Current.TryFindResource("SuccessButton") as Style
-            };
-            goBtn.Click += (s, e) =>
-            {
-                urlBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-                EnsureWebViewAndNavigate();
-            };
-            Grid.SetRow(goBtn, 0);
-            Grid.SetColumn(goBtn, 3);
-            topBarGrid.Children.Add(goBtn);
 
             // ── Clear-cache Refresh button (col 4) — logic giữ nguyên ─────
-            var refreshBtn = new Button
-            {
-                Content = "🗑",
-                Width = 32,
-                Height = 28,
-                FontSize = 12,
-                Padding = new Thickness(0),
-                Margin = new Thickness(0),
-                Cursor = Cursors.Hand,
-                ToolTip = "Làm mới (xóa cookies + cache + storage rồi load lại)",
-                Style = Application.Current.TryFindResource("WarningButton") as Style
-            };
+
             refreshBtn.Click += async (s, e) =>
             {
                 if (webView.CoreWebView2 == null) return;
@@ -2001,31 +2035,7 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
             };
-            Grid.SetRow(refreshBtn, 0);
-            Grid.SetColumn(refreshBtn, 4);
-            topBarGrid.Children.Add(refreshBtn);
-
-            var viewportExpandBtn = new Button
-            {
-                Content = "\uE740",
-                FontFamily = ViewportExpandIconFont,
-                ToolTip = "Phóng to vừa khung nhìn",
-                Width = 28,
-                Height = 28,
-                FontSize = 14,
-                Padding = new Thickness(0),
-                Margin = new Thickness(2, 0, 0, 0),
-                Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center,
-                Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-                Foreground = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-                BorderThickness = new Thickness(1)
-            };
             viewportExpandBtn.Click += (_, _) => ToggleNodeViewportExpand(node, border, host, viewportExpandBtn);
-            Grid.SetRow(viewportExpandBtn, 0);
-            Grid.SetColumn(viewportExpandBtn, 5);
-            topBarGrid.Children.Add(viewportExpandBtn);
 
             topBar.Child = topBarGrid;
             Grid.SetRow(topBar, 0);

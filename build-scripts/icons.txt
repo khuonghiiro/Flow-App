@@ -372,3 +372,4 @@ table-cells-lock duotone
 table-cells-header-unlock duotone
 eye regular
 eye-slash regular
+trash-xmark light
