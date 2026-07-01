@@ -893,16 +893,164 @@ namespace FlowMy.Views.NodeControls
 
             var comboPromptSize = new ComboBox
             {
-                Background = ipSurface,
-                Foreground = ipText,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x1e, 0x22, 0x2c)),
-                BorderThickness = new Thickness(1),
                 FontFamily = new FontFamily("Consolas"),
                 FontSize = Zi(10),
                 Padding = new Thickness(Zd(6), Zd(4), Zd(6), Zd(4)),
                 Height = Zd(32),
                 Margin = new Thickness(0, 0, 0, 4)
             };
+
+            // ── Custom dark ComboBox style cho IP panel ──
+            {
+                var cbNormalBg = ipSurface2;          // #181c24
+                var cbHoverBg = new SolidColorBrush(Color.FromRgb(0x1e, 0x22, 0x2c));
+                var cbBorder = ipBorderBrush;         // #252932
+                var cbHoverBorder = new SolidColorBrush(Color.FromArgb(160, 0x4f, 0xff, 0xb0)); // accent semi
+                var cbDropdownBg = new SolidColorBrush(Color.FromRgb(0x14, 0x18, 0x20));
+                var cbItemHover = new SolidColorBrush(Color.FromArgb(40, 0x4f, 0xff, 0xb0));
+                var cbGlyph = ipMuted;                // #5a6072
+                var cbGlyphHover = ipAccent;           // #4fffb0
+
+                // Toggle button template (header phần hiển thị)
+                var toggleTpl = new ControlTemplate(typeof(System.Windows.Controls.Primitives.ToggleButton));
+                var toggleBd = new FrameworkElementFactory(typeof(Border), "toggleBd");
+                toggleBd.SetValue(Border.BackgroundProperty, cbNormalBg);
+                toggleBd.SetValue(Border.BorderBrushProperty, cbBorder);
+                toggleBd.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+                toggleBd.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+                toggleBd.SetValue(Border.PaddingProperty, new Thickness(6, 4, 4, 4));
+
+                // DockPanel: content trái, arrow phải
+                var tgDock = new FrameworkElementFactory(typeof(DockPanel));
+
+                var tgArrow = new FrameworkElementFactory(typeof(System.Windows.Shapes.Path), "arrow");
+                tgArrow.SetValue(DockPanel.DockProperty, Dock.Right);
+                tgArrow.SetValue(System.Windows.Shapes.Path.DataProperty, Geometry.Parse("M0,0 L4,4 L8,0"));
+                tgArrow.SetValue(System.Windows.Shapes.Path.StrokeProperty, cbGlyph);
+                tgArrow.SetValue(System.Windows.Shapes.Path.StrokeThicknessProperty, 1.5);
+                tgArrow.SetValue(System.Windows.Shapes.Path.FillProperty, Brushes.Transparent);
+                tgArrow.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                tgArrow.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+                tgArrow.SetValue(FrameworkElement.WidthProperty, 16.0);
+                tgDock.AppendChild(tgArrow);
+
+                var tgContent = new FrameworkElementFactory(typeof(ContentPresenter));
+                tgContent.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+                tgContent.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                tgContent.SetValue(ContentPresenter.MarginProperty, new Thickness(2, 0, 0, 0));
+                tgDock.AppendChild(tgContent);
+
+                toggleBd.AppendChild(tgDock);
+                toggleTpl.VisualTree = toggleBd;
+
+                // Hover trigger
+                var tgHover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+                tgHover.Setters.Add(new Setter(Border.BackgroundProperty, cbHoverBg, "toggleBd"));
+                tgHover.Setters.Add(new Setter(Border.BorderBrushProperty, cbHoverBorder, "toggleBd"));
+                tgHover.Setters.Add(new Setter(System.Windows.Shapes.Path.StrokeProperty, cbGlyphHover, "arrow"));
+                toggleTpl.Triggers.Add(tgHover);
+
+                // Checked (dropdown mở) trigger
+                var tgChecked = new Trigger { Property = System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, Value = true };
+                tgChecked.Setters.Add(new Setter(Border.BorderBrushProperty, cbHoverBorder, "toggleBd"));
+                tgChecked.Setters.Add(new Setter(System.Windows.Shapes.Path.StrokeProperty, cbGlyphHover, "arrow"));
+                toggleTpl.Triggers.Add(tgChecked);
+
+                // ComboBox template
+                var cbTpl = new ControlTemplate(typeof(ComboBox));
+                var cbGrid = new FrameworkElementFactory(typeof(Grid));
+
+                var cbToggle = new FrameworkElementFactory(typeof(System.Windows.Controls.Primitives.ToggleButton), "cbToggle");
+                cbToggle.SetValue(System.Windows.Controls.Primitives.ToggleButton.TemplateProperty, toggleTpl);
+                cbToggle.SetValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty,
+                    new System.Windows.Data.Binding("IsDropDownOpen")
+                    {
+                        RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent),
+                        Mode = System.Windows.Data.BindingMode.TwoWay
+                    });
+                cbToggle.SetValue(System.Windows.Controls.Primitives.ToggleButton.FocusableProperty, false);
+                cbToggle.SetValue(System.Windows.Controls.Primitives.ToggleButton.ClickModeProperty, ClickMode.Press);
+                cbGrid.AppendChild(cbToggle);
+
+                // ContentPresenter cho selected item
+                var cbPresenter = new FrameworkElementFactory(typeof(ContentPresenter), "cbContent");
+                cbPresenter.SetValue(ContentPresenter.ContentTemplateProperty,
+                    new TemplateBindingExtension(ComboBox.SelectionBoxItemTemplateProperty));
+                cbPresenter.SetValue(ContentPresenter.ContentProperty,
+                    new TemplateBindingExtension(ComboBox.SelectionBoxItemProperty));
+                cbPresenter.SetValue(FrameworkElement.MarginProperty, new Thickness(8, 4, 24, 4));
+                cbPresenter.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+                cbPresenter.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+                cbPresenter.SetValue(UIElement.IsHitTestVisibleProperty, false);
+                cbGrid.AppendChild(cbPresenter);
+
+                // Popup dropdown
+                var cbPopup = new FrameworkElementFactory(typeof(System.Windows.Controls.Primitives.Popup), "PART_Popup");
+                cbPopup.SetValue(System.Windows.Controls.Primitives.Popup.PlacementProperty, System.Windows.Controls.Primitives.PlacementMode.Bottom);
+                cbPopup.SetValue(System.Windows.Controls.Primitives.Popup.IsOpenProperty,
+                    new TemplateBindingExtension(ComboBox.IsDropDownOpenProperty));
+                cbPopup.SetValue(System.Windows.Controls.Primitives.Popup.AllowsTransparencyProperty, true);
+                cbPopup.SetValue(System.Windows.Controls.Primitives.Popup.PopupAnimationProperty, System.Windows.Controls.Primitives.PopupAnimation.Slide);
+
+                var popupBd = new FrameworkElementFactory(typeof(Border));
+                popupBd.SetValue(Border.BackgroundProperty, cbDropdownBg);
+                popupBd.SetValue(Border.BorderBrushProperty, cbHoverBorder);
+                popupBd.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+                popupBd.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+                popupBd.SetValue(Border.PaddingProperty, new Thickness(2));
+                popupBd.SetValue(FrameworkElement.MinWidthProperty,
+                    new TemplateBindingExtension(FrameworkElement.ActualWidthProperty));
+
+                var popupScroll = new FrameworkElementFactory(typeof(ScrollViewer));
+                var popupItemsHost = new FrameworkElementFactory(typeof(StackPanel));
+                popupItemsHost.SetValue(Panel.IsItemsHostProperty, true);
+                popupScroll.AppendChild(popupItemsHost);
+                popupBd.AppendChild(popupScroll);
+                cbPopup.AppendChild(popupBd);
+                cbGrid.AppendChild(cbPopup);
+
+                cbTpl.VisualTree = cbGrid;
+
+                // ComboBox style
+                var cbStyle = new Style(typeof(ComboBox));
+                cbStyle.Setters.Add(new Setter(Control.TemplateProperty, cbTpl));
+                cbStyle.Setters.Add(new Setter(Control.ForegroundProperty, ipText));
+                cbStyle.Setters.Add(new Setter(Control.CursorProperty, Cursors.Hand));
+
+                // ItemContainerStyle (hover cho từng item)
+                var itemStyle = new Style(typeof(ComboBoxItem));
+                itemStyle.Setters.Add(new Setter(Control.ForegroundProperty, ipText));
+                itemStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+                itemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 5, 8, 5)));
+                itemStyle.Setters.Add(new Setter(Control.CursorProperty, Cursors.Hand));
+                itemStyle.Setters.Add(new Setter(Control.SnapsToDevicePixelsProperty, true));
+
+                var itemTpl = new ControlTemplate(typeof(ComboBoxItem));
+                var itemBd = new FrameworkElementFactory(typeof(Border), "itemBd");
+                itemBd.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Control.BackgroundProperty));
+                itemBd.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Control.PaddingProperty));
+                itemBd.SetValue(Border.CornerRadiusProperty, new CornerRadius(3));
+                var itemCp = new FrameworkElementFactory(typeof(ContentPresenter));
+                itemCp.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                itemBd.AppendChild(itemCp);
+                itemTpl.VisualTree = itemBd;
+
+                var itemHover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+                itemHover.Setters.Add(new Setter(Control.BackgroundProperty, cbItemHover));
+                itemHover.Setters.Add(new Setter(Control.ForegroundProperty, cbGlyphHover));
+                itemTpl.Triggers.Add(itemHover);
+
+                var itemSelected = new Trigger { Property = ComboBoxItem.IsSelectedProperty, Value = true };
+                itemSelected.Setters.Add(new Setter(Control.BackgroundProperty, cbItemHover));
+                itemSelected.Setters.Add(new Setter(Control.ForegroundProperty, ipAccent));
+                itemSelected.Setters.Add(new Setter(System.Windows.Documents.TextElement.FontWeightProperty, FontWeights.SemiBold));
+                itemTpl.Triggers.Add(itemSelected);
+
+                itemStyle.Setters.Add(new Setter(Control.TemplateProperty, itemTpl));
+                cbStyle.Setters.Add(new Setter(ItemsControl.ItemContainerStyleProperty, itemStyle));
+
+                comboPromptSize.Style = cbStyle;
+            }
             comboPromptSize.Items.Add("1");
             comboPromptSize.Items.Add("2");
             comboPromptSize.Items.Add("3");
