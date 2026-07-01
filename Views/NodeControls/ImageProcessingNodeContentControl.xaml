@@ -7,6 +7,7 @@
              xmlns:controls="clr-namespace:FlowMy.Controls"
              xmlns:local="clr-namespace:FlowMy.Views.NodeControls"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:conv="clr-namespace:FlowMy.Converters"
              mc:Ignorable="d"
              d:DesignWidth="900"
              d:DesignHeight="640"
@@ -15,6 +16,7 @@
              SnapsToDevicePixels="True">
     <UserControl.Resources>
         <local:IntToHashLabelConverter x:Key="IntToHashLabelConverter"/>
+        <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
         <sys:Double x:Key="WidgetCropOrderFontSize">10</sys:Double>
         <sys:Double x:Key="WidgetCropCheckFontSize">8</sys:Double>
         <sys:Double x:Key="WidgetCropDeleteFontSize">9</sys:Double>
@@ -124,11 +126,17 @@
                      HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <StackPanel Width="auto" Orientation="Vertical"
                             HorizontalAlignment="Center" VerticalAlignment="Top">
-                    <Button x:Name="BtnOpenImage" Content="📁" ToolTip="Mở ảnh"
+                    <Button x:Name="BtnOpenImage"  ToolTip="Mở ảnh"
                             Width="30" Height="30" Style="{DynamicResource PrimaryButton}"
-                            FontSize="16" Padding="0" Margin="0,0,0,10"
+                            FontSize="16" Padding="0" Margin="0,10,0,10" 
+                            BorderBrush="White"
+                            BorderThickness="1"
                             MouseLeftButtonDown="CommonButton_StopBubbling_MouseLeftButtonDown"
-                            Click="BtnOpenImage_Click"/>
+                            Click="BtnOpenImage_Click">
+                        <controls:SvgViewboxEx Height="14"
+                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open sharp-duotone-regular'}"
+                            Fill="White"/>
+                    </Button>
                     <Border BorderBrush="#78FFFFFF" BorderThickness="1" CornerRadius="4"
                             Padding="2" Margin="4,0,4,6">
                         <StackPanel Orientation="Vertical"
@@ -137,12 +145,18 @@
                                     Margin="0,0,0,10" BorderThickness="0" Cursor="Hand"
                                     Padding="0" ToolTip="Chọn màu viền/background vùng crop"
                                     Click="ColorCropButton_Click"/>
-                            <Button x:Name="CropToolButton" Content="✂"
+                            <Button x:Name="CropToolButton" 
                                     ToolTip="Crop ảnh (Alt + click trái trên ảnh để tạo điểm)"
                                     Style="{DynamicResource WarningButton}"
+                                    BorderBrush="White"
+                                    BorderThickness="1"
                                     Width="30" Height="30" FontSize="16" Padding="0"
                                     PreviewMouseLeftButtonDown="CommonButton_StopBubbling_MouseLeftButtonDown"
-                                    Click="CropToolButton_Click"/>
+                                    Click="CropToolButton_Click">
+                                <controls:SvgViewboxEx Height="16"
+                                    Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='scissors light'}"
+                                    Fill="White"/>
+                            </Button>
                         </StackPanel>
                     </Border>
                     <Border Background="Transparent" Width="22" Height="30" Margin="0,0,0,6"/>

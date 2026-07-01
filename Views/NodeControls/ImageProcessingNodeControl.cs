@@ -821,9 +821,12 @@ namespace FlowMy.Views.NodeControls
             var imgPreview = new System.Windows.Controls.Image
             {
                 Stretch = Stretch.Uniform,
-                MaxHeight = Zd(240),
                 Margin = new Thickness(2)
             };
+            // Cả widget và canvas đều giới hạn MaxHeight để ảnh dọc không chiếm quá nhiều
+            // chiều dọc, che mất các control bên dưới (prompt, buttons...).
+            // Stretch.Uniform + HorizontalScroll=Disabled → width tự co theo tỉ lệ ảnh.
+            imgPreview.MaxHeight = dipNativeLayout ? Zd(300) : Zd(240);
             RenderOptions.SetBitmapScalingMode(imgPreview, BitmapScalingMode.HighQuality);
 
             // Checkerboard background cho preview (phân biệt vùng đen của ảnh vs nền)
@@ -1004,7 +1007,8 @@ namespace FlowMy.Views.NodeControls
                 {
                     Content = contentStack,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
+                    // Disabled: ràng buộc width nội dung theo cột, ảnh preview không tràn ngang.
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
                 };
                 bottomActionsHost = new Border
                 {
