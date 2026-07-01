@@ -841,14 +841,24 @@ namespace FlowMy.Views.NodeControls
 
             // Sau khi ảnh đã load xong, sync vào EditorDoc nếu đang ở mode Manual
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual
-                && _node.EditorDoc != null
                 && MainImage.Source is BitmapSource bmp)
             {
-                var bgLayer = _node.EditorDoc.Layers.Count > 0 ? _node.EditorDoc.Layers[0] : null;
-                if (bgLayer != null)
+                if (_node.EditorDoc != null
+                    && (_node.EditorDoc.Width != bmp.PixelWidth || _node.EditorDoc.Height != bmp.PixelHeight))
                 {
-                    bgLayer.CopyFrom(bmp);
+                    // Kích thước ảnh khác doc → tạo lại document mới từ ảnh thực
+                    _node.EditorDoc = Models.ImageEditor.EditorDocument.FromBitmapSource(bmp);
                     EditorPanel.SetDocument(_node.EditorDoc);
+                }
+                else if (_node.EditorDoc != null)
+                {
+                    // Cùng kích thước → sync pixel
+                    var bgLayer = _node.EditorDoc.Layers.Count > 0 ? _node.EditorDoc.Layers[0] : null;
+                    if (bgLayer != null)
+                    {
+                        bgLayer.CopyFrom(bmp);
+                        EditorPanel.SetDocument(_node.EditorDoc);
+                    }
                 }
             }
         }
@@ -915,11 +925,19 @@ namespace FlowMy.Views.NodeControls
 
             if (_node.EditorDoc != null)
             {
-                // Sync background layer với ảnh hiện tại (nếu ảnh đã thay đổi)
-                if (imgSource != null && _node.EditorDoc.Layers.Count > 0)
+                if (imgSource != null)
                 {
-                    var bgLayer = _node.EditorDoc.Layers[0];
-                    bgLayer.CopyFrom(imgSource);
+                    // Kiểm tra kích thước: nếu ảnh khác doc → tạo lại từ ảnh thực
+                    if (_node.EditorDoc.Width != imgSource.PixelWidth
+                        || _node.EditorDoc.Height != imgSource.PixelHeight)
+                    {
+                        _node.EditorDoc = Models.ImageEditor.EditorDocument.FromBitmapSource(imgSource);
+                    }
+                    else if (_node.EditorDoc.Layers.Count > 0)
+                    {
+                        // Cùng kích thước → sync pixel vào background layer
+                        _node.EditorDoc.Layers[0].CopyFrom(imgSource);
+                    }
                 }
                 EditorPanel.SetDocument(_node.EditorDoc);
                 return;

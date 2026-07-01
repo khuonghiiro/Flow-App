@@ -181,12 +181,29 @@ namespace FlowMy.Models.ImageEditor
             InvalidateThumbnail();
         }
 
-        /// <summary>Tạo thumbnail nhỏ cho hiển thị trong layer list.</summary>
-        private BitmapSource GenerateThumbnail(int maxSize = 48)
+        /// <summary>Tạo thumbnail cho layer list. Detect landscape/portrait → tính tỉ lệ đúng.</summary>
+        private BitmapSource GenerateThumbnail(int maxSize = 0)
         {
-            double scale = Math.Min((double)maxSize / Width, (double)maxSize / Height);
-            int thumbW = Math.Max(1, (int)(Width * scale));
-            int thumbH = Math.Max(1, (int)(Height * scale));
+            // Xác định ảnh ngang hay dọc, tính tỉ lệ từ dimension lớn hơn
+            int thumbW, thumbH;
+            double scale;
+
+            if (Width >= Height)
+            {
+                // Ảnh ngang hoặc vuông: fix width = 128, tính height theo tỉ lệ
+                int targetW = maxSize > 0 ? maxSize : 128;
+                scale = (double)targetW / Width;
+                thumbW = targetW;
+                thumbH = Math.Max(1, (int)(Height * scale));
+            }
+            else
+            {
+                // Ảnh dọc: fix height = 88, tính width theo tỉ lệ
+                int targetH = maxSize > 0 ? maxSize : 88;
+                scale = (double)targetH / Height;
+                thumbH = targetH;
+                thumbW = Math.Max(1, (int)(Width * scale));
+            }
 
             var thumb = new WriteableBitmap(thumbW, thumbH, 96, 96, PixelFormats.Bgra32, null);
             // Simple nearest-neighbor downsample
