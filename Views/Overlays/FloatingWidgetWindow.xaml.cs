@@ -991,6 +991,15 @@ public partial class FloatingWidgetWindow : Window
     private void IdleTimer_Tick(object? sender, EventArgs e)
     {
         if (Config.PinnedNoAutoHide) return;
+
+        // Nếu widget đang được focus (user đang tương tác), coi như "not idle"
+        // → reset thời gian hoạt động để countdown chỉ bắt đầu sau khi mất focus.
+        if (IsActive)
+        {
+            MarkActivity();
+            return;
+        }
+
         var idleSeconds = (DateTime.UtcNow - _lastActivityUtc).TotalSeconds;
 
         // Auto-collapse when idle
