@@ -93,7 +93,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Top bar -->
-        <Border x:Name="TopMenuBorder" Grid.Row="0" Grid.ColumnSpan="3"
+        <Border x:Name="TopMenuBorder" Grid.Row="0" Grid.ColumnSpan="4"
                 Background="#2DFFFFFF" Padding="8,4,8,4">
             <Border Background="Transparent" IsHitTestVisible="True">
                 <DockPanel LastChildFill="True">
@@ -108,6 +108,26 @@
                                                 VerticalAlignment="Center" HorizontalAlignment="Center"
                                                 Fill="{DynamicResource WhiteBrush}"/>
                     </Button>
+
+                    <!-- Mode toggle: AI | Editor — segment control -->
+                    <Border DockPanel.Dock="Right" Margin="6,0,6,0" VerticalAlignment="Center"
+                            Background="{DynamicResource SurfaceColor}" CornerRadius="5"
+                            Padding="2" BorderBrush="{DynamicResource BorderColor}"
+                            BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="BtnModeAI" Content="🤖 AI"
+                                    Style="{DynamicResource PrimaryButton}"
+                                    Width="50" Height="20" FontSize="9" Padding="2,0"
+                                    Cursor="Hand" ToolTip="Chế độ AI (crop + gửi xử lý)"
+                                    Click="BtnModeAI_Click"/>
+                            <Button x:Name="BtnModeEditor" Content="🎨 Editor"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Width="56" Height="20" FontSize="9" Padding="2,0"
+                                    Cursor="Hand" ToolTip="Chế độ chỉnh sửa thủ công"
+                                    Click="BtnModeEditor_Click"/>
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock x:Name="ImageTitleTextBlock"
                                Text="Chưa có ảnh"
                                Foreground="{DynamicResource WhiteBrush}"
@@ -187,7 +207,7 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- Right: crops + renders -->
+        <!-- Right panel: AI mode (crops + renders) -->
         <Border x:Name="RightMenuBorder" Grid.Row="1" Grid.Column="2"
                 Background="#28000000" Padding="4">
             <Grid>
@@ -224,6 +244,10 @@
                 </ScrollViewer>
             </Grid>
         </Border>
+
+        <!-- Right panel: Editor mode (layers, tools, colors) -->
+        <local:ImageEditorPanel x:Name="EditorPanel" Grid.Row="1" Grid.Column="2"
+                                Visibility="Collapsed"/>
 
         <!-- Magnifier (Alt), same cell as image -->
         <Grid x:Name="MagOverlayPanel" Grid.Row="1" Grid.Column="1"

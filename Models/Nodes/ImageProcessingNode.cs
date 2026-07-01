@@ -21,6 +21,13 @@ namespace FlowMy.Models.Nodes
         RectFromPolygon = 1
     }
 
+    /// <summary>Chế độ xử lý ảnh: AI (crop + gửi AI) hoặc Manual (chỉnh sửa thủ công kiểu Photoshop).</summary>
+    public enum ImageProcessingMode
+    {
+        AI = 0,
+        Manual = 1
+    }
+
     /// <summary>Vùng crop trên ảnh, lưu theo toạ độ pixel ảnh gốc.</summary>
         public sealed class ImageCropRegion : INotifyPropertyChanged
     {
@@ -177,9 +184,32 @@ namespace FlowMy.Models.Nodes
         private string? _renderNodeOutputKey; // Output key của node render ảnh
 
         private string _lastExecutionId = string.Empty; // Id lần chạy workflow gần nhất đi qua node này
+        private ImageProcessingMode _processingMode = ImageProcessingMode.AI;
 
         /// <summary>Danh sách output keys bị skip (checked = true nghĩa là không xử lý output đó).</summary>
         public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Chế độ xử lý hiện tại (AI hoặc Manual).</summary>
+        public ImageProcessingMode ProcessingMode
+        {
+            get => _processingMode;
+            set
+            {
+                if (_processingMode != value)
+                {
+                    _processingMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Document editor (chỉ tồn tại khi Manual mode đang active, không serialize).
+        /// Tạo bởi UI khi chuyển sang Manual mode.
+        /// </summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
+        public ImageEditor.EditorDocument? EditorDoc { get; set; }
 
         public ImageProcessingNode()
         {

@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -71,6 +71,10 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("CropMode", out var cmObj) && cmObj != null &&
                 Enum.TryParse<ImageCropMode>(cmObj.ToString(), out var cropM))
                 imageNode.CropMode = cropM;
+
+            if (properties.TryGetValue("ProcessingMode", out var pmObj) && pmObj != null &&
+                Enum.TryParse<ImageProcessingMode>(pmObj.ToString(), out var pm))
+                imageNode.ProcessingMode = pm;
 
             if (properties.TryGetValue("ImageUrl", out var urlObj))
                 imageNode.ImageUrl = urlObj?.ToString() ?? string.Empty;
@@ -484,6 +488,7 @@ public sealed partial class FileWorkflowPersistenceService
             dict["Height"] = imageNode.Height;
             dict["InputMode"] = imageNode.InputMode.ToString();
             dict["CropMode"] = imageNode.CropMode.ToString();
+            dict["ProcessingMode"] = imageNode.ProcessingMode.ToString();
 
             if (!string.IsNullOrWhiteSpace(imageNode.ImageUrl))
                 dict["ImageUrl"] = imageNode.ImageUrl;

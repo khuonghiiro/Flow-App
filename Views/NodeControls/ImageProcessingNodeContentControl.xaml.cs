@@ -117,6 +117,11 @@ namespace FlowMy.Views.NodeControls
 
             AttachSubscriptions();
             SizeChanged += (_, _) => ApplyResponsiveScale();
+
+            // Sync mode toggle visual state
+            SyncModeButtonStyles();
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+                SwitchToMode(Models.Nodes.ImageProcessingMode.Manual);
         }
 
         /// <summary>Gọi từ FloatingWidgetWindow khi bật/tắt phóng to widget (work area).</summary>
@@ -847,6 +852,92 @@ namespace FlowMy.Views.NodeControls
                 ImageProcessingNodeControl._currentCropRegionForIp.Remove(_node);
             }
             catch { /* ignore */ }
+        }
+        // ═══════ MODE SWITCHING (AI ↔ Editor) ═══════
+
+        private void BtnModeAI_Click(object sender, RoutedEventArgs e)
+        {
+            SwitchToMode(Models.Nodes.ImageProcessingMode.AI);
+            e.Handled = true;
+        }
+
+        private void BtnModeEditor_Click(object sender, RoutedEventArgs e)
+        {
+            SwitchToMode(Models.Nodes.ImageProcessingMode.Manual);
+            e.Handled = true;
+        }
+
+        private void SwitchToMode(Models.Nodes.ImageProcessingMode mode)
+        {
+            _node.ProcessingMode = mode;
+
+            if (mode == Models.Nodes.ImageProcessingMode.AI)
+            {
+                // Hiện AI panels, ẩn Editor
+                RightMenuBorder.Visibility = Visibility.Visible;
+                EditorPanel.Visibility = Visibility.Collapsed;
+                LeftMenuBorder.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                // Ẩn AI panels, hiện Editor
+                RightMenuBorder.Visibility = Visibility.Collapsed;
+                EditorPanel.Visibility = Visibility.Visible;
+
+                // Tạo EditorDocument nếu chưa có
+                EnsureEditorDocument();
+            }
+
+            SyncModeButtonStyles();
+        }
+
+        private void EnsureEditorDocument()
+        {
+            if (_node.EditorDoc != null)
+            {
+                EditorPanel.SetDocument(_node.EditorDoc);
+                return;
+            }
+
+            // Tạo document từ ảnh hiện tại (nếu có) hoặc tạo blank
+            var imgSource = MainImage.Source as BitmapSource;
+            if (imgSource != null)
+            {
+                _node.EditorDoc = Models.ImageEditor.EditorDocument.FromBitmapSource(imgSource);
+            }
+            else
+            {
+                _node.EditorDoc = Models.ImageEditor.EditorDocument.CreateBlank(800, 600);
+            }
+
+            EditorPanel.SetDocument(_node.EditorDoc);
+            EditorPanel.DocumentModified += OnEditorDocumentModified;
+        }
+
+        private void OnEditorDocumentModified()
+        {
+            // Re-composite layers → hiển thị lên MainImage
+            if (_node.EditorDoc == null) return;
+
+            try
+            {
+                var composite = _node.EditorDoc.Composite();
+                MainImage.Source = composite;
+            }
+            catch { /* ignore composite errors */ }
+        }
+
+        private void SyncModeButtonStyles()
+        {
+            var activeStyle = Application.Current.TryFindResource("PrimaryButton") as Style;
+            var inactiveStyle = Application.Current.TryFindResource("SecondaryButton") as Style;
+
+            bool isAI = _node.ProcessingMode == Models.Nodes.ImageProcessingMode.AI;
+            BtnModeAI.Style = isAI ? activeStyle : inactiveStyle;
+            BtnModeEditor.Style = isAI ? inactiveStyle : activeStyle;
+
+            // AI mode có IP toggle, Editor mode ẩn nó
+            IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 }

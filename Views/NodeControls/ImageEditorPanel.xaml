@@ -1,0 +1,445 @@
+<UserControl x:Class="FlowMy.Views.NodeControls.ImageEditorPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="220" d:DesignHeight="600"
+             Background="Transparent"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True">
+
+    <UserControl.Resources>
+        <!-- ═══ SECTION HEADER ═══ -->
+        <Style x:Key="EdSectionHeader" TargetType="Border">
+            <Setter Property="Padding" Value="8,5,8,5"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Margin" Value="0,2,0,4"/>
+        </Style>
+
+        <!-- ═══ TOOL BUTTON ═══ -->
+        <Style x:Key="EdToolBtn" TargetType="Border">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Margin" Value="1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource CardHoverBackground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ═══ ACTIVE TOOL BUTTON ═══ -->
+        <Style x:Key="EdToolBtnActive" TargetType="Border" BasedOn="{StaticResource EdToolBtn}">
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
+        </Style>
+
+        <!-- ═══ MINI ACTION BUTTON ═══ -->
+        <Style x:Key="EdMiniBtn" TargetType="Button">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Style" Value="{DynamicResource TransparentButtonStyle}"/>
+        </Style>
+
+        <!-- ═══ SLIDER STYLE (compact) ═══ -->
+        <Style x:Key="EdSlider" TargetType="Slider">
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- ═══ LAYER ITEM ═══ -->
+        <DataTemplate x:Key="LayerItemTemplate">
+            <Border x:Name="LayerItemBd" Padding="6,4" Margin="0,1" CornerRadius="4"
+                    Background="Transparent" Cursor="Hand" BorderThickness="1"
+                    BorderBrush="Transparent"
+                    MouseLeftButtonDown="LayerItem_MouseLeftButtonDown">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource ListItemHoverBackground}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <!-- Visibility eye icon -->
+                    <Border DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,5,0"
+                            VerticalAlignment="Center" Cursor="Hand" CornerRadius="2"
+                            Background="Transparent"
+                            MouseLeftButtonDown="LayerVisibilityToggle_Click">
+                        <TextBlock x:Name="EyeIcon" Text="👁" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Opacity="0.8"/>
+                    </Border>
+                    <!-- Lock icon -->
+                    <Border DockPanel.Dock="Right" Width="16" Height="16" Margin="4,0,0,0"
+                            VerticalAlignment="Center" Cursor="Hand" CornerRadius="2"
+                            Background="Transparent"
+                            MouseLeftButtonDown="LayerLockToggle_Click">
+                        <TextBlock x:Name="LockIcon" Text="🔓" FontSize="9"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Opacity="0.5"/>
+                    </Border>
+                    <!-- Opacity badge -->
+                    <Border DockPanel.Dock="Right" Margin="3,0,0,0"
+                            VerticalAlignment="Center" Background="{DynamicResource SurfaceColor}"
+                            CornerRadius="3" Padding="3,1">
+                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="8"
+                                   Text="{Binding Opacity, StringFormat='{}{0:P0}'}"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <!-- Thumbnail + Name -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="26" Height="26" Margin="0,0,6,0"
+                                BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                CornerRadius="3" ClipToBounds="True"
+                                Background="{DynamicResource ControlBackground}">
+                            <!-- Checkered pattern for transparency -->
+                            <Grid>
+                                <Rectangle Fill="{DynamicResource ControlBackground}"/>
+                                <Image Stretch="Uniform" Source="{Binding Bitmap}"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="{Binding Name}"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="10.5" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="90"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsVisible}" Value="False">
+                    <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.4"/>
+                    <Setter TargetName="EyeIcon" Property="Text" Value="👁‍🗨"/>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.3"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                    <Setter TargetName="LockIcon" Property="Text" Value="🔒"/>
+                    <Setter TargetName="LockIcon" Property="Opacity" Value="0.9"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource CardBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1,0,0,0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ═══ SCROLLABLE CONTENT ═══ -->
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Padding="0">
+                <StackPanel Margin="6,4,6,8">
+
+                    <!-- ════════════ LAYERS ════════════ -->
+                    <Border Style="{StaticResource EdSectionHeader}"
+                            Background="{DynamicResource HeaderBackgroundBrush}">
+                        <DockPanel>
+                            <TextBlock Text="LAYERS" FontSize="9" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center"/>
+                            <!-- Layer action buttons -->
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                        HorizontalAlignment="Right">
+                                <Button Content="＋" ToolTip="Thêm layer (Ctrl+Shift+N)"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        Width="22" Height="20" FontSize="13" Padding="0" Cursor="Hand"
+                                        Click="BtnAddLayer_Click"/>
+                                <Button Content="−" ToolTip="Xoá layer"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        Width="22" Height="20" FontSize="14" Padding="0" Cursor="Hand"
+                                        Click="BtnRemoveLayer_Click"/>
+                                <Rectangle Width="1" Fill="{DynamicResource BorderColor}"
+                                           Margin="3,3" VerticalAlignment="Stretch"/>
+                                <Button Content="▲" ToolTip="Di chuyển lên"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        Width="20" Height="20" FontSize="8" Padding="0" Cursor="Hand"
+                                        Click="BtnMoveUp_Click"/>
+                                <Button Content="▼" ToolTip="Di chuyển xuống"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        Width="20" Height="20" FontSize="8" Padding="0" Cursor="Hand"
+                                        Click="BtnMoveDown_Click"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Layer list -->
+                    <Border Background="{DynamicResource WindowBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                            CornerRadius="5" Padding="3" Margin="0,0,0,2"
+                            MinHeight="50" MaxHeight="220">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="LayersList"
+                                          ItemTemplate="{StaticResource LayerItemTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Vertical"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Layer opacity -->
+                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4"
+                            Padding="8,4" Margin="0,4,0,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="Opacity"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="9" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
+                                    CornerRadius="3" Padding="4,1" MinWidth="32">
+                                <TextBlock x:Name="TxtOpacityValue" Foreground="{DynamicResource TextPrimary}"
+                                           FontSize="9" VerticalAlignment="Center"
+                                           HorizontalAlignment="Center" Text="100%"
+                                           FontFamily="Consolas"/>
+                            </Border>
+                            <Slider x:Name="SliderLayerOpacity" Minimum="0" Maximum="100" Value="100"
+                                    VerticalAlignment="Center" Margin="4,0"
+                                    ValueChanged="SliderLayerOpacity_ValueChanged"/>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Blend mode -->
+                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4"
+                            Padding="8,4" Margin="0,3,0,0">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="Blend"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="9" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="CmbBlendMode" Style="{DynamicResource BaseComboBox}"
+                                      Height="22" FontSize="9" VerticalContentAlignment="Center"
+                                      SelectionChanged="CmbBlendMode_SelectionChanged">
+                                <ComboBoxItem Content="Normal" IsSelected="True"/>
+                                <ComboBoxItem Content="Multiply"/>
+                                <ComboBoxItem Content="Screen"/>
+                                <ComboBoxItem Content="Overlay"/>
+                                <ComboBoxItem Content="Darken"/>
+                                <ComboBoxItem Content="Lighten"/>
+                            </ComboBox>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- ════════════ TOOLS ════════════ -->
+                    <Border Style="{StaticResource EdSectionHeader}" Margin="0,8,0,4"
+                            Background="{DynamicResource HeaderBackgroundBrush}">
+                        <TextBlock Text="TOOLS" FontSize="9" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </Border>
+
+                    <WrapPanel x:Name="ToolsPanel" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Border x:Name="ToolBrush" Style="{StaticResource EdToolBtnActive}"
+                                ToolTip="Brush (B)" MouseLeftButtonDown="ToolBtn_Click" Tag="Brush">
+                            <TextBlock Text="🖌" FontSize="15" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="ToolEraser" Style="{StaticResource EdToolBtn}"
+                                ToolTip="Eraser (E)" MouseLeftButtonDown="ToolBtn_Click" Tag="Eraser">
+                            <TextBlock Text="🧹" FontSize="14" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="ToolFill" Style="{StaticResource EdToolBtn}"
+                                ToolTip="Fill (G)" MouseLeftButtonDown="ToolBtn_Click" Tag="Fill">
+                            <TextBlock Text="🪣" FontSize="14" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="ToolEyedropper" Style="{StaticResource EdToolBtn}"
+                                ToolTip="Eyedropper (I)" MouseLeftButtonDown="ToolBtn_Click" Tag="Eyedropper">
+                            <TextBlock Text="💧" FontSize="14" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="ToolMove" Style="{StaticResource EdToolBtn}"
+                                ToolTip="Move (V)" MouseLeftButtonDown="ToolBtn_Click" Tag="Move">
+                            <TextBlock Text="✥" FontSize="16" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextBrush}"/>
+                        </Border>
+                        <Border x:Name="ToolText" Style="{StaticResource EdToolBtn}"
+                                ToolTip="Text (T)" MouseLeftButtonDown="ToolBtn_Click" Tag="Text">
+                            <TextBlock Text="T" FontSize="15" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextBrush}"/>
+                        </Border>
+                        <Border x:Name="ToolSelection" Style="{StaticResource EdToolBtn}"
+                                ToolTip="Selection (M)" MouseLeftButtonDown="ToolBtn_Click" Tag="Selection">
+                            <Border Width="16" Height="16" BorderThickness="1.5"
+                                    BorderBrush="{DynamicResource TextMuted}" CornerRadius="1"
+                                    Background="Transparent">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource TextMuted}"/>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </Border>
+                    </WrapPanel>
+
+                    <!-- Tool properties -->
+                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4"
+                            Padding="8,5" Margin="0,0,0,2">
+                        <StackPanel>
+                            <!-- Size -->
+                            <DockPanel Margin="0,0,0,3">
+                                <TextBlock DockPanel.Dock="Left" Text="Size"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
+                                        CornerRadius="3" Padding="4,1" MinWidth="28">
+                                    <TextBlock x:Name="TxtBrushSize" FontSize="9"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               HorizontalAlignment="Center" Text="10"
+                                               FontFamily="Consolas"/>
+                                </Border>
+                                <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="10"
+                                        VerticalAlignment="Center" Margin="4,0"
+                                        ValueChanged="SliderBrushSize_ValueChanged"/>
+                            </DockPanel>
+                            <!-- Hardness -->
+                            <DockPanel Margin="0,0,0,3">
+                                <TextBlock DockPanel.Dock="Left" Text="Hard"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
+                                        CornerRadius="3" Padding="4,1" MinWidth="28">
+                                    <TextBlock x:Name="TxtBrushHardness" FontSize="9"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               HorizontalAlignment="Center" Text="100%"
+                                               FontFamily="Consolas"/>
+                                </Border>
+                                <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="100"
+                                        VerticalAlignment="Center" Margin="4,0"
+                                        ValueChanged="SliderBrushHardness_ValueChanged"/>
+                            </DockPanel>
+                            <!-- Flow -->
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="Flow"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
+                                        CornerRadius="3" Padding="4,1" MinWidth="28">
+                                    <TextBlock x:Name="TxtBrushFlow" FontSize="9"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               HorizontalAlignment="Center" Text="100%"
+                                               FontFamily="Consolas"/>
+                                </Border>
+                                <Slider x:Name="SliderBrushFlow" Minimum="1" Maximum="100" Value="100"
+                                        VerticalAlignment="Center" Margin="4,0"
+                                        ValueChanged="SliderBrushFlow_ValueChanged"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ════════════ COLOR ════════════ -->
+                    <Border Style="{StaticResource EdSectionHeader}" Margin="0,6,0,4"
+                            Background="{DynamicResource HeaderBackgroundBrush}">
+                        <TextBlock Text="COLOR" FontSize="9" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </Border>
+
+                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="5"
+                            Padding="8,6" Margin="0,0,0,4">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <!-- FG/BG stacked preview -->
+                                <Grid DockPanel.Dock="Left" Width="42" Height="42" Margin="0,0,10,0">
+                                    <!-- BG color (behind, offset) -->
+                                    <Border x:Name="BgColorBorder" Width="26" Height="26"
+                                            Background="White" CornerRadius="4"
+                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1.5"
+                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                            Cursor="Hand" ToolTip="Background color"
+                                            MouseLeftButtonDown="BgColorBorder_MouseLeftButtonDown">
+                                        <Border.Effect>
+                                            <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.3"/>
+                                        </Border.Effect>
+                                    </Border>
+                                    <!-- FG color (front, offset) -->
+                                    <Border x:Name="FgColorBorder" Width="26" Height="26"
+                                            Background="Black" CornerRadius="4"
+                                            BorderBrush="{DynamicResource TextPrimary}" BorderThickness="2"
+                                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                                            Cursor="Hand" ToolTip="Foreground color"
+                                            MouseLeftButtonDown="FgColorBorder_MouseLeftButtonDown">
+                                        <Border.Effect>
+                                            <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.4"/>
+                                        </Border.Effect>
+                                    </Border>
+                                </Grid>
+                                <!-- Swap / Reset -->
+                                <StackPanel VerticalAlignment="Center">
+                                    <Button Content="⇄ Swap" ToolTip="Hoán đổi FG ↔ BG (X)"
+                                            Style="{DynamicResource TransparentButtonStyle}"
+                                            Height="20" FontSize="9" Padding="4,0" Cursor="Hand"
+                                            HorizontalContentAlignment="Left"
+                                            Click="BtnSwapColors_Click"/>
+                                    <Button Content="◻ Reset" ToolTip="Reset về Đen/Trắng (D)"
+                                            Style="{DynamicResource TransparentButtonStyle}"
+                                            Height="20" FontSize="9" Padding="4,0" Cursor="Hand"
+                                            HorizontalContentAlignment="Left"
+                                            Click="BtnResetColors_Click"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <!-- Color hex display -->
+                            <Border Background="{DynamicResource WindowBackgroundBrush}"
+                                    CornerRadius="3" Padding="6,3">
+                                <TextBlock x:Name="TxtColorHex" Text="#000000"
+                                           Foreground="{DynamicResource TextBrush}" FontSize="10"
+                                           FontFamily="Consolas" HorizontalAlignment="Center"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ BOTTOM: UNDO/REDO BAR ═══ -->
+            <Border Grid.Row="1" Background="{DynamicResource HeaderBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0"
+                    Padding="6,3">
+                <DockPanel>
+                    <TextBlock x:Name="TxtHistoryStatus" DockPanel.Dock="Right"
+                               Foreground="{DynamicResource TextMuted}" FontSize="8"
+                               VerticalAlignment="Center" FontFamily="Consolas"
+                               Text="0 steps"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BtnUndo" ToolTip="Undo (Ctrl+Z)"
+                                Style="{DynamicResource TransparentButtonStyle}"
+                                Width="26" Height="24" Padding="0" Cursor="Hand"
+                                Margin="0,0,2,0" IsEnabled="False"
+                                Click="BtnUndo_Click">
+                            <TextBlock Text="↶" FontSize="14" VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnRedo" ToolTip="Redo (Ctrl+Y)"
+                                Style="{DynamicResource TransparentButtonStyle}"
+                                Width="26" Height="24" Padding="0" Cursor="Hand"
+                                IsEnabled="False" Click="BtnRedo_Click">
+                            <TextBlock Text="↷" FontSize="14" VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>
