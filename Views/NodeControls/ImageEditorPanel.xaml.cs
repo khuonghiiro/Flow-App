@@ -79,6 +79,14 @@ namespace FlowMy.Views.NodeControls
             // Hiển thị reversed: top layer ở trên (giống Photoshop)
             LayersList.ItemsSource = new System.Collections.ObjectModel.ObservableCollection<EditorLayer>(
                 _doc.Layers.Reverse());
+            SyncActiveLayerHighlight();
+        }
+
+        private void SyncActiveLayerHighlight()
+        {
+            if (_doc == null) return;
+            foreach (var layer in _doc.Layers)
+                layer.IsActive = (layer == _doc.ActiveLayer);
         }
 
         private void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -111,6 +119,7 @@ namespace FlowMy.Views.NodeControls
             if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
             {
                 _doc.ActiveLayer = layer;
+                SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
             }
@@ -167,15 +176,50 @@ namespace FlowMy.Views.NodeControls
             if (_doc.ActiveLayer != null)
             {
                 newLayer = _doc.ActiveLayer.Duplicate();
+                // Tạo tên copy tăng dần: "X copy 1", "X copy 2", ...
+                newLayer.Name = GenerateCopyName(_doc.ActiveLayer.Name);
             }
             else
             {
                 newLayer = new EditorLayer(_doc.Width, _doc.Height, $"Layer {_doc.Layers.Count + 1}");
             }
 
+            var previousActive = _doc.ActiveLayer; // giữ reference trước khi add
             var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
             _doc.History.Execute(cmd);
+
+            // Giữ focus ở layer đã chọn, không nhảy sang copy mới
+            _doc.ActiveLayer = previousActive;
+            SyncActiveLayerHighlight();
+            SyncActiveLayerOpacity();
+            SyncBlendModeCombo();
             OnDocumentModified();
+        }
+
+        /// <summary>Tạo tên copy tăng dần dựa trên tên gốc và các layer hiện có.</summary>
+        private string GenerateCopyName(string baseName)
+        {
+            if (_doc == null) return baseName + " copy 1";
+
+            // Tìm số copy tiếp theo: "baseName copy N"
+            string prefix = baseName + " copy ";
+            int maxNum = 0;
+            foreach (var layer in _doc.Layers)
+            {
+                if (layer.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    var numPart = layer.Name.Substring(prefix.Length);
+                    if (int.TryParse(numPart, out int num) && num > maxNum)
+                        maxNum = num;
+                }
+                else if (string.Equals(layer.Name, baseName + " copy", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Trường hợp cũ "X copy" (không có số) → coi như copy 1
+                    if (maxNum < 1) maxNum = 1;
+                }
+            }
+
+            return prefix + (maxNum + 1);
         }
 
         private void BtnRemoveLayer_Click(object sender, RoutedEventArgs e)

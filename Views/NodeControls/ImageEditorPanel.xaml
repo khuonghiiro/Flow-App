@@ -27,10 +27,10 @@
         <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
         <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
 
-        <!-- ═══ LAYER ITEM ═══ -->
+        <!-- ═══ LAYER ITEM (Photoshop-style) ═══ -->
         <DataTemplate x:Key="LayerItemTemplate">
-            <Border x:Name="LayerItemBd" Padding="4,3" Margin="0,2" CornerRadius="4"
-                    Background="Transparent" Cursor="Hand" BorderThickness="1"
+            <Border x:Name="LayerItemBd" Padding="4,4" Margin="0,1" CornerRadius="4"
+                    Background="Transparent" Cursor="Hand" BorderThickness="1.5"
                     BorderBrush="Transparent"
                     MouseLeftButtonDown="LayerItem_MouseLeftButtonDown">
                 <Border.Style>
@@ -42,50 +42,82 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <StackPanel>
-                    <!-- Top row: Eye + Name + Lock -->
-                    <DockPanel Margin="0,0,0,3">
-                        <!-- Eye toggle -->
-                        <Border DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
-                                VerticalAlignment="Center" Cursor="Hand" CornerRadius="2"
-                                MouseLeftButtonDown="LayerVisibilityToggle_Click">
-                            <TextBlock x:Name="EyeIcon" Text="👁" FontSize="10"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Opacity="0.7"/>
+                <DockPanel>
+                    <!-- Eye toggle (left) -->
+                    <Border DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,4,0"
+                            VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
+                            Background="Transparent"
+                            MouseLeftButtonDown="LayerVisibilityToggle_Click">
+                        <controls:SvgViewboxEx x:Name="EyeIcon" Width="14" Height="14"
+                            Fill="{StaticResource ipText}"
+                            Source="{Binding Source={x:Static sys:String.Empty},
+                                     Converter={StaticResource IconKeyToPathConverter},
+                                     ConverterParameter='eye light'}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            IsHitTestVisible="False"/>
+                    </Border>
+                    <!-- Lock toggle (right) -->
+                    <Border DockPanel.Dock="Right" Width="18" Height="18" Margin="4,0,0,0"
+                            VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
+                            Background="Transparent"
+                            MouseLeftButtonDown="LayerLockToggle_Click">
+                        <Grid>
+                            <!-- Unlocked icon (default) -->
+                            <controls:SvgViewboxEx x:Name="LockOpenIcon" Width="13" Height="13"
+                                Fill="{StaticResource ipText}"
+                                Source="{Binding Source={x:Static sys:String.Empty},
+                                         Converter={StaticResource IconKeyToPathConverter},
+                                         ConverterParameter='lock-open jelly-fill-regular'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Opacity="0.4" IsHitTestVisible="False"/>
+                            <!-- Locked icon (hidden by default) -->
+                            <controls:SvgViewboxEx x:Name="LockClosedIcon" Width="13" Height="13"
+                                Fill="{StaticResource ipAccent}"
+                                Source="{Binding Source={x:Static sys:String.Empty},
+                                         Converter={StaticResource IconKeyToPathConverter},
+                                         ConverterParameter='lock jelly-fill-regular'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="Collapsed" IsHitTestVisible="False"/>
+                        </Grid>
+                    </Border>
+                    <!-- Thumbnail + Name (center, horizontal) -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="36" Height="36" Margin="0,0,6,0"
+                                BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
+                                CornerRadius="3" ClipToBounds="True"
+                                Background="{StaticResource ipSurface}">
+                            <Image Stretch="Uniform" Source="{Binding Thumbnail}"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Border>
-                        <!-- Lock -->
-                        <Border DockPanel.Dock="Right" Width="14" Height="14" Margin="3,0,0,0"
-                                VerticalAlignment="Center" Cursor="Hand" CornerRadius="2"
-                                MouseLeftButtonDown="LayerLockToggle_Click">
-                            <TextBlock x:Name="LockIcon" Text="🔓" FontSize="8"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Opacity="0.4"/>
-                        </Border>
-                        <!-- Name -->
                         <TextBlock Text="{Binding Name}" Foreground="{StaticResource ipText}"
                                    FontSize="10" VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" Margin="2,0,0,0"/>
-                    </DockPanel>
-                    <!-- Thumbnail: fixed width, aspect-ratio height, left-aligned -->
-                    <Border MaxWidth="180" HorizontalAlignment="Left"
-                            BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
-                            CornerRadius="3" ClipToBounds="True"
-                            Background="{StaticResource ipSurface}">
-                        <Image Stretch="Uniform" Source="{Binding Bitmap}"
-                               MaxWidth="178" MaxHeight="120"
-                               HorizontalAlignment="Left"
-                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                    </Border>
-                </StackPanel>
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </DockPanel>
             </Border>
             <DataTemplate.Triggers>
+                <!-- Active layer highlight -->
+                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                    <Setter TargetName="LayerItemBd" Property="Background">
+                        <Setter.Value>
+                            <SolidColorBrush Color="#4fffb0" Opacity="0.12"/>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter TargetName="LayerItemBd" Property="BorderBrush">
+                        <Setter.Value>
+                            <SolidColorBrush Color="#4fffb0" Opacity="0.4"/>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+                <!-- Hidden layer -->
                 <DataTrigger Binding="{Binding IsVisible}" Value="False">
                     <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.35"/>
-                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.2"/>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.15"/>
                 </DataTrigger>
+                <!-- Locked layer -->
                 <DataTrigger Binding="{Binding IsLocked}" Value="True">
-                    <Setter TargetName="LockIcon" Property="Text" Value="🔒"/>
-                    <Setter TargetName="LockIcon" Property="Opacity" Value="0.8"/>
+                    <Setter TargetName="LockOpenIcon" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="LockClosedIcon" Property="Visibility" Value="Visible"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>

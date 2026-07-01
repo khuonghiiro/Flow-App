@@ -70,6 +70,14 @@ namespace FlowMy.Models.ImageEditor
             set => SetField(ref _isLocked, value);
         }
 
+        /// <summary>Layer đang được chọn (active) trong panel.</summary>
+        private bool _isActive;
+        public bool IsActive
+        {
+            get => _isActive;
+            set => SetField(ref _isActive, value);
+        }
+
         /// <summary>Blend mode khi composite với các layer bên dưới.</summary>
         public BlendMode BlendMode
         {
@@ -174,11 +182,8 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>Tạo thumbnail nhỏ cho hiển thị trong layer list.</summary>
-        public BitmapSource GetThumbnail(int maxSize = 48)
+        private BitmapSource GenerateThumbnail(int maxSize = 48)
         {
-            if (_thumbnailCache != null)
-                return _thumbnailCache;
-
             double scale = Math.Min((double)maxSize / Width, (double)maxSize / Height);
             int thumbW = Math.Max(1, (int)(Width * scale));
             int thumbH = Math.Max(1, (int)(Height * scale));
@@ -211,16 +216,31 @@ namespace FlowMy.Models.ImageEditor
             }
 
             thumb.WritePixels(new Int32Rect(0, 0, thumbW, thumbH), dstPixels, dstStride, 0);
-            _thumbnailCache = thumb;
             thumb.Freeze();
             return thumb;
         }
 
+        /// <summary>Cached thumbnail for XAML binding. Returns a frozen copy (new object on each invalidation).</summary>
+        private BitmapSource? _cachedThumbnail;
+        public BitmapSource Thumbnail
+        {
+            get
+            {
+                _cachedThumbnail ??= GenerateThumbnail();
+                return _cachedThumbnail;
+            }
+        }
+
+        /// <summary>Backward compat: same as Thumbnail.</summary>
+        public BitmapSource GetThumbnail(int maxSize = 48) => GenerateThumbnail(maxSize);
+
         /// <summary>Đánh dấu thumbnail cần rebuild (gọi sau khi pixel thay đổi).</summary>
         public void InvalidateThumbnail()
         {
-            _thumbnailCache = null;
+            _cachedThumbnail = null;          // clear cache → next Thumbnail read generates NEW object
+            _thumbnailCache = null;           // legacy cache clear
             OnPropertyChanged(nameof(Bitmap));
+            OnPropertyChanged(nameof(Thumbnail));
         }
 
         private Int32Rect ClipRect(Int32Rect rect)

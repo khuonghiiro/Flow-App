@@ -829,10 +829,28 @@ namespace FlowMy.Views.NodeControls
             ApplyResponsiveScale();
             SyncIpToggleIcon();
 
-            _ = ImageProcessingNodeControl.UpdatePreviewAsync(
+            _ = LoadPreviewAndSyncEditor();
+        }
+
+        private async System.Threading.Tasks.Task LoadPreviewAndSyncEditor()
+        {
+            await ImageProcessingNodeControl.UpdatePreviewAsync(
                 _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
                 ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
                 _onCropClickForIp);
+
+            // Sau khi ảnh đã load xong, sync vào EditorDoc nếu đang ở mode Manual
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual
+                && _node.EditorDoc != null
+                && MainImage.Source is BitmapSource bmp)
+            {
+                var bgLayer = _node.EditorDoc.Layers.Count > 0 ? _node.EditorDoc.Layers[0] : null;
+                if (bgLayer != null)
+                {
+                    bgLayer.CopyFrom(bmp);
+                    EditorPanel.SetDocument(_node.EditorDoc);
+                }
+            }
         }
 
         private void ImageProcessingNodeContentControl_Unloaded(object sender, RoutedEventArgs e)
@@ -893,14 +911,21 @@ namespace FlowMy.Views.NodeControls
 
         private void EnsureEditorDocument()
         {
+            var imgSource = MainImage.Source as BitmapSource;
+
             if (_node.EditorDoc != null)
             {
+                // Sync background layer với ảnh hiện tại (nếu ảnh đã thay đổi)
+                if (imgSource != null && _node.EditorDoc.Layers.Count > 0)
+                {
+                    var bgLayer = _node.EditorDoc.Layers[0];
+                    bgLayer.CopyFrom(imgSource);
+                }
                 EditorPanel.SetDocument(_node.EditorDoc);
                 return;
             }
 
             // Tạo document từ ảnh hiện tại (nếu có) hoặc tạo blank
-            var imgSource = MainImage.Source as BitmapSource;
             if (imgSource != null)
             {
                 _node.EditorDoc = Models.ImageEditor.EditorDocument.FromBitmapSource(imgSource);
