@@ -336,7 +336,7 @@ namespace FlowMy.Models.Nodes
         // Element inspector: bật/tắt chế độ hover element với border và copy XPath khi Alt+Shift
         private bool _enableElementInspector;
         private bool _enableCssSelectorInspector;
-        private bool _enableSleepMode = true;
+        private bool _enableSleepMode = false;
         private int _sleepIdleTimeoutValue = 5;
         private string _sleepIdleTimeoutUnit = "s"; // "ms" | "s" | "min" | "phút"
         private int _wakeRequestToken;

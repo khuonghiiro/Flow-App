@@ -135,7 +135,7 @@ namespace FlowMy.ViewModels
         private bool _autoReloadOnDialogClose;
 
         [ObservableProperty]
-        private bool _enableSleepMode = true;
+        private bool _enableSleepMode = false;
 
         [ObservableProperty]
         private int _sleepIdleTimeoutValue = 5;

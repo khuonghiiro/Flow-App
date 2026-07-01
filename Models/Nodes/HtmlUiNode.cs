@@ -21,7 +21,7 @@ namespace FlowMy.Models.Nodes
         // khi false: user tự F5/Ctrl+R trong WebView2 để reload.
         private bool _autoReloadOnDialogClose = false;
         private bool _isViewportExpanded;
-        private bool _enableSleepMode = true;
+        private bool _enableSleepMode = false;
         private int _sleepIdleTimeoutValue = 5;
         private string _sleepIdleTimeoutUnit = "s"; // "ms" | "s" | "min" | "phút"
         private int _wakeRequestToken;
