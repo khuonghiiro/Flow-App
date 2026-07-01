@@ -1,22 +1,106 @@
 using SharpVectors.Converters;
 using SharpVectors.Renderers.Wpf;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace FlowMy
 {
-    // partial class cho phép tách ra nhiều file
+    // static class chứa tài nguyên icon
     public static partial class IconResources
     {
         // Cache SVG đã load
         private static readonly Dictionary<string, DrawingImage> _svgCache = new();
         private static readonly object _cacheLock = new object();
 
+        private static Dictionary<string, string>? _availableIcons;
+        private static readonly object _availableIconsLock = new();
+
+        /// <summary>
+        /// Bộ từ điển chứa tất cả ánh xạ icon. Nạp động (Lazy-load) từ file JSON để cải thiện đáng kể tốc độ build.
+        /// </summary>
+        public static IReadOnlyDictionary<string, string> AvailableIcons
+        {
+            get
+            {
+                if (_availableIcons == null)
+                {
+                    lock (_availableIconsLock)
+                    {
+                        if (_availableIcons == null)
+                        {
+                            _availableIcons = LoadAvailableIcons();
+                        }
+                    }
+                }
+                return _availableIcons;
+            }
+        }
+
+        private static Dictionary<string, string> LoadAvailableIcons()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "available_icons_all.json");
+                if (File.Exists(jsonPath))
+                {
+                    string json = File.ReadAllText(jsonPath);
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                    if (dict != null)
+                    {
+                        return dict;
+                    }
+                }
+                System.Diagnostics.Debug.WriteLine("[IconResources] available_icons_all.json not found or failed to parse.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[IconResources] LoadAvailableIcons error: {ex.Message}");
+            }
+            return new Dictionary<string, string>();
+        }
+
+        /// <summary>
+        /// Khởi chạy quá trình parse và cache icon dưới nền.
+        /// </summary>
+        public static void WarmUpCommonIcons()
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    // Lấy toàn bộ danh sách icon hiệu dụng (đã được trích xuất)
+                    var iconsToPreload = ExtractedIcons;
+                    if (iconsToPreload == null) return;
+
+                    System.Diagnostics.Debug.WriteLine($"[IconResources] Background warm-up started for {iconsToPreload.Count} icons.");
+                    int loadedCount = 0;
+                    foreach (var iconName in iconsToPreload.Keys)
+                    {
+                        // Hàm GetSvgImage sẽ tự động đọc, parse và freeze SVG DrawingImage dưới nền.
+                        var image = GetSvgImage(iconName);
+                        if (image != null)
+                        {
+                            loadedCount++;
+                        }
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[IconResources] Background warm-up completed! Successfully loaded {loadedCount} icons into memory.");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[IconResources] Warm-up error: {ex.Message}");
+                }
+            });
+        }
+
         // Load SVG on-demand với cache
         public static DrawingImage GetSvgImage(string iconName)
         {
-            if (string.IsNullOrEmpty(iconName) || !AvailableIcons.ContainsKey(iconName))
-                return null;
+            if (string.IsNullOrEmpty(iconName) || !IconExists(iconName))
+                return null!;
 
             lock (_cacheLock)
             {
@@ -25,7 +109,9 @@ namespace FlowMy
 
                 try
                 {
-                    string svgPath = AvailableIcons[iconName];
+                    string? svgPath = GetIconPath(iconName);
+                    if (string.IsNullOrEmpty(svgPath))
+                        return null!;
                     string pathNormalized = svgPath.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
                     string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, pathNormalized);
 

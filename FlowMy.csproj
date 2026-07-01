@@ -8,6 +8,8 @@
 		<UseWPF>true</UseWPF>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<ApplicationIcon>Assets/Images/Auto_Click.ico</ApplicationIcon>
+		<AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+		<ProduceReferenceAssembly>true</ProduceReferenceAssembly>
 
 		<!-- Version được đồng bộ cho cả AssemblyVersion và FileVersion -->
 		<AssemblyVersion>1.0.2</AssemblyVersion>
@@ -145,6 +147,10 @@
 		</Content>
 		<!-- Manifest icon do script ExtractIcons.ps1 tạo — IconSelectorUserControl đọc runtime. -->
 		<Content Include="Assets\Icons\available_icons.txt" Condition="Exists('Assets\Icons\available_icons.txt')">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<!-- Toàn bộ danh sách icon được chuyển thành JSON để tránh làm chậm thời gian build -->
+		<Content Include="Assets\available_icons_all.json" Condition="Exists('Assets\available_icons_all.json')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	  </ItemGroup>

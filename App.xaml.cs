@@ -432,6 +432,10 @@ namespace FlowMy
                     var viewCache = _serviceProvider.GetRequiredService<IViewCacheService>();
                     _logger.LogInformation("✅ ViewCacheService initialized");
 
+                    // ✅ Khởi tạo quá trình Warm-up SVG icons dưới background thread
+                    IconResources.WarmUpCommonIcons();
+                    _logger.LogInformation("✅ Background warm-up for SVG icons started");
+
                     await Task.Delay(100); // Giảm delay
                     _logger.LogInformation("✅ Basic services preloaded (NO ViewModels initialized)");
                 }
