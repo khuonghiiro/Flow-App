@@ -221,45 +221,54 @@
                     </Border>
 
                     <WrapPanel x:Name="ToolsPanel" Orientation="Horizontal" Margin="0,0,0,4">
-                        <!-- Tool buttons: custom Border with Tag, styled in code-behind -->
                         <Border x:Name="ToolBrush" Tag="Brush" ToolTip="Brush (B)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="{StaticResource ipAccent}"
+                                Margin="1" BorderThickness="1.5"
                                 MouseLeftButtonDown="ToolBtn_Click">
-                            <TextBlock Text="🖌" FontSize="14" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="B" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Border x:Name="ToolEraser" Tag="Eraser" ToolTip="Eraser (E)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent"
+                                Margin="1" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
                                 MouseLeftButtonDown="ToolBtn_Click">
-                            <TextBlock Text="🧹" FontSize="13" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="E" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Border x:Name="ToolFill" Tag="Fill" ToolTip="Fill (G)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent"
+                                Margin="1" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
                                 MouseLeftButtonDown="ToolBtn_Click">
-                            <TextBlock Text="🪣" FontSize="13" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="G" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Border x:Name="ToolEyedropper" Tag="Eyedropper" ToolTip="Eyedropper (I)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent"
+                                Margin="1" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
                                 MouseLeftButtonDown="ToolBtn_Click">
-                            <TextBlock Text="💧" FontSize="13" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="I" FontSize="14" FontStyle="Italic" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Border x:Name="ToolMove" Tag="Move" ToolTip="Move (V)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent"
+                                Margin="1" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
                                 MouseLeftButtonDown="ToolBtn_Click">
-                            <TextBlock Text="✥" FontSize="15" Foreground="{StaticResource ipText}"
+                            <TextBlock Text="V" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Border x:Name="ToolText" Tag="Text" ToolTip="Text (T)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent"
+                                Margin="1" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
                                 MouseLeftButtonDown="ToolBtn_Click">
                             <TextBlock Text="T" FontSize="14" FontWeight="Bold"
                                        Foreground="{StaticResource ipText}"
@@ -267,10 +276,12 @@
                         </Border>
                         <Border x:Name="ToolSelection" Tag="Selection" ToolTip="Selection (M)"
                                 Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent"
+                                Margin="1" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
                                 MouseLeftButtonDown="ToolBtn_Click">
-                            <Border Width="14" Height="14" BorderThickness="1.5"
-                                    BorderBrush="{StaticResource ipMuted}" CornerRadius="1"/>
+                            <TextBlock Text="M" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </WrapPanel>
 
