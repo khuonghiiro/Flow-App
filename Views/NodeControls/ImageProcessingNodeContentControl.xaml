@@ -111,19 +111,19 @@
 
                     <!-- Mode toggle: AI | Editor — segment control -->
                     <Border DockPanel.Dock="Right" Margin="6,0,6,0" VerticalAlignment="Center"
-                            Background="{DynamicResource SurfaceColor}" CornerRadius="5"
-                            Padding="2" BorderBrush="{DynamicResource BorderColor}"
+                            Background="#18FFFFFF" CornerRadius="5"
+                            Padding="2" BorderBrush="#252932"
                             BorderThickness="1">
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="BtnModeAI" Content="🤖 AI"
-                                    Style="{DynamicResource PrimaryButton}"
                                     Width="50" Height="20" FontSize="9" Padding="2,0"
                                     Cursor="Hand" ToolTip="Chế độ AI (crop + gửi xử lý)"
+                                    BorderThickness="0"
                                     Click="BtnModeAI_Click"/>
                             <Button x:Name="BtnModeEditor" Content="🎨 Editor"
-                                    Style="{DynamicResource SecondaryButton}"
                                     Width="56" Height="20" FontSize="9" Padding="2,0"
                                     Cursor="Hand" ToolTip="Chế độ chỉnh sửa thủ công"
+                                    BorderThickness="0"
                                     Click="BtnModeEditor_Click"/>
                         </StackPanel>
                     </Border>

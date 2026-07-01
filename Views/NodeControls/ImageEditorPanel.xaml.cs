@@ -230,13 +230,24 @@ namespace FlowMy.Views.NodeControls
         {
             _activeTool = toolName;
 
-            // Update visual state
-            var activeStyle = TryFindResource("EdToolBtnActive") as Style;
-            var normalStyle = TryFindResource("EdToolBtn") as Style;
+            // Update visual state — active = accent bg, inactive = transparent
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x4f, 0xff, 0xb0)); // ipAccent 20%
+            var activeBorder = new SolidColorBrush(Color.FromRgb(0x4f, 0xff, 0xb0));    // ipAccent
 
             foreach (var (name, border) in _toolBorders)
             {
-                border.Style = (name == toolName) ? activeStyle : normalStyle;
+                if (name == toolName)
+                {
+                    border.Background = activeBg;
+                    border.BorderBrush = activeBorder;
+                    border.BorderThickness = new Thickness(1.5);
+                }
+                else
+                {
+                    border.Background = Brushes.Transparent;
+                    border.BorderBrush = Brushes.Transparent;
+                    border.BorderThickness = new Thickness(1.5);
+                }
             }
         }
 

@@ -10,60 +10,22 @@
              SnapsToDevicePixels="True">
 
     <UserControl.Resources>
-        <!-- ═══ SECTION HEADER ═══ -->
-        <Style x:Key="EdSectionHeader" TargetType="Border">
-            <Setter Property="Padding" Value="8,5,8,5"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Margin" Value="0,2,0,4"/>
-        </Style>
-
-        <!-- ═══ TOOL BUTTON ═══ -->
-        <Style x:Key="EdToolBtn" TargetType="Border">
-            <Setter Property="Width" Value="32"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Margin" Value="1"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource CardHoverBackground}"/>
-                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- ═══ ACTIVE TOOL BUTTON ═══ -->
-        <Style x:Key="EdToolBtnActive" TargetType="Border" BasedOn="{StaticResource EdToolBtn}">
-            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
-        </Style>
-
-        <!-- ═══ MINI ACTION BUTTON ═══ -->
-        <Style x:Key="EdMiniBtn" TargetType="Button">
-            <Setter Property="Width" Value="24"/>
-            <Setter Property="Height" Value="24"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="Style" Value="{DynamicResource TransparentButtonStyle}"/>
-        </Style>
-
-        <!-- ═══ SLIDER STYLE (compact) ═══ -->
-        <Style x:Key="EdSlider" TargetType="Slider">
-            <Setter Property="Minimum" Value="0"/>
-            <Setter Property="Maximum" Value="100"/>
-            <Setter Property="Height" Value="18"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
+        <!-- ═══ IP PALETTE ═══ -->
+        <SolidColorBrush x:Key="ipBg" Color="#0a0c10"/>
+        <SolidColorBrush x:Key="ipSurface" Color="#111318"/>
+        <SolidColorBrush x:Key="ipSurface2" Color="#181c24"/>
+        <SolidColorBrush x:Key="ipBorder" Color="#252932"/>
+        <SolidColorBrush x:Key="ipBorderLight" Color="#2a2e3a"/>
+        <SolidColorBrush x:Key="ipText" Color="#dde3ef"/>
+        <SolidColorBrush x:Key="ipMuted" Color="#5a6072"/>
+        <SolidColorBrush x:Key="ipAccent" Color="#4fffb0"/>
+        <SolidColorBrush x:Key="ipAccent2" Color="#00cfff"/>
+        <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
+        <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
 
         <!-- ═══ LAYER ITEM ═══ -->
         <DataTemplate x:Key="LayerItemTemplate">
-            <Border x:Name="LayerItemBd" Padding="6,4" Margin="0,1" CornerRadius="4"
+            <Border x:Name="LayerItemBd" Padding="5,3" Margin="0,1" CornerRadius="3"
                     Background="Transparent" Cursor="Hand" BorderThickness="1"
                     BorderBrush="Transparent"
                     MouseLeftButtonDown="LayerItem_MouseLeftButtonDown">
@@ -71,74 +33,93 @@
                     <Style TargetType="Border">
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{DynamicResource ListItemHoverBackground}"/>
+                                <Setter Property="Background" Value="{StaticResource ipHover}"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
                 <DockPanel>
-                    <!-- Visibility eye icon -->
-                    <Border DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,5,0"
+                    <!-- Eye toggle -->
+                    <Border DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                             VerticalAlignment="Center" Cursor="Hand" CornerRadius="2"
-                            Background="Transparent"
                             MouseLeftButtonDown="LayerVisibilityToggle_Click">
-                        <TextBlock x:Name="EyeIcon" Text="👁" FontSize="11"
+                        <TextBlock x:Name="EyeIcon" Text="👁" FontSize="10"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Opacity="0.8"/>
+                                   Opacity="0.7"/>
                     </Border>
-                    <!-- Lock icon -->
-                    <Border DockPanel.Dock="Right" Width="16" Height="16" Margin="4,0,0,0"
+                    <!-- Lock -->
+                    <Border DockPanel.Dock="Right" Width="14" Height="14" Margin="3,0,0,0"
                             VerticalAlignment="Center" Cursor="Hand" CornerRadius="2"
-                            Background="Transparent"
                             MouseLeftButtonDown="LayerLockToggle_Click">
-                        <TextBlock x:Name="LockIcon" Text="🔓" FontSize="9"
+                        <TextBlock x:Name="LockIcon" Text="🔓" FontSize="8"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Opacity="0.5"/>
-                    </Border>
-                    <!-- Opacity badge -->
-                    <Border DockPanel.Dock="Right" Margin="3,0,0,0"
-                            VerticalAlignment="Center" Background="{DynamicResource SurfaceColor}"
-                            CornerRadius="3" Padding="3,1">
-                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="8"
-                                   Text="{Binding Opacity, StringFormat='{}{0:P0}'}"
-                                   VerticalAlignment="Center"/>
+                                   Opacity="0.4"/>
                     </Border>
                     <!-- Thumbnail + Name -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="26" Height="26" Margin="0,0,6,0"
-                                BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
-                                CornerRadius="3" ClipToBounds="True"
-                                Background="{DynamicResource ControlBackground}">
-                            <!-- Checkered pattern for transparency -->
-                            <Grid>
-                                <Rectangle Fill="{DynamicResource ControlBackground}"/>
-                                <Image Stretch="Uniform" Source="{Binding Bitmap}"
-                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-                            </Grid>
+                        <Border Width="22" Height="22" Margin="0,0,5,0"
+                                BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
+                                CornerRadius="2" ClipToBounds="True"
+                                Background="{StaticResource ipSurface}">
+                            <Image Stretch="Uniform" Source="{Binding Bitmap}"
+                                   RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                         </Border>
-                        <TextBlock Text="{Binding Name}"
-                                   Foreground="{DynamicResource TextBrush}"
-                                   FontSize="10.5" VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="90"/>
+                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource ipText}"
+                                   FontSize="10" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="80"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsVisible}" Value="False">
-                    <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.4"/>
-                    <Setter TargetName="EyeIcon" Property="Text" Value="👁‍🗨"/>
-                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.3"/>
+                    <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.35"/>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.2"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsLocked}" Value="True">
                     <Setter TargetName="LockIcon" Property="Text" Value="🔒"/>
-                    <Setter TargetName="LockIcon" Property="Opacity" Value="0.9"/>
+                    <Setter TargetName="LockIcon" Property="Opacity" Value="0.8"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
+        <!-- ═══ MINI ICON BUTTON (code-behind builds template to avoid theme clash) ═══ -->
+        <Style x:Key="IpMiniBtn" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource ipMuted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipHover}"/>
+                                <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipSurface2}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
-    <Border Background="{DynamicResource CardBackgroundBrush}"
-            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1,0,0,0">
+    <Border Background="{StaticResource ipBg}" BorderBrush="{StaticResource ipBorderLight}"
+            BorderThickness="1,0,0,0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
@@ -147,46 +128,39 @@
 
             <!-- ═══ SCROLLABLE CONTENT ═══ -->
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled" Padding="0">
-                <StackPanel Margin="6,4,6,8">
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="5,4,5,6">
 
-                    <!-- ════════════ LAYERS ════════════ -->
-                    <Border Style="{StaticResource EdSectionHeader}"
-                            Background="{DynamicResource HeaderBackgroundBrush}">
+                    <!-- ══════ LAYERS ══════ -->
+                    <Border Padding="6,4" CornerRadius="3" Margin="0,0,0,3"
+                            Background="{StaticResource ipSurface}">
                         <DockPanel>
-                            <TextBlock Text="LAYERS" FontSize="9" FontWeight="Bold"
-                                       Foreground="{DynamicResource TextSecondary}"
-                                       VerticalAlignment="Center"/>
-                            <!-- Layer action buttons -->
+                            <Border DockPanel.Dock="Left" BorderBrush="{StaticResource ipAccent}"
+                                    BorderThickness="2,0,0,0" Padding="5,0,0,0">
+                                <TextBlock Text="LAYERS" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource ipMuted}"
+                                           VerticalAlignment="Center"/>
+                            </Border>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                                         HorizontalAlignment="Right">
-                                <Button Content="＋" ToolTip="Thêm layer (Ctrl+Shift+N)"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        Width="22" Height="20" FontSize="13" Padding="0" Cursor="Hand"
-                                        Click="BtnAddLayer_Click"/>
-                                <Button Content="−" ToolTip="Xoá layer"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        Width="22" Height="20" FontSize="14" Padding="0" Cursor="Hand"
-                                        Click="BtnRemoveLayer_Click"/>
-                                <Rectangle Width="1" Fill="{DynamicResource BorderColor}"
-                                           Margin="3,3" VerticalAlignment="Stretch"/>
-                                <Button Content="▲" ToolTip="Di chuyển lên"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        Width="20" Height="20" FontSize="8" Padding="0" Cursor="Hand"
-                                        Click="BtnMoveUp_Click"/>
-                                <Button Content="▼" ToolTip="Di chuyển xuống"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        Width="20" Height="20" FontSize="8" Padding="0" Cursor="Hand"
-                                        Click="BtnMoveDown_Click"/>
+                                <Button Content="＋" ToolTip="Thêm layer" Style="{StaticResource IpMiniBtn}"
+                                        FontSize="13" Click="BtnAddLayer_Click"/>
+                                <Button Content="−" ToolTip="Xoá layer" Style="{StaticResource IpMiniBtn}"
+                                        FontSize="14" Click="BtnRemoveLayer_Click"/>
+                                <Rectangle Width="1" Fill="{StaticResource ipBorder}"
+                                           Margin="2,3" VerticalAlignment="Stretch"/>
+                                <Button Content="▲" ToolTip="Lên" Style="{StaticResource IpMiniBtn}"
+                                        FontSize="8" Click="BtnMoveUp_Click"/>
+                                <Button Content="▼" ToolTip="Xuống" Style="{StaticResource IpMiniBtn}"
+                                        FontSize="8" Click="BtnMoveDown_Click"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
 
                     <!-- Layer list -->
-                    <Border Background="{DynamicResource WindowBackgroundBrush}"
-                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
-                            CornerRadius="5" Padding="3" Margin="0,0,0,2"
-                            MinHeight="50" MaxHeight="220">
+                    <Border Background="{StaticResource ipSurface}" CornerRadius="4"
+                            BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
+                            Padding="2" MinHeight="40" MaxHeight="180">
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl x:Name="LayersList"
@@ -200,147 +174,150 @@
                         </ScrollViewer>
                     </Border>
 
-                    <!-- Layer opacity -->
-                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4"
-                            Padding="8,4" Margin="0,4,0,0">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Text="Opacity"
-                                       Foreground="{DynamicResource TextMuted}"
-                                       FontSize="9" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
-                                    CornerRadius="3" Padding="4,1" MinWidth="32">
-                                <TextBlock x:Name="TxtOpacityValue" Foreground="{DynamicResource TextPrimary}"
-                                           FontSize="9" VerticalAlignment="Center"
-                                           HorizontalAlignment="Center" Text="100%"
-                                           FontFamily="Consolas"/>
-                            </Border>
-                            <Slider x:Name="SliderLayerOpacity" Minimum="0" Maximum="100" Value="100"
-                                    VerticalAlignment="Center" Margin="4,0"
-                                    ValueChanged="SliderLayerOpacity_ValueChanged"/>
-                        </DockPanel>
+                    <!-- Opacity + Blend (compact) -->
+                    <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
+                            Padding="6,4" Margin="0,3,0,0">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock DockPanel.Dock="Left" Text="Opacity"
+                                           Foreground="{StaticResource ipMuted}"
+                                           FontSize="9" Width="38" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                        CornerRadius="2" Padding="3,1" MinWidth="30">
+                                    <TextBlock x:Name="TxtOpacityValue" Foreground="{StaticResource ipAccent}"
+                                               FontSize="9" FontFamily="Consolas"
+                                               HorizontalAlignment="Center" Text="100%"/>
+                                </Border>
+                                <Slider x:Name="SliderLayerOpacity" Minimum="0" Maximum="100" Value="100"
+                                        VerticalAlignment="Center" Margin="4,0"
+                                        ValueChanged="SliderLayerOpacity_ValueChanged"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="Blend"
+                                           Foreground="{StaticResource ipMuted}"
+                                           FontSize="9" Width="38" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="CmbBlendMode" Height="22" FontSize="9"
+                                          VerticalContentAlignment="Center"
+                                          SelectionChanged="CmbBlendMode_SelectionChanged">
+                                    <ComboBoxItem Content="Normal" IsSelected="True"/>
+                                    <ComboBoxItem Content="Multiply"/>
+                                    <ComboBoxItem Content="Screen"/>
+                                    <ComboBoxItem Content="Overlay"/>
+                                    <ComboBoxItem Content="Darken"/>
+                                    <ComboBoxItem Content="Lighten"/>
+                                </ComboBox>
+                            </DockPanel>
+                        </StackPanel>
                     </Border>
 
-                    <!-- Blend mode -->
-                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4"
-                            Padding="8,4" Margin="0,3,0,0">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Text="Blend"
-                                       Foreground="{DynamicResource TextMuted}"
-                                       FontSize="9" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <ComboBox x:Name="CmbBlendMode" Style="{DynamicResource BaseComboBox}"
-                                      Height="22" FontSize="9" VerticalContentAlignment="Center"
-                                      SelectionChanged="CmbBlendMode_SelectionChanged">
-                                <ComboBoxItem Content="Normal" IsSelected="True"/>
-                                <ComboBoxItem Content="Multiply"/>
-                                <ComboBoxItem Content="Screen"/>
-                                <ComboBoxItem Content="Overlay"/>
-                                <ComboBoxItem Content="Darken"/>
-                                <ComboBoxItem Content="Lighten"/>
-                            </ComboBox>
-                        </DockPanel>
+                    <!-- ══════ TOOLS ══════ -->
+                    <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
+                            Background="{StaticResource ipSurface}">
+                        <Border BorderBrush="{StaticResource ipAccent2}"
+                                BorderThickness="2,0,0,0" Padding="5,0,0,0">
+                            <TextBlock Text="TOOLS" FontSize="9" FontWeight="Bold"
+                                       Foreground="{StaticResource ipMuted}"/>
+                        </Border>
                     </Border>
 
-                    <!-- ════════════ TOOLS ════════════ -->
-                    <Border Style="{StaticResource EdSectionHeader}" Margin="0,8,0,4"
-                            Background="{DynamicResource HeaderBackgroundBrush}">
-                        <TextBlock Text="TOOLS" FontSize="9" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextSecondary}"/>
-                    </Border>
-
-                    <WrapPanel x:Name="ToolsPanel" Orientation="Horizontal" Margin="0,0,0,6">
-                        <Border x:Name="ToolBrush" Style="{StaticResource EdToolBtnActive}"
-                                ToolTip="Brush (B)" MouseLeftButtonDown="ToolBtn_Click" Tag="Brush">
-                            <TextBlock Text="🖌" FontSize="15" HorizontalAlignment="Center"
+                    <WrapPanel x:Name="ToolsPanel" Orientation="Horizontal" Margin="0,0,0,4">
+                        <!-- Tool buttons: custom Border with Tag, styled in code-behind -->
+                        <Border x:Name="ToolBrush" Tag="Brush" ToolTip="Brush (B)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="{StaticResource ipAccent}"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <TextBlock Text="🖌" FontSize="14" HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="ToolEraser" Style="{StaticResource EdToolBtn}"
-                                ToolTip="Eraser (E)" MouseLeftButtonDown="ToolBtn_Click" Tag="Eraser">
-                            <TextBlock Text="🧹" FontSize="14" HorizontalAlignment="Center"
+                        <Border x:Name="ToolEraser" Tag="Eraser" ToolTip="Eraser (E)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="Transparent"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <TextBlock Text="🧹" FontSize="13" HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="ToolFill" Style="{StaticResource EdToolBtn}"
-                                ToolTip="Fill (G)" MouseLeftButtonDown="ToolBtn_Click" Tag="Fill">
-                            <TextBlock Text="🪣" FontSize="14" HorizontalAlignment="Center"
+                        <Border x:Name="ToolFill" Tag="Fill" ToolTip="Fill (G)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="Transparent"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <TextBlock Text="🪣" FontSize="13" HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="ToolEyedropper" Style="{StaticResource EdToolBtn}"
-                                ToolTip="Eyedropper (I)" MouseLeftButtonDown="ToolBtn_Click" Tag="Eyedropper">
-                            <TextBlock Text="💧" FontSize="14" HorizontalAlignment="Center"
+                        <Border x:Name="ToolEyedropper" Tag="Eyedropper" ToolTip="Eyedropper (I)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="Transparent"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <TextBlock Text="💧" FontSize="13" HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="ToolMove" Style="{StaticResource EdToolBtn}"
-                                ToolTip="Move (V)" MouseLeftButtonDown="ToolBtn_Click" Tag="Move">
-                            <TextBlock Text="✥" FontSize="16" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource TextBrush}"/>
+                        <Border x:Name="ToolMove" Tag="Move" ToolTip="Move (V)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="Transparent"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <TextBlock Text="✥" FontSize="15" Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="ToolText" Style="{StaticResource EdToolBtn}"
-                                ToolTip="Text (T)" MouseLeftButtonDown="ToolBtn_Click" Tag="Text">
-                            <TextBlock Text="T" FontSize="15" FontWeight="Bold"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource TextBrush}"/>
+                        <Border x:Name="ToolText" Tag="Text" ToolTip="Text (T)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="Transparent"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <TextBlock Text="T" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource ipText}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="ToolSelection" Style="{StaticResource EdToolBtn}"
-                                ToolTip="Selection (M)" MouseLeftButtonDown="ToolBtn_Click" Tag="Selection">
-                            <Border Width="16" Height="16" BorderThickness="1.5"
-                                    BorderBrush="{DynamicResource TextMuted}" CornerRadius="1"
-                                    Background="Transparent">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="BorderBrush" Value="{DynamicResource TextMuted}"/>
-                                    </Style>
-                                </Border.Style>
-                            </Border>
+                        <Border x:Name="ToolSelection" Tag="Selection" ToolTip="Selection (M)"
+                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
+                                Margin="1" Background="Transparent"
+                                MouseLeftButtonDown="ToolBtn_Click">
+                            <Border Width="14" Height="14" BorderThickness="1.5"
+                                    BorderBrush="{StaticResource ipMuted}" CornerRadius="1"/>
                         </Border>
                     </WrapPanel>
 
-                    <!-- Tool properties -->
-                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4"
-                            Padding="8,5" Margin="0,0,0,2">
+                    <!-- Brush properties -->
+                    <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
+                            Padding="6,4" Margin="0,0,0,2">
                         <StackPanel>
-                            <!-- Size -->
-                            <DockPanel Margin="0,0,0,3">
+                            <DockPanel Margin="0,0,0,2">
                                 <TextBlock DockPanel.Dock="Left" Text="Size"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="9" Width="36" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
-                                        CornerRadius="3" Padding="4,1" MinWidth="28">
+                                           Foreground="{StaticResource ipMuted}"
+                                           FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                        CornerRadius="2" Padding="3,1" MinWidth="26">
                                     <TextBlock x:Name="TxtBrushSize" FontSize="9"
-                                               Foreground="{DynamicResource TextPrimary}"
-                                               HorizontalAlignment="Center" Text="10"
-                                               FontFamily="Consolas"/>
+                                               Foreground="{StaticResource ipAccent2}"
+                                               FontFamily="Consolas" HorizontalAlignment="Center"
+                                               Text="10"/>
                                 </Border>
                                 <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="10"
                                         VerticalAlignment="Center" Margin="4,0"
                                         ValueChanged="SliderBrushSize_ValueChanged"/>
                             </DockPanel>
-                            <!-- Hardness -->
-                            <DockPanel Margin="0,0,0,3">
+                            <DockPanel Margin="0,0,0,2">
                                 <TextBlock DockPanel.Dock="Left" Text="Hard"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="9" Width="36" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
-                                        CornerRadius="3" Padding="4,1" MinWidth="28">
+                                           Foreground="{StaticResource ipMuted}"
+                                           FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                        CornerRadius="2" Padding="3,1" MinWidth="26">
                                     <TextBlock x:Name="TxtBrushHardness" FontSize="9"
-                                               Foreground="{DynamicResource TextPrimary}"
-                                               HorizontalAlignment="Center" Text="100%"
-                                               FontFamily="Consolas"/>
+                                               Foreground="{StaticResource ipAccent2}"
+                                               FontFamily="Consolas" HorizontalAlignment="Center"
+                                               Text="100%"/>
                                 </Border>
                                 <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="100"
                                         VerticalAlignment="Center" Margin="4,0"
                                         ValueChanged="SliderBrushHardness_ValueChanged"/>
                             </DockPanel>
-                            <!-- Flow -->
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="Flow"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="9" Width="36" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{DynamicResource WindowBackgroundBrush}"
-                                        CornerRadius="3" Padding="4,1" MinWidth="28">
+                                           Foreground="{StaticResource ipMuted}"
+                                           FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                        CornerRadius="2" Padding="3,1" MinWidth="26">
                                     <TextBlock x:Name="TxtBrushFlow" FontSize="9"
-                                               Foreground="{DynamicResource TextPrimary}"
-                                               HorizontalAlignment="Center" Text="100%"
-                                               FontFamily="Consolas"/>
+                                               Foreground="{StaticResource ipAccent2}"
+                                               FontFamily="Consolas" HorizontalAlignment="Center"
+                                               Text="100%"/>
                                 </Border>
                                 <Slider x:Name="SliderBrushFlow" Minimum="1" Maximum="100" Value="100"
                                         VerticalAlignment="Center" Margin="4,0"
@@ -349,93 +326,81 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- ════════════ COLOR ════════════ -->
-                    <Border Style="{StaticResource EdSectionHeader}" Margin="0,6,0,4"
-                            Background="{DynamicResource HeaderBackgroundBrush}">
-                        <TextBlock Text="COLOR" FontSize="9" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextSecondary}"/>
+                    <!-- ══════ COLOR ══════ -->
+                    <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
+                            Background="{StaticResource ipSurface}">
+                        <Border BorderBrush="#ff6b6b" BorderThickness="2,0,0,0" Padding="5,0,0,0">
+                            <TextBlock Text="COLOR" FontSize="9" FontWeight="Bold"
+                                       Foreground="{StaticResource ipMuted}"/>
+                        </Border>
                     </Border>
 
-                    <Border Background="{DynamicResource SurfaceColor}" CornerRadius="5"
-                            Padding="8,6" Margin="0,0,0,4">
-                        <StackPanel>
-                            <DockPanel Margin="0,0,0,6">
-                                <!-- FG/BG stacked preview -->
-                                <Grid DockPanel.Dock="Left" Width="42" Height="42" Margin="0,0,10,0">
-                                    <!-- BG color (behind, offset) -->
-                                    <Border x:Name="BgColorBorder" Width="26" Height="26"
-                                            Background="White" CornerRadius="4"
-                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1.5"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                            Cursor="Hand" ToolTip="Background color"
-                                            MouseLeftButtonDown="BgColorBorder_MouseLeftButtonDown">
-                                        <Border.Effect>
-                                            <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.3"/>
-                                        </Border.Effect>
-                                    </Border>
-                                    <!-- FG color (front, offset) -->
-                                    <Border x:Name="FgColorBorder" Width="26" Height="26"
-                                            Background="Black" CornerRadius="4"
-                                            BorderBrush="{DynamicResource TextPrimary}" BorderThickness="2"
-                                            HorizontalAlignment="Left" VerticalAlignment="Top"
-                                            Cursor="Hand" ToolTip="Foreground color"
-                                            MouseLeftButtonDown="FgColorBorder_MouseLeftButtonDown">
-                                        <Border.Effect>
-                                            <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.4"/>
-                                        </Border.Effect>
-                                    </Border>
-                                </Grid>
-                                <!-- Swap / Reset -->
-                                <StackPanel VerticalAlignment="Center">
-                                    <Button Content="⇄ Swap" ToolTip="Hoán đổi FG ↔ BG (X)"
-                                            Style="{DynamicResource TransparentButtonStyle}"
-                                            Height="20" FontSize="9" Padding="4,0" Cursor="Hand"
-                                            HorizontalContentAlignment="Left"
-                                            Click="BtnSwapColors_Click"/>
-                                    <Button Content="◻ Reset" ToolTip="Reset về Đen/Trắng (D)"
-                                            Style="{DynamicResource TransparentButtonStyle}"
-                                            Height="20" FontSize="9" Padding="4,0" Cursor="Hand"
-                                            HorizontalContentAlignment="Left"
-                                            Click="BtnResetColors_Click"/>
-                                </StackPanel>
-                            </DockPanel>
-                            <!-- Color hex display -->
-                            <Border Background="{DynamicResource WindowBackgroundBrush}"
-                                    CornerRadius="3" Padding="6,3">
-                                <TextBlock x:Name="TxtColorHex" Text="#000000"
-                                           Foreground="{DynamicResource TextBrush}" FontSize="10"
-                                           FontFamily="Consolas" HorizontalAlignment="Center"/>
-                            </Border>
-                        </StackPanel>
+                    <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
+                            Padding="6,5">
+                        <DockPanel>
+                            <!-- FG/BG stacked -->
+                            <Grid DockPanel.Dock="Left" Width="38" Height="38" Margin="0,0,8,0">
+                                <Border x:Name="BgColorBorder" Width="24" Height="24"
+                                        Background="White" CornerRadius="3"
+                                        BorderBrush="{StaticResource ipBorder}" BorderThickness="1.5"
+                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                        Cursor="Hand" ToolTip="Background color"
+                                        MouseLeftButtonDown="BgColorBorder_MouseLeftButtonDown"/>
+                                <Border x:Name="FgColorBorder" Width="24" Height="24"
+                                        Background="Black" CornerRadius="3"
+                                        BorderBrush="{StaticResource ipText}" BorderThickness="2"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Cursor="Hand" ToolTip="Foreground color"
+                                        MouseLeftButtonDown="FgColorBorder_MouseLeftButtonDown"/>
+                            </Grid>
+                            <StackPanel VerticalAlignment="Center">
+                                <Button Content="⇄ Swap" ToolTip="Hoán đổi (X)"
+                                        Style="{StaticResource IpMiniBtn}"
+                                        Width="Auto" Padding="4,0" FontSize="9"
+                                        HorizontalContentAlignment="Left"
+                                        Click="BtnSwapColors_Click"/>
+                                <Button Content="◻ Reset" ToolTip="Đen/Trắng (D)"
+                                        Style="{StaticResource IpMiniBtn}"
+                                        Width="Auto" Padding="4,0" FontSize="9"
+                                        HorizontalContentAlignment="Left"
+                                        Click="BtnResetColors_Click"/>
+                                <Border Background="{StaticResource ipSurface}" CornerRadius="2"
+                                        Padding="4,1" Margin="0,2,0,0">
+                                    <TextBlock x:Name="TxtColorHex" Text="#000000"
+                                               Foreground="{StaticResource ipAccent}" FontSize="9"
+                                               FontFamily="Consolas"/>
+                                </Border>
+                            </StackPanel>
+                        </DockPanel>
                     </Border>
 
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ═══ BOTTOM: UNDO/REDO BAR ═══ -->
-            <Border Grid.Row="1" Background="{DynamicResource HeaderBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0"
-                    Padding="6,3">
+            <!-- ═══ BOTTOM: UNDO/REDO ═══ -->
+            <Border Grid.Row="1" Padding="5,3"
+                    BorderBrush="{StaticResource ipBorderLight}" BorderThickness="0,1,0,0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#141820" Offset="0"/>
+                        <GradientStop Color="#0e1218" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
                 <DockPanel>
                     <TextBlock x:Name="TxtHistoryStatus" DockPanel.Dock="Right"
-                               Foreground="{DynamicResource TextMuted}" FontSize="8"
+                               Foreground="{StaticResource ipMuted}" FontSize="8"
                                VerticalAlignment="Center" FontFamily="Consolas"
                                Text="0 steps"/>
                     <StackPanel Orientation="Horizontal">
                         <Button x:Name="BtnUndo" ToolTip="Undo (Ctrl+Z)"
-                                Style="{DynamicResource TransparentButtonStyle}"
-                                Width="26" Height="24" Padding="0" Cursor="Hand"
-                                Margin="0,0,2,0" IsEnabled="False"
-                                Click="BtnUndo_Click">
-                            <TextBlock Text="↶" FontSize="14" VerticalAlignment="Center"
-                                       HorizontalAlignment="Center"/>
+                                Style="{StaticResource IpMiniBtn}" Width="24" Height="22"
+                                IsEnabled="False" Click="BtnUndo_Click">
+                            <TextBlock Text="↶" FontSize="13" Foreground="{StaticResource ipAccent}"/>
                         </Button>
                         <Button x:Name="BtnRedo" ToolTip="Redo (Ctrl+Y)"
-                                Style="{DynamicResource TransparentButtonStyle}"
-                                Width="26" Height="24" Padding="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}" Width="24" Height="22"
                                 IsEnabled="False" Click="BtnRedo_Click">
-                            <TextBlock Text="↷" FontSize="14" VerticalAlignment="Center"
-                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="↷" FontSize="13" Foreground="{StaticResource ipAccent}"/>
                         </Button>
                     </StackPanel>
                 </DockPanel>

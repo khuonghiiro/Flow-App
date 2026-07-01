@@ -929,12 +929,18 @@ namespace FlowMy.Views.NodeControls
 
         private void SyncModeButtonStyles()
         {
-            var activeStyle = Application.Current.TryFindResource("PrimaryButton") as Style;
-            var inactiveStyle = Application.Current.TryFindResource("SecondaryButton") as Style;
-
             bool isAI = _node.ProcessingMode == Models.Nodes.ImageProcessingMode.AI;
-            BtnModeAI.Style = isAI ? activeStyle : inactiveStyle;
-            BtnModeEditor.Style = isAI ? inactiveStyle : activeStyle;
+
+            // Active: accent bg + white text; Inactive: dark + muted
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x40, 0x4f, 0xff, 0xb0));
+            var activeFg = new SolidColorBrush(Color.FromRgb(0xdd, 0xe3, 0xef));
+            var inactiveBg = new SolidColorBrush(Color.FromArgb(0x18, 0xff, 0xff, 0xff));
+            var inactiveFg = new SolidColorBrush(Color.FromRgb(0x5a, 0x60, 0x72));
+
+            BtnModeAI.Background = isAI ? activeBg : inactiveBg;
+            BtnModeAI.Foreground = isAI ? activeFg : inactiveFg;
+            BtnModeEditor.Background = isAI ? inactiveBg : activeBg;
+            BtnModeEditor.Foreground = isAI ? inactiveFg : activeFg;
 
             // AI mode có IP toggle, Editor mode ẩn nó
             IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;
