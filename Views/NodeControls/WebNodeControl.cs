@@ -427,9 +427,13 @@ namespace FlowMy.Views.NodeControls
             // Áp dụng GPU optimization cho grid (tự động kiểm tra GPU)
             GpuOptimizationHelper.ApplyToElement(grid);
 
-            WebView2 webView = null!;
-            Action InitializeWebView = null!;
+            var webView = new WebView2
+            {
+                Visibility = Visibility.Collapsed
+            };
+            Grid.SetRow(webView, 1);
             var isDisposed = false;
+            Action recreateWebView = null!;
 
             // JS injection bridge: when workflow runs WebNodeExecutor it sets node.PendingJavaScript.
             // WebNodeControl listens and executes the script into WebView2.
@@ -1120,7 +1124,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         border.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            InitializeWebView();
+                            recreateWebView?.Invoke();
                         }), DispatcherPriority.Normal);
                     }
                 };
@@ -2280,42 +2284,17 @@ if (window.__elementInspector) {
                 }
             }
 
-            InitializeWebView = () =>
+            RoutedEventHandler loadedHandler = null!;
+            loadedHandler = async (s, e) =>
             {
-                if (webView != null)
+                var webViewForInit = (WebView2)s;
+                try
                 {
-                    grid.Children.Remove(webView);
-                    try { webView.Dispose(); } catch { }
-                    webView = null!;
-                }
+                    if (isDisposed || !border.IsLoaded)
+                        return;
 
-                webView = new WebView2
-                {
-                    Visibility = Visibility.Collapsed
-                };
-                Grid.SetRow(webView, 1);
-                grid.Children.Add(webView);
-
-                webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
-                webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
-
-                if (GpuDetectionHelper.IsGpuAvailable)
-                {
-                    RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
-                    RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
-                    webView.CacheMode = null; // Tránh ghosting
-                }
-
-                var webViewForInit = webView;
-                webViewForInit.Loaded += async (s, e) =>
-                {
-                    try
+                    if (webViewForInit.CoreWebView2 == null)
                     {
-                        if (isDisposed || !border.IsLoaded)
-                            return;
-
-                        if (webViewForInit.CoreWebView2 == null)
-                        {
 
                         if (ShouldUseViewportLazyInit(border))
                         {
@@ -4279,10 +4258,38 @@ if (window.__elementInspector) {
                     }
                 }
             };
+
+            recreateWebView = () =>
+            {
+                if (webView != null)
+                {
+                    grid.Children.Remove(webView);
+                    try { webView.Dispose(); } catch { }
+                    webView = null!;
+                }
+
+                webView = new WebView2
+                {
+                    Visibility = Visibility.Collapsed
+                };
+                Grid.SetRow(webView, 1);
+                grid.Children.Add(webView);
+
+                webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+                webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+
+                if (GpuDetectionHelper.IsGpuAvailable)
+                {
+                    RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
+                    RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
+                    webView.CacheMode = null; // Tránh ghosting
+                }
+
+                webView.Loaded += loadedHandler;
             };
 
-            // Gọi khởi tạo WebView2 lần đầu
-            InitializeWebView();
+            // Đăng ký Loaded event cho webView ban đầu
+            webView.Loaded += loadedHandler;
 
             string ResolveUrlPattern(WebNode webNode, string pattern)
             {

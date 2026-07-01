@@ -106,7 +106,7 @@
                                        FontSize="10" Margin="0,0,0,4"/>
                             <ComboBox SelectedValue="{Binding CacheMode, Mode=TwoWay}"
                                       SelectedValuePath="Tag"
-                                      Style="{DynamicResource BaseComboBox}" Height="32" Margin="0,0,0,8}">
+                                      Style="{DynamicResource BaseComboBox}" Height="32" Margin="0,0,0,8">
                                 <ComboBoxItem Content="Dùng chung (Shared Cookie/Session)" Tag="Shared"/>
                                 <ComboBoxItem Content="Độc lập (Isolated Profile riêng)" Tag="Isolated"/>
                             </ComboBox>
