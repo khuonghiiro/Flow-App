@@ -698,7 +698,11 @@ namespace FlowMy.Views.NodeControls
                 CropsLabelText.LayoutTransform = identity;
                 RenderLabelText.LayoutTransform = identity;
                 EditorPanel.LayoutTransform = new ScaleTransform(typoMul, typoMul);
-                TextOptions.SetTextFormattingMode(EditorPanel, typoMul == 1.0 ? TextFormattingMode.Display : TextFormattingMode.Ideal);
+                
+                var formatMode = typoMul == 1.0 ? TextFormattingMode.Display : TextFormattingMode.Ideal;
+                TextOptions.SetTextFormattingMode(EditorPanel, formatMode);
+                TextOptions.SetTextFormattingMode(RightMenuBorder, formatMode);
+                TextOptions.SetTextFormattingMode(IpProcessorHost, formatMode);
 
                 int Sz(double b) => Math.Max(1, (int)Math.Round(b * typoMul));
                 double leftBtnMul = typoMul * (_widgetExpandedFullscreen ? 0.78 : 1.0);
@@ -775,6 +779,8 @@ namespace FlowMy.Views.NodeControls
             IpProcessorHost.LayoutTransform = topBarScale;
             var ipScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
             RightMenuBorder.LayoutTransform = ipScale;
+            TextOptions.SetTextFormattingMode(RightMenuBorder, TextFormattingMode.Ideal);
+            TextOptions.SetTextFormattingMode(IpProcessorHost, TextFormattingMode.Ideal);
             
             // Tính toán tỉ lệ co dãn của EditorPanel để vừa khít chiều rộng cột 2 (220px)
             double editorScaleVal = Math.Max(0.5, (_node.Width * 0.32) / 220.0);
@@ -920,6 +926,12 @@ namespace FlowMy.Views.NodeControls
                 // Ẩn AI panels, hiện Editor
                 RightMenuBorder.Visibility = Visibility.Collapsed;
                 EditorPanel.Visibility = Visibility.Visible;
+
+                // Tắt cột Image Processor nếu đang mở
+                if (_ipColumnVisible)
+                {
+                    ToggleIPColumn();
+                }
 
                 // Tạo EditorDocument nếu chưa có
                 EnsureEditorDocument();
