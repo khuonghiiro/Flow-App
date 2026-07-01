@@ -47,9 +47,9 @@ namespace FlowMy.ViewModels
         // ─── Display helpers ───
 
         /// <summary>Text hiển thị cho speed override (-1 = "Gốc")</summary>
-        public string MouseMoveDelayDisplay => _mouseMoveDelayMs < 0 ? "Gốc" : $"{_mouseMoveDelayMs}ms";
-        public string KeyPressDelayDisplay => _keyPressDelayMs < 0 ? "Gốc" : $"{_keyPressDelayMs}ms";
-        public string MouseClickDelayDisplay => _mouseClickDelayMs < 0 ? "Gốc" : $"{_mouseClickDelayMs}ms";
-        public string MouseScrollDelayDisplay => _mouseScrollDelayMs < 0 ? "Gốc" : $"{_mouseScrollDelayMs}ms";
+        public string MouseMoveDelayDisplay => MouseMoveDelayMs < 0 ? "Gốc" : $"{MouseMoveDelayMs}ms";
+        public string KeyPressDelayDisplay => KeyPressDelayMs < 0 ? "Gốc" : $"{KeyPressDelayMs}ms";
+        public string MouseClickDelayDisplay => MouseClickDelayMs < 0 ? "Gốc" : $"{MouseClickDelayMs}ms";
+        public string MouseScrollDelayDisplay => MouseScrollDelayMs < 0 ? "Gốc" : $"{MouseScrollDelayMs}ms";
     }
 }

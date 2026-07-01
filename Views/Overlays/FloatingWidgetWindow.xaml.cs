@@ -511,9 +511,9 @@ public partial class FloatingWidgetWindow : Window
         _isExpanded = true;
         MarkActivity();
 
-        // Only show ContentArea for nodes with window UI (Web, HtmlUi)
+        // Only show ContentArea for nodes with window UI (Web, HtmlUi, Video, Image)
         // For other nodes (like Start), only show title bar
-        var hasWindowUI = _node is WebNode || _node is HtmlUiNode;
+        var hasWindowUI = _node is WebNode || _node is HtmlUiNode || _node is VideoProcessingNode || _node is ImageProcessingNode;
         if (!hasWindowUI)
         {
             ContentArea.Visibility = Visibility.Collapsed;

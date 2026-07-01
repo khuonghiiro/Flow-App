@@ -68,7 +68,7 @@ namespace FlowMy.ViewModels
         /// Empty, NotEmpty, True, False.
         /// </summary>
         public bool IsRightSideVisible =>
-            !_isElse &&
+            !IsElse &&
             Operator != ConditionOperator.Empty &&
             Operator != ConditionOperator.NotEmpty &&
             Operator != ConditionOperator.True &&
@@ -161,7 +161,7 @@ namespace FlowMy.ViewModels
         private void LoadSubConditions(ObservableCollection<WorkflowDataSourceOption> availableSourceNodes)
         {
             SubConditions.Clear();
-            if (_isElse) return;
+            if (IsElse) return;
 
             var exprs = Branch.SubConditions;
             var ops = Branch.OperatorsBetween;
@@ -195,7 +195,7 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void AddWithOr()
         {
-            if (_isElse) return;
+            if (IsElse) return;
             var newExpr = new ConditionExpression();
             if (Branch.SubConditions == null) Branch.SubConditions = new System.Collections.Generic.List<ConditionExpression>();
             if (Branch.OperatorsBetween == null) Branch.OperatorsBetween = new System.Collections.Generic.List<LogicalOperator>();
@@ -207,7 +207,7 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void AddWithAnd()
         {
-            if (_isElse) return;
+            if (IsElse) return;
             var newExpr = new ConditionExpression();
             if (Branch.SubConditions == null) Branch.SubConditions = new System.Collections.Generic.List<ConditionExpression>();
             if (Branch.OperatorsBetween == null) Branch.OperatorsBetween = new System.Collections.Generic.List<LogicalOperator>();
@@ -219,7 +219,7 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void RemoveSubCondition(SubConditionViewModel? sub)
         {
-            if (sub == null || _isElse) return;
+            if (sub == null || IsElse) return;
             var idx = SubConditions.IndexOf(sub);
             if (idx < 1) return;
             SubConditions.Remove(sub);

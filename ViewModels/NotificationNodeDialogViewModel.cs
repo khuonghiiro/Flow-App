@@ -134,9 +134,9 @@ namespace FlowMy.ViewModels
         public void RefreshAllSources()
         {
             // Lưu lại các OutputKey đang được chọn TRƯỚC khi refresh, để restore sau
-            var savedTitleKey    = _notificationNode.TitleInput?.SourceOutputKey    ?? _titleSelectedSourceOutputKey;
-            var savedContentKey  = _notificationNode.ContentInput?.SourceOutputKey  ?? _contentSelectedSourceOutputKey;
-            var savedDurationKey = _notificationNode.DurationInput?.SourceOutputKey ?? _durationSelectedSourceOutputKey;
+            var savedTitleKey    = _notificationNode.TitleInput?.SourceOutputKey    ?? TitleSelectedSourceOutputKey;
+            var savedContentKey  = _notificationNode.ContentInput?.SourceOutputKey  ?? ContentSelectedSourceOutputKey;
+            var savedDurationKey = _notificationNode.DurationInput?.SourceOutputKey ?? DurationSelectedSourceOutputKey;
 
             TitleSourceNodes.Clear();
             ContentSourceNodes.Clear();
