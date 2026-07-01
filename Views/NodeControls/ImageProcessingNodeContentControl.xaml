@@ -94,7 +94,7 @@
 
         <!-- Top bar -->
         <Border x:Name="TopMenuBorder" Grid.Row="0" Grid.ColumnSpan="4"
-                Background="#2DFFFFFF" Padding="8,4,8,4">
+                Background="#2DFFFFFF" Padding="8,4,8,4" Panel.ZIndex="10">
             <Border Background="Transparent" IsHitTestVisible="True">
                 <DockPanel LastChildFill="True">
                     <Button x:Name="IpToggleButton" DockPanel.Dock="Right"

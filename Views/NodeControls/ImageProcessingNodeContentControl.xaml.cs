@@ -687,8 +687,7 @@ namespace FlowMy.Views.NodeControls
                 if (_widgetExpandedFullscreen)
                     typoMul = Math.Max(typoMul, 1.04);
 
-                double leftStarMul = _widgetExpandedFullscreen ? 0.68 : 0.92;
-                RootLayout.ColumnDefinitions[0].Width = new GridLength(0.6 * leftStarMul, GridUnitType.Star);
+                RootLayout.ColumnDefinitions[0].Width = GridLength.Auto;
 
                 var identity = Transform.Identity;
                 TopMenuBorder.LayoutTransform = identity;
@@ -698,6 +697,7 @@ namespace FlowMy.Views.NodeControls
                 PlaceholderTextBlock.LayoutTransform = identity;
                 CropsLabelText.LayoutTransform = identity;
                 RenderLabelText.LayoutTransform = identity;
+                EditorPanel.LayoutTransform = identity;
 
                 int Sz(double b) => Math.Max(1, (int)Math.Round(b * typoMul));
                 double leftBtnMul = typoMul * (_widgetExpandedFullscreen ? 0.78 : 1.0);
@@ -772,7 +772,9 @@ namespace FlowMy.Views.NodeControls
             var topBarScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
             TopMenuBorder.LayoutTransform = topBarScale;
             IpProcessorHost.LayoutTransform = topBarScale;
-            RightMenuBorder.LayoutTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
+            var ipScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
+            RightMenuBorder.LayoutTransform = ipScale;
+            EditorPanel.LayoutTransform = ipScale;
             var canvasIpTextTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
             PlaceholderTextBlock.LayoutTransform = canvasIpTextTransform;
             CropsLabelText.LayoutTransform = Transform.Identity;
