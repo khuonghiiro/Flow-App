@@ -47,6 +47,10 @@ namespace FlowMy.Views.NodeControls
         /// <summary>Tool name hiện tại (Brush, Eraser, Fill, etc.).</summary>
         public string ActiveToolName => _activeTool;
 
+        public double BrushSize => SliderBrushSize.Value;
+        public double BrushHardness => SliderBrushHardness.Value;
+        public double BrushFlow => SliderBrushFlow.Value;
+
         /// <summary>Gán document để panel bind vào.</summary>
         public void SetDocument(EditorDocument? doc)
         {
@@ -523,6 +527,117 @@ namespace FlowMy.Views.NodeControls
         private void BtnRedo_Click(object sender, RoutedEventArgs e)
         {
             _doc?.History.Redo();
+            OnDocumentModified();
+        }
+
+        private void BtnAdj_Click(object sender, RoutedEventArgs e)
+        {
+            if (_doc?.ActiveLayer == null || _doc.ActiveLayer.IsLocked || !_doc.ActiveLayer.IsVisible) return;
+            if (sender is not Button btn || btn.Tag is not string action) return;
+
+            // Xử lý xoay/lật toàn bộ canvas dùng lệnh TransformDocumentCommand
+            if (action == "Rotate90" || action == "FlipH" || action == "FlipV")
+            {
+                int oldW = _doc.Width;
+                int oldH = _doc.Height;
+                var oldState = new List<(EditorLayer layer, byte[] pixels, int w, int h)>();
+                foreach (var layer in _doc.Layers)
+                {
+                    int s = layer.Width * 4;
+                    var px = new byte[s * layer.Height];
+                    layer.Bitmap.CopyPixels(px, s, 0);
+                    oldState.Add((layer, px, layer.Width, layer.Height));
+                }
+
+                // Thực hiện biến đổi
+                Transform tf;
+                if (action == "Rotate90")
+                {
+                    _doc.Width = oldH;
+                    _doc.Height = oldW;
+                    tf = new RotateTransform(90);
+                }
+                else if (action == "FlipH")
+                {
+                    tf = new ScaleTransform(-1, 1);
+                }
+                else
+                {
+                    tf = new ScaleTransform(1, -1);
+                }
+
+                foreach (var layer in _doc.Layers)
+                {
+                    layer.ApplyTransform(tf);
+                }
+
+                int newW = _doc.Width;
+                int newH = _doc.Height;
+                var newState = new List<(EditorLayer layer, byte[] pixels, int w, int h)>();
+                foreach (var layer in _doc.Layers)
+                {
+                    int s = layer.Width * 4;
+                    var px = new byte[s * layer.Height];
+                    layer.Bitmap.CopyPixels(px, s, 0);
+                    newState.Add((layer, px, layer.Width, layer.Height));
+                }
+
+                var tCmd = new TransformDocumentCommand(_doc, oldW, oldH, newW, newH, oldState, newState);
+                _doc.History.Execute(tCmd);
+                _doc.RaisePropertyChanged(nameof(EditorDocument.Width));
+                _doc.RaisePropertyChanged(nameof(EditorDocument.Height));
+                OnDocumentModified();
+                return;
+            }
+
+            // Các bộ lọc hiệu ứng điểm ảnh (không thay đổi kích thước)
+            var activeLayer = _doc.ActiveLayer;
+            int stride = activeLayer.Width * 4;
+            byte[] oldPixels = new byte[stride * activeLayer.Height];
+            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+            using (System.Drawing.Bitmap bmp = Utils.ImageAdjustments.WriteableBitmapToBitmap(activeLayer.Bitmap))
+            {
+                switch (action)
+                {
+                    case "Grayscale":
+                        Utils.ImageAdjustments.ApplyGrayscale(bmp);
+                        break;
+                    case "Invert":
+                        Utils.ImageAdjustments.ApplyInvert(bmp);
+                        break;
+                    case "Sepia":
+                        Utils.ImageAdjustments.ApplySepia(bmp);
+                        break;
+                    case "Blur":
+                        Utils.ImageAdjustments.ApplyBlur(bmp);
+                        break;
+                    case "Sharpen":
+                        Utils.ImageAdjustments.ApplySharpen(bmp);
+                        break;
+                    case "Lighten":
+                        Utils.ImageAdjustments.ApplyBrightness(bmp, 0.1f);
+                        break;
+                    case "Darken":
+                        Utils.ImageAdjustments.ApplyBrightness(bmp, -0.1f);
+                        break;
+                    case "ContrastUp":
+                        Utils.ImageAdjustments.ApplyContrast(bmp, 1.1f);
+                        break;
+                    case "ContrastDown":
+                        Utils.ImageAdjustments.ApplyContrast(bmp, 0.9f);
+                        break;
+                }
+                Utils.ImageAdjustments.BitmapToWriteableBitmap(bmp, activeLayer.Bitmap);
+            }
+
+            byte[] newPixels = new byte[stride * activeLayer.Height];
+            activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+
+            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+            _doc.History.Execute(cmd);
+
+            activeLayer.InvalidateThumbnail();
             OnDocumentModified();
         }
 

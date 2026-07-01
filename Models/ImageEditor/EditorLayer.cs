@@ -36,11 +36,11 @@ namespace FlowMy.Models.ImageEditor
         public string Id { get; }
 
         /// <summary>Kích thước layer (luôn bằng document).</summary>
-        public int Width { get; }
-        public int Height { get; }
+        public int Width { get; internal set; }
+        public int Height { get; internal set; }
 
         /// <summary>Bitmap pixel data (BGRA32, cùng kích thước document).</summary>
-        public WriteableBitmap Bitmap { get; }
+        public WriteableBitmap Bitmap { get; internal set; }
 
         /// <summary>Tên hiển thị.</summary>
         public string Name
@@ -283,5 +283,16 @@ namespace FlowMy.Models.ImageEditor
             return true;
         }
         #endregion
+        /// <summary>Áp dụng xoay/lật đối với Bitmap của layer.</summary>
+        public void ApplyTransform(Transform transform)
+        {
+            var transformed = new TransformedBitmap(Bitmap, transform);
+            var converted = new FormatConvertedBitmap(transformed, PixelFormats.Bgra32, null, 0);
+            
+            Width = converted.PixelWidth;
+            Height = converted.PixelHeight;
+            Bitmap = new WriteableBitmap(converted);
+            InvalidateThumbnail();
+        }
     }
 }

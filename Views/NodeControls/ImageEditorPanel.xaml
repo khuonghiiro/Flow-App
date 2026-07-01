@@ -27,6 +27,110 @@
         <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
         <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
 
+        <!-- ═══ COMBOBOX STYLE ═══ -->
+        <Style x:Key="IpComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Background" Value="{StaticResource ipSurface}"/>
+            <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,0,4,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3"/>
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="6,0,20,0"
+                                              VerticalAlignment="Center"/>
+                            <TextBlock Text="▾"
+                                       HorizontalAlignment="Right"
+                                       Margin="0,0,6,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource ipMuted}"
+                                       FontSize="10"/>
+                            <ToggleButton x:Name="ToggleButton"
+                                          IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide">
+                                <Border Background="{StaticResource ipSurface2}"
+                                        BorderBrush="{StaticResource ipBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        MaxHeight="200"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <ScrollViewer SnapsToDevicePixels="True">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ipAccent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+                        <Setter Property="Background" Value="{StaticResource ipSurface2}"/>
+                        <Setter Property="Padding" Value="8,4"/>
+                        <Setter Property="FontSize" Value="9"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="ItemBd"
+                                            Background="{TemplateBinding Background}"
+                                            Padding="{TemplateBinding Padding}"
+                                            CornerRadius="2">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="{StaticResource ipHover}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="{StaticResource ipActiveItem}"/>
+                                            <Setter Property="Foreground" Value="{StaticResource ipAccent}"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ═══ LAYER ITEM (Photoshop-style) ═══ -->
         <DataTemplate x:Key="LayerItemTemplate">
             <Border x:Name="LayerItemBd" Padding="4,4" Margin="0,1" CornerRadius="4"
@@ -156,6 +260,48 @@
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ═══ ADJUSTMENT BUTTON STYLE ═══ -->
+        <Style x:Key="IpAdjBtn" TargetType="Button">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="8.5"/>
+            <Setter Property="Background" Value="{StaticResource ipSurface2}"/>
+            <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipHover}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ipAccent}"/>
+                                <Setter Property="Foreground" Value="{StaticResource ipAccent}"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ipAccent2}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipBg}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ipAccent2}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -357,7 +503,7 @@
                         Foreground="{StaticResource ipMuted}"
                         FontSize="9" Width="38" VerticalAlignment="Center"/>
                                 <ComboBox x:Name="CmbBlendMode" Height="22" FontSize="9"
-                       VerticalContentAlignment="Center"
+                       VerticalContentAlignment="Center" Style="{StaticResource IpComboBoxStyle}"
                        SelectionChanged="CmbBlendMode_SelectionChanged">
                                     <ComboBoxItem Content="Normal" IsSelected="True"/>
                                     <ComboBoxItem Content="Multiply"/>
@@ -419,6 +565,104 @@
                                 </StackPanel>
                             </DockPanel>
 
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══════ ADJUSTMENTS ══════ -->
+                    <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
+                            Background="{StaticResource ipSurface}">
+                        <StackPanel>
+                            <Border BorderBrush="#00cfff" BorderThickness="2,0,0,0" Padding="5,0,0,3">
+                                <TextBlock Text="ADJUSTMENTS" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource ipMuted}"/>
+                            </Border>
+
+                            <UniformGrid Columns="2" Margin="0,2,0,0">
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Grayscale" ToolTip="Chuyển ảnh sang đen trắng">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half duotone'}"/>
+                                        <TextBlock Text="Grayscale" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Invert" ToolTip="Đảo ngược màu sắc">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half-stroke duotone'}"/>
+                                        <TextBlock Text="Invert" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Sepia" ToolTip="Áp dụng hiệu ứng màu hoài cổ">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone'}"/>
+                                        <TextBlock Text="Sepia" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Blur" ToolTip="Làm mờ ảnh">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='droplet duotone'}"/>
+                                        <TextBlock Text="Blur" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Sharpen" ToolTip="Làm sắc nét ảnh">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wand-magic-sparkles duotone'}"/>
+                                        <TextBlock Text="Sharpen" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Lighten" ToolTip="Tăng độ sáng">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sun duotone'}"/>
+                                        <TextBlock Text="Light +" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Darken" ToolTip="Giảm độ sáng">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-moon duotone'}"/>
+                                        <TextBlock Text="Light -" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="ContrastUp" ToolTip="Tăng tương phản">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half-stroke duotone'}"/>
+                                        <TextBlock Text="Contrast +" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="ContrastDown" ToolTip="Giảm tương phản">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half duotone'}"/>
+                                        <TextBlock Text="Contrast -" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Rotate90" ToolTip="Xoay ảnh 90 độ">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate duotone'}"/>
+                                        <TextBlock Text="Rotate 90°" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="FlipH" ToolTip="Lật ảnh theo chiều ngang">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-left-right duotone'}"/>
+                                        <TextBlock Text="Flip Horiz" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="FlipV" ToolTip="Lật ảnh theo chiều dọc">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down duotone'}"/>
+                                        <TextBlock Text="Flip Vert" FontSize="8.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </UniformGrid>
                         </StackPanel>
                     </Border>
 

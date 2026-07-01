@@ -4,6 +4,8 @@ using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Models.ImageEditor;
+using FlowMy.Models.ImageEditor.Commands;
 using FlowMy.Services.Rendering;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -399,6 +401,18 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
+            // Hỗ trợ vẽ/xoá/tô màu thủ công
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool != "Move")
+                {
+                    HandleManualEditorMouseDown(e);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             if (MainScrollViewer.ExtentWidth <= MainScrollViewer.ViewportWidth &&
                 MainScrollViewer.ExtentHeight <= MainScrollViewer.ViewportHeight)
                 return;
@@ -414,6 +428,13 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (_isDrawingPixels)
+            {
+                HandleManualEditorMouseUp();
+                e.Handled = true;
+                return;
+            }
+
             if (!_isPanning) return;
             _isPanning = false;
             MainScrollViewer.Cursor = Cursors.Arrow;
@@ -423,6 +444,13 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (_isDrawingPixels)
+            {
+                HandleManualEditorMouseMove(e);
+                e.Handled = true;
+                return;
+            }
+
             if (_isPanning)
             {
                 var pos = e.GetPosition(MainScrollViewer);
@@ -1008,5 +1036,305 @@ namespace FlowMy.Views.NodeControls
             // AI mode có IP toggle, Editor mode ẩn nó
             IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        #region MOUSE DRAWING ENGINE FOR IMAGE EDITOR MODE
+
+        private bool _isDrawingPixels;
+        private byte[]? _tempDrawingPixels;
+        private Point _lastDrawingPixelPoint;
+        private byte[]? _oldPixelsForUndo;
+
+        private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+
+            string tool = EditorPanel.ActiveToolName;
+            var clickPos = e.GetPosition(MainImage);
+
+            if (clickPos.X < 0 || clickPos.X > MainImage.ActualWidth ||
+                clickPos.Y < 0 || clickPos.Y > MainImage.ActualHeight)
+                return;
+
+            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            int px = (int)(clickPos.X * scaleX);
+            int py = (int)(clickPos.Y * scaleY);
+
+            if (tool == "Eyedropper")
+            {
+                PickColorWithEyedropper(px, py);
+                return;
+            }
+
+            if (tool == "Fill")
+            {
+                int stride = activeLayer.Width * 4;
+                var oldPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+                var tempPixels = new byte[stride * activeLayer.Height];
+                Array.Copy(oldPixels, tempPixels, oldPixels.Length);
+
+                FloodFill(tempPixels, activeLayer.Width, activeLayer.Height, px, py, _node.EditorDoc.ForegroundColor);
+
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), tempPixels, stride, 0);
+                activeLayer.InvalidateThumbnail();
+
+                var newPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+
+                var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+                _node.EditorDoc.History.Execute(cmd);
+                OnEditorDocumentModified();
+                return;
+            }
+
+            if (tool == "Brush" || tool == "Eraser")
+            {
+                _isDrawingPixels = true;
+                _lastDrawingPixelPoint = new Point(px, py);
+
+                int stride = activeLayer.Width * 4;
+                _oldPixelsForUndo = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
+
+                _tempDrawingPixels = new byte[stride * activeLayer.Height];
+                Array.Copy(_oldPixelsForUndo, _tempDrawingPixels, _oldPixelsForUndo.Length);
+
+                bool isEraser = (tool == "Eraser");
+                double radius = EditorPanel.BrushSize;
+                double hardness = EditorPanel.BrushHardness;
+                double flow = EditorPanel.BrushFlow;
+                Color color = _node.EditorDoc.ForegroundColor;
+
+                DrawBrushCircle(_tempDrawingPixels, activeLayer.Width, activeLayer.Height, px, py, radius, hardness, flow, color, isEraser);
+
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), _tempDrawingPixels, stride, 0);
+                activeLayer.InvalidateThumbnail();
+                OnEditorDocumentModified();
+
+                MainScrollViewer.CaptureMouse();
+            }
+        }
+
+        private void HandleManualEditorMouseMove(MouseEventArgs e)
+        {
+            if (!_isDrawingPixels || _node.EditorDoc == null || _tempDrawingPixels == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            string tool = EditorPanel.ActiveToolName;
+            var mousePos = e.GetPosition(MainImage);
+
+            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            int px = (int)(mousePos.X * scaleX);
+            int py = (int)(mousePos.Y * scaleY);
+
+            bool isEraser = (tool == "Eraser");
+            double radius = EditorPanel.BrushSize;
+            double hardness = EditorPanel.BrushHardness;
+            double flow = EditorPanel.BrushFlow;
+            Color color = _node.EditorDoc.ForegroundColor;
+
+            var currentPoint = new Point(px, py);
+            DrawBrushLine(_tempDrawingPixels, activeLayer.Width, activeLayer.Height, _lastDrawingPixelPoint, currentPoint, radius, hardness, flow, color, isEraser);
+            _lastDrawingPixelPoint = currentPoint;
+
+            int stride = activeLayer.Width * 4;
+            activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), _tempDrawingPixels, stride, 0);
+            activeLayer.InvalidateThumbnail();
+            OnEditorDocumentModified();
+        }
+
+        private void HandleManualEditorMouseUp()
+        {
+            if (!_isDrawingPixels) return;
+            _isDrawingPixels = false;
+            MainScrollViewer.ReleaseMouseCapture();
+
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null || _oldPixelsForUndo == null) return;
+
+            int stride = activeLayer.Width * 4;
+            var newPixels = new byte[stride * activeLayer.Height];
+            activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+
+            var cmd = new PixelEditCommand(activeLayer, _oldPixelsForUndo, newPixels);
+            _node.EditorDoc.History.Execute(cmd);
+
+            _tempDrawingPixels = null;
+            _oldPixelsForUndo = null;
+
+            OnEditorDocumentModified();
+        }
+
+        private void DrawBrushCircle(byte[] pixels, int width, int height, double cx, double cy, double radius, double hardness, double flow, Color color, bool isEraser)
+        {
+            int startX = Math.Max(0, (int)Math.Floor(cx - radius));
+            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + radius));
+            int startY = Math.Max(0, (int)Math.Floor(cy - radius));
+            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + radius));
+
+            double r2 = radius * radius;
+            double innerRadius = radius * (hardness / 100.0);
+            double flowMul = flow / 100.0;
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * width * 4;
+                double dy = y - cy;
+                double dy2 = dy * dy;
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    double dx = x - cx;
+                    double dist2 = dx * dx + dy2;
+
+                    if (dist2 <= r2)
+                    {
+                        double dist = Math.Sqrt(dist2);
+                        double pixelOpacity = 1.0;
+                        if (dist > innerRadius)
+                        {
+                            if (radius - innerRadius > 0.001)
+                            {
+                                pixelOpacity = 1.0 - (dist - innerRadius) / (radius - innerRadius);
+                            }
+                            else
+                            {
+                                pixelOpacity = 0.0;
+                            }
+                        }
+
+                        double brushAlpha = pixelOpacity * flowMul;
+                        if (brushAlpha <= 0) continue;
+
+                        int pixelOffset = rowOffset + x * 4;
+
+                        if (isEraser)
+                        {
+                            byte oldA = pixels[pixelOffset + 3];
+                            byte newA = (byte)Math.Clamp(oldA * (1.0 - brushAlpha), 0, 255);
+                            pixels[pixelOffset + 3] = newA;
+                        }
+                        else
+                        {
+                            byte bB = pixels[pixelOffset];
+                            byte bG = pixels[pixelOffset + 1];
+                            byte bR = pixels[pixelOffset + 2];
+                            byte bA = pixels[pixelOffset + 3];
+
+                            double srcA = color.A / 255.0 * brushAlpha;
+                            double dstA = bA / 255.0;
+                            double outA = srcA + dstA * (1.0 - srcA);
+
+                            if (outA > 0)
+                            {
+                                byte outR = (byte)Math.Clamp(((color.R * srcA) + (bR * dstA * (1.0 - srcA))) / outA, 0, 255);
+                                byte outG = (byte)Math.Clamp(((color.G * srcA) + (bG * dstA * (1.0 - srcA))) / outA, 0, 255);
+                                byte outB = (byte)Math.Clamp(((color.B * srcA) + (bB * dstA * (1.0 - srcA))) / outA, 0, 255);
+
+                                pixels[pixelOffset] = outB;
+                                pixels[pixelOffset + 1] = outG;
+                                pixels[pixelOffset + 2] = outR;
+                                pixels[pixelOffset + 3] = (byte)(outA * 255.0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void DrawBrushLine(byte[] pixels, int width, int height, Point p1, Point p2, double radius, double hardness, double flow, Color color, bool isEraser)
+        {
+            double dx = p2.X - p1.X;
+            double dy = p2.Y - p1.Y;
+            double len = Math.Sqrt(dx * dx + dy * dy);
+
+            if (len == 0)
+            {
+                DrawBrushCircle(pixels, width, height, p1.X, p1.Y, radius, hardness, flow, color, isEraser);
+                return;
+            }
+
+            double step = Math.Max(1.0, radius / 4.0);
+            for (double d = 0; d <= len; d += step)
+            {
+                double cx = p1.X + (dx * d / len);
+                double cy = p1.Y + (dy * d / len);
+                DrawBrushCircle(pixels, width, height, cx, cy, radius, hardness, flow, color, isEraser);
+            }
+            DrawBrushCircle(pixels, width, height, p2.X, p2.Y, radius, hardness, flow, color, isEraser);
+        }
+
+        private void FloodFill(byte[] pixels, int width, int height, int startX, int startY, Color fillColor)
+        {
+            int stride = width * 4;
+            int offset = startY * stride + startX * 4;
+            byte targetB = pixels[offset];
+            byte targetG = pixels[offset + 1];
+            byte targetR = pixels[offset + 2];
+            byte targetA = pixels[offset + 3];
+
+            byte fillB = fillColor.B;
+            byte fillG = fillColor.G;
+            byte fillR = fillColor.R;
+            byte fillA = fillColor.A;
+
+            if (targetB == fillB && targetG == fillG && targetR == fillR && targetA == fillA)
+                return;
+
+            var queue = new System.Collections.Generic.Queue<Point>();
+            queue.Enqueue(new Point(startX, startY));
+
+            while (queue.Count > 0)
+            {
+                Point p = queue.Dequeue();
+                int x = (int)p.X;
+                int y = (int)p.Y;
+
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                int currentOffset = y * stride + x * 4;
+                if (pixels[currentOffset] == targetB &&
+                    pixels[currentOffset + 1] == targetG &&
+                    pixels[currentOffset + 2] == targetR &&
+                    pixels[currentOffset + 3] == targetA)
+                {
+                    pixels[currentOffset] = fillB;
+                    pixels[currentOffset + 1] = fillG;
+                    pixels[currentOffset + 2] = fillR;
+                    pixels[currentOffset + 3] = fillA;
+
+                    queue.Enqueue(new Point(x + 1, y));
+                    queue.Enqueue(new Point(x - 1, y));
+                    queue.Enqueue(new Point(x, y + 1));
+                    queue.Enqueue(new Point(x, y - 1));
+                }
+            }
+        }
+
+        private void PickColorWithEyedropper(int px, int py)
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            if (px >= 0 && px < activeLayer.Width && py >= 0 && py < activeLayer.Height)
+            {
+                var stride = activeLayer.Width * 4;
+                var singlePixel = new byte[4];
+                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, stride, 0);
+
+                Color picked = Color.FromArgb(singlePixel[3], singlePixel[2], singlePixel[1], singlePixel[0]);
+                _node.EditorDoc.ForegroundColor = picked;
+            }
+        }
+
+        #endregion
     }
 }
