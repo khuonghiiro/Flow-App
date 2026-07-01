@@ -162,7 +162,17 @@ namespace FlowMy.Views.NodeControls
                 if (idx >= 0) insertIndex = idx + 1;
             }
 
-            var newLayer = new EditorLayer(_doc.Width, _doc.Height, $"Layer {_doc.Layers.Count + 1}");
+            // Duplicate active layer nếu có, ngược lại tạo layer transparent
+            EditorLayer newLayer;
+            if (_doc.ActiveLayer != null)
+            {
+                newLayer = _doc.ActiveLayer.Duplicate();
+            }
+            else
+            {
+                newLayer = new EditorLayer(_doc.Width, _doc.Height, $"Layer {_doc.Layers.Count + 1}");
+            }
+
             var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
             _doc.History.Execute(cmd);
             OnDocumentModified();

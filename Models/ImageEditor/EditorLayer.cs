@@ -131,6 +131,23 @@ namespace FlowMy.Models.ImageEditor
             InvalidateThumbnail();
         }
 
+        /// <summary>Tạo bản copy đầy đủ của layer (pixel + properties).</summary>
+        public EditorLayer Duplicate()
+        {
+            var copy = new EditorLayer(Width, Height, _name + " copy");
+            copy.Opacity = _opacity;
+            copy.IsVisible = _isVisible;
+            copy.BlendMode = _blendMode;
+            copy.IsLocked = false; // copy luôn unlocked
+
+            var stride = Width * 4;
+            var pixels = new byte[stride * Height];
+            Bitmap.CopyPixels(pixels, stride, 0);
+            copy.Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixels, stride, 0);
+            copy.InvalidateThumbnail();
+            return copy;
+        }
+
         /// <summary>Snapshot 1 vùng pixel (dùng cho undo).</summary>
         public byte[] SnapshotRegion(Int32Rect rect)
         {
