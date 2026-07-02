@@ -1,4 +1,6 @@
 using ImageMagick;
+using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -236,89 +238,164 @@ namespace FlowMy.Utils
         public static WriteableBitmap Trim(WriteableBitmap src)
             => Apply(src, img => img.Trim());
 
+        // ══════════════════════════════════════════════
+        //  NEW EFFECTS
+        // ══════════════════════════════════════════════
+
+        public static WriteableBitmap BlueShift(WriteableBitmap src, double factor = 1.5)
+            => Apply(src, img => img.BlueShift(factor));
+
+        public static WriteableBitmap Kuwahara(WriteableBitmap src, double radius = 2, double sigma = 1)
+            => Apply(src, img => img.Kuwahara(radius, sigma));
+
+        public static WriteableBitmap LocalContrast(WriteableBitmap src, double radius = 10, double strength = 5)
+            => Apply(src, img => img.LocalContrast(radius, new Percentage(strength)));
+
+        public static WriteableBitmap LinearStretch(WriteableBitmap src, double blackPct = 1, double whitePct = 1)
+            => Apply(src, img => img.LinearStretch(new Percentage(blackPct), new Percentage(whitePct)));
+
+        public static WriteableBitmap SigmoidalContrast(WriteableBitmap src, double contrast = 3, double midpoint = 50)
+            => Apply(src, img => img.SigmoidalContrast(contrast, new Percentage(midpoint)));
+
+        public static WriteableBitmap Threshold(WriteableBitmap src, double percent = 50)
+            => Apply(src, img => img.Threshold(new Percentage(percent)));
+
+        public static WriteableBitmap WhiteThreshold(WriteableBitmap src, double percent = 80)
+            => Apply(src, img => img.WhiteThreshold(new Percentage(percent)));
+
+        public static WriteableBitmap BlackThreshold(WriteableBitmap src, double percent = 20)
+            => Apply(src, img => img.BlackThreshold(new Percentage(percent)));
+
+        public static WriteableBitmap RotationalBlurFull(WriteableBitmap src, double angle = 10)
+            => Apply(src, img => img.RotationalBlur(angle));
+
+        public static WriteableBitmap Quantize(WriteableBitmap src, int colors = 16)
+            => Apply(src, img => img.Quantize(new QuantizeSettings { Colors = (uint)colors }));
+
+        public static WriteableBitmap Polaroid(WriteableBitmap src, double angle = 0)
+            => Apply(src, img => img.Polaroid("FlowMy", angle, PixelInterpolateMethod.Bilinear));
+
+        public static WriteableBitmap AddNoiseLaplacianDispatch(WriteableBitmap src, double attenuate = 1.0)
+            => Apply(src, img => img.AddNoise(NoiseType.Laplacian, attenuate));
+
+
         /// <summary>Lấy tất cả effect names được hỗ trợ (dùng cho switch dispatch).</summary>
         public static readonly string[] AllEffectNames = new[]
         {
-            // Blur/Sharpen
-            "GaussianBlur", "MotionBlur", "RadialBlur", "Sharpen", "UnsharpMask",
-            "AdaptiveBlur", "AdaptiveSharpen",
+            // Blur
+            "GaussianBlur", "MotionBlur", "RadialBlur", "AdaptiveBlur", "RotationalBlurFull",
+            // Sharpen
+            "Sharpen", "UnsharpMask", "AdaptiveSharpen",
             // Artistic
-            "OilPaint", "Charcoal", "Sketch", "Emboss", "Vignette", "Swirl",
-            "Wave", "Spread", "Implode", "Shade", "Pixelate",
+            "OilPaint", "Charcoal", "Sketch", "Emboss", "Vignette", "Pixelate",
+            "Kuwahara", "Polaroid",
+            // Distortion
+            "Swirl", "Wave", "Spread", "Implode", "Shade",
             // Edge
             "EdgeDetect", "CannyEdge",
-            // Color
-            "Posterize", "Solarize", "AutoLevel", "AutoGamma", "Equalize",
-            "Normalize", "Negate", "SepiaTone", "Grayscale",
-            "BrightnessUp", "BrightnessDown", "GammaCorrect",
-            "SaturationUp", "SaturationDown", "Tint",
+            // Brightness/Color
+            "BrightnessUp", "BrightnessDown", "GammaCorrect", "LocalContrast",
+            "SaturationUp", "SaturationDown", "Tint", "SigmoidalContrast",
+            "Level", "LinearStretch", "BlueShift",
+            // Tone/Style
+            "Posterize", "Solarize", "SepiaTone", "Grayscale", "Negate",
+            "Threshold", "WhiteThreshold", "BlackThreshold", "Quantize",
+            // Auto Enhance
+            "AutoLevel", "AutoGamma", "Equalize", "Normalize",
             // Noise
-            "AddNoiseGaussian", "AddNoiseImpulse", "Denoise", "MedianFilter", "ReduceNoise",
+            "AddNoiseGaussian", "AddNoiseImpulse", "AddNoiseLaplacian",
+            "Denoise", "MedianFilter", "ReduceNoise",
             // Morphology
             "Dilate", "MorphErode", "Opening", "Closing",
             // Transform
-            "Deskew", "Trim", "AutoOrient",
+            "Deskew", "Trim", "AutoOrient", "Flop", "Flip",
         };
 
         /// <summary>Dispatch effect by name.</summary>
         public static WriteableBitmap? ApplyByName(WriteableBitmap src, string effectName)
+            => ApplyByName(src, effectName, null);
+
+        /// <summary>Dispatch effect by name, with optional parameter overrides.</summary>
+        public static WriteableBitmap? ApplyByName(WriteableBitmap src, string effectName, Dictionary<string, double>? p)
         {
+            double P(string key, double def) => p != null && p.TryGetValue(key, out var v) ? v : def;
+            int PI(string key, int def) => (int)P(key, def);
+
             return effectName switch
             {
-                // Blur/Sharpen
-                "GaussianBlur"     => GaussianBlur(src),
-                "MotionBlur"       => MotionBlur(src),
-                "RadialBlur"       => RadialBlur(src),
-                "Sharpen"          => Sharpen(src),
-                "UnsharpMask"      => UnsharpMask(src),
-                "AdaptiveBlur"     => AdaptiveBlur(src),
-                "AdaptiveSharpen"  => AdaptiveSharpen(src),
+                // Blur
+                "GaussianBlur"       => GaussianBlur(src, P("Radius", 3), P("Sigma", 1.5)),
+                "MotionBlur"         => MotionBlur(src, P("Radius", 8), P("Sigma", 4), P("Angle", 0)),
+                "RadialBlur"         => RadialBlur(src, P("Angle", 5)),
+                "AdaptiveBlur"       => AdaptiveBlur(src, P("Radius", 0), P("Sigma", 1)),
+                "RotationalBlurFull" => RotationalBlurFull(src, P("Angle", 10)),
+                // Sharpen
+                "Sharpen"            => Sharpen(src, P("Radius", 0), P("Sigma", 1)),
+                "UnsharpMask"        => UnsharpMask(src, P("Radius", 2), P("Sigma", 1), P("Amount", 1), P("Threshold", 0.05)),
+                "AdaptiveSharpen"    => AdaptiveSharpen(src, P("Radius", 0), P("Sigma", 1)),
                 // Artistic
-                "OilPaint"         => OilPaint(src),
-                "Charcoal"         => Charcoal(src),
-                "Sketch"           => Sketch(src),
-                "Emboss"           => Emboss(src),
-                "Vignette"         => Vignette(src),
-                "Swirl"            => Swirl(src),
-                "Wave"             => Wave(src),
-                "Spread"           => Spread(src),
-                "Implode"          => Implode(src),
-                "Shade"            => Shade(src),
-                "Pixelate"         => Pixelate(src),
+                "OilPaint"           => OilPaint(src, P("Radius", 4), P("Sigma", 1)),
+                "Charcoal"           => Charcoal(src, P("Radius", 2), P("Sigma", 1)),
+                "Sketch"             => Sketch(src, P("Radius", 2), P("Sigma", 1), P("Angle", 0)),
+                "Emboss"             => Emboss(src, P("Radius", 0), P("Sigma", 1)),
+                "Vignette"           => Vignette(src, P("Radius", 0), P("Sigma", 10), PI("X", 10), PI("Y", 10)),
+                "Pixelate"           => Pixelate(src, PI("BlockSize", 8)),
+                "Kuwahara"           => Kuwahara(src, P("Radius", 2), P("Sigma", 1)),
+                "Polaroid"           => Polaroid(src, P("Angle", 0)),
+                // Distortion
+                "Swirl"              => Swirl(src, P("Degrees", 60)),
+                "Wave"               => Wave(src, P("Amplitude", 5), P("Length", 50)),
+                "Spread"             => Spread(src, P("Radius", 4)),
+                "Implode"            => Implode(src, P("Amount", 0.3)),
+                "Shade"              => Shade(src, P("Azimuth", 30), P("Elevation", 30)),
                 // Edge
-                "EdgeDetect"       => EdgeDetect(src),
-                "CannyEdge"        => CannyEdge(src),
-                // Color
-                "Posterize"        => Posterize(src),
-                "Solarize"         => Solarize(src),
-                "AutoLevel"        => AutoLevel(src),
-                "AutoGamma"        => AutoGamma(src),
-                "Equalize"         => Equalize(src),
-                "Normalize"        => Normalize(src),
-                "Negate"           => Negate(src),
-                "SepiaTone"        => SepiaTone(src),
-                "Grayscale"        => Grayscale(src),
-                "BrightnessUp"     => BrightnessContrast(src, 15, 0),
-                "BrightnessDown"   => BrightnessContrast(src, -15, 0),
-                "GammaCorrect"     => GammaCorrect(src),
-                "SaturationUp"     => Modulate(src, 100, 140, 100),
-                "SaturationDown"   => Modulate(src, 100, 60, 100),
-                "Tint"             => Tint(src),
+                "EdgeDetect"         => EdgeDetect(src, P("Radius", 1)),
+                "CannyEdge"          => CannyEdge(src, P("Radius", 0), P("Sigma", 1), P("LowPct", 10), P("HighPct", 30)),
+                // Brightness/Color
+                "BrightnessUp"       => BrightnessContrast(src, P("Brightness", 15), P("Contrast", 0)),
+                "BrightnessDown"     => BrightnessContrast(src, P("Brightness", -15), P("Contrast", 0)),
+                "GammaCorrect"       => GammaCorrect(src, P("Gamma", 1.5)),
+                "LocalContrast"      => LocalContrast(src, P("Radius", 10), P("Strength", 5)),
+                "SaturationUp"       => Modulate(src, P("Brightness", 100), P("Saturation", 140), P("Hue", 100)),
+                "SaturationDown"     => Modulate(src, P("Brightness", 100), P("Saturation", 60), P("Hue", 100)),
+                "Tint"               => Tint(src),
+                "SigmoidalContrast"  => SigmoidalContrast(src, P("Contrast", 3), P("Midpoint", 50)),
+                "Level"              => Level(src, P("BlackPoint", 10), P("WhitePoint", 90), P("Gamma", 1.0)),
+                "LinearStretch"      => LinearStretch(src, P("BlackPct", 1), P("WhitePct", 1)),
+                "BlueShift"          => BlueShift(src, P("Factor", 1.5)),
+                // Tone/Style
+                "Posterize"          => Posterize(src, PI("Levels", 4)),
+                "Solarize"           => Solarize(src, P("Threshold", 50)),
+                "SepiaTone"          => SepiaTone(src, P("Threshold", 80)),
+                "Grayscale"          => Grayscale(src),
+                "Negate"             => Negate(src),
+                "Threshold"          => Threshold(src, P("Percent", 50)),
+                "WhiteThreshold"     => WhiteThreshold(src, P("Percent", 80)),
+                "BlackThreshold"     => BlackThreshold(src, P("Percent", 20)),
+                "Quantize"           => Quantize(src, PI("Colors", 16)),
+                // Auto Enhance
+                "AutoLevel"          => AutoLevel(src),
+                "AutoGamma"          => AutoGamma(src),
+                "Equalize"           => Equalize(src),
+                "Normalize"          => Normalize(src),
                 // Noise
-                "AddNoiseGaussian" => AddNoiseGaussian(src),
-                "AddNoiseImpulse"  => AddNoiseImpulse(src),
-                "Denoise"          => Denoise(src),
-                "MedianFilter"     => MedianFilter(src),
-                "ReduceNoise"      => ReduceNoise(src),
+                "AddNoiseGaussian"   => AddNoiseGaussian(src, P("Attenuate", 1)),
+                "AddNoiseImpulse"    => AddNoiseImpulse(src, P("Attenuate", 1)),
+                "AddNoiseLaplacian"  => AddNoiseLaplacianDispatch(src, P("Attenuate", 1)),
+                "Denoise"            => Denoise(src),
+                "MedianFilter"       => MedianFilter(src, PI("Radius", 2)),
+                "ReduceNoise"        => ReduceNoise(src, PI("Order", 2)),
                 // Morphology
-                "Dilate"           => Dilate(src),
-                "MorphErode"       => Erode(src),
-                "Opening"          => Opening(src),
-                "Closing"          => Closing(src),
+                "Dilate"             => Dilate(src, PI("Radius", 1)),
+                "MorphErode"         => Erode(src, PI("Radius", 1)),
+                "Opening"            => Opening(src, PI("Radius", 1)),
+                "Closing"            => Closing(src, PI("Radius", 1)),
                 // Transform
-                "Deskew"           => Deskew(src),
-                "Trim"             => Trim(src),
-                "AutoOrient"       => AutoOrient(src),
+                "Deskew"             => Deskew(src, P("Threshold", 40)),
+                "Trim"               => Trim(src),
+                "AutoOrient"         => AutoOrient(src),
+                "Flop"               => Flop(src),
+                "Flip"               => Flip(src),
                 _ => null
             };
         }

@@ -415,7 +415,7 @@
                 Background="#B0000000" Panel.ZIndex="200"
                 Visibility="Collapsed" IsHitTestVisible="True">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="⏳" FontSize="32" HorizontalAlignment="Center"/>
+                <TextBlock Text="⏳" FontSize="32" Foreground="White" HorizontalAlignment="Center"/>
                 <TextBlock x:Name="FxLoadingText" Text="Đang xử lý..."
                            Foreground="#dde3ef" FontSize="13" FontWeight="SemiBold"
                            HorizontalAlignment="Center" Margin="0,6,0,4"/>

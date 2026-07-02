@@ -1153,6 +1153,224 @@ namespace FlowMy.Views.NodeControls
         private CancellationTokenSource? _fxCts;
         private bool _isFxRunning;
 
+        // ── Parameter definitions for configurable effects ──
+        private record FxParamDef(string Name, double Default, double Min, double Max, double Step = 1);
+
+        private static readonly Dictionary<string, FxParamDef[]> _fxParamMap = new()
+        {
+            // Blur
+            ["GaussianBlur"]     = new[] { new FxParamDef("Radius", 3, 0, 30), new FxParamDef("Sigma", 1.5, 0.1, 15, 0.1) },
+            ["MotionBlur"]       = new[] { new FxParamDef("Radius", 8, 0, 40), new FxParamDef("Sigma", 4, 0.1, 20, 0.1), new FxParamDef("Angle", 0, -180, 180) },
+            ["RadialBlur"]       = new[] { new FxParamDef("Angle", 5, 0, 45) },
+            ["AdaptiveBlur"]     = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Blur"]             = new[] { new FxParamDef("Radius", 5, 0, 30), new FxParamDef("Sigma", 2, 0.1, 15, 0.1) },
+            // Sharpen
+            ["Sharpen"]          = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["UnsharpMask"]      = new[] { new FxParamDef("Radius", 2, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1), new FxParamDef("Amount", 1, 0, 5, 0.1), new FxParamDef("Threshold", 0.05, 0, 1, 0.01) },
+            ["AdaptiveSharpen"]  = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Kuwahara"]         = new[] { new FxParamDef("Radius", 3, 1, 15), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            // Artistic
+            ["OilPaint"]         = new[] { new FxParamDef("Radius", 4, 1, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Charcoal"]         = new[] { new FxParamDef("Radius", 2, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1) },
+            ["Sketch"]           = new[] { new FxParamDef("Radius", 2, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1), new FxParamDef("Angle", 0, -180, 180) },
+            ["Emboss"]           = new[] { new FxParamDef("Radius", 0, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1) },
+            ["Vignette"]         = new[] { new FxParamDef("Sigma", 10, 1, 50) },
+            ["Swirl"]            = new[] { new FxParamDef("Degrees", 60, -360, 360) },
+            ["Wave"]             = new[] { new FxParamDef("Amplitude", 5, 1, 50), new FxParamDef("Length", 50, 5, 300) },
+            ["Spread"]           = new[] { new FxParamDef("Radius", 4, 1, 30) },
+            ["Implode"]          = new[] { new FxParamDef("Amount", 0.3, -1, 1, 0.05) },
+            ["Explode"]          = new[] { new FxParamDef("Amount", 0.3, 0, 1, 0.05) },
+            ["Shade"]            = new[] { new FxParamDef("Azimuth", 30, 0, 360), new FxParamDef("Elevation", 30, 0, 90) },
+            ["Pixelate"]         = new[] { new FxParamDef("BlockSize", 8, 2, 64) },
+            ["Polaroid"]         = new[] { new FxParamDef("Angle", 0, -30, 30) },
+            ["Frame"]            = new[] { new FxParamDef("Size", 6, 1, 20) },
+            ["Raise"]            = new[] { new FxParamDef("Size", 8, 1, 20) },
+            // Edge
+            ["EdgeDetect"]       = new[] { new FxParamDef("Radius", 1, 0, 10) },
+            ["CannyEdge"]        = new[] { new FxParamDef("Radius", 0, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1), new FxParamDef("LowPct", 10, 0, 100), new FxParamDef("HighPct", 30, 0, 100) },
+            ["Threshold"]        = new[] { new FxParamDef("Percent", 50, 0, 100) },
+            ["AdaptiveThreshold"]= new[] { new FxParamDef("Width", 10, 3, 30), new FxParamDef("Height", 10, 3, 30), new FxParamDef("Bias", 0, -10, 10, 0.5) },
+            // Color / Brightness
+            ["BrightnessUp"]     = new[] { new FxParamDef("Brightness", 15, 1, 100) },
+            ["BrightnessDown"]   = new[] { new FxParamDef("Brightness", 15, 1, 100) },
+            ["GammaCorrect"]     = new[] { new FxParamDef("Gamma", 1.5, 0.1, 5, 0.1) },
+            ["SaturationUp"]     = new[] { new FxParamDef("Saturation", 140, 101, 300) },
+            ["SaturationDown"]   = new[] { new FxParamDef("Saturation", 60, 0, 99) },
+            ["Posterize"]        = new[] { new FxParamDef("Levels", 4, 2, 20) },
+            ["Solarize"]         = new[] { new FxParamDef("Threshold", 50, 0, 100) },
+            ["SepiaTone"]        = new[] { new FxParamDef("Threshold", 80, 0, 100) },
+            ["SigmoidalContrastUp"] = new[] { new FxParamDef("Contrast", 3, 0.5, 20, 0.5), new FxParamDef("Midpoint", 50, 0, 100) },
+            ["LinearStretch"]    = new[] { new FxParamDef("BlackPct", 1, 0, 20, 0.5), new FxParamDef("WhitePct", 1, 0, 20, 0.5) },
+            ["BlueShift"]        = new[] { new FxParamDef("Factor", 1.5, 0.5, 3, 0.1) },
+            ["QuantizeColors"]   = new[] { new FxParamDef("Colors", 16, 2, 256) },
+            ["ContrastDown"]     = new[] { new FxParamDef("Contrast", 15, 1, 50) },
+            // Noise
+            ["AddNoiseGaussian"] = new[] { new FxParamDef("Attenuate", 1, 0.1, 10, 0.1) },
+            ["AddNoiseImpulse"]  = new[] { new FxParamDef("Attenuate", 1, 0.1, 10, 0.1) },
+            ["MedianFilter"]     = new[] { new FxParamDef("Radius", 2, 1, 10) },
+            ["ReduceNoise"]      = new[] { new FxParamDef("Order", 2, 1, 10) },
+            // Morphology
+            ["Dilate"]           = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["MorphErode"]       = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["Opening"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["Closing"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            // Transform
+            ["Deskew"]           = new[] { new FxParamDef("Threshold", 40, 0, 100) },
+            ["Shear"]            = new[] { new FxParamDef("X", 15, -45, 45), new FxParamDef("Y", 0, -45, 45) },
+            ["Roll"]             = new[] { new FxParamDef("X", 50, -200, 200), new FxParamDef("Y", 50, -200, 200) },
+            ["Shave"]            = new[] { new FxParamDef("Pixels", 10, 1, 100) },
+        };
+
+        /// <summary>Show dark-themed parameter dialog. Returns null if cancelled.</summary>
+        private Dictionary<string, double>? ShowFxParamDialog(string effectName, FxParamDef[] paramDefs)
+        {
+            var win = new Window
+            {
+                Title = effectName,
+                Width = 340,
+                SizeToContent = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = Window.GetWindow(this),
+                ResizeMode = ResizeMode.NoResize,
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x0a, 0x0c, 0x10)),
+                Foreground = System.Windows.Media.Brushes.White,
+                WindowStyle = WindowStyle.ToolWindow,
+            };
+
+            var stack = new StackPanel { Margin = new Thickness(14) };
+
+            // Title
+            stack.Children.Add(new TextBlock
+            {
+                Text = effectName,
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x4f, 0xff, 0xb0)),
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+
+            var sliders = new Dictionary<string, Slider>();
+
+            foreach (var p in paramDefs)
+            {
+                var dp = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+
+                var lbl = new TextBlock
+                {
+                    Text = p.Name,
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x90, 0x96, 0xa8)),
+                    FontSize = 10,
+                    Width = 80,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                DockPanel.SetDock(lbl, Dock.Left);
+                dp.Children.Add(lbl);
+
+                var valBorder = new Border
+                {
+                    Background = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x11, 0x13, 0x18)),
+                    CornerRadius = new CornerRadius(2),
+                    Padding = new Thickness(4, 1, 4, 1),
+                    MinWidth = 42,
+                };
+                var valText = new TextBlock
+                {
+                    Text = p.Default.ToString(p.Step < 1 ? "F2" : "F0"),
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x00, 0xcf, 0xff)),
+                    FontSize = 9,
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                };
+                valBorder.Child = valText;
+                DockPanel.SetDock(valBorder, Dock.Right);
+                dp.Children.Add(valBorder);
+
+                var slider = new Slider
+                {
+                    Minimum = p.Min,
+                    Maximum = p.Max,
+                    Value = p.Default,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(6, 0, 6, 0),
+                    TickFrequency = p.Step,
+                    IsSnapToTickEnabled = p.Step >= 1,
+                    SmallChange = p.Step,
+                    LargeChange = p.Step * 5,
+                };
+                var capturedP = p; // capture for closure
+                slider.ValueChanged += (_, args) =>
+                {
+                    valText.Text = args.NewValue.ToString(capturedP.Step < 1 ? "F2" : "F0");
+                };
+                dp.Children.Add(slider);
+                sliders[p.Name] = slider;
+
+                stack.Children.Add(dp);
+            }
+
+            // Buttons row
+            Dictionary<string, double>? result = null;
+            var btnPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            var btnApply = new Button
+            {
+                Content = "✓ Apply",
+                Padding = new Thickness(14, 5, 14, 5),
+                FontSize = 10,
+                Cursor = Cursors.Hand,
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x4f, 0xff, 0xb0)),
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x0a, 0x0c, 0x10)),
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Margin = new Thickness(4, 0, 0, 0),
+            };
+            btnApply.Click += (_, __) =>
+            {
+                result = new Dictionary<string, double>();
+                foreach (var kv in sliders)
+                    result[kv.Key] = kv.Value.Value;
+                win.DialogResult = true;
+                win.Close();
+            };
+
+            var btnCancel = new Button
+            {
+                Content = "Cancel",
+                Padding = new Thickness(10, 5, 10, 5),
+                FontSize = 10,
+                Cursor = Cursors.Hand,
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x25, 0x29, 0x32)),
+                Foreground = System.Windows.Media.Brushes.White,
+                BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x3a, 0x3e, 0x4a)),
+                BorderThickness = new Thickness(1),
+            };
+            btnCancel.Click += (_, __) => { win.DialogResult = false; win.Close(); };
+
+            btnPanel.Children.Add(btnCancel);
+            btnPanel.Children.Add(btnApply);
+            stack.Children.Add(btnPanel);
+
+            win.Content = stack;
+            win.ShowDialog();
+            return result;
+        }
+
+        private Dictionary<string, double>? _lastFxParams;
+
         private async void MagickEffect_Click(object sender, MouseButtonEventArgs e)
         {
             if (_node.EditorDoc == null || _isFxRunning) return;
@@ -1163,6 +1381,15 @@ namespace FlowMy.Views.NodeControls
                 return;
 
             e.Handled = true;
+
+            // Show parameter dialog if effect has configurable params
+            Dictionary<string, double>? fxParams = null;
+            if (_fxParamMap.TryGetValue(effectName, out var paramDefs))
+            {
+                fxParams = ShowFxParamDialog(effectName, paramDefs);
+                if (fxParams == null) return; // User cancelled
+            }
+            _lastFxParams = fxParams;
 
             // Snapshot old pixels for undo (on UI thread)
             int w = layer.Width, h = layer.Height;
@@ -1205,8 +1432,9 @@ namespace FlowMy.Views.NodeControls
 
                     token.ThrowIfCancellationRequested();
 
-                    // Apply effect via dispatch
-                    ApplyMagickEffectToImage(img, effectName);
+                    // Apply effect via dispatch (with user-configured params)
+                    var capturedParams = fxParams;
+                    ApplyMagickEffectToImage(img, effectName, capturedParams);
 
                     token.ThrowIfCancellationRequested();
 
@@ -1260,92 +1488,96 @@ namespace FlowMy.Views.NodeControls
         }
 
         /// <summary>Dispatch Magick effect to MagickImage (runs on background thread).</summary>
-        private static void ApplyMagickEffectToImage(ImageMagick.MagickImage img, string effectName)
+        private static void ApplyMagickEffectToImage(ImageMagick.MagickImage img, string effectName, Dictionary<string, double>? p = null)
         {
+            double P(string key, double def) => p != null && p.TryGetValue(key, out var v) ? v : def;
+            int PI(string key, int def) => (int)P(key, def);
+
             switch (effectName)
             {
                 // Blur/Sharpen
-                case "GaussianBlur":     img.GaussianBlur(3, 1.5); break;
-                case "Blur":             img.Blur(5, 2); break;
-                case "MotionBlur":       img.MotionBlur(8, 4, 0); break;
-                case "RadialBlur":       img.RotationalBlur(5); break;
-                case "AdaptiveBlur":     img.AdaptiveBlur(0, 1); break;
-                case "Sharpen":          img.Sharpen(0, 1); break;
-                case "UnsharpMask":      img.UnsharpMask(2, 1, 1, 0.05); break;
-                case "AdaptiveSharpen":  img.AdaptiveSharpen(0, 1); break;
-                case "Kuwahara":         img.Kuwahara(3, 1); break;
+                case "GaussianBlur":     img.GaussianBlur(P("Radius", 3), P("Sigma", 1.5)); break;
+                case "Blur":             img.Blur(P("Radius", 5), P("Sigma", 2)); break;
+                case "MotionBlur":       img.MotionBlur(P("Radius", 8), P("Sigma", 4), P("Angle", 0)); break;
+                case "RadialBlur":       img.RotationalBlur(P("Angle", 5)); break;
+                case "AdaptiveBlur":     img.AdaptiveBlur(P("Radius", 0), P("Sigma", 1)); break;
+                case "Sharpen":          img.Sharpen(P("Radius", 0), P("Sigma", 1)); break;
+                case "UnsharpMask":      img.UnsharpMask(P("Radius", 2), P("Sigma", 1), P("Amount", 1), P("Threshold", 0.05)); break;
+                case "AdaptiveSharpen":  img.AdaptiveSharpen(P("Radius", 0), P("Sigma", 1)); break;
+                case "Kuwahara":         img.Kuwahara(P("Radius", 3), P("Sigma", 1)); break;
 
                 // Artistic
-                case "OilPaint":         img.OilPaint(4, 1); break;
-                case "Charcoal":         img.Charcoal(2, 1); break;
-                case "Sketch":           img.Sketch(2, 1, 0); break;
-                case "Emboss":           img.Emboss(0, 1); break;
-                case "Vignette":         img.Vignette(0, 10, 10, 10); break;
-                case "Swirl":            img.Swirl(60); break;
-                case "Wave":             img.Wave(ImageMagick.PixelInterpolateMethod.Bilinear, 5, 50); img.Trim(); break;
-                case "Spread":           img.Spread(4); break;
-                case "Implode":          img.Implode(0.3, ImageMagick.PixelInterpolateMethod.Bilinear); break;
-                case "Shade":            img.Shade(30, 30); break;
+                case "OilPaint":         img.OilPaint(P("Radius", 4), P("Sigma", 1)); break;
+                case "Charcoal":         img.Charcoal(P("Radius", 2), P("Sigma", 1)); break;
+                case "Sketch":           img.Sketch(P("Radius", 2), P("Sigma", 1), P("Angle", 0)); break;
+                case "Emboss":           img.Emboss(P("Radius", 0), P("Sigma", 1)); break;
+                case "Vignette":         img.Vignette(0, P("Sigma", 10), 10, 10); break;
+                case "Swirl":            img.Swirl(P("Degrees", 60)); break;
+                case "Wave":             img.Wave(ImageMagick.PixelInterpolateMethod.Bilinear, P("Amplitude", 5), P("Length", 50)); img.Trim(); break;
+                case "Spread":           img.Spread(P("Radius", 4)); break;
+                case "Implode":          img.Implode(P("Amount", 0.3), ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Shade":            img.Shade(P("Azimuth", 30), P("Elevation", 30)); break;
                 case "Pixelate":
+                    int bs = PI("BlockSize", 8);
                     int pw = (int)img.Width, ph = (int)img.Height;
-                    img.Scale((uint)Math.Max(1, pw / 8), (uint)Math.Max(1, ph / 8));
+                    img.Scale((uint)Math.Max(1, pw / bs), (uint)Math.Max(1, ph / bs));
                     img.Sample((uint)pw, (uint)ph);
                     break;
-                case "Polaroid":         img.Polaroid("FlowMy", 0, ImageMagick.PixelInterpolateMethod.Bilinear); break;
-                case "Frame":            img.Frame(6, 6, 2, 2); break;
-                case "Explode":          img.Implode(-0.3, ImageMagick.PixelInterpolateMethod.Bilinear); break;
-                case "Raise":            img.Raise(8); break;
+                case "Polaroid":         img.Polaroid("FlowMy", P("Angle", 0), ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Frame":            var fs = PI("Size", 6); img.Frame((uint)fs, (uint)fs, 2, 2); break;
+                case "Explode":          img.Implode(-P("Amount", 0.3), ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Raise":            img.Raise(PI("Size", 8)); break;
 
                 // Edge
-                case "EdgeDetect":       img.Edge(1); break;
-                case "CannyEdge":        img.CannyEdge(0, 1, new ImageMagick.Percentage(10), new ImageMagick.Percentage(30)); break;
-                case "Threshold":        img.Threshold(new ImageMagick.Percentage(50)); break;
-                case "AdaptiveThreshold":img.AdaptiveThreshold(10, 10, 0.0); break;
+                case "EdgeDetect":       img.Edge(P("Radius", 1)); break;
+                case "CannyEdge":        img.CannyEdge(P("Radius", 0), P("Sigma", 1), new ImageMagick.Percentage(P("LowPct", 10)), new ImageMagick.Percentage(P("HighPct", 30))); break;
+                case "Threshold":        img.Threshold(new ImageMagick.Percentage(P("Percent", 50))); break;
+                case "AdaptiveThreshold":img.AdaptiveThreshold((uint)PI("Width", 10), (uint)PI("Height", 10), new ImageMagick.Percentage(P("Bias", 0.0))); break;
                 case "OrderedDither":    img.OrderedDither("o8x8"); break;
 
                 // Color
-                case "Posterize":        img.Posterize(4); break;
-                case "Solarize":         img.Solarize(new ImageMagick.Percentage(50)); break;
+                case "Posterize":        img.Posterize(PI("Levels", 4)); break;
+                case "Solarize":         img.Solarize(new ImageMagick.Percentage(P("Threshold", 50))); break;
                 case "AutoLevel":        img.AutoLevel(); break;
                 case "AutoGamma":        img.AutoGamma(); break;
                 case "Equalize":         img.Equalize(); break;
                 case "Normalize":        img.Normalize(); break;
                 case "Negate":           img.Negate(); break;
-                case "SepiaTone":        img.SepiaTone(new ImageMagick.Percentage(80)); break;
+                case "SepiaTone":        img.SepiaTone(new ImageMagick.Percentage(P("Threshold", 80))); break;
                 case "Grayscale":        img.Grayscale(); break;
-                case "BrightnessUp":     img.BrightnessContrast(new ImageMagick.Percentage(15), new ImageMagick.Percentage(0)); break;
-                case "BrightnessDown":   img.BrightnessContrast(new ImageMagick.Percentage(-15), new ImageMagick.Percentage(0)); break;
-                case "GammaCorrect":     img.GammaCorrect(1.5); break;
-                case "SaturationUp":     img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(140), new ImageMagick.Percentage(100)); break;
-                case "SaturationDown":   img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(60), new ImageMagick.Percentage(100)); break;
+                case "BrightnessUp":     img.BrightnessContrast(new ImageMagick.Percentage(P("Brightness", 15)), new ImageMagick.Percentage(0)); break;
+                case "BrightnessDown":   img.BrightnessContrast(new ImageMagick.Percentage(-P("Brightness", 15)), new ImageMagick.Percentage(0)); break;
+                case "GammaCorrect":     img.GammaCorrect(P("Gamma", 1.5)); break;
+                case "SaturationUp":     img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(P("Saturation", 140)), new ImageMagick.Percentage(100)); break;
+                case "SaturationDown":   img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(P("Saturation", 60)), new ImageMagick.Percentage(100)); break;
                 case "Tint":             img.Colorize(new ImageMagick.MagickColor(255, 220, 180), new ImageMagick.Percentage(25)); break;
                 case "ContrastUp":       img.Contrast(); break;
-                case "ContrastDown":     img.BrightnessContrast(new ImageMagick.Percentage(0), new ImageMagick.Percentage(-15)); break;
-                case "BlueShift":        img.BlueShift(); break;
-                case "LinearStretch":    img.LinearStretch(new ImageMagick.Percentage(1), new ImageMagick.Percentage(1)); break;
-                case "QuantizeColors":   img.Quantize(new ImageMagick.QuantizeSettings { Colors = 16 }); break;
-                case "SigmoidalContrastUp":   img.SigmoidalContrast(3.0, new ImageMagick.Percentage(50)); break;
+                case "ContrastDown":     img.BrightnessContrast(new ImageMagick.Percentage(0), new ImageMagick.Percentage(-P("Contrast", 15))); break;
+                case "BlueShift":        img.BlueShift(P("Factor", 1.5)); break;
+                case "LinearStretch":    img.LinearStretch(new ImageMagick.Percentage(P("BlackPct", 1)), new ImageMagick.Percentage(P("WhitePct", 1))); break;
+                case "QuantizeColors":   img.Quantize(new ImageMagick.QuantizeSettings { Colors = (uint)PI("Colors", 16) }); break;
+                case "SigmoidalContrastUp":   img.SigmoidalContrast(P("Contrast", 3.0), new ImageMagick.Percentage(P("Midpoint", 50))); break;
 
                 // Noise
-                case "AddNoiseGaussian": img.AddNoise(ImageMagick.NoiseType.Gaussian, 1.0); break;
-                case "AddNoiseImpulse":  img.AddNoise(ImageMagick.NoiseType.Impulse, 1.0); break;
+                case "AddNoiseGaussian": img.AddNoise(ImageMagick.NoiseType.Gaussian, P("Attenuate", 1.0)); break;
+                case "AddNoiseImpulse":  img.AddNoise(ImageMagick.NoiseType.Impulse, P("Attenuate", 1.0)); break;
                 case "Denoise":          img.Enhance(); break;
                 case "Despeckle":        img.Despeckle(); break;
-                case "MedianFilter":     img.MedianFilter(2); break;
-                case "ReduceNoise":      img.ReduceNoise(2); break;
+                case "MedianFilter":     img.MedianFilter((uint)PI("Radius", 2)); break;
+                case "ReduceNoise":      img.ReduceNoise((uint)PI("Order", 2)); break;
 
                 // Morphology
-                case "Dilate":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Dilate, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "MorphErode":       img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Erode, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "Opening":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Open, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "Closing":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Close, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "EdgeIn":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeIn, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "EdgeOut":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeOut, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "TopHat":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.TopHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
-                case "BottomHat":        img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.BottomHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "Dilate":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Dilate, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "MorphErode":       img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Erode, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "Opening":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Open, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "Closing":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Close, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "EdgeIn":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeIn, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "EdgeOut":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeOut, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "TopHat":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.TopHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "BottomHat":        img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.BottomHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
 
                 // Transform
-                case "Deskew":           img.Deskew(new ImageMagick.Percentage(40)); break;
+                case "Deskew":           img.Deskew(new ImageMagick.Percentage(P("Threshold", 40))); break;
                 case "Trim":             img.Trim(); break;
                 case "AutoOrient":       img.AutoOrient(); break;
                 case "Rotate90":         img.Rotate(90); break;
@@ -1353,9 +1585,9 @@ namespace FlowMy.Views.NodeControls
                 case "Rotate270":        img.Rotate(270); break;
                 case "Flop":             img.Flop(); break;
                 case "Flip":             img.Flip(); break;
-                case "Shear":            img.Shear(15, 0); break;
-                case "Roll":             img.Roll(50, 50); break;
-                case "Shave":            img.Shave(10, 10); break;
+                case "Shear":            img.Shear(P("X", 15), P("Y", 0)); break;
+                case "Roll":             img.Roll(PI("X", 50), PI("Y", 50)); break;
+                case "Shave":            var sv = PI("Pixels", 10); img.Shave((uint)sv, (uint)sv); break;
                 case "Magnify":          img.Magnify(); break;
                 case "Minify":           img.Minify(); break;
             }
