@@ -148,6 +148,17 @@ namespace FlowMy.Models.ImageEditor
             copy.BlendMode = _blendMode;
             copy.IsLocked = false; // copy luôn unlocked
 
+            copy.IsTextLayer = IsTextLayer;
+            copy.TextContent = TextContent;
+            copy.TextX = TextX;
+            copy.TextY = TextY;
+            copy.TextWidth = TextWidth;
+            copy.TextHeight = TextHeight;
+            copy.TextFontSize = TextFontSize;
+            copy.TextColor = TextColor;
+            copy.TextFontFamily = TextFontFamily;
+            copy.TextFontStyle = TextFontStyle;
+
             var stride = Width * 4;
             var pixels = new byte[stride * Height];
             Bitmap.CopyPixels(pixels, stride, 0);
@@ -268,6 +279,28 @@ namespace FlowMy.Models.ImageEditor
             int bottom = Math.Min(Height, rect.Y + rect.Height);
             return new Int32Rect(x, y, Math.Max(0, right - x), Math.Max(0, bottom - y));
         }
+
+        private bool _isTextLayer;
+        private string _textContent = "";
+        private double _textX;
+        private double _textY;
+        private double _textWidth = 200;
+        private double _textHeight = 100;
+        private double _textFontSize = 24;
+        private Color _textColor = Colors.White;
+        private string _textFontFamily = "Arial";
+        private string _textFontStyle = "Bold";
+
+        public bool IsTextLayer { get => _isTextLayer; set => SetField(ref _isTextLayer, value); }
+        public string TextContent { get => _textContent; set => SetField(ref _textContent, value ?? ""); }
+        public double TextX { get => _textX; set => SetField(ref _textX, value); }
+        public double TextY { get => _textY; set => SetField(ref _textY, value); }
+        public double TextWidth { get => _textWidth; set => SetField(ref _textWidth, value); }
+        public double TextHeight { get => _textHeight; set => SetField(ref _textHeight, value); }
+        public double TextFontSize { get => _textFontSize; set => SetField(ref _textFontSize, value); }
+        public Color TextColor { get => _textColor; set => SetField(ref _textColor, value); }
+        public string TextFontFamily { get => _textFontFamily; set => SetField(ref _textFontFamily, value ?? "Arial"); }
+        public string TextFontStyle { get => _textFontStyle; set => SetField(ref _textFontStyle, value ?? "Bold"); }
 
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler? PropertyChanged;

@@ -40,6 +40,80 @@ namespace FlowMy.Views.NodeControls
         public double BrushHardness => SliderBrushHardness.Value;
         public double BrushFlow => SliderBrushFlow.Value;
 
+        public event EventHandler? TextPropertiesChanged;
+        public event EventHandler? ActiveLayerChanged;
+
+        public double TextFontSize => SliderTextFontSize != null ? SliderTextFontSize.Value : 24;
+        public Color TextColor => (BorderTextColorSwatch != null && BorderTextColorSwatch.Background is SolidColorBrush scb) ? scb.Color : Colors.White;
+        public string TextFontFamily => CmbFontFamily != null && CmbFontFamily.SelectedItem is ComboBoxItem item ? item.Content.ToString() : "Arial";
+        public string TextFontStyle => CmbFontStyle != null && CmbFontStyle.SelectedItem is ComboBoxItem item ? item.Content.ToString() : "Bold";
+
+        public void UpdatePanelVisibilities(string activeTool)
+        {
+            if (BrushPropertiesPanel != null)
+                BrushPropertiesPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
+            if (TextPropertiesPanel != null)
+                TextPropertiesPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public void SetTextProperties(double size, Color color, string family, string style)
+        {
+            if (SliderTextFontSize != null) SliderTextFontSize.Value = size;
+            if (BorderTextColorSwatch != null) BorderTextColorSwatch.Background = new SolidColorBrush(color);
+            if (BtnTextColor != null) BtnTextColor.Content = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+            
+            if (CmbFontFamily != null)
+            {
+                foreach (ComboBoxItem item in CmbFontFamily.Items)
+                {
+                    if (item.Content.ToString() == family)
+                    {
+                        CmbFontFamily.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+            if (CmbFontStyle != null)
+            {
+                foreach (ComboBoxItem item in CmbFontStyle.Items)
+                {
+                    if (item.Content.ToString() == style)
+                    {
+                        CmbFontStyle.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void SliderTextFontSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (TxtPanelFontSize != null) TxtPanelFontSize.Text = $"{(int)e.NewValue}";
+            TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BtnTextColor_Click(object sender, RoutedEventArgs e)
+        {
+            Color current = TextColor;
+            var picked = PickColor(current);
+            if (picked.HasValue)
+            {
+                BorderTextColorSwatch.Background = new SolidColorBrush(picked.Value);
+                BtnTextColor.Content = $"#{picked.Value.R:X2}{picked.Value.G:X2}{picked.Value.B:X2}";
+                TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private void CmbFontFamily_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void CmbFontStyle_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         /// <summary>Gán document để panel bind vào.</summary>
         public void SetDocument(EditorDocument? doc)
         {
@@ -73,7 +147,7 @@ namespace FlowMy.Views.NodeControls
 
         // ═══════ LAYERS ═══════
 
-        private void RefreshLayersList()
+        public void RefreshLayersList()
         {
             if (_doc == null) return;
             // Hiển thị reversed: top layer ở trên (giống Photoshop)
@@ -129,6 +203,7 @@ namespace FlowMy.Views.NodeControls
                 SyncBlendModeCombo();
                 // Re-composite để canvas phản ánh trạng thái mới (ví dụ layer visibility thay đổi)
                 OnDocumentModified();
+                ActiveLayerChanged?.Invoke(this, EventArgs.Empty);
             }
             else if (e.PropertyName == nameof(EditorDocument.ForegroundColor) ||
                      e.PropertyName == nameof(EditorDocument.BackgroundColor))

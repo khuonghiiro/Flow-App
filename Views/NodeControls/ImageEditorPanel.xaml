@@ -404,118 +404,198 @@
                           MaxHeight="400">
                 <StackPanel Margin="5,4,5,6">
 
-                    <!-- ══════ BRUSH PROPERTIES ══════ -->
-                    <Border Padding="6,4" CornerRadius="3" Margin="0,2,0,3"
-                            Background="{StaticResource ipSurface}">
-                        <Border BorderBrush="{StaticResource ipAccent2}"
-                                BorderThickness="2,0,0,0" Padding="5,0,0,0">
-                            <TextBlock Text="BRUSH" FontSize="9" FontWeight="Bold"
-                                       Foreground="{StaticResource ipMuted}"/>
+                    <!-- ══════ BRUSH PROPERTIES PANEL ══════ -->
+                    <StackPanel x:Name="BrushPropertiesPanel" Visibility="Visible">
+                        <Border Padding="6,4" CornerRadius="3" Margin="0,2,0,3"
+                                Background="{StaticResource ipSurface}">
+                            <Border BorderBrush="{StaticResource ipAccent2}"
+                                    BorderThickness="2,0,0,0" Padding="5,0,0,0">
+                                <TextBlock Text="BRUSH" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource ipMuted}"/>
+                            </Border>
                         </Border>
-                    </Border>
 
-                    <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
-                            Padding="6,4" Margin="0,0,0,2">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                        <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
+                                Padding="6,4" Margin="0,0,0,2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                            <!-- Column 0: Sliders with Tooltips -->
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <DockPanel Margin="0,0,0,2" ToolTip="Kích thước đầu cọ (Brush Size) - Độ rộng nét vẽ tính theo pixel">
+                                <!-- Column 0: Sliders with Tooltips -->
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <DockPanel Margin="0,0,0,2" ToolTip="Kích thước đầu cọ (Brush Size) - Độ rộng nét vẽ tính theo pixel">
+                                        <TextBlock DockPanel.Dock="Left" Text="Size"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="3,1" MinWidth="26">
+                                            <TextBlock x:Name="TxtBrushSize" FontSize="9"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="10"/>
+                                        </Border>
+                                        <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="10"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="SliderBrushSize_ValueChanged"/>
+                                    </DockPanel>
+                                    <DockPanel Margin="0,0,0,2" ToolTip="Độ cứng nét vẽ (Hardness) - 0% là viền nhòe mềm mại, 100% là viền sắc cạnh">
+                                        <TextBlock DockPanel.Dock="Left" Text="Hard"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="3,1" MinWidth="26">
+                                            <TextBlock x:Name="TxtBrushHardness" FontSize="9"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="100%"/>
+                                        </Border>
+                                        <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="100"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="SliderBrushHardness_ValueChanged"/>
+                                    </DockPanel>
+                                    <DockPanel ToolTip="Độ phủ màu (Flow) - Tốc độ ra màu/độ đặc sắc khi di chuyển chuột">
+                                        <TextBlock DockPanel.Dock="Left" Text="Flow"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="3,1" MinWidth="26">
+                                            <TextBlock x:Name="TxtBrushFlow" FontSize="9"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="100%"/>
+                                        </Border>
+                                        <Slider x:Name="SliderBrushFlow" Minimum="1" Maximum="100" Value="100"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="SliderBrushFlow_ValueChanged"/>
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <!-- Column 1: Photoshop-style brush tip preview with checkerboard pattern -->
+                                <Border Grid.Column="1" Width="56" Height="56" Margin="6,0,0,0"
+                                        Background="{StaticResource ipSurface}" BorderBrush="{StaticResource ipBorder}"
+                                        BorderThickness="1" CornerRadius="4" VerticalAlignment="Center"
+                                        ToolTip="Xem trước đầu cọ (Brush Preview)">
+                                    <Grid ClipToBounds="True">
+                                        <!-- Checkerboard pattern background -->
+                                        <Grid.Background>
+                                            <VisualBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+                                                <VisualBrush.Visual>
+                                                    <Grid Width="8" Height="8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="4"/>
+                                                            <ColumnDefinition Width="4"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="4"/>
+                                                            <RowDefinition Height="4"/>
+                                                        </Grid.RowDefinitions>
+                                                        <Rectangle Grid.Row="0" Grid.Column="0" Fill="#1c202a"/>
+                                                        <Rectangle Grid.Row="0" Grid.Column="1" Fill="#111318"/>
+                                                        <Rectangle Grid.Row="1" Grid.Column="0" Fill="#111318"/>
+                                                        <Rectangle Grid.Row="1" Grid.Column="1" Fill="#1c202a"/>
+                                                    </Grid>
+                                                </VisualBrush.Visual>
+                                            </VisualBrush>
+                                        </Grid.Background>
+
+                                        <!-- Visual preview of the brush tip -->
+                                        <Ellipse x:Name="BrushPreviewEllipse"
+                                                 MaxWidth="48" MaxHeight="48"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 IsHitTestVisible="False"/>
+
+                                        <!-- Crosshair lines (Photoshop center target) -->
+                                        <Path Data="M0,8 L16,8 M8,0 L8,16" 
+                                              Stroke="#30FFFFFF" 
+                                              StrokeThickness="1" 
+                                              Width="16" Height="16"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              IsHitTestVisible="False"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ══════ TEXT PROPERTIES PANEL ══════ -->
+                    <StackPanel x:Name="TextPropertiesPanel" Visibility="Collapsed">
+                        <Border Padding="6,4" CornerRadius="3" Margin="0,2,0,3"
+                                Background="{StaticResource ipSurface}">
+                            <Border BorderBrush="{StaticResource ipAccent2}"
+                                    BorderThickness="2,0,0,0" Padding="5,0,0,0">
+                                <TextBlock Text="TEXT" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource ipMuted}"/>
+                            </Border>
+                        </Border>
+
+                        <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
+                                Padding="6,6" Margin="0,0,0,2">
+                            <StackPanel Orientation="Vertical">
+                                <!-- Font Size -->
+                                <DockPanel Margin="0,0,0,6">
                                     <TextBlock DockPanel.Dock="Left" Text="Size"
                                                Foreground="{StaticResource ipMuted}"
-                                               FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                               FontSize="9" Width="36" VerticalAlignment="Center"/>
                                     <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
                                             CornerRadius="2" Padding="3,1" MinWidth="26">
-                                        <TextBlock x:Name="TxtBrushSize" FontSize="9"
+                                        <TextBlock x:Name="TxtPanelFontSize" FontSize="9"
                                                    Foreground="{StaticResource ipAccent2}"
                                                    FontFamily="Consolas" HorizontalAlignment="Center"
-                                                   Text="10"/>
+                                                   Text="24"/>
                                     </Border>
-                                    <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="10"
+                                    <Slider x:Name="SliderTextFontSize" Minimum="6" Maximum="200" Value="24"
                                             VerticalAlignment="Center" Margin="4,0"
-                                            ValueChanged="SliderBrushSize_ValueChanged"/>
+                                            ValueChanged="SliderTextFontSize_ValueChanged"/>
                                 </DockPanel>
-                                <DockPanel Margin="0,0,0,2" ToolTip="Độ cứng nét vẽ (Hardness) - 0% là viền nhòe mềm mại, 100% là viền sắc cạnh">
-                                    <TextBlock DockPanel.Dock="Left" Text="Hard"
+
+                                <!-- Text Color -->
+                                <DockPanel Margin="0,0,0,6">
+                                    <TextBlock DockPanel.Dock="Left" Text="Màu"
                                                Foreground="{StaticResource ipMuted}"
-                                               FontSize="9" Width="32" VerticalAlignment="Center"/>
-                                    <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
-                                            CornerRadius="2" Padding="3,1" MinWidth="26">
-                                        <TextBlock x:Name="TxtBrushHardness" FontSize="9"
-                                                   Foreground="{StaticResource ipAccent2}"
-                                                   FontFamily="Consolas" HorizontalAlignment="Center"
-                                                   Text="100%"/>
-                                    </Border>
-                                    <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="100"
-                                            VerticalAlignment="Center" Margin="4,0"
-                                            ValueChanged="SliderBrushHardness_ValueChanged"/>
+                                               FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <Grid Height="18">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" x:Name="BorderTextColorSwatch" Background="White" BorderBrush="{StaticResource ipBorder}" BorderThickness="1" CornerRadius="2" Height="14" Width="14" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" x:Name="BtnTextColor" Content="#FFFFFF" FontSize="9" Background="Transparent" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Left" Padding="4,0,0,0" Height="18" Click="BtnTextColor_Click" Cursor="Hand"/>
+                                    </Grid>
                                 </DockPanel>
-                                <DockPanel ToolTip="Độ phủ màu (Flow) - Tốc độ ra màu/độ đặc sắc khi di chuyển chuột">
-                                    <TextBlock DockPanel.Dock="Left" Text="Flow"
+
+                                <!-- Font Family -->
+                                <DockPanel Margin="0,0,0,6">
+                                    <TextBlock DockPanel.Dock="Left" Text="Font"
                                                Foreground="{StaticResource ipMuted}"
-                                               FontSize="9" Width="32" VerticalAlignment="Center"/>
-                                    <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
-                                            CornerRadius="2" Padding="3,1" MinWidth="26">
-                                        <TextBlock x:Name="TxtBrushFlow" FontSize="9"
-                                                   Foreground="{StaticResource ipAccent2}"
-                                                   FontFamily="Consolas" HorizontalAlignment="Center"
-                                                   Text="100%"/>
-                                    </Border>
-                                    <Slider x:Name="SliderBrushFlow" Minimum="1" Maximum="100" Value="100"
-                                            VerticalAlignment="Center" Margin="4,0"
-                                            ValueChanged="SliderBrushFlow_ValueChanged"/>
+                                               FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbFontFamily" Height="20" FontSize="9" SelectionChanged="CmbFontFamily_SelectionChanged"
+                                              Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center">
+                                        <ComboBoxItem Content="Arial" IsSelected="True"/>
+                                        <ComboBoxItem Content="Times New Roman"/>
+                                        <ComboBoxItem Content="Courier New"/>
+                                        <ComboBoxItem Content="Segoe UI"/>
+                                        <ComboBoxItem Content="Verdana"/>
+                                        <ComboBoxItem Content="Consolas"/>
+                                    </ComboBox>
+                                </DockPanel>
+
+                                <!-- Font Style -->
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Text="Style"
+                                               Foreground="{StaticResource ipMuted}"
+                                               FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbFontStyle" Height="20" FontSize="9" SelectionChanged="CmbFontStyle_SelectionChanged"
+                                              Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center">
+                                        <ComboBoxItem Content="Bold" IsSelected="True"/>
+                                        <ComboBoxItem Content="Regular"/>
+                                        <ComboBoxItem Content="Italic"/>
+                                    </ComboBox>
                                 </DockPanel>
                             </StackPanel>
-
-                            <!-- Column 1: Photoshop-style brush tip preview with checkerboard pattern -->
-                            <Border Grid.Column="1" Width="56" Height="56" Margin="6,0,0,0"
-                                    Background="{StaticResource ipSurface}" BorderBrush="{StaticResource ipBorder}"
-                                    BorderThickness="1" CornerRadius="4" VerticalAlignment="Center"
-                                    ToolTip="Xem trước đầu cọ (Brush Preview)">
-                                <Grid ClipToBounds="True">
-                                    <!-- Checkerboard pattern background -->
-                                    <Grid.Background>
-                                        <VisualBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
-                                            <VisualBrush.Visual>
-                                                <Grid Width="8" Height="8">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="4"/>
-                                                        <ColumnDefinition Width="4"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="4"/>
-                                                        <RowDefinition Height="4"/>
-                                                    </Grid.RowDefinitions>
-                                                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#1c202a"/>
-                                                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#111318"/>
-                                                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#111318"/>
-                                                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#1c202a"/>
-                                                </Grid>
-                                            </VisualBrush.Visual>
-                                        </VisualBrush>
-                                    </Grid.Background>
-
-                                    <!-- Visual preview of the brush tip -->
-                                    <Ellipse x:Name="BrushPreviewEllipse"
-                                             MaxWidth="48" MaxHeight="48"
-                                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                                             IsHitTestVisible="False"/>
-
-                                    <!-- Crosshair lines (Photoshop center target) -->
-                                    <Path Data="M0,8 L16,8 M8,0 L8,16" 
-                                          Stroke="#30FFFFFF" 
-                                          StrokeThickness="1" 
-                                          Width="16" Height="16"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center"
-                                          IsHitTestVisible="False"/>
-                                </Grid>
-                            </Border>
-                        </Grid>
-                    </Border>
+                        </Border>
+                    </StackPanel>
 
                     <!-- Opacity + Blend (compact) + LAYERS -->
                     <Border Background="{StaticResource ipSurface2}" CornerRadius="4"

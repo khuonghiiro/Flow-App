@@ -87,7 +87,10 @@ namespace FlowMy.Views.NodeControls
 
             InitializeComponent();
             EditorPanel.DocumentModified += OnEditorDocumentModified;
+            EditorPanel.TextPropertiesChanged += EditorPanel_TextPropertiesChanged;
+            EditorPanel.ActiveLayerChanged += EditorPanel_ActiveLayerChanged;
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+            this.PreviewKeyDown += ImageProcessingNodeContentControl_PreviewKeyDown;
 
             var iconConv = new IconKeyToPathConverter();
             var culture = CultureInfo.InvariantCulture;
@@ -428,7 +431,7 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_isDrawingPixels)
+            if (_isDrawingPixels || _isSelecting)
             {
                 HandleManualEditorMouseUp();
                 e.Handled = true;
@@ -444,7 +447,7 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (_isDrawingPixels)
+            if (_isDrawingPixels || _isSelecting)
             {
                 HandleManualEditorMouseMove(e);
                 e.Handled = true;
@@ -976,6 +979,7 @@ namespace FlowMy.Views.NodeControls
 
         private void EnsureEditorDocument()
         {
+            ClearSelection();
             var imgSource = MainImage.Source as BitmapSource;
 
             if (_node.EditorDoc != null)
@@ -1127,6 +1131,13 @@ namespace FlowMy.Views.NodeControls
                     border.Background = Brushes.Transparent;
                     border.BorderBrush = Brushes.Transparent;
                 }
+            }
+
+            EditorPanel.UpdatePanelVisibilities(activeTool);
+
+            if (activeTool != "Text" && TextMoveContainer != null && TextMoveContainer.Visibility == Visibility.Visible)
+            {
+                CommitActiveText();
             }
         }
 
@@ -1586,6 +1597,10 @@ namespace FlowMy.Views.NodeControls
         private Point _lastDrawingPixelPoint;
         private byte[]? _oldPixelsForUndo;
 
+        private bool _isSelecting;
+        private Point _selectionStartPoint;
+        private Rect? _selectionRect;
+
         private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
         {
             if (_node.EditorDoc == null) return;
@@ -1594,6 +1609,11 @@ namespace FlowMy.Views.NodeControls
 
             string tool = EditorPanel.ActiveToolName;
             var clickPos = e.GetPosition(MainImage);
+
+            if (tool != "Text" && TextMoveContainer != null && TextMoveContainer.Visibility == Visibility.Visible)
+            {
+                CommitActiveText();
+            }
 
             if (clickPos.X < 0 || clickPos.X > MainImage.ActualWidth ||
                 clickPos.Y < 0 || clickPos.Y > MainImage.ActualHeight)
@@ -1607,6 +1627,60 @@ namespace FlowMy.Views.NodeControls
             if (tool == "Eyedropper")
             {
                 PickColorWithEyedropper(px, py);
+                return;
+            }
+
+            if (tool == "Selection")
+            {
+                _isSelecting = true;
+                _selectionStartPoint = clickPos;
+                _selectionRect = null;
+                SelectionBoxRect.Visibility = Visibility.Visible;
+                SelectionBoxRect.Width = 0;
+                SelectionBoxRect.Height = 0;
+                SelectionBoxRect.Margin = new Thickness(clickPos.X, clickPos.Y, 0, 0);
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "Text")
+            {
+                if (TextMoveContainer.Visibility == Visibility.Visible)
+                {
+                    var clickPosInBBox = e.GetPosition(TextMoveContainer);
+                    bool clickedInsideBBox = clickPosInBBox.X >= 0 && clickPosInBBox.X <= TextMoveContainer.ActualWidth &&
+                                            clickPosInBBox.Y >= 0 && clickPosInBBox.Y <= TextMoveContainer.ActualHeight;
+
+                    if (!clickedInsideBBox)
+                    {
+                        CommitActiveText();
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+
+                // Create a new text layer (Photoshop style)
+                var doc = _node.EditorDoc;
+                if (doc != null)
+                {
+                    var textLayer = new EditorLayer(doc.Width, doc.Height, "Text Layer " + (doc.Layers.Count + 1));
+                    textLayer.IsTextLayer = true;
+                    textLayer.TextContent = "Nhập chữ...";
+                    textLayer.TextX = clickPos.X;
+                    textLayer.TextY = clickPos.Y;
+                    textLayer.TextWidth = 150;
+                    textLayer.TextHeight = 60;
+                    textLayer.TextFontSize = EditorPanel.TextFontSize;
+                    textLayer.TextColor = EditorPanel.TextColor;
+                    textLayer.TextFontFamily = EditorPanel.TextFontFamily;
+                    textLayer.TextFontStyle = EditorPanel.TextFontStyle;
+
+                    doc.Layers.Add(textLayer);
+                    doc.ActiveLayer = textLayer;
+                    EditorPanel.RefreshLayersList();
+                }
                 return;
             }
 
@@ -1668,12 +1742,32 @@ namespace FlowMy.Views.NodeControls
 
         private void HandleManualEditorMouseMove(MouseEventArgs e)
         {
-            if (!_isDrawingPixels || _node.EditorDoc == null || _tempDrawingPixels == null) return;
+            if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
             string tool = EditorPanel.ActiveToolName;
             var mousePos = e.GetPosition(MainImage);
+
+            if (_isSelecting)
+            {
+                double x = Math.Min(_selectionStartPoint.X, mousePos.X);
+                double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
+                double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
+                double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
+
+                x = Math.Clamp(x, 0, MainImage.ActualWidth);
+                y = Math.Clamp(y, 0, MainImage.ActualHeight);
+                w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
+                h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+
+                SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
+                SelectionBoxRect.Width = w;
+                SelectionBoxRect.Height = h;
+                return;
+            }
+
+            if (!_isDrawingPixels || _tempDrawingPixels == null) return;
 
             double scaleX = activeLayer.Width / MainImage.ActualWidth;
             double scaleY = activeLayer.Height / MainImage.ActualHeight;
@@ -1700,12 +1794,40 @@ namespace FlowMy.Views.NodeControls
 
         private void HandleManualEditorMouseUp()
         {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+
+            if (_isSelecting)
+            {
+                _isSelecting = false;
+                MainScrollViewer.ReleaseMouseCapture();
+
+                if (activeLayer != null)
+                {
+                    double scaleX = activeLayer.Width / MainImage.ActualWidth;
+                    double scaleY = activeLayer.Height / MainImage.ActualHeight;
+
+                    double lx = SelectionBoxRect.Margin.Left * scaleX;
+                    double ly = SelectionBoxRect.Margin.Top * scaleY;
+                    double lw = SelectionBoxRect.Width * scaleX;
+                    double lh = SelectionBoxRect.Height * scaleY;
+
+                    if (lw > 2 && lh > 2)
+                    {
+                        _selectionRect = new Rect(lx, ly, lw, lh);
+                    }
+                    else
+                    {
+                        ClearSelection();
+                    }
+                }
+                return;
+            }
+
             if (!_isDrawingPixels) return;
             _isDrawingPixels = false;
             MainScrollViewer.ReleaseMouseCapture();
 
-            if (_node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null || _oldPixelsForUndo == null) return;
 
             int stride = activeLayer.Width * 4;
@@ -1720,6 +1842,62 @@ namespace FlowMy.Views.NodeControls
             _strokeAlphaMask = null;
 
             OnEditorDocumentModified();
+        }
+
+        private void ClearSelection()
+        {
+            _selectionRect = null;
+            if (SelectionBoxRect != null)
+            {
+                SelectionBoxRect.Visibility = Visibility.Collapsed;
+            }
+        }
+
+
+
+        private void ImageProcessingNodeContentControl_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape && _selectionRect.HasValue)
+            {
+                ClearSelection();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Delete && _selectionRect.HasValue && _node.EditorDoc != null)
+            {
+                var activeLayer = _node.EditorDoc.ActiveLayer;
+                if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+
+                int stride = activeLayer.Width * 4;
+                var oldPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+                var newPixels = new byte[stride * activeLayer.Height];
+                Array.Copy(oldPixels, newPixels, oldPixels.Length);
+
+                int startX = Math.Max(0, (int)_selectionRect.Value.Left);
+                int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
+                int startY = Math.Max(0, (int)_selectionRect.Value.Top);
+                int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
+
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * activeLayer.Width * 4;
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        newPixels[rowOffset + x * 4 + 3] = 0; // Alpha = 0 (Erase)
+                    }
+                }
+
+                var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+                _node.EditorDoc.History.Execute(cmd);
+
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), newPixels, stride, 0);
+                activeLayer.InvalidateThumbnail();
+                OnEditorDocumentModified();
+                e.Handled = true;
+            }
         }
 
         private void DrawBrushCircle(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
@@ -1746,6 +1924,15 @@ namespace FlowMy.Views.NodeControls
 
                     if (dist2 <= r2)
                     {
+                        if (_selectionRect.HasValue)
+                        {
+                            if (x < _selectionRect.Value.Left || x > _selectionRect.Value.Right ||
+                                y < _selectionRect.Value.Top || y > _selectionRect.Value.Bottom)
+                            {
+                                continue;
+                            }
+                        }
+
                         double dist = Math.Sqrt(dist2);
                         double pixelOpacity = 1.0;
                         if (dist > innerRadius)
@@ -1803,6 +1990,20 @@ namespace FlowMy.Views.NodeControls
                 int pixelRowOffset = rowOffset * 4;
                 for (int x = 0; x < width; x++)
                 {
+                    if (_selectionRect.HasValue)
+                    {
+                        if (x < _selectionRect.Value.Left || x > _selectionRect.Value.Right ||
+                            y < _selectionRect.Value.Top || y > _selectionRect.Value.Bottom)
+                        {
+                            int pixelOffset = pixelRowOffset + x * 4;
+                            destPixels[pixelOffset] = srcPixels[pixelOffset];
+                            destPixels[pixelOffset + 1] = srcPixels[pixelOffset + 1];
+                            destPixels[pixelOffset + 2] = srcPixels[pixelOffset + 2];
+                            destPixels[pixelOffset + 3] = srcPixels[pixelOffset + 3];
+                            continue;
+                        }
+                    }
+
                     int maskOffset = rowOffset + x;
                     byte maskAlphaByte = alphaMask[maskOffset];
                     if (maskAlphaByte == 0)
@@ -1888,6 +2089,15 @@ namespace FlowMy.Views.NodeControls
 
                 if (x < 0 || x >= width || y < 0 || y >= height) continue;
 
+                if (_selectionRect.HasValue)
+                {
+                    if (x < _selectionRect.Value.Left || x > _selectionRect.Value.Right ||
+                        y < _selectionRect.Value.Top || y > _selectionRect.Value.Bottom)
+                    {
+                        continue;
+                    }
+                }
+
                 int currentOffset = y * stride + x * 4;
                 if (pixels[currentOffset] == targetB &&
                     pixels[currentOffset + 1] == targetG &&
@@ -1923,6 +2133,272 @@ namespace FlowMy.Views.NodeControls
                 _node.EditorDoc.ForegroundColor = picked;
             }
         }
+
+        #region INTERACTIVE TEXT TOOL LOGIC
+
+        private bool _isDraggingTextContainer = false;
+        private Point _textDragStartMousePos;
+        private Thickness _textDragStartMargin;
+
+        private void EditorPanel_TextPropertiesChanged(object? sender, EventArgs e)
+        {
+            if (TextMoveContainer.Visibility == Visibility.Visible && _node.EditorDoc != null)
+            {
+                var activeLayer = _node.EditorDoc.ActiveLayer;
+                if (activeLayer != null && activeLayer.IsTextLayer)
+                {
+                    TextEditorBox.FontSize = EditorPanel.TextFontSize;
+                    TextEditorBox.Foreground = new SolidColorBrush(EditorPanel.TextColor);
+                    TextEditorBox.CaretBrush = TextEditorBox.Foreground;
+                    TextEditorBox.FontFamily = new FontFamily(EditorPanel.TextFontFamily);
+                    TextEditorBox.FontWeight = EditorPanel.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
+                    TextEditorBox.FontStyle = EditorPanel.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+                }
+            }
+        }
+
+        private void EditorPanel_ActiveLayerChanged(object? sender, EventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+
+            if (activeLayer != null && activeLayer.IsTextLayer)
+            {
+                // Sync side panel inputs to match this text layer
+                EditorPanel.SetTextProperties(
+                    activeLayer.TextFontSize,
+                    activeLayer.TextColor,
+                    activeLayer.TextFontFamily,
+                    activeLayer.TextFontStyle
+                );
+
+                // Initialize overlay bounding box
+                TextMoveContainer.Margin = new Thickness(activeLayer.TextX, activeLayer.TextY, 0, 0);
+                TextBoundingBorder.Width = activeLayer.TextWidth;
+                TextBoundingBorder.Height = activeLayer.TextHeight;
+                TextEditorBox.Text = activeLayer.TextContent;
+
+                // Sync overlay look
+                TextEditorBox.FontSize = activeLayer.TextFontSize;
+                TextEditorBox.Foreground = new SolidColorBrush(activeLayer.TextColor);
+                TextEditorBox.CaretBrush = TextEditorBox.Foreground;
+                TextEditorBox.FontFamily = new FontFamily(activeLayer.TextFontFamily);
+                TextEditorBox.FontWeight = activeLayer.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
+                TextEditorBox.FontStyle = activeLayer.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+
+                // Hide the rendered text on the bitmap while editing so it doesn't double-render
+                activeLayer.Clear();
+                OnEditorDocumentModified();
+
+                TextMoveContainer.Visibility = Visibility.Visible;
+                TextEditorBox.Focus();
+                TextEditorBox.SelectAll();
+            }
+            else
+            {
+                // Selected a regular layer, hide overlay (commit first if it was open)
+                if (TextMoveContainer.Visibility == Visibility.Visible)
+                {
+                    CommitActiveText();
+                }
+                TextMoveContainer.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void TextToolbar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var element = sender as FrameworkElement;
+            if (element == null) return;
+
+            _isDraggingTextContainer = true;
+            _textDragStartMousePos = e.GetPosition(MainScrollViewer);
+            _textDragStartMargin = TextMoveContainer.Margin;
+            element.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void TextToolbar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isDraggingTextContainer) return;
+            var element = sender as FrameworkElement;
+            if (element == null) return;
+
+            var currentPos = e.GetPosition(MainScrollViewer);
+            double dx = currentPos.X - _textDragStartMousePos.X;
+            double dy = currentPos.Y - _textDragStartMousePos.Y;
+
+            double scale = ImageZoomScale.ScaleX;
+            if (scale <= 0) scale = 1.0;
+
+            double newLeft = _textDragStartMargin.Left + (dx / scale);
+            double newTop = _textDragStartMargin.Top + (dy / scale);
+
+            // Clamp container bounds loosely
+            newLeft = Math.Clamp(newLeft, -1000, MainImage.ActualWidth + 1000);
+            newTop = Math.Clamp(newTop, -1000, MainImage.ActualHeight + 1000);
+
+            TextMoveContainer.Margin = new Thickness(newLeft, newTop, 0, 0);
+            e.Handled = true;
+        }
+
+        private void TextToolbar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingTextContainer)
+            {
+                _isDraggingTextContainer = false;
+                var element = sender as FrameworkElement;
+                element?.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        private void TextResizeThumb_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+        {
+            double scale = ImageZoomScale.ScaleX;
+            if (scale <= 0) scale = 1.0;
+
+            double dw = e.HorizontalChange / scale;
+            double dh = e.VerticalChange / scale;
+
+            if (double.IsNaN(TextBoundingBorder.Width) || TextBoundingBorder.Width <= 0)
+                TextBoundingBorder.Width = TextBoundingBorder.ActualWidth;
+            if (double.IsNaN(TextBoundingBorder.Height) || TextBoundingBorder.Height <= 0)
+                TextBoundingBorder.Height = TextBoundingBorder.ActualHeight;
+
+            TextBoundingBorder.Width = Math.Max(100, TextBoundingBorder.Width + dw);
+            TextBoundingBorder.Height = Math.Max(40, TextBoundingBorder.Height + dh);
+            e.Handled = true;
+        }
+
+        private void TextEditorBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                CommitActiveText();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelActiveText();
+                e.Handled = true;
+            }
+        }
+
+        private void TextEditorBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+        }
+
+        private void RedrawTextLayer(EditorLayer layer)
+        {
+            if (layer == null || !layer.IsTextLayer) return;
+
+            double scaleX = layer.Width / MainImage.ActualWidth;
+            double scaleY = layer.Height / MainImage.ActualHeight;
+
+            // Compute relative position based on saved coordinates
+            int px = (int)(layer.TextX * scaleX);
+            int py = (int)(layer.TextY * scaleY);
+            double renderWidth = layer.TextWidth * scaleX;
+            double renderHeight = layer.TextHeight * scaleY;
+
+            layer.Clear();
+            using (var bmp = Utils.ImageAdjustments.WriteableBitmapToBitmap(layer.Bitmap))
+            {
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                {
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+
+                    float fontSize = (float)(layer.TextFontSize * scaleY);
+                    fontSize = Math.Clamp(fontSize, 4, 1000);
+
+                    var fontStyle = System.Drawing.FontStyle.Regular;
+                    if (layer.TextFontStyle == "Bold") fontStyle = System.Drawing.FontStyle.Bold;
+                    else if (layer.TextFontStyle == "Italic") fontStyle = System.Drawing.FontStyle.Italic;
+
+                    using (var font = new System.Drawing.Font(layer.TextFontFamily, fontSize, fontStyle))
+                    using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(
+                        layer.TextColor.A,
+                        layer.TextColor.R,
+                        layer.TextColor.G,
+                        layer.TextColor.B)))
+                    {
+                        var rect = new System.Drawing.RectangleF((float)px, (float)py, (float)renderWidth, (float)renderHeight);
+                        g.DrawString(layer.TextContent, font, brush, rect);
+                    }
+                }
+                Utils.ImageAdjustments.BitmapToWriteableBitmap(bmp, layer.Bitmap);
+            }
+            layer.InvalidateThumbnail();
+            OnEditorDocumentModified();
+        }
+
+        private void CommitActiveText()
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null || !activeLayer.IsTextLayer || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+
+            string text = TextEditorBox.Text;
+            if (string.IsNullOrEmpty(text) || text == "Nhập chữ...")
+            {
+                CancelActiveText();
+                return;
+            }
+
+            int stride = activeLayer.Width * 4;
+            var oldPixels = new byte[stride * activeLayer.Height];
+
+            // Render old text temporarily to snapshot old pixels for Undo
+            string newText = text;
+            activeLayer.TextContent = activeLayer.TextContent; // keep old text first
+            RedrawTextLayer(activeLayer);
+            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+            // Save new metadata
+            activeLayer.TextContent = newText;
+            activeLayer.TextX = TextMoveContainer.Margin.Left;
+            activeLayer.TextY = TextMoveContainer.Margin.Top;
+            activeLayer.TextWidth = TextBoundingBorder.ActualWidth;
+            activeLayer.TextHeight = TextBoundingBorder.ActualHeight;
+            activeLayer.TextFontSize = EditorPanel.TextFontSize;
+            activeLayer.TextColor = EditorPanel.TextColor;
+            activeLayer.TextFontFamily = EditorPanel.TextFontFamily;
+            activeLayer.TextFontStyle = EditorPanel.TextFontStyle;
+
+            // Render new text
+            RedrawTextLayer(activeLayer);
+
+            var newPixels = new byte[stride * activeLayer.Height];
+            activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+
+            // Execute pixel edit command
+            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+            _node.EditorDoc.History.Execute(cmd);
+
+            TextMoveContainer.Visibility = Visibility.Collapsed;
+            activeLayer.InvalidateThumbnail();
+            OnEditorDocumentModified();
+        }
+
+        private void CancelActiveText()
+        {
+            TextMoveContainer.Visibility = Visibility.Collapsed;
+            if (_node.EditorDoc != null && _node.EditorDoc.ActiveLayer != null && _node.EditorDoc.ActiveLayer.IsTextLayer)
+            {
+                var layer = _node.EditorDoc.ActiveLayer;
+                if (layer.TextContent == "Nhập chữ..." || string.IsNullOrEmpty(layer.TextContent))
+                {
+                    _node.EditorDoc.Layers.Remove(layer);
+                    EditorPanel.RefreshLayersList();
+                }
+                else
+                {
+                    RedrawTextLayer(layer);
+                }
+            }
+        }
+
+        #endregion
 
         #endregion
     }
