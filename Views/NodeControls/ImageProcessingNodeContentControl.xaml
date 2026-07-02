@@ -582,5 +582,52 @@
         <!-- Image Processor (code gán Content từ BuildImageProcessorColumn) -->
         <ContentControl x:Name="IpProcessorHost" Grid.Row="0" Grid.Column="3"
                         Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+        <!-- ═══ SLEEK PHOTOSHOP-STYLE TOOL VARIANT POPUP ═══ -->
+        <Popup x:Name="FxGroupPopup" StaysOpen="False" AllowsTransparency="True"
+               Placement="Right" HorizontalOffset="4" VerticalOffset="-8"
+               PopupAnimation="Fade">
+            <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
+                    CornerRadius="8" Padding="4" SnapsToDevicePixels="True" MinWidth="180">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000"/>
+                </Border.Effect>
+                <ItemsControl x:Name="FxPopupItemsControl">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!-- Mỗi item trong popup -->
+                            <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="4" Padding="6,6" Margin="0,1" Cursor="Hand"
+                                    BorderBrush="Transparent" BorderThickness="0.5"
+                                    MouseLeftButtonDown="FxPopupItem_Click">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="22"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Icon -->
+                                    <controls:SvgViewboxEx Grid.Column="0" Width="14" Height="14" Fill="#dde3ef"
+                                                          Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                    
+                                    <!-- Text & Description -->
+                                    <StackPanel Grid.Column="1" Orientation="Vertical" Margin="6,0,4,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" Foreground="#727a8e" FontSize="9" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <!-- Hover effect: Viền xanh ngọc nhẹ và nền tối sáng -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ItemBorder" Property="Background" Value="#202533"/>
+                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#404fffb0"/>
+                                </Trigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </Popup>
     </Grid>
 </UserControl>

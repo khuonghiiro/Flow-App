@@ -1251,6 +1251,7 @@ namespace FlowMy.Views.NodeControls
             {
                 // Blur/Sharpen
                 case "GaussianBlur":     img.GaussianBlur(3, 1.5); break;
+                case "Blur":             img.Blur(5, 2); break;
                 case "MotionBlur":       img.MotionBlur(8, 4, 0); break;
                 case "RadialBlur":       img.RotationalBlur(5); break;
                 case "AdaptiveBlur":     img.AdaptiveBlur(0, 1); break;
@@ -1292,10 +1293,14 @@ namespace FlowMy.Views.NodeControls
                 case "SaturationUp":     img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(140), new ImageMagick.Percentage(100)); break;
                 case "SaturationDown":   img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(60), new ImageMagick.Percentage(100)); break;
                 case "Tint":             img.Colorize(new ImageMagick.MagickColor(255, 220, 180), new ImageMagick.Percentage(25)); break;
+                case "ContrastUp":       img.Contrast(); break;
+                case "ContrastDown":     img.BrightnessContrast(new ImageMagick.Percentage(0), new ImageMagick.Percentage(-15)); break;
+                case "BlueShift":        img.BlueShift(); break;
                 // Noise
                 case "AddNoiseGaussian": img.AddNoise(ImageMagick.NoiseType.Gaussian, 1.0); break;
                 case "AddNoiseImpulse":  img.AddNoise(ImageMagick.NoiseType.Impulse, 1.0); break;
                 case "Denoise":          img.Enhance(); break;
+                case "Despeckle":        img.Despeckle(); break;
                 case "MedianFilter":     img.MedianFilter(2); break;
                 case "ReduceNoise":      img.ReduceNoise(2); break;
                 // Morphology
@@ -1307,6 +1312,155 @@ namespace FlowMy.Views.NodeControls
                 case "Deskew":           img.Deskew(new ImageMagick.Percentage(40)); break;
                 case "Trim":             img.Trim(); break;
                 case "AutoOrient":       img.AutoOrient(); break;
+                case "Rotate90":         img.Rotate(90); break;
+                case "Rotate180":        img.Rotate(180); break;
+                case "Rotate270":        img.Rotate(270); break;
+                case "Flop":             img.Flop(); break;
+                case "Flip":             img.Flip(); break;
+            }
+        }
+
+        public class FxToolItem
+        {
+            public string Name { get; set; } = string.Empty;
+            public string DisplayName { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
+            public string IconKey { get; set; } = string.Empty;
+        }
+
+        private Border? _activeGroupBorder;
+
+        private void GroupToolBtn_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true; // Chặn nổi bọt lên parent để không mở ImageProcessingNodeDialog
+            
+            if (sender is not Border border) return;
+            
+            _activeGroupBorder = border;
+            
+            // Lấy danh sách hiệu ứng thuộc nhóm tương ứng
+            var list = GetFxGroupItems(border.Name);
+            if (list == null || list.Count == 0) return;
+            
+            FxPopupItemsControl.ItemsSource = list;
+            
+            // Định vị và hiển thị Popup
+            FxGroupPopup.PlacementTarget = border;
+            FxGroupPopup.Placement = System.Windows.Controls.Primitives.PlacementMode.Right;
+            FxGroupPopup.HorizontalOffset = 4;
+            FxGroupPopup.VerticalOffset = -8;
+            FxGroupPopup.IsOpen = true;
+        }
+
+        private List<FxToolItem> GetFxGroupItems(string borderName)
+        {
+            var items = new List<FxToolItem>();
+            switch (borderName)
+            {
+                case "TbxBlurActive":
+                    items.Add(new FxToolItem { Name = "GaussianBlur", DisplayName = "Gaussian Blur", Description = "Làm mịn ảnh, giảm nhiễu hạt độ chi tiết cao", IconKey = "droplet duotone" });
+                    items.Add(new FxToolItem { Name = "Blur", DisplayName = "Standard Blur", Description = "Làm mờ ảnh cơ bản nhanh chóng", IconKey = "droplet duotone" });
+                    items.Add(new FxToolItem { Name = "MotionBlur", DisplayName = "Motion Blur", Description = "Làm mờ chuyển động theo một góc nhất định", IconKey = "wind duotone" });
+                    items.Add(new FxToolItem { Name = "RadialBlur", DisplayName = "Radial Blur", Description = "Làm mờ xoay quanh tâm ảnh", IconKey = "arrows-spin duotone" });
+                    items.Add(new FxToolItem { Name = "AdaptiveBlur", DisplayName = "Adaptive Blur", Description = "Làm mờ bảo toàn các đường biên sắc nét", IconKey = "cloud duotone" });
+                    items.Add(new FxToolItem { Name = "Sharpen", DisplayName = "Sharpen", Description = "Tăng cường độ sắc nét cho ảnh", IconKey = "diamond duotone" });
+                    items.Add(new FxToolItem { Name = "UnsharpMask", DisplayName = "Unsharp Mask", Description = "Lọc sắc nét nâng cao có kiểm soát", IconKey = "gem duotone" });
+                    items.Add(new FxToolItem { Name = "AdaptiveSharpen", DisplayName = "Adaptive Sharpen", Description = "Tăng sắc nét bảo toàn chi tiết phẳng", IconKey = "bolt duotone" });
+                    break;
+                    
+                case "TbxArtActive":
+                    items.Add(new FxToolItem { Name = "OilPaint", DisplayName = "Oil Paint", Description = "Hiệu ứng tranh sơn dầu nghệ thuật", IconKey = "palette duotone" });
+                    items.Add(new FxToolItem { Name = "Charcoal", DisplayName = "Charcoal Drawing", Description = "Hiệu ứng phác thảo tranh than củi", IconKey = "pencil duotone" });
+                    items.Add(new FxToolItem { Name = "Sketch", DisplayName = "Sketch Pencil", Description = "Vẽ phác thảo bút chì nghệ thuật", IconKey = "pen-nib duotone" });
+                    items.Add(new FxToolItem { Name = "Emboss", DisplayName = "Emboss", Description = "Dập nổi 3D các chi tiết góc cạnh", IconKey = "cube duotone" });
+                    items.Add(new FxToolItem { Name = "Vignette", DisplayName = "Vignette Frame", Description = "Làm mờ viền ngoài tạo chiều sâu", IconKey = "circle duotone" });
+                    items.Add(new FxToolItem { Name = "Swirl", DisplayName = "Swirl", Description = "Hiệu ứng xoắn nước tại trung tâm", IconKey = "hurricane duotone" });
+                    items.Add(new FxToolItem { Name = "Wave", DisplayName = "Wave", Description = "Tạo hiệu ứng gợn sóng uốn lượn", IconKey = "water duotone" });
+                    items.Add(new FxToolItem { Name = "Spread", DisplayName = "Spread", Description = "Phân tán ngẫu nhiên các điểm ảnh xung quanh", IconKey = "sparkles duotone" });
+                    items.Add(new FxToolItem { Name = "Implode", DisplayName = "Implode", Description = "Hút các điểm ảnh vào trung tâm", IconKey = "compress duotone" });
+                    items.Add(new FxToolItem { Name = "Shade", DisplayName = "Shade", Description = "Hiệu ứng đổ bóng chiếu sáng 3D", IconKey = "mountain duotone" });
+                    items.Add(new FxToolItem { Name = "Pixelate", DisplayName = "Pixelate", Description = "Chia nhỏ ảnh thành các ô pixel vuông", IconKey = "grid duotone" });
+                    break;
+
+                case "TbxEdgeActive":
+                    items.Add(new FxToolItem { Name = "EdgeDetect", DisplayName = "Edge Detect", Description = "Phát hiện biên ảnh cơ bản", IconKey = "vector-square duotone" });
+                    items.Add(new FxToolItem { Name = "CannyEdge", DisplayName = "Canny Edge", Description = "Bộ lọc biên Canny cao cấp độ chính xác cao", IconKey = "bullseye duotone" });
+                    break;
+
+                case "TbxColorActive":
+                    items.Add(new FxToolItem { Name = "AutoLevel", DisplayName = "Auto Level", Description = "Tự động cân bằng histogram của ảnh", IconKey = "sliders duotone" });
+                    items.Add(new FxToolItem { Name = "AutoGamma", DisplayName = "Auto Gamma", Description = "Tự động sửa lỗi gamma của ảnh", IconKey = "sun duotone" });
+                    items.Add(new FxToolItem { Name = "Equalize", DisplayName = "Equalize Histogram", Description = "San phẳng phân bố độ sáng", IconKey = "bars duotone" });
+                    items.Add(new FxToolItem { Name = "Normalize", DisplayName = "Normalize Color", Description = "Tối ưu hóa độ tương phản toàn phần", IconKey = "chart-bar duotone" });
+                    items.Add(new FxToolItem { Name = "Negate", DisplayName = "Invert (Negate)", Description = "Đảo ngược màu sắc (màu âm bản)", IconKey = "circle-half duotone" });
+                    items.Add(new FxToolItem { Name = "Posterize", DisplayName = "Posterize", Description = "Giảm số lượng màu tạo hiệu ứng poster", IconKey = "swatchbook duotone" });
+                    items.Add(new FxToolItem { Name = "Solarize", DisplayName = "Solarize", Description = "Đảo ngược các vùng sáng quá ngưỡng", IconKey = "explosion duotone" });
+                    items.Add(new FxToolItem { Name = "SepiaTone", DisplayName = "Sepia Tone", Description = "Màu ảnh hoài cổ úa vàng", IconKey = "image duotone" });
+                    items.Add(new FxToolItem { Name = "Grayscale", DisplayName = "Grayscale", Description = "Chuyển đổi thành ảnh đen trắng", IconKey = "moon duotone" });
+                    items.Add(new FxToolItem { Name = "BrightnessUp", DisplayName = "Brightness +", Description = "Tăng độ sáng ảnh (+15%)", IconKey = "brightness duotone" });
+                    items.Add(new FxToolItem { Name = "BrightnessDown", DisplayName = "Brightness -", Description = "Giảm độ sáng ảnh (-15%)", IconKey = "eclipse duotone" });
+                    items.Add(new FxToolItem { Name = "GammaCorrect", DisplayName = "Gamma Correct", Description = "Điều chỉnh độ tương phản trung gian", IconKey = "adjust duotone" });
+                    items.Add(new FxToolItem { Name = "SaturationUp", DisplayName = "Saturation +", Description = "Tăng rực rỡ màu sắc (+40%)", IconKey = "rainbow duotone" });
+                    items.Add(new FxToolItem { Name = "SaturationDown", DisplayName = "Saturation -", Description = "Giảm độ rực màu sắc (-40%)", IconKey = "filter duotone" });
+                    items.Add(new FxToolItem { Name = "Tint", DisplayName = "Tint (Colorize)", Description = "Áp sắc màu ấm cho bức ảnh", IconKey = "feather duotone" });
+                    items.Add(new FxToolItem { Name = "ContrastUp", DisplayName = "Contrast +", Description = "Tăng tương phản giữa sáng và tối", IconKey = "circle-half duotone" });
+                    items.Add(new FxToolItem { Name = "ContrastDown", DisplayName = "Contrast -", Description = "Giảm tương phản giữa sáng và tối", IconKey = "circle-half duotone" });
+                    items.Add(new FxToolItem { Name = "BlueShift", DisplayName = "Blue Shift", Description = "Chuyển tông màu đêm sang ánh sáng xanh", IconKey = "moon duotone" });
+                    break;
+
+                case "TbxNoiseActive":
+                    items.Add(new FxToolItem { Name = "AddNoiseGaussian", DisplayName = "Noise (Gaussian)", Description = "Thêm nhiễu ngẫu nhiên Gauss hạt mịn", IconKey = "signal duotone" });
+                    items.Add(new FxToolItem { Name = "AddNoiseImpulse", DisplayName = "Noise (Impulse)", Description = "Thêm nhiễu muối tiêu (Impulse)", IconKey = "burst duotone" });
+                    items.Add(new FxToolItem { Name = "Denoise", DisplayName = "Denoise (Enhance)", Description = "Lọc mịn giảm nhiễu hạt cơ bản", IconKey = "broom duotone" });
+                    items.Add(new FxToolItem { Name = "Despeckle", DisplayName = "Despeckle", Description = "Khử nhiễu đốm đốm nâng cao", IconKey = "broom duotone" });
+                    items.Add(new FxToolItem { Name = "MedianFilter", DisplayName = "Median Filter", Description = "Bộ lọc trung vị khử nhiễu muối tiêu", IconKey = "shield duotone" });
+                    items.Add(new FxToolItem { Name = "ReduceNoise", DisplayName = "Reduce Noise", Description = "Giảm nhiễu bảo toàn cấu trúc cạnh", IconKey = "wand duotone" });
+                    break;
+
+                case "TbxMorphActive":
+                    items.Add(new FxToolItem { Name = "Dilate", DisplayName = "Dilate (Phình)", Description = "Giãn nở vùng sáng của ảnh", IconKey = "expand duotone" });
+                    items.Add(new FxToolItem { Name = "MorphErode", DisplayName = "Erode (Co)", Description = "Thu hẹp vùng sáng của ảnh", IconKey = "compress duotone" });
+                    items.Add(new FxToolItem { Name = "Opening", DisplayName = "Opening", Description = "Co trước giãn sau (xoá nhiễu sáng nhỏ)", IconKey = "atom duotone" });
+                    items.Add(new FxToolItem { Name = "Closing", DisplayName = "Closing", Description = "Giãn trước co sau (lấp lỗ trống tối nhỏ)", IconKey = "fingerprint duotone" });
+                    break;
+
+                case "TbxXFormActive":
+                    items.Add(new FxToolItem { Name = "Deskew", DisplayName = "Deskew", Description = "Tự động chỉnh ảnh bị nghiêng thẳng lại", IconKey = "rotate duotone" });
+                    items.Add(new FxToolItem { Name = "Trim", DisplayName = "Trim", Description = "Tự động xén các vùng viền thừa", IconKey = "crop duotone" });
+                    items.Add(new FxToolItem { Name = "AutoOrient", DisplayName = "Auto Orient", Description = "Tự động xoay ảnh theo EXIF orientation", IconKey = "compass duotone" });
+                    items.Add(new FxToolItem { Name = "Rotate90", DisplayName = "Rotate 90°", Description = "Xoay ảnh 90 độ theo chiều kim đồng hồ", IconKey = "rotate duotone" });
+                    items.Add(new FxToolItem { Name = "Rotate180", DisplayName = "Rotate 180°", Description = "Xoay ảnh ngược đầu 180 độ", IconKey = "rotate duotone" });
+                    items.Add(new FxToolItem { Name = "Rotate270", DisplayName = "Rotate 270°", Description = "Xoay ảnh 270 độ", IconKey = "rotate duotone" });
+                    items.Add(new FxToolItem { Name = "Flop", DisplayName = "Horizontal Flip", Description = "Lật ảnh đối xứng ngang", IconKey = "arrows-left-right duotone" });
+                    items.Add(new FxToolItem { Name = "Flip", DisplayName = "Vertical Flip", Description = "Lật ảnh đối xứng dọc", IconKey = "arrows-up-down-left-right duotone" });
+                    break;
+            }
+            return items;
+        }
+
+        private void FxPopupItem_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is FxToolItem selectedItem)
+            {
+                if (_activeGroupBorder != null)
+                {
+                    // 1. Cập nhật Tag của nút cha (chứa tên effect)
+                    _activeGroupBorder.Tag = selectedItem.Name;
+
+                    // 2. Cập nhật ToolTip
+                    _activeGroupBorder.ToolTip = selectedItem.DisplayName;
+
+                    // 3. Cập nhật icon của nút cha
+                    if (_activeGroupBorder.Child is SvgViewboxEx svg)
+                    {
+                        var converter = new IconKeyToPathConverter();
+                        svg.Source = (Uri)converter.Convert(null, typeof(Uri), selectedItem.IconKey, null);
+                    }
+                }
+                
+                // Đóng Popup
+                FxGroupPopup.IsOpen = false;
+                e.Handled = true;
             }
         }
 
