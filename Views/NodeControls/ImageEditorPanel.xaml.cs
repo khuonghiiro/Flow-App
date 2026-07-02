@@ -19,7 +19,6 @@ namespace FlowMy.Views.NodeControls
     {
         private EditorDocument? _doc;
         private string _activeTool = "Brush";
-        private readonly Dictionary<string, Border> _toolBorders = new();
         
         // Drag reorder layers state fields
         private EditorLayer? _draggedLayer;
@@ -30,19 +29,9 @@ namespace FlowMy.Views.NodeControls
         public ImageEditorPanel()
         {
             InitializeComponent();
-            Loaded += (_, _) => CacheToolBorders();
         }
 
-        private void CacheToolBorders()
-        {
-            _toolBorders["Brush"] = ToolBrush;
-            _toolBorders["Eraser"] = ToolEraser;
-            _toolBorders["Fill"] = ToolFill;
-            _toolBorders["Eyedropper"] = ToolEyedropper;
-            _toolBorders["Move"] = ToolMove;
-            _toolBorders["Text"] = ToolText;
-            _toolBorders["Selection"] = ToolSelection;
-        }
+
 
         /// <summary>Tool name hiện tại (Brush, Eraser, Fill, etc.).</summary>
         public string ActiveToolName => _activeTool;
@@ -134,8 +123,11 @@ namespace FlowMy.Views.NodeControls
         {
             if (e.PropertyName == nameof(EditorDocument.ActiveLayer))
             {
+                SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
+                // Re-composite để canvas phản ánh trạng thái mới (ví dụ layer visibility thay đổi)
+                OnDocumentModified();
             }
             else if (e.PropertyName == nameof(EditorDocument.ForegroundColor) ||
                      e.PropertyName == nameof(EditorDocument.BackgroundColor))
@@ -299,12 +291,11 @@ namespace FlowMy.Views.NodeControls
                 newLayer = new EditorLayer(_doc.Width, _doc.Height, $"Layer {_doc.Layers.Count + 1}");
             }
 
-            var previousActive = _doc.ActiveLayer; // giữ reference trước khi add
             var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
             _doc.History.Execute(cmd);
 
-            // Giữ focus ở layer đã chọn, không nhảy sang copy mới
-            _doc.ActiveLayer = previousActive;
+            // Chọn layer mới (giống Photoshop Ctrl+J) — layer mới ở TRÊN, có quyền ưu tiên cao hơn
+            _doc.ActiveLayer = newLayer;
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
             SyncBlendModeCombo();
@@ -386,38 +377,15 @@ namespace FlowMy.Views.NodeControls
 
         // ═══════ TOOLS ═══════
 
-        private void ToolBtn_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is Border border && border.Tag is string toolName)
-            {
-                SelectTool(toolName);
-                e.Handled = true;
-            }
-        }
-
         private void SelectTool(string toolName)
         {
             _activeTool = toolName;
+        }
 
-            // Update visual state — active = accent bg, inactive = transparent
-            var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x4f, 0xff, 0xb0)); // ipAccent 20%
-            var activeBorder = new SolidColorBrush(Color.FromRgb(0x4f, 0xff, 0xb0));    // ipAccent
-
-            foreach (var (name, border) in _toolBorders)
-            {
-                if (name == toolName)
-                {
-                    border.Background = activeBg;
-                    border.BorderBrush = activeBorder;
-                    border.BorderThickness = new Thickness(1.5);
-                }
-                else
-                {
-                    border.Background = Brushes.Transparent;
-                    border.BorderBrush = Brushes.Transparent;
-                    border.BorderThickness = new Thickness(1.5);
-                }
-            }
+        /// <summary>Public accessor để parent control có thể set tool từ toolbox bên ngoài.</summary>
+        public void SelectToolByName(string toolName)
+        {
+            SelectTool(toolName);
         }
 
         private void SliderBrushSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

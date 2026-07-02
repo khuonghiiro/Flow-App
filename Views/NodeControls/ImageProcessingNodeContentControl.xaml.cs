@@ -895,13 +895,8 @@ namespace FlowMy.Views.NodeControls
                 }
                 else if (_node.EditorDoc != null)
                 {
-                    // Cùng kích thước → sync pixel
-                    var bgLayer = _node.EditorDoc.Layers.Count > 0 ? _node.EditorDoc.Layers[0] : null;
-                    if (bgLayer != null)
-                    {
-                        bgLayer.CopyFrom(bmp);
-                        EditorPanel.SetDocument(_node.EditorDoc);
-                    }
+                    // Cùng kích thước → giữ nguyên layers, chỉ re-composite
+                    OnEditorDocumentModified();
                 }
             }
         }
@@ -948,12 +943,15 @@ namespace FlowMy.Views.NodeControls
                 RightMenuBorder.Visibility = Visibility.Visible;
                 EditorPanel.Visibility = Visibility.Collapsed;
                 LeftMenuBorder.Visibility = Visibility.Visible;
+                EditorToolbox.Visibility = Visibility.Collapsed;
             }
             else
             {
                 // Ẩn AI panels, hiện Editor
                 RightMenuBorder.Visibility = Visibility.Collapsed;
                 EditorPanel.Visibility = Visibility.Visible;
+                LeftMenuBorder.Visibility = Visibility.Collapsed;
+                EditorToolbox.Visibility = Visibility.Visible;
 
                 // Tắt cột Image Processor nếu đang mở
                 if (_ipColumnVisible)
@@ -963,6 +961,10 @@ namespace FlowMy.Views.NodeControls
 
                 // Tạo EditorDocument nếu chưa có
                 EnsureEditorDocument();
+
+                // Sync toolbox visual state với active tool
+                SyncToolboxHighlight();
+                SyncToolboxColors();
             }
 
             SyncModeButtonStyles();
@@ -982,13 +984,12 @@ namespace FlowMy.Views.NodeControls
                     {
                         _node.EditorDoc = Models.ImageEditor.EditorDocument.FromBitmapSource(imgSource);
                     }
-                    else if (_node.EditorDoc.Layers.Count > 0)
-                    {
-                        // Cùng kích thước → sync pixel vào background layer
-                        _node.EditorDoc.Layers[0].CopyFrom(imgSource);
-                    }
+                    // Nếu cùng kích thước → giữ nguyên mọi layer, KHÔNG overwrite.
+                    // Pixel data đã được user chỉnh sửa trên tất cả layers, phải bảo toàn.
                 }
                 EditorPanel.SetDocument(_node.EditorDoc);
+                // Re-composite để canvas hiển thị composite mới nhất
+                OnEditorDocumentModified();
                 return;
             }
 
@@ -1036,6 +1037,103 @@ namespace FlowMy.Views.NodeControls
             // AI mode có IP toggle, Editor mode ẩn nó
             IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;
         }
+        #region EDITOR TOOLBOX (Left vertical strip)
+
+        private readonly Dictionary<string, Border> _toolboxBorders = new();
+
+        private void InitToolboxBorders()
+        {
+            _toolboxBorders["Brush"] = TbxBrush;
+            _toolboxBorders["Eraser"] = TbxEraser;
+            _toolboxBorders["Fill"] = TbxFill;
+            _toolboxBorders["Eyedropper"] = TbxEyedropper;
+            _toolboxBorders["Move"] = TbxMove;
+            _toolboxBorders["Text"] = TbxText;
+            _toolboxBorders["Selection"] = TbxSelection;
+        }
+
+        private void EditorToolbox_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string toolName)
+            {
+                // Delegate to EditorPanel's tool selection (keeps both in sync)
+                EditorPanel.SelectToolByName(toolName);
+                SyncToolboxHighlight();
+                e.Handled = true;
+            }
+        }
+
+        private void EditorToolbox_FgColor_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var color = PickColorDialog(_node.EditorDoc.ForegroundColor);
+            if (color.HasValue)
+            {
+                _node.EditorDoc.ForegroundColor = color.Value;
+                SyncToolboxColors();
+            }
+            e.Handled = true;
+        }
+
+        private void EditorToolbox_BgColor_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var color = PickColorDialog(_node.EditorDoc.BackgroundColor);
+            if (color.HasValue)
+            {
+                _node.EditorDoc.BackgroundColor = color.Value;
+                SyncToolboxColors();
+            }
+            e.Handled = true;
+        }
+
+        private static Color? PickColorDialog(Color initial)
+        {
+            using var dlg = new WinForms.ColorDialog
+            {
+                Color = System.Drawing.Color.FromArgb(initial.A, initial.R, initial.G, initial.B),
+                FullOpen = true,
+                AnyColor = true
+            };
+            if (dlg.ShowDialog() == WinForms.DialogResult.OK)
+            {
+                var c = dlg.Color;
+                return Color.FromArgb(c.A, c.R, c.G, c.B);
+            }
+            return null;
+        }
+
+        private void SyncToolboxHighlight()
+        {
+            if (_toolboxBorders.Count == 0) InitToolboxBorders();
+
+            string activeTool = EditorPanel.ActiveToolName;
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x4f, 0xff, 0xb0));
+            var activeBorder = new SolidColorBrush(Color.FromRgb(0x4f, 0xff, 0xb0));
+
+            foreach (var (name, border) in _toolboxBorders)
+            {
+                if (name == activeTool)
+                {
+                    border.Background = activeBg;
+                    border.BorderBrush = activeBorder;
+                }
+                else
+                {
+                    border.Background = Brushes.Transparent;
+                    border.BorderBrush = Brushes.Transparent;
+                }
+            }
+        }
+
+        private void SyncToolboxColors()
+        {
+            if (_node.EditorDoc == null) return;
+            TbxFgColor.Background = new SolidColorBrush(_node.EditorDoc.ForegroundColor);
+            TbxBgColor.Background = new SolidColorBrush(_node.EditorDoc.BackgroundColor);
+        }
+
+        #endregion
 
         #region MOUSE DRAWING ENGINE FOR IMAGE EDITOR MODE
 

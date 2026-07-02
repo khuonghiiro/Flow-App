@@ -184,6 +184,92 @@
             </Viewbox>
         </Border>
 
+        <!-- Left vertical toolbox: Editor mode (Photoshop-style) -->
+        <Border x:Name="EditorToolbox" Grid.Row="1" Grid.Column="0"
+                Background="#0a0c10" Padding="3,6,3,4"
+                Visibility="Collapsed">
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                <Border x:Name="TbxBrush" Tag="Brush" ToolTip="Brush (B)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='paintbrush-fine duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Border x:Name="TbxEraser" Tag="Eraser" ToolTip="Eraser (E)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eraser duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Border x:Name="TbxFill" Tag="Fill" ToolTip="Fill (G)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='fill-drip duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Border x:Name="TbxEyedropper" Tag="Eyedropper" ToolTip="Eyedropper (I)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eye-dropper duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Border x:Name="TbxMove" Tag="Move" ToolTip="Move (V)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down-left-right duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Border x:Name="TbxText" Tag="Text" ToolTip="Text (T)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='font duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Border x:Name="TbxSelection" Tag="Selection" ToolTip="Selection (M)"
+                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                        BorderBrush="Transparent"
+                        MouseLeftButtonDown="EditorToolbox_Click">
+                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='object-group duotone'}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Border>
+                <Rectangle Height="1" Fill="#252932" Margin="2,4,2,4"/>
+                <Grid Width="32" Height="32" Margin="0,0,0,2">
+                    <Border x:Name="TbxBgColor" Width="18" Height="18"
+                            Background="White" CornerRadius="3"
+                            BorderBrush="#252932" BorderThickness="1.5"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Cursor="Hand" ToolTip="Background color"
+                            MouseLeftButtonDown="EditorToolbox_BgColor_Click"/>
+                    <Border x:Name="TbxFgColor" Width="18" Height="18"
+                            Background="Black" CornerRadius="3"
+                            BorderBrush="#dde3ef" BorderThickness="2"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Cursor="Hand" ToolTip="Foreground color"
+                            MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
         <!-- Center: image -->
         <ScrollViewer x:Name="MainScrollViewer" Grid.Row="1" Grid.Column="1"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"

@@ -319,116 +319,23 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- ═══ SCROLLABLE CONTENT (Tools, Brush, Color) ═══ -->
+            <!-- ═══ SCROLLABLE CONTENT (Brush properties, Color, Adjustments) ═══ -->
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           MaxHeight="400">
                 <StackPanel Margin="5,4,5,6">
 
-                    <!-- ══════ TOOLS ══════ -->
-                    <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
+                    <!-- ══════ BRUSH PROPERTIES ══════ -->
+                    <Border Padding="6,4" CornerRadius="3" Margin="0,2,0,3"
                             Background="{StaticResource ipSurface}">
                         <Border BorderBrush="{StaticResource ipAccent2}"
                                 BorderThickness="2,0,0,0" Padding="5,0,0,0">
-                            <TextBlock Text="TOOLS" FontSize="9" FontWeight="Bold"
+                            <TextBlock Text="BRUSH" FontSize="9" FontWeight="Bold"
                                        Foreground="{StaticResource ipMuted}"/>
                         </Border>
                     </Border>
 
-                    <WrapPanel x:Name="ToolsPanel" Orientation="Horizontal" Margin="0,0,0,4">
-                        <Border x:Name="ToolBrush" Tag="Brush" ToolTip="Brush (B)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" BorderThickness="1.5"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='paintbrush-fine duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                        <Border x:Name="ToolEraser" Tag="Eraser" ToolTip="Eraser (E)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='eraser duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                        <Border x:Name="ToolFill" Tag="Fill" ToolTip="Fill (G)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='fill-drip duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                        <Border x:Name="ToolEyedropper" Tag="Eyedropper" ToolTip="Eyedropper (I)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='eye-dropper duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                        <Border x:Name="ToolMove" Tag="Move" ToolTip="Move (V)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='arrows-up-down-left-right duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                        <Border x:Name="ToolText" Tag="Text" ToolTip="Text (T)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='font duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                        <Border x:Name="ToolSelection" Tag="Selection" ToolTip="Selection (M)"
-                                Width="30" Height="30" CornerRadius="4" Cursor="Hand"
-                                Margin="1" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="ToolBtn_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='object-group duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                IsHitTestVisible="False"/>
-                        </Border>
-                    </WrapPanel>
 
-                    <!-- Brush properties -->
                     <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
                             Padding="6,4" Margin="0,0,0,2">
                         <StackPanel>
