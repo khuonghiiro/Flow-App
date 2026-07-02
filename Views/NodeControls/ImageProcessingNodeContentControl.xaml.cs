@@ -1582,6 +1582,7 @@ namespace FlowMy.Views.NodeControls
 
         private bool _isDrawingPixels;
         private byte[]? _tempDrawingPixels;
+        private byte[]? _strokeAlphaMask;
         private Point _lastDrawingPixelPoint;
         private byte[]? _oldPixelsForUndo;
 
@@ -1637,12 +1638,16 @@ namespace FlowMy.Views.NodeControls
                 _isDrawingPixels = true;
                 _lastDrawingPixelPoint = new Point(px, py);
 
-                int stride = activeLayer.Width * 4;
-                _oldPixelsForUndo = new byte[stride * activeLayer.Height];
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int stride = w * 4;
+                _oldPixelsForUndo = new byte[stride * h];
                 activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
 
-                _tempDrawingPixels = new byte[stride * activeLayer.Height];
+                _tempDrawingPixels = new byte[stride * h];
                 Array.Copy(_oldPixelsForUndo, _tempDrawingPixels, _oldPixelsForUndo.Length);
+
+                _strokeAlphaMask = new byte[w * h];
 
                 bool isEraser = (tool == "Eraser");
                 double radius = EditorPanel.BrushSize;
@@ -1650,9 +1655,10 @@ namespace FlowMy.Views.NodeControls
                 double flow = EditorPanel.BrushFlow;
                 Color color = _node.EditorDoc.ForegroundColor;
 
-                DrawBrushCircle(_tempDrawingPixels, activeLayer.Width, activeLayer.Height, px, py, radius, hardness, flow, color, isEraser);
+                DrawBrushCircle(_strokeAlphaMask, w, h, px, py, radius, hardness, flow);
+                ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, w, h, color, isEraser);
 
-                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), _tempDrawingPixels, stride, 0);
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), _tempDrawingPixels, stride, 0);
                 activeLayer.InvalidateThumbnail();
                 OnEditorDocumentModified();
 
@@ -1681,8 +1687,10 @@ namespace FlowMy.Views.NodeControls
             Color color = _node.EditorDoc.ForegroundColor;
 
             var currentPoint = new Point(px, py);
-            DrawBrushLine(_tempDrawingPixels, activeLayer.Width, activeLayer.Height, _lastDrawingPixelPoint, currentPoint, radius, hardness, flow, color, isEraser);
+            DrawBrushLine(_strokeAlphaMask, activeLayer.Width, activeLayer.Height, _lastDrawingPixelPoint, currentPoint, radius, hardness, flow);
             _lastDrawingPixelPoint = currentPoint;
+
+            ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, activeLayer.Width, activeLayer.Height, color, isEraser);
 
             int stride = activeLayer.Width * 4;
             activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), _tempDrawingPixels, stride, 0);
@@ -1709,11 +1717,12 @@ namespace FlowMy.Views.NodeControls
 
             _tempDrawingPixels = null;
             _oldPixelsForUndo = null;
+            _strokeAlphaMask = null;
 
             OnEditorDocumentModified();
         }
 
-        private void DrawBrushCircle(byte[] pixels, int width, int height, double cx, double cy, double radius, double hardness, double flow, Color color, bool isEraser)
+        private void DrawBrushCircle(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
         {
             int startX = Math.Max(0, (int)Math.Floor(cx - radius));
             int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + radius));
@@ -1726,7 +1735,7 @@ namespace FlowMy.Views.NodeControls
 
             for (int y = startY; y <= endY; y++)
             {
-                int rowOffset = y * width * 4;
+                int rowOffset = y * width;
                 double dy = y - cy;
                 double dy2 = dy * dy;
 
@@ -1751,46 +1760,20 @@ namespace FlowMy.Views.NodeControls
                             }
                         }
 
-                        double brushAlpha = pixelOpacity * flowMul;
+                        byte brushAlpha = (byte)(pixelOpacity * flowMul * 255.0);
                         if (brushAlpha <= 0) continue;
 
-                        int pixelOffset = rowOffset + x * 4;
-
-                        if (isEraser)
+                        int maskOffset = rowOffset + x;
+                        if (brushAlpha > alphaMask[maskOffset])
                         {
-                            byte oldA = pixels[pixelOffset + 3];
-                            byte newA = (byte)Math.Clamp(oldA * (1.0 - brushAlpha), 0, 255);
-                            pixels[pixelOffset + 3] = newA;
-                        }
-                        else
-                        {
-                            byte bB = pixels[pixelOffset];
-                            byte bG = pixels[pixelOffset + 1];
-                            byte bR = pixels[pixelOffset + 2];
-                            byte bA = pixels[pixelOffset + 3];
-
-                            double srcA = color.A / 255.0 * brushAlpha;
-                            double dstA = bA / 255.0;
-                            double outA = srcA + dstA * (1.0 - srcA);
-
-                            if (outA > 0)
-                            {
-                                byte outR = (byte)Math.Clamp(((color.R * srcA) + (bR * dstA * (1.0 - srcA))) / outA, 0, 255);
-                                byte outG = (byte)Math.Clamp(((color.G * srcA) + (bG * dstA * (1.0 - srcA))) / outA, 0, 255);
-                                byte outB = (byte)Math.Clamp(((color.B * srcA) + (bB * dstA * (1.0 - srcA))) / outA, 0, 255);
-
-                                pixels[pixelOffset] = outB;
-                                pixels[pixelOffset + 1] = outG;
-                                pixels[pixelOffset + 2] = outR;
-                                pixels[pixelOffset + 3] = (byte)(outA * 255.0);
-                            }
+                            alphaMask[maskOffset] = brushAlpha;
                         }
                     }
                 }
             }
         }
 
-        private void DrawBrushLine(byte[] pixels, int width, int height, Point p1, Point p2, double radius, double hardness, double flow, Color color, bool isEraser)
+        private void DrawBrushLine(byte[] alphaMask, int width, int height, Point p1, Point p2, double radius, double hardness, double flow)
         {
             double dx = p2.X - p1.X;
             double dy = p2.Y - p1.Y;
@@ -1798,7 +1781,7 @@ namespace FlowMy.Views.NodeControls
 
             if (len == 0)
             {
-                DrawBrushCircle(pixels, width, height, p1.X, p1.Y, radius, hardness, flow, color, isEraser);
+                DrawBrushCircle(alphaMask, width, height, p1.X, p1.Y, radius, hardness, flow);
                 return;
             }
 
@@ -1807,9 +1790,74 @@ namespace FlowMy.Views.NodeControls
             {
                 double cx = p1.X + (dx * d / len);
                 double cy = p1.Y + (dy * d / len);
-                DrawBrushCircle(pixels, width, height, cx, cy, radius, hardness, flow, color, isEraser);
+                DrawBrushCircle(alphaMask, width, height, cx, cy, radius, hardness, flow);
             }
-            DrawBrushCircle(pixels, width, height, p2.X, p2.Y, radius, hardness, flow, color, isEraser);
+            DrawBrushCircle(alphaMask, width, height, p2.X, p2.Y, radius, hardness, flow);
+        }
+
+        private void ApplyStrokeToPixels(byte[] destPixels, byte[] srcPixels, byte[] alphaMask, int width, int height, Color color, bool isEraser)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                int rowOffset = y * width;
+                int pixelRowOffset = rowOffset * 4;
+                for (int x = 0; x < width; x++)
+                {
+                    int maskOffset = rowOffset + x;
+                    byte maskAlphaByte = alphaMask[maskOffset];
+                    if (maskAlphaByte == 0)
+                    {
+                        int pixelOffset = pixelRowOffset + x * 4;
+                        destPixels[pixelOffset] = srcPixels[pixelOffset];
+                        destPixels[pixelOffset + 1] = srcPixels[pixelOffset + 1];
+                        destPixels[pixelOffset + 2] = srcPixels[pixelOffset + 2];
+                        destPixels[pixelOffset + 3] = srcPixels[pixelOffset + 3];
+                        continue;
+                    }
+
+                    double maskAlpha = maskAlphaByte / 255.0;
+                    int pOffset = pixelRowOffset + x * 4;
+
+                    if (isEraser)
+                    {
+                        byte srcA = srcPixels[pOffset + 3];
+                        destPixels[pOffset] = srcPixels[pOffset];
+                        destPixels[pOffset + 1] = srcPixels[pOffset + 1];
+                        destPixels[pOffset + 2] = srcPixels[pOffset + 2];
+                        destPixels[pOffset + 3] = (byte)Math.Clamp(srcA * (1.0 - maskAlpha), 0, 255);
+                    }
+                    else
+                    {
+                        byte bB = srcPixels[pOffset];
+                        byte bG = srcPixels[pOffset + 1];
+                        byte bR = srcPixels[pOffset + 2];
+                        byte bA = srcPixels[pOffset + 3];
+
+                        double srcA = color.A / 255.0 * maskAlpha;
+                        double dstA = bA / 255.0;
+                        double outA = srcA + dstA * (1.0 - srcA);
+
+                        if (outA > 0)
+                        {
+                            byte outR = (byte)Math.Clamp(((color.R * srcA) + (bR * dstA * (1.0 - srcA))) / outA, 0, 255);
+                            byte outG = (byte)Math.Clamp(((color.G * srcA) + (bG * dstA * (1.0 - srcA))) / outA, 0, 255);
+                            byte outB = (byte)Math.Clamp(((color.B * srcA) + (bB * dstA * (1.0 - srcA))) / outA, 0, 255);
+
+                            destPixels[pOffset] = outB;
+                            destPixels[pOffset + 1] = outG;
+                            destPixels[pOffset + 2] = outR;
+                            destPixels[pOffset + 3] = (byte)(outA * 255.0);
+                        }
+                        else
+                        {
+                            destPixels[pOffset] = 0;
+                            destPixels[pOffset + 1] = 0;
+                            destPixels[pOffset + 2] = 0;
+                            destPixels[pOffset + 3] = 0;
+                        }
+                    }
+                }
+            }
         }
 
         private void FloodFill(byte[] pixels, int width, int height, int startX, int startY, Color fillColor)
