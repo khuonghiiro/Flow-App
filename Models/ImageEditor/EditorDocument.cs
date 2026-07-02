@@ -138,38 +138,76 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>
-        /// Composite tất cả visible layers → 1 WriteableBitmap.
-        /// Dùng alpha blending đơn giản (Normal blend mode).
+        /// Composite tất cả visible layers → 1 BitmapSource.
+        /// Sử dụng GPU Rendering (RenderTargetBitmap) cho Normal blend mode,
+        /// và tự động fall back về CPU Rendering khi sử dụng blend mode phức tạp.
         /// </summary>
-        public WriteableBitmap Composite()
+        public BitmapSource Composite()
         {
-            var result = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
-            var stride = Width * 4;
-            var resultPixels = new byte[stride * Height];
-
-            // Fill transparent
-            Array.Clear(resultPixels, 0, resultPixels.Length);
-
+            // Kiểm tra xem có sử dụng custom blend mode nào không
+            bool useGPU = true;
             foreach (var layer in Layers)
             {
-                if (!layer.IsVisible || layer.Opacity <= 0) continue;
-
-                var layerPixels = new byte[stride * Height];
-                layer.Bitmap.CopyPixels(layerPixels, stride, 0);
-
-                double layerOpacity = layer.Opacity;
-                BlendLayerPixels(resultPixels, layerPixels, layerOpacity, layer.BlendMode);
+                if (layer.IsVisible && layer.Opacity > 0 && layer.BlendMode != BlendMode.Normal)
+                {
+                    useGPU = false;
+                    break;
+                }
             }
 
-            result.WritePixels(new Int32Rect(0, 0, Width, Height), resultPixels, stride, 0);
-            return result;
+            if (useGPU)
+            {
+                var drawingVisual = new DrawingVisual();
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    foreach (var layer in Layers)
+                    {
+                        if (!layer.IsVisible || layer.Opacity <= 0) continue;
+
+                        drawingContext.PushOpacity(layer.Opacity);
+                        drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, Width, Height));
+                        drawingContext.Pop();
+                    }
+                }
+
+                // Render bằng GPU thông qua RenderTargetBitmap
+                var renderTarget = new RenderTargetBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32);
+                renderTarget.Render(drawingVisual);
+                return renderTarget;
+            }
+            else
+            {
+                // Fallback về CPU rendering (chậm hơn) cho các blend mode như Multiply, Screen, Overlay...
+                var result = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
+                var stride = Width * 4;
+                var resultPixels = new byte[stride * Height];
+
+                Array.Clear(resultPixels, 0, resultPixels.Length);
+
+                foreach (var layer in Layers)
+                {
+                    if (!layer.IsVisible || layer.Opacity <= 0) continue;
+
+                    var layerPixels = new byte[stride * Height];
+                    layer.Bitmap.CopyPixels(layerPixels, stride, 0);
+
+                    double layerOpacity = layer.Opacity;
+                    BlendLayerPixels(resultPixels, layerPixels, layerOpacity, layer.BlendMode);
+                }
+
+                result.WritePixels(new Int32Rect(0, 0, Width, Height), resultPixels, stride, 0);
+                return result;
+            }
         }
 
         /// <summary>Flatten tất cả layers → 1 frozen BitmapSource.</summary>
         public BitmapSource Flatten()
         {
             var result = Composite();
-            result.Freeze();
+            if (result.CanFreeze)
+            {
+                result.Freeze();
+            }
             return result;
         }
 

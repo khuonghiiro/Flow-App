@@ -14,6 +14,8 @@
 
     <UserControl.Resources>
         <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <!-- ═══ IP PALETTE ═══ -->
         <SolidColorBrush x:Key="ipBg" Color="#0a0c10"/>
         <SolidColorBrush x:Key="ipSurface" Color="#111318"/>
@@ -26,6 +28,26 @@
         <SolidColorBrush x:Key="ipAccent2" Color="#00cfff"/>
         <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
         <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
+
+        <!-- Checkered brush for transparent thumbnails (Photoshop style) -->
+        <VisualBrush x:Key="CheckeredBrush" TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+            <VisualBrush.Visual>
+                <Grid Width="8" Height="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="4"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="4"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#202020"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#2d2d2d"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#2d2d2d"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#202020"/>
+                </Grid>
+            </VisualBrush.Visual>
+        </VisualBrush>
 
         <!-- ═══ COMBOBOX STYLE ═══ -->
         <Style x:Key="IpComboBoxStyle" TargetType="ComboBox">
@@ -133,101 +155,135 @@
 
         <!-- ═══ LAYER ITEM (Photoshop-style) ═══ -->
         <DataTemplate x:Key="LayerItemTemplate">
-            <Border x:Name="LayerItemBd" Padding="4,4" Margin="0,1" CornerRadius="4"
-                    Background="Transparent" Cursor="Hand" BorderThickness="1.5"
-                    BorderBrush="Transparent"
+            <Border x:Name="LayerItemBd" Padding="0" Margin="0,1" CornerRadius="4"
+                    Background="Transparent" Cursor="Hand" BorderThickness="0"
                     MouseLeftButtonDown="LayerItem_MouseLeftButtonDown"
                     MouseMove="LayerItem_MouseMove"
                     MouseLeftButtonUp="LayerItem_MouseLeftButtonUp">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource ipHover}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <DockPanel>
-                    <!-- Eye toggle (left) -->
-                    <Border DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,4,0"
-                            VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
-                            Background="Transparent"
-                            MouseLeftButtonDown="LayerVisibilityToggle_Click">
-                        <controls:SvgViewboxEx x:Name="EyeIcon" Width="14" Height="14"
-                            Fill="{StaticResource ipText}"
-                            Source="{Binding Source={x:Static sys:String.Empty},
-                                     Converter={StaticResource IconKeyToPathConverter},
-                                     ConverterParameter='eye light'}"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            IsHitTestVisible="False"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- Left active stripe -->
+                    <Border x:Name="ActiveStripe" Grid.Column="0" Background="Transparent" CornerRadius="3,0,0,3"/>
+
+                    <Border Grid.Column="1" Padding="6,4">
+                        <DockPanel>
+                            <!-- Eye toggle (left) -->
+                            <Border x:Name="LayerVisibilityToggle" DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,4,0"
+                                    VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
+                                    Background="Transparent"
+                                    MouseLeftButtonDown="LayerVisibilityToggle_Click">
+                                <controls:SvgViewboxEx x:Name="EyeIcon" Width="14" Height="14"
+                                    Fill="{StaticResource ipText}"
+                                    Source="{Binding Source={x:Static sys:String.Empty},
+                                             Converter={StaticResource IconKeyToPathConverter},
+                                             ConverterParameter='eye light'}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    IsHitTestVisible="False"/>
+                            </Border>
+                            <!-- Lock toggle (right) -->
+                            <Border x:Name="LayerLockToggle" DockPanel.Dock="Right" Width="18" Height="18" Margin="4,0,0,0"
+                                    VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
+                                    Background="Transparent"
+                                    MouseLeftButtonDown="LayerLockToggle_Click">
+                                <Grid>
+                                    <!-- Unlocked icon (default) -->
+                                    <controls:SvgViewboxEx x:Name="LockOpenIcon" Width="13" Height="13"
+                                        Fill="#808696" Opacity="0.7"
+                                        Source="{Binding Source={x:Static sys:String.Empty},
+                                                 Converter={StaticResource IconKeyToPathConverter},
+                                                 ConverterParameter='lock-open jelly-fill-regular'}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        IsHitTestVisible="False"/>
+                                    <!-- Locked icon (hidden by default) -->
+                                    <controls:SvgViewboxEx x:Name="LockClosedIcon" Width="13" Height="13"
+                                        Fill="#ff6b6b"
+                                        Source="{Binding Source={x:Static sys:String.Empty},
+                                                 Converter={StaticResource IconKeyToPathConverter},
+                                                 ConverterParameter='lock jelly-fill-regular'}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="Collapsed" IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                            <!-- Thumbnail + Name (center, horizontal) -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Thumbnail with transparent background -->
+                                <Border Margin="0,0,6,0"
+                                        CornerRadius="3" ClipToBounds="True"
+                                        Background="Transparent"
+                                        VerticalAlignment="Center" Width="44" Height="32">
+                                    <Grid>
+                                        <Image Stretch="Uniform" Source="{Binding Thumbnail}"
+                                               MaxHeight="30" MaxWidth="42"
+                                               HorizontalAlignment="Left" VerticalAlignment="Center"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        <!-- Text layer type badge overlay -->
+                                        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                Background="#111318" CornerRadius="2" Width="11" Height="11"
+                                                Visibility="{Binding IsTextLayer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                Margin="0,0,1,1" BorderBrush="#00cfff" BorderThickness="0.8">
+                                            <TextBlock Text="T" FontSize="7" FontWeight="Bold" Foreground="#00cfff"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1.5,0,0"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                                <Grid VerticalAlignment="Center" Margin="0,0,4,0" MinWidth="80">
+                                    <!-- TextBlock for standard display -->
+                                    <TextBlock x:Name="TxtLayerName" Text="{Binding Name}" Foreground="{StaticResource ipText}"
+                                               FontSize="10" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               Visibility="{Binding IsEditingName, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                               MouseLeftButtonDown="TxtLayerName_MouseLeftButtonDown"/>
+                                    <!-- TextBox for renaming -->
+                                    <TextBox x:Name="TxtLayerNameEdit" Text="{Binding Name, Mode=OneWay}"
+                                             Foreground="Black" Background="White" FontSize="10" VerticalAlignment="Center"
+                                             Visibility="{Binding IsEditingName, Converter={StaticResource BoolToVisibilityConverter}}"
+                                             LostFocus="TxtLayerNameEdit_LostFocus"
+                                             KeyDown="TxtLayerNameEdit_KeyDown"/>
+                                </Grid>
+                            </StackPanel>
+                        </DockPanel>
                     </Border>
-                    <!-- Lock toggle (right) -->
-                    <Border DockPanel.Dock="Right" Width="18" Height="18" Margin="4,0,0,0"
-                            VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
-                            Background="Transparent"
-                            MouseLeftButtonDown="LayerLockToggle_Click">
-                        <Grid>
-                            <!-- Unlocked icon (default) -->
-                            <controls:SvgViewboxEx x:Name="LockOpenIcon" Width="13" Height="13"
-                                Fill="{StaticResource ipText}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='lock-open jelly-fill-regular'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Opacity="0.4" IsHitTestVisible="False"/>
-                            <!-- Locked icon (hidden by default) -->
-                            <controls:SvgViewboxEx x:Name="LockClosedIcon" Width="13" Height="13"
-                                Fill="{StaticResource ipAccent}"
-                                Source="{Binding Source={x:Static sys:String.Empty},
-                                         Converter={StaticResource IconKeyToPathConverter},
-                                         ConverterParameter='lock jelly-fill-regular'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Visibility="Collapsed" IsHitTestVisible="False"/>
-                        </Grid>
-                    </Border>
-                    <!-- Thumbnail + Name (center, horizontal) -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Thumbnail: Height cố định, Width tự tính theo tỉ lệ ảnh -->
-                        <Border Margin="0,0,6,0"
-                                BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
-                                CornerRadius="3" ClipToBounds="True"
-                                Background="{StaticResource ipSurface}"
-                                VerticalAlignment="Center">
-                            <Image Stretch="Uniform" Source="{Binding Thumbnail}"
-                                   MaxHeight="44"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                        </Border>
-                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource ipText}"
-                                   FontSize="10" VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                </DockPanel>
+                </Grid>
             </Border>
             <DataTemplate.Triggers>
-                <!-- Active layer highlight -->
+                <!-- Hover effect for layer item -->
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="LayerItemBd" Property="Background" Value="{StaticResource ipHover}"/>
+                </Trigger>
+                <!-- Active layer highlight (Photoshop style) -->
                 <DataTrigger Binding="{Binding IsActive}" Value="True">
-                    <Setter TargetName="LayerItemBd" Property="Background">
-                        <Setter.Value>
-                            <SolidColorBrush Color="#4fffb0" Opacity="0.12"/>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter TargetName="LayerItemBd" Property="BorderBrush">
-                        <Setter.Value>
-                            <SolidColorBrush Color="#4fffb0" Opacity="0.4"/>
-                        </Setter.Value>
-                    </Setter>
+                    <Setter TargetName="LayerItemBd" Property="Background" Value="#2a3240"/>
+                    <Setter TargetName="ActiveStripe" Property="Background" Value="#00cfff"/>
                 </DataTrigger>
-                <!-- Hidden layer -->
+                <!-- Hidden layer opacity -->
                 <DataTrigger Binding="{Binding IsVisible}" Value="False">
-                    <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.35"/>
-                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.15"/>
+                    <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.45"/>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.0"/>
                 </DataTrigger>
-                <!-- Locked layer -->
+                <!-- Hover visibility toggle (ghost eye) -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsVisible}" Value="False"/>
+                        <Condition Binding="{Binding ElementName=LayerVisibilityToggle, Path=IsMouseOver}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.25"/>
+                    <Setter TargetName="LayerVisibilityToggle" Property="Background" Value="#15ffffff"/>
+                </MultiDataTrigger>
+                <!-- Hover visibility when active -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsVisible}" Value="True"/>
+                        <Condition Binding="{Binding ElementName=LayerVisibilityToggle, Path=IsMouseOver}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="LayerVisibilityToggle" Property="Background" Value="#15ffffff"/>
+                </MultiDataTrigger>
+                <!-- Locked layer padlock visibility -->
                 <DataTrigger Binding="{Binding IsLocked}" Value="True">
-                    <Setter TargetName="LockOpenIcon" Property="Visibility" Value="Collapsed"/>
-                    <Setter TargetName="LockClosedIcon" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="LockClosedIcon" Value="Visible" Property="Visibility"/>
+                    <Setter TargetName="LockOpenIcon" Value="Collapsed" Property="Visibility"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -597,43 +653,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Opacity + Blend (compact) + LAYERS -->
-                    <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
-         Padding="6,4" Margin="0,5,0,0">
-                        <StackPanel>
-                            <DockPanel Margin="0,0,0,2">
-                                <TextBlock DockPanel.Dock="Left" Text="Opacity"
-                        Foreground="{StaticResource ipMuted}"
-                        FontSize="9" Width="38" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
-                     CornerRadius="2" Padding="3,1" MinWidth="30">
-                                    <TextBlock x:Name="TxtOpacityValue" Foreground="{StaticResource ipAccent}"
-                            FontSize="9" FontFamily="Consolas"
-                            HorizontalAlignment="Center" Text="100%"/>
-                                </Border>
-                                <Slider x:Name="SliderLayerOpacity" Minimum="0" Maximum="100" Value="100"
-                     VerticalAlignment="Center" Margin="4,0"
-                     ValueChanged="SliderLayerOpacity_ValueChanged"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="Blend"
-                        Foreground="{StaticResource ipMuted}"
-                        FontSize="9" Width="38" VerticalAlignment="Center"/>
-                                <ComboBox x:Name="CmbBlendMode" Height="22" FontSize="9"
-                       VerticalContentAlignment="Center" Style="{StaticResource IpComboBoxStyle}"
-                       SelectionChanged="CmbBlendMode_SelectionChanged">
-                                    <ComboBoxItem Content="Normal" IsSelected="True"/>
-                                    <ComboBoxItem Content="Multiply"/>
-                                    <ComboBoxItem Content="Screen"/>
-                                    <ComboBoxItem Content="Overlay"/>
-                                    <ComboBoxItem Content="Darken"/>
-                                    <ComboBoxItem Content="Lighten"/>
-                                </ComboBox>
-                            </DockPanel>
-
-                        </StackPanel>
-                    </Border>
-
                     <!-- ══════ COLOR ══════ -->
                     <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
                             Background="{StaticResource ipSurface}">
@@ -693,12 +712,14 @@
             <Grid Grid.Row="1" Margin="5,0,5,4">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- LAYERS header -->
-                <Border Grid.Row="0" Padding="6,4,6,2" CornerRadius="3" Margin="0,4,0,3"
-                        Background="{StaticResource ipSurface}">
+                <!-- LAYERS title header -->
+                <Border Grid.Row="0" Padding="6,4" CornerRadius="3,3,0,0"
+                        Background="{StaticResource ipSurface}" BorderBrush="{StaticResource ipBorder}" BorderThickness="1,1,1,0">
                     <DockPanel>
                         <Border DockPanel.Dock="Left" BorderBrush="{StaticResource ipAccent}"
                                 BorderThickness="2,0,0,0" Padding="5,0,0,0">
@@ -706,25 +727,50 @@
                                        Foreground="{StaticResource ipMuted}"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                    HorizontalAlignment="Right">
-                            <Button Content="＋" ToolTip="Thêm layer" Style="{StaticResource IpMiniBtn}"
-                                    FontSize="13" Click="BtnAddLayer_Click"/>
-                            <Button Content="−" ToolTip="Xoá layer" Style="{StaticResource IpMiniBtn}"
-                                    FontSize="14" Click="BtnRemoveLayer_Click"/>
-                            <Rectangle Width="1" Fill="{StaticResource ipBorder}"
-                                       Margin="2,3" VerticalAlignment="Stretch"/>
-                            <Button Content="▲" ToolTip="Lên" Style="{StaticResource IpMiniBtn}"
-                                    FontSize="8" Click="BtnMoveUp_Click"/>
-                            <Button Content="▼" ToolTip="Xuống" Style="{StaticResource IpMiniBtn}"
-                                    FontSize="8" Click="BtnMoveDown_Click"/>
-                        </StackPanel>
                     </DockPanel>
                 </Border>
 
+                <!-- Blend Mode & Opacity bar (Photoshop style) -->
+                <Border Grid.Row="1" Padding="6,5" Background="{StaticResource ipSurface2}"
+                        BorderBrush="{StaticResource ipBorder}" BorderThickness="1,0,1,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="90"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- Blend Mode -->
+                        <ComboBox x:Name="CmbBlendMode" Grid.Column="0" Height="20" FontSize="8.5"
+                                  VerticalContentAlignment="Center" Style="{StaticResource IpComboBoxStyle}"
+                                  SelectionChanged="CmbBlendMode_SelectionChanged" Margin="0,0,8,0">
+                            <ComboBoxItem Content="Normal" IsSelected="True"/>
+                            <ComboBoxItem Content="Multiply"/>
+                            <ComboBoxItem Content="Screen"/>
+                            <ComboBoxItem Content="Overlay"/>
+                            <ComboBoxItem Content="Darken"/>
+                            <ComboBoxItem Content="Lighten"/>
+                        </ComboBox>
+
+                        <!-- Opacity Slider -->
+                        <TextBlock Grid.Column="1" Text="Op:" FontSize="8.5" Foreground="{StaticResource ipMuted}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <Grid Grid.Column="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="28"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider x:Name="SliderLayerOpacity" Grid.Column="0" Minimum="0" Maximum="100" Value="100"
+                                    VerticalAlignment="Center" Focusable="False" Height="18"
+                                    ValueChanged="SliderLayerOpacity_ValueChanged"/>
+                            <TextBlock x:Name="TxtOpacityValue" Grid.Column="1" Foreground="{StaticResource ipAccent}"
+                                       FontSize="8.5" FontFamily="Consolas" VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" Text="100%"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
                 <!-- Layer list — fills all remaining height -->
-                <Border Grid.Row="1" Background="{StaticResource ipSurface}" CornerRadius="4"
-                        BorderBrush="{StaticResource ipBorder}" BorderThickness="1"
+                <Border Grid.Row="2" Background="{StaticResource ipSurface}"
+                        BorderBrush="{StaticResource ipBorder}" BorderThickness="1,0,1,0"
                         Padding="2">
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
@@ -737,6 +783,27 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </ScrollViewer>
+                </Border>
+
+                <!-- Footer Action Bar (Photoshop style) -->
+                <Border Grid.Row="3" Padding="6,3" CornerRadius="0,0,3,3"
+                        Background="{StaticResource ipSurface2}" BorderBrush="{StaticResource ipBorder}" BorderThickness="1">
+                    <DockPanel>
+                        <!-- Left-aligned: reordering arrows -->
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                            <Button Content="▲" ToolTip="Lên (Move Up)" Style="{StaticResource IpMiniBtn}"
+                                    Width="18" Height="16" FontSize="7.5" Click="BtnMoveUp_Click" Margin="0,0,4,0"/>
+                            <Button Content="▼" ToolTip="Xuống (Move Down)" Style="{StaticResource IpMiniBtn}"
+                                    Width="18" Height="16" FontSize="7.5" Click="BtnMoveDown_Click"/>
+                        </StackPanel>
+                        <!-- Right-aligned: Add/Remove Layer -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="📄＋" ToolTip="Thêm Layer mới (Duplicate / New)" Style="{StaticResource IpMiniBtn}"
+                                    Width="24" Height="16" FontSize="9" FontWeight="Bold" Click="BtnAddLayer_Click" Margin="0,0,6,0"/>
+                            <Button Content="🗑️" ToolTip="Xoá Layer đang chọn" Style="{StaticResource IpMiniBtn}"
+                                    Width="20" Height="16" FontSize="10" Click="BtnRemoveLayer_Click"/>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
             </Grid>
 

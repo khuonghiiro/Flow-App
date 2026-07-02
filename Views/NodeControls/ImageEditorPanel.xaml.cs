@@ -201,8 +201,6 @@ namespace FlowMy.Views.NodeControls
                 SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
-                // Re-composite để canvas phản ánh trạng thái mới (ví dụ layer visibility thay đổi)
-                OnDocumentModified();
                 ActiveLayerChanged?.Invoke(this, EventArgs.Empty);
             }
             else if (e.PropertyName == nameof(EditorDocument.ForegroundColor) ||
@@ -379,30 +377,31 @@ namespace FlowMy.Views.NodeControls
             OnDocumentModified();
         }
 
-        /// <summary>Tạo tên copy tăng dần dựa trên tên gốc và các layer hiện có.</summary>
-        private string GenerateCopyName(string baseName)
+        /// <summary>Tạo tên copy tự động tăng theo thứ tự Layer 1, Layer 2, Layer 3...</summary>
+        public string GenerateCopyName(string baseName)
         {
-            if (_doc == null) return baseName + " copy 1";
+            if (_doc == null) return "Layer 1";
 
-            // Tìm số copy tiếp theo: "baseName copy N"
-            string prefix = baseName + " copy ";
-            int maxNum = 0;
-            foreach (var layer in _doc.Layers)
+            int num = 1;
+            while (true)
             {
-                if (layer.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                string candidate = $"Layer {num}";
+                bool exists = false;
+                foreach (var l in _doc.Layers)
                 {
-                    var numPart = layer.Name.Substring(prefix.Length);
-                    if (int.TryParse(numPart, out int num) && num > maxNum)
-                        maxNum = num;
+                    if (string.Equals(l.Name, candidate, StringComparison.OrdinalIgnoreCase))
+                    {
+                        exists = true;
+                        break;
+                    }
                 }
-                else if (string.Equals(layer.Name, baseName + " copy", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Trường hợp cũ "X copy" (không có số) → coi như copy 1
-                    if (maxNum < 1) maxNum = 1;
-                }
-            }
 
-            return prefix + (maxNum + 1);
+                if (!exists)
+                {
+                    return candidate;
+                }
+                num++;
+            }
         }
 
         private void BtnRemoveLayer_Click(object sender, RoutedEventArgs e)
@@ -465,11 +464,14 @@ namespace FlowMy.Views.NodeControls
             SelectTool(toolName);
         }
 
+        public event EventHandler? BrushPropertiesChanged;
+
         private void SliderBrushSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (TxtBrushSize == null) return;
             TxtBrushSize.Text = $"{(int)SliderBrushSize.Value}";
             UpdateBrushPreview();
+            BrushPropertiesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void SliderBrushHardness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -477,6 +479,7 @@ namespace FlowMy.Views.NodeControls
             if (TxtBrushHardness == null) return;
             TxtBrushHardness.Text = $"{(int)SliderBrushHardness.Value}%";
             UpdateBrushPreview();
+            BrushPropertiesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void SliderBrushFlow_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -484,6 +487,7 @@ namespace FlowMy.Views.NodeControls
             if (TxtBrushFlow == null) return;
             TxtBrushFlow.Text = $"{(int)SliderBrushFlow.Value}%";
             UpdateBrushPreview();
+            BrushPropertiesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void UpdateBrushPreview()
@@ -609,6 +613,72 @@ namespace FlowMy.Views.NodeControls
             OnDocumentModified();
         }
 
+
+        private void TxtLayerName_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2 && sender is TextBlock tb && tb.DataContext is EditorLayer layer)
+            {
+                layer.IsEditingName = true;
+                e.Handled = true;
+
+                // Find the TextBox inside the parent Grid and focus it
+                var grid = tb.Parent as Grid;
+                if (grid != null)
+                {
+                    var textBox = grid.Children.OfType<TextBox>().FirstOrDefault();
+                    if (textBox != null)
+                    {
+                        textBox.Focus();
+                        textBox.SelectAll();
+                    }
+                }
+            }
+        }
+
+        private void TxtLayerNameEdit_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox tb && tb.DataContext is EditorLayer layer)
+            {
+                CommitLayerRename(layer, tb.Text);
+            }
+        }
+
+        private void TxtLayerNameEdit_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is TextBox tb && tb.DataContext is EditorLayer layer)
+            {
+                if (e.Key == Key.Enter)
+                {
+                    CommitLayerRename(layer, tb.Text);
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    layer.IsEditingName = false;
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void CommitLayerRename(EditorLayer layer, string newName)
+        {
+            layer.IsEditingName = false;
+            newName = newName?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(newName) || newName == layer.Name)
+                return;
+
+            if (_doc != null)
+            {
+                var cmd = new RenameLayerCommand(layer, layer.Name, newName);
+                _doc.History.Execute(cmd);
+                RefreshLayersList();
+                OnDocumentModified();
+            }
+            else
+            {
+                layer.Name = newName;
+            }
+        }
 
         /// <summary>Gọi khi document thay đổi — trigger re-composite.</summary>
         public event Action? DocumentModified;

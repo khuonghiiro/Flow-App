@@ -88,9 +88,11 @@ namespace FlowMy.Views.NodeControls
             InitializeComponent();
             EditorPanel.DocumentModified += OnEditorDocumentModified;
             EditorPanel.TextPropertiesChanged += EditorPanel_TextPropertiesChanged;
+            EditorPanel.BrushPropertiesChanged += EditorPanel_BrushPropertiesChanged;
             EditorPanel.ActiveLayerChanged += EditorPanel_ActiveLayerChanged;
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
             this.PreviewKeyDown += ImageProcessingNodeContentControl_PreviewKeyDown;
+            this.PreviewKeyUp += ImageProcessingNodeContentControl_PreviewKeyUp;
 
             var iconConv = new IconKeyToPathConverter();
             var culture = CultureInfo.InvariantCulture;
@@ -432,6 +434,18 @@ namespace FlowMy.Views.NodeControls
         {
             MainScrollViewer.Focus();
 
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && _isSpacePressed)
+            {
+                _isPanning = true;
+                _panStart = e.GetPosition(MainScrollViewer);
+                _panOriginX = MainScrollViewer.HorizontalOffset;
+                _panOriginY = MainScrollViewer.VerticalOffset;
+                MainScrollViewer.Cursor = Cursors.SizeAll;
+                MainScrollViewer.CaptureMouse();
+                e.Handled = true;
+                return;
+            }
+
             if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
             {
                 e.Handled = true;
@@ -484,6 +498,8 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            UpdateBrushCursorPosition();
+
             if (_isDrawingPixels || _isSelecting)
             {
                 HandleManualEditorMouseMove(e);
@@ -517,11 +533,48 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private void UpdateBrushCursorPosition()
+        {
+            if (BrushPreviewCursor == null || MainImage == null || _node.EditorDoc == null) return;
+
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if ((tool == "Brush" || tool == "Eraser") && MainImage.Source != null)
+                {
+                    var imgPos = Mouse.GetPosition(MainImage);
+                    bool inside = imgPos.X >= 0 && imgPos.X <= MainImage.ActualWidth &&
+                                  imgPos.Y >= 0 && imgPos.Y <= MainImage.ActualHeight;
+
+                    if (inside && !_isSpacePressed && !_isPanning)
+                    {
+                        double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
+                        double radius = EditorPanel.BrushSize * scaleX; 
+                        double diameter = radius * 2;
+
+                        BrushPreviewCursor.Width = diameter;
+                        BrushPreviewCursor.Height = diameter;
+
+                        var containerPos = Mouse.GetPosition(ImageContainer);
+                        Canvas.SetLeft(BrushPreviewCursor, containerPos.X - radius);
+                        Canvas.SetTop(BrushPreviewCursor, containerPos.Y - radius);
+
+                        BrushPreviewCursor.Visibility = Visibility.Visible;
+                        return;
+                    }
+                }
+            }
+
+            BrushPreviewCursor.Visibility = Visibility.Collapsed;
+        }
+
         private void MainScrollViewer_MouseLeave(object sender, MouseEventArgs e)
         {
             MagOverlayPanel.Visibility = Visibility.Collapsed;
             if (MainScrollViewer.Cursor == Cursors.Cross)
                 MainScrollViewer.Cursor = Cursors.Arrow;
+            if (BrushPreviewCursor != null)
+                BrushPreviewCursor.Visibility = Visibility.Collapsed;
         }
 
         private void MainScrollViewer_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -1194,6 +1247,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             EditorPanel.UpdatePanelVisibilities(activeTool);
+            UpdateTopOptionsBar(activeTool);
 
             if (activeTool != "Text" && TextMoveContainer != null && TextMoveContainer.Visibility == Visibility.Visible)
             {
@@ -1212,6 +1266,7 @@ namespace FlowMy.Views.NodeControls
 
         private CancellationTokenSource? _fxCts;
         private bool _isFxRunning;
+        private bool _isSpacePressed;
 
         // ── Parameter definitions for configurable effects ──
         private record FxParamDef(string Name, double Default, double Min, double Max, double Step = 1);
@@ -2160,6 +2215,78 @@ namespace FlowMy.Views.NodeControls
 
         private void ImageProcessingNodeContentControl_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Do not intercept if typing in a TextBox/ComboBox or renaming layer
+            if (e.OriginalSource is TextBox || e.OriginalSource is ComboBox)
+            {
+                // But handle Escape key inside TextEditorBox to cancel
+                if (e.Key == Key.Escape && e.OriginalSource == TextEditorBox)
+                {
+                    CancelActiveText();
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                // Spacebar panning key down
+                if (e.Key == Key.Space && !e.IsRepeat)
+                {
+                    _isSpacePressed = true;
+                    MainScrollViewer.Cursor = Cursors.Hand;
+                    e.Handled = true;
+                    return;
+                }
+
+                // Brush sizing keys: [ and ]
+                if (e.Key == Key.OemOpenBrackets || e.Key == Key.OemCloseBrackets)
+                {
+                    string tool = EditorPanel.ActiveToolName;
+                    if (tool == "Brush" || tool == "Eraser")
+                    {
+                        double curSize = EditorPanel.SliderBrushSize.Value;
+                        double change = e.Key == Key.OemOpenBrackets ? -Math.Max(1, Math.Round(curSize * 0.1)) : Math.Max(1, Math.Round(curSize * 0.1));
+                        double newSize = Math.Clamp(curSize + change, 1, 200);
+                        EditorPanel.SliderBrushSize.Value = newSize;
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
+                // Swapping / resetting color shortcuts: X and D
+                if (e.Key == Key.X && (Keyboard.Modifiers & ModifierKeys.Control) == 0 && (Keyboard.Modifiers & ModifierKeys.Alt) == 0)
+                {
+                    if (_node.EditorDoc != null)
+                    {
+                        var temp = _node.EditorDoc.ForegroundColor;
+                        _node.EditorDoc.ForegroundColor = _node.EditorDoc.BackgroundColor;
+                        _node.EditorDoc.BackgroundColor = temp;
+                        SyncToolboxColors();
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                if (e.Key == Key.D && (Keyboard.Modifiers & ModifierKeys.Control) == 0 && (Keyboard.Modifiers & ModifierKeys.Alt) == 0)
+                {
+                    if (_node.EditorDoc != null)
+                    {
+                        _node.EditorDoc.ForegroundColor = Colors.Black;
+                        _node.EditorDoc.BackgroundColor = Colors.White;
+                        SyncToolboxColors();
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
+                // Ctrl+D: Deselect
+                if (e.Key == Key.D && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    ClearSelection();
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             if (e.Key == Key.Escape && _selectionRect.HasValue)
             {
                 ClearSelection();
@@ -2169,36 +2296,39 @@ namespace FlowMy.Views.NodeControls
 
             if (e.Key == Key.Delete && _selectionRect.HasValue && _node.EditorDoc != null)
             {
-                var activeLayer = _node.EditorDoc.ActiveLayer;
-                if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+                DeleteSelectionContent();
+                e.Handled = true;
+                return;
+            }
 
-                int stride = activeLayer.Width * 4;
-                var oldPixels = new byte[stride * activeLayer.Height];
-                activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+            // Ctrl+C: Copy active selection
+            if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                CopyActiveSelection();
+                e.Handled = true;
+                return;
+            }
 
-                var newPixels = new byte[stride * activeLayer.Height];
-                Array.Copy(oldPixels, newPixels, oldPixels.Length);
+            // Ctrl+V: Paste active selection
+            if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                PasteSelectionAsLayer();
+                e.Handled = true;
+                return;
+            }
+        }
 
-                int startX = Math.Max(0, (int)_selectionRect.Value.Left);
-                int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
-                int startY = Math.Max(0, (int)_selectionRect.Value.Top);
-                int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
-
-                for (int y = startY; y <= endY; y++)
+        private void ImageProcessingNodeContentControl_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Space && _node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                _isSpacePressed = false;
+                if (_isPanning)
                 {
-                    int rowOffset = y * activeLayer.Width * 4;
-                    for (int x = startX; x <= endX; x++)
-                    {
-                        newPixels[rowOffset + x * 4 + 3] = 0; // Alpha = 0 (Erase)
-                    }
+                    _isPanning = false;
+                    MainScrollViewer.ReleaseMouseCapture();
                 }
-
-                var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
-                _node.EditorDoc.History.Execute(cmd);
-
-                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), newPixels, stride, 0);
-                activeLayer.InvalidateThumbnail();
-                OnEditorDocumentModified();
+                MainScrollViewer.Cursor = Cursors.Arrow;
                 e.Handled = true;
             }
         }
@@ -2443,6 +2573,239 @@ namespace FlowMy.Views.NodeControls
         private Point _textDragStartMousePos;
         private Thickness _textDragStartMargin;
 
+        private byte[]? _selectionClipboardPixels;
+        private Rect? _selectionClipboardRect;
+        private bool _selectionClipboardIsFullLayer;
+        private EditorLayer? _selectionClipboardLayerSource;
+
+        private void CopyActiveSelection()
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null || !activeLayer.IsVisible) return;
+
+            if (_selectionRect.HasValue)
+            {
+                int startX = Math.Max(0, (int)_selectionRect.Value.Left);
+                int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
+                int startY = Math.Max(0, (int)_selectionRect.Value.Top);
+                int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
+
+                int w = endX - startX + 1;
+                int h = endY - startY + 1;
+                if (w <= 0 || h <= 0) return;
+
+                var rect = new Int32Rect(startX, startY, w, h);
+                int stride = w * 4;
+                _selectionClipboardPixels = new byte[stride * h];
+                activeLayer.Bitmap.CopyPixels(rect, _selectionClipboardPixels, stride, 0);
+                _selectionClipboardRect = new Rect(startX, startY, w, h);
+                _selectionClipboardIsFullLayer = false;
+                _selectionClipboardLayerSource = null;
+            }
+            else
+            {
+                _selectionClipboardPixels = null;
+                _selectionClipboardRect = null;
+                _selectionClipboardIsFullLayer = true;
+                _selectionClipboardLayerSource = activeLayer.Duplicate();
+            }
+        }
+
+        private void PasteSelectionAsLayer()
+        {
+            if (_node.EditorDoc == null) return;
+
+            EditorLayer newLayer;
+            if (_selectionClipboardIsFullLayer && _selectionClipboardLayerSource != null)
+            {
+                newLayer = _selectionClipboardLayerSource.Duplicate();
+                newLayer.Name = EditorPanel.GenerateCopyName(_selectionClipboardLayerSource.Name);
+            }
+            else if (_selectionClipboardPixels != null && _selectionClipboardRect.HasValue)
+            {
+                int docW = _node.EditorDoc.Width;
+                int docH = _node.EditorDoc.Height;
+
+                newLayer = new EditorLayer(docW, docH, $"Layer {_node.EditorDoc.Layers.Count + 1}");
+                newLayer.Clear();
+
+                int startX = (int)_selectionClipboardRect.Value.Left;
+                int startY = (int)_selectionClipboardRect.Value.Top;
+                int w = (int)_selectionClipboardRect.Value.Width;
+                int h = (int)_selectionClipboardRect.Value.Height;
+
+                int stride = w * 4;
+                newLayer.Bitmap.WritePixels(new Int32Rect(startX, startY, w, h), _selectionClipboardPixels, stride, 0);
+                newLayer.InvalidateThumbnail();
+            }
+            else
+            {
+                return;
+            }
+
+            int insertIndex = _node.EditorDoc.Layers.Count;
+            if (_node.EditorDoc.ActiveLayer != null)
+            {
+                int idx = _node.EditorDoc.Layers.IndexOf(_node.EditorDoc.ActiveLayer);
+                if (idx >= 0) insertIndex = idx + 1;
+            }
+
+            var cmd = new Models.ImageEditor.Commands.LayerAddCommand(_node.EditorDoc, newLayer, insertIndex);
+            _node.EditorDoc.History.Execute(cmd);
+            _node.EditorDoc.ActiveLayer = newLayer;
+
+            EditorPanel.RefreshLayersList();
+            OnEditorDocumentModified();
+        }
+
+        private void DeleteSelectionContent()
+        {
+            if (_node.EditorDoc == null || !_selectionRect.HasValue) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+
+            int stride = activeLayer.Width * 4;
+            var oldPixels = new byte[stride * activeLayer.Height];
+            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+            var newPixels = new byte[stride * activeLayer.Height];
+            Array.Copy(oldPixels, newPixels, oldPixels.Length);
+
+            int startX = Math.Max(0, (int)_selectionRect.Value.Left);
+            int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
+            int startY = Math.Max(0, (int)_selectionRect.Value.Top);
+            int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * activeLayer.Width * 4;
+                for (int x = startX; x <= endX; x++)
+                {
+                    newPixels[rowOffset + x * 4 + 3] = 0; // Alpha = 0 (Erase)
+                }
+            }
+
+            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+            _node.EditorDoc.History.Execute(cmd);
+
+            activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), newPixels, stride, 0);
+            activeLayer.InvalidateThumbnail();
+            OnEditorDocumentModified();
+        }
+
+        private void UpdateTopOptionsBar(string activeTool)
+        {
+            if (TopOptionsBar == null) return;
+
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                TopOptionsBar.Visibility = Visibility.Visible;
+                OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
+                OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
+                OptSelectionPanel.Visibility = (activeTool == "Selection") ? Visibility.Visible : Visibility.Collapsed;
+
+                // Set initial slider values
+                if (OptBrushSize.Value != EditorPanel.BrushSize)
+                    OptBrushSize.Value = EditorPanel.BrushSize;
+                if (OptBrushHardness.Value != EditorPanel.BrushHardness)
+                    OptBrushHardness.Value = EditorPanel.BrushHardness;
+                if (OptBrushFlow.Value != EditorPanel.BrushFlow)
+                    OptBrushFlow.Value = EditorPanel.BrushFlow;
+
+                if (OptTextSize.Value != EditorPanel.TextFontSize)
+                    OptTextSize.Value = EditorPanel.TextFontSize;
+                OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
+                OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
+            }
+            else
+            {
+                TopOptionsBar.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void EditorPanel_BrushPropertiesChanged(object? sender, EventArgs e)
+        {
+            if (OptBrushSize != null && OptBrushSize.Value != EditorPanel.BrushSize)
+                OptBrushSize.Value = EditorPanel.BrushSize;
+            if (OptBrushHardness != null && OptBrushHardness.Value != EditorPanel.BrushHardness)
+                OptBrushHardness.Value = EditorPanel.BrushHardness;
+            if (OptBrushFlow != null && OptBrushFlow.Value != EditorPanel.BrushFlow)
+                OptBrushFlow.Value = EditorPanel.BrushFlow;
+            UpdateBrushCursorPosition();
+        }
+
+        private void OptBrushSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (EditorPanel != null && EditorPanel.SliderBrushSize != null && EditorPanel.SliderBrushSize.Value != e.NewValue)
+                EditorPanel.SliderBrushSize.Value = e.NewValue;
+        }
+
+        private void OptBrushHardness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (EditorPanel != null && EditorPanel.SliderBrushHardness != null && EditorPanel.SliderBrushHardness.Value != e.NewValue)
+                EditorPanel.SliderBrushHardness.Value = e.NewValue;
+        }
+
+        private void OptBrushFlow_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (EditorPanel != null && EditorPanel.SliderBrushFlow != null && EditorPanel.SliderBrushFlow.Value != e.NewValue)
+                EditorPanel.SliderBrushFlow.Value = e.NewValue;
+        }
+
+        private void OptTextSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (EditorPanel != null && EditorPanel.SliderTextFontSize != null && EditorPanel.SliderTextFontSize.Value != e.NewValue)
+                EditorPanel.SliderTextFontSize.Value = e.NewValue;
+        }
+
+        private void OptFontFamily_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OptFontFamily == null || OptFontFamily.SelectedItem is not ComboBoxItem item) return;
+            string family = item.Content.ToString()!;
+            if (EditorPanel != null && EditorPanel.CmbFontFamily != null)
+            {
+                foreach (ComboBoxItem rightItem in EditorPanel.CmbFontFamily.Items)
+                {
+                    if (rightItem.Content.ToString() == family)
+                    {
+                        if (EditorPanel.CmbFontFamily.SelectedItem != rightItem)
+                            EditorPanel.CmbFontFamily.SelectedItem = rightItem;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void OptFontStyle_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OptFontStyle == null || OptFontStyle.SelectedItem is not ComboBoxItem item) return;
+            string style = item.Content.ToString()!;
+            if (EditorPanel != null && EditorPanel.CmbFontStyle != null)
+            {
+                foreach (ComboBoxItem rightItem in EditorPanel.CmbFontStyle.Items)
+                {
+                    if (rightItem.Content.ToString() == style)
+                    {
+                        if (EditorPanel.CmbFontStyle.SelectedItem != rightItem)
+                            EditorPanel.CmbFontStyle.SelectedItem = rightItem;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void OptBtnTextColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (EditorPanel != null && EditorPanel.BtnTextColor != null)
+                EditorPanel.BtnTextColor.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        }
+
+        private void OptDeselect_Click(object sender, RoutedEventArgs e) => ClearSelection();
+        private void OptCopy_Click(object sender, RoutedEventArgs e) => CopyActiveSelection();
+        private void OptPaste_Click(object sender, RoutedEventArgs e) => PasteSelectionAsLayer();
+        private void OptDelete_Click(object sender, RoutedEventArgs e) => DeleteSelectionContent();
+
         private void EditorPanel_TextPropertiesChanged(object? sender, EventArgs e)
         {
             if (TextMoveContainer.Visibility == Visibility.Visible && _node.EditorDoc != null)
@@ -2456,6 +2819,38 @@ namespace FlowMy.Views.NodeControls
                     TextEditorBox.FontFamily = new FontFamily(EditorPanel.TextFontFamily);
                     TextEditorBox.FontWeight = EditorPanel.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
                     TextEditorBox.FontStyle = EditorPanel.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+                }
+            }
+
+            if (OptTextSize != null && OptTextSize.Value != EditorPanel.TextFontSize)
+                OptTextSize.Value = EditorPanel.TextFontSize;
+            if (OptTextColorSwatch != null)
+                OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
+            if (OptBtnTextColor != null)
+                OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
+            
+            if (OptFontFamily != null)
+            {
+                foreach (ComboBoxItem item in OptFontFamily.Items)
+                {
+                    if (item.Content.ToString() == EditorPanel.TextFontFamily)
+                    {
+                        if (OptFontFamily.SelectedItem != item)
+                            OptFontFamily.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+            if (OptFontStyle != null)
+            {
+                foreach (ComboBoxItem item in OptFontStyle.Items)
+                {
+                    if (item.Content.ToString() == EditorPanel.TextFontStyle)
+                    {
+                        if (OptFontStyle.SelectedItem != item)
+                            OptFontStyle.SelectedItem = item;
+                        break;
+                    }
                 }
             }
         }

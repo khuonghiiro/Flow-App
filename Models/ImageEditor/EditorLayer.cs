@@ -160,9 +160,16 @@ namespace FlowMy.Models.ImageEditor
             copy.TextFontStyle = TextFontStyle;
 
             var stride = Width * 4;
-            var pixels = new byte[stride * Height];
-            Bitmap.CopyPixels(pixels, stride, 0);
-            copy.Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixels, stride, 0);
+            copy.Bitmap.Lock();
+            try
+            {
+                Bitmap.CopyPixels(new Int32Rect(0, 0, Width, Height), copy.Bitmap.BackBuffer, stride * Height, stride);
+                copy.Bitmap.AddDirtyRect(new Int32Rect(0, 0, Width, Height));
+            }
+            finally
+            {
+                copy.Bitmap.Unlock();
+            }
             copy.InvalidateThumbnail();
             return copy;
         }
@@ -290,7 +297,9 @@ namespace FlowMy.Models.ImageEditor
         private Color _textColor = Colors.White;
         private string _textFontFamily = "Arial";
         private string _textFontStyle = "Bold";
+        private bool _isEditingName;
 
+        public bool IsEditingName { get => _isEditingName; set => SetField(ref _isEditingName, value); }
         public bool IsTextLayer { get => _isTextLayer; set => SetField(ref _isTextLayer, value); }
         public string TextContent { get => _textContent; set => SetField(ref _textContent, value ?? ""); }
         public double TextX { get => _textX; set => SetField(ref _textX, value); }

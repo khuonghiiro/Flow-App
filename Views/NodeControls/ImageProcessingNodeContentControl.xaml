@@ -17,6 +17,165 @@
              ToolTipService.InitialShowDelay="100"
              ToolTipService.BetweenShowDelay="50">
     <UserControl.Resources>
+        <!-- ═══ IP PALETTE ═══ -->
+        <SolidColorBrush x:Key="ipBg" Color="#0a0c10"/>
+        <SolidColorBrush x:Key="ipSurface" Color="#111318"/>
+        <SolidColorBrush x:Key="ipSurface2" Color="#181c24"/>
+        <SolidColorBrush x:Key="ipBorder" Color="#252932"/>
+        <SolidColorBrush x:Key="ipBorderLight" Color="#2a2e3a"/>
+        <SolidColorBrush x:Key="ipText" Color="#dde3ef"/>
+        <SolidColorBrush x:Key="ipMuted" Color="#5a6072"/>
+        <SolidColorBrush x:Key="ipAccent" Color="#4fffb0"/>
+        <SolidColorBrush x:Key="ipAccent2" Color="#00cfff"/>
+        <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
+        <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
+
+        <!-- ═══ COMBOBOX STYLE ═══ -->
+        <Style x:Key="IpComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Background" Value="{StaticResource ipSurface}"/>
+            <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,0,4,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3"/>
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="6,0,20,0"
+                                              VerticalAlignment="Center"/>
+                            <TextBlock Text="▾"
+                                       HorizontalAlignment="Right"
+                                       Margin="0,0,6,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource ipMuted}"
+                                       FontSize="10"/>
+                            <ToggleButton x:Name="ToggleButton"
+                                          IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide">
+                                <Border Background="{StaticResource ipSurface2}"
+                                        BorderBrush="{StaticResource ipBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        MaxHeight="200"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <ScrollViewer SnapsToDevicePixels="True">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ipAccent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+                        <Setter Property="Background" Value="{StaticResource ipSurface2}"/>
+                        <Setter Property="Padding" Value="8,4"/>
+                        <Setter Property="FontSize" Value="9"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="ItemBd"
+                                            Background="{TemplateBinding Background}"
+                                            Padding="{TemplateBinding Padding}"
+                                            CornerRadius="2">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="{StaticResource ipHover}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="{StaticResource ipActiveItem}"/>
+                                            <Setter Property="Foreground" Value="{StaticResource ipAccent}"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ═══ ADJUSTMENT BUTTON STYLE ═══ -->
+        <Style x:Key="IpAdjBtn" TargetType="Button">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="8.5"/>
+            <Setter Property="Background" Value="{StaticResource ipSurface2}"/>
+            <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipHover}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ipAccent}"/>
+                                <Setter Property="Foreground" Value="{StaticResource ipAccent}"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ipAccent2}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipBg}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ipAccent2}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <local:IntToHashLabelConverter x:Key="IntToHashLabelConverter"/>
         <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
         <sys:Double x:Key="WidgetCropOrderFontSize">10</sys:Double>
@@ -85,12 +244,13 @@
     <Grid x:Name="RootLayout">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="TopOptionsBarRow" Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="6.2*"/>
-            <ColumnDefinition Width="3.2*"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition x:Name="IpColumnDefinition" Width="0"/>
         </Grid.ColumnDefinitions>
 
@@ -153,8 +313,72 @@
             </Border>
         </Border>
 
+        <!-- Top Options Bar: Tool-specific controls (Photoshop style) -->
+        <Border x:Name="TopOptionsBar" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                Background="#0e1218" BorderBrush="#252932" BorderThickness="0,0,0,1"
+                Padding="12,4,12,4" Visibility="Collapsed" Panel.ZIndex="5">
+            <Grid Height="24">
+                <!-- ═══ BRUSH OPTIONS ═══ -->
+                <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="🖌️ Brush" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    
+                    <TextBlock Text="Size:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <Slider x:Name="OptBrushSize" Minimum="1" Maximum="200" Value="10" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushSize_ValueChanged"/>
+                    <TextBlock Text="{Binding Value, ElementName=OptBrushSize, StringFormat={}{0:F0}px}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="36" Margin="4,0,12,0"/>
+
+                    <TextBlock Text="Hardness:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <Slider x:Name="OptBrushHardness" Minimum="0" Maximum="100" Value="100" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushHardness_ValueChanged"/>
+                    <TextBlock Text="{Binding Value, ElementName=OptBrushHardness, StringFormat={}{0:F0}%}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="32" Margin="4,0,12,0"/>
+
+                    <TextBlock Text="Flow:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <Slider x:Name="OptBrushFlow" Minimum="1" Maximum="100" Value="100" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushFlow_ValueChanged"/>
+                    <TextBlock Text="{Binding Value, ElementName=OptBrushFlow, StringFormat={}{0:F0}%}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="32" Margin="4,0,0,0"/>
+                </StackPanel>
+
+                <!-- ═══ TEXT OPTIONS ═══ -->
+                <StackPanel x:Name="OptTextPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="🔤 Text" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <TextBlock Text="Font:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="OptFontFamily" Height="18" Width="100" FontSize="9" Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center" SelectionChanged="OptFontFamily_SelectionChanged">
+                        <ComboBoxItem Content="Arial" IsSelected="True"/>
+                        <ComboBoxItem Content="Times New Roman"/>
+                        <ComboBoxItem Content="Courier New"/>
+                        <ComboBoxItem Content="Segoe UI"/>
+                        <ComboBoxItem Content="Verdana"/>
+                        <ComboBoxItem Content="Consolas"/>
+                    </ComboBox>
+                    
+                    <TextBlock Text="Style:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="12,0,4,0"/>
+                    <ComboBox x:Name="OptFontStyle" Height="18" Width="70" FontSize="9" Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center" SelectionChanged="OptFontStyle_SelectionChanged">
+                        <ComboBoxItem Content="Bold" IsSelected="True"/>
+                        <ComboBoxItem Content="Regular"/>
+                        <ComboBoxItem Content="Italic"/>
+                    </ComboBox>
+
+                    <TextBlock Text="Size:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="12,0,4,0"/>
+                    <Slider x:Name="OptTextSize" Minimum="6" Maximum="200" Value="24" Width="80" VerticalAlignment="Center" ValueChanged="OptTextSize_ValueChanged"/>
+                    <TextBlock Text="{Binding Value, ElementName=OptTextSize, StringFormat={}{0:F0}pt}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="32" Margin="4,0,12,0"/>
+
+                    <TextBlock Text="Color:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <Border x:Name="OptTextColorSwatch" Background="White" BorderBrush="#252932" BorderThickness="1" CornerRadius="2" Height="12" Width="12" VerticalAlignment="Center"/>
+                    <Button x:Name="OptBtnTextColor" Content="#FFFFFF" FontSize="8.5" Background="Transparent" Foreground="White" BorderThickness="0" Margin="4,0,0,0" VerticalAlignment="Center" Click="OptBtnTextColor_Click" Cursor="Hand"/>
+                </StackPanel>
+
+                <!-- ═══ SELECTION OPTIONS ═══ -->
+                <StackPanel x:Name="OptSelectionPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="⬜ Selection" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <Button Content="Deselect (Ctrl+D)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptDeselect_Click"/>
+                    <Button Content="Copy (Ctrl+C)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptCopy_Click"/>
+                    <Button Content="Paste (Ctrl+V)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptPaste_Click"/>
+                    <Button Content="Delete (Del)" Style="{StaticResource IpAdjBtn}" Click="OptDelete_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- Left toolbar -->
-        <Border x:Name="LeftMenuBorder" Grid.Row="1" Grid.Column="0"
+        <Border x:Name="LeftMenuBorder" Grid.Row="2" Grid.Column="0"
                 Background="#28FFFFFF" Padding="4,0,4,6">
             <Viewbox x:Name="LeftMenuViewbox" Stretch="Uniform" StretchDirection="Both"
                      HorizontalAlignment="Stretch" VerticalAlignment="Top">
@@ -195,7 +419,7 @@
         </Border>
 
         <!-- Left vertical/horizontal wrap toolbox: Editor mode (Photoshop-style) -->
-        <Border x:Name="EditorToolbox" Grid.Row="1" Grid.Column="0"
+        <Border x:Name="EditorToolbox" Grid.Row="2" Grid.Column="0"
                 Background="#0a0c10" Padding="3,6,3,4"
                 Visibility="Collapsed">
             <Border.Resources>
@@ -425,7 +649,7 @@
         </Border>
 
         <!-- ═══ LOADING OVERLAY (during FX processing) ═══ -->
-        <Border x:Name="FxLoadingOverlay" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+        <Border x:Name="FxLoadingOverlay" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                 Background="#B0000000" Panel.ZIndex="200"
                 Visibility="Collapsed" IsHitTestVisible="True">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -439,7 +663,7 @@
         </Border>
 
         <!-- Center: image -->
-        <ScrollViewer x:Name="MainScrollViewer" Grid.Row="1" Grid.Column="1"
+        <ScrollViewer x:Name="MainScrollViewer" Grid.Row="2" Grid.Column="1"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                       Padding="0" Focusable="True">
             <Grid x:Name="ScrollContentGrid"
@@ -476,6 +700,17 @@
                         
                         <Image x:Name="MainImage" Stretch="Uniform"
                                HorizontalAlignment="Left" VerticalAlignment="Top"/>
+
+                        <!-- Brush cursor preview (Photoshop style) -->
+                        <Canvas x:Name="BrushCursorCanvas" IsHitTestVisible="False" Panel.ZIndex="150"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                            <Ellipse x:Name="BrushPreviewCursor" Stroke="White" StrokeThickness="1"
+                                     Visibility="Collapsed" IsHitTestVisible="False">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect BlurRadius="1" ShadowDepth="0" Color="Black" Opacity="0.8"/>
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Canvas>
 
                         <!-- Selection Overlay (Photoshop ants style) -->
                         <Rectangle x:Name="SelectionBoxRect"
@@ -524,7 +759,7 @@
         </ScrollViewer>
 
         <!-- Right panel: AI mode (crops + renders) -->
-        <Border x:Name="RightMenuBorder" Grid.Row="1" Grid.Column="2"
+        <Border x:Name="RightMenuBorder" Grid.Row="2" Grid.Column="2"
                 Background="#28000000" Padding="4">
             <Grid>
                 <Grid.RowDefinitions>
@@ -562,11 +797,11 @@
         </Border>
 
         <!-- Right panel: Editor mode (layers, tools, colors) -->
-        <local:ImageEditorPanel x:Name="EditorPanel" Grid.Row="1" Grid.Column="2"
-                                Visibility="Collapsed"/>
+        <local:ImageEditorPanel x:Name="EditorPanel" Grid.Row="2" Grid.Column="2"
+                                Width="250" Visibility="Collapsed"/>
 
         <!-- Magnifier (Alt), same cell as image -->
-        <Grid x:Name="MagOverlayPanel" Grid.Row="1" Grid.Column="1"
+        <Grid x:Name="MagOverlayPanel" Grid.Row="2" Grid.Column="1"
               Width="124" HorizontalAlignment="Right" VerticalAlignment="Bottom"
               Margin="0,0,8,8" Panel.ZIndex="100"
               Visibility="Collapsed" IsHitTestVisible="False">
@@ -598,7 +833,7 @@
 
         <!-- Image Processor (code gán Content từ BuildImageProcessorColumn) -->
         <ContentControl x:Name="IpProcessorHost" Grid.Row="0" Grid.Column="3"
-                        Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
         <!-- ═══ SLEEK PHOTOSHOP-STYLE TOOL VARIANT POPUP (ICON GRID) ═══ -->
         <Popup x:Name="FxGroupPopup" StaysOpen="False" AllowsTransparency="True"
