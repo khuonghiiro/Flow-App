@@ -109,6 +109,18 @@
                                                 Fill="{DynamicResource WhiteBrush}"/>
                     </Button>
 
+                    <!-- Save FX Config button (Editor mode only) -->
+                    <Button x:Name="BtnSaveFxConfig" DockPanel.Dock="Right"
+                            ToolTip="Lưu cấu hình FX (Ctrl+S)"
+                            Width="28" Height="22" Padding="0" Margin="0,0,4,0"
+                            Cursor="Hand" VerticalAlignment="Center"
+                            Style="{DynamicResource PrimaryButton}"
+                            Visibility="Collapsed"
+                            Click="BtnSaveFxConfig_Click">
+                        <TextBlock Text="💾" FontSize="12"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Button>
+
                     <!-- Mode toggle: AI | Editor — segment control -->
                     <Border DockPanel.Dock="Right" Margin="6,0,6,0" VerticalAlignment="Center"
                             Background="#18FFFFFF" CornerRadius="5"

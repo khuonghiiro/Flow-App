@@ -112,6 +112,37 @@ namespace FlowMy.Views.NodeControls
             ApplyGpuRenderOptions();
             ApplyHostBackground();
 
+            // Khởi tạo OpenCL + load FX cache trên background thread (không block UI)
+            if (!_openClInitialized)
+            {
+                _openClInitialized = true;
+                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        // Load cached FX params trước (nhẹ, file nhỏ)
+                        FlowMy.Utils.FxConfigCache.LoadFromFile();
+
+                        // OpenCL init (có thể chậm tùy GPU driver)
+                        ImageMagick.OpenCL.IsEnabled = true;
+                        var devices = ImageMagick.OpenCL.Devices;
+                        if (devices != null)
+                        {
+                            foreach (var dev in devices)
+                            {
+                                dev.IsEnabled = true;
+                                System.Diagnostics.Debug.WriteLine($"[MagickOpenCL] GPU: {dev.Name} (v{dev.Version})");
+                            }
+                        }
+                        System.Diagnostics.Debug.WriteLine($"[MagickOpenCL] Enabled={ImageMagick.OpenCL.IsEnabled}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MagickOpenCL] Init failed: {ex.Message}");
+                    }
+                });
+            }
+
             UpdateColorCropButtonBackground();
 
             _onCropClickForIp = OnCropRegionSelectedForIp;
@@ -129,6 +160,8 @@ namespace FlowMy.Views.NodeControls
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
                 SwitchToMode(Models.Nodes.ImageProcessingMode.Manual);
         }
+
+        private static bool _openClInitialized;
 
         /// <summary>Gọi từ FloatingWidgetWindow khi bật/tắt phóng to widget (work area).</summary>
         public void SyncWidgetExpandedFullscreen(bool expandedFullscreen)
@@ -523,6 +556,26 @@ namespace FlowMy.Views.NodeControls
         {
             ToggleIPColumn();
             e.Handled = true;
+        }
+
+        private void BtnSaveFxConfig_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            FlowMy.Utils.FxConfigCache.SaveToFile();
+
+            // Visual feedback: brief flash
+            var btn = (Button)sender;
+            var origContent = btn.Content;
+            btn.Content = new TextBlock { Text = "✅", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            btn.IsEnabled = false;
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
+            timer.Tick += (_, _) =>
+            {
+                btn.Content = origContent;
+                btn.IsEnabled = true;
+                timer.Stop();
+            };
+            timer.Start();
         }
 
         private void CommonButton_StopBubbling_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => e.Handled = true;
@@ -1044,6 +1097,9 @@ namespace FlowMy.Views.NodeControls
 
             // AI mode có IP toggle, Editor mode ẩn nó
             IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;
+
+            // Save FX Config button chỉ hiện ở Editor mode
+            BtnSaveFxConfig.Visibility = isAI ? Visibility.Collapsed : Visibility.Visible;
         }
         #region EDITOR TOOLBOX (Left vertical strip)
 
@@ -1251,6 +1307,9 @@ namespace FlowMy.Views.NodeControls
                 Margin = new Thickness(0, 0, 0, 10)
             });
 
+            // Load cached values (last-used) nếu có
+            var cachedParams = FlowMy.Utils.FxConfigCache.Get(effectName);
+
             var sliders = new Dictionary<string, Slider>();
 
             foreach (var p in paramDefs)
@@ -1277,9 +1336,14 @@ namespace FlowMy.Views.NodeControls
                     Padding = new Thickness(4, 1, 4, 1),
                     MinWidth = 42,
                 };
+                // Dùng cached value nếu có, nếu không dùng default
+                double initialValue = p.Default;
+                if (cachedParams != null && cachedParams.TryGetValue(p.Name, out var cached))
+                    initialValue = Math.Max(p.Min, Math.Min(p.Max, cached));
+
                 var valText = new TextBlock
                 {
-                    Text = p.Default.ToString(p.Step < 1 ? "F2" : "F0"),
+                    Text = initialValue.ToString(p.Step < 1 ? "F2" : "F0"),
                     Foreground = new System.Windows.Media.SolidColorBrush(
                         System.Windows.Media.Color.FromRgb(0x00, 0xcf, 0xff)),
                     FontSize = 9,
@@ -1294,7 +1358,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     Minimum = p.Min,
                     Maximum = p.Max,
-                    Value = p.Default,
+                    Value = initialValue,
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(6, 0, 6, 0),
                     TickFrequency = p.Step,
@@ -1341,6 +1405,10 @@ namespace FlowMy.Views.NodeControls
                 result = new Dictionary<string, double>();
                 foreach (var kv in sliders)
                     result[kv.Key] = kv.Value.Value;
+
+                // Lưu vào cache để lần sau mở lên sẽ dùng value này
+                FlowMy.Utils.FxConfigCache.Set(effectName, result);
+
                 win.DialogResult = true;
                 win.Close();
             };
