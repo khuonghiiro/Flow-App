@@ -63,6 +63,7 @@ namespace FlowMy.Views.NodeControls
                 SyncHistoryButtons();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
+                UpdateBrushPreview();
             }
             else
             {
@@ -133,6 +134,7 @@ namespace FlowMy.Views.NodeControls
                      e.PropertyName == nameof(EditorDocument.BackgroundColor))
             {
                 SyncColorDisplay();
+                UpdateBrushPreview();
             }
         }
 
@@ -392,18 +394,52 @@ namespace FlowMy.Views.NodeControls
         {
             if (TxtBrushSize == null) return;
             TxtBrushSize.Text = $"{(int)SliderBrushSize.Value}";
+            UpdateBrushPreview();
         }
 
         private void SliderBrushHardness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (TxtBrushHardness == null) return;
             TxtBrushHardness.Text = $"{(int)SliderBrushHardness.Value}%";
+            UpdateBrushPreview();
         }
 
         private void SliderBrushFlow_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (TxtBrushFlow == null) return;
             TxtBrushFlow.Text = $"{(int)SliderBrushFlow.Value}%";
+            UpdateBrushPreview();
+        }
+
+        private void UpdateBrushPreview()
+        {
+            if (BrushPreviewEllipse == null) return;
+
+            double hardness = SliderBrushHardness.Value / 100.0;
+            double flow = SliderBrushFlow.Value / 100.0;
+            Color brushColor = Colors.White;
+
+            // Fixed maximum preview size to focus purely on hardness and flow representation
+            double previewSize = 44.0;
+            BrushPreviewEllipse.Width = previewSize;
+            BrushPreviewEllipse.Height = previewSize;
+
+            var brush = new RadialGradientBrush();
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
+
+            double stopOffset = Math.Max(0.0, hardness);
+            if (stopOffset < 0.99)
+            {
+                brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B), stopOffset));
+                brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+            }
+            else
+            {
+                brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B), 0.99));
+                brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+            }
+
+            BrushPreviewEllipse.Fill = brush;
         }
 
         // ═══════ COLORS ═══════
@@ -498,116 +534,6 @@ namespace FlowMy.Views.NodeControls
             OnDocumentModified();
         }
 
-        private void BtnAdj_Click(object sender, RoutedEventArgs e)
-        {
-            if (_doc?.ActiveLayer == null || _doc.ActiveLayer.IsLocked || !_doc.ActiveLayer.IsVisible) return;
-            if (sender is not Button btn || btn.Tag is not string action) return;
-
-            // Xử lý xoay/lật toàn bộ canvas dùng lệnh TransformDocumentCommand
-            if (action == "Rotate90" || action == "FlipH" || action == "FlipV")
-            {
-                int oldW = _doc.Width;
-                int oldH = _doc.Height;
-                var oldState = new List<(EditorLayer layer, byte[] pixels, int w, int h)>();
-                foreach (var layer in _doc.Layers)
-                {
-                    int s = layer.Width * 4;
-                    var px = new byte[s * layer.Height];
-                    layer.Bitmap.CopyPixels(px, s, 0);
-                    oldState.Add((layer, px, layer.Width, layer.Height));
-                }
-
-                // Thực hiện biến đổi
-                Transform tf;
-                if (action == "Rotate90")
-                {
-                    _doc.Width = oldH;
-                    _doc.Height = oldW;
-                    tf = new RotateTransform(90);
-                }
-                else if (action == "FlipH")
-                {
-                    tf = new ScaleTransform(-1, 1);
-                }
-                else
-                {
-                    tf = new ScaleTransform(1, -1);
-                }
-
-                foreach (var layer in _doc.Layers)
-                {
-                    layer.ApplyTransform(tf);
-                }
-
-                int newW = _doc.Width;
-                int newH = _doc.Height;
-                var newState = new List<(EditorLayer layer, byte[] pixels, int w, int h)>();
-                foreach (var layer in _doc.Layers)
-                {
-                    int s = layer.Width * 4;
-                    var px = new byte[s * layer.Height];
-                    layer.Bitmap.CopyPixels(px, s, 0);
-                    newState.Add((layer, px, layer.Width, layer.Height));
-                }
-
-                var tCmd = new TransformDocumentCommand(_doc, oldW, oldH, newW, newH, oldState, newState);
-                _doc.History.Execute(tCmd);
-                _doc.RaisePropertyChanged(nameof(EditorDocument.Width));
-                _doc.RaisePropertyChanged(nameof(EditorDocument.Height));
-                OnDocumentModified();
-                return;
-            }
-
-            // Các bộ lọc hiệu ứng điểm ảnh (không thay đổi kích thước)
-            var activeLayer = _doc.ActiveLayer;
-            int stride = activeLayer.Width * 4;
-            byte[] oldPixels = new byte[stride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
-
-            using (System.Drawing.Bitmap bmp = Utils.ImageAdjustments.WriteableBitmapToBitmap(activeLayer.Bitmap))
-            {
-                switch (action)
-                {
-                    case "Grayscale":
-                        Utils.ImageAdjustments.ApplyGrayscale(bmp);
-                        break;
-                    case "Invert":
-                        Utils.ImageAdjustments.ApplyInvert(bmp);
-                        break;
-                    case "Sepia":
-                        Utils.ImageAdjustments.ApplySepia(bmp);
-                        break;
-                    case "Blur":
-                        Utils.ImageAdjustments.ApplyBlur(bmp);
-                        break;
-                    case "Sharpen":
-                        Utils.ImageAdjustments.ApplySharpen(bmp);
-                        break;
-                    case "Lighten":
-                        Utils.ImageAdjustments.ApplyBrightness(bmp, 0.1f);
-                        break;
-                    case "Darken":
-                        Utils.ImageAdjustments.ApplyBrightness(bmp, -0.1f);
-                        break;
-                    case "ContrastUp":
-                        Utils.ImageAdjustments.ApplyContrast(bmp, 1.1f);
-                        break;
-                    case "ContrastDown":
-                        Utils.ImageAdjustments.ApplyContrast(bmp, 0.9f);
-                        break;
-                }
-                Utils.ImageAdjustments.BitmapToWriteableBitmap(bmp, activeLayer.Bitmap);
-            }
-
-            byte[] newPixels = new byte[stride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
-
-            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
-            _doc.History.Execute(cmd);
-
-            activeLayer.InvalidateThumbnail();
-            OnDocumentModified();
-        }
 
         /// <summary>Gọi khi document thay đổi — trigger re-composite.</summary>
         public event Action? DocumentModified;

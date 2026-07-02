@@ -1262,6 +1262,8 @@ namespace FlowMy.Views.NodeControls
                 case "Sharpen":          img.Sharpen(0, 1); break;
                 case "UnsharpMask":      img.UnsharpMask(2, 1, 1, 0.05); break;
                 case "AdaptiveSharpen":  img.AdaptiveSharpen(0, 1); break;
+                case "Kuwahara":         img.Kuwahara(3, 1); break;
+
                 // Artistic
                 case "OilPaint":         img.OilPaint(4, 1); break;
                 case "Charcoal":         img.Charcoal(2, 1); break;
@@ -1278,9 +1280,18 @@ namespace FlowMy.Views.NodeControls
                     img.Scale((uint)Math.Max(1, pw / 8), (uint)Math.Max(1, ph / 8));
                     img.Sample((uint)pw, (uint)ph);
                     break;
+                case "Polaroid":         img.Polaroid("FlowMy", 0, ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Frame":            img.Frame(6, 6, 2, 2); break;
+                case "Explode":          img.Implode(-0.3, ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Raise":            img.Raise(8); break;
+
                 // Edge
                 case "EdgeDetect":       img.Edge(1); break;
                 case "CannyEdge":        img.CannyEdge(0, 1, new ImageMagick.Percentage(10), new ImageMagick.Percentage(30)); break;
+                case "Threshold":        img.Threshold(new ImageMagick.Percentage(50)); break;
+                case "AdaptiveThreshold":img.AdaptiveThreshold(10, 10, 0.0); break;
+                case "OrderedDither":    img.OrderedDither("o8x8"); break;
+
                 // Color
                 case "Posterize":        img.Posterize(4); break;
                 case "Solarize":         img.Solarize(new ImageMagick.Percentage(50)); break;
@@ -1300,6 +1311,10 @@ namespace FlowMy.Views.NodeControls
                 case "ContrastUp":       img.Contrast(); break;
                 case "ContrastDown":     img.BrightnessContrast(new ImageMagick.Percentage(0), new ImageMagick.Percentage(-15)); break;
                 case "BlueShift":        img.BlueShift(); break;
+                case "LinearStretch":    img.LinearStretch(new ImageMagick.Percentage(1), new ImageMagick.Percentage(1)); break;
+                case "QuantizeColors":   img.Quantize(new ImageMagick.QuantizeSettings { Colors = 16 }); break;
+                case "SigmoidalContrastUp":   img.SigmoidalContrast(3.0, new ImageMagick.Percentage(50)); break;
+
                 // Noise
                 case "AddNoiseGaussian": img.AddNoise(ImageMagick.NoiseType.Gaussian, 1.0); break;
                 case "AddNoiseImpulse":  img.AddNoise(ImageMagick.NoiseType.Impulse, 1.0); break;
@@ -1307,11 +1322,17 @@ namespace FlowMy.Views.NodeControls
                 case "Despeckle":        img.Despeckle(); break;
                 case "MedianFilter":     img.MedianFilter(2); break;
                 case "ReduceNoise":      img.ReduceNoise(2); break;
+
                 // Morphology
                 case "Dilate":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Dilate, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
                 case "MorphErode":       img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Erode, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
                 case "Opening":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Open, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
                 case "Closing":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Close, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "EdgeIn":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeIn, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "EdgeOut":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeOut, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "TopHat":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.TopHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "BottomHat":        img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.BottomHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+
                 // Transform
                 case "Deskew":           img.Deskew(new ImageMagick.Percentage(40)); break;
                 case "Trim":             img.Trim(); break;
@@ -1321,6 +1342,11 @@ namespace FlowMy.Views.NodeControls
                 case "Rotate270":        img.Rotate(270); break;
                 case "Flop":             img.Flop(); break;
                 case "Flip":             img.Flip(); break;
+                case "Shear":            img.Shear(15, 0); break;
+                case "Roll":             img.Roll(50, 50); break;
+                case "Shave":            img.Shave(10, 10); break;
+                case "Magnify":          img.Magnify(); break;
+                case "Minify":           img.Minify(); break;
             }
         }
 
@@ -1406,6 +1432,7 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "Sharpen", DisplayName = "Sharpen", Description = "Tăng cường độ sắc nét cho ảnh", IconKey = "diamond duotone" });
                     items.Add(new FxToolItem { Name = "UnsharpMask", DisplayName = "Unsharp Mask", Description = "Lọc sắc nét nâng cao có kiểm soát", IconKey = "gem duotone" });
                     items.Add(new FxToolItem { Name = "AdaptiveSharpen", DisplayName = "Adaptive Sharpen", Description = "Tăng sắc nét bảo toàn chi tiết phẳng", IconKey = "bolt duotone" });
+                    items.Add(new FxToolItem { Name = "Kuwahara", DisplayName = "Kuwahara Filter", Description = "Lọc nghệ thuật Kuwahara làm mịn ảnh giữ cạnh", IconKey = "arrows-to-circle duotone" });
                     break;
                     
                 case "TbxArtActive":
@@ -1420,11 +1447,18 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "Implode", DisplayName = "Implode", Description = "Hút các điểm ảnh vào trung tâm", IconKey = "compress duotone" });
                     items.Add(new FxToolItem { Name = "Shade", DisplayName = "Shade", Description = "Hiệu ứng đổ bóng chiếu sáng 3D", IconKey = "mountain duotone" });
                     items.Add(new FxToolItem { Name = "Pixelate", DisplayName = "Pixelate", Description = "Chia nhỏ ảnh thành các ô pixel vuông", IconKey = "grid duotone" });
+                    items.Add(new FxToolItem { Name = "Polaroid", DisplayName = "Polaroid Frame", Description = "Hiệu ứng khung ảnh Polaroid nghệ thuật cổ điển", IconKey = "pen-to-square duotone" });
+                    items.Add(new FxToolItem { Name = "Frame", DisplayName = "3D Frame Border", Description = "Khung viền nổi 3D trang trí xung quanh ảnh", IconKey = "clone-plus duotone" });
+                    items.Add(new FxToolItem { Name = "Explode", DisplayName = "Explode Zoom", Description = "Hiệu ứng phồng nở phóng to từ tâm ảnh", IconKey = "burst duotone" });
+                    items.Add(new FxToolItem { Name = "Raise", DisplayName = "Raise Bevel", Description = "Tạo gờ viền nổi 3D xung quanh ảnh", IconKey = "cube duotone" });
                     break;
 
                 case "TbxEdgeActive":
                     items.Add(new FxToolItem { Name = "EdgeDetect", DisplayName = "Edge Detect", Description = "Phát hiện biên ảnh cơ bản", IconKey = "object-group duotone" });
                     items.Add(new FxToolItem { Name = "CannyEdge", DisplayName = "Canny Edge", Description = "Bộ lọc biên Canny cao cấp độ chính xác cao", IconKey = "bullseye duotone" });
+                    items.Add(new FxToolItem { Name = "Threshold", DisplayName = "Threshold (Binarize)", Description = "Chuyển ảnh nhị phân theo ngưỡng cố định 50%", IconKey = "table-cells-lock duotone" });
+                    items.Add(new FxToolItem { Name = "AdaptiveThreshold", DisplayName = "Adaptive Threshold", Description = "Ngưỡng thích nghi bảo toàn chi tiết nét chữ", IconKey = "table-cells-header-unlock duotone" });
+                    items.Add(new FxToolItem { Name = "OrderedDither", DisplayName = "Halftone Dither", Description = "Hiệu ứng nghệ thuật Halftone hạt chấm báo", IconKey = "chart-tree-map duotone" });
                     break;
 
                 case "TbxColorActive":
@@ -1446,6 +1480,9 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "ContrastUp", DisplayName = "Contrast +", Description = "Tăng tương phản giữa sáng và tối", IconKey = "circle-half duotone" });
                     items.Add(new FxToolItem { Name = "ContrastDown", DisplayName = "Contrast -", Description = "Giảm tương phản giữa sáng và tối", IconKey = "circle duotone" });
                     items.Add(new FxToolItem { Name = "BlueShift", DisplayName = "Blue Shift", Description = "Chuyển tông màu đêm sang ánh sáng xanh", IconKey = "circle-moon duotone" });
+                    items.Add(new FxToolItem { Name = "LinearStretch", DisplayName = "Linear Contrast Stretch", Description = "Kéo dãn tương phản tuyến tính tự động", IconKey = "arrows-up-down duotone" });
+                    items.Add(new FxToolItem { Name = "QuantizeColors", DisplayName = "Quantize Retro (16c)", Description = "Giảm số lượng màu tối đa còn 16 màu", IconKey = "swatchbook duotone" });
+                    items.Add(new FxToolItem { Name = "SigmoidalContrastUp", DisplayName = "Sigmoid Contrast +", Description = "Tăng độ tương phản mịn màng hình chữ S", IconKey = "sliders duotone" });
                     break;
 
                 case "TbxNoiseActive":
@@ -1462,6 +1499,10 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "MorphErode", DisplayName = "Erode (Co)", Description = "Thu hẹp vùng sáng của ảnh", IconKey = "compress duotone" });
                     items.Add(new FxToolItem { Name = "Opening", DisplayName = "Opening", Description = "Co trước giãn sau (xoá nhiễu sáng nhỏ)", IconKey = "atom duotone" });
                     items.Add(new FxToolItem { Name = "Closing", DisplayName = "Closing", Description = "Giãn trước co sau (lấp lỗ trống tối nhỏ)", IconKey = "fingerprint duotone" });
+                    items.Add(new FxToolItem { Name = "EdgeIn", DisplayName = "Edge In", Description = "Phát hiện biên trong vùng đối tượng", IconKey = "crop duotone" });
+                    items.Add(new FxToolItem { Name = "EdgeOut", DisplayName = "Edge Out", Description = "Phát hiện biên ngoài vùng đối tượng", IconKey = "expand duotone" });
+                    items.Add(new FxToolItem { Name = "TopHat", DisplayName = "Top Hat", Description = "Chiết xuất các chi tiết sáng nhỏ trên nền tối", IconKey = "sparkles duotone" });
+                    items.Add(new FxToolItem { Name = "BottomHat", DisplayName = "Bottom Hat", Description = "Chiết xuất các lỗ/chi tiết tối trên nền sáng", IconKey = "circle duotone" });
                     break;
 
                 case "TbxXFormActive":
@@ -1473,6 +1514,11 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "Rotate270", DisplayName = "Rotate 270°", Description = "Xoay ảnh 270 độ", IconKey = "arrows-spin duotone", TextIcon = "270°" });
                     items.Add(new FxToolItem { Name = "Flop", DisplayName = "Horizontal Flip", Description = "Lật ảnh đối xứng ngang", IconKey = "arrows-left-right duotone" });
                     items.Add(new FxToolItem { Name = "Flip", DisplayName = "Vertical Flip", Description = "Lật ảnh đối xứng dọc", IconKey = "arrows-up-down-left-right duotone" });
+                    items.Add(new FxToolItem { Name = "Shear", DisplayName = "Shear (15°)", Description = "Nghiêng xiên hình ảnh góc 15 độ", IconKey = "angles-right duotone" });
+                    items.Add(new FxToolItem { Name = "Roll", DisplayName = "Roll Offset (50px)", Description = "Dịch cuộn tuần hoàn ảnh 50px sang đối diện", IconKey = "computer-mouse-scrollwheel duotone" });
+                    items.Add(new FxToolItem { Name = "Shave", DisplayName = "Shave Margins (10px)", Description = "Xén bớt một dải 10px viền ngoài", IconKey = "eraser duotone" });
+                    items.Add(new FxToolItem { Name = "Magnify", DisplayName = "Magnify (Zoom x2)", Description = "Phóng đại kích thước ảnh lên gấp đôi chất lượng cao", IconKey = "magnifying-glass-plus duotone-regular" });
+                    items.Add(new FxToolItem { Name = "Minify", DisplayName = "Minify (Shrink /2)", Description = "Thu nhỏ kích thước ảnh đi một nửa sắc nét", IconKey = "magnifying-glass-minus duotone-regular" });
                     break;
             }
             return items;

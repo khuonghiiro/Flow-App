@@ -308,6 +308,86 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- ═══ SLEEK SLIDER STYLE (Photoshop-style) ═══ -->
+        <Style TargetType="Slider">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Background="Transparent">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TickBar x:Name="TopTick" Visibility="Collapsed" Fill="{TemplateBinding Foreground}" Placement="Top" Height="4" Grid.Row="0"/>
+                            <TickBar x:Name="BottomTick" Visibility="Collapsed" Fill="{TemplateBinding Foreground}" Placement="Bottom" Height="4" Grid.Row="2"/>
+
+                            <!-- Sleek Track (Thanh trượt mỏng) -->
+                            <Border x:Name="TrackBackground" 
+                                    Background="#252932" 
+                                    Height="4" 
+                                    CornerRadius="2"
+                                    VerticalAlignment="Center" 
+                                    Grid.Row="1"
+                                    Margin="5,0"/>
+
+                            <!-- Track Fill (Thanh đã kéo qua) -->
+                            <Track x:Name="PART_Track" Grid.Row="1">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="#00cfff" Height="4" CornerRadius="2" Margin="5,0,0,0"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+
+                                <!-- Sleek Thumb (Nút kéo nhỏ gọn) -->
+                                <Track.Thumb>
+                                    <Thumb x:Name="Thumb" Focusable="False" Height="10" Width="10">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse x:Name="ellipse" 
+                                                         Fill="#dde3ef" 
+                                                         Stroke="#00cfff" 
+                                                         StrokeThickness="1.5"
+                                                         Width="10" Height="10"
+                                                         VerticalAlignment="Center" 
+                                                         HorizontalAlignment="Center"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ellipse" Property="Fill" Value="#ffffff"/>
+                                                        <Setter TargetName="ellipse" Property="Stroke" Value="#4fffb0"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ellipse" Property="Fill" Value="#4fffb0"/>
+                                                        <Setter TargetName="ellipse" Property="Stroke" Value="#ffffff"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Border Background="{StaticResource ipBg}" BorderBrush="{StaticResource ipBorderLight}"
@@ -319,7 +399,6 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- ═══ SCROLLABLE CONTENT (Brush properties, Color, Adjustments) ═══ -->
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           MaxHeight="400">
@@ -335,56 +414,107 @@
                         </Border>
                     </Border>
 
-
                     <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
                             Padding="6,4" Margin="0,0,0,2">
-                        <StackPanel>
-                            <DockPanel Margin="0,0,0,2">
-                                <TextBlock DockPanel.Dock="Left" Text="Size"
-                                           Foreground="{StaticResource ipMuted}"
-                                           FontSize="9" Width="32" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
-                                        CornerRadius="2" Padding="3,1" MinWidth="26">
-                                    <TextBlock x:Name="TxtBrushSize" FontSize="9"
-                                               Foreground="{StaticResource ipAccent2}"
-                                               FontFamily="Consolas" HorizontalAlignment="Center"
-                                               Text="10"/>
-                                </Border>
-                                <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="10"
-                                        VerticalAlignment="Center" Margin="4,0"
-                                        ValueChanged="SliderBrushSize_ValueChanged"/>
-                            </DockPanel>
-                            <DockPanel Margin="0,0,0,2">
-                                <TextBlock DockPanel.Dock="Left" Text="Hard"
-                                           Foreground="{StaticResource ipMuted}"
-                                           FontSize="9" Width="32" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
-                                        CornerRadius="2" Padding="3,1" MinWidth="26">
-                                    <TextBlock x:Name="TxtBrushHardness" FontSize="9"
-                                               Foreground="{StaticResource ipAccent2}"
-                                               FontFamily="Consolas" HorizontalAlignment="Center"
-                                               Text="100%"/>
-                                </Border>
-                                <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="100"
-                                        VerticalAlignment="Center" Margin="4,0"
-                                        ValueChanged="SliderBrushHardness_ValueChanged"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="Flow"
-                                           Foreground="{StaticResource ipMuted}"
-                                           FontSize="9" Width="32" VerticalAlignment="Center"/>
-                                <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
-                                        CornerRadius="2" Padding="3,1" MinWidth="26">
-                                    <TextBlock x:Name="TxtBrushFlow" FontSize="9"
-                                               Foreground="{StaticResource ipAccent2}"
-                                               FontFamily="Consolas" HorizontalAlignment="Center"
-                                               Text="100%"/>
-                                </Border>
-                                <Slider x:Name="SliderBrushFlow" Minimum="1" Maximum="100" Value="100"
-                                        VerticalAlignment="Center" Margin="4,0"
-                                        ValueChanged="SliderBrushFlow_ValueChanged"/>
-                            </DockPanel>
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Column 0: Sliders with Tooltips -->
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <DockPanel Margin="0,0,0,2" ToolTip="Kích thước đầu cọ (Brush Size) - Độ rộng nét vẽ tính theo pixel">
+                                    <TextBlock DockPanel.Dock="Left" Text="Size"
+                                               Foreground="{StaticResource ipMuted}"
+                                               FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                    <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                            CornerRadius="2" Padding="3,1" MinWidth="26">
+                                        <TextBlock x:Name="TxtBrushSize" FontSize="9"
+                                                   Foreground="{StaticResource ipAccent2}"
+                                                   FontFamily="Consolas" HorizontalAlignment="Center"
+                                                   Text="10"/>
+                                    </Border>
+                                    <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="10"
+                                            VerticalAlignment="Center" Margin="4,0"
+                                            ValueChanged="SliderBrushSize_ValueChanged"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,0,0,2" ToolTip="Độ cứng nét vẽ (Hardness) - 0% là viền nhòe mềm mại, 100% là viền sắc cạnh">
+                                    <TextBlock DockPanel.Dock="Left" Text="Hard"
+                                               Foreground="{StaticResource ipMuted}"
+                                               FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                    <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                            CornerRadius="2" Padding="3,1" MinWidth="26">
+                                        <TextBlock x:Name="TxtBrushHardness" FontSize="9"
+                                                   Foreground="{StaticResource ipAccent2}"
+                                                   FontFamily="Consolas" HorizontalAlignment="Center"
+                                                   Text="100%"/>
+                                    </Border>
+                                    <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="100"
+                                            VerticalAlignment="Center" Margin="4,0"
+                                            ValueChanged="SliderBrushHardness_ValueChanged"/>
+                                </DockPanel>
+                                <DockPanel ToolTip="Độ phủ màu (Flow) - Tốc độ ra màu/độ đặc sắc khi di chuyển chuột">
+                                    <TextBlock DockPanel.Dock="Left" Text="Flow"
+                                               Foreground="{StaticResource ipMuted}"
+                                               FontSize="9" Width="32" VerticalAlignment="Center"/>
+                                    <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                            CornerRadius="2" Padding="3,1" MinWidth="26">
+                                        <TextBlock x:Name="TxtBrushFlow" FontSize="9"
+                                                   Foreground="{StaticResource ipAccent2}"
+                                                   FontFamily="Consolas" HorizontalAlignment="Center"
+                                                   Text="100%"/>
+                                    </Border>
+                                    <Slider x:Name="SliderBrushFlow" Minimum="1" Maximum="100" Value="100"
+                                            VerticalAlignment="Center" Margin="4,0"
+                                            ValueChanged="SliderBrushFlow_ValueChanged"/>
+                                </DockPanel>
+                            </StackPanel>
+
+                            <!-- Column 1: Photoshop-style brush tip preview with checkerboard pattern -->
+                            <Border Grid.Column="1" Width="56" Height="56" Margin="6,0,0,0"
+                                    Background="{StaticResource ipSurface}" BorderBrush="{StaticResource ipBorder}"
+                                    BorderThickness="1" CornerRadius="4" VerticalAlignment="Center"
+                                    ToolTip="Xem trước đầu cọ (Brush Preview)">
+                                <Grid ClipToBounds="True">
+                                    <!-- Checkerboard pattern background -->
+                                    <Grid.Background>
+                                        <VisualBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+                                            <VisualBrush.Visual>
+                                                <Grid Width="8" Height="8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="4"/>
+                                                        <ColumnDefinition Width="4"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="4"/>
+                                                        <RowDefinition Height="4"/>
+                                                    </Grid.RowDefinitions>
+                                                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#1c202a"/>
+                                                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#111318"/>
+                                                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#111318"/>
+                                                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#1c202a"/>
+                                                </Grid>
+                                            </VisualBrush.Visual>
+                                        </VisualBrush>
+                                    </Grid.Background>
+
+                                    <!-- Visual preview of the brush tip -->
+                                    <Ellipse x:Name="BrushPreviewEllipse"
+                                             MaxWidth="48" MaxHeight="48"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             IsHitTestVisible="False"/>
+
+                                    <!-- Crosshair lines (Photoshop center target) -->
+                                    <Path Data="M0,8 L16,8 M8,0 L8,16" 
+                                          Stroke="#30FFFFFF" 
+                                          StrokeThickness="1" 
+                                          Width="16" Height="16"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
                     </Border>
 
                     <!-- Opacity + Blend (compact) + LAYERS -->
@@ -475,103 +605,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- ══════ ADJUSTMENTS ══════ -->
-                    <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
-                            Background="{StaticResource ipSurface}">
-                        <StackPanel>
-                            <Border BorderBrush="#00cfff" BorderThickness="2,0,0,0" Padding="5,0,0,3">
-                                <TextBlock Text="ADJUSTMENTS" FontSize="9" FontWeight="Bold"
-                                           Foreground="{StaticResource ipMuted}"/>
-                            </Border>
 
-                            <UniformGrid Columns="2" Margin="0,2,0,0">
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Grayscale" ToolTip="Chuyển ảnh sang đen trắng">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half duotone'}"/>
-                                        <TextBlock Text="Grayscale" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Invert" ToolTip="Đảo ngược màu sắc">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half-stroke duotone'}"/>
-                                        <TextBlock Text="Invert" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Sepia" ToolTip="Áp dụng hiệu ứng màu hoài cổ">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone'}"/>
-                                        <TextBlock Text="Sepia" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Blur" ToolTip="Làm mờ ảnh">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='droplet duotone'}"/>
-                                        <TextBlock Text="Blur" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Sharpen" ToolTip="Làm sắc nét ảnh">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wand-magic-sparkles duotone'}"/>
-                                        <TextBlock Text="Sharpen" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Lighten" ToolTip="Tăng độ sáng">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sun duotone'}"/>
-                                        <TextBlock Text="Light +" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Darken" ToolTip="Giảm độ sáng">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-moon duotone'}"/>
-                                        <TextBlock Text="Light -" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="ContrastUp" ToolTip="Tăng tương phản">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half-stroke duotone'}"/>
-                                        <TextBlock Text="Contrast +" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="ContrastDown" ToolTip="Giảm tương phản">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half duotone'}"/>
-                                        <TextBlock Text="Contrast -" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="Rotate90" ToolTip="Xoay ảnh 90 độ">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate duotone'}"/>
-                                        <TextBlock Text="Rotate 90°" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="FlipH" ToolTip="Lật ảnh theo chiều ngang">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-left-right duotone'}"/>
-                                        <TextBlock Text="Flip Horiz" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource IpAdjBtn}" Margin="2" Padding="4,2" Click="BtnAdj_Click" Tag="FlipV" ToolTip="Lật ảnh theo chiều dọc">
-                                    <StackPanel Orientation="Horizontal">
-                                        <controls:SvgViewboxEx Width="10" Height="10" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Margin="0,0,4,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                                             Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down duotone'}"/>
-                                        <TextBlock Text="Flip Vert" FontSize="8.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </UniformGrid>
-                        </StackPanel>
-                    </Border>
 
                 </StackPanel>
             </ScrollViewer>
