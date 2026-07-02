@@ -1330,6 +1330,12 @@ namespace FlowMy.Views.NodeControls
             public string DisplayName { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
             public string IconKey { get; set; } = string.Empty;
+            public string TextIcon { get; set; } = string.Empty;
+
+            public string ToolTipText => $"{DisplayName} ({Description})";
+
+            public System.Windows.Visibility SvgVisibility => string.IsNullOrEmpty(TextIcon) ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+            public System.Windows.Visibility TextVisibility => string.IsNullOrEmpty(TextIcon) ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
         }
 
         private Border? _activeGroupBorder;
@@ -1346,6 +1352,13 @@ namespace FlowMy.Views.NodeControls
                 FxGroupPopup.IsOpen = false;
                 return;
             }
+
+            // Bỏ highlight nút đang active khác trước khi đổi sang nút mới
+            if (_activeGroupBorder != null && _activeGroupBorder != border)
+            {
+                _activeGroupBorder.Background = System.Windows.Media.Brushes.Transparent;
+                _activeGroupBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
+            }
             
             _activeGroupBorder = border;
             
@@ -1360,7 +1373,23 @@ namespace FlowMy.Views.NodeControls
             FxGroupPopup.Placement = System.Windows.Controls.Primitives.PlacementMode.Right;
             FxGroupPopup.HorizontalOffset = 6;
             FxGroupPopup.VerticalOffset = -4;
+            
+            // Highlight nút này với viền xanh ngọc nhạt và nền xám trắng mờ (Active state)
+            border.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            border.BorderBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4fffb0"));
+            
             FxGroupPopup.IsOpen = true;
+        }
+
+        private void FxGroupPopup_Closed(object? sender, EventArgs e)
+        {
+            if (_activeGroupBorder != null)
+            {
+                // Reset style về mặc định (Transparent)
+                _activeGroupBorder.Background = System.Windows.Media.Brushes.Transparent;
+                _activeGroupBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
+                _activeGroupBorder = null;
+            }
         }
 
         private List<FxToolItem> GetFxGroupItems(string borderName)
@@ -1436,12 +1465,12 @@ namespace FlowMy.Views.NodeControls
                     break;
 
                 case "TbxXFormActive":
-                    items.Add(new FxToolItem { Name = "Deskew", DisplayName = "Deskew", Description = "Tự động chỉnh ảnh bị nghiêng thẳng lại", IconKey = "rotate duotone" });
+                    items.Add(new FxToolItem { Name = "Deskew", DisplayName = "Deskew", Description = "Tự động chỉnh ảnh bị nghiêng thẳng lại", IconKey = "clock-rotate-left duotone" });
                     items.Add(new FxToolItem { Name = "Trim", DisplayName = "Trim", Description = "Tự động xén các vùng viền thừa", IconKey = "crop duotone" });
                     items.Add(new FxToolItem { Name = "AutoOrient", DisplayName = "Auto Orient", Description = "Tự động xoay ảnh theo EXIF orientation", IconKey = "compass duotone" });
-                    items.Add(new FxToolItem { Name = "Rotate90", DisplayName = "Rotate 90°", Description = "Xoay ảnh 90 độ theo chiều kim đồng hồ", IconKey = "arrows-repeat duotone" });
-                    items.Add(new FxToolItem { Name = "Rotate180", DisplayName = "Rotate 180°", Description = "Xoay ảnh ngược đầu 180 độ", IconKey = "arrows-repeat duotone" });
-                    items.Add(new FxToolItem { Name = "Rotate270", DisplayName = "Rotate 270°", Description = "Xoay ảnh 270 độ", IconKey = "arrows-repeat duotone" });
+                    items.Add(new FxToolItem { Name = "Rotate90", DisplayName = "Rotate 90°", Description = "Xoay ảnh 90 độ theo chiều kim đồng hồ", IconKey = "rotate duotone", TextIcon = "90°" });
+                    items.Add(new FxToolItem { Name = "Rotate180", DisplayName = "Rotate 180°", Description = "Xoay ảnh ngược đầu 180 độ", IconKey = "arrows-repeat duotone", TextIcon = "180°" });
+                    items.Add(new FxToolItem { Name = "Rotate270", DisplayName = "Rotate 270°", Description = "Xoay ảnh 270 độ", IconKey = "arrows-spin duotone", TextIcon = "270°" });
                     items.Add(new FxToolItem { Name = "Flop", DisplayName = "Horizontal Flip", Description = "Lật ảnh đối xứng ngang", IconKey = "arrows-left-right duotone" });
                     items.Add(new FxToolItem { Name = "Flip", DisplayName = "Vertical Flip", Description = "Lật ảnh đối xứng dọc", IconKey = "arrows-up-down-left-right duotone" });
                     break;
@@ -1458,14 +1487,31 @@ namespace FlowMy.Views.NodeControls
                     // 1. Cập nhật Tag của nút cha (chứa tên effect)
                     _activeGroupBorder.Tag = selectedItem.Name;
 
-                    // 2. Cập nhật ToolTip
-                    _activeGroupBorder.ToolTip = selectedItem.DisplayName;
+                    // 2. Cập nhật ToolTip (bao gồm mô tả tiếng Việt trong ngoặc)
+                    _activeGroupBorder.ToolTip = selectedItem.ToolTipText;
 
                     // 3. Cập nhật icon của nút cha
-                    if (_activeGroupBorder.Child is SvgViewboxEx svg)
+                    if (_activeGroupBorder.Child is Grid grid)
                     {
-                        var converter = new IconKeyToPathConverter();
-                        svg.Source = (Uri)converter.Convert(null, typeof(Uri), selectedItem.IconKey, null);
+                        var svg = grid.Children[0] as SvgViewboxEx;
+                        var txt = grid.Children[1] as TextBlock;
+                        
+                        if (svg != null && txt != null)
+                        {
+                            if (!string.IsNullOrEmpty(selectedItem.TextIcon))
+                            {
+                                txt.Text = selectedItem.TextIcon;
+                                txt.Visibility = System.Windows.Visibility.Visible;
+                                svg.Visibility = System.Windows.Visibility.Collapsed;
+                            }
+                            else
+                            {
+                                var converter = new IconKeyToPathConverter();
+                                svg.Source = (Uri)converter.Convert(null, typeof(Uri), selectedItem.IconKey, null);
+                                svg.Visibility = System.Windows.Visibility.Visible;
+                                txt.Visibility = System.Windows.Visibility.Collapsed;
+                            }
+                        }
                     }
                 }
                 

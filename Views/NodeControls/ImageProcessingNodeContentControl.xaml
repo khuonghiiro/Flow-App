@@ -290,15 +290,16 @@
                                    HorizontalAlignment="Center" Margin="0,1,0,3"/>
                         
                         <!-- Blur Active Button -->
-                        <Border x:Name="TbxBlurActive" Tag="GaussianBlur" ToolTip="Gaussian Blur"
+                        <Border x:Name="TbxBlurActive" Tag="GaussianBlur" ToolTip="Gaussian Blur (Làm mịn ảnh, giảm nhiễu hạt độ chi tiết cao)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='droplet duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="8" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -306,15 +307,16 @@
                         </Border>
 
                         <!-- Artistic Active Button -->
-                        <Border x:Name="TbxArtActive" Tag="OilPaint" ToolTip="Oil Paint"
+                        <Border x:Name="TbxArtActive" Tag="OilPaint" ToolTip="Oil Paint (Hiệu ứng tranh sơn dầu nghệ thuật)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="11" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -322,15 +324,16 @@
                         </Border>
 
                         <!-- Edge Active Button -->
-                        <Border x:Name="TbxEdgeActive" Tag="EdgeDetect" ToolTip="Edge Detect"
+                        <Border x:Name="TbxEdgeActive" Tag="EdgeDetect" ToolTip="Edge Detect (Phát hiện biên ảnh cơ bản)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='object-group duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="2" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -338,15 +341,16 @@
                         </Border>
 
                         <!-- Color Active Button -->
-                        <Border x:Name="TbxColorActive" Tag="AutoLevel" ToolTip="Auto Level"
+                        <Border x:Name="TbxColorActive" Tag="AutoLevel" ToolTip="Auto Level (Tự động cân bằng histogram của ảnh)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sliders duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="18" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -354,15 +358,16 @@
                         </Border>
 
                         <!-- Noise Active Button -->
-                        <Border x:Name="TbxNoiseActive" Tag="AddNoiseGaussian" ToolTip="Noise (Gaussian)"
+                        <Border x:Name="TbxNoiseActive" Tag="AddNoiseGaussian" ToolTip="Noise (Gaussian) (Thêm nhiễu ngẫu nhiên Gauss hạt mịn)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='signal duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="6" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -370,15 +375,16 @@
                         </Border>
 
                         <!-- Morphology Active Button -->
-                        <Border x:Name="TbxMorphActive" Tag="Dilate" ToolTip="Dilate"
+                        <Border x:Name="TbxMorphActive" Tag="Dilate" ToolTip="Dilate (Giãn nở vùng sáng của ảnh)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='expand duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="4" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -386,15 +392,16 @@
                         </Border>
 
                         <!-- Transform Active Button -->
-                        <Border x:Name="TbxXFormActive" Tag="Deskew" ToolTip="Deskew"
+                        <Border x:Name="TbxXFormActive" Tag="Deskew" ToolTip="Deskew (Tự động chỉnh ảnh bị nghiêng thẳng lại)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="MagickEffect_Click"
-                                MouseRightButtonDown="GroupToolBtn_RightClick"
                                 MouseRightButtonUp="GroupToolBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="8" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
@@ -524,7 +531,7 @@
         <!-- ═══ SLEEK PHOTOSHOP-STYLE TOOL VARIANT POPUP (ICON GRID) ═══ -->
         <Popup x:Name="FxGroupPopup" StaysOpen="False" AllowsTransparency="True"
                Placement="Right" HorizontalOffset="6" VerticalOffset="-4"
-               PopupAnimation="Fade">
+               PopupAnimation="Fade" Closed="FxGroupPopup_Closed">
             <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
                     CornerRadius="6" Padding="4" SnapsToDevicePixels="True" MaxWidth="136">
                 <Border.Effect>
@@ -538,15 +545,23 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <!-- Mỗi công cụ con chỉ hiển thị Icon ô vuông có ToolTip -->
+                            <!-- Mỗi công cụ con chỉ hiển thị Icon ô vuông hoặc Text có ToolTip -->
                             <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="4" 
                                     Width="28" Height="28" Margin="2" Cursor="Hand"
                                     BorderBrush="Transparent" BorderThickness="0.5"
-                                    ToolTip="{Binding DisplayName}"
+                                    ToolTip="{Binding ToolTipText}"
                                     MouseLeftButtonDown="FxPopupItem_Click">
-                                <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                                      Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"
-                                                      HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <Grid>
+                                    <!-- Icon Svg -->
+                                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                                          Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"
+                                                          Visibility="{Binding SvgVisibility}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                    <!-- Text Icon (ví dụ: 90°) -->
+                                    <TextBlock Text="{Binding TextIcon}" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
+                                               Visibility="{Binding TextVisibility}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                </Grid>
                             </Border>
                             <DataTemplate.Triggers>
                                 <!-- Hover effect: Viền xanh ngọc nhẹ và nền tối sáng -->
