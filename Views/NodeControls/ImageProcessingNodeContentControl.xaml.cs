@@ -1133,70 +1133,108 @@ namespace FlowMy.Views.NodeControls
             TbxBgColor.Background = new SolidColorBrush(_node.EditorDoc.BackgroundColor);
         }
 
-        // ═══════ MAGICK.NET EFFECTS ═══════
+        // ═══════ MAGICK.NET EFFECTS (Async + Loading + ESC Cancel) ═══════
 
-        private void MagickEffect_Click(object sender, MouseButtonEventArgs e)
+        private CancellationTokenSource? _fxCts;
+        private bool _isFxRunning;
+
+        private async void MagickEffect_Click(object sender, MouseButtonEventArgs e)
         {
-            if (_node.EditorDoc == null) return;
+            if (_node.EditorDoc == null || _isFxRunning) return;
             var layer = _node.EditorDoc.ActiveLayer;
             if (layer == null || layer.IsLocked || !layer.IsVisible) return;
 
             if (sender is not Border border || border.Tag is not string effectName)
                 return;
 
-            // Snapshot old pixels for undo
-            int stride = layer.Width * 4;
-            var oldPixels = new byte[stride * layer.Height];
+            e.Handled = true;
+
+            // Snapshot old pixels for undo (on UI thread)
+            int w = layer.Width, h = layer.Height;
+            int stride = w * 4;
+            var oldPixels = new byte[stride * h];
             layer.Bitmap.CopyPixels(oldPixels, stride, 0);
 
-            // Apply Magick effect
-            WriteableBitmap? result = null;
+            // Copy bitmap data for background processing
+            var srcPixels = new byte[stride * h];
+            Array.Copy(oldPixels, srcPixels, oldPixels.Length);
+
+            // Show loading
+            _isFxRunning = true;
+            _fxCts = new CancellationTokenSource();
+            FxLoadingText.Text = $"Đang xử lý: {effectName}...";
+            FxLoadingOverlay.Visibility = Visibility.Visible;
+
+            // Listen for ESC
+            PreviewKeyDown += FxEscHandler;
+
+            byte[]? newPixels = null;
             try
             {
-                result = effectName switch
+                var token = _fxCts.Token;
+
+                // Run Magick effect on background thread (raw pixels → MagickImage → raw pixels)
+                newPixels = await Task.Run(() =>
                 {
-                    "OilPaint"     => FlowMy.Utils.MagickEffects.OilPaint(layer.Bitmap),
-                    "Charcoal"     => FlowMy.Utils.MagickEffects.Charcoal(layer.Bitmap),
-                    "Sketch"       => FlowMy.Utils.MagickEffects.Sketch(layer.Bitmap),
-                    "Emboss"       => FlowMy.Utils.MagickEffects.Emboss(layer.Bitmap),
-                    "EdgeDetect"   => FlowMy.Utils.MagickEffects.EdgeDetect(layer.Bitmap),
-                    "MotionBlur"   => FlowMy.Utils.MagickEffects.MotionBlur(layer.Bitmap),
-                    "GaussianBlur" => FlowMy.Utils.MagickEffects.GaussianBlur(layer.Bitmap),
-                    "SharpenPro"   => FlowMy.Utils.MagickEffects.UnsharpMask(layer.Bitmap),
-                    "Vignette"     => FlowMy.Utils.MagickEffects.Vignette(layer.Bitmap),
-                    "Swirl"        => FlowMy.Utils.MagickEffects.Swirl(layer.Bitmap),
-                    "Posterize"    => FlowMy.Utils.MagickEffects.Posterize(layer.Bitmap),
-                    "AutoLevel"    => FlowMy.Utils.MagickEffects.AutoLevel(layer.Bitmap),
-                    "Denoise"      => FlowMy.Utils.MagickEffects.Denoise(layer.Bitmap),
-                    _ => null
-                };
+                    token.ThrowIfCancellationRequested();
+
+                    // Construct MagickImage from raw pixels
+                    var settings = new ImageMagick.MagickReadSettings
+                    {
+                        Width = (uint)w,
+                        Height = (uint)h,
+                        Format = ImageMagick.MagickFormat.Bgra,
+                        Depth = 8
+                    };
+                    using var img = new ImageMagick.MagickImage(srcPixels, settings);
+
+                    token.ThrowIfCancellationRequested();
+
+                    // Apply effect via dispatch
+                    ApplyMagickEffectToImage(img, effectName);
+
+                    token.ThrowIfCancellationRequested();
+
+                    // Convert back to pixels
+                    img.Alpha(ImageMagick.AlphaOption.Set);
+                    var resultBytes = img.ToByteArray(ImageMagick.MagickFormat.Bgra);
+                    int rw = (int)img.Width, rh = (int)img.Height;
+
+                    // Build output matching original layer size
+                    var output = new byte[stride * h];
+                    int copyW = Math.Min(w, rw);
+                    int copyH = Math.Min(h, rh);
+                    int rStride = rw * 4;
+                    for (int y = 0; y < copyH; y++)
+                    {
+                        Array.Copy(resultBytes, y * rStride, output, y * stride, copyW * 4);
+                    }
+                    return output;
+                }, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // User pressed ESC
+                System.Diagnostics.Debug.WriteLine($"Magick effect '{effectName}' cancelled by user");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Magick effect '{effectName}' failed: {ex.Message}");
             }
-
-            if (result == null) return;
-
-            // Write result pixels to layer
-            var newPixels = new byte[stride * layer.Height];
-            // Result có thể khác kích thước (Wave/Trim), nhưng ta chỉ lấy matching region
-            int copyW = Math.Min(layer.Width, result.PixelWidth);
-            int copyH = Math.Min(layer.Height, result.PixelHeight);
-            if (copyW > 0 && copyH > 0)
+            finally
             {
-                int copyStride = copyW * 4;
-                var resultPixels = new byte[copyStride * copyH];
-                result.CopyPixels(new Int32Rect(0, 0, copyW, copyH), resultPixels, copyStride, 0);
-
-                // Build full-size newPixels (mặc định transparent nếu result nhỏ hơn)
-                for (int y = 0; y < copyH; y++)
-                {
-                    Array.Copy(resultPixels, y * copyStride, newPixels, y * stride, copyStride);
-                }
+                // Hide loading
+                PreviewKeyDown -= FxEscHandler;
+                FxLoadingOverlay.Visibility = Visibility.Collapsed;
+                _isFxRunning = false;
+                _fxCts?.Dispose();
+                _fxCts = null;
             }
 
-            layer.Bitmap.WritePixels(new Int32Rect(0, 0, layer.Width, layer.Height), newPixels, stride, 0);
+            if (newPixels == null) return;
+
+            // Apply to layer
+            layer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), newPixels, stride, 0);
             layer.InvalidateThumbnail();
 
             // Undo command
@@ -1204,7 +1242,81 @@ namespace FlowMy.Views.NodeControls
             _node.EditorDoc.History.Execute(cmd);
 
             OnEditorDocumentModified();
-            e.Handled = true;
+        }
+
+        /// <summary>Dispatch Magick effect to MagickImage (runs on background thread).</summary>
+        private static void ApplyMagickEffectToImage(ImageMagick.MagickImage img, string effectName)
+        {
+            switch (effectName)
+            {
+                // Blur/Sharpen
+                case "GaussianBlur":     img.GaussianBlur(3, 1.5); break;
+                case "MotionBlur":       img.MotionBlur(8, 4, 0); break;
+                case "RadialBlur":       img.RotationalBlur(5); break;
+                case "AdaptiveBlur":     img.AdaptiveBlur(0, 1); break;
+                case "Sharpen":          img.Sharpen(0, 1); break;
+                case "UnsharpMask":      img.UnsharpMask(2, 1, 1, 0.05); break;
+                case "AdaptiveSharpen":  img.AdaptiveSharpen(0, 1); break;
+                // Artistic
+                case "OilPaint":         img.OilPaint(4, 1); break;
+                case "Charcoal":         img.Charcoal(2, 1); break;
+                case "Sketch":           img.Sketch(2, 1, 0); break;
+                case "Emboss":           img.Emboss(0, 1); break;
+                case "Vignette":         img.Vignette(0, 10, 10, 10); break;
+                case "Swirl":            img.Swirl(60); break;
+                case "Wave":             img.Wave(ImageMagick.PixelInterpolateMethod.Bilinear, 5, 50); img.Trim(); break;
+                case "Spread":           img.Spread(4); break;
+                case "Implode":          img.Implode(0.3, ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Shade":            img.Shade(30, 30); break;
+                case "Pixelate":
+                    int pw = (int)img.Width, ph = (int)img.Height;
+                    img.Scale((uint)Math.Max(1, pw / 8), (uint)Math.Max(1, ph / 8));
+                    img.Sample((uint)pw, (uint)ph);
+                    break;
+                // Edge
+                case "EdgeDetect":       img.Edge(1); break;
+                case "CannyEdge":        img.CannyEdge(0, 1, new ImageMagick.Percentage(10), new ImageMagick.Percentage(30)); break;
+                // Color
+                case "Posterize":        img.Posterize(4); break;
+                case "Solarize":         img.Solarize(new ImageMagick.Percentage(50)); break;
+                case "AutoLevel":        img.AutoLevel(); break;
+                case "AutoGamma":        img.AutoGamma(); break;
+                case "Equalize":         img.Equalize(); break;
+                case "Normalize":        img.Normalize(); break;
+                case "Negate":           img.Negate(); break;
+                case "SepiaTone":        img.SepiaTone(new ImageMagick.Percentage(80)); break;
+                case "Grayscale":        img.Grayscale(); break;
+                case "BrightnessUp":     img.BrightnessContrast(new ImageMagick.Percentage(15), new ImageMagick.Percentage(0)); break;
+                case "BrightnessDown":   img.BrightnessContrast(new ImageMagick.Percentage(-15), new ImageMagick.Percentage(0)); break;
+                case "GammaCorrect":     img.GammaCorrect(1.5); break;
+                case "SaturationUp":     img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(140), new ImageMagick.Percentage(100)); break;
+                case "SaturationDown":   img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(60), new ImageMagick.Percentage(100)); break;
+                case "Tint":             img.Colorize(new ImageMagick.MagickColor(255, 220, 180), new ImageMagick.Percentage(25)); break;
+                // Noise
+                case "AddNoiseGaussian": img.AddNoise(ImageMagick.NoiseType.Gaussian, 1.0); break;
+                case "AddNoiseImpulse":  img.AddNoise(ImageMagick.NoiseType.Impulse, 1.0); break;
+                case "Denoise":          img.Enhance(); break;
+                case "MedianFilter":     img.MedianFilter(2); break;
+                case "ReduceNoise":      img.ReduceNoise(2); break;
+                // Morphology
+                case "Dilate":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Dilate, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "MorphErode":       img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Erode, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "Opening":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Open, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                case "Closing":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Close, Kernel = ImageMagick.Kernel.Diamond, Iterations = 1 }); break;
+                // Transform
+                case "Deskew":           img.Deskew(new ImageMagick.Percentage(40)); break;
+                case "Trim":             img.Trim(); break;
+                case "AutoOrient":       img.AutoOrient(); break;
+            }
+        }
+
+        private void FxEscHandler(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape && _fxCts != null)
+            {
+                _fxCts.Cancel();
+                e.Handled = true;
+            }
         }
 
         #endregion

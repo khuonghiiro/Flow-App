@@ -86,7 +86,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.6*"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="6.2*"/>
             <ColumnDefinition Width="3.2*"/>
             <ColumnDefinition x:Name="IpColumnDefinition" Width="0"/>
@@ -184,232 +184,302 @@
             </Viewbox>
         </Border>
 
-        <!-- Left vertical toolbox: Editor mode (Photoshop-style) -->
+        <!-- Left vertical/horizontal wrap toolbox: Editor mode (Photoshop-style) -->
         <Border x:Name="EditorToolbox" Grid.Row="1" Grid.Column="0"
                 Background="#0a0c10" Padding="3,6,3,4"
                 Visibility="Collapsed">
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                <Border x:Name="TbxBrush" Tag="Brush" ToolTip="Brush (B)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='paintbrush-fine duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Border x:Name="TbxEraser" Tag="Eraser" ToolTip="Eraser (E)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eraser duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Border x:Name="TbxFill" Tag="Fill" ToolTip="Fill (G)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='fill-drip duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Border x:Name="TbxEyedropper" Tag="Eyedropper" ToolTip="Eyedropper (I)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eye-dropper duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Border x:Name="TbxMove" Tag="Move" ToolTip="Move (V)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down-left-right duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Border x:Name="TbxText" Tag="Text" ToolTip="Text (T)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='font duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Border x:Name="TbxSelection" Tag="Selection" ToolTip="Selection (M)"
-                        Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                        Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                        BorderBrush="Transparent"
-                        MouseLeftButtonDown="EditorToolbox_Click">
-                    <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='object-group duotone'}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </Border>
-                <Rectangle Height="1" Fill="#252932" Margin="2,4,2,4"/>
-                <Grid Width="32" Height="32" Margin="0,0,0,2">
-                    <Border x:Name="TbxBgColor" Width="18" Height="18"
-                            Background="White" CornerRadius="3"
-                            BorderBrush="#252932" BorderThickness="1.5"
-                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                            Cursor="Hand" ToolTip="Background color"
-                            MouseLeftButtonDown="EditorToolbox_BgColor_Click"/>
-                    <Border x:Name="TbxFgColor" Width="18" Height="18"
-                            Background="Black" CornerRadius="3"
-                            BorderBrush="#dde3ef" BorderThickness="2"
-                            HorizontalAlignment="Left" VerticalAlignment="Top"
-                            Cursor="Hand" ToolTip="Foreground color"
-                            MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>
-                </Grid>
+            <Border.Resources>
+                <!-- ═══ Shared hover/active style cho tất cả FX buttons ═══ -->
+                <Style x:Key="FxToolBtnStyle" TargetType="Border">
+                    <Setter Property="Width" Value="32"/>
+                    <Setter Property="Height" Value="32"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Margin" Value="0,0,0,2"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="1.5"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#20FFFFFF"/>
+                            <Setter Property="BorderBrush" Value="#40FFFFFF"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Resources>
 
-                <!-- Separator: Magick Effects -->
-                <Rectangle Height="1" Fill="#252932" Margin="2,4,2,2"/>
-                <TextBlock Text="FX" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
-                           HorizontalAlignment="Center" Margin="0,0,0,2"/>
+            <ScrollViewer VerticalScrollBarVisibility="Disabled"
+                          HorizontalScrollBarVisibility="Auto"
+                          Padding="0" Margin="0">
+                <!-- WrapPanel với Orientation=Vertical: các nhóm (StackPanel) tự wrap sang cột kế bên khi đầy chiều cao -->
+                <WrapPanel Orientation="Vertical">
+                    
+                    <!-- ══════ GROUP: DRAWING TOOLS ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <Border x:Name="TbxBrush" Tag="Brush" ToolTip="Brush (B)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='paintbrush-fine duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border x:Name="TbxEraser" Tag="Eraser" ToolTip="Eraser (E)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eraser duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border x:Name="TbxFill" Tag="Fill" ToolTip="Fill (G)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='fill-drip duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border x:Name="TbxEyedropper" Tag="Eyedropper" ToolTip="Eyedropper (I)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eye-dropper duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border x:Name="TbxMove" Tag="Move" ToolTip="Move (V)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down-left-right duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border x:Name="TbxText" Tag="Text" ToolTip="Text (T)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='font duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border x:Name="TbxSelection" Tag="Selection" ToolTip="Selection (M)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='object-group duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Rectangle Height="1" Fill="#252932" Margin="2,4,2,4"/>
+                        <Grid Width="32" Height="32" Margin="0,0,0,2">
+                            <Border x:Name="TbxBgColor" Width="18" Height="18"
+                                    Background="White" CornerRadius="3"
+                                    BorderBrush="#252932" BorderThickness="1.5"
+                                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    Cursor="Hand" ToolTip="Background color"
+                                    MouseLeftButtonDown="EditorToolbox_BgColor_Click"/>
+                            <Border x:Name="TbxFgColor" Width="18" Height="18"
+                                    Background="Black" CornerRadius="3"
+                                    BorderBrush="#dde3ef" BorderThickness="2"
+                                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Cursor="Hand" ToolTip="Foreground color"
+                                    MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>
+                        </Grid>
+                    </StackPanel>
 
-                <!-- Magick Effects (scrollable) -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Padding="0" Margin="0">
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                        <!-- Oil Paint -->
-                        <Border Tag="OilPaint" ToolTip="Oil Paint — Tranh sơn dầu"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                    <!-- ══════ GROUP: BLUR / SHARPEN ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="BLUR" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="GaussianBlur" ToolTip="Gaussian Blur" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='droplet duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <!-- Charcoal -->
-                        <Border Tag="Charcoal" ToolTip="Charcoal — Phác hoạ than chì"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pencil duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <Border Tag="MotionBlur" ToolTip="Motion Blur" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wind duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <!-- Sketch -->
-                        <Border Tag="Sketch" ToolTip="Sketch — Phác thảo bút chì"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pen-nib duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <Border Tag="RadialBlur" ToolTip="Radial Blur" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-spin duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <!-- Emboss -->
-                        <Border Tag="Emboss" ToolTip="Emboss — Nổi 3D"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='cube duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <Border Tag="AdaptiveBlur" ToolTip="Adaptive Blur" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='cloud duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <!-- Edge Detection -->
-                        <Border Tag="EdgeDetect" ToolTip="Edge Detect — Phát hiện cạnh"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='draw-square sharp-thin'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <Border Tag="Sharpen" ToolTip="Sharpen" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='diamond duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <!-- Motion Blur -->
-                        <Border Tag="MotionBlur" ToolTip="Motion Blur — Mờ chuyển động"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wind duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <Border Tag="UnsharpMask" ToolTip="Unsharp Mask" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='gem duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <!-- Gaussian Blur Pro -->
-                        <Border Tag="GaussianBlur" ToolTip="Gaussian Blur — Làm mờ chuyên nghiệp"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='droplet duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
-                        <!-- Sharpen Pro -->
-                        <Border Tag="SharpenPro" ToolTip="Unsharp Mask — Sắc nét chuyên nghiệp"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='diamond duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
-                        <!-- Vignette -->
-                        <Border Tag="Vignette" ToolTip="Vignette — Viền tối xung quanh"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
-                        <!-- Swirl -->
-                        <Border Tag="Swirl" ToolTip="Swirl — Xoáy ảnh"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='hurricane duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
-                        <!-- Posterize -->
-                        <Border Tag="Posterize" ToolTip="Posterize — Giảm mức màu"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='swatchbook duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
-                        <!-- Auto Level -->
-                        <Border Tag="AutoLevel" ToolTip="Auto Level — Tự động cân bằng sáng"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sliders duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
-                        <!-- Denoise -->
-                        <Border Tag="Denoise" ToolTip="Denoise — Giảm nhiễu"
-                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
-                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
-                                BorderBrush="Transparent"
-                                MouseLeftButtonDown="MagickEffect_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='broom duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        <Border Tag="AdaptiveSharpen" ToolTip="Adaptive Sharpen" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
                     </StackPanel>
-                </ScrollViewer>
+
+                    <!-- ══════ GROUP: ARTISTIC ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="ART" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="OilPaint" ToolTip="Oil Paint" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Charcoal" ToolTip="Charcoal" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pencil duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Sketch" ToolTip="Sketch" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pen-nib duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Emboss" ToolTip="Emboss" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='cube duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Vignette" ToolTip="Vignette" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Swirl" ToolTip="Swirl" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='hurricane duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Wave" ToolTip="Wave" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='water duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Spread" ToolTip="Spread" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sparkles duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Implode" ToolTip="Implode" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='compress duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Shade" ToolTip="Shade" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='mountain duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Pixelate" ToolTip="Pixelate" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='grid duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ══════ GROUP: EDGE DETECTION ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="EDGE" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="EdgeDetect" ToolTip="Edge Detect" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='vector-square duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="CannyEdge" ToolTip="Canny Edge" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bullseye duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ══════ GROUP: COLOR ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="COLOR" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="AutoLevel" ToolTip="Auto Level" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sliders duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="AutoGamma" ToolTip="Auto Gamma" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sun duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Equalize" ToolTip="Equalize" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bars duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Normalize" ToolTip="Normalize" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chart-bar duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Negate" ToolTip="Negate" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-half duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Posterize" ToolTip="Posterize" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='swatchbook duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Solarize" ToolTip="Solarize" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='explosion duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="SepiaTone" ToolTip="Sepia" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='image duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Grayscale" ToolTip="Grayscale" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='moon duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="BrightnessUp" ToolTip="Brightness +" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='brightness duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="BrightnessDown" ToolTip="Brightness −" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eclipse duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="GammaCorrect" ToolTip="Gamma" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='adjust duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="SaturationUp" ToolTip="Saturation +" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rainbow duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="SaturationDown" ToolTip="Saturation −" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='filter duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Tint" ToolTip="Tint" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='feather duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ══════ GROUP: NOISE ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="NOISE" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="AddNoiseGaussian" ToolTip="Noise (Gaussian)" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='signal duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="AddNoiseImpulse" ToolTip="Noise (Impulse)" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='burst duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Denoise" ToolTip="Denoise" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='broom duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="MedianFilter" ToolTip="Median Filter" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='shield duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="ReduceNoise" ToolTip="Reduce Noise" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wand duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ══════ GROUP: MORPH ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="MORPH" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="Dilate" ToolTip="Dilate" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='expand duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="MorphErode" ToolTip="Erode" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='compress duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Opening" ToolTip="Opening" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='atom duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Closing" ToolTip="Closing" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='fingerprint duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ══════ GROUP: XFORM ══════ -->
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock Text="XFORM" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                                   HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border Tag="Deskew" ToolTip="Deskew" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="Trim" ToolTip="Trim" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='crop duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <Border Tag="AutoOrient" ToolTip="Auto Orient" Style="{StaticResource FxToolBtnStyle}" MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='compass duotone'}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+
+                </WrapPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ═══ LOADING OVERLAY (during FX processing) ═══ -->
+        <Border x:Name="FxLoadingOverlay" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                Background="#B0000000" Panel.ZIndex="200"
+                Visibility="Collapsed" IsHitTestVisible="True">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="⏳" FontSize="32" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="FxLoadingText" Text="Đang xử lý..."
+                           Foreground="#dde3ef" FontSize="13" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Margin="0,6,0,4"/>
+                <TextBlock Text="Nhấn ESC để huỷ" Foreground="#5a6072" FontSize="10"
+                           HorizontalAlignment="Center" FontStyle="Italic"/>
             </StackPanel>
         </Border>
 
