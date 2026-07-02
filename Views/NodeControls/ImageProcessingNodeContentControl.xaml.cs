@@ -1133,6 +1133,80 @@ namespace FlowMy.Views.NodeControls
             TbxBgColor.Background = new SolidColorBrush(_node.EditorDoc.BackgroundColor);
         }
 
+        // ═══════ MAGICK.NET EFFECTS ═══════
+
+        private void MagickEffect_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var layer = _node.EditorDoc.ActiveLayer;
+            if (layer == null || layer.IsLocked || !layer.IsVisible) return;
+
+            if (sender is not Border border || border.Tag is not string effectName)
+                return;
+
+            // Snapshot old pixels for undo
+            int stride = layer.Width * 4;
+            var oldPixels = new byte[stride * layer.Height];
+            layer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+            // Apply Magick effect
+            WriteableBitmap? result = null;
+            try
+            {
+                result = effectName switch
+                {
+                    "OilPaint"     => FlowMy.Utils.MagickEffects.OilPaint(layer.Bitmap),
+                    "Charcoal"     => FlowMy.Utils.MagickEffects.Charcoal(layer.Bitmap),
+                    "Sketch"       => FlowMy.Utils.MagickEffects.Sketch(layer.Bitmap),
+                    "Emboss"       => FlowMy.Utils.MagickEffects.Emboss(layer.Bitmap),
+                    "EdgeDetect"   => FlowMy.Utils.MagickEffects.EdgeDetect(layer.Bitmap),
+                    "MotionBlur"   => FlowMy.Utils.MagickEffects.MotionBlur(layer.Bitmap),
+                    "GaussianBlur" => FlowMy.Utils.MagickEffects.GaussianBlur(layer.Bitmap),
+                    "SharpenPro"   => FlowMy.Utils.MagickEffects.UnsharpMask(layer.Bitmap),
+                    "Vignette"     => FlowMy.Utils.MagickEffects.Vignette(layer.Bitmap),
+                    "Swirl"        => FlowMy.Utils.MagickEffects.Swirl(layer.Bitmap),
+                    "Posterize"    => FlowMy.Utils.MagickEffects.Posterize(layer.Bitmap),
+                    "AutoLevel"    => FlowMy.Utils.MagickEffects.AutoLevel(layer.Bitmap),
+                    "Denoise"      => FlowMy.Utils.MagickEffects.Denoise(layer.Bitmap),
+                    _ => null
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Magick effect '{effectName}' failed: {ex.Message}");
+            }
+
+            if (result == null) return;
+
+            // Write result pixels to layer
+            var newPixels = new byte[stride * layer.Height];
+            // Result có thể khác kích thước (Wave/Trim), nhưng ta chỉ lấy matching region
+            int copyW = Math.Min(layer.Width, result.PixelWidth);
+            int copyH = Math.Min(layer.Height, result.PixelHeight);
+            if (copyW > 0 && copyH > 0)
+            {
+                int copyStride = copyW * 4;
+                var resultPixels = new byte[copyStride * copyH];
+                result.CopyPixels(new Int32Rect(0, 0, copyW, copyH), resultPixels, copyStride, 0);
+
+                // Build full-size newPixels (mặc định transparent nếu result nhỏ hơn)
+                for (int y = 0; y < copyH; y++)
+                {
+                    Array.Copy(resultPixels, y * copyStride, newPixels, y * stride, copyStride);
+                }
+            }
+
+            layer.Bitmap.WritePixels(new Int32Rect(0, 0, layer.Width, layer.Height), newPixels, stride, 0);
+            layer.InvalidateThumbnail();
+
+            // Undo command
+            var cmd = new Models.ImageEditor.Commands.PixelEditCommand(layer, oldPixels, newPixels);
+            _node.EditorDoc.History.Execute(cmd);
+
+            OnEditorDocumentModified();
+            e.Handled = true;
+        }
+
         #endregion
 
         #region MOUSE DRAWING ENGINE FOR IMAGE EDITOR MODE

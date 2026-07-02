@@ -267,6 +267,149 @@
                             Cursor="Hand" ToolTip="Foreground color"
                             MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>
                 </Grid>
+
+                <!-- Separator: Magick Effects -->
+                <Rectangle Height="1" Fill="#252932" Margin="2,4,2,2"/>
+                <TextBlock Text="FX" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
+                           HorizontalAlignment="Center" Margin="0,0,0,2"/>
+
+                <!-- Magick Effects (scrollable) -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="0" Margin="0">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                        <!-- Oil Paint -->
+                        <Border Tag="OilPaint" ToolTip="Oil Paint — Tranh sơn dầu"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Charcoal -->
+                        <Border Tag="Charcoal" ToolTip="Charcoal — Phác hoạ than chì"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pencil duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Sketch -->
+                        <Border Tag="Sketch" ToolTip="Sketch — Phác thảo bút chì"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pen-nib duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Emboss -->
+                        <Border Tag="Emboss" ToolTip="Emboss — Nổi 3D"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='cube duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Edge Detection -->
+                        <Border Tag="EdgeDetect" ToolTip="Edge Detect — Phát hiện cạnh"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='draw-square sharp-thin'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Motion Blur -->
+                        <Border Tag="MotionBlur" ToolTip="Motion Blur — Mờ chuyển động"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wind duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Gaussian Blur Pro -->
+                        <Border Tag="GaussianBlur" ToolTip="Gaussian Blur — Làm mờ chuyên nghiệp"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='droplet duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Sharpen Pro -->
+                        <Border Tag="SharpenPro" ToolTip="Unsharp Mask — Sắc nét chuyên nghiệp"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='diamond duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Vignette -->
+                        <Border Tag="Vignette" ToolTip="Vignette — Viền tối xung quanh"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Swirl -->
+                        <Border Tag="Swirl" ToolTip="Swirl — Xoáy ảnh"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='hurricane duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Posterize -->
+                        <Border Tag="Posterize" ToolTip="Posterize — Giảm mức màu"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='swatchbook duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Auto Level -->
+                        <Border Tag="AutoLevel" ToolTip="Auto Level — Tự động cân bằng sáng"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sliders duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        <!-- Denoise -->
+                        <Border Tag="Denoise" ToolTip="Denoise — Giảm nhiễu"
+                                Width="32" Height="32" CornerRadius="4" Cursor="Hand"
+                                Margin="0,0,0,2" Background="Transparent" BorderThickness="1.5"
+                                BorderBrush="Transparent"
+                                MouseLeftButtonDown="MagickEffect_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='broom duotone'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </StackPanel>
         </Border>
 
