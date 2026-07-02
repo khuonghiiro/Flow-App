@@ -13,7 +13,9 @@
              d:DesignHeight="640"
              Background="Transparent"
              UseLayoutRounding="True"
-             SnapsToDevicePixels="True">
+             SnapsToDevicePixels="True"
+             ToolTipService.InitialShowDelay="100"
+             ToolTipService.BetweenShowDelay="50">
     <UserControl.Resources>
         <local:IntToHashLabelConverter x:Key="IntToHashLabelConverter"/>
         <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>

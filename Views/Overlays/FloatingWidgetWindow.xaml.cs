@@ -49,6 +49,7 @@ public partial class FloatingWidgetWindow : Window
     private bool _isSlideHidden;    // Widget đã trượt vào cạnh (ẩn 1 phần)
     private bool _isDragging;
     private bool _isWidgetMaximized;
+    private bool _wasMaximizedBeforeHide;
     private Rect _restoreExpandedBounds = Rect.Empty;
     /// <summary>True khi chuột trái đã xuống nhưng chưa xác định click hay drag.</summary>
     private bool _pendingInteraction;
@@ -595,11 +596,20 @@ public partial class FloatingWidgetWindow : Window
         // Fade-in animation
         AnimateExpandFadeIn();
         UpdateTitleMaxRestoreVisualState();
+
+        if (_wasMaximizedBeforeHide)
+        {
+            _wasMaximizedBeforeHide = false;
+            ToggleExpandedMaximizeRestore();
+        }
     }
 
     private void CollapseWidget()
     {
         if (!_isExpanded) return;
+
+        // Ghi nhớ trạng thái maximize trước khi thu nhỏ
+        _wasMaximizedBeforeHide = _isWidgetMaximized;
 
         // Save expanded size back to config theo đúng mode.
         // Nếu đang maximize tạm thời, giữ kích thước restore làm "kích thước gốc".
@@ -4351,6 +4361,10 @@ window.hostAsync.values = window.hostAsync.values || {};
     private void ReassertTopmostIfNeeded()
     {
         if (!Config.AlwaysOnTop) return;
+
+        // Khi đang maximize, KHÔNG force topmost để user có thể chuyển sang app khác
+        if (_isWidgetMaximized) return;
+
         try
         {
             if (!Topmost) Topmost = true;

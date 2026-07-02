@@ -135,6 +135,10 @@ namespace FlowMy.Views.NodeControls
                             }
                         }
                         System.Diagnostics.Debug.WriteLine($"[MagickOpenCL] Enabled={ImageMagick.OpenCL.IsEnabled}");
+
+                        // Cấu hình Magick.NET sử dụng đa luồng CPU
+                        ImageMagick.ResourceLimits.Thread = (ulong)Environment.ProcessorCount;
+                        System.Diagnostics.Debug.WriteLine($"[MagickConfig] Threads={ImageMagick.ResourceLimits.Thread}");
                     }
                     catch (Exception ex)
                     {
@@ -1459,15 +1463,11 @@ namespace FlowMy.Views.NodeControls
             }
             _lastFxParams = fxParams;
 
-            // Snapshot old pixels for undo (on UI thread)
+            // Snapshot old pixels for undo (on UI thread) — single copy, reused as source
             int w = layer.Width, h = layer.Height;
             int stride = w * 4;
             var oldPixels = new byte[stride * h];
             layer.Bitmap.CopyPixels(oldPixels, stride, 0);
-
-            // Copy bitmap data for background processing
-            var srcPixels = new byte[stride * h];
-            Array.Copy(oldPixels, srcPixels, oldPixels.Length);
 
             // Show loading
             _isFxRunning = true;
@@ -1483,12 +1483,12 @@ namespace FlowMy.Views.NodeControls
             {
                 var token = _fxCts.Token;
 
-                // Run Magick effect on background thread (raw pixels → MagickImage → raw pixels)
+                // Run Magick effect on background thread
+                // oldPixels is used as source directly (no extra copy needed)
                 newPixels = await Task.Run(() =>
                 {
                     token.ThrowIfCancellationRequested();
 
-                    // Construct MagickImage from raw pixels
                     var settings = new ImageMagick.MagickReadSettings
                     {
                         Width = (uint)w,
@@ -1496,36 +1496,40 @@ namespace FlowMy.Views.NodeControls
                         Format = ImageMagick.MagickFormat.Bgra,
                         Depth = 8
                     };
-                    using var img = new ImageMagick.MagickImage(srcPixels, settings);
+                    using var img = new ImageMagick.MagickImage(oldPixels, settings);
 
                     token.ThrowIfCancellationRequested();
 
-                    // Apply effect via dispatch (with user-configured params)
-                    var capturedParams = fxParams;
-                    ApplyMagickEffectToImage(img, effectName, capturedParams);
+                    // Apply effect
+                    ApplyMagickEffectToImage(img, effectName, fxParams);
 
                     token.ThrowIfCancellationRequested();
 
-                    // Convert back to pixels
+                    // Convert back to raw BGRA
                     img.Alpha(ImageMagick.AlphaOption.Set);
-                    var resultBytes = img.ToByteArray(ImageMagick.MagickFormat.Bgra);
                     int rw = (int)img.Width, rh = (int)img.Height;
 
-                    // Build output matching original layer size
+                    // Fast path: sizes match → return raw bytes directly
+                    if (rw == w && rh == h)
+                    {
+                        return img.ToByteArray(ImageMagick.MagickFormat.Bgra);
+                    }
+
+                    // Sizes differ: copy into output matching layer size
+                    var resultBytes = img.ToByteArray(ImageMagick.MagickFormat.Bgra);
                     var output = new byte[stride * h];
                     int copyW = Math.Min(w, rw);
                     int copyH = Math.Min(h, rh);
                     int rStride = rw * 4;
                     for (int y = 0; y < copyH; y++)
                     {
-                        Array.Copy(resultBytes, y * rStride, output, y * stride, copyW * 4);
+                        Buffer.BlockCopy(resultBytes, y * rStride, output, y * stride, copyW * 4);
                     }
                     return output;
                 }, token);
             }
             catch (OperationCanceledException)
             {
-                // User pressed ESC
                 System.Diagnostics.Debug.WriteLine($"Magick effect '{effectName}' cancelled by user");
             }
             catch (Exception ex)
@@ -1534,7 +1538,6 @@ namespace FlowMy.Views.NodeControls
             }
             finally
             {
-                // Hide loading
                 PreviewKeyDown -= FxEscHandler;
                 FxLoadingOverlay.Visibility = Visibility.Collapsed;
                 _isFxRunning = false;
