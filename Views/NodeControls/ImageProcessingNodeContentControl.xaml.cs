@@ -640,8 +640,283 @@ namespace FlowMy.Views.NodeControls
         private void BtnOpenImage_Click(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
-            ImageProcessingNodeControl.OpenImageFilePicker(_node);
+            OpenImageAndAddTab();
         }
+
+        private void BtnOpenImageTab_Click(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            OpenImageAndAddTab();
+        }
+
+        private void OpenImageAndAddTab()
+        {
+            // Lưu state tab hiện tại trước khi mở ảnh mới
+            if (_activeTabData != null)
+            {
+                SaveCurrentTabState();
+            }
+
+            // Mở file picker
+            var oldUrl = _node.ImageUrl;
+            ImageProcessingNodeControl.OpenImageFilePicker(_node);
+
+            // Nếu user chọn ảnh mới (URL thay đổi) → tạo tab mới
+            if (_node.ImageUrl != oldUrl && !string.IsNullOrWhiteSpace(_node.ImageUrl))
+            {
+                // Tạo EditorDoc mới cho ảnh mới
+                _node.EditorDoc = null;
+
+                // Đánh dấu cần tạo tab mới (không phải update tab cũ)
+                _activeTabData = null;
+            }
+            // Tab sẽ được tạo/sync bởi SyncActiveTab sau khi UpdatePreviewAsync hoàn tất
+        }
+
+        #region IMAGE TAB STRIP (Photoshop-style) — with per-tab state
+
+        /// <summary>Per-tab state lưu trữ ảnh + editor doc riêng cho mỗi tab.</summary>
+        private class ImageTabData
+        {
+            public string Title { get; set; } = "";
+            public string ImageUrl { get; set; } = "";
+            public ImageInputMode InputMode { get; set; }
+            public string ImageBase64 { get; set; } = "";
+            public EditorDocument? EditorDoc { get; set; }
+            public BitmapSource? CachedMainImage { get; set; }
+            public Border? TabBorder { get; set; }
+        }
+
+        private readonly List<ImageTabData> _tabs = new();
+        private ImageTabData? _activeTabData;
+        private bool _isSwitchingTab;
+
+        /// <summary>Kiểm tra title thay đổi và sync vào tab strip.</summary>
+        private void SyncActiveTab()
+        {
+            if (ImageTitleTextBlock == null || ImageTabStrip == null) return;
+            string title = ImageTitleTextBlock.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(title) || title == "Chưa có ảnh" || title == "Đang tải ảnh...") return;
+            if (_isSwitchingTab) return;
+
+            if (_activeTabData != null)
+            {
+                // Cập nhật title của tab đang active
+                _activeTabData.Title = title;
+                if (_activeTabData.TabBorder != null)
+                {
+                    _activeTabData.TabBorder.Tag = title;
+                    // Cập nhật TextBlock title trong tab
+                    if (_activeTabData.TabBorder.Child is DockPanel dp)
+                    {
+                        foreach (var c in dp.Children)
+                        {
+                            if (c is TextBlock tb && tb.FontSize == 10)
+                            {
+                                tb.Text = title;
+                                break;
+                            }
+                        }
+                    }
+                }
+                // Lưu state hiện tại
+                SaveCurrentTabState();
+                return;
+            }
+
+            // Chưa có tab nào → tạo tab mới
+            var tabData = new ImageTabData { Title = title };
+            SaveStateToTabData(tabData);
+            var tabBorder = BuildTabItem(tabData);
+            tabData.TabBorder = tabBorder;
+            _tabs.Add(tabData);
+            ImageTabStrip.Children.Add(tabBorder);
+            _activeTabData = tabData;
+            HighlightActiveTab();
+        }
+
+        private void SaveCurrentTabState()
+        {
+            if (_activeTabData == null) return;
+            SaveStateToTabData(_activeTabData);
+        }
+
+        private void SaveStateToTabData(ImageTabData data)
+        {
+            data.ImageUrl = _node.ImageUrl ?? "";
+            data.InputMode = _node.InputMode;
+            data.ImageBase64 = _node.ImageBase64 ?? "";
+            data.EditorDoc = _node.EditorDoc;
+            data.CachedMainImage = MainImage.Source as BitmapSource;
+        }
+
+        private void LoadTabState(ImageTabData data)
+        {
+            _isSwitchingTab = true;
+            try
+            {
+                // Khôi phục node state
+                _node.ImageUrl = data.ImageUrl;
+                _node.InputMode = data.InputMode;
+                _node.ImageBase64 = data.ImageBase64;
+                _node.EditorDoc = data.EditorDoc;
+
+                // Khôi phục ảnh hiển thị
+                if (data.CachedMainImage != null)
+                {
+                    MainImage.Source = data.CachedMainImage;
+                    PlaceholderTextBlock.Visibility = Visibility.Collapsed;
+                }
+
+                // Sync editor panel
+                if (_node.EditorDoc != null)
+                {
+                    EditorPanel.SetDocument(_node.EditorDoc);
+                }
+
+                // Cập nhật title
+                ImageTitleTextBlock.Text = data.Title;
+
+                _activeTabData = data;
+            }
+            finally
+            {
+                _isSwitchingTab = false;
+            }
+        }
+
+        private Border BuildTabItem(ImageTabData tabData)
+        {
+            var tab = new Border
+            {
+                Tag = tabData.Title,
+                Background = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)),
+                CornerRadius = new CornerRadius(4, 4, 0, 0),
+                Padding = new Thickness(8, 2, 4, 2),
+                Margin = new Thickness(0, 0, 1, 0),
+                Cursor = Cursors.Hand,
+                BorderThickness = new Thickness(0, 0, 0, 2),
+                BorderBrush = System.Windows.Media.Brushes.Transparent
+            };
+
+            var dock = new DockPanel { LastChildFill = true };
+
+            // Close button (×)
+            var closeBtn = new TextBlock
+            {
+                Text = "×",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0x86, 0x96)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 0, 0),
+                Cursor = Cursors.Hand
+            };
+            closeBtn.MouseLeftButtonDown += (s, e) =>
+            {
+                e.Handled = true;
+                CloseTab(tabData);
+            };
+            closeBtn.MouseEnter += (s, _) => closeBtn.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B));
+            closeBtn.MouseLeave += (s, _) => closeBtn.Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0x86, 0x96));
+            DockPanel.SetDock(closeBtn, Dock.Right);
+            dock.Children.Add(closeBtn);
+
+            // Tab title
+            var titleTb = new TextBlock
+            {
+                Text = tabData.Title,
+                FontSize = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xDD, 0xE3, 0xEF)),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 140
+            };
+            dock.Children.Add(titleTb);
+
+            tab.Child = dock;
+
+            // Click to switch tab
+            tab.MouseLeftButtonDown += (s, e) =>
+            {
+                e.Handled = true;
+                SwitchToTab(tabData);
+            };
+
+            return tab;
+        }
+
+        private void SwitchToTab(ImageTabData tabData)
+        {
+            if (ReferenceEquals(tabData, _activeTabData)) return;
+
+            // Lưu state tab hiện tại
+            SaveCurrentTabState();
+
+            // Load state tab được chọn
+            LoadTabState(tabData);
+            HighlightActiveTab();
+        }
+
+        private void HighlightActiveTab()
+        {
+            var accentColor = Color.FromRgb(0x00, 0xCF, 0xFF);
+            var transparentBrush = System.Windows.Media.Brushes.Transparent;
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
+            var inactiveBg = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+
+            foreach (var td in _tabs)
+            {
+                if (td.TabBorder == null) continue;
+                bool isActive = ReferenceEquals(td, _activeTabData);
+                td.TabBorder.Background = isActive ? activeBg : inactiveBg;
+                td.TabBorder.BorderBrush = isActive ? new SolidColorBrush(accentColor) : transparentBrush;
+            }
+        }
+
+        private void CloseTab(ImageTabData tabData)
+        {
+            if (tabData.TabBorder != null)
+                ImageTabStrip.Children.Remove(tabData.TabBorder);
+            _tabs.Remove(tabData);
+
+            if (ReferenceEquals(tabData, _activeTabData))
+            {
+                _activeTabData = null;
+                if (_tabs.Count > 0)
+                {
+                    SwitchToTab(_tabs[_tabs.Count - 1]);
+                }
+                else
+                {
+                    // Không còn tab nào
+                    MainImage.Source = null;
+                    PlaceholderTextBlock.Visibility = Visibility.Visible;
+                    PlaceholderTextBlock.Text = "Chưa có ảnh";
+                    ImageTitleTextBlock.Text = "Chưa có ảnh";
+                }
+            }
+            HighlightActiveTab();
+        }
+
+        /// <summary>UpdatePreviewAsync rồi sync tab title + tạo EditorDoc nếu cần.</summary>
+        private async System.Threading.Tasks.Task UpdatePreviewAndSyncTab()
+        {
+            await ImageProcessingNodeControl.UpdatePreviewAsync(
+                _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
+                ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
+                _onCropClickForIp);
+
+            // Tạo EditorDoc cho ảnh mới nếu chưa có (quan trọng cho new tabs)
+            if (_node.EditorDoc == null && MainImage.Source is BitmapSource bmp)
+            {
+                _node.EditorDoc = Models.ImageEditor.EditorDocument.FromBitmapSource(bmp);
+                EditorPanel.SetDocument(_node.EditorDoc);
+            }
+
+            SyncActiveTab();
+        }
+
+        #endregion
 
         private void ColorCropButton_Click(object sender, RoutedEventArgs e)
         {
@@ -855,9 +1130,6 @@ namespace FlowMy.Views.NodeControls
                 RenderLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
                 MagCoordTextBlock.FontSize = Sz(9);
 
-                BtnOpenImage.Width = B(30);
-                BtnOpenImage.Height = B(30);
-                BtnOpenImage.FontSize = B(16);
                 CropToolButton.Width = B(30);
                 CropToolButton.Height = B(30);
                 CropToolButton.FontSize = B(16);
@@ -890,9 +1162,6 @@ namespace FlowMy.Views.NodeControls
             RenderLabelText.FontSize = BaseCropLabelFontSize;
             MagCoordTextBlock.FontSize = 9;
 
-            BtnOpenImage.Width = 30;
-            BtnOpenImage.Height = 30;
-            BtnOpenImage.FontSize = 16;
             CropToolButton.Width = 30;
             CropToolButton.Height = 30;
             CropToolButton.FontSize = 16;
@@ -973,10 +1242,8 @@ namespace FlowMy.Views.NodeControls
                      e.PropertyName == nameof(ImageProcessingNode.ImageBase64SourceNodeId) ||
                      e.PropertyName == nameof(ImageProcessingNode.ImageBase64SourceOutputKey))
             {
-                _ = ImageProcessingNodeControl.UpdatePreviewAsync(
-                    _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
-                    ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
-                    _onCropClickForIp);
+                if (!_isSwitchingTab)
+                    _ = UpdatePreviewAndSyncTab();
             }
             else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
             {
@@ -994,10 +1261,7 @@ namespace FlowMy.Views.NodeControls
 
         private async System.Threading.Tasks.Task LoadPreviewAndSyncEditor()
         {
-            await ImageProcessingNodeControl.UpdatePreviewAsync(
-                _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
-                ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
-                _onCropClickForIp);
+            await UpdatePreviewAndSyncTab();
 
             // Sau khi ảnh đã load xong, sync vào EditorDoc nếu đang ở mode Manual
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual
@@ -1955,6 +2219,62 @@ namespace FlowMy.Views.NodeControls
         private Point _lastDrawingPixelPoint;
         private byte[]? _oldPixelsForUndo;
 
+        // ── Throttled composite during drawing (avoid lag) ──
+        private DispatcherTimer? _compositeTimer;
+        private bool _compositeDirty;
+
+        /// <summary>Đánh dấu cần composite lại — timer sẽ xử lý ở tick tiếp theo (~30fps).</summary>
+        private void MarkCompositeDirty()
+        {
+            _compositeDirty = true;
+            if (_compositeTimer == null)
+            {
+                _compositeTimer = new DispatcherTimer(DispatcherPriority.Render)
+                {
+                    Interval = TimeSpan.FromMilliseconds(33) // ~30 FPS
+                };
+                _compositeTimer.Tick += CompositeTimer_Tick;
+            }
+            if (!_compositeTimer.IsEnabled)
+                _compositeTimer.Start();
+        }
+
+        private void CompositeTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!_compositeDirty)
+            {
+                _compositeTimer?.Stop();
+                return;
+            }
+            _compositeDirty = false;
+            DoLightweightComposite();
+        }
+
+        /// <summary>Composite nhẹ chỉ để hiển thị — không update thumbnail, không fire event.</summary>
+        private void DoLightweightComposite()
+        {
+            if (_node?.EditorDoc == null) return;
+            try
+            {
+                var composite = _node.EditorDoc.Composite();
+                MainImage.Source = composite;
+            }
+            catch { /* ignore */ }
+        }
+
+        /// <summary>Dừng timer, flush composite cuối cùng + sync thumbnail + fire event.</summary>
+        private void FlushCompositeAndSync()
+        {
+            _compositeTimer?.Stop();
+            _compositeDirty = false;
+
+            // Sync thumbnail cho active layer
+            _node?.EditorDoc?.ActiveLayer?.InvalidateThumbnail();
+
+            // Full composite + fire event
+            OnEditorDocumentModified();
+        }
+
         private bool _isSelecting;
         private Point _selectionStartPoint;
         private Rect? _selectionRect;
@@ -2091,8 +2411,8 @@ namespace FlowMy.Views.NodeControls
                 ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, w, h, color, isEraser);
 
                 activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), _tempDrawingPixels, stride, 0);
-                activeLayer.InvalidateThumbnail();
-                OnEditorDocumentModified();
+                // Defer composite — chỉ đánh dấu dirty, timer sẽ composite ở ~30fps
+                MarkCompositeDirty();
 
                 MainScrollViewer.CaptureMouse();
             }
@@ -2146,8 +2466,8 @@ namespace FlowMy.Views.NodeControls
 
             int stride = activeLayer.Width * 4;
             activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), _tempDrawingPixels, stride, 0);
-            activeLayer.InvalidateThumbnail();
-            OnEditorDocumentModified();
+            // Defer composite — chỉ đánh dấu dirty, timer xử lý
+            MarkCompositeDirty();
         }
 
         private void HandleManualEditorMouseUp()
@@ -2199,7 +2519,8 @@ namespace FlowMy.Views.NodeControls
             _oldPixelsForUndo = null;
             _strokeAlphaMask = null;
 
-            OnEditorDocumentModified();
+            // Flush: dừng timer, sync thumbnail + composite cuối cùng
+            FlushCompositeAndSync();
         }
 
         private void ClearSelection()
