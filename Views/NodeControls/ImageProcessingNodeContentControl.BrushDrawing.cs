@@ -969,7 +969,7 @@ namespace FlowMy.Views.NodeControls
 
             if (px >= 0 && px < activeLayer.Width && py >= 0 && py < activeLayer.Height)
             {
-                var stride = activeLayer.Width * 4;
+                var stride = 4;
                 var singlePixel = new byte[4];
                 activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, stride, 0);
 
@@ -1026,11 +1026,16 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateBrushPreviewVisuals()
         {
-            if (BrushBarPreviewContainer == null || BrushPopupPreviewContainer == null || EditorPanel == null) return;
+            if (EditorPanel == null) return;
 
-            // Generate preview elements for both containers - using full width/height (popup is 68x68 inside 72x72 border)
-            BrushBarPreviewContainer.Content = CreateBrushPreviewElement(20, 20, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
-            BrushPopupPreviewContainer.Content = CreateBrushPreviewElement(68, 68, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
+            if (BrushBarPreviewContainer != null)
+            {
+                BrushBarPreviewContainer.Content = CreateBrushPreviewElement(20, 20, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
+            }
+            if (BrushPopupPreviewContainer != null)
+            {
+                BrushPopupPreviewContainer.Content = CreateBrushPreviewElement(68, 68, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
+            }
         }
 
         private UIElement CreateBrushPreviewElement(double width, double height, BrushPreset preset, double actualSize, double hardness, double flow, Color brushColor)

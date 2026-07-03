@@ -356,10 +356,10 @@
         <!-- Top Options Bar: Tool-specific controls (Photoshop style) -->
         <Border x:Name="TopOptionsBar" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
                 Background="#0e1218" BorderBrush="#252932" BorderThickness="0,0,0,1"
-                Padding="12,4,12,4" Visibility="Collapsed" Panel.ZIndex="5">
+                Padding="12,4,12,4" Visibility="Visible" Panel.ZIndex="5">
             <Grid Height="24">
                 <!-- ═══ BRUSH OPTIONS ═══ -->
-                <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Visible">
                     <TextBlock Text="🖌️ Brush" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
                     
                     <!-- Size Input TextBox -->
@@ -551,7 +551,8 @@
 
         <!-- Left toolbar -->
         <Border x:Name="LeftMenuBorder" Grid.Row="2" Grid.Column="0"
-                Background="#28FFFFFF" Padding="4,0,4,6">
+                Background="#28FFFFFF" Padding="4,0,4,6"
+                Visibility="Collapsed">
             <Viewbox x:Name="LeftMenuViewbox" Stretch="Uniform" StretchDirection="Both"
                      HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <StackPanel Width="auto" Orientation="Vertical"
@@ -585,7 +586,7 @@
         <!-- Left vertical/horizontal wrap toolbox: Editor mode (Photoshop-style) -->
         <Border x:Name="EditorToolbox" Grid.Row="2" Grid.Column="0"
                 Background="#0a0c10" Padding="3,6,3,4"
-                Visibility="Collapsed">
+                Visibility="Visible">
             <Border.Resources>
                 <!-- ═══ Shared hover/active style cho tất cả FX buttons ═══ -->
                 <Style x:Key="FxToolBtnStyle" TargetType="Border">
@@ -891,6 +892,35 @@
                             </Ellipse>
                         </Canvas>
 
+                        <!-- Eyedropper cursor preview (Photoshop style split ring & hex text) -->
+                        <Canvas x:Name="EyedropperCursorCanvas" IsHitTestVisible="False" Panel.ZIndex="155"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                            <Grid x:Name="EyedropperPreviewContainer" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Margin="-14,-40,0,0">
+                                    <!-- Split preview circle -->
+                                    <Border Width="28" Height="28" CornerRadius="14" ClipToBounds="True" BorderBrush="White" BorderThickness="1.5" Background="#111">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.5" Color="Black"/>
+                                        </Border.Effect>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <!-- Top: sampled color under cursor -->
+                                            <Border Grid.Row="0" x:Name="EyedropperNewColorBorder" Background="Transparent"/>
+                                            <!-- Bottom: current active color -->
+                                            <Border Grid.Row="1" x:Name="EyedropperOldColorBorder" Background="Transparent"/>
+                                        </Grid>
+                                    </Border>
+                                    <!-- Hex text tooltip -->
+                                    <Border Margin="6,0,0,0" Padding="5,2" Background="#DD111318" BorderBrush="#353945" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center">
+                                        <TextBlock x:Name="EyedropperHexText" Text="#FFFFFF" FontSize="8.5" FontFamily="Consolas" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </Canvas>
+
                         <!-- Selection Overlay (Photoshop ants style) -->
                         <Rectangle x:Name="SelectionBoxRect"
                                    Stroke="#00cfff" StrokeThickness="1.5"
@@ -940,7 +970,8 @@
 
         <!-- Right panel: AI mode (crops + renders) -->
         <Border x:Name="RightMenuBorder" Grid.Row="2" Grid.Column="2"
-                Background="#28000000" Padding="4">
+                Background="#28000000" Padding="4"
+                Visibility="Collapsed">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -978,7 +1009,7 @@
 
         <!-- Right panel: Editor mode (layers, tools, colors) -->
         <local:ImageEditorPanel x:Name="EditorPanel" Grid.Row="2" Grid.Column="2"
-                                Width="240" Visibility="Collapsed"/>
+                                Width="240" Visibility="Visible"/>
 
         <!-- Magnifier (Alt), same cell as image -->
         <Grid x:Name="MagOverlayPanel" Grid.Row="2" Grid.Column="1"

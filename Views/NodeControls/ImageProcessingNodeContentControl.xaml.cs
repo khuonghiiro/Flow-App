@@ -164,8 +164,7 @@ namespace FlowMy.Views.NodeControls
 
             // Sync mode toggle visual state
             SyncModeButtonStyles();
-            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
-                SwitchToMode(Models.Nodes.ImageProcessingMode.Manual);
+            SwitchToMode(_node.ProcessingMode);
         }
 
         private static bool _openClInitialized;
@@ -500,6 +499,7 @@ namespace FlowMy.Views.NodeControls
         private void MainScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             UpdateBrushCursorPosition();
+            UpdateEyedropperCursorPosition(e);
 
             if (_isDrawingPixels || _isSelecting)
             {
@@ -569,6 +569,60 @@ namespace FlowMy.Views.NodeControls
             BrushPreviewCursor.Visibility = Visibility.Collapsed;
         }
 
+        private void UpdateEyedropperCursorPosition(MouseEventArgs e)
+        {
+            if (EyedropperPreviewContainer == null || MainImage == null || _node.EditorDoc == null) return;
+
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "Eyedropper" && MainImage.Source != null)
+                {
+                    var imgPos = Mouse.GetPosition(MainImage);
+                    bool inside = imgPos.X >= 0 && imgPos.X <= MainImage.ActualWidth &&
+                                  imgPos.Y >= 0 && imgPos.Y <= MainImage.ActualHeight;
+
+                    if (inside && !_isSpacePressed && !_isPanning)
+                    {
+                        var activeLayer = _node.EditorDoc.ActiveLayer;
+                        if (activeLayer != null)
+                        {
+                            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+                            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+                            int px = Math.Clamp((int)(imgPos.X * scaleX), 0, activeLayer.Width - 1);
+                            int py = Math.Clamp((int)(imgPos.Y * scaleY), 0, activeLayer.Height - 1);
+
+                            try
+                            {
+                                var stride = 4;
+                                var singlePixel = new byte[4];
+                                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, stride, 0);
+                                Color sampledColor = Color.FromArgb(singlePixel[3], singlePixel[2], singlePixel[1], singlePixel[0]);
+
+                                // Set background colors of the split ring preview
+                                EyedropperNewColorBorder.Background = new SolidColorBrush(sampledColor);
+                                EyedropperOldColorBorder.Background = new SolidColorBrush(_node.EditorDoc.ForegroundColor);
+
+                                // Set Hex Text representation
+                                EyedropperHexText.Text = $"#{sampledColor.R:X2}{sampledColor.G:X2}{sampledColor.B:X2}";
+
+                                // Move preview container to cursor
+                                var containerPos = Mouse.GetPosition(ImageContainer);
+                                Canvas.SetLeft(EyedropperPreviewContainer, containerPos.X);
+                                Canvas.SetTop(EyedropperPreviewContainer, containerPos.Y);
+
+                                EyedropperPreviewContainer.Visibility = Visibility.Visible;
+                                return;
+                            }
+                            catch { /* ignore */ }
+                        }
+                    }
+                }
+            }
+
+            EyedropperPreviewContainer.Visibility = Visibility.Collapsed;
+        }
+
         private void MainScrollViewer_MouseLeave(object sender, MouseEventArgs e)
         {
             MagOverlayPanel.Visibility = Visibility.Collapsed;
@@ -576,6 +630,8 @@ namespace FlowMy.Views.NodeControls
                 MainScrollViewer.Cursor = Cursors.Arrow;
             if (BrushPreviewCursor != null)
                 BrushPreviewCursor.Visibility = Visibility.Collapsed;
+            if (EyedropperPreviewContainer != null)
+                EyedropperPreviewContainer.Visibility = Visibility.Collapsed;
         }
 
         private void MainScrollViewer_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -1257,6 +1313,11 @@ namespace FlowMy.Views.NodeControls
             ApplyResponsiveScale();
             SyncIpToggleIcon();
 
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            {
+                SyncFromEditorPanelBrushProperties();
+            }
+
             _ = LoadPreviewAndSyncEditor();
         }
 
@@ -1326,6 +1387,11 @@ namespace FlowMy.Views.NodeControls
                 EditorPanel.Visibility = Visibility.Collapsed;
                 LeftMenuBorder.Visibility = Visibility.Visible;
                 EditorToolbox.Visibility = Visibility.Collapsed;
+
+                if (TopOptionsBar != null)
+                {
+                    TopOptionsBar.Visibility = Visibility.Collapsed;
+                }
             }
             else
             {
@@ -2346,7 +2412,9 @@ namespace FlowMy.Views.NodeControls
         {
             if (TopOptionsBar == null) return;
 
-            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
+            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || activeTool == "Selection");
+
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
             {
                 TopOptionsBar.Visibility = Visibility.Visible;
                 OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
@@ -2354,12 +2422,20 @@ namespace FlowMy.Views.NodeControls
                 OptSelectionPanel.Visibility = (activeTool == "Selection") ? Visibility.Visible : Visibility.Collapsed;
 
                 // Sync initial brush properties
-                SyncFromEditorPanelBrushProperties();
+                if (activeTool == "Brush" || activeTool == "Eraser")
+                {
+                    SyncFromEditorPanelBrushProperties();
+                }
 
-                if (OptTextSize.Value != EditorPanel.TextFontSize)
-                    OptTextSize.Value = EditorPanel.TextFontSize;
-                OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
-                OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
+                if (activeTool == "Text")
+                {
+                    if (OptTextSize != null && OptTextSize.Value != EditorPanel.TextFontSize)
+                        OptTextSize.Value = EditorPanel.TextFontSize;
+                    if (OptTextColorSwatch != null)
+                        OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
+                    if (OptBtnTextColor != null)
+                        OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
+                }
             }
             else
             {
