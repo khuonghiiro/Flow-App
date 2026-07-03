@@ -485,23 +485,25 @@ namespace FlowMy.Views.NodeControls
                     activeLayer.TempMoveDy = 0;
                     activeLayer.TempSelectionGeometry = null;
 
-                    // Apply actual shift once
-                    ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
-
-                    int moveStride = activeLayer.Width * 4;
-                    var finalPixels = new byte[moveStride * activeLayer.Height];
-                    activeLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
-
-                    var moveCmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
-                    _node.EditorDoc.History.Execute(moveCmd);
-
-                    if (_activeSelectionGeometry != null)
+                    if (_moveInitialGeometry != null)
                     {
-                        BuildSelectionMask();
+                        CommitSelectionMove(activeLayer, _moveInitialFullPixels, dx, dy);
                     }
+                    else
+                    {
+                        // Apply actual shift once
+                        ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
 
-                    activeLayer.InvalidateThumbnail();
-                    OnEditorDocumentModified();
+                        int moveStride = activeLayer.Width * 4;
+                        var finalPixels = new byte[moveStride * activeLayer.Height];
+                        activeLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
+
+                        var moveCmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
+                        _node.EditorDoc.History.Execute(moveCmd);
+
+                        activeLayer.InvalidateThumbnail();
+                        OnEditorDocumentModified();
+                    }
                 }
 
                 _moveInitialFullPixels = null;
@@ -619,6 +621,85 @@ namespace FlowMy.Views.NodeControls
                 SelectionPreviewPolygon.Visibility = Visibility.Collapsed;
                 SelectionPreviewPolygon.Data = null;
             }
+        }
+
+        private void CommitSelectionMove(EditorLayer originalLayer, byte[] sourceFullPixels, int dx, int dy)
+        {
+            if (_node.EditorDoc == null || _moveInitialGeometry == null || !_hasCachedSelectionMask || _cachedSelectionMask == null)
+                return;
+
+            int w = originalLayer.Width;
+            int h = originalLayer.Height;
+            int stride = w * 4;
+
+            // 1. Cut the selection from originalLayer (basePixels will have the transparent hole)
+            byte[] basePixels = new byte[stride * h];
+            byte[] newLayerPixels = new byte[stride * h];
+            Array.Copy(sourceFullPixels, basePixels, sourceFullPixels.Length);
+
+            // Separate selection pixels (using clamped loop)
+            int startY = Math.Max(0, _cachedSelectionStartY);
+            int endY = Math.Min(h - 1, _cachedSelectionEndY);
+            int startX = Math.Max(0, _cachedSelectionStartX);
+            int endX = Math.Min(w - 1, _cachedSelectionEndX);
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * stride;
+                for (int x = startX; x <= endX; x++)
+                {
+                    if (IsInsideSelection(x, y))
+                    {
+                        int idx = rowOffset + x * 4;
+                        // Put into newLayerPixels at the SHIFTED position!
+                        int destX = x + dx;
+                        int destY = y + dy;
+                        if (destX >= 0 && destX < w && destY >= 0 && destY < h)
+                        {
+                            int destIdx = (destY * w + destX) * 4;
+                            newLayerPixels[destIdx] = sourceFullPixels[idx];
+                            newLayerPixels[destIdx + 1] = sourceFullPixels[idx + 1];
+                            newLayerPixels[destIdx + 2] = sourceFullPixels[idx + 2];
+                            newLayerPixels[destIdx + 3] = sourceFullPixels[idx + 3];
+                        }
+
+                        // Clear from original layer
+                        basePixels[idx] = 0;
+                        basePixels[idx + 1] = 0;
+                        basePixels[idx + 2] = 0;
+                        basePixels[idx + 3] = 0;
+                    }
+                }
+            }
+
+            // 2. Create the new layer containing newLayerPixels
+            string newLayerName = $"{originalLayer.Name} Selection";
+            var newLayer = new EditorLayer(w, h, newLayerName);
+            newLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), newLayerPixels, stride, 0);
+            newLayer.InvalidateThumbnail();
+
+            // Insert new layer above originalLayer
+            int activeIndex = _node.EditorDoc.Layers.IndexOf(originalLayer);
+            int insertIndex = activeIndex >= 0 ? activeIndex + 1 : _node.EditorDoc.Layers.Count;
+
+            // 3. Create the CutToNewLayerCommand (which does originalLayer pixel update & newLayer addition)
+            var cutCmd = new CutToNewLayerCommand(
+                _node.EditorDoc, 
+                originalLayer, 
+                sourceFullPixels, // old pixels of original layer (contains selection)
+                basePixels,       // new pixels of original layer (contains transparent hole)
+                newLayer, 
+                insertIndex
+            );
+
+            // Execute command
+            _node.EditorDoc.History.Execute(cutCmd);
+
+            // Clear selection preview
+            ClearSelection();
+
+            // Refresh UI
+            OnEditorDocumentModified();
         }
 
         private void ApplyNewGeometry(Geometry newGeometry)
@@ -2095,26 +2176,28 @@ namespace FlowMy.Views.NodeControls
                 activeLayer.TempMoveDy = 0;
                 activeLayer.TempSelectionGeometry = null;
 
-                // Apply actual shift once
-                ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
-
-                int stride = activeLayer.Width * 4;
-                var finalPixels = new byte[stride * activeLayer.Height];
-                activeLayer.Bitmap.CopyPixels(finalPixels, stride, 0);
-
-                if (dx != 0 || dy != 0)
+                if (_moveInitialGeometry != null)
                 {
-                    var cmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
-                    _node.EditorDoc.History.Execute(cmd);
+                    CommitSelectionMove(activeLayer, _moveInitialFullPixels, dx, dy);
                 }
-
-                if (_activeSelectionGeometry != null)
+                else
                 {
-                    BuildSelectionMask();
-                }
+                    // Apply actual shift once
+                    ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
 
-                activeLayer.InvalidateThumbnail();
-                OnEditorDocumentModified();
+                    int stride = activeLayer.Width * 4;
+                    var finalPixels = new byte[stride * activeLayer.Height];
+                    activeLayer.Bitmap.CopyPixels(finalPixels, stride, 0);
+
+                    if (dx != 0 || dy != 0)
+                    {
+                        var cmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
+                        _node.EditorDoc.History.Execute(cmd);
+                    }
+
+                    activeLayer.InvalidateThumbnail();
+                    OnEditorDocumentModified();
+                }
             }
 
             _moveInitialFullPixels = null;
