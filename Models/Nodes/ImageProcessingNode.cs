@@ -184,7 +184,7 @@ namespace FlowMy.Models.Nodes
         private string? _renderNodeOutputKey; // Output key của node render ảnh
 
         private string _lastExecutionId = string.Empty; // Id lần chạy workflow gần nhất đi qua node này
-        private ImageProcessingMode _processingMode = ImageProcessingMode.AI;
+        private ImageProcessingMode _processingMode = ImageProcessingMode.Manual;
 
         /// <summary>Danh sách output keys bị skip (checked = true nghĩa là không xử lý output đó).</summary>
         public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
