@@ -239,6 +239,38 @@
                 </ItemsControl>
             </StackPanel>
         </DataTemplate>
+        <!-- ═══ TEXTBOX STYLE ═══ -->
+        <Style x:Key="IpTextBoxStyle" TargetType="TextBox">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Background" Value="{StaticResource ipSurface}"/>
+            <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,1"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="CaretBrush" Value="{StaticResource ipText}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0" Focusable="False"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ipAccent}"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ipAccent2}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid x:Name="RootLayout">
@@ -329,31 +361,150 @@
                 <!-- ═══ BRUSH OPTIONS ═══ -->
                 <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <TextBlock Text="🖌️ Brush" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
-
-                    <TextBlock Text="Preset:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <ComboBox x:Name="OptBrushPreset" Height="18" Width="95" FontSize="9"
-                              Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center"
-                              SelectionChanged="OptBrushPreset_SelectionChanged">
-                        <ComboBoxItem Content="Round Hard" IsSelected="True"/>
-                        <ComboBoxItem Content="Round Soft"/>
-                        <ComboBoxItem Content="Flat"/>
-                        <ComboBoxItem Content="Chalk"/>
-                        <ComboBoxItem Content="Spray"/>
-                        <ComboBoxItem Content="Scatter"/>
-                        <ComboBoxItem Content="Pencil"/>
-                    </ComboBox>
                     
+                    <!-- Size Input TextBox -->
                     <TextBlock Text="Size:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <Slider x:Name="OptBrushSize" Minimum="1" Maximum="200" Value="10" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushSize_ValueChanged"/>
-                    <TextBlock Text="{Binding Value, ElementName=OptBrushSize, StringFormat={}{0:F0}px}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="36" Margin="4,0,12,0"/>
+                    <TextBox x:Name="OptBrushSizeInput" Width="36" Height="18" FontSize="9" 
+                             Style="{StaticResource IpTextBoxStyle}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                             Text="10" LostFocus="OptBrushSizeInput_LostFocus" KeyDown="OptBrushSizeInput_KeyDown"/>
+                    <TextBlock Text="px" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="2,0,12,0"/>
 
-                    <TextBlock Text="Hardness:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <Slider x:Name="OptBrushHardness" Minimum="0" Maximum="100" Value="100" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushHardness_ValueChanged"/>
-                    <TextBlock Text="{Binding Value, ElementName=OptBrushHardness, StringFormat={}{0:F0}%}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="32" Margin="4,0,12,0"/>
+                    <!-- Brush Preview Button/Border that opens Popup -->
+                    <TextBlock Text="Preview:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <Border x:Name="BtnBrushPreviewDropdown" Width="26" Height="22" CornerRadius="3"
+                            Background="#1c202a" BorderBrush="#353945" BorderThickness="1"
+                            Cursor="Hand" PreviewMouseLeftButtonDown="BtnBrushPreviewDropdown_PreviewMouseLeftButtonDown"
+                            ToolTip="Click để xem &amp; thay đổi cấu hình cọ (Click to adjust brush settings)"
+                            VerticalAlignment="Center">
+                        <Grid ClipToBounds="True">
+                            <!-- Checkerboard background -->
+                            <Grid.Background>
+                                <VisualBrush TileMode="Tile" Viewport="0,0,6,6" ViewportUnits="Absolute">
+                                    <VisualBrush.Visual>
+                                        <Grid Width="6" Height="6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="3"/>
+                                                <ColumnDefinition Width="3"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="3"/>
+                                                <RowDefinition Height="3"/>
+                                            </Grid.RowDefinitions>
+                                            <Rectangle Grid.Row="0" Grid.Column="0" Fill="#1c202a"/>
+                                            <Rectangle Grid.Row="0" Grid.Column="1" Fill="#111318"/>
+                                            <Rectangle Grid.Row="1" Grid.Column="0" Fill="#111318"/>
+                                            <Rectangle Grid.Row="1" Grid.Column="1" Fill="#1c202a"/>
+                                        </Grid>
+                                    </VisualBrush.Visual>
+                                </VisualBrush>
+                            </Grid.Background>
+                            <ContentControl x:Name="BrushBarPreviewContainer" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
 
-                    <TextBlock Text="Flow:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <Slider x:Name="OptBrushFlow" Minimum="1" Maximum="100" Value="100" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushFlow_ValueChanged"/>
-                    <TextBlock Text="{Binding Value, ElementName=OptBrushFlow, StringFormat={}{0:F0}%}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="32" Margin="4,0,0,0"/>
+                    <!-- Popup for Brush Settings (Photoshop style) -->
+                    <Popup x:Name="BrushSettingsPopup" PlacementTarget="{Binding ElementName=BtnBrushPreviewDropdown}" 
+                           Placement="Bottom" StaysOpen="True" PopupAnimation="Fade" Closed="BrushSettingsPopup_Closed">
+                        <Border Background="#111318" BorderBrush="#353945" BorderThickness="1" CornerRadius="5" Padding="12" Width="360">
+                            <StackPanel>
+                                <TextBlock Text="Brush Settings" FontSize="10" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
+                                
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Left Column: Controls -->
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <!-- Preset Selector -->
+                                        <DockPanel Margin="0,0,0,6">
+                                            <TextBlock DockPanel.Dock="Left" Text="Preset" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
+                                            <ComboBox x:Name="PopupBrushPreset" Height="18" FontSize="9"
+                                                      Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center"
+                                                      SelectionChanged="PopupBrushPreset_SelectionChanged">
+                                                <ComboBoxItem Content="Round Hard"/>
+                                                <ComboBoxItem Content="Round Soft"/>
+                                                <ComboBoxItem Content="Flat"/>
+                                                <ComboBoxItem Content="Chalk"/>
+                                                <ComboBoxItem Content="Spray"/>
+                                                <ComboBoxItem Content="Scatter"/>
+                                                <ComboBoxItem Content="Pencil"/>
+                                            </ComboBox>
+                                        </DockPanel>
+
+                                        <!-- Size Slider -->
+                                        <DockPanel Margin="0,0,0,6">
+                                            <TextBlock DockPanel.Dock="Left" Text="Size" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
+                                            <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock x:Name="TxtPopupBrushSize" Text="10" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                            </Border>
+                                            <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="200" Value="10" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
+                                        </DockPanel>
+
+                                        <!-- Hardness Slider -->
+                                        <DockPanel x:Name="PopupHardnessPanel" Margin="0,0,0,6">
+                                            <TextBlock DockPanel.Dock="Left" Text="Hard" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
+                                            <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock x:Name="TxtPopupBrushHardness" Text="100%" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                            </Border>
+                                            <Slider x:Name="PopupBrushHardness" Minimum="0" Maximum="100" Value="100" VerticalAlignment="Center" ValueChanged="PopupBrushHardness_ValueChanged"/>
+                                        </DockPanel>
+
+                                        <!-- Flow Slider -->
+                                        <DockPanel Margin="0,0,0,2">
+                                            <TextBlock DockPanel.Dock="Left" Text="Flow" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
+                                            <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock x:Name="TxtPopupBrushFlow" Text="100%" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                            </Border>
+                                            <Slider x:Name="PopupBrushFlow" Minimum="1" Maximum="100" Value="100" VerticalAlignment="Center" ValueChanged="PopupBrushFlow_ValueChanged"/>
+                                        </DockPanel>
+                                    </StackPanel>
+
+                                    <!-- Right Column: Photoshop-style brush tip preview with checkerboard pattern -->
+                                    <Border Grid.Column="1" Width="72" Height="72" Margin="12,0,0,0"
+                                            Background="#0a0c10" BorderBrush="#252932" BorderThickness="1"
+                                            CornerRadius="4" VerticalAlignment="Center"
+                                            ToolTip="Xem trước đầu cọ (Brush Preview)">
+                                        <Grid ClipToBounds="True">
+                                            <!-- Checkerboard background -->
+                                            <Grid.Background>
+                                                <VisualBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+                                                    <VisualBrush.Visual>
+                                                        <Grid Width="8" Height="8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="4"/>
+                                                                <ColumnDefinition Width="4"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="4"/>
+                                                                <RowDefinition Height="4"/>
+                                                            </Grid.RowDefinitions>
+                                                            <Rectangle Grid.Row="0" Grid.Column="0" Fill="#151821"/>
+                                                            <Rectangle Grid.Row="0" Grid.Column="1" Fill="#0c0e14"/>
+                                                            <Rectangle Grid.Row="1" Grid.Column="0" Fill="#0c0e14"/>
+                                                            <Rectangle Grid.Row="1" Grid.Column="1" Fill="#151821"/>
+                                                        </Grid>
+                                                    </VisualBrush.Visual>
+                                                </VisualBrush>
+                                            </Grid.Background>
+                                            
+                                            <!-- ContentControl where C# will inject the preview element -->
+                                            <ContentControl x:Name="BrushPopupPreviewContainer" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                            <!-- Target crosshair (Photoshop style) -->
+                                            <Path Data="M0,8 L16,8 M8,0 L8,16" 
+                                                  Stroke="#25FFFFFF" 
+                                                  StrokeThickness="1" 
+                                                  Width="16" Height="16"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  IsHitTestVisible="False"/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                 </StackPanel>
 
                 <!-- ═══ TEXT OPTIONS ═══ -->

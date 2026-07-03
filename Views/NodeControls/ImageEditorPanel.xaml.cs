@@ -51,7 +51,7 @@ namespace FlowMy.Views.NodeControls
         public void UpdatePanelVisibilities(string activeTool)
         {
             if (BrushPropertiesPanel != null)
-                BrushPropertiesPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
+                BrushPropertiesPanel.Visibility = Visibility.Collapsed;
             if (TextPropertiesPanel != null)
                 TextPropertiesPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
         }

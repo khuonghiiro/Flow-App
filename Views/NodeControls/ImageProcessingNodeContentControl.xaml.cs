@@ -13,6 +13,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Shapes;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -3312,13 +3313,8 @@ namespace FlowMy.Views.NodeControls
                 OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
                 OptSelectionPanel.Visibility = (activeTool == "Selection") ? Visibility.Visible : Visibility.Collapsed;
 
-                // Set initial slider values
-                if (OptBrushSize.Value != EditorPanel.BrushSize)
-                    OptBrushSize.Value = EditorPanel.BrushSize;
-                if (OptBrushHardness.Value != EditorPanel.BrushHardness)
-                    OptBrushHardness.Value = EditorPanel.BrushHardness;
-                if (OptBrushFlow.Value != EditorPanel.BrushFlow)
-                    OptBrushFlow.Value = EditorPanel.BrushFlow;
+                // Sync initial brush properties
+                SyncFromEditorPanelBrushProperties();
 
                 if (OptTextSize.Value != EditorPanel.TextFontSize)
                     OptTextSize.Value = EditorPanel.TextFontSize;
@@ -3333,48 +3329,416 @@ namespace FlowMy.Views.NodeControls
 
         private void EditorPanel_BrushPropertiesChanged(object? sender, EventArgs e)
         {
-            if (OptBrushSize != null && OptBrushSize.Value != EditorPanel.BrushSize)
-                OptBrushSize.Value = EditorPanel.BrushSize;
-            if (OptBrushHardness != null && OptBrushHardness.Value != EditorPanel.BrushHardness)
-                OptBrushHardness.Value = EditorPanel.BrushHardness;
-            if (OptBrushFlow != null && OptBrushFlow.Value != EditorPanel.BrushFlow)
-                OptBrushFlow.Value = EditorPanel.BrushFlow;
+            SyncFromEditorPanelBrushProperties();
             UpdateBrushCursorPosition();
         }
 
-        private void OptBrushPreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        #region ═══ PHOTOSHOP STYLE BRUSH POPUP & PREVIEWS ═══
+
+        private bool _isSyncingBrushProperties = false;
+
+        private void SyncFromEditorPanelBrushProperties()
         {
-            if (OptBrushPreset == null) return;
-            _currentBrushPreset = OptBrushPreset.SelectedIndex switch
+            if (EditorPanel == null || _isSyncingBrushProperties) return;
+            _isSyncingBrushProperties = true;
+            try
             {
-                0 => BrushPreset.RoundHard,
-                1 => BrushPreset.RoundSoft,
-                2 => BrushPreset.Flat,
-                3 => BrushPreset.Chalk,
-                4 => BrushPreset.Spray,
-                5 => BrushPreset.Scatter,
-                6 => BrushPreset.Pencil,
-                _ => BrushPreset.RoundHard
-            };
+                if (OptBrushSizeInput != null && OptBrushSizeInput.Text != ((int)EditorPanel.BrushSize).ToString())
+                {
+                    OptBrushSizeInput.Text = ((int)EditorPanel.BrushSize).ToString();
+                }
+
+                if (PopupBrushSize != null && PopupBrushSize.Value != EditorPanel.BrushSize)
+                {
+                    PopupBrushSize.Value = EditorPanel.BrushSize;
+                }
+
+                if (PopupBrushHardness != null && PopupBrushHardness.Value != EditorPanel.BrushHardness)
+                {
+                    PopupBrushHardness.Value = EditorPanel.BrushHardness;
+                }
+
+                if (PopupBrushFlow != null && PopupBrushFlow.Value != EditorPanel.BrushFlow)
+                {
+                    PopupBrushFlow.Value = EditorPanel.BrushFlow;
+                }
+
+                if (PopupBrushPreset != null && PopupBrushPreset.SelectedIndex != (int)_currentBrushPreset)
+                {
+                    PopupBrushPreset.SelectedIndex = (int)_currentBrushPreset;
+                }
+
+                // Update preview representations
+                UpdateBrushPreviewVisuals();
+            }
+            finally
+            {
+                _isSyncingBrushProperties = false;
+            }
         }
 
-        private void OptBrushSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void UpdateBrushPreviewVisuals()
         {
-            if (EditorPanel != null && EditorPanel.SliderBrushSize != null && EditorPanel.SliderBrushSize.Value != e.NewValue)
+            if (BrushBarPreviewContainer == null || BrushPopupPreviewContainer == null || EditorPanel == null) return;
+
+            // Generate preview elements for both containers - using full width/height (popup is 68x68 inside 72x72 border)
+            BrushBarPreviewContainer.Content = CreateBrushPreviewElement(20, 20, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
+            BrushPopupPreviewContainer.Content = CreateBrushPreviewElement(68, 68, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
+        }
+
+        private UIElement CreateBrushPreviewElement(double width, double height, BrushPreset preset, double actualSize, double hardness, double flow, Color brushColor)
+        {
+            double maxDiameter = height - 4;
+            // PREVIEW SIZE: Ignore actualSize to make preview fill the container and represent shape clearly
+            double diameter = maxDiameter;
+            double radius = diameter / 2.0;
+
+            // Normalize hardness and flow since they are in 0-100 and 1-100 ranges
+            double f = flow > 1.0 ? flow / 100.0 : flow;
+            double h = hardness > 1.0 ? hardness / 100.0 : hardness;
+
+            var grid = new Grid { Width = width, Height = height };
+
+            switch (preset)
+            {
+                case BrushPreset.RoundSoft:
+                    {
+                        var ellipse = new Ellipse
+                        {
+                            Width = diameter,
+                            Height = diameter,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        var gradient = new RadialGradientBrush();
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255 * 0.5), brushColor.R, brushColor.G, brushColor.B), 0.4));
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+                        ellipse.Fill = gradient;
+                        grid.Children.Add(ellipse);
+                    }
+                    break;
+
+                case BrushPreset.Flat:
+                    {
+                        var rect = new Rectangle
+                        {
+                            Width = diameter,
+                            Height = Math.Max(2.0, diameter / 3.0),
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            RadiusX = 1,
+                            RadiusY = 1
+                        };
+                        var brush = new LinearGradientBrush
+                        {
+                            StartPoint = new Point(0, 0),
+                            EndPoint = new Point(0, 1)
+                        };
+                        brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
+                        brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), h));
+                        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+                        rect.Fill = brush;
+                        grid.Children.Add(rect);
+                    }
+                    break;
+
+                case BrushPreset.Chalk:
+                    {
+                        var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
+                        var rand = new Random((int)actualSize + (int)hardness);
+                        double centerX = width / 2;
+                        double centerY = height / 2;
+                        
+                        for (int i = 0; i < 15; i++)
+                        {
+                            double angle = rand.NextDouble() * Math.PI * 2;
+                            double r = rand.NextDouble() * radius;
+                            double dotSize = 1.5 + rand.NextDouble() * 2.0;
+
+                            var dot = new Ellipse
+                            {
+                                Width = dotSize,
+                                Height = dotSize,
+                                Fill = new SolidColorBrush(Color.FromArgb((byte)(f * 180), brushColor.R, brushColor.G, brushColor.B))
+                            };
+                            Canvas.SetLeft(dot, centerX + Math.Cos(angle) * r - dotSize / 2);
+                            Canvas.SetTop(dot, centerY + Math.Sin(angle) * r - dotSize / 2);
+                            canvas.Children.Add(dot);
+                        }
+                        grid.Children.Add(canvas);
+                    }
+                    break;
+
+                case BrushPreset.Spray:
+                    {
+                        var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
+                        var rand = new Random(42);
+                        double centerX = width / 2;
+                        double centerY = height / 2;
+
+                        for (int i = 0; i < 30; i++)
+                        {
+                            double angle = rand.NextDouble() * Math.PI * 2;
+                            double r = Math.Sqrt(rand.NextDouble()) * radius;
+                            double dotSize = 1.0;
+
+                            var dot = new Ellipse
+                            {
+                                Width = dotSize,
+                                Height = dotSize,
+                                Fill = new SolidColorBrush(Color.FromArgb((byte)(f * 200 * (1.0 - (r / radius) * 0.5)), brushColor.R, brushColor.G, brushColor.B))
+                            };
+                            Canvas.SetLeft(dot, centerX + Math.Cos(angle) * r - dotSize / 2);
+                            Canvas.SetTop(dot, centerY + Math.Sin(angle) * r - dotSize / 2);
+                            canvas.Children.Add(dot);
+                        }
+                        grid.Children.Add(canvas);
+                    }
+                    break;
+
+                case BrushPreset.Scatter:
+                    {
+                        var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
+                        var rand = new Random(2026);
+                        double centerX = width / 2;
+                        double centerY = height / 2;
+
+                        for (int i = 0; i < 6; i++)
+                        {
+                            double angle = rand.NextDouble() * Math.PI * 2;
+                            double r = rand.NextDouble() * radius * 1.1;
+                            double dotSize = 2.0 + rand.NextDouble() * 4.0;
+
+                            var dot = new Ellipse
+                            {
+                                Width = dotSize,
+                                Height = dotSize,
+                                Fill = new SolidColorBrush(Color.FromArgb((byte)(f * 160), brushColor.R, brushColor.G, brushColor.B))
+                            };
+                            Canvas.SetLeft(dot, centerX + Math.Cos(angle) * r - dotSize / 2);
+                            Canvas.SetTop(dot, centerY + Math.Sin(angle) * r - dotSize / 2);
+                            canvas.Children.Add(dot);
+                        }
+                        grid.Children.Add(canvas);
+                    }
+                    break;
+
+                case BrushPreset.Pencil:
+                    {
+                        double pencilSize = Math.Max(2.0, diameter * 0.4);
+                        var ellipse = new Ellipse
+                        {
+                            Width = pencilSize,
+                            Height = pencilSize,
+                            Fill = new SolidColorBrush(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B)),
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        grid.Children.Add(ellipse);
+                    }
+                    break;
+
+                default: // RoundHard
+                    {
+                        var ellipse = new Ellipse
+                        {
+                            Width = diameter,
+                            Height = diameter,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        var gradient = new RadialGradientBrush();
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
+                        double stopOffset = Math.Max(0.0, h);
+                        if (stopOffset < 0.99)
+                        {
+                            gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), stopOffset));
+                            gradient.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+                        }
+                        else
+                        {
+                            gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), 0.99));
+                            gradient.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+                        }
+                        ellipse.Fill = gradient;
+                        grid.Children.Add(ellipse);
+                    }
+                    break;
+            }
+
+            return grid;
+        }
+
+        private void OptBrushSizeInput_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ApplyBrushSizeFromTextBox();
+        }
+
+        private void OptBrushSizeInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ApplyBrushSizeFromTextBox();
+                MainScrollViewer.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void ApplyBrushSizeFromTextBox()
+        {
+            if (OptBrushSizeInput == null || EditorPanel == null) return;
+            if (double.TryParse(OptBrushSizeInput.Text, out double size))
+            {
+                size = Math.Clamp(size, 1.0, 200.0);
+                if (EditorPanel.SliderBrushSize != null && EditorPanel.SliderBrushSize.Value != size)
+                {
+                    EditorPanel.SliderBrushSize.Value = size;
+                }
+            }
+            SyncFromEditorPanelBrushProperties();
+            UpdateBrushCursorPosition();
+        }
+
+        private void BtnBrushPreviewDropdown_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            if (BrushSettingsPopup != null)
+            {
+                if (BrushSettingsPopup.IsOpen)
+                {
+                    BrushSettingsPopup.IsOpen = false;
+                }
+                else
+                {
+                    SyncFromEditorPanelBrushProperties();
+                    BrushSettingsPopup.IsOpen = true;
+
+                    var window = Window.GetWindow(this);
+                    if (window != null)
+                    {
+                        window.PreviewMouseDown -= Window_PreviewMouseDown;
+                        window.PreviewMouseDown += Window_PreviewMouseDown;
+                    }
+                }
+            }
+        }
+
+        private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (BrushSettingsPopup == null || !BrushSettingsPopup.IsOpen) return;
+
+            var child = BrushSettingsPopup.Child as FrameworkElement;
+            if (child != null)
+            {
+                var mousePosPopup = e.GetPosition(child);
+                var popupRect = new Rect(0, 0, child.ActualWidth, child.ActualHeight);
+
+                var mousePosBtn = e.GetPosition(BtnBrushPreviewDropdown);
+                var btnRect = new Rect(0, 0, BtnBrushPreviewDropdown.ActualWidth, BtnBrushPreviewDropdown.ActualHeight);
+
+                if (!popupRect.Contains(mousePosPopup) && !btnRect.Contains(mousePosBtn))
+                {
+                    BrushSettingsPopup.IsOpen = false;
+
+                    var window = sender as Window;
+                    if (window != null)
+                    {
+                        window.PreviewMouseDown -= Window_PreviewMouseDown;
+                    }
+                }
+            }
+        }
+
+        private void BrushSettingsPopup_Closed(object sender, EventArgs e)
+        {
+            SyncFromEditorPanelBrushProperties();
+            UpdateBrushCursorPosition();
+
+            var window = Window.GetWindow(this);
+            if (window != null)
+            {
+                window.PreviewMouseDown -= Window_PreviewMouseDown;
+            }
+        }
+
+        private void PopupBrushPreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (PopupBrushPreset == null || _isSyncingBrushProperties || EditorPanel == null) return;
+            _currentBrushPreset = (BrushPreset)PopupBrushPreset.SelectedIndex;
+
+            if (_currentBrushPreset == BrushPreset.RoundHard)
+            {
+                if (EditorPanel.SliderBrushHardness != null) EditorPanel.SliderBrushHardness.Value = 100;
+            }
+            else if (_currentBrushPreset == BrushPreset.RoundSoft)
+            {
+                if (EditorPanel.SliderBrushHardness != null) EditorPanel.SliderBrushHardness.Value = 0;
+            }
+
+            if (_currentBrushPreset == BrushPreset.Pencil)
+            {
+                if (EditorPanel.SliderBrushHardness != null) EditorPanel.SliderBrushHardness.Value = 100;
+            }
+
+            if (PopupHardnessPanel != null)
+            {
+                bool useHardness = (_currentBrushPreset == BrushPreset.RoundHard || _currentBrushPreset == BrushPreset.Flat);
+                PopupHardnessPanel.Opacity = useHardness ? 1.0 : 0.4;
+                PopupBrushHardness.IsEnabled = useHardness;
+            }
+
+            SyncFromEditorPanelBrushProperties();
+            UpdateBrushCursorPosition();
+        }
+
+        private void PopupBrushSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isSyncingBrushProperties || EditorPanel == null) return;
+            if (EditorPanel.SliderBrushSize != null && EditorPanel.SliderBrushSize.Value != e.NewValue)
+            {
                 EditorPanel.SliderBrushSize.Value = e.NewValue;
+            }
+            if (TxtPopupBrushSize != null)
+            {
+                TxtPopupBrushSize.Text = $"{(int)e.NewValue}px";
+            }
+            if (OptBrushSizeInput != null && OptBrushSizeInput.Text != ((int)e.NewValue).ToString())
+            {
+                OptBrushSizeInput.Text = ((int)e.NewValue).ToString();
+            }
+            UpdateBrushPreviewVisuals();
         }
 
-        private void OptBrushHardness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void PopupBrushHardness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (EditorPanel != null && EditorPanel.SliderBrushHardness != null && EditorPanel.SliderBrushHardness.Value != e.NewValue)
+            if (_isSyncingBrushProperties || EditorPanel == null) return;
+            if (EditorPanel.SliderBrushHardness != null && EditorPanel.SliderBrushHardness.Value != e.NewValue)
+            {
                 EditorPanel.SliderBrushHardness.Value = e.NewValue;
+            }
+            if (TxtPopupBrushHardness != null)
+            {
+                TxtPopupBrushHardness.Text = $"{(int)e.NewValue}%";
+            }
+            UpdateBrushPreviewVisuals();
         }
 
-        private void OptBrushFlow_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void PopupBrushFlow_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (EditorPanel != null && EditorPanel.SliderBrushFlow != null && EditorPanel.SliderBrushFlow.Value != e.NewValue)
+            if (_isSyncingBrushProperties || EditorPanel == null) return;
+            if (EditorPanel.SliderBrushFlow != null && EditorPanel.SliderBrushFlow.Value != e.NewValue)
+            {
                 EditorPanel.SliderBrushFlow.Value = e.NewValue;
+            }
+            if (TxtPopupBrushFlow != null)
+            {
+                TxtPopupBrushFlow.Text = $"{(int)e.NewValue}%";
+            }
+            UpdateBrushPreviewVisuals();
         }
+
+        #endregion
 
         private void OptTextSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {

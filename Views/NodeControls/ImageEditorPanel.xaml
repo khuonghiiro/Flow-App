@@ -459,7 +459,7 @@
                 <StackPanel Margin="5,4,5,6">
 
                     <!-- ══════ BRUSH PROPERTIES PANEL ══════ -->
-                    <StackPanel x:Name="BrushPropertiesPanel" Visibility="Visible">
+                    <StackPanel x:Name="BrushPropertiesPanel" Visibility="Collapsed">
                         <Border Padding="6,4" CornerRadius="3" Margin="0,2,0,3"
                                 Background="{StaticResource ipSurface}">
                             <Border BorderBrush="{StaticResource ipAccent2}"
@@ -473,12 +473,13 @@
                                 Padding="6,4" Margin="0,0,0,2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="26*"/>
+                                    <ColumnDefinition Width="109*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Column 0: Sliders with Tooltips -->
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Grid.ColumnSpan="2">
                                     <DockPanel Margin="0,0,0,2" ToolTip="Kích thước đầu cọ (Brush Size) - Độ rộng nét vẽ tính theo pixel">
                                         <TextBlock DockPanel.Dock="Left" Text="Size"
                                                    Foreground="{StaticResource ipMuted}"
@@ -527,7 +528,7 @@
                                 </StackPanel>
 
                                 <!-- Column 1: Photoshop-style brush tip preview with checkerboard pattern -->
-                                <Border Grid.Column="1" Width="56" Height="56" Margin="6,0,0,0"
+                                <Border Grid.Column="2" Width="56" Height="56" Margin="6,0,0,0"
                                         Background="{StaticResource ipSurface}" BorderBrush="{StaticResource ipBorder}"
                                         BorderThickness="1" CornerRadius="4" VerticalAlignment="Center"
                                         ToolTip="Xem trước đầu cọ (Brush Preview)">
