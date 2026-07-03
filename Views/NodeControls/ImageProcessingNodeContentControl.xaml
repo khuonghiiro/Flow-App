@@ -1014,9 +1014,9 @@
 
                         <!-- Selection Overlay (Photoshop ants style) -->
                         <Rectangle x:Name="SelectionBoxRect"
-                                   Stroke="#00cfff" StrokeThickness="1.5"
+                                   Stroke="#00cfff" StrokeThickness="2.5"
                                    StrokeDashArray="4 4"
-                                   Fill="#2000cfff"
+                                   Fill="Transparent"
                                    HorizontalAlignment="Left" VerticalAlignment="Top"
                                    Visibility="Collapsed" IsHitTestVisible="False">
                             <Rectangle.Style>
@@ -1045,14 +1045,14 @@
                         <!-- Selection Polygon Overlay (Photoshop ants style) -->
                         <!-- Selection Polygon Background (Black dashes) -->
                         <Path x:Name="SelectionPolygonBg"
-                              Stroke="Black" StrokeThickness="1.5"
+                              Stroke="Black" StrokeThickness="2.5"
                               Visibility="Collapsed" IsHitTestVisible="False"/>
 
                         <!-- Selection Polygon Foreground (White dashes) -->
                         <Path x:Name="SelectionPolygon"
-                              Stroke="White" StrokeThickness="1.5"
+                              Stroke="White" StrokeThickness="2.5"
                               StrokeDashArray="4 4"
-                              Fill="#2000cfff"
+                              Fill="Transparent"
                               Visibility="Collapsed" IsHitTestVisible="False">
                             <Path.Style>
                                 <Style TargetType="Path">
@@ -1078,9 +1078,9 @@
                         </Path>
                         <!-- Selection Preview Polygon Overlay (Dashed style for active drawing preview) -->
                         <Path x:Name="SelectionPreviewPolygon"
-                              Stroke="#00cfff" StrokeThickness="1.5"
+                              Stroke="#00cfff" StrokeThickness="2.5"
                               StrokeDashArray="4 4"
-                              Fill="#1000cfff"
+                              Fill="Transparent"
                               Visibility="Collapsed" IsHitTestVisible="False"/>
 
                         <!-- Text Tool Interactive Box Overlay -->

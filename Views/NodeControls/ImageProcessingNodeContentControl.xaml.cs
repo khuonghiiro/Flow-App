@@ -441,8 +441,45 @@ namespace FlowMy.Views.NodeControls
         {
             MainScrollViewer.Focus();
 
-            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && _isSpacePressed)
+            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
             {
+                if (_isSpacePressed)
+                {
+                    _isPanning = true;
+                    _panStart = e.GetPosition(MainScrollViewer);
+                    _panOriginX = MainScrollViewer.HorizontalOffset;
+                    _panOriginY = MainScrollViewer.VerticalOffset;
+                    MainScrollViewer.Cursor = Cursors.SizeAll;
+                    MainScrollViewer.CaptureMouse();
+                    e.Handled = true;
+                    return;
+                }
+
+                // If not space-pressed, left click inside MainImage delegates to manual tools (including Move)
+                var clickPos = e.GetPosition(MainImage);
+                if (clickPos.X >= 0 && clickPos.X <= MainImage.ActualWidth &&
+                    clickPos.Y >= 0 && clickPos.Y <= MainImage.ActualHeight)
+                {
+                    HandleManualEditorMouseDown(e);
+                    e.Handled = true;
+                    return;
+                }
+            }
+            else
+            {
+                if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+                {
+                    e.Handled = true;
+                    ImageProcessingNodeControl.AddCropPointFromClick(
+                        _node, MainImage, ImageZoomScale, e.GetPosition(MainImage),
+                        ImageAreaGrid, CropToolButton, _onCropClickForIp);
+                    return;
+                }
+
+                if (MainScrollViewer.ExtentWidth <= MainScrollViewer.ViewportWidth &&
+                    MainScrollViewer.ExtentHeight <= MainScrollViewer.ViewportHeight)
+                    return;
+
                 _isPanning = true;
                 _panStart = e.GetPosition(MainScrollViewer);
                 _panOriginX = MainScrollViewer.HorizontalOffset;
@@ -450,46 +487,12 @@ namespace FlowMy.Views.NodeControls
                 MainScrollViewer.Cursor = Cursors.SizeAll;
                 MainScrollViewer.CaptureMouse();
                 e.Handled = true;
-                return;
             }
-
-            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
-            {
-                e.Handled = true;
-                ImageProcessingNodeControl.AddCropPointFromClick(
-                    _node, MainImage, ImageZoomScale, e.GetPosition(MainImage),
-                    ImageAreaGrid, CropToolButton, _onCropClickForIp);
-                return;
-            }
-
-            // Hỗ trợ vẽ/xoá/tô màu thủ công
-            if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
-            {
-                string tool = EditorPanel.ActiveToolName;
-                if (tool != "Move")
-                {
-                    HandleManualEditorMouseDown(e);
-                    e.Handled = true;
-                    return;
-                }
-            }
-
-            if (MainScrollViewer.ExtentWidth <= MainScrollViewer.ViewportWidth &&
-                MainScrollViewer.ExtentHeight <= MainScrollViewer.ViewportHeight)
-                return;
-
-            _isPanning = true;
-            _panStart = e.GetPosition(MainScrollViewer);
-            _panOriginX = MainScrollViewer.HorizontalOffset;
-            _panOriginY = MainScrollViewer.VerticalOffset;
-            MainScrollViewer.Cursor = Cursors.SizeAll;
-            MainScrollViewer.CaptureMouse();
-            e.Handled = true;
         }
 
         private void MainScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_isDrawingPixels || _isSelecting)
+            if (_isDrawingPixels || _isSelecting || _isMovingLayer)
             {
                 HandleManualEditorMouseUp();
                 e.Handled = true;
@@ -508,7 +511,7 @@ namespace FlowMy.Views.NodeControls
             UpdateBrushCursorPosition();
             UpdateEyedropperCursorPosition(e);
 
-            if (_isDrawingPixels || _isSelecting)
+            if (_isDrawingPixels || _isSelecting || _isMovingLayer)
             {
                 HandleManualEditorMouseMove(e);
                 e.Handled = true;
@@ -1371,6 +1374,8 @@ namespace FlowMy.Views.NodeControls
         {
             try
             {
+                CommitKeyMoveSession();
+
                 _ipColumnWidthStoryboard?.Stop();
                 _ipColumnWidthStoryboard = null;
 
@@ -1537,6 +1542,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (sender is Border border && border.Tag is string toolName)
             {
+                CommitKeyMoveSession();
                 // Delegate to EditorPanel's tool selection (keeps both in sync)
                 EditorPanel.SelectToolByName(toolName);
                 SyncToolboxHighlight();
