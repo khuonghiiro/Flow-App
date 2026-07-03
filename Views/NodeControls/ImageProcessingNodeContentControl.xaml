@@ -783,10 +783,10 @@
                                     HorizontalAlignment="Left" VerticalAlignment="Top"
                                     Cursor="Hand" ToolTip="Foreground color"
                                     MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>
-                            <Button Content="⇄" Style="{StaticResource IpMiniBtn}"
-                                    Width="12" Height="12" FontSize="8"
+                            <Button Content="⇄" Style="{StaticResource IpMiniBtn}" 
+                                    Width="13" Height="13" FontSize="12" 
                                     HorizontalAlignment="Right" VerticalAlignment="Top"
-                                    Margin="0,-2,-2,0" Cursor="Hand" ToolTip="Swap Colors (X)"
+                                    Margin="0,-4,-2,0" Cursor="Hand" ToolTip="Swap Colors (X)"
                                     Click="EditorToolbox_SwapColors_Click"/>
                         </Grid>
                     </StackPanel>

@@ -112,6 +112,13 @@ namespace FlowMy.Views.NodeControls
         private int _cachedSelectionEndY;
         private bool _hasCachedSelectionMask;
 
+        private bool _isMovingLayer;
+        private Point _moveStartMousePos;
+        private byte[]? _moveBasePixels;
+        private byte[]? _moveFloatingPixels;
+        private Geometry? _moveInitialGeometry;
+        private byte[]? _moveInitialFullPixels;
+
         private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
         {
             if (_node.EditorDoc == null) return;
@@ -134,6 +141,93 @@ namespace FlowMy.Views.NodeControls
             double scaleY = activeLayer.Height / MainImage.ActualHeight;
             int px = (int)(clickPos.X * scaleX);
             int py = (int)(clickPos.Y * scaleY);
+
+            if (tool == "Move")
+            {
+                int visibleLayersCount = _node.EditorDoc.Layers.Count(l => l.IsVisible);
+                bool canGrab = false;
+
+                if (visibleLayersCount >= 2)
+                {
+                    canGrab = true;
+                }
+                else
+                {
+                    // Check if clicked inside selection
+                    if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
+                    {
+                        if (px >= _cachedSelectionStartX && px <= _cachedSelectionEndX &&
+                            py >= _cachedSelectionStartY && py <= _cachedSelectionEndY)
+                        {
+                            canGrab = _cachedSelectionMask[px - _cachedSelectionStartX, py - _cachedSelectionStartY];
+                        }
+                    }
+
+                    // Or if clicked on a non-transparent pixel of the active layer
+                    if (!canGrab)
+                    {
+                        int stride = activeLayer.Width * 4;
+                        byte[] singlePixel = new byte[4];
+                        activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
+                        if (singlePixel[3] > 0) // Alpha > 0
+                        {
+                            canGrab = true;
+                        }
+                    }
+                }
+
+                if (!canGrab) return; // ignore click
+
+                _isMovingLayer = true;
+                _moveStartMousePos = clickPos;
+
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int strideValue = w * 4;
+                _moveInitialFullPixels = new byte[strideValue * h];
+                activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
+
+                if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
+                {
+                    _moveInitialGeometry = _activeSelectionGeometry.Clone();
+
+                    // Cut the selection:
+                    _moveBasePixels = new byte[strideValue * h];
+                    _moveFloatingPixels = new byte[strideValue * h];
+                    Array.Copy(_moveInitialFullPixels, _moveBasePixels, _moveInitialFullPixels.Length);
+
+                    // Separate selected pixels
+                    for (int y = 0; y < h; y++)
+                    {
+                        int rowOffset = y * strideValue;
+                        for (int x = 0; x < w; x++)
+                        {
+                            bool isInside = IsInsideSelection(x, y);
+                            if (isInside)
+                            {
+                                _moveFloatingPixels[rowOffset + x * 4] = _moveInitialFullPixels[rowOffset + x * 4];
+                                _moveFloatingPixels[rowOffset + x * 4 + 1] = _moveInitialFullPixels[rowOffset + x * 4 + 1];
+                                _moveFloatingPixels[rowOffset + x * 4 + 2] = _moveInitialFullPixels[rowOffset + x * 4 + 2];
+                                _moveFloatingPixels[rowOffset + x * 4 + 3] = _moveInitialFullPixels[rowOffset + x * 4 + 3];
+
+                                _moveBasePixels[rowOffset + x * 4] = 0;
+                                _moveBasePixels[rowOffset + x * 4 + 1] = 0;
+                                _moveBasePixels[rowOffset + x * 4 + 2] = 0;
+                                _moveBasePixels[rowOffset + x * 4 + 3] = 0;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    _moveBasePixels = null;
+                    _moveFloatingPixels = null;
+                    _moveInitialGeometry = null;
+                }
+
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
 
             if (tool == "Eyedropper")
             {
@@ -349,6 +443,87 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
+            if (tool == "Move" && _isMovingLayer)
+            {
+                double docDeltaX = (mousePos.X - _moveStartMousePos.X) * scaleX;
+                double docDeltaY = (mousePos.Y - _moveStartMousePos.Y) * scaleY;
+
+                int dx = (int)Math.Round(docDeltaX);
+                int dy = (int)Math.Round(docDeltaY);
+
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int moveStride = w * 4;
+
+                var tempPixels = new byte[moveStride * h];
+
+                if (_moveFloatingPixels != null && _moveBasePixels != null)
+                {
+                    Array.Copy(_moveBasePixels, tempPixels, tempPixels.Length);
+
+                    for (int y = 0; y < h; y++)
+                    {
+                        int srcY = y - dy;
+                        if (srcY < 0 || srcY >= h) continue;
+
+                        for (int x = 0; x < w; x++)
+                        {
+                            int srcX = x - dx;
+                            if (srcX < 0 || srcX >= w) continue;
+
+                            byte srcAlpha = _moveFloatingPixels[srcY * moveStride + srcX * 4 + 3];
+                            if (srcAlpha > 0)
+                            {
+                                int destIdx = y * moveStride + x * 4;
+                                int srcIdx = srcY * moveStride + srcX * 4;
+                                tempPixels[destIdx] = _moveFloatingPixels[srcIdx];
+                                tempPixels[destIdx + 1] = _moveFloatingPixels[srcIdx + 1];
+                                tempPixels[destIdx + 2] = _moveFloatingPixels[srcIdx + 2];
+                                tempPixels[destIdx + 3] = _moveFloatingPixels[srcIdx + 3];
+                            }
+                        }
+                    }
+
+                    if (_moveInitialGeometry != null)
+                    {
+                        var transform = new TranslateTransform(dx, dy);
+                        _activeSelectionGeometry = Geometry.Combine(_moveInitialGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
+                        UpdatePolygonDisplay();
+                    }
+                }
+                else
+                {
+                    for (int y = 0; y < h; y++)
+                    {
+                        int srcY = y - dy;
+                        int destRowOffset = y * moveStride;
+
+                        for (int x = 0; x < w; x++)
+                        {
+                            int srcX = x - dx;
+                            int destIdx = destRowOffset + x * 4;
+
+                            if (srcX >= 0 && srcX < w && srcY >= 0 && srcY < h)
+                            {
+                                int srcIdx = srcY * moveStride + srcX * 4;
+                                tempPixels[destIdx] = _moveInitialFullPixels[srcIdx];
+                                tempPixels[destIdx + 1] = _moveInitialFullPixels[srcIdx + 1];
+                                tempPixels[destIdx + 2] = _moveInitialFullPixels[srcIdx + 2];
+                                tempPixels[destIdx + 3] = _moveInitialFullPixels[srcIdx + 3];
+                            }
+                            else
+                            {
+                                tempPixels[destIdx + 3] = 0;
+                            }
+                        }
+                    }
+                }
+
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), tempPixels, moveStride, 0);
+                MarkCompositeDirty();
+                return;
+            }
+
             if (!_isDrawingPixels || _tempDrawingPixels == null) return;
 
             bool isEraser = (tool == "Eraser");
@@ -373,6 +548,36 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
+
+            if (_isMovingLayer)
+            {
+                _isMovingLayer = false;
+                MainScrollViewer.ReleaseMouseCapture();
+
+                if (activeLayer != null && _moveInitialFullPixels != null)
+                {
+                    int moveStride = activeLayer.Width * 4;
+                    var finalPixels = new byte[moveStride * activeLayer.Height];
+                    activeLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
+
+                    var moveCmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
+                    _node.EditorDoc.History.Execute(moveCmd);
+
+                    if (_activeSelectionGeometry != null)
+                    {
+                        BuildSelectionMask();
+                    }
+
+                    activeLayer.InvalidateThumbnail();
+                    OnEditorDocumentModified();
+                }
+
+                _moveInitialFullPixels = null;
+                _moveBasePixels = null;
+                _moveFloatingPixels = null;
+                _moveInitialGeometry = null;
+                return;
+            }
 
             if (_isSelecting)
             {
@@ -732,6 +937,60 @@ namespace FlowMy.Views.NodeControls
                     e.Handled = true;
                     return;
                 }
+
+                // Tool selection shortcuts (V, B, E, M, I, G, T) when not typing
+                if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0)
+                {
+                    if (e.Key == Key.V)
+                    {
+                        EditorPanel.SelectToolByName("Move");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.B)
+                    {
+                        EditorPanel.SelectToolByName("Brush");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.E)
+                    {
+                        EditorPanel.SelectToolByName("Eraser");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.M)
+                    {
+                        EditorPanel.SelectToolByName("Selection");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.I)
+                    {
+                        EditorPanel.SelectToolByName("Eyedropper");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.G)
+                    {
+                        EditorPanel.SelectToolByName("Fill");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.T)
+                    {
+                        EditorPanel.SelectToolByName("Text");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                }
             }
 
             // PolyLasso close path: Enter
@@ -769,6 +1028,18 @@ namespace FlowMy.Views.NodeControls
             {
                 PasteSelectionAsLayer();
                 e.Handled = true;
+                return;
+            }
+
+            // Ctrl+J: Layer via Copy or Duplicate Layer
+            if (e.Key == Key.J && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                if (_node.EditorDoc != null && _node.EditorDoc.ActiveLayer != null)
+                {
+                    CopyActiveSelection();
+                    PasteSelectionAsLayer();
+                    e.Handled = true;
+                }
                 return;
             }
         }
