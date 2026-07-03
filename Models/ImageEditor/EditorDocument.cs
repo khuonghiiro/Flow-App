@@ -68,7 +68,7 @@ namespace FlowMy.Models.ImageEditor
             if (source == null) throw new ArgumentNullException(nameof(source));
 
             var doc = new EditorDocument(source.PixelWidth, source.PixelHeight);
-            var bgLayer = new EditorLayer(doc.Width, doc.Height, "Background");
+            var bgLayer = new EditorLayer(doc.Width, doc.Height, "layer 0");
             bgLayer.CopyFrom(source);
             bgLayer.IsLocked = false;
 
@@ -83,7 +83,7 @@ namespace FlowMy.Models.ImageEditor
         public static EditorDocument CreateBlank(int width, int height)
         {
             var doc = new EditorDocument(width, height);
-            var bgLayer = new EditorLayer(width, height, "Background");
+            var bgLayer = new EditorLayer(width, height, "layer 0");
             bgLayer.Fill(Colors.White);
 
             doc.Layers.Add(bgLayer);
@@ -102,7 +102,7 @@ namespace FlowMy.Models.ImageEditor
             }
 
             if (string.IsNullOrEmpty(name))
-                name = $"Layer {Layers.Count + 1}";
+                name = $"layer {Layers.Count}";
 
             var layer = new EditorLayer(Width, Height, name);
             Layers.Insert(insertIndex, layer);

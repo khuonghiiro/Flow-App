@@ -2627,7 +2627,7 @@ namespace FlowMy.Views.NodeControls
                 int docW = _node.EditorDoc.Width;
                 int docH = _node.EditorDoc.Height;
 
-                newLayer = new EditorLayer(docW, docH, $"Layer {_node.EditorDoc.Layers.Count + 1}");
+                newLayer = new EditorLayer(docW, docH, $"layer {_node.EditorDoc.Layers.Count}");
                 newLayer.Clear();
 
                 int startX = (int)_selectionClipboardRect.Value.Left;

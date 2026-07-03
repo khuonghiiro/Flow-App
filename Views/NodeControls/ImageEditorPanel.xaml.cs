@@ -320,6 +320,7 @@ namespace FlowMy.Views.NodeControls
 
         private void LayerLockToggle_Click(object sender, MouseButtonEventArgs e)
         {
+            // Legacy — kept for compatibility but no longer wired in XAML
             if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
             {
                 layer.IsLocked = !layer.IsLocked;
@@ -344,8 +345,38 @@ namespace FlowMy.Views.NodeControls
 
         private void BtnAddLayer_Click(object sender, RoutedEventArgs e)
         {
+            // Legacy — kept for compatibility
             if (_doc == null) return;
+            AddNewLayerFromActive();
+        }
 
+        /// <summary>Inline copy button trên mỗi layer item — nhân đôi layer được click.</summary>
+        private void BtnCopyLayer_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_doc == null) return;
+            if (sender is FrameworkElement fe && fe.DataContext is EditorLayer sourceLayer)
+            {
+                int insertIndex = _doc.Layers.IndexOf(sourceLayer);
+                if (insertIndex < 0) insertIndex = _doc.Layers.Count;
+                else insertIndex += 1;
+
+                var newLayer = sourceLayer.Duplicate();
+                newLayer.Name = GenerateCopyName(sourceLayer.Name);
+
+                var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
+                _doc.History.Execute(cmd);
+
+                _doc.ActiveLayer = newLayer;
+                SyncActiveLayerHighlight();
+                SyncActiveLayerOpacity();
+                SyncBlendModeCombo();
+                OnDocumentModified();
+            }
+            e.Handled = true;
+        }
+
+        private void AddNewLayerFromActive()
+        {
             int insertIndex = _doc.Layers.Count;
             if (_doc.ActiveLayer != null)
             {
@@ -353,23 +384,20 @@ namespace FlowMy.Views.NodeControls
                 if (idx >= 0) insertIndex = idx + 1;
             }
 
-            // Duplicate active layer nếu có, ngược lại tạo layer transparent
             EditorLayer newLayer;
             if (_doc.ActiveLayer != null)
             {
                 newLayer = _doc.ActiveLayer.Duplicate();
-                // Tạo tên copy tăng dần: "X copy 1", "X copy 2", ...
                 newLayer.Name = GenerateCopyName(_doc.ActiveLayer.Name);
             }
             else
             {
-                newLayer = new EditorLayer(_doc.Width, _doc.Height, $"Layer {_doc.Layers.Count + 1}");
+                newLayer = new EditorLayer(_doc.Width, _doc.Height, $"layer {_doc.Layers.Count}");
             }
 
             var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
             _doc.History.Execute(cmd);
 
-            // Chọn layer mới (giống Photoshop Ctrl+J) — layer mới ở TRÊN, có quyền ưu tiên cao hơn
             _doc.ActiveLayer = newLayer;
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
@@ -377,15 +405,38 @@ namespace FlowMy.Views.NodeControls
             OnDocumentModified();
         }
 
-        /// <summary>Tạo tên copy tự động tăng theo thứ tự Layer 1, Layer 2, Layer 3...</summary>
+        /// <summary>Tạo tên copy tự động: lấy số ở cuối tên + 1. VD: "layer 0" → "layer 1", "layer 3" → "layer 4".</summary>
         public string GenerateCopyName(string baseName)
         {
-            if (_doc == null) return "Layer 1";
+            if (_doc == null) return "layer 0";
 
-            int num = 1;
+            // Tách phần text và số ở cuối tên
+            string prefix = baseName;
+            int baseNum = 0;
+
+            // Tìm số ở cuối chuỗi
+            int i = baseName.Length - 1;
+            while (i >= 0 && char.IsDigit(baseName[i])) i--;
+
+            if (i < baseName.Length - 1)
+            {
+                // Có số ở cuối
+                prefix = baseName.Substring(0, i + 1);
+                if (int.TryParse(baseName.Substring(i + 1), out int parsed))
+                    baseNum = parsed;
+            }
+            else
+            {
+                // Không có số → thêm space + bắt đầu từ 1
+                prefix = baseName + " ";
+                baseNum = 0;
+            }
+
+            // Tìm số tiếp theo chưa tồn tại
+            int num = baseNum + 1;
             while (true)
             {
-                string candidate = $"Layer {num}";
+                string candidate = $"{prefix}{num}";
                 bool exists = false;
                 foreach (var l in _doc.Layers)
                 {
@@ -397,20 +448,31 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 if (!exists)
-                {
                     return candidate;
-                }
                 num++;
             }
         }
 
         private void BtnRemoveLayer_Click(object sender, RoutedEventArgs e)
         {
+            // Legacy — kept for compatibility
             if (_doc?.ActiveLayer == null || _doc.Layers.Count <= 1) return;
-
             var cmd = new LayerRemoveCommand(_doc, _doc.ActiveLayer);
             _doc.History.Execute(cmd);
             OnDocumentModified();
+        }
+
+        /// <summary>Inline delete button trên mỗi layer item — xoá layer được click.</summary>
+        private void BtnDeleteLayer_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_doc == null || _doc.Layers.Count <= 1) return;
+            if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
+            {
+                var cmd = new LayerRemoveCommand(_doc, layer);
+                _doc.History.Execute(cmd);
+                OnDocumentModified();
+            }
+            e.Handled = true;
         }
 
         private void BtnMoveUp_Click(object sender, RoutedEventArgs e)

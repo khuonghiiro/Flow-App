@@ -183,30 +183,33 @@
                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                     IsHitTestVisible="False"/>
                             </Border>
-                            <!-- Lock toggle (right) -->
-                            <Border x:Name="LayerLockToggle" DockPanel.Dock="Right" Width="18" Height="18" Margin="4,0,0,0"
-                                    VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
-                                    Background="Transparent"
-                                    MouseLeftButtonDown="LayerLockToggle_Click">
-                                <Grid>
-                                    <!-- Unlocked icon (default) -->
-                                    <controls:SvgViewboxEx x:Name="LockOpenIcon" Width="13" Height="13"
-                                        Fill="#808696" Opacity="0.7"
+                            <!-- Layer action buttons (right) -->
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
+                                <!-- Copy layer button -->
+                                <Border x:Name="BtnCopyLayerInline" Width="20" Height="20" Cursor="Hand" CornerRadius="3"
+                                        Background="Transparent" ToolTip="Nhân đôi Layer (Duplicate)"
+                                        MouseLeftButtonDown="BtnCopyLayer_Click">
+                                    <controls:SvgViewboxEx Width="12" Height="12"
+                                        Fill="{StaticResource ipText}"
                                         Source="{Binding Source={x:Static sys:String.Empty},
                                                  Converter={StaticResource IconKeyToPathConverter},
-                                                 ConverterParameter='lock-open jelly-fill-regular'}"
+                                                 ConverterParameter='copy duotone-light'}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                         IsHitTestVisible="False"/>
-                                    <!-- Locked icon (hidden by default) -->
-                                    <controls:SvgViewboxEx x:Name="LockClosedIcon" Width="13" Height="13"
-                                        Fill="#ff6b6b"
+                                </Border>
+                                <!-- Delete layer button -->
+                                <Border x:Name="BtnDeleteLayerInline" Width="20" Height="20" Cursor="Hand" CornerRadius="3"
+                                        Background="Transparent" ToolTip="Xoá Layer"
+                                        MouseLeftButtonDown="BtnDeleteLayer_Click">
+                                    <controls:SvgViewboxEx Width="12" Height="12"
+                                        Fill="{StaticResource ipText}"
                                         Source="{Binding Source={x:Static sys:String.Empty},
                                                  Converter={StaticResource IconKeyToPathConverter},
-                                                 ConverterParameter='lock jelly-fill-regular'}"
+                                                 ConverterParameter='trash-can regular'}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                                        Visibility="Collapsed" IsHitTestVisible="False"/>
-                                </Grid>
-                            </Border>
+                                        IsHitTestVisible="False"/>
+                                </Border>
+                            </StackPanel>
                             <!-- Thumbnail + Name (center, horizontal) -->
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <!-- Thumbnail with transparent background -->
@@ -280,11 +283,6 @@
                     </MultiDataTrigger.Conditions>
                     <Setter TargetName="LayerVisibilityToggle" Property="Background" Value="#15ffffff"/>
                 </MultiDataTrigger>
-                <!-- Locked layer padlock visibility -->
-                <DataTrigger Binding="{Binding IsLocked}" Value="True">
-                    <Setter TargetName="LockClosedIcon" Value="Visible" Property="Visibility"/>
-                    <Setter TargetName="LockOpenIcon" Value="Collapsed" Property="Visibility"/>
-                </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
 
@@ -714,7 +712,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- LAYERS title header -->
@@ -784,31 +781,10 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Border>
-
-                <!-- Footer Action Bar (Photoshop style) -->
-                <Border Grid.Row="3" Padding="6,3" CornerRadius="0,0,3,3"
-                        Background="{StaticResource ipSurface2}" BorderBrush="{StaticResource ipBorder}" BorderThickness="1">
-                    <DockPanel>
-                        <!-- Left-aligned: reordering arrows -->
-                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                            <Button Content="▲" ToolTip="Lên (Move Up)" Style="{StaticResource IpMiniBtn}"
-                                    Width="18" Height="16" FontSize="7.5" Click="BtnMoveUp_Click" Margin="0,0,4,0"/>
-                            <Button Content="▼" ToolTip="Xuống (Move Down)" Style="{StaticResource IpMiniBtn}"
-                                    Width="18" Height="16" FontSize="7.5" Click="BtnMoveDown_Click"/>
-                        </StackPanel>
-                        <!-- Right-aligned: Add/Remove Layer -->
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="📄＋" ToolTip="Thêm Layer mới (Duplicate / New)" Style="{StaticResource IpMiniBtn}"
-                                    Width="24" Height="16" FontSize="9" FontWeight="Bold" Click="BtnAddLayer_Click" Margin="0,0,6,0"/>
-                            <Button Content="🗑️" ToolTip="Xoá Layer đang chọn" Style="{StaticResource IpMiniBtn}"
-                                    Width="20" Height="16" FontSize="10" Click="BtnRemoveLayer_Click"/>
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
             </Grid>
 
-            <!-- ═══ BOTTOM: UNDO/REDO ═══ -->
-            <Border Grid.Row="2" Padding="5,3"
+            <!-- ═══ BOTTOM: UNIFIED ACTION BAR ═══ -->
+            <Border Grid.Row="2" Padding="5,2" CornerRadius="0,0,3,3"
                     BorderBrush="{StaticResource ipBorderLight}" BorderThickness="0,1,0,0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -817,20 +793,27 @@
                     </LinearGradientBrush>
                 </Border.Background>
                 <DockPanel>
+                    <!-- Right: History status -->
                     <TextBlock x:Name="TxtHistoryStatus" DockPanel.Dock="Right"
                                Foreground="{StaticResource ipMuted}" FontSize="8"
                                VerticalAlignment="Center" FontFamily="Consolas"
-                               Text="0 steps"/>
-                    <StackPanel Orientation="Horizontal">
+                               Text="0 steps" Margin="0,0,4,0"/>
+                    <!-- Left: Move Up/Down + Undo/Redo -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="▲" ToolTip="Lên (Move Up)" Style="{StaticResource IpMiniBtn}"
+                                Width="18" Height="18" FontSize="7.5" Click="BtnMoveUp_Click" Margin="0,0,2,0"/>
+                        <Button Content="▼" ToolTip="Xuống (Move Down)" Style="{StaticResource IpMiniBtn}"
+                                Width="18" Height="18" FontSize="7.5" Click="BtnMoveDown_Click" Margin="0,0,6,0"/>
+                        <Border Width="1" Height="14" Background="{StaticResource ipBorder}" Margin="0,0,4,0"/>
                         <Button x:Name="BtnUndo" ToolTip="Undo (Ctrl+Z)"
-                                Style="{StaticResource IpMiniBtn}" Width="24" Height="22"
+                                Style="{StaticResource IpMiniBtn}" Width="22" Height="20"
                                 IsEnabled="False" Click="BtnUndo_Click">
-                            <TextBlock Text="↶" FontSize="13" Foreground="{StaticResource ipAccent}"/>
+                            <TextBlock Text="↶" FontSize="12" Foreground="{StaticResource ipAccent}"/>
                         </Button>
                         <Button x:Name="BtnRedo" ToolTip="Redo (Ctrl+Y)"
-                                Style="{StaticResource IpMiniBtn}" Width="24" Height="22"
+                                Style="{StaticResource IpMiniBtn}" Width="22" Height="20"
                                 IsEnabled="False" Click="BtnRedo_Click">
-                            <TextBlock Text="↷" FontSize="13" Foreground="{StaticResource ipAccent}"/>
+                            <TextBlock Text="↷" FontSize="12" Foreground="{StaticResource ipAccent}"/>
                         </Button>
                     </StackPanel>
                 </DockPanel>
