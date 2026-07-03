@@ -30,6 +30,61 @@
         <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
         <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
 
+        <!-- Checkered brush for transparent editor background & eraser cursor -->
+        <VisualBrush x:Key="DarkCheckeredBrush" TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+            <VisualBrush.Visual>
+                <Grid Width="8" Height="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="4"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="4"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#202020"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#2d2d2d"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#2d2d2d"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#202020"/>
+                </Grid>
+            </VisualBrush.Visual>
+        </VisualBrush>
+
+        <!-- ═══ MINI ICON BUTTON ═══ -->
+        <Style x:Key="IpMiniBtn" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource ipMuted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipHover}"/>
+                                <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipSurface2}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ═══ COMBOBOX STYLE ═══ -->
         <Style x:Key="IpComboBoxStyle" TargetType="ComboBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -358,8 +413,8 @@
                 Background="#0e1218" BorderBrush="#252932" BorderThickness="0,0,0,1"
                 Padding="12,4,12,4" Visibility="Visible" Panel.ZIndex="5">
             <Grid Height="24">
-                <!-- ═══ BRUSH OPTIONS ═══ -->
-                <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Visible">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Visible">
                     <TextBlock Text="🖌️ Brush" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
                     
                     <!-- Size Input TextBox -->
@@ -507,7 +562,31 @@
                     </Popup>
                 </StackPanel>
 
-                <!-- ═══ TEXT OPTIONS ═══ -->
+                <!-- ═══ COLOR OPTIONS (Photoshop style) ═══ -->
+                <StackPanel x:Name="OptColorPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" Margin="12,0,0,0">
+                    <TextBlock Text="🎨 Color:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBox x:Name="OptColorHexInput" Width="55" Height="18" FontSize="9"
+                             Style="{StaticResource IpTextBoxStyle}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                             Text="#FFFFFF" LostFocus="OptColorHexInput_LostFocus" KeyDown="OptColorHexInput_KeyDown"/>
+                    
+                    <Border x:Name="OptFgColorSwatch" Width="18" Height="18" Margin="6,0,6,0" CornerRadius="3"
+                            BorderBrush="#dde3ef" BorderThickness="1.5" Cursor="Hand"
+                            ToolTip="Foreground Color"
+                            MouseLeftButtonDown="OptFgColorSwatch_MouseLeftButtonDown"/>
+                    
+                    <Button Content="⇄" Style="{StaticResource IpMiniBtn}"
+                            Width="16" Height="16" FontSize="11" Margin="2,0,2,0"
+                            Cursor="Hand" ToolTip="Swap Colors (X)"
+                            Click="EditorToolbox_SwapColors_Click"/>
+                    
+                    <Border x:Name="OptBgColorSwatch" Width="18" Height="18" Margin="6,0,12,0" CornerRadius="3"
+                            BorderBrush="#252932" BorderThickness="1.5" Cursor="Hand"
+                            ToolTip="Background Color"
+                            MouseLeftButtonDown="OptBgColorSwatch_MouseLeftButtonDown"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ═══ TEXT OPTIONS ═══ -->
                 <StackPanel x:Name="OptTextPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <TextBlock Text="🔤 Text" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
 
@@ -680,6 +759,11 @@
                                     HorizontalAlignment="Left" VerticalAlignment="Top"
                                     Cursor="Hand" ToolTip="Foreground color"
                                     MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>
+                            <Button Content="⇄" Style="{StaticResource IpMiniBtn}"
+                                    Width="12" Height="12" FontSize="8"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Margin="0,-2,-2,0" Cursor="Hand" ToolTip="Swap Colors (X)"
+                                    Click="EditorToolbox_SwapColors_Click"/>
                         </Grid>
                     </StackPanel>
 
@@ -858,24 +942,7 @@
                     <!-- Image container with checkered transparency pattern and selection overlay -->
                     <Grid x:Name="ImageContainer" HorizontalAlignment="Left" VerticalAlignment="Top">
                         <Grid.Background>
-                            <VisualBrush TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
-                                <VisualBrush.Visual>
-                                    <Grid Width="16" Height="16">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="8"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="8"/>
-                                            <RowDefinition Height="8"/>
-                                        </Grid.RowDefinitions>
-                                        <Rectangle Grid.Row="0" Grid.Column="0" Fill="#e0e0e0"/>
-                                        <Rectangle Grid.Row="0" Grid.Column="1" Fill="#ffffff"/>
-                                        <Rectangle Grid.Row="1" Grid.Column="0" Fill="#ffffff"/>
-                                        <Rectangle Grid.Row="1" Grid.Column="1" Fill="#e0e0e0"/>
-                                    </Grid>
-                                </VisualBrush.Visual>
-                            </VisualBrush>
+                            <StaticResource ResourceKey="DarkCheckeredBrush"/>
                         </Grid.Background>
                         
                         <Image x:Name="MainImage" Stretch="Uniform"
@@ -896,9 +963,9 @@
                         <Canvas x:Name="EyedropperCursorCanvas" IsHitTestVisible="False" Panel.ZIndex="155"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                             <Grid x:Name="EyedropperPreviewContainer" Visibility="Collapsed">
-                                <StackPanel Orientation="Horizontal" Margin="-14,-40,0,0">
+                                <StackPanel Orientation="Horizontal" Margin="-25,-65,0,0">
                                     <!-- Split preview circle -->
-                                    <Border Width="28" Height="28" CornerRadius="14" ClipToBounds="True" BorderBrush="White" BorderThickness="1.5" Background="#111">
+                                    <Border Width="50" Height="50" CornerRadius="25" ClipToBounds="True" BorderBrush="White" BorderThickness="2" Background="#111">
                                         <Border.Effect>
                                             <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.5" Color="Black"/>
                                         </Border.Effect>

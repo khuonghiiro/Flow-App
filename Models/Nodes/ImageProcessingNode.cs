@@ -81,6 +81,8 @@ namespace FlowMy.Models.Nodes
         }
 
         /// <summary>Brush tương ứng với ColorHex, dùng để bind trực tiếp vào UI (thumbnail border, ...).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         public System.Windows.Media.SolidColorBrush StrokeBrush
         {
             get
@@ -118,6 +120,8 @@ namespace FlowMy.Models.Nodes
         public string CropName { get; set; } = string.Empty;
 
         /// <summary>Thumbnail xem nhanh (hiển thị ở menu phải).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         public System.Windows.Media.ImageSource? Thumbnail
         {
             get => _thumbnail;
@@ -132,6 +136,8 @@ namespace FlowMy.Models.Nodes
         }
         
         /// <summary>Danh sách ảnh render tương ứng với crop (preview kết quả từ node render ảnh, có thể nhiều ảnh).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         public ObservableCollection<System.Windows.Media.ImageSource> RenderedImages { get; } = new();
 
         /// <summary>

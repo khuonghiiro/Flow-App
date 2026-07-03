@@ -654,7 +654,7 @@
 
                     <!-- ══════ COLOR ══════ -->
                     <Border Padding="6,4" CornerRadius="3" Margin="0,6,0,3"
-                            Background="{StaticResource ipSurface}">
+                            Background="{StaticResource ipSurface}" Visibility="Collapsed">
                         <Border BorderBrush="#ff6b6b" BorderThickness="2,0,0,0" Padding="5,0,0,0">
                             <TextBlock Text="COLOR" FontSize="9" FontWeight="Bold"
                                        Foreground="{StaticResource ipMuted}"/>
@@ -662,7 +662,7 @@
                     </Border>
 
                     <Border Background="{StaticResource ipSurface2}" CornerRadius="4"
-                            Padding="6,5">
+                            Padding="6,5" Visibility="Collapsed">
                         <StackPanel>
                             <DockPanel>
                                 <!-- FG/BG stacked -->

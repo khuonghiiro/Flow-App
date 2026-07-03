@@ -560,6 +560,15 @@ namespace FlowMy.Views.NodeControls
                         Canvas.SetLeft(BrushPreviewCursor, containerPos.X - radius);
                         Canvas.SetTop(BrushPreviewCursor, containerPos.Y - radius);
 
+                        if (tool == "Eraser")
+                        {
+                            BrushPreviewCursor.Fill = FindResource("DarkCheckeredBrush") as Brush;
+                        }
+                        else
+                        {
+                            BrushPreviewCursor.Fill = Brushes.Transparent;
+                        }
+
                         BrushPreviewCursor.Visibility = Visibility.Visible;
                         return;
                     }
@@ -1437,6 +1446,8 @@ namespace FlowMy.Views.NodeControls
                     // Pixel data đã được user chỉnh sửa trên tất cả layers, phải bảo toàn.
                 }
                 EditorPanel.SetDocument(_node.EditorDoc);
+                _node.EditorDoc.PropertyChanged -= EditorDoc_PropertyChanged;
+                _node.EditorDoc.PropertyChanged += EditorDoc_PropertyChanged;
                 // Re-composite để canvas hiển thị composite mới nhất
                 OnEditorDocumentModified();
                 return;
@@ -1453,6 +1464,8 @@ namespace FlowMy.Views.NodeControls
             }
 
             EditorPanel.SetDocument(_node.EditorDoc);
+            _node.EditorDoc.PropertyChanged -= EditorDoc_PropertyChanged;
+            _node.EditorDoc.PropertyChanged += EditorDoc_PropertyChanged;
         }
 
         private void OnEditorDocumentModified()
@@ -1589,8 +1602,94 @@ namespace FlowMy.Views.NodeControls
         private void SyncToolboxColors()
         {
             if (_node.EditorDoc == null) return;
-            TbxFgColor.Background = new SolidColorBrush(_node.EditorDoc.ForegroundColor);
-            TbxBgColor.Background = new SolidColorBrush(_node.EditorDoc.BackgroundColor);
+
+            var fgBrush = new SolidColorBrush(_node.EditorDoc.ForegroundColor);
+            var bgBrush = new SolidColorBrush(_node.EditorDoc.BackgroundColor);
+
+            TbxFgColor.Background = fgBrush;
+            TbxBgColor.Background = bgBrush;
+
+            if (OptFgColorSwatch != null)
+                OptFgColorSwatch.Background = fgBrush;
+            if (OptBgColorSwatch != null)
+                OptBgColorSwatch.Background = bgBrush;
+
+            string hex = $"#{_node.EditorDoc.ForegroundColor.R:X2}{_node.EditorDoc.ForegroundColor.G:X2}{_node.EditorDoc.ForegroundColor.B:X2}";
+            if (OptColorHexInput != null && OptColorHexInput.Text != hex)
+            {
+                OptColorHexInput.Text = hex;
+            }
+        }
+
+        private void OptColorHexInput_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ApplyColorFromHexInput();
+        }
+
+        private void OptColorHexInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ApplyColorFromHexInput();
+                MainScrollViewer.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void ApplyColorFromHexInput()
+        {
+            if (_node.EditorDoc == null || OptColorHexInput == null) return;
+            try
+            {
+                var text = OptColorHexInput.Text.Trim();
+                if (string.IsNullOrEmpty(text)) return;
+                if (!text.StartsWith("#")) text = "#" + text;
+                var color = (Color)ColorConverter.ConvertFromString(text);
+                if (_node.EditorDoc.ForegroundColor != color)
+                {
+                    _node.EditorDoc.ForegroundColor = color;
+                }
+            }
+            catch { /* ignore invalid hex format */ }
+        }
+
+        private void OptFgColorSwatch_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var color = PickColorDialog(_node.EditorDoc.ForegroundColor);
+            if (color.HasValue)
+            {
+                _node.EditorDoc.ForegroundColor = color.Value;
+            }
+            e.Handled = true;
+        }
+
+        private void OptBgColorSwatch_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var color = PickColorDialog(_node.EditorDoc.BackgroundColor);
+            if (color.HasValue)
+            {
+                _node.EditorDoc.BackgroundColor = color.Value;
+            }
+            e.Handled = true;
+        }
+
+        private void EditorToolbox_SwapColors_Click(object sender, RoutedEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var temp = _node.EditorDoc.ForegroundColor;
+            _node.EditorDoc.ForegroundColor = _node.EditorDoc.BackgroundColor;
+            _node.EditorDoc.BackgroundColor = temp;
+        }
+
+        private void EditorDoc_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Models.ImageEditor.EditorDocument.ForegroundColor) ||
+                e.PropertyName == nameof(Models.ImageEditor.EditorDocument.BackgroundColor))
+            {
+                SyncToolboxColors();
+            }
         }
 
         // ═══════ MAGICK.NET EFFECTS (Async + Loading + ESC Cancel) ═══════
@@ -2412,7 +2511,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (TopOptionsBar == null) return;
 
-            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || activeTool == "Selection");
+            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || activeTool == "Selection" || activeTool == "Eyedropper");
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
             {
@@ -2420,11 +2519,21 @@ namespace FlowMy.Views.NodeControls
                 OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
                 OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
                 OptSelectionPanel.Visibility = (activeTool == "Selection") ? Visibility.Visible : Visibility.Collapsed;
+                
+                if (OptColorPanel != null)
+                {
+                    OptColorPanel.Visibility = (activeTool == "Brush" || activeTool == "Eyedropper") ? Visibility.Visible : Visibility.Collapsed;
+                }
 
                 // Sync initial brush properties
                 if (activeTool == "Brush" || activeTool == "Eraser")
                 {
                     SyncFromEditorPanelBrushProperties();
+                }
+
+                if (activeTool == "Brush" || activeTool == "Eyedropper")
+                {
+                    SyncToolboxColors();
                 }
 
                 if (activeTool == "Text")
