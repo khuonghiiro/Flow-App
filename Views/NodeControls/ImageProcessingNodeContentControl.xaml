@@ -1043,8 +1043,14 @@
                         </Rectangle>
 
                         <!-- Selection Polygon Overlay (Photoshop ants style) -->
+                        <!-- Selection Polygon Background (Black dashes) -->
+                        <Path x:Name="SelectionPolygonBg"
+                              Stroke="Black" StrokeThickness="1.5"
+                              Visibility="Collapsed" IsHitTestVisible="False"/>
+
+                        <!-- Selection Polygon Foreground (White dashes) -->
                         <Path x:Name="SelectionPolygon"
-                              Stroke="#00cfff" StrokeThickness="1.5"
+                              Stroke="White" StrokeThickness="1.5"
                               StrokeDashArray="4 4"
                               Fill="#2000cfff"
                               Visibility="Collapsed" IsHitTestVisible="False">
@@ -1057,7 +1063,7 @@
                                                     <Storyboard>
                                                         <DoubleAnimation
                                                             Storyboard.TargetProperty="StrokeDashOffset"
-                                                            From="0" To="8" Duration="0:0:0.5"
+                                                            From="0" To="8" Duration="0:0:0.7"
                                                             RepeatBehavior="Forever"/>
                                                     </Storyboard>
                                                 </BeginStoryboard>

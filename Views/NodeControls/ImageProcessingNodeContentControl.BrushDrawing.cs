@@ -474,6 +474,11 @@ namespace FlowMy.Views.NodeControls
                 SelectionPolygon.Visibility = Visibility.Collapsed;
                 SelectionPolygon.Data = null;
             }
+            if (SelectionPolygonBg != null)
+            {
+                SelectionPolygonBg.Visibility = Visibility.Collapsed;
+                SelectionPolygonBg.Data = null;
+            }
             if (SelectionPreviewPolygon != null)
             {
                 SelectionPreviewPolygon.Visibility = Visibility.Collapsed;
@@ -556,13 +561,27 @@ namespace FlowMy.Views.NodeControls
                 var scaledGeometry = _activeSelectionGeometry.Clone();
                 scaledGeometry.Transform = new ScaleTransform(scaleX, scaleY);
 
-                SelectionPolygon.Data = scaledGeometry.GetOutlinedPathGeometry();
+                var outlined = scaledGeometry.GetOutlinedPathGeometry();
+
+                SelectionPolygon.Data = outlined;
                 SelectionPolygon.Visibility = Visibility.Visible;
+
+                if (SelectionPolygonBg != null)
+                {
+                    SelectionPolygonBg.Data = outlined;
+                    SelectionPolygonBg.Visibility = Visibility.Visible;
+                }
             }
             else
             {
                 SelectionPolygon.Data = null;
                 SelectionPolygon.Visibility = Visibility.Collapsed;
+
+                if (SelectionPolygonBg != null)
+                {
+                    SelectionPolygonBg.Data = null;
+                    SelectionPolygonBg.Visibility = Visibility.Collapsed;
+                }
             }
         }
 
