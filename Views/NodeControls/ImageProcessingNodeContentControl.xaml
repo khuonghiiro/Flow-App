@@ -30,22 +30,22 @@
         <SolidColorBrush x:Key="ipHover" Color="#1e222c"/>
         <SolidColorBrush x:Key="ipActiveItem" Color="#1a4fffb0"/>
 
-        <!-- Checkered brush for transparent editor background & eraser cursor -->
-        <VisualBrush x:Key="DarkCheckeredBrush" TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+        <!-- Photoshop light checkered brush for transparency -->
+        <VisualBrush x:Key="PsCheckeredBrush" TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
             <VisualBrush.Visual>
-                <Grid Width="8" Height="8">
+                <Grid Width="16" Height="16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4"/>
-                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="8"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="4"/>
-                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="8"/>
                     </Grid.RowDefinitions>
-                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#202020"/>
-                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#2d2d2d"/>
-                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#2d2d2d"/>
-                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#202020"/>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#cbcbcb"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#ffffff"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#ffffff"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#cbcbcb"/>
                 </Grid>
             </VisualBrush.Visual>
         </VisualBrush>
@@ -696,6 +696,17 @@
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,6,0">
                         <TextBlock Text="DRAW" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
                                    HorizontalAlignment="Center" Margin="0,1,0,3"/>
+                        <Border x:Name="TbxSelectionActive" Tag="Selection" ToolTip="Selection (M)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="SelectionGroupBtn_LeftClick"
+                                MouseRightButtonUp="SelectionGroupBtn_RightClick">
+                            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                    Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='square-dashed-circle-plus sharp-duotone-solid'}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                            </Grid>
+                        </Border>
+                        
                         <Border x:Name="TbxBrush" Tag="Brush" ToolTip="Brush (B)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="EditorToolbox_Click">
@@ -738,13 +749,7 @@
                                 Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='font duotone'}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <Border x:Name="TbxSelection" Tag="Selection" ToolTip="Selection (M)"
-                                Style="{StaticResource FxToolBtnStyle}"
-                                MouseLeftButtonDown="EditorToolbox_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='object-group duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
+                        
                         <Rectangle Height="1" Fill="#252932" Margin="2,4,2,4"/>
                         <Grid Width="32" Height="32" Margin="0,0,0,2">
                             <Border x:Name="TbxBgColor" Width="18" Height="18"
@@ -942,7 +947,7 @@
                     <!-- Image container with checkered transparency pattern and selection overlay -->
                     <Grid x:Name="ImageContainer" HorizontalAlignment="Left" VerticalAlignment="Top">
                         <Grid.Background>
-                            <StaticResource ResourceKey="DarkCheckeredBrush"/>
+                            <StaticResource ResourceKey="PsCheckeredBrush"/>
                         </Grid.Background>
                         
                         <Image x:Name="MainImage" Stretch="Uniform"
@@ -965,7 +970,7 @@
                             <Grid x:Name="EyedropperPreviewContainer" Visibility="Collapsed">
                                 <StackPanel Orientation="Horizontal" Margin="-25,-65,0,0">
                                     <!-- Split preview circle -->
-                                    <Border Width="50" Height="50" CornerRadius="25" ClipToBounds="True" BorderBrush="White" BorderThickness="2" Background="#111">
+                                    <Border Width="50" Height="50" CornerRadius="25" ClipToBounds="True" BorderBrush="White" BorderThickness="2" Background="{StaticResource PsCheckeredBrush}">
                                         <Border.Effect>
                                             <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.5" Color="Black"/>
                                         </Border.Effect>
@@ -995,6 +1000,13 @@
                                    Fill="#2000cfff"
                                    HorizontalAlignment="Left" VerticalAlignment="Top"
                                    Visibility="Collapsed" IsHitTestVisible="False"/>
+
+                        <!-- Selection Polygon Overlay (Photoshop ants style) -->
+                        <Polygon x:Name="SelectionPolygon"
+                                 Stroke="#00cfff" StrokeThickness="1.5"
+                                 StrokeDashArray="4 4"
+                                 Fill="#2000cfff"
+                                 Visibility="Collapsed" IsHitTestVisible="False"/>
 
                         <!-- Text Tool Interactive Box Overlay -->
                         <Grid x:Name="TextMoveContainer" HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -1150,6 +1162,45 @@
                             </Border>
                             <DataTemplate.Triggers>
                                 <!-- Hover effect: Viền xanh ngọc nhẹ và nền tối sáng -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ItemBorder" Property="Background" Value="#202533"/>
+                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#404fffb0"/>
+                                </Trigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </Popup>
+
+        <!-- ═══ PHOTOSHOP-STYLE SELECTION TOOL VARIANT POPUP ═══ -->
+        <Popup x:Name="SelectionGroupPopup" StaysOpen="False" AllowsTransparency="True"
+               Placement="Right" HorizontalOffset="6" VerticalOffset="-4"
+               PopupAnimation="Fade" Closed="SelectionGroupPopup_Closed">
+            <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
+                    CornerRadius="6" Padding="6,4" SnapsToDevicePixels="True" MinWidth="180">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000"/>
+                </Border.Effect>
+                <ItemsControl x:Name="SelectionPopupItemsControl">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="4" 
+                                    Padding="6,5" Cursor="Hand" Margin="0,1"
+                                    BorderBrush="Transparent" BorderThickness="0.5"
+                                    ToolTip="{Binding ToolTipText}"
+                                    MouseLeftButtonDown="SelectionPopupItem_Click">
+                                <DockPanel LastChildFill="True">
+                                    <controls:SvgViewboxEx Width="14" Height="14" Fill="#dde3ef" Margin="0,0,8,0" DockPanel.Dock="Left"
+                                                          Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                    <StackPanel VerticalAlignment="Center" IsHitTestVisible="False">
+                                        <TextBlock Text="{Binding DisplayName}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" Foreground="#788296" FontSize="8" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                            <DataTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="ItemBorder" Property="Background" Value="#202533"/>
                                     <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#404fffb0"/>

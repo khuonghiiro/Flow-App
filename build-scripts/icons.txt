@@ -433,3 +433,6 @@ wand duotone
 wand-magic-sparkles duotone
 water duotone
 wind duotone
+pen-swirl duotone
+square-dashed-circle-plus sharp-duotone-solid
+share-nodes jelly-regular

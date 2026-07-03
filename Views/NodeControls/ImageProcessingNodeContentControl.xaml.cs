@@ -1,3 +1,10 @@
+// ========================================================================================
+// IMPORTANT FOR AI CODING ASSISTANTS:
+// DO NOT ADD MORE LOGIC OR CODE DIRECTLY INTO THIS FILE (ImageProcessingNodeContentControl.xaml.cs)!
+// This file is already very large and complex. Any new features, tools, or major logical changes
+// must be created in separate partial class files (e.g., ImageProcessingNodeContentControl.MyNewFeature.cs)
+// to keep the codebase modular, maintainable, and easy to refactor.
+// ========================================================================================
 using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Helpers;
@@ -562,7 +569,7 @@ namespace FlowMy.Views.NodeControls
 
                         if (tool == "Eraser")
                         {
-                            BrushPreviewCursor.Fill = FindResource("DarkCheckeredBrush") as Brush;
+                            BrushPreviewCursor.Fill = FindResource("PsCheckeredBrush") as Brush;
                         }
                         else
                         {
@@ -613,7 +620,14 @@ namespace FlowMy.Views.NodeControls
                                 EyedropperOldColorBorder.Background = new SolidColorBrush(_node.EditorDoc.ForegroundColor);
 
                                 // Set Hex Text representation
-                                EyedropperHexText.Text = $"#{sampledColor.R:X2}{sampledColor.G:X2}{sampledColor.B:X2}";
+                                if (sampledColor.A == 0)
+                                {
+                                    EyedropperHexText.Text = "Transparent";
+                                }
+                                else
+                                {
+                                    EyedropperHexText.Text = $"#{sampledColor.R:X2}{sampledColor.G:X2}{sampledColor.B:X2}";
+                                }
 
                                 // Move preview container to cursor
                                 var containerPos = Mouse.GetPosition(ImageContainer);
@@ -1514,7 +1528,9 @@ namespace FlowMy.Views.NodeControls
             _toolboxBorders["Eyedropper"] = TbxEyedropper;
             _toolboxBorders["Move"] = TbxMove;
             _toolboxBorders["Text"] = TbxText;
-            _toolboxBorders["Selection"] = TbxSelection;
+            _toolboxBorders["Selection"] = TbxSelectionActive;
+            _toolboxBorders["Lasso"] = TbxSelectionActive;
+            _toolboxBorders["PolyLasso"] = TbxSelectionActive;
         }
 
         private void EditorToolbox_Click(object sender, MouseButtonEventArgs e)
@@ -1527,6 +1543,8 @@ namespace FlowMy.Views.NodeControls
                 e.Handled = true;
             }
         }
+
+
 
         private void EditorToolbox_FgColor_Click(object sender, MouseButtonEventArgs e)
         {
@@ -2386,139 +2404,20 @@ namespace FlowMy.Views.NodeControls
         private Point _textDragStartMousePos;
         private Thickness _textDragStartMargin;
 
-        private byte[]? _selectionClipboardPixels;
-        private Rect? _selectionClipboardRect;
-        private bool _selectionClipboardIsFullLayer;
-        private EditorLayer? _selectionClipboardLayerSource;
 
-        private void CopyActiveSelection()
-        {
-            if (_node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
-            if (activeLayer == null || !activeLayer.IsVisible) return;
-
-            if (_selectionRect.HasValue)
-            {
-                int startX = Math.Max(0, (int)_selectionRect.Value.Left);
-                int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
-                int startY = Math.Max(0, (int)_selectionRect.Value.Top);
-                int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
-
-                int w = endX - startX + 1;
-                int h = endY - startY + 1;
-                if (w <= 0 || h <= 0) return;
-
-                var rect = new Int32Rect(startX, startY, w, h);
-                int stride = w * 4;
-                _selectionClipboardPixels = new byte[stride * h];
-                activeLayer.Bitmap.CopyPixels(rect, _selectionClipboardPixels, stride, 0);
-                _selectionClipboardRect = new Rect(startX, startY, w, h);
-                _selectionClipboardIsFullLayer = false;
-                _selectionClipboardLayerSource = null;
-            }
-            else
-            {
-                _selectionClipboardPixels = null;
-                _selectionClipboardRect = null;
-                _selectionClipboardIsFullLayer = true;
-                _selectionClipboardLayerSource = activeLayer.Duplicate();
-            }
-        }
-
-        private void PasteSelectionAsLayer()
-        {
-            if (_node.EditorDoc == null) return;
-
-            EditorLayer newLayer;
-            if (_selectionClipboardIsFullLayer && _selectionClipboardLayerSource != null)
-            {
-                newLayer = _selectionClipboardLayerSource.Duplicate();
-                newLayer.Name = EditorPanel.GenerateCopyName(_selectionClipboardLayerSource.Name);
-            }
-            else if (_selectionClipboardPixels != null && _selectionClipboardRect.HasValue)
-            {
-                int docW = _node.EditorDoc.Width;
-                int docH = _node.EditorDoc.Height;
-
-                newLayer = new EditorLayer(docW, docH, $"layer {_node.EditorDoc.Layers.Count}");
-                newLayer.Clear();
-
-                int startX = (int)_selectionClipboardRect.Value.Left;
-                int startY = (int)_selectionClipboardRect.Value.Top;
-                int w = (int)_selectionClipboardRect.Value.Width;
-                int h = (int)_selectionClipboardRect.Value.Height;
-
-                int stride = w * 4;
-                newLayer.Bitmap.WritePixels(new Int32Rect(startX, startY, w, h), _selectionClipboardPixels, stride, 0);
-                newLayer.InvalidateThumbnail();
-            }
-            else
-            {
-                return;
-            }
-
-            int insertIndex = _node.EditorDoc.Layers.Count;
-            if (_node.EditorDoc.ActiveLayer != null)
-            {
-                int idx = _node.EditorDoc.Layers.IndexOf(_node.EditorDoc.ActiveLayer);
-                if (idx >= 0) insertIndex = idx + 1;
-            }
-
-            var cmd = new Models.ImageEditor.Commands.LayerAddCommand(_node.EditorDoc, newLayer, insertIndex);
-            _node.EditorDoc.History.Execute(cmd);
-            _node.EditorDoc.ActiveLayer = newLayer;
-
-            EditorPanel.RefreshLayersList();
-            OnEditorDocumentModified();
-        }
-
-        private void DeleteSelectionContent()
-        {
-            if (_node.EditorDoc == null || !_selectionRect.HasValue) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
-            if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
-
-            int stride = activeLayer.Width * 4;
-            var oldPixels = new byte[stride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
-
-            var newPixels = new byte[stride * activeLayer.Height];
-            Array.Copy(oldPixels, newPixels, oldPixels.Length);
-
-            int startX = Math.Max(0, (int)_selectionRect.Value.Left);
-            int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
-            int startY = Math.Max(0, (int)_selectionRect.Value.Top);
-            int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
-
-            for (int y = startY; y <= endY; y++)
-            {
-                int rowOffset = y * activeLayer.Width * 4;
-                for (int x = startX; x <= endX; x++)
-                {
-                    newPixels[rowOffset + x * 4 + 3] = 0; // Alpha = 0 (Erase)
-                }
-            }
-
-            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
-            _node.EditorDoc.History.Execute(cmd);
-
-            activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), newPixels, stride, 0);
-            activeLayer.InvalidateThumbnail();
-            OnEditorDocumentModified();
-        }
 
         private void UpdateTopOptionsBar(string activeTool)
         {
             if (TopOptionsBar == null) return;
 
-            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || activeTool == "Selection" || activeTool == "Eyedropper");
+            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || activeTool == "Eyedropper");
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
             {
                 TopOptionsBar.Visibility = Visibility.Visible;
                 OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
                 OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
-                OptSelectionPanel.Visibility = (activeTool == "Selection") ? Visibility.Visible : Visibility.Collapsed;
+                OptSelectionPanel.Visibility = (activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso") ? Visibility.Visible : Visibility.Collapsed;
                 
                 if (OptColorPanel != null)
                 {

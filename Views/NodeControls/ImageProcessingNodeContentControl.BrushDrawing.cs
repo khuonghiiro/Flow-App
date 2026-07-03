@@ -95,6 +95,7 @@ namespace FlowMy.Views.NodeControls
         private bool _isSelecting;
         private Point _selectionStartPoint;
         private Rect? _selectionRect;
+        private readonly System.Collections.Generic.List<Point> _selectionPoints = new();
 
         private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
         {
@@ -130,11 +131,48 @@ namespace FlowMy.Views.NodeControls
                 _isSelecting = true;
                 _selectionStartPoint = clickPos;
                 _selectionRect = null;
+                _selectionPoints.Clear();
+                SelectionPolygon.Visibility = Visibility.Collapsed;
                 SelectionBoxRect.Visibility = Visibility.Visible;
                 SelectionBoxRect.Width = 0;
                 SelectionBoxRect.Height = 0;
                 SelectionBoxRect.Margin = new Thickness(clickPos.X, clickPos.Y, 0, 0);
                 MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "Lasso")
+            {
+                _isSelecting = true;
+                _selectionRect = null;
+                _selectionPoints.Clear();
+                _selectionPoints.Add(new Point(px, py));
+                SelectionBoxRect.Visibility = Visibility.Collapsed;
+                SelectionPolygon.Points.Clear();
+                SelectionPolygon.Points.Add(clickPos);
+                SelectionPolygon.Visibility = Visibility.Visible;
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "PolyLasso")
+            {
+                _isSelecting = true;
+                _selectionRect = null;
+                SelectionBoxRect.Visibility = Visibility.Collapsed;
+                if (_selectionPoints.Count == 0)
+                {
+                    _selectionPoints.Add(new Point(px, py));
+                    SelectionPolygon.Points.Clear();
+                    SelectionPolygon.Points.Add(clickPos);
+                    SelectionPolygon.Visibility = Visibility.Visible;
+                    MainScrollViewer.CaptureMouse();
+                }
+                else
+                {
+                    _selectionPoints.Add(new Point(px, py));
+                    UpdatePolyLassoPreview(clickPos);
+                }
                 return;
             }
 
@@ -244,30 +282,42 @@ namespace FlowMy.Views.NodeControls
             string tool = EditorPanel.ActiveToolName;
             var mousePos = e.GetPosition(MainImage);
 
+            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            int px = Math.Clamp((int)(mousePos.X * scaleX), 0, activeLayer.Width - 1);
+            int py = Math.Clamp((int)(mousePos.Y * scaleY), 0, activeLayer.Height - 1);
+
             if (_isSelecting)
             {
-                double x = Math.Min(_selectionStartPoint.X, mousePos.X);
-                double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
-                double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
-                double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
+                if (tool == "Selection")
+                {
+                    double x = Math.Min(_selectionStartPoint.X, mousePos.X);
+                    double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
+                    double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
+                    double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
 
-                x = Math.Clamp(x, 0, MainImage.ActualWidth);
-                y = Math.Clamp(y, 0, MainImage.ActualHeight);
-                w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
-                h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+                    x = Math.Clamp(x, 0, MainImage.ActualWidth);
+                    y = Math.Clamp(y, 0, MainImage.ActualHeight);
+                    w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
+                    h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
 
-                SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
-                SelectionBoxRect.Width = w;
-                SelectionBoxRect.Height = h;
+                    SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
+                    SelectionBoxRect.Width = w;
+                    SelectionBoxRect.Height = h;
+                }
+                else if (tool == "Lasso")
+                {
+                    _selectionPoints.Add(new Point(px, py));
+                    SelectionPolygon.Points.Add(mousePos);
+                }
+                else if (tool == "PolyLasso" && _selectionPoints.Count > 0)
+                {
+                    UpdatePolyLassoPreview(mousePos);
+                }
                 return;
             }
 
             if (!_isDrawingPixels || _tempDrawingPixels == null) return;
-
-            double scaleX = activeLayer.Width / MainImage.ActualWidth;
-            double scaleY = activeLayer.Height / MainImage.ActualHeight;
-            int px = (int)(mousePos.X * scaleX);
-            int py = (int)(mousePos.Y * scaleY);
 
             bool isEraser = (tool == "Eraser");
             double radius = EditorPanel.BrushSize;
@@ -294,27 +344,59 @@ namespace FlowMy.Views.NodeControls
 
             if (_isSelecting)
             {
-                _isSelecting = false;
-                MainScrollViewer.ReleaseMouseCapture();
-
-                if (activeLayer != null)
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "Selection")
                 {
-                    double scaleX = activeLayer.Width / MainImage.ActualWidth;
-                    double scaleY = activeLayer.Height / MainImage.ActualHeight;
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
 
-                    double lx = SelectionBoxRect.Margin.Left * scaleX;
-                    double ly = SelectionBoxRect.Margin.Top * scaleY;
-                    double lw = SelectionBoxRect.Width * scaleX;
-                    double lh = SelectionBoxRect.Height * scaleY;
-
-                    if (lw > 2 && lh > 2)
+                    if (activeLayer != null)
                     {
-                        _selectionRect = new Rect(lx, ly, lw, lh);
+                        double scaleX = activeLayer.Width / MainImage.ActualWidth;
+                        double scaleY = activeLayer.Height / MainImage.ActualHeight;
+
+                        double lx = SelectionBoxRect.Margin.Left * scaleX;
+                        double ly = SelectionBoxRect.Margin.Top * scaleY;
+                        double lw = SelectionBoxRect.Width * scaleX;
+                        double lh = SelectionBoxRect.Height * scaleY;
+
+                        if (lw > 2 && lh > 2)
+                        {
+                            _selectionRect = new Rect(lx, ly, lw, lh);
+                        }
+                        else
+                        {
+                            ClearSelection();
+                        }
+                    }
+                }
+                else if (tool == "Lasso")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+
+                    if (activeLayer != null && _selectionPoints.Count >= 3)
+                    {
+                        // Auto-connect start and end points
+                        _selectionPoints.Add(_selectionPoints[0]);
+
+                        double scaleX = MainImage.ActualWidth / activeLayer.Width;
+                        double scaleY = MainImage.ActualHeight / activeLayer.Height;
+                        SelectionPolygon.Points.Clear();
+                        foreach (var pt in _selectionPoints)
+                        {
+                            SelectionPolygon.Points.Add(new Point(pt.X * scaleX, pt.Y * scaleY));
+                        }
                     }
                     else
                     {
                         ClearSelection();
                     }
+                }
+                else if (tool == "PolyLasso")
+                {
+                    // For PolyLasso, mouse up does not end the selection.
+                    // Keep _isSelecting true and mouse capture active until Enter or double click.
                 }
                 return;
             }
@@ -343,10 +425,81 @@ namespace FlowMy.Views.NodeControls
         private void ClearSelection()
         {
             _selectionRect = null;
+            _selectionPoints.Clear();
+            _isSelecting = false;
             if (SelectionBoxRect != null)
             {
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
             }
+            if (SelectionPolygon != null)
+            {
+                SelectionPolygon.Visibility = Visibility.Collapsed;
+                SelectionPolygon.Points.Clear();
+            }
+        }
+
+        private void ClosePolyLassoSelection()
+        {
+            _isSelecting = false;
+            MainScrollViewer.ReleaseMouseCapture();
+
+            if (_selectionPoints.Count >= 3)
+            {
+                // Close path by connecting last point to start point
+                _selectionPoints.Add(_selectionPoints[0]);
+
+                if (_node.EditorDoc != null)
+                {
+                    var activeLayer = _node.EditorDoc.ActiveLayer;
+                    if (activeLayer != null)
+                    {
+                        double scaleX = MainImage.ActualWidth / activeLayer.Width;
+                        double scaleY = MainImage.ActualHeight / activeLayer.Height;
+                        SelectionPolygon.Points.Clear();
+                        foreach (var pt in _selectionPoints)
+                        {
+                            SelectionPolygon.Points.Add(new Point(pt.X * scaleX, pt.Y * scaleY));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ClearSelection();
+            }
+        }
+
+        private void UpdatePolyLassoPreview(Point currentMousePos)
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            double scaleX = MainImage.ActualWidth / activeLayer.Width;
+            double scaleY = MainImage.ActualHeight / activeLayer.Height;
+
+            SelectionPolygon.Points.Clear();
+            foreach (var pt in _selectionPoints)
+            {
+                SelectionPolygon.Points.Add(new Point(pt.X * scaleX, pt.Y * scaleY));
+            }
+            // Add current mouse position preview
+            SelectionPolygon.Points.Add(currentMousePos);
+        }
+
+        private static bool IsPointInPolygon(Point p, System.Collections.Generic.List<Point> polygon)
+        {
+            bool isInside = false;
+            int count = polygon.Count;
+            for (int i = 0, j = count - 1; i < count; j = i++)
+            {
+                if (((polygon[i].Y > p.Y) != (polygon[j].Y > p.Y)) &&
+                    (p.X < (polygon[j].X - polygon[i].X) * (p.Y - polygon[i].Y) / (polygon[j].Y - polygon[i].Y) + polygon[i].X))
+                {
+                    isInside = !isInside;
+                }
+            }
+            return isInside;
         }
 
         private void ImageProcessingNodeContentControl_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -423,14 +576,22 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            if (e.Key == Key.Escape && _selectionRect.HasValue)
+            // PolyLasso close path: Enter
+            if (e.Key == Key.Enter && _node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && EditorPanel.ActiveToolName == "PolyLasso" && _selectionPoints.Count >= 3)
+            {
+                ClosePolyLassoSelection();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Escape && (_selectionRect.HasValue || _selectionPoints.Count > 0))
             {
                 ClearSelection();
                 e.Handled = true;
                 return;
             }
 
-            if (e.Key == Key.Delete && _selectionRect.HasValue && _node.EditorDoc != null)
+            if (e.Key == Key.Delete && (_selectionRect.HasValue || _selectionPoints.Count >= 3) && _node.EditorDoc != null)
             {
                 DeleteSelectionContent();
                 e.Handled = true;
@@ -1392,9 +1553,16 @@ namespace FlowMy.Views.NodeControls
 
         private bool IsInsideSelection(int x, int y)
         {
-            if (!_selectionRect.HasValue) return true;
-            var sel = _selectionRect.Value;
-            return x >= sel.Left && x <= sel.Right && y >= sel.Top && y <= sel.Bottom;
+            if (_selectionRect.HasValue)
+            {
+                var sel = _selectionRect.Value;
+                return x >= sel.Left && x <= sel.Right && y >= sel.Top && y <= sel.Bottom;
+            }
+            if (_selectionPoints != null && _selectionPoints.Count >= 3)
+            {
+                return IsPointInPolygon(new Point(x, y), _selectionPoints);
+            }
+            return true;
         }
 
         #endregion
