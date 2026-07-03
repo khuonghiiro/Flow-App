@@ -70,7 +70,7 @@ namespace FlowMy.Models.ImageEditor
             var doc = new EditorDocument(source.PixelWidth, source.PixelHeight);
             var bgLayer = new EditorLayer(doc.Width, doc.Height, "layer 0");
             bgLayer.CopyFrom(source);
-            bgLayer.IsLocked = false;
+            bgLayer.IsLocked = true;
 
             doc.Layers.Add(bgLayer);
             doc.ActiveLayer = bgLayer;
@@ -85,6 +85,7 @@ namespace FlowMy.Models.ImageEditor
             var doc = new EditorDocument(width, height);
             var bgLayer = new EditorLayer(width, height, "layer 0");
             bgLayer.Fill(Colors.White);
+            bgLayer.IsLocked = true;
 
             doc.Layers.Add(bgLayer);
             doc.ActiveLayer = bgLayer;

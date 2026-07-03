@@ -209,6 +209,18 @@
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                         IsHitTestVisible="False"/>
                                 </Border>
+                                <!-- Lock toggle (rightmost) -->
+                                <Border x:Name="LayerLockToggle" Width="20" Height="20" Cursor="Hand" CornerRadius="3"
+                                        Background="Transparent" ToolTip="Khoá/Mở khoá Layer"
+                                        MouseLeftButtonDown="LayerLockToggle_Click">
+                                    <controls:SvgViewboxEx x:Name="LockIcon" Width="12" Height="12"
+                                        Fill="{StaticResource ipText}"
+                                        Source="{Binding Source={x:Static sys:String.Empty},
+                                                 Converter={StaticResource IconKeyToPathConverter},
+                                                 ConverterParameter='unlock light'}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        IsHitTestVisible="False"/>
+                                </Border>
                             </StackPanel>
                             <!-- Thumbnail + Name (center, horizontal) -->
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -282,6 +294,32 @@
                         <Condition Binding="{Binding ElementName=LayerVisibilityToggle, Path=IsMouseOver}" Value="True"/>
                     </MultiDataTrigger.Conditions>
                     <Setter TargetName="LayerVisibilityToggle" Property="Background" Value="#15ffffff"/>
+                </MultiDataTrigger>
+                <!-- Locked layer triggers -->
+                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                    <Setter TargetName="LockIcon" Property="Source" Value="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='lock light'}"/>
+                    <Setter TargetName="LockIcon" Property="Opacity" Value="1.0"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLocked}" Value="False">
+                    <Setter TargetName="LockIcon" Property="Source" Value="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='unlock light'}"/>
+                    <Setter TargetName="LockIcon" Property="Opacity" Value="0.25"/>
+                </DataTrigger>
+                <!-- Hover lock toggle when unlocked (ghost lock) -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsLocked}" Value="False"/>
+                        <Condition Binding="{Binding ElementName=LayerLockToggle, Path=IsMouseOver}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="LockIcon" Property="Opacity" Value="0.8"/>
+                    <Setter TargetName="LayerLockToggle" Property="Background" Value="#15ffffff"/>
+                </MultiDataTrigger>
+                <!-- Hover lock toggle when locked -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsLocked}" Value="True"/>
+                        <Condition Binding="{Binding ElementName=LayerLockToggle, Path=IsMouseOver}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="LayerLockToggle" Property="Background" Value="#15ffffff"/>
                 </MultiDataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>

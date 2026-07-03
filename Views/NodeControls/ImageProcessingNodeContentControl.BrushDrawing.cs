@@ -36,6 +36,44 @@ namespace FlowMy.Views.NodeControls
         private BrushPreset _currentBrushPreset = BrushPreset.RoundHard;
         private readonly Random _brushRng = new();
 
+        private static readonly (double x, double y, double size)[] ChalkPresetOffsets = new (double x, double y, double size)[]
+        {
+            (-0.4, -0.3, 1.8),
+            (0.3, -0.6, 2.2),
+            (-0.1, 0.5, 1.5),
+            (0.5, 0.4, 2.5),
+            (-0.6, 0.2, 2.0),
+            (0.2, 0.1, 1.6),
+            (-0.3, -0.7, 2.1),
+            (0.6, -0.2, 1.9),
+            (-0.2, 0.3, 2.3),
+            (0.1, -0.4, 1.7),
+            (0.4, 0.6, 2.4),
+            (-0.5, -0.5, 1.5),
+            (0.0, 0.0, 2.0),
+            (0.3, 0.3, 1.8),
+            (-0.1, -0.2, 2.2)
+        };
+
+        private static readonly (double x, double y)[] SprayPresetOffsets = new (double x, double y)[]
+        {
+            (-0.2, 0.1), (0.3, -0.4), (-0.1, 0.5), (0.6, 0.2), (-0.5, -0.3),
+            (0.1, 0.2), (-0.3, -0.6), (0.4, 0.5), (-0.2, -0.1), (0.5, -0.3),
+            (-0.4, 0.4), (0.2, -0.2), (-0.6, -0.1), (0.3, 0.3), (-0.1, -0.4),
+            (0.1, 0.7), (-0.3, 0.1), (0.4, -0.7), (-0.5, 0.5), (0.2, 0.4),
+            (-0.2, -0.5), (0.7, -0.1), (-0.4, -0.4), (0.1, -0.1), (-0.1, 0.3),
+            (0.5, 0.5), (-0.3, 0.3), (0.3, -0.5), (-0.5, 0.2), (0.0, 0.0)
+        };
+
+        private static readonly (double x, double y, double scale)[] ScatterPresetOffsets = new (double x, double y, double scale)[]
+        {
+            (-0.3, -0.2, 0.3),
+            (0.4, -0.5, 0.45),
+            (-0.1, 0.6, 0.35),
+            (0.5, 0.3, 0.5),
+            (-0.6, 0.4, 0.4)
+        };
+
         // ── Throttled composite during drawing (avoid lag) ──
         private DispatcherTimer? _compositeTimer;
         private bool _compositeDirty;
@@ -1279,47 +1317,41 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        /// <summary>Chalk — phấn, noise-modulated circle mask.</summary>
         private void DrawBrush_Chalk(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
-            int startX = Math.Max(0, (int)Math.Floor(cx - radius));
-            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + radius));
-            int startY = Math.Max(0, (int)Math.Floor(cy - radius));
-            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + radius));
-
-            double r2 = radius * radius;
             double flowMul = flow / 100.0;
-
-            for (int y = startY; y <= endY; y++)
+            foreach (var offset in ChalkPresetOffsets)
             {
-                int rowOffset = y * width;
-                double dy = y - cy;
-                double dy2 = dy * dy;
+                double spotCx = cx + offset.x * radius;
+                double spotCy = cy + offset.y * radius;
+                double spotRadius = offset.size * Math.Max(0.5, radius / 10.0);
 
-                for (int x = startX; x <= endX; x++)
+                int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius));
+                int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius));
+                int startY = Math.Max(0, (int)Math.Floor(spotCy - spotRadius));
+                int endY = Math.Min(height - 1, (int)Math.Ceiling(spotCy + spotRadius));
+                double sr2 = spotRadius * spotRadius;
+
+                for (int y = startY; y <= endY; y++)
                 {
-                    double dx = x - cx;
-                    double dist2 = dx * dx + dy2;
+                    int rowOffset = y * width;
+                    double dy = y - spotCy;
+                    double dy2 = dy * dy;
 
-                    if (dist2 <= r2)
+                    for (int x = startX; x <= endX; x++)
                     {
-                        if (!IsInsideSelection(x, y)) continue;
+                        double dx = x - spotCx;
+                        if (dx * dx + dy2 <= sr2)
+                        {
+                            if (!IsInsideSelection(x, y)) continue;
 
-                        // Noise: random gaps tạo hiệu ứng phấn gritty
-                        if (_brushRng.NextDouble() < 0.35) continue; // 35% pixel bị bỏ
+                            byte brushAlpha = (byte)Math.Clamp(flowMul * 180, 0, 255);
+                            if (brushAlpha <= 0) continue;
 
-                        double dist = Math.Sqrt(dist2);
-                        double falloff = 1.0 - (dist / radius);
-                        // Thêm noise vào opacity
-                        double noiseMul = 0.4 + _brushRng.NextDouble() * 0.6;
-                        double pixelOpacity = falloff * noiseMul;
-
-                        byte brushAlpha = (byte)Math.Clamp(pixelOpacity * flowMul * 255.0, 0, 255);
-                        if (brushAlpha <= 0) continue;
-
-                        int maskOffset = rowOffset + x;
-                        if (brushAlpha > alphaMask[maskOffset])
-                            alphaMask[maskOffset] = brushAlpha;
+                            int maskOffset = rowOffset + x;
+                            if (brushAlpha > alphaMask[maskOffset])
+                                alphaMask[maskOffset] = brushAlpha;
+                        }
                     }
                 }
             }
@@ -1360,17 +1392,11 @@ namespace FlowMy.Views.NodeControls
         private void DrawBrush_Scatter(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double flowMul = flow / 100.0;
-            // Tạo 3-7 blobs ngẫu nhiên quanh tâm
-            int blobCount = 3 + _brushRng.Next(5);
-
-            for (int b = 0; b < blobCount; b++)
+            foreach (var offset in ScatterPresetOffsets)
             {
-                // Random offset
-                double offsetX = (_brushRng.NextDouble() - 0.5) * radius * 1.5;
-                double offsetY = (_brushRng.NextDouble() - 0.5) * radius * 1.5;
-                double blobCx = cx + offsetX;
-                double blobCy = cy + offsetY;
-                double blobRadius = radius * (0.15 + _brushRng.NextDouble() * 0.35);
+                double blobCx = cx + offset.x * radius;
+                double blobCy = cy + offset.y * radius;
+                double blobRadius = radius * offset.scale;
 
                 int startX = Math.Max(0, (int)Math.Floor(blobCx - blobRadius));
                 int endX = Math.Min(width - 1, (int)Math.Ceiling(blobCx + blobRadius));
