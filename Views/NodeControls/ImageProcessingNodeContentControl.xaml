@@ -704,6 +704,9 @@
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='square-dashed-circle-plus sharp-duotone-solid'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="3" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
+                                           HorizontalAlignment="Right" VerticalAlignment="top"
+                                           Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
                         
@@ -789,7 +792,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="9" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -806,7 +809,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="15" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -823,7 +826,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="5" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -840,7 +843,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="21" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -857,7 +860,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="6" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="Top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -874,7 +877,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="8" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="Top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -891,7 +894,7 @@
                                 <TextBlock Text="" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False"/>
                                 <TextBlock Text="13" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           HorizontalAlignment="Right" VerticalAlignment="Top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
                         </Border>
@@ -1002,11 +1005,11 @@
                                    Visibility="Collapsed" IsHitTestVisible="False"/>
 
                         <!-- Selection Polygon Overlay (Photoshop ants style) -->
-                        <Polygon x:Name="SelectionPolygon"
-                                 Stroke="#00cfff" StrokeThickness="1.5"
-                                 StrokeDashArray="4 4"
-                                 Fill="#2000cfff"
-                                 Visibility="Collapsed" IsHitTestVisible="False"/>
+                        <Path x:Name="SelectionPolygon"
+                              Stroke="#00cfff" StrokeThickness="1.5"
+                              StrokeDashArray="4 4"
+                              Fill="#2000cfff"
+                              Visibility="Collapsed" IsHitTestVisible="False"/>
 
                         <!-- Text Tool Interactive Box Overlay -->
                         <Grid x:Name="TextMoveContainer" HorizontalAlignment="Left" VerticalAlignment="Top"

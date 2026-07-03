@@ -96,6 +96,12 @@ namespace FlowMy.Views.NodeControls
         private Point _selectionStartPoint;
         private Rect? _selectionRect;
         private readonly System.Collections.Generic.List<Point> _selectionPoints = new();
+        private bool[,]? _cachedSelectionMask;
+        private int _cachedSelectionStartX;
+        private int _cachedSelectionStartY;
+        private int _cachedSelectionEndX;
+        private int _cachedSelectionEndY;
+        private bool _hasCachedSelectionMask;
 
         private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
         {
@@ -148,9 +154,7 @@ namespace FlowMy.Views.NodeControls
                 _selectionPoints.Clear();
                 _selectionPoints.Add(new Point(px, py));
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
-                SelectionPolygon.Points.Clear();
-                SelectionPolygon.Points.Add(clickPos);
-                SelectionPolygon.Visibility = Visibility.Visible;
+                UpdateLassoPreview();
                 MainScrollViewer.CaptureMouse();
                 return;
             }
@@ -163,9 +167,7 @@ namespace FlowMy.Views.NodeControls
                 if (_selectionPoints.Count == 0)
                 {
                     _selectionPoints.Add(new Point(px, py));
-                    SelectionPolygon.Points.Clear();
-                    SelectionPolygon.Points.Add(clickPos);
-                    SelectionPolygon.Visibility = Visibility.Visible;
+                    UpdatePolyLassoPreview(clickPos);
                     MainScrollViewer.CaptureMouse();
                 }
                 else
@@ -307,8 +309,12 @@ namespace FlowMy.Views.NodeControls
                 }
                 else if (tool == "Lasso")
                 {
-                    _selectionPoints.Add(new Point(px, py));
-                    SelectionPolygon.Points.Add(mousePos);
+                    var newPt = new Point(px, py);
+                    if (_selectionPoints.Count == 0 || _selectionPoints[_selectionPoints.Count - 1] != newPt)
+                    {
+                        _selectionPoints.Add(newPt);
+                        UpdateLassoPreview();
+                    }
                 }
                 else if (tool == "PolyLasso" && _selectionPoints.Count > 0)
                 {
@@ -375,18 +381,12 @@ namespace FlowMy.Views.NodeControls
                     _isSelecting = false;
                     MainScrollViewer.ReleaseMouseCapture();
 
-                    if (activeLayer != null && _selectionPoints.Count >= 3)
+                    if (_selectionPoints.Count >= 3)
                     {
                         // Auto-connect start and end points
                         _selectionPoints.Add(_selectionPoints[0]);
-
-                        double scaleX = MainImage.ActualWidth / activeLayer.Width;
-                        double scaleY = MainImage.ActualHeight / activeLayer.Height;
-                        SelectionPolygon.Points.Clear();
-                        foreach (var pt in _selectionPoints)
-                        {
-                            SelectionPolygon.Points.Add(new Point(pt.X * scaleX, pt.Y * scaleY));
-                        }
+                        UpdatePolygonDisplay();
+                        BuildSelectionMask();
                     }
                     else
                     {
@@ -427,6 +427,8 @@ namespace FlowMy.Views.NodeControls
             _selectionRect = null;
             _selectionPoints.Clear();
             _isSelecting = false;
+            _hasCachedSelectionMask = false;
+            _cachedSelectionMask = null;
             if (SelectionBoxRect != null)
             {
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
@@ -434,8 +436,66 @@ namespace FlowMy.Views.NodeControls
             if (SelectionPolygon != null)
             {
                 SelectionPolygon.Visibility = Visibility.Collapsed;
-                SelectionPolygon.Points.Clear();
+                SelectionPolygon.Data = null;
             }
+        }
+
+        private static bool GetLineIntersection(Point A, Point B, Point C, Point D, out Point intersection)
+        {
+            intersection = new Point();
+
+            double rxs = (B.X - A.X) * (D.Y - C.Y) - (B.Y - A.Y) * (D.X - C.X);
+            if (Math.Abs(rxs) < 1e-9)
+            {
+                // Parallel or collinear
+                return false;
+            }
+
+            double t = ((C.X - A.X) * (D.Y - C.Y) - (C.Y - A.Y) * (D.X - C.X)) / rxs;
+            double u = ((C.X - A.X) * (B.Y - A.Y) - (C.Y - A.Y) * (B.X - A.X)) / rxs;
+
+            if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0)
+            {
+                intersection.X = A.X + t * (B.X - A.X);
+                intersection.Y = A.Y + t * (B.Y - A.Y);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void UpdatePolygonDisplay()
+        {
+            if (_node.EditorDoc == null || SelectionPolygon == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            double scaleX = MainImage.ActualWidth / activeLayer.Width;
+            double scaleY = MainImage.ActualHeight / activeLayer.Height;
+
+            if (_selectionPoints.Count >= 3)
+            {
+                var pathGeometry = new PathGeometry();
+                var pathFigure = new PathFigure();
+                pathFigure.StartPoint = new Point(_selectionPoints[0].X * scaleX, _selectionPoints[0].Y * scaleY);
+
+                for (int i = 1; i < _selectionPoints.Count; i++)
+                {
+                    pathFigure.Segments.Add(new LineSegment(new Point(_selectionPoints[i].X * scaleX, _selectionPoints[i].Y * scaleY), true));
+                }
+                pathFigure.IsClosed = true;
+                pathGeometry.Figures.Add(pathFigure);
+                pathGeometry.FillRule = FillRule.Nonzero;
+
+                var outlined = pathGeometry.GetOutlinedPathGeometry();
+                SelectionPolygon.Data = outlined;
+            }
+            else
+            {
+                SelectionPolygon.Data = null;
+            }
+
+            SelectionPolygon.Visibility = Visibility.Visible;
         }
 
         private void ClosePolyLassoSelection()
@@ -447,21 +507,8 @@ namespace FlowMy.Views.NodeControls
             {
                 // Close path by connecting last point to start point
                 _selectionPoints.Add(_selectionPoints[0]);
-
-                if (_node.EditorDoc != null)
-                {
-                    var activeLayer = _node.EditorDoc.ActiveLayer;
-                    if (activeLayer != null)
-                    {
-                        double scaleX = MainImage.ActualWidth / activeLayer.Width;
-                        double scaleY = MainImage.ActualHeight / activeLayer.Height;
-                        SelectionPolygon.Points.Clear();
-                        foreach (var pt in _selectionPoints)
-                        {
-                            SelectionPolygon.Points.Add(new Point(pt.X * scaleX, pt.Y * scaleY));
-                        }
-                    }
-                }
+                UpdatePolygonDisplay();
+                BuildSelectionMask();
             }
             else
             {
@@ -471,36 +518,53 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdatePolyLassoPreview(Point currentMousePos)
         {
-            if (_node.EditorDoc == null) return;
+            if (_node.EditorDoc == null || SelectionPolygon == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
             double scaleX = MainImage.ActualWidth / activeLayer.Width;
             double scaleY = MainImage.ActualHeight / activeLayer.Height;
 
-            SelectionPolygon.Points.Clear();
-            foreach (var pt in _selectionPoints)
+            var pathGeometry = new PathGeometry();
+            var pathFigure = new PathFigure();
+            if (_selectionPoints.Count > 0)
             {
-                SelectionPolygon.Points.Add(new Point(pt.X * scaleX, pt.Y * scaleY));
+                pathFigure.StartPoint = new Point(_selectionPoints[0].X * scaleX, _selectionPoints[0].Y * scaleY);
+                for (int i = 1; i < _selectionPoints.Count; i++)
+                {
+                    pathFigure.Segments.Add(new LineSegment(new Point(_selectionPoints[i].X * scaleX, _selectionPoints[i].Y * scaleY), true));
+                }
+                pathFigure.Segments.Add(new LineSegment(currentMousePos, true));
+                pathGeometry.Figures.Add(pathFigure);
+                SelectionPolygon.Data = pathGeometry;
             }
-            // Add current mouse position preview
-            SelectionPolygon.Points.Add(currentMousePos);
+            SelectionPolygon.Visibility = Visibility.Visible;
         }
 
-        private static bool IsPointInPolygon(Point p, System.Collections.Generic.List<Point> polygon)
+        private void UpdateLassoPreview()
         {
-            bool isInside = false;
-            int count = polygon.Count;
-            for (int i = 0, j = count - 1; i < count; j = i++)
+            if (_node.EditorDoc == null || SelectionPolygon == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            double scaleX = MainImage.ActualWidth / activeLayer.Width;
+            double scaleY = MainImage.ActualHeight / activeLayer.Height;
+
+            var pathGeometry = new PathGeometry();
+            var pathFigure = new PathFigure();
+            if (_selectionPoints.Count > 0)
             {
-                if (((polygon[i].Y > p.Y) != (polygon[j].Y > p.Y)) &&
-                    (p.X < (polygon[j].X - polygon[i].X) * (p.Y - polygon[i].Y) / (polygon[j].Y - polygon[i].Y) + polygon[i].X))
+                pathFigure.StartPoint = new Point(_selectionPoints[0].X * scaleX, _selectionPoints[0].Y * scaleY);
+                for (int i = 1; i < _selectionPoints.Count; i++)
                 {
-                    isInside = !isInside;
+                    pathFigure.Segments.Add(new LineSegment(new Point(_selectionPoints[i].X * scaleX, _selectionPoints[i].Y * scaleY), true));
                 }
+                pathGeometry.Figures.Add(pathFigure);
+                SelectionPolygon.Data = pathGeometry;
             }
-            return isInside;
+            SelectionPolygon.Visibility = Visibility.Visible;
         }
+
 
         private void ImageProcessingNodeContentControl_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -1558,11 +1622,146 @@ namespace FlowMy.Views.NodeControls
                 var sel = _selectionRect.Value;
                 return x >= sel.Left && x <= sel.Right && y >= sel.Top && y <= sel.Bottom;
             }
-            if (_selectionPoints != null && _selectionPoints.Count >= 3)
+            if (_hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                return IsPointInPolygon(new Point(x, y), _selectionPoints);
+                if (x >= _cachedSelectionStartX && x <= _cachedSelectionEndX &&
+                    y >= _cachedSelectionStartY && y <= _cachedSelectionEndY)
+                {
+                    return _cachedSelectionMask[x - _cachedSelectionStartX, y - _cachedSelectionStartY];
+                }
+                return false;
             }
             return true;
+        }
+
+        private void BuildSelectionMask()
+        {
+            if (_selectionPoints == null || _selectionPoints.Count < 3)
+            {
+                _hasCachedSelectionMask = false;
+                _cachedSelectionMask = null;
+                return;
+            }
+
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            double minX = _selectionPoints.Min(p => p.X);
+            double maxX = _selectionPoints.Max(p => p.X);
+            double minY = _selectionPoints.Min(p => p.Y);
+            double maxY = _selectionPoints.Max(p => p.Y);
+
+            _cachedSelectionStartX = Math.Max(0, (int)Math.Floor(minX));
+            _cachedSelectionEndX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(maxX));
+            _cachedSelectionStartY = Math.Max(0, (int)Math.Floor(minY));
+            _cachedSelectionEndY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(maxY));
+
+            int w = _cachedSelectionEndX - _cachedSelectionStartX + 1;
+            int h = _cachedSelectionEndY - _cachedSelectionStartY + 1;
+
+            if (w > 0 && h > 0)
+            {
+                _cachedSelectionMask = GetPolygonMask(w, h, _selectionPoints, _cachedSelectionStartX, _cachedSelectionStartY);
+                _hasCachedSelectionMask = true;
+            }
+            else
+            {
+                _hasCachedSelectionMask = false;
+                _cachedSelectionMask = null;
+            }
+        }
+
+        private static bool[,] GetPolygonMask(int width, int height, List<Point> points, int startX, int startY)
+        {
+            int gridW = width + 2;
+            int gridH = height + 2;
+            byte[,] grid = new byte[gridW, gridH];
+
+            int count = points.Count;
+            for (int i = 0; i < count; i++)
+            {
+                Point p1 = points[i];
+                Point p2 = points[(i + 1) % count];
+
+                int x1 = (int)Math.Round(p1.X) - startX + 1;
+                int y1 = (int)Math.Round(p1.Y) - startY + 1;
+                int x2 = (int)Math.Round(p2.X) - startX + 1;
+                int y2 = (int)Math.Round(p2.Y) - startY + 1;
+
+                DrawLineOnGrid(grid, gridW, gridH, x1, y1, x2, y2);
+            }
+
+            var queue = new Queue<Tuple<int, int>>();
+            queue.Enqueue(new Tuple<int, int>(0, 0));
+            grid[0, 0] = 2; // Visited outside
+
+            int[] dx = { 0, 0, 1, -1 };
+            int[] dy = { 1, -1, 0, 0 };
+
+            while (queue.Count > 0)
+            {
+                var curr = queue.Dequeue();
+                int cx = curr.Item1;
+                int cy = curr.Item2;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    int nx = cx + dx[i];
+                    int ny = cy + dy[i];
+
+                    if (nx >= 0 && nx < gridW && ny >= 0 && ny < gridH)
+                    {
+                        if (grid[nx, ny] == 0)
+                        {
+                            grid[nx, ny] = 2;
+                            queue.Enqueue(new Tuple<int, int>(nx, ny));
+                        }
+                    }
+                }
+            }
+
+            bool[,] mask = new bool[width, height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    mask[x, y] = (grid[x + 1, y + 1] != 2);
+                }
+            }
+
+            return mask;
+        }
+
+        private static void DrawLineOnGrid(byte[,] grid, int w, int h, int x1, int y1, int x2, int y2)
+        {
+            int dx = Math.Abs(x2 - x1);
+            int dy = Math.Abs(y2 - y1);
+            int sx = x1 < x2 ? 1 : -1;
+            int sy = y1 < y2 ? 1 : -1;
+            int err = dx - dy;
+
+            while (true)
+            {
+                if (x1 >= 0 && x1 < w && y1 >= 0 && y1 < h)
+                {
+                    grid[x1, y1] = 1;
+                }
+
+                if (x1 == x2 && y1 == y2) break;
+
+                int e2 = 2 * err;
+                if (e2 > -dy)
+                {
+                    err -= dy;
+                    x1 += sx;
+                }
+                if (e2 < dx)
+                {
+                    err += dx;
+                    y1 += sy;
+                }
+            }
         }
 
         #endregion

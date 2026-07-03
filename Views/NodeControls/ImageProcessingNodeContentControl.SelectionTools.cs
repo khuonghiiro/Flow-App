@@ -154,10 +154,10 @@ namespace FlowMy.Views.NodeControls
                 double minY = _selectionPoints.Min(p => p.Y);
                 double maxY = _selectionPoints.Max(p => p.Y);
 
-                int startX = Math.Max(0, (int)minX);
-                int endX = Math.Min(activeLayer.Width - 1, (int)maxX);
-                int startY = Math.Max(0, (int)minY);
-                int endY = Math.Min(activeLayer.Height - 1, (int)maxY);
+                int startX = Math.Max(0, (int)Math.Floor(minX));
+                int endX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(maxX));
+                int startY = Math.Max(0, (int)Math.Floor(minY));
+                int endY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(maxY));
 
                 int w = endX - startX + 1;
                 int h = endY - startY + 1;
@@ -168,14 +168,15 @@ namespace FlowMy.Views.NodeControls
                 _selectionClipboardPixels = new byte[stride * h];
                 activeLayer.Bitmap.CopyPixels(rect, _selectionClipboardPixels, stride, 0);
 
+                // Get discrete boundary flood filled mask (handles self-intersection)
+                bool[,] mask = GetPolygonMask(w, h, _selectionPoints, startX, startY);
+
                 // Clear pixels outside the polygon
                 for (int dy = 0; dy < h; dy++)
                 {
-                    int py = startY + dy;
                     for (int dx = 0; dx < w; dx++)
                     {
-                        int px = startX + dx;
-                        if (!IsPointInPolygon(new Point(px, py), _selectionPoints))
+                        if (!mask[dx, dy])
                         {
                             _selectionClipboardPixels[(dy * w + dx) * 4 + 3] = 0; // Alpha = 0 (Transparent)
                         }
@@ -273,14 +274,22 @@ namespace FlowMy.Views.NodeControls
                 double minY = _selectionPoints.Min(p => p.Y);
                 double maxY = _selectionPoints.Max(p => p.Y);
 
-                startX = Math.Max(0, (int)minX);
-                endX = Math.Min(activeLayer.Width - 1, (int)maxX);
-                startY = Math.Max(0, (int)minY);
-                endY = Math.Min(activeLayer.Height - 1, (int)maxY);
+                startX = Math.Max(0, (int)Math.Floor(minX));
+                endX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(maxX));
+                startY = Math.Max(0, (int)Math.Floor(minY));
+                endY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(maxY));
                 hasSelection = true;
             }
 
             if (!hasSelection) return;
+
+            bool[,] mask = null;
+            if (_selectionPoints != null && _selectionPoints.Count >= 3 && !_selectionRect.HasValue)
+            {
+                int w = endX - startX + 1;
+                int h = endY - startY + 1;
+                mask = GetPolygonMask(w, h, _selectionPoints, startX, startY);
+            }
 
             for (int y = startY; y <= endY; y++)
             {
@@ -291,7 +300,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         newPixels[rowOffset + x * 4 + 3] = 0;
                     }
-                    else if (_selectionPoints != null && IsPointInPolygon(new Point(x, y), _selectionPoints))
+                    else if (mask != null && mask[x - startX, y - startY])
                     {
                         newPixels[rowOffset + x * 4 + 3] = 0;
                     }

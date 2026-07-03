@@ -1594,18 +1594,18 @@ namespace FlowMy.Views.NodeControls
             var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x4f, 0xff, 0xb0));
             var activeBorder = new SolidColorBrush(Color.FromRgb(0x4f, 0xff, 0xb0));
 
-            foreach (var (name, border) in _toolboxBorders)
+            // 1. Clear all highlights first
+            foreach (var border in _toolboxBorders.Values)
             {
-                if (name == activeTool)
-                {
-                    border.Background = activeBg;
-                    border.BorderBrush = activeBorder;
-                }
-                else
-                {
-                    border.Background = Brushes.Transparent;
-                    border.BorderBrush = Brushes.Transparent;
-                }
+                border.Background = Brushes.Transparent;
+                border.BorderBrush = Brushes.Transparent;
+            }
+
+            // 2. Set active highlight
+            if (_toolboxBorders.TryGetValue(activeTool, out var activeBorderElement) && activeBorderElement != null)
+            {
+                activeBorderElement.Background = activeBg;
+                activeBorderElement.BorderBrush = activeBorder;
             }
 
             EditorPanel.UpdatePanelVisibilities(activeTool);
