@@ -206,6 +206,8 @@ namespace FlowMy.Views.NodeControls
                 activeLayer.TempMoveDx = 0;
                 activeLayer.TempMoveDy = 0;
 
+                UpdatePolygonDisplay();
+
                 MainScrollViewer.CaptureMouse();
                 return;
             }
@@ -768,6 +770,16 @@ namespace FlowMy.Views.NodeControls
             if (_node.EditorDoc == null || SelectionPolygon == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
+
+            if (_isMovingLayer || _isKeyMoving)
+            {
+                SelectionPolygon.Visibility = Visibility.Collapsed;
+                if (SelectionPolygonBg != null)
+                {
+                    SelectionPolygonBg.Visibility = Visibility.Collapsed;
+                }
+                return;
+            }
 
             if (_activeSelectionGeometry != null)
             {
@@ -2144,6 +2156,8 @@ namespace FlowMy.Views.NodeControls
             _isKeyMoving = true;
             _keyDeltaX = 0;
             _keyDeltaY = 0;
+
+            UpdatePolygonDisplay();
 
             if (_keyMoveCommitTimer == null)
             {

@@ -1630,6 +1630,8 @@ namespace FlowMy.Views.NodeControls
             {
                 CommitActiveText();
             }
+
+            UpdatePolygonDisplay();
         }
 
         private void SyncToolboxColors()
