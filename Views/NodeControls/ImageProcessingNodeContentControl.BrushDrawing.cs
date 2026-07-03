@@ -44,7 +44,6 @@ namespace FlowMy.Views.NodeControls
         private int _keyDeltaX;
         private int _keyDeltaY;
         private DispatcherTimer? _keyMoveCommitTimer;
-        private byte[]? _moveTempPixels;
 
         /// <summary>Đánh dấu cần composite lại — timer sẽ xử lý ở tick tiếp theo (~30fps).</summary>
         private void MarkCompositeDirty()
@@ -120,8 +119,6 @@ namespace FlowMy.Views.NodeControls
 
         private bool _isMovingLayer;
         private Point _moveStartMousePos;
-        private byte[]? _moveBasePixels;
-        private byte[]? _moveFloatingPixels;
         private Geometry? _moveInitialGeometry;
         private byte[]? _moveInitialFullPixels;
 
@@ -194,46 +191,20 @@ namespace FlowMy.Views.NodeControls
                 int strideValue = w * 4;
                 _moveInitialFullPixels = new byte[strideValue * h];
                 activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
-                _moveTempPixels = new byte[strideValue * h];
 
                 if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
                 {
                     _moveInitialGeometry = _activeSelectionGeometry.Clone();
-
-                    // Cut the selection:
-                    _moveBasePixels = new byte[strideValue * h];
-                    _moveFloatingPixels = new byte[strideValue * h];
-                    Array.Copy(_moveInitialFullPixels, _moveBasePixels, _moveInitialFullPixels.Length);
-
-                    // Separate selected pixels
-                    for (int y = _cachedSelectionStartY; y <= _cachedSelectionEndY; y++)
-                    {
-                        int rowOffset = y * strideValue;
-                        for (int x = _cachedSelectionStartX; x <= _cachedSelectionEndX; x++)
-                        {
-                            bool isInside = IsInsideSelection(x, y);
-                            if (isInside)
-                            {
-                                int idx = rowOffset + x * 4;
-                                _moveFloatingPixels[idx] = _moveInitialFullPixels[idx];
-                                _moveFloatingPixels[idx + 1] = _moveInitialFullPixels[idx + 1];
-                                _moveFloatingPixels[idx + 2] = _moveInitialFullPixels[idx + 2];
-                                _moveFloatingPixels[idx + 3] = _moveInitialFullPixels[idx + 3];
-
-                                _moveBasePixels[idx] = 0;
-                                _moveBasePixels[idx + 1] = 0;
-                                _moveBasePixels[idx + 2] = 0;
-                                _moveBasePixels[idx + 3] = 0;
-                            }
-                        }
-                    }
+                    activeLayer.TempSelectionGeometry = _activeSelectionGeometry.Clone();
                 }
                 else
                 {
-                    _moveBasePixels = null;
-                    _moveFloatingPixels = null;
                     _moveInitialGeometry = null;
+                    activeLayer.TempSelectionGeometry = null;
                 }
+
+                activeLayer.TempMoveDx = 0;
+                activeLayer.TempMoveDy = 0;
 
                 MainScrollViewer.CaptureMouse();
                 return;
@@ -461,89 +432,16 @@ namespace FlowMy.Views.NodeControls
                 int dx = (int)Math.Round(docDeltaX);
                 int dy = (int)Math.Round(docDeltaY);
 
-                int w = activeLayer.Width;
-                int h = activeLayer.Height;
-                int moveStride = w * 4;
+                activeLayer.TempMoveDx = dx;
+                activeLayer.TempMoveDy = dy;
 
-                var tempPixels = new byte[moveStride * h];
-
-                if (_moveFloatingPixels != null && _moveBasePixels != null)
+                if (_moveInitialGeometry != null)
                 {
-                    Array.Copy(_moveBasePixels, tempPixels, tempPixels.Length);
-
-                    int startY = Math.Max(0, _cachedSelectionStartY + dy);
-                    int endY = Math.Min(h - 1, _cachedSelectionEndY + dy);
-                    int startX = Math.Max(0, _cachedSelectionStartX + dx);
-                    int endX = Math.Min(w - 1, _cachedSelectionEndX + dx);
-
-                    for (int y = startY; y <= endY; y++)
-                    {
-                        int srcY = y - dy;
-                        int destRowOffset = y * moveStride;
-                        int srcRowOffset = srcY * moveStride;
-
-                        for (int x = startX; x <= endX; x++)
-                        {
-                            int srcX = x - dx;
-                            int destIdx = destRowOffset + x * 4;
-                            int srcIdx = srcRowOffset + srcX * 4;
-
-                            byte srcAlpha = _moveFloatingPixels[srcIdx + 3];
-                            if (srcAlpha > 0)
-                            {
-                                tempPixels[destIdx] = _moveFloatingPixels[srcIdx];
-                                tempPixels[destIdx + 1] = _moveFloatingPixels[srcIdx + 1];
-                                tempPixels[destIdx + 2] = _moveFloatingPixels[srcIdx + 2];
-                                tempPixels[destIdx + 3] = _moveFloatingPixels[srcIdx + 3];
-                            }
-                        }
-                    }
-
-                    if (_moveInitialGeometry != null)
-                    {
-                        var transform = new TranslateTransform(dx, dy);
-                        _activeSelectionGeometry = Geometry.Combine(_moveInitialGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
-                        UpdatePolygonDisplay();
-                    }
-                }
-                else
-                {
-                    // Fast row copy for full layer move
-                    int pixelSize = 4;
-                    int rowBytes = w * pixelSize;
-
-                    for (int y = 0; y < h; y++)
-                    {
-                        int srcY = y - dy;
-                        int destRowOffset = y * moveStride;
-
-                        if (srcY >= 0 && srcY < h)
-                        {
-                            int srcRowOffset = srcY * moveStride;
-                            if (dx > 0)
-                            {
-                                Array.Clear(tempPixels, destRowOffset, dx * pixelSize);
-                                Buffer.BlockCopy(_moveInitialFullPixels, srcRowOffset, tempPixels, destRowOffset + dx * pixelSize, (w - dx) * pixelSize);
-                            }
-                            else if (dx < 0)
-                            {
-                                int copyWidth = w + dx;
-                                Buffer.BlockCopy(_moveInitialFullPixels, srcRowOffset - dx * pixelSize, tempPixels, destRowOffset, copyWidth * pixelSize);
-                                Array.Clear(tempPixels, destRowOffset + copyWidth * pixelSize, (-dx) * pixelSize);
-                            }
-                            else
-                            {
-                                Buffer.BlockCopy(_moveInitialFullPixels, srcRowOffset, tempPixels, destRowOffset, rowBytes);
-                            }
-                        }
-                        else
-                        {
-                            Array.Clear(tempPixels, destRowOffset, rowBytes);
-                        }
-                    }
+                    var transform = new TranslateTransform(dx, dy);
+                    _activeSelectionGeometry = Geometry.Combine(_moveInitialGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
+                    UpdatePolygonDisplay();
                 }
 
-                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), tempPixels, moveStride, 0);
                 MarkCompositeDirty();
                 return;
             }
@@ -580,6 +478,16 @@ namespace FlowMy.Views.NodeControls
 
                 if (activeLayer != null && _moveInitialFullPixels != null)
                 {
+                    int dx = (int)Math.Round(activeLayer.TempMoveDx);
+                    int dy = (int)Math.Round(activeLayer.TempMoveDy);
+
+                    activeLayer.TempMoveDx = 0;
+                    activeLayer.TempMoveDy = 0;
+                    activeLayer.TempSelectionGeometry = null;
+
+                    // Apply actual shift once
+                    ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
+
                     int moveStride = activeLayer.Width * 4;
                     var finalPixels = new byte[moveStride * activeLayer.Height];
                     activeLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
@@ -597,8 +505,6 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 _moveInitialFullPixels = null;
-                _moveBasePixels = null;
-                _moveFloatingPixels = null;
                 _moveInitialGeometry = null;
                 return;
             }
@@ -2143,39 +2049,16 @@ namespace FlowMy.Views.NodeControls
             if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
             {
                 _moveInitialGeometry = _activeSelectionGeometry.Clone();
-
-                _moveBasePixels = new byte[strideValue * h];
-                _moveFloatingPixels = new byte[strideValue * h];
-                Array.Copy(_moveInitialFullPixels, _moveBasePixels, _moveInitialFullPixels.Length);
-
-                for (int y = _cachedSelectionStartY; y <= _cachedSelectionEndY; y++)
-                {
-                    int rowOffset = y * strideValue;
-                    for (int x = _cachedSelectionStartX; x <= _cachedSelectionEndX; x++)
-                    {
-                        bool isInside = IsInsideSelection(x, y);
-                        if (isInside)
-                        {
-                            int idx = rowOffset + x * 4;
-                            _moveFloatingPixels[idx] = _moveInitialFullPixels[idx];
-                            _moveFloatingPixels[idx + 1] = _moveInitialFullPixels[idx + 1];
-                            _moveFloatingPixels[idx + 2] = _moveInitialFullPixels[idx + 2];
-                            _moveFloatingPixels[idx + 3] = _moveInitialFullPixels[idx + 3];
-
-                            _moveBasePixels[idx] = 0;
-                            _moveBasePixels[idx + 1] = 0;
-                            _moveBasePixels[idx + 2] = 0;
-                            _moveBasePixels[idx + 3] = 0;
-                        }
-                    }
-                }
+                activeLayer.TempSelectionGeometry = _activeSelectionGeometry.Clone();
             }
             else
             {
-                _moveBasePixels = null;
-                _moveFloatingPixels = null;
                 _moveInitialGeometry = null;
+                activeLayer.TempSelectionGeometry = null;
             }
+
+            activeLayer.TempMoveDx = 0;
+            activeLayer.TempMoveDy = 0;
 
             _isKeyMoving = true;
             _keyDeltaX = 0;
@@ -2205,11 +2088,21 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node?.EditorDoc?.ActiveLayer;
             if (activeLayer != null && _moveInitialFullPixels != null)
             {
+                int dx = _keyDeltaX;
+                int dy = _keyDeltaY;
+
+                activeLayer.TempMoveDx = 0;
+                activeLayer.TempMoveDy = 0;
+                activeLayer.TempSelectionGeometry = null;
+
+                // Apply actual shift once
+                ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
+
                 int stride = activeLayer.Width * 4;
                 var finalPixels = new byte[stride * activeLayer.Height];
                 activeLayer.Bitmap.CopyPixels(finalPixels, stride, 0);
 
-                if (_keyDeltaX != 0 || _keyDeltaY != 0)
+                if (dx != 0 || dy != 0)
                 {
                     var cmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
                     _node.EditorDoc.History.Execute(cmd);
@@ -2225,68 +2118,80 @@ namespace FlowMy.Views.NodeControls
             }
 
             _moveInitialFullPixels = null;
-            _moveBasePixels = null;
-            _moveFloatingPixels = null;
             _moveInitialGeometry = null;
-            _moveTempPixels = null;
         }
 
         private void ApplyTemporaryKeyMove(EditorLayer activeLayer)
         {
+            activeLayer.TempMoveDx = _keyDeltaX;
+            activeLayer.TempMoveDy = _keyDeltaY;
+
+            if (_moveInitialGeometry != null)
+            {
+                var transform = new TranslateTransform(_keyDeltaX, _keyDeltaY);
+                _activeSelectionGeometry = Geometry.Combine(_moveInitialGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
+                UpdatePolygonDisplay();
+            }
+
+            MarkCompositeDirty();
+        }
+
+        private void ShiftBitmapPixels(EditorLayer activeLayer, byte[] sourceFullPixels, int dx, int dy)
+        {
             int w = activeLayer.Width;
             int h = activeLayer.Height;
             int stride = w * 4;
+            byte[] tempPixels = new byte[stride * h];
 
-            if (_moveTempPixels == null || _moveTempPixels.Length != stride * h)
+            if (_moveInitialGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                _moveTempPixels = new byte[stride * h];
-            }
-            var tempPixels = _moveTempPixels;
+                // Start by copying sourceFullPixels
+                Array.Copy(sourceFullPixels, tempPixels, tempPixels.Length);
 
-            int dx = _keyDeltaX;
-            int dy = _keyDeltaY;
-
-            if (_moveFloatingPixels != null && _moveBasePixels != null)
-            {
-                Array.Copy(_moveBasePixels, tempPixels, tempPixels.Length);
-
-                int startY = Math.Max(0, _cachedSelectionStartY + dy);
-                int endY = Math.Min(h - 1, _cachedSelectionEndY + dy);
-                int startX = Math.Max(0, _cachedSelectionStartX + dx);
-                int endX = Math.Min(w - 1, _cachedSelectionEndX + dx);
-
-                for (int y = startY; y <= endY; y++)
+                // Clear the source selection area in tempPixels
+                for (int y = _cachedSelectionStartY; y <= _cachedSelectionEndY; y++)
                 {
-                    int srcY = y - dy;
-                    int destRowOffset = y * stride;
-                    int srcRowOffset = srcY * stride;
-
-                    for (int x = startX; x <= endX; x++)
+                    int rowOffset = y * stride;
+                    for (int x = _cachedSelectionStartX; x <= _cachedSelectionEndX; x++)
                     {
-                        int srcX = x - dx;
-                        int destIdx = destRowOffset + x * 4;
-                        int srcIdx = srcRowOffset + srcX * 4;
-
-                        byte srcAlpha = _moveFloatingPixels[srcIdx + 3];
-                        if (srcAlpha > 0)
+                        if (IsInsideSelection(x, y))
                         {
-                            tempPixels[destIdx] = _moveFloatingPixels[srcIdx];
-                            tempPixels[destIdx + 1] = _moveFloatingPixels[srcIdx + 1];
-                            tempPixels[destIdx + 2] = _moveFloatingPixels[srcIdx + 2];
-                            tempPixels[destIdx + 3] = _moveFloatingPixels[srcIdx + 3];
+                            int idx = rowOffset + x * 4;
+                            tempPixels[idx] = 0;
+                            tempPixels[idx + 1] = 0;
+                            tempPixels[idx + 2] = 0;
+                            tempPixels[idx + 3] = 0;
                         }
                     }
                 }
 
-                if (_moveInitialGeometry != null)
+                // Draw the shifted selection area into tempPixels
+                for (int y = _cachedSelectionStartY; y <= _cachedSelectionEndY; y++)
                 {
-                    var transform = new TranslateTransform(dx, dy);
-                    _activeSelectionGeometry = Geometry.Combine(_moveInitialGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
-                    UpdatePolygonDisplay();
+                    int destY = y + dy;
+                    if (destY < 0 || destY >= h) continue;
+
+                    int rowOffset = y * stride;
+                    for (int x = _cachedSelectionStartX; x <= _cachedSelectionEndX; x++)
+                    {
+                        int destX = x + dx;
+                        if (destX < 0 || destX >= w) continue;
+
+                        if (IsInsideSelection(x, y))
+                        {
+                            int srcIdx = rowOffset + x * 4;
+                            int destIdx = (destY * w + destX) * 4;
+                            tempPixels[destIdx] = sourceFullPixels[srcIdx];
+                            tempPixels[destIdx + 1] = sourceFullPixels[srcIdx + 1];
+                            tempPixels[destIdx + 2] = sourceFullPixels[srcIdx + 2];
+                            tempPixels[destIdx + 3] = sourceFullPixels[srcIdx + 3];
+                        }
+                    }
                 }
             }
             else
             {
+                // Fast row copy for full layer move
                 int pixelSize = 4;
                 int rowBytes = w * pixelSize;
 
@@ -2301,17 +2206,17 @@ namespace FlowMy.Views.NodeControls
                         if (dx > 0)
                         {
                             Array.Clear(tempPixels, destRowOffset, dx * pixelSize);
-                            Buffer.BlockCopy(_moveInitialFullPixels, srcRowOffset, tempPixels, destRowOffset + dx * pixelSize, (w - dx) * pixelSize);
+                            Buffer.BlockCopy(sourceFullPixels, srcRowOffset, tempPixels, destRowOffset + dx * pixelSize, (w - dx) * pixelSize);
                         }
                         else if (dx < 0)
                         {
                             int copyWidth = w + dx;
-                            Buffer.BlockCopy(_moveInitialFullPixels, srcRowOffset - dx * pixelSize, tempPixels, destRowOffset, copyWidth * pixelSize);
+                            Buffer.BlockCopy(sourceFullPixels, srcRowOffset - dx * pixelSize, tempPixels, destRowOffset, copyWidth * pixelSize);
                             Array.Clear(tempPixels, destRowOffset + copyWidth * pixelSize, (-dx) * pixelSize);
                         }
                         else
                         {
-                            Buffer.BlockCopy(_moveInitialFullPixels, srcRowOffset, tempPixels, destRowOffset, rowBytes);
+                            Buffer.BlockCopy(sourceFullPixels, srcRowOffset, tempPixels, destRowOffset, rowBytes);
                         }
                     }
                     else
@@ -2322,7 +2227,6 @@ namespace FlowMy.Views.NodeControls
             }
 
             activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), tempPixels, stride, 0);
-            MarkCompositeDirty();
         }
 
         #endregion

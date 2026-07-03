@@ -165,7 +165,36 @@ namespace FlowMy.Models.ImageEditor
                         if (!layer.IsVisible || layer.Opacity <= 0) continue;
 
                         drawingContext.PushOpacity(layer.Opacity);
-                        drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, Width, Height));
+
+                        if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
+                        {
+                            if (layer.TempSelectionGeometry != null)
+                            {
+                                // Draw background (everything outside selection)
+                                var boundsGeom = new RectangleGeometry(new Rect(0, 0, Width, Height));
+                                var bgGeom = Geometry.Combine(boundsGeom, layer.TempSelectionGeometry, GeometryCombineMode.Exclude, null);
+                                drawingContext.PushClip(bgGeom);
+                                drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, Width, Height));
+                                drawingContext.Pop();
+
+                                // Draw shifted selection
+                                var transform = new TranslateTransform(layer.TempMoveDx, layer.TempMoveDy);
+                                var fgGeom = Geometry.Combine(layer.TempSelectionGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
+                                drawingContext.PushClip(fgGeom);
+                                drawingContext.DrawImage(layer.Bitmap, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
+                                drawingContext.Pop();
+                            }
+                            else
+                            {
+                                // Shift entire layer
+                                drawingContext.DrawImage(layer.Bitmap, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
+                            }
+                        }
+                        else
+                        {
+                            drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, Width, Height));
+                        }
+
                         drawingContext.Pop();
                     }
                 }

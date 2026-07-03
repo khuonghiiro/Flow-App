@@ -712,6 +712,15 @@
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,6,0">
                         <TextBlock Text="DRAW" FontSize="7" FontWeight="Bold" Foreground="#5a6072"
                                    HorizontalAlignment="Center" Margin="0,1,0,3"/>
+
+                        <Border x:Name="TbxMove" Tag="Move" ToolTip="Move (V)"
+         Style="{StaticResource FxToolBtnStyle}"
+         MouseLeftButtonDown="EditorToolbox_Click">
+                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+         Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down-left-right duotone'}"
+         HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </Border>
+                        
                         <Border x:Name="TbxSelectionActive" Tag="Selection" ToolTip="Selection (M)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="SelectionGroupBtn_LeftClick"
@@ -754,13 +763,7 @@
                                 Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eye-dropper duotone'}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
-                        <Border x:Name="TbxMove" Tag="Move" ToolTip="Move (V)"
-                                Style="{StaticResource FxToolBtnStyle}"
-                                MouseLeftButtonDown="EditorToolbox_Click">
-                            <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down-left-right duotone'}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Border>
+                       
                         <Border x:Name="TbxText" Tag="Text" ToolTip="Text (T)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="EditorToolbox_Click">

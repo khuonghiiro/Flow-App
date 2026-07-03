@@ -299,6 +299,10 @@ namespace FlowMy.Models.ImageEditor
         private string _textFontStyle = "Bold";
         private bool _isEditingName;
 
+        public double TempMoveDx { get; set; }
+        public double TempMoveDy { get; set; }
+        public Geometry? TempSelectionGeometry { get; set; }
+
         public bool IsEditingName { get => _isEditingName; set => SetField(ref _isEditingName, value); }
         public bool IsTextLayer { get => _isTextLayer; set => SetField(ref _isTextLayer, value); }
         public string TextContent { get => _textContent; set => SetField(ref _textContent, value ?? ""); }

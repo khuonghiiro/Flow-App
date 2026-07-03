@@ -559,6 +559,11 @@ namespace FlowMy.Views.NodeControls
 
                     if (inside && !_isSpacePressed && !_isPanning)
                     {
+                        if (MainImage.Cursor != Cursors.None)
+                        {
+                            MainImage.Cursor = Cursors.None;
+                        }
+
                         double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
                         double radius = EditorPanel.BrushSize * scaleX; 
                         double diameter = radius * 2;
@@ -585,6 +590,10 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            if (MainImage.Cursor == Cursors.None)
+            {
+                MainImage.Cursor = null; // Restore default cursor
+            }
             BrushPreviewCursor.Visibility = Visibility.Collapsed;
         }
 
