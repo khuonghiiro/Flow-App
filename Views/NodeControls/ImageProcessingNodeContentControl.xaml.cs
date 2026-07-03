@@ -2218,6 +2218,8 @@ namespace FlowMy.Views.NodeControls
         private byte[]? _strokeAlphaMask;
         private Point _lastDrawingPixelPoint;
         private byte[]? _oldPixelsForUndo;
+        private BrushPreset _currentBrushPreset = BrushPreset.RoundHard;
+        private readonly Random _brushRng = new();
 
         // ── Throttled composite during drawing (avoid lag) ──
         private DispatcherTimer? _compositeTimer;
@@ -2407,7 +2409,7 @@ namespace FlowMy.Views.NodeControls
                 double flow = EditorPanel.BrushFlow;
                 Color color = _node.EditorDoc.ForegroundColor;
 
-                DrawBrushCircle(_strokeAlphaMask, w, h, px, py, radius, hardness, flow);
+                DrawBrushCircle(_strokeAlphaMask, w, h, px, py, radius, hardness, flow, _currentBrushPreset);
                 ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, w, h, color, isEraser);
 
                 activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), _tempDrawingPixels, stride, 0);
@@ -2459,7 +2461,7 @@ namespace FlowMy.Views.NodeControls
             Color color = _node.EditorDoc.ForegroundColor;
 
             var currentPoint = new Point(px, py);
-            DrawBrushLine(_strokeAlphaMask, activeLayer.Width, activeLayer.Height, _lastDrawingPixelPoint, currentPoint, radius, hardness, flow);
+            DrawBrushLine(_strokeAlphaMask, activeLayer.Width, activeLayer.Height, _lastDrawingPixelPoint, currentPoint, radius, hardness, flow, _currentBrushPreset);
             _lastDrawingPixelPoint = currentPoint;
 
             ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, activeLayer.Width, activeLayer.Height, color, isEraser);
@@ -2654,7 +2656,39 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private void DrawBrushCircle(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
+        private void DrawBrushCircle(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow,
+            BrushPreset preset = BrushPreset.RoundHard)
+        {
+            switch (preset)
+            {
+                case BrushPreset.RoundSoft:
+                    DrawBrush_RoundSoft(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.Flat:
+                    DrawBrush_Flat(alphaMask, width, height, cx, cy, radius, hardness, flow);
+                    break;
+                case BrushPreset.Chalk:
+                    DrawBrush_Chalk(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.Spray:
+                    DrawBrush_Spray(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.Scatter:
+                    DrawBrush_Scatter(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.Pencil:
+                    DrawBrush_Pencil(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                default: // RoundHard
+                    DrawBrush_RoundHard(alphaMask, width, height, cx, cy, radius, hardness, flow);
+                    break;
+            }
+        }
+
+        #region ═══ BRUSH PRESETS ═══
+
+        /// <summary>Round Hard — cọ tròn cứng (mặc định gốc).</summary>
+        private void DrawBrush_RoundHard(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
         {
             int startX = Math.Max(0, (int)Math.Floor(cx - radius));
             int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + radius));
@@ -2678,27 +2712,16 @@ namespace FlowMy.Views.NodeControls
 
                     if (dist2 <= r2)
                     {
-                        if (_selectionRect.HasValue)
-                        {
-                            if (x < _selectionRect.Value.Left || x > _selectionRect.Value.Right ||
-                                y < _selectionRect.Value.Top || y > _selectionRect.Value.Bottom)
-                            {
-                                continue;
-                            }
-                        }
+                        if (!IsInsideSelection(x, y)) continue;
 
                         double dist = Math.Sqrt(dist2);
                         double pixelOpacity = 1.0;
                         if (dist > innerRadius)
                         {
                             if (radius - innerRadius > 0.001)
-                            {
                                 pixelOpacity = 1.0 - (dist - innerRadius) / (radius - innerRadius);
-                            }
                             else
-                            {
                                 pixelOpacity = 0.0;
-                            }
                         }
 
                         byte brushAlpha = (byte)(pixelOpacity * flowMul * 255.0);
@@ -2706,15 +2729,274 @@ namespace FlowMy.Views.NodeControls
 
                         int maskOffset = rowOffset + x;
                         if (brushAlpha > alphaMask[maskOffset])
-                        {
                             alphaMask[maskOffset] = brushAlpha;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Round Soft — gaussian-like smooth falloff.</summary>
+        private void DrawBrush_RoundSoft(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            int startX = Math.Max(0, (int)Math.Floor(cx - radius));
+            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + radius));
+            int startY = Math.Max(0, (int)Math.Floor(cy - radius));
+            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + radius));
+
+            double r2 = radius * radius;
+            double flowMul = flow / 100.0;
+            // Gaussian sigma: falloff curve — sigma = radius / 2.5 cho hiệu ứng mềm
+            double sigma = radius / 2.5;
+            double sigma2x2 = 2.0 * sigma * sigma;
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * width;
+                double dy = y - cy;
+                double dy2 = dy * dy;
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    double dx = x - cx;
+                    double dist2 = dx * dx + dy2;
+
+                    if (dist2 <= r2)
+                    {
+                        if (!IsInsideSelection(x, y)) continue;
+
+                        double gaussianOpacity = Math.Exp(-dist2 / sigma2x2);
+                        byte brushAlpha = (byte)(gaussianOpacity * flowMul * 255.0);
+                        if (brushAlpha <= 0) continue;
+
+                        int maskOffset = rowOffset + x;
+                        if (brushAlpha > alphaMask[maskOffset])
+                            alphaMask[maskOffset] = brushAlpha;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Flat — cọ dẹp hình chữ nhật ngang, ratio ~3:1.</summary>
+        private void DrawBrush_Flat(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
+        {
+            double halfW = radius;          // chiều rộng = diameter
+            double halfH = radius / 3.0;    // chiều cao = 1/3 diameter
+            double flowMul = flow / 100.0;
+            double hardnessMul = hardness / 100.0;
+
+            int startX = Math.Max(0, (int)Math.Floor(cx - halfW));
+            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + halfW));
+            int startY = Math.Max(0, (int)Math.Floor(cy - halfH));
+            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + halfH));
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * width;
+                double dy = Math.Abs(y - cy) / halfH; // 0..1
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    double dx = Math.Abs(x - cx) / halfW; // 0..1
+                    if (dx > 1.0 || dy > 1.0) continue;
+                    if (!IsInsideSelection(x, y)) continue;
+
+                    // Edge softness
+                    double edgeDist = Math.Max(dx, dy);
+                    double pixelOpacity = 1.0;
+                    double innerEdge = hardnessMul;
+                    if (edgeDist > innerEdge && innerEdge < 1.0)
+                        pixelOpacity = 1.0 - (edgeDist - innerEdge) / (1.0 - innerEdge);
+
+                    byte brushAlpha = (byte)(pixelOpacity * flowMul * 255.0);
+                    if (brushAlpha <= 0) continue;
+
+                    int maskOffset = rowOffset + x;
+                    if (brushAlpha > alphaMask[maskOffset])
+                        alphaMask[maskOffset] = brushAlpha;
+                }
+            }
+        }
+
+        /// <summary>Chalk — phấn, noise-modulated circle mask.</summary>
+        private void DrawBrush_Chalk(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            int startX = Math.Max(0, (int)Math.Floor(cx - radius));
+            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + radius));
+            int startY = Math.Max(0, (int)Math.Floor(cy - radius));
+            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + radius));
+
+            double r2 = radius * radius;
+            double flowMul = flow / 100.0;
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * width;
+                double dy = y - cy;
+                double dy2 = dy * dy;
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    double dx = x - cx;
+                    double dist2 = dx * dx + dy2;
+
+                    if (dist2 <= r2)
+                    {
+                        if (!IsInsideSelection(x, y)) continue;
+
+                        // Noise: random gaps tạo hiệu ứng phấn gritty
+                        if (_brushRng.NextDouble() < 0.35) continue; // 35% pixel bị bỏ
+
+                        double dist = Math.Sqrt(dist2);
+                        double falloff = 1.0 - (dist / radius);
+                        // Thêm noise vào opacity
+                        double noiseMul = 0.4 + _brushRng.NextDouble() * 0.6;
+                        double pixelOpacity = falloff * noiseMul;
+
+                        byte brushAlpha = (byte)Math.Clamp(pixelOpacity * flowMul * 255.0, 0, 255);
+                        if (brushAlpha <= 0) continue;
+
+                        int maskOffset = rowOffset + x;
+                        if (brushAlpha > alphaMask[maskOffset])
+                            alphaMask[maskOffset] = brushAlpha;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Spray — bình xịt, scatter random dots trong bán kính.</summary>
+        private void DrawBrush_Spray(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            double flowMul = flow / 100.0;
+            // Số dots tỷ lệ với diện tích brush
+            int dotCount = (int)(radius * radius * 0.15);
+            dotCount = Math.Clamp(dotCount, 8, 2000);
+
+            for (int i = 0; i < dotCount; i++)
+            {
+                // Random point trong circle
+                double angle = _brushRng.NextDouble() * Math.PI * 2;
+                double r = Math.Sqrt(_brushRng.NextDouble()) * radius; // uniform distribution in circle
+                int px = (int)(cx + Math.Cos(angle) * r);
+                int py = (int)(cy + Math.Sin(angle) * r);
+
+                if (px < 0 || px >= width || py < 0 || py >= height) continue;
+                if (!IsInsideSelection(px, py)) continue;
+
+                // Opacity giảm theo khoảng cách
+                double distRatio = r / radius;
+                double dotOpacity = (1.0 - distRatio * 0.5) * flowMul;
+                byte brushAlpha = (byte)Math.Clamp(dotOpacity * 255.0, 0, 255);
+                if (brushAlpha <= 0) continue;
+
+                int maskOffset = py * width + px;
+                if (brushAlpha > alphaMask[maskOffset])
+                    alphaMask[maskOffset] = brushAlpha;
+            }
+        }
+
+        /// <summary>Scatter — điểm rải rác, random positions + size variation.</summary>
+        private void DrawBrush_Scatter(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            double flowMul = flow / 100.0;
+            // Tạo 3-7 blobs ngẫu nhiên quanh tâm
+            int blobCount = 3 + _brushRng.Next(5);
+
+            for (int b = 0; b < blobCount; b++)
+            {
+                // Random offset
+                double offsetX = (_brushRng.NextDouble() - 0.5) * radius * 1.5;
+                double offsetY = (_brushRng.NextDouble() - 0.5) * radius * 1.5;
+                double blobCx = cx + offsetX;
+                double blobCy = cy + offsetY;
+                double blobRadius = radius * (0.15 + _brushRng.NextDouble() * 0.35);
+
+                int startX = Math.Max(0, (int)Math.Floor(blobCx - blobRadius));
+                int endX = Math.Min(width - 1, (int)Math.Ceiling(blobCx + blobRadius));
+                int startY = Math.Max(0, (int)Math.Floor(blobCy - blobRadius));
+                int endY = Math.Min(height - 1, (int)Math.Ceiling(blobCy + blobRadius));
+                double br2 = blobRadius * blobRadius;
+
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * width;
+                    double dy = y - blobCy;
+                    double dy2 = dy * dy;
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        double dx = x - blobCx;
+                        if (dx * dx + dy2 <= br2)
+                        {
+                            if (!IsInsideSelection(x, y)) continue;
+                            double dist = Math.Sqrt(dx * dx + dy2);
+                            double falloff = 1.0 - (dist / blobRadius);
+                            byte brushAlpha = (byte)Math.Clamp(falloff * flowMul * 255.0, 0, 255);
+                            if (brushAlpha <= 0) continue;
+                            int maskOffset = rowOffset + x;
+                            if (brushAlpha > alphaMask[maskOffset])
+                                alphaMask[maskOffset] = brushAlpha;
                         }
                     }
                 }
             }
         }
 
-        private void DrawBrushLine(byte[] alphaMask, int width, int height, Point p1, Point p2, double radius, double hardness, double flow)
+        /// <summary>Pencil — bút chì, nét nhỏ cứng với slight jitter.</summary>
+        private void DrawBrush_Pencil(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            // Pencil: cap radius nhỏ hơn, hardness = 100%
+            double pencilRadius = Math.Min(radius, Math.Max(1.5, radius * 0.5));
+            double flowMul = flow / 100.0;
+
+            // Slight position jitter
+            cx += (_brushRng.NextDouble() - 0.5) * 0.8;
+            cy += (_brushRng.NextDouble() - 0.5) * 0.8;
+
+            int startX = Math.Max(0, (int)Math.Floor(cx - pencilRadius));
+            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + pencilRadius));
+            int startY = Math.Max(0, (int)Math.Floor(cy - pencilRadius));
+            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + pencilRadius));
+            double r2 = pencilRadius * pencilRadius;
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * width;
+                double dy = y - cy;
+                double dy2 = dy * dy;
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    double dx = x - cx;
+                    double dist2 = dx * dx + dy2;
+
+                    if (dist2 <= r2)
+                    {
+                        if (!IsInsideSelection(x, y)) continue;
+
+                        // Hard edge — full opacity within circle
+                        byte brushAlpha = (byte)(flowMul * 255.0);
+                        if (brushAlpha <= 0) continue;
+
+                        int maskOffset = rowOffset + x;
+                        if (brushAlpha > alphaMask[maskOffset])
+                            alphaMask[maskOffset] = brushAlpha;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Helper: kiểm tra pixel nằm trong selection (hoặc không có selection).</summary>
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private bool IsInsideSelection(int x, int y)
+        {
+            if (!_selectionRect.HasValue) return true;
+            var sel = _selectionRect.Value;
+            return x >= sel.Left && x <= sel.Right && y >= sel.Top && y <= sel.Bottom;
+        }
+
+        #endregion
+
+        private void DrawBrushLine(byte[] alphaMask, int width, int height, Point p1, Point p2, double radius, double hardness, double flow,
+            BrushPreset preset = BrushPreset.RoundHard)
         {
             double dx = p2.X - p1.X;
             double dy = p2.Y - p1.Y;
@@ -2722,18 +3004,22 @@ namespace FlowMy.Views.NodeControls
 
             if (len == 0)
             {
-                DrawBrushCircle(alphaMask, width, height, p1.X, p1.Y, radius, hardness, flow);
+                DrawBrushCircle(alphaMask, width, height, p1.X, p1.Y, radius, hardness, flow, preset);
                 return;
             }
 
             double step = Math.Max(1.0, radius / 4.0);
+            // Spray/Scatter cần step lớn hơn để không quá dense
+            if (preset == BrushPreset.Spray || preset == BrushPreset.Scatter)
+                step = Math.Max(step, radius * 0.5);
+
             for (double d = 0; d <= len; d += step)
             {
                 double cx = p1.X + (dx * d / len);
                 double cy = p1.Y + (dy * d / len);
-                DrawBrushCircle(alphaMask, width, height, cx, cy, radius, hardness, flow);
+                DrawBrushCircle(alphaMask, width, height, cx, cy, radius, hardness, flow, preset);
             }
-            DrawBrushCircle(alphaMask, width, height, p2.X, p2.Y, radius, hardness, flow);
+            DrawBrushCircle(alphaMask, width, height, p2.X, p2.Y, radius, hardness, flow, preset);
         }
 
         private void ApplyStrokeToPixels(byte[] destPixels, byte[] srcPixels, byte[] alphaMask, int width, int height, Color color, bool isEraser)
@@ -3054,6 +3340,22 @@ namespace FlowMy.Views.NodeControls
             if (OptBrushFlow != null && OptBrushFlow.Value != EditorPanel.BrushFlow)
                 OptBrushFlow.Value = EditorPanel.BrushFlow;
             UpdateBrushCursorPosition();
+        }
+
+        private void OptBrushPreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OptBrushPreset == null) return;
+            _currentBrushPreset = OptBrushPreset.SelectedIndex switch
+            {
+                0 => BrushPreset.RoundHard,
+                1 => BrushPreset.RoundSoft,
+                2 => BrushPreset.Flat,
+                3 => BrushPreset.Chalk,
+                4 => BrushPreset.Spray,
+                5 => BrushPreset.Scatter,
+                6 => BrushPreset.Pencil,
+                _ => BrushPreset.RoundHard
+            };
         }
 
         private void OptBrushSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

@@ -329,6 +329,19 @@
                 <!-- ═══ BRUSH OPTIONS ═══ -->
                 <StackPanel x:Name="OptBrushPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <TextBlock Text="🖌️ Brush" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <TextBlock Text="Preset:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="OptBrushPreset" Height="18" Width="95" FontSize="9"
+                              Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center"
+                              SelectionChanged="OptBrushPreset_SelectionChanged">
+                        <ComboBoxItem Content="Round Hard" IsSelected="True"/>
+                        <ComboBoxItem Content="Round Soft"/>
+                        <ComboBoxItem Content="Flat"/>
+                        <ComboBoxItem Content="Chalk"/>
+                        <ComboBoxItem Content="Spray"/>
+                        <ComboBoxItem Content="Scatter"/>
+                        <ComboBoxItem Content="Pencil"/>
+                    </ComboBox>
                     
                     <TextBlock Text="Size:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <Slider x:Name="OptBrushSize" Minimum="1" Maximum="200" Value="10" Width="80" VerticalAlignment="Center" ValueChanged="OptBrushSize_ValueChanged"/>
