@@ -620,6 +620,22 @@
                 <StackPanel x:Name="OptSelectionPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <TextBlock Text="⬜ Selection" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
 
+                    <TextBlock Text="Mode:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <!-- Mode New -->
+                        <Border x:Name="BtnSelModeNew" Width="18" Height="18" CornerRadius="2" BorderThickness="1" BorderBrush="#00cfff" Background="#3000cfff" Cursor="Hand" ToolTip="New Selection (Tạo vùng chọn mới)" MouseLeftButtonDown="SelMode_Click" Tag="New" Margin="0,0,4,0">
+                            <TextBlock Text="⬜" FontSize="9" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,1"/>
+                        </Border>
+                        <!-- Mode Add -->
+                        <Border x:Name="BtnSelModeAdd" Width="18" Height="18" CornerRadius="2" BorderThickness="1" BorderBrush="#353945" Background="Transparent" Cursor="Hand" ToolTip="Add to Selection (Cộng thêm vùng chọn)" MouseLeftButtonDown="SelMode_Click" Tag="Add" Margin="0,0,4,0">
+                            <TextBlock Text="➕" FontSize="8" Foreground="#dde3ef" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <!-- Mode Subtract -->
+                        <Border x:Name="BtnSelModeSubtract" Width="18" Height="18" CornerRadius="2" BorderThickness="1" BorderBrush="#353945" Background="Transparent" Cursor="Hand" ToolTip="Subtract from Selection (Trừ bớt vùng chọn)" MouseLeftButtonDown="SelMode_Click" Tag="Subtract">
+                            <TextBlock Text="➖" FontSize="8" Foreground="#dde3ef" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+
                     <Button Content="Deselect (Ctrl+D)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptDeselect_Click"/>
                     <Button Content="Copy (Ctrl+C)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptCopy_Click"/>
                     <Button Content="Paste (Ctrl+V)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptPaste_Click"/>
@@ -1002,13 +1018,63 @@
                                    StrokeDashArray="4 4"
                                    Fill="#2000cfff"
                                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                                   Visibility="Collapsed" IsHitTestVisible="False"/>
+                                   Visibility="Collapsed" IsHitTestVisible="False">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle">
+                                    <Style.Triggers>
+                                        <Trigger Property="Visibility" Value="Visible">
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard Name="RectAntsStoryboard">
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetProperty="StrokeDashOffset"
+                                                            From="0" To="8" Duration="0:0:0.5"
+                                                            RepeatBehavior="Forever"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="RectAntsStoryboard"/>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Rectangle.Style>
+                        </Rectangle>
 
                         <!-- Selection Polygon Overlay (Photoshop ants style) -->
                         <Path x:Name="SelectionPolygon"
                               Stroke="#00cfff" StrokeThickness="1.5"
                               StrokeDashArray="4 4"
                               Fill="#2000cfff"
+                              Visibility="Collapsed" IsHitTestVisible="False">
+                            <Path.Style>
+                                <Style TargetType="Path">
+                                    <Style.Triggers>
+                                        <Trigger Property="Visibility" Value="Visible">
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard Name="PathAntsStoryboard">
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetProperty="StrokeDashOffset"
+                                                            From="0" To="8" Duration="0:0:0.5"
+                                                            RepeatBehavior="Forever"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="PathAntsStoryboard"/>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
+                        <!-- Selection Preview Polygon Overlay (Dashed style for active drawing preview) -->
+                        <Path x:Name="SelectionPreviewPolygon"
+                              Stroke="#00cfff" StrokeThickness="1.5"
+                              StrokeDashArray="4 4"
+                              Fill="#1000cfff"
                               Visibility="Collapsed" IsHitTestVisible="False"/>
 
                         <!-- Text Tool Interactive Box Overlay -->

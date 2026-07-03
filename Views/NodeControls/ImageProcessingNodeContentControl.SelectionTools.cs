@@ -128,36 +128,12 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null || !activeLayer.IsVisible) return;
 
-            if (_selectionRect.HasValue)
+            if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                int startX = Math.Max(0, (int)_selectionRect.Value.Left);
-                int endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
-                int startY = Math.Max(0, (int)_selectionRect.Value.Top);
-                int endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
-
-                int w = endX - startX + 1;
-                int h = endY - startY + 1;
-                if (w <= 0 || h <= 0) return;
-
-                var rect = new Int32Rect(startX, startY, w, h);
-                int stride = w * 4;
-                _selectionClipboardPixels = new byte[stride * h];
-                activeLayer.Bitmap.CopyPixels(rect, _selectionClipboardPixels, stride, 0);
-                _selectionClipboardRect = new Rect(startX, startY, w, h);
-                _selectionClipboardIsFullLayer = false;
-                _selectionClipboardLayerSource = null;
-            }
-            else if (_selectionPoints != null && _selectionPoints.Count >= 3)
-            {
-                double minX = _selectionPoints.Min(p => p.X);
-                double maxX = _selectionPoints.Max(p => p.X);
-                double minY = _selectionPoints.Min(p => p.Y);
-                double maxY = _selectionPoints.Max(p => p.Y);
-
-                int startX = Math.Max(0, (int)Math.Floor(minX));
-                int endX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(maxX));
-                int startY = Math.Max(0, (int)Math.Floor(minY));
-                int endY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(maxY));
+                int startX = _cachedSelectionStartX;
+                int endX = _cachedSelectionEndX;
+                int startY = _cachedSelectionStartY;
+                int endY = _cachedSelectionEndY;
 
                 int w = endX - startX + 1;
                 int h = endY - startY + 1;
@@ -168,15 +144,12 @@ namespace FlowMy.Views.NodeControls
                 _selectionClipboardPixels = new byte[stride * h];
                 activeLayer.Bitmap.CopyPixels(rect, _selectionClipboardPixels, stride, 0);
 
-                // Get discrete boundary flood filled mask (handles self-intersection)
-                bool[,] mask = GetPolygonMask(w, h, _selectionPoints, startX, startY);
-
-                // Clear pixels outside the polygon
+                // Clear pixels outside the polygon using the cached mask
                 for (int dy = 0; dy < h; dy++)
                 {
                     for (int dx = 0; dx < w; dx++)
                     {
-                        if (!mask[dx, dy])
+                        if (!_cachedSelectionMask[dx, dy])
                         {
                             _selectionClipboardPixels[(dy * w + dx) * 4 + 3] = 0; // Alpha = 0 (Transparent)
                         }
@@ -249,70 +222,71 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
 
-            int stride = activeLayer.Width * 4;
-            var oldPixels = new byte[stride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
-
-            var newPixels = new byte[stride * activeLayer.Height];
-            Array.Copy(oldPixels, newPixels, oldPixels.Length);
-
-            int startX = 0, endX = 0, startY = 0, endY = 0;
-            bool hasSelection = false;
-
-            if (_selectionRect.HasValue)
+            if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                startX = Math.Max(0, (int)_selectionRect.Value.Left);
-                endX = Math.Min(activeLayer.Width - 1, (int)_selectionRect.Value.Right);
-                startY = Math.Max(0, (int)_selectionRect.Value.Top);
-                endY = Math.Min(activeLayer.Height - 1, (int)_selectionRect.Value.Bottom);
-                hasSelection = true;
-            }
-            else if (_selectionPoints != null && _selectionPoints.Count >= 3)
-            {
-                double minX = _selectionPoints.Min(p => p.X);
-                double maxX = _selectionPoints.Max(p => p.X);
-                double minY = _selectionPoints.Min(p => p.Y);
-                double maxY = _selectionPoints.Max(p => p.Y);
+                int startX = _cachedSelectionStartX;
+                int endX = _cachedSelectionEndX;
+                int startY = _cachedSelectionStartY;
+                int endY = _cachedSelectionEndY;
 
-                startX = Math.Max(0, (int)Math.Floor(minX));
-                endX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(maxX));
-                startY = Math.Max(0, (int)Math.Floor(minY));
-                endY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(maxY));
-                hasSelection = true;
-            }
+                int stride = activeLayer.Width * 4;
+                var oldPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
 
-            if (!hasSelection) return;
+                var newPixels = new byte[stride * activeLayer.Height];
+                Array.Copy(oldPixels, newPixels, oldPixels.Length);
 
-            bool[,] mask = null;
-            if (_selectionPoints != null && _selectionPoints.Count >= 3 && !_selectionRect.HasValue)
-            {
-                int w = endX - startX + 1;
-                int h = endY - startY + 1;
-                mask = GetPolygonMask(w, h, _selectionPoints, startX, startY);
-            }
-
-            for (int y = startY; y <= endY; y++)
-            {
-                int rowOffset = y * activeLayer.Width * 4;
-                for (int x = startX; x <= endX; x++)
+                for (int y = startY; y <= endY; y++)
                 {
-                    if (_selectionRect.HasValue)
+                    int rowOffset = y * activeLayer.Width * 4;
+                    for (int x = startX; x <= endX; x++)
                     {
-                        newPixels[rowOffset + x * 4 + 3] = 0;
-                    }
-                    else if (mask != null && mask[x - startX, y - startY])
-                    {
-                        newPixels[rowOffset + x * 4 + 3] = 0;
+                        if (_cachedSelectionMask[x - startX, y - startY])
+                        {
+                            newPixels[rowOffset + x * 4 + 3] = 0;
+                        }
                     }
                 }
+
+                var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+                _node.EditorDoc.History.Execute(cmd);
+
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), newPixels, stride, 0);
+                activeLayer.InvalidateThumbnail();
+                OnEditorDocumentModified();
             }
+        }
 
-            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
-            _node.EditorDoc.History.Execute(cmd);
+        private void SelMode_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string modeStr)
+            {
+                if (Enum.TryParse<SelectionMode>(modeStr, out var mode))
+                {
+                    _currentSelectionMode = mode;
+                    UpdateSelModeVisuals();
+                }
+            }
+            e.Handled = true;
+        }
 
-            activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), newPixels, stride, 0);
-            activeLayer.InvalidateThumbnail();
-            OnEditorDocumentModified();
+        private void UpdateSelModeVisuals()
+        {
+            if (BtnSelModeNew == null || BtnSelModeAdd == null || BtnSelModeSubtract == null) return;
+
+            var activeBorder = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00cfff"));
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x00, 0xcf, 0xff));
+            var inactiveBorder = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#353945"));
+            var inactiveBg = Brushes.Transparent;
+
+            BtnSelModeNew.BorderBrush = (_currentSelectionMode == SelectionMode.New) ? activeBorder : inactiveBorder;
+            BtnSelModeNew.Background = (_currentSelectionMode == SelectionMode.New) ? activeBg : inactiveBg;
+
+            BtnSelModeAdd.BorderBrush = (_currentSelectionMode == SelectionMode.Add) ? activeBorder : inactiveBorder;
+            BtnSelModeAdd.Background = (_currentSelectionMode == SelectionMode.Add) ? activeBg : inactiveBg;
+
+            BtnSelModeSubtract.BorderBrush = (_currentSelectionMode == SelectionMode.Subtract) ? activeBorder : inactiveBorder;
+            BtnSelModeSubtract.Background = (_currentSelectionMode == SelectionMode.Subtract) ? activeBg : inactiveBg;
         }
 
         #endregion

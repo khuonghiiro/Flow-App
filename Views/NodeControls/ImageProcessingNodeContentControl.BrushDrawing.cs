@@ -92,6 +92,15 @@ namespace FlowMy.Views.NodeControls
             OnEditorDocumentModified();
         }
 
+        public enum SelectionMode
+        {
+            New,
+            Add,
+            Subtract
+        }
+        private SelectionMode _currentSelectionMode = SelectionMode.New;
+        private Geometry? _activeSelectionGeometry;
+
         private bool _isSelecting;
         private Point _selectionStartPoint;
         private Rect? _selectionRect;
@@ -134,11 +143,17 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Selection")
             {
+                if (_currentSelectionMode == SelectionMode.New)
+                {
+                    ClearSelection();
+                }
+                else
+                {
+                    _selectionPoints.Clear();
+                }
                 _isSelecting = true;
                 _selectionStartPoint = clickPos;
                 _selectionRect = null;
-                _selectionPoints.Clear();
-                SelectionPolygon.Visibility = Visibility.Collapsed;
                 SelectionBoxRect.Visibility = Visibility.Visible;
                 SelectionBoxRect.Width = 0;
                 SelectionBoxRect.Height = 0;
@@ -149,9 +164,16 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Lasso")
             {
+                if (_currentSelectionMode == SelectionMode.New)
+                {
+                    ClearSelection();
+                }
+                else
+                {
+                    _selectionPoints.Clear();
+                }
                 _isSelecting = true;
                 _selectionRect = null;
-                _selectionPoints.Clear();
                 _selectionPoints.Add(new Point(px, py));
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
                 UpdateLassoPreview();
@@ -161,11 +183,15 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "PolyLasso")
             {
-                _isSelecting = true;
-                _selectionRect = null;
-                SelectionBoxRect.Visibility = Visibility.Collapsed;
                 if (_selectionPoints.Count == 0)
                 {
+                    if (_currentSelectionMode == SelectionMode.New)
+                    {
+                        ClearSelection();
+                    }
+                    _isSelecting = true;
+                    _selectionRect = null;
+                    SelectionBoxRect.Visibility = Visibility.Collapsed;
                     _selectionPoints.Add(new Point(px, py));
                     UpdatePolyLassoPreview(clickPos);
                     MainScrollViewer.CaptureMouse();
@@ -368,7 +394,8 @@ namespace FlowMy.Views.NodeControls
 
                         if (lw > 2 && lh > 2)
                         {
-                            _selectionRect = new Rect(lx, ly, lw, lh);
+                            var rectGeom = new RectangleGeometry(new Rect(lx, ly, lw, lh));
+                            ApplyNewGeometry(rectGeom);
                         }
                         else
                         {
@@ -385,8 +412,16 @@ namespace FlowMy.Views.NodeControls
                     {
                         // Auto-connect start and end points
                         _selectionPoints.Add(_selectionPoints[0]);
-                        UpdatePolygonDisplay();
-                        BuildSelectionMask();
+                        var pathGeometry = new PathGeometry();
+                        var pathFigure = new PathFigure { StartPoint = _selectionPoints[0], IsClosed = true };
+                        for (int i = 1; i < _selectionPoints.Count; i++)
+                        {
+                            pathFigure.Segments.Add(new LineSegment(_selectionPoints[i], true));
+                        }
+                        pathGeometry.Figures.Add(pathFigure);
+                        pathGeometry.FillRule = FillRule.Nonzero;
+
+                        ApplyNewGeometry(pathGeometry);
                     }
                     else
                     {
@@ -429,6 +464,7 @@ namespace FlowMy.Views.NodeControls
             _isSelecting = false;
             _hasCachedSelectionMask = false;
             _cachedSelectionMask = null;
+            _activeSelectionGeometry = null;
             if (SelectionBoxRect != null)
             {
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
@@ -437,6 +473,48 @@ namespace FlowMy.Views.NodeControls
             {
                 SelectionPolygon.Visibility = Visibility.Collapsed;
                 SelectionPolygon.Data = null;
+            }
+            if (SelectionPreviewPolygon != null)
+            {
+                SelectionPreviewPolygon.Visibility = Visibility.Collapsed;
+                SelectionPreviewPolygon.Data = null;
+            }
+        }
+
+        private void ApplyNewGeometry(Geometry newGeometry)
+        {
+            if (_activeSelectionGeometry == null || _currentSelectionMode == SelectionMode.New)
+            {
+                _activeSelectionGeometry = newGeometry;
+            }
+            else if (_currentSelectionMode == SelectionMode.Add)
+            {
+                _activeSelectionGeometry = Geometry.Combine(_activeSelectionGeometry, newGeometry, GeometryCombineMode.Union, null);
+            }
+            else if (_currentSelectionMode == SelectionMode.Subtract)
+            {
+                _activeSelectionGeometry = Geometry.Combine(_activeSelectionGeometry, newGeometry, GeometryCombineMode.Exclude, null);
+            }
+
+            if (_activeSelectionGeometry != null)
+            {
+                var bounds = _activeSelectionGeometry.Bounds;
+                _selectionRect = bounds;
+            }
+            else
+            {
+                _selectionRect = null;
+            }
+
+            BuildSelectionMask();
+            UpdatePolygonDisplay();
+
+            _selectionPoints.Clear();
+            if (SelectionBoxRect != null) SelectionBoxRect.Visibility = Visibility.Collapsed;
+            if (SelectionPreviewPolygon != null)
+            {
+                SelectionPreviewPolygon.Visibility = Visibility.Collapsed;
+                SelectionPreviewPolygon.Data = null;
             }
         }
 
@@ -470,32 +548,22 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            double scaleX = MainImage.ActualWidth / activeLayer.Width;
-            double scaleY = MainImage.ActualHeight / activeLayer.Height;
-
-            if (_selectionPoints.Count >= 3)
+            if (_activeSelectionGeometry != null)
             {
-                var pathGeometry = new PathGeometry();
-                var pathFigure = new PathFigure();
-                pathFigure.StartPoint = new Point(_selectionPoints[0].X * scaleX, _selectionPoints[0].Y * scaleY);
+                double scaleX = MainImage.ActualWidth / activeLayer.Width;
+                double scaleY = MainImage.ActualHeight / activeLayer.Height;
 
-                for (int i = 1; i < _selectionPoints.Count; i++)
-                {
-                    pathFigure.Segments.Add(new LineSegment(new Point(_selectionPoints[i].X * scaleX, _selectionPoints[i].Y * scaleY), true));
-                }
-                pathFigure.IsClosed = true;
-                pathGeometry.Figures.Add(pathFigure);
-                pathGeometry.FillRule = FillRule.Nonzero;
+                var scaledGeometry = _activeSelectionGeometry.Clone();
+                scaledGeometry.Transform = new ScaleTransform(scaleX, scaleY);
 
-                var outlined = pathGeometry.GetOutlinedPathGeometry();
-                SelectionPolygon.Data = outlined;
+                SelectionPolygon.Data = scaledGeometry.GetOutlinedPathGeometry();
+                SelectionPolygon.Visibility = Visibility.Visible;
             }
             else
             {
                 SelectionPolygon.Data = null;
+                SelectionPolygon.Visibility = Visibility.Collapsed;
             }
-
-            SelectionPolygon.Visibility = Visibility.Visible;
         }
 
         private void ClosePolyLassoSelection()
@@ -505,10 +573,17 @@ namespace FlowMy.Views.NodeControls
 
             if (_selectionPoints.Count >= 3)
             {
-                // Close path by connecting last point to start point
                 _selectionPoints.Add(_selectionPoints[0]);
-                UpdatePolygonDisplay();
-                BuildSelectionMask();
+                var pathGeometry = new PathGeometry();
+                var pathFigure = new PathFigure { StartPoint = _selectionPoints[0], IsClosed = true };
+                for (int i = 1; i < _selectionPoints.Count; i++)
+                {
+                    pathFigure.Segments.Add(new LineSegment(_selectionPoints[i], true));
+                }
+                pathGeometry.Figures.Add(pathFigure);
+                pathGeometry.FillRule = FillRule.Nonzero;
+
+                ApplyNewGeometry(pathGeometry);
             }
             else
             {
@@ -518,7 +593,7 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdatePolyLassoPreview(Point currentMousePos)
         {
-            if (_node.EditorDoc == null || SelectionPolygon == null) return;
+            if (_node.EditorDoc == null || SelectionPreviewPolygon == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
@@ -536,14 +611,14 @@ namespace FlowMy.Views.NodeControls
                 }
                 pathFigure.Segments.Add(new LineSegment(currentMousePos, true));
                 pathGeometry.Figures.Add(pathFigure);
-                SelectionPolygon.Data = pathGeometry;
+                SelectionPreviewPolygon.Data = pathGeometry;
             }
-            SelectionPolygon.Visibility = Visibility.Visible;
+            SelectionPreviewPolygon.Visibility = Visibility.Visible;
         }
 
         private void UpdateLassoPreview()
         {
-            if (_node.EditorDoc == null || SelectionPolygon == null) return;
+            if (_node.EditorDoc == null || SelectionPreviewPolygon == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
@@ -560,9 +635,9 @@ namespace FlowMy.Views.NodeControls
                     pathFigure.Segments.Add(new LineSegment(new Point(_selectionPoints[i].X * scaleX, _selectionPoints[i].Y * scaleY), true));
                 }
                 pathGeometry.Figures.Add(pathFigure);
-                SelectionPolygon.Data = pathGeometry;
+                SelectionPreviewPolygon.Data = pathGeometry;
             }
-            SelectionPolygon.Visibility = Visibility.Visible;
+            SelectionPreviewPolygon.Visibility = Visibility.Visible;
         }
 
 
@@ -1617,11 +1692,8 @@ namespace FlowMy.Views.NodeControls
 
         private bool IsInsideSelection(int x, int y)
         {
-            if (_selectionRect.HasValue)
-            {
-                var sel = _selectionRect.Value;
-                return x >= sel.Left && x <= sel.Right && y >= sel.Top && y <= sel.Bottom;
-            }
+            if (_activeSelectionGeometry == null) return true;
+
             if (_hasCachedSelectionMask && _cachedSelectionMask != null)
             {
                 if (x >= _cachedSelectionStartX && x <= _cachedSelectionEndX &&
@@ -1636,7 +1708,7 @@ namespace FlowMy.Views.NodeControls
 
         private void BuildSelectionMask()
         {
-            if (_selectionPoints == null || _selectionPoints.Count < 3)
+            if (_activeSelectionGeometry == null || _activeSelectionGeometry.IsEmpty())
             {
                 _hasCachedSelectionMask = false;
                 _cachedSelectionMask = null;
@@ -1647,120 +1719,56 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            double minX = _selectionPoints.Min(p => p.X);
-            double maxX = _selectionPoints.Max(p => p.X);
-            double minY = _selectionPoints.Min(p => p.Y);
-            double maxY = _selectionPoints.Max(p => p.Y);
+            var outlinedGeom = _activeSelectionGeometry.GetOutlinedPathGeometry();
+            var bounds = outlinedGeom.Bounds;
 
-            _cachedSelectionStartX = Math.Max(0, (int)Math.Floor(minX));
-            _cachedSelectionEndX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(maxX));
-            _cachedSelectionStartY = Math.Max(0, (int)Math.Floor(minY));
-            _cachedSelectionEndY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(maxY));
+            _cachedSelectionStartX = Math.Max(0, (int)Math.Floor(bounds.Left));
+            _cachedSelectionEndX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(bounds.Right));
+            _cachedSelectionStartY = Math.Max(0, (int)Math.Floor(bounds.Top));
+            _cachedSelectionEndY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(bounds.Bottom));
 
             int w = _cachedSelectionEndX - _cachedSelectionStartX + 1;
             int h = _cachedSelectionEndY - _cachedSelectionStartY + 1;
 
             if (w > 0 && h > 0)
             {
-                _cachedSelectionMask = GetPolygonMask(w, h, _selectionPoints, _cachedSelectionStartX, _cachedSelectionStartY);
+                _cachedSelectionMask = new bool[w, h];
+
+                // Create a DrawingVisual to draw the geometry shifted to (0,0)
+                var drawingVisual = new DrawingVisual();
+                using (var dc = drawingVisual.RenderOpen())
+                {
+                    dc.PushTransform(new TranslateTransform(-_cachedSelectionStartX, -_cachedSelectionStartY));
+                    dc.DrawGeometry(Brushes.White, null, outlinedGeom);
+                    dc.Pop();
+                }
+
+                // Render visual using WPF's rendering pipeline (extremely fast)
+                var renderTarget = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+                renderTarget.Render(drawingVisual);
+
+                // Read pixels into byte array
+                int stride = w * 4;
+                var pixels = new byte[stride * h];
+                renderTarget.CopyPixels(pixels, stride, 0);
+
+                // Populate mask using alpha channel
+                for (int y = 0; y < h; y++)
+                {
+                    int rowOffset = y * stride;
+                    for (int x = 0; x < w; x++)
+                    {
+                        byte alpha = pixels[rowOffset + x * 4 + 3];
+                        _cachedSelectionMask[x, y] = (alpha > 128);
+                    }
+                }
+
                 _hasCachedSelectionMask = true;
             }
             else
             {
                 _hasCachedSelectionMask = false;
                 _cachedSelectionMask = null;
-            }
-        }
-
-        private static bool[,] GetPolygonMask(int width, int height, List<Point> points, int startX, int startY)
-        {
-            int gridW = width + 2;
-            int gridH = height + 2;
-            byte[,] grid = new byte[gridW, gridH];
-
-            int count = points.Count;
-            for (int i = 0; i < count; i++)
-            {
-                Point p1 = points[i];
-                Point p2 = points[(i + 1) % count];
-
-                int x1 = (int)Math.Round(p1.X) - startX + 1;
-                int y1 = (int)Math.Round(p1.Y) - startY + 1;
-                int x2 = (int)Math.Round(p2.X) - startX + 1;
-                int y2 = (int)Math.Round(p2.Y) - startY + 1;
-
-                DrawLineOnGrid(grid, gridW, gridH, x1, y1, x2, y2);
-            }
-
-            var queue = new Queue<Tuple<int, int>>();
-            queue.Enqueue(new Tuple<int, int>(0, 0));
-            grid[0, 0] = 2; // Visited outside
-
-            int[] dx = { 0, 0, 1, -1 };
-            int[] dy = { 1, -1, 0, 0 };
-
-            while (queue.Count > 0)
-            {
-                var curr = queue.Dequeue();
-                int cx = curr.Item1;
-                int cy = curr.Item2;
-
-                for (int i = 0; i < 4; i++)
-                {
-                    int nx = cx + dx[i];
-                    int ny = cy + dy[i];
-
-                    if (nx >= 0 && nx < gridW && ny >= 0 && ny < gridH)
-                    {
-                        if (grid[nx, ny] == 0)
-                        {
-                            grid[nx, ny] = 2;
-                            queue.Enqueue(new Tuple<int, int>(nx, ny));
-                        }
-                    }
-                }
-            }
-
-            bool[,] mask = new bool[width, height];
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    mask[x, y] = (grid[x + 1, y + 1] != 2);
-                }
-            }
-
-            return mask;
-        }
-
-        private static void DrawLineOnGrid(byte[,] grid, int w, int h, int x1, int y1, int x2, int y2)
-        {
-            int dx = Math.Abs(x2 - x1);
-            int dy = Math.Abs(y2 - y1);
-            int sx = x1 < x2 ? 1 : -1;
-            int sy = y1 < y2 ? 1 : -1;
-            int err = dx - dy;
-
-            while (true)
-            {
-                if (x1 >= 0 && x1 < w && y1 >= 0 && y1 < h)
-                {
-                    grid[x1, y1] = 1;
-                }
-
-                if (x1 == x2 && y1 == y2) break;
-
-                int e2 = 2 * err;
-                if (e2 > -dy)
-                {
-                    err -= dy;
-                    x1 += sx;
-                }
-                if (e2 < dx)
-                {
-                    err += dx;
-                    y1 += sy;
-                }
             }
         }
 

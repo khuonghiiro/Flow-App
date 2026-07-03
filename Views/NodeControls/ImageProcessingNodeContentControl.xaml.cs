@@ -2418,6 +2418,10 @@ namespace FlowMy.Views.NodeControls
                 OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
                 OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
                 OptSelectionPanel.Visibility = (activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso") ? Visibility.Visible : Visibility.Collapsed;
+                if (OptSelectionPanel.Visibility == Visibility.Visible)
+                {
+                    UpdateSelModeVisuals();
+                }
                 
                 if (OptColorPanel != null)
                 {
