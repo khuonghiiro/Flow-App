@@ -436,3 +436,4 @@ wind duotone
 pen-swirl duotone
 square-dashed-circle-plus sharp-duotone-solid
 share-nodes jelly-regular
+paintbrush-fine duotone

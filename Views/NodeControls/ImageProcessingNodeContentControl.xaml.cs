@@ -134,6 +134,21 @@ namespace FlowMy.Views.NodeControls
                         // Load cached FX params trước (nhẹ, file nhỏ)
                         FlowMy.Utils.FxConfigCache.LoadFromFile();
 
+                        // Cấu hình thư mục cache OpenCL để GPU không phải biên dịch lại kernel mỗi lần chạy
+                        try
+                        {
+                            string cacheDir = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "MagickOpenCL");
+                            if (!System.IO.Directory.Exists(cacheDir))
+                            {
+                                System.IO.Directory.CreateDirectory(cacheDir);
+                            }
+                            System.Environment.SetEnvironmentVariable("MAGICK_OPENCL_CACHE_DIR", cacheDir);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MagickOpenCL] Set CacheDirectory failed: {ex.Message}");
+                        }
+
                         // OpenCL init (có thể chậm tùy GPU driver)
                         ImageMagick.OpenCL.IsEnabled = true;
                         var devices = ImageMagick.OpenCL.Devices;
@@ -2013,6 +2028,10 @@ namespace FlowMy.Views.NodeControls
             ["MorphErode"]       = new[] { new FxParamDef("Iterations", 1, 1, 10) },
             ["Opening"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
             ["Closing"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["EdgeIn"]           = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["EdgeOut"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["TopHat"]           = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["BottomHat"]        = new[] { new FxParamDef("Iterations", 1, 1, 10) },
             // Transform
             ["Deskew"]           = new[] { new FxParamDef("Threshold", 40, 0, 100) },
             ["Shear"]            = new[] { new FxParamDef("X", 15, -45, 45), new FxParamDef("Y", 0, -45, 45) },
