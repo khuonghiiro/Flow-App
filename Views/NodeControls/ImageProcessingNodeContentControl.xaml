@@ -813,6 +813,9 @@
                                 <TextBlock Text="9" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxBlurActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 
@@ -830,6 +833,9 @@
                                 <TextBlock Text="15" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxArtActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 
@@ -847,6 +853,9 @@
                                 <TextBlock Text="5" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxEdgeActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 
@@ -864,6 +873,9 @@
                                 <TextBlock Text="21" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxColorActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 
@@ -881,6 +893,9 @@
                                 <TextBlock Text="6" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxNoiseActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 
@@ -898,6 +913,9 @@
                                 <TextBlock Text="8" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxMorphActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 
@@ -915,6 +933,9 @@
                                 <TextBlock Text="13" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="Top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
+                                <Ellipse x:Name="TbxXFormActive_ConfigDot" Width="3.5" Height="3.5" Fill="#ff4f4f"
+                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                         Margin="1.5,0,0,1.5" IsHitTestVisible="False" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
 

@@ -94,6 +94,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             InitializeComponent();
+            this.Loaded += (s, e) => InitializeFxDots();
             EditorPanel.DocumentModified += OnEditorDocumentModified;
             EditorPanel.TextPropertiesChanged += EditorPanel_TextPropertiesChanged;
             EditorPanel.BrushPropertiesChanged += EditorPanel_BrushPropertiesChanged;
@@ -2510,6 +2511,8 @@ namespace FlowMy.Views.NodeControls
                     // 2. Cập nhật ToolTip (bao gồm mô tả tiếng Việt trong ngoặc)
                     _activeGroupBorder.ToolTip = selectedItem.ToolTipText;
 
+                    UpdateConfigDotVisibility(_activeGroupBorder, selectedItem.Name);
+
                     // 3. Cập nhật icon của nút cha
                     if (_activeGroupBorder.Child is Grid grid)
                     {
@@ -2538,6 +2541,35 @@ namespace FlowMy.Views.NodeControls
                 // Đóng Popup
                 FxGroupPopup.IsOpen = false;
                 e.Handled = true;
+            }
+        }
+
+        private void InitializeFxDots()
+        {
+            var fxBorders = new[] { TbxBlurActive, TbxArtActive, TbxEdgeActive, TbxColorActive, TbxNoiseActive, TbxMorphActive, TbxXFormActive };
+            foreach (var border in fxBorders)
+            {
+                if (border != null && border.Tag is string effectName)
+                {
+                    UpdateConfigDotVisibility(border, effectName);
+                }
+            }
+        }
+
+        private void UpdateConfigDotVisibility(Border border, string effectName)
+        {
+            if (border == null) return;
+            if (border.Child is Grid grid)
+            {
+                foreach (var child in grid.Children)
+                {
+                    if (child is System.Windows.Shapes.Ellipse el && el.Name != null && el.Name.EndsWith("_ConfigDot"))
+                    {
+                        bool hasConfig = _fxParamMap.ContainsKey(effectName);
+                        el.Visibility = hasConfig ? Visibility.Visible : Visibility.Collapsed;
+                        break;
+                    }
+                }
             }
         }
 
