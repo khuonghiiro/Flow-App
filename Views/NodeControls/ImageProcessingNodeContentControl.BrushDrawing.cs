@@ -78,6 +78,41 @@ namespace FlowMy.Views.NodeControls
             (-0.6, 0.4, 0.4)
         };
 
+        private static readonly (double x, double y, double size, double opacity)[] SplatterPresetOffsets = new (double x, double y, double size, double opacity)[]
+        {
+            (0.0, 0.0, 1.0, 1.0),      // Central main droplet
+            (0.15, -0.1, 0.35, 0.8),   // Medium droplets close to center
+            (-0.12, 0.18, 0.3, 0.8),
+            (0.35, 0.25, 0.2, 0.6),    // Splash droplets further away
+            (-0.3, -0.4, 0.25, 0.7),
+            (0.5, -0.3, 0.15, 0.5),    // Tiny outer flecks
+            (-0.45, -0.15, 0.12, 0.4),
+            (0.2, 0.5, 0.18, 0.5),
+            (-0.1, -0.6, 0.1, 0.4),
+            (0.6, 0.4, 0.08, 0.3),
+        };
+
+        private static readonly (double x, double y, double size, double opacity)[] CharcoalPresetOffsets = new (double x, double y, double size, double opacity)[]
+        {
+            (0.0, 0.0, 0.6, 0.8),
+            (-0.2, -0.1, 0.4, 0.6),
+            (0.2, 0.1, 0.4, 0.6),
+            (-0.1, 0.3, 0.5, 0.7),
+            (0.1, -0.3, 0.5, 0.7),
+            (-0.4, -0.3, 0.3, 0.4),
+            (0.4, 0.3, 0.3, 0.4),
+            (-0.3, 0.2, 0.3, 0.4),
+            (0.3, -0.2, 0.3, 0.4),
+            (-0.5, 0.0, 0.2, 0.3),
+            (0.5, 0.0, 0.2, 0.3)
+        };
+
+        private static readonly (double x, double y, double size)[] OilBrushPresetOffsets = new (double x, double y, double size)[]
+        {
+            (-0.6, 0.0, 0.5), (-0.4, -0.1, 0.6), (-0.2, 0.0, 0.7), (0.0, 0.1, 0.8), (0.2, 0.0, 0.7), (0.4, -0.1, 0.6), (0.6, 0.0, 0.5),
+            (-0.5, 0.2, 0.4), (-0.3, 0.1, 0.5), (-0.1, 0.2, 0.6), (0.1, 0.2, 0.6), (0.3, 0.1, 0.5), (0.5, 0.2, 0.4)
+        };
+
         // ── Throttled composite during drawing (avoid lag) ──
         private DispatcherTimer? _compositeTimer;
         private bool _compositeDirty;
@@ -410,7 +445,8 @@ namespace FlowMy.Views.NodeControls
                 Color color = _node.EditorDoc.ForegroundColor;
 
                 double extendedRadius = radius + 2.0;
-                if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter)
+                if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter ||
+                    _currentBrushPreset == BrushPreset.Splatter || _currentBrushPreset == BrushPreset.Charcoal || _currentBrushPreset == BrushPreset.OilBrush)
                 {
                     extendedRadius = radius * 3.5 + 5.0;
                 }
@@ -516,7 +552,8 @@ namespace FlowMy.Views.NodeControls
             _lastDrawingPixelPoint = currentPoint;
 
             double extendedRadius = radius + 2.0;
-            if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter)
+            if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter ||
+                _currentBrushPreset == BrushPreset.Splatter || _currentBrushPreset == BrushPreset.Charcoal || _currentBrushPreset == BrushPreset.OilBrush)
             {
                 extendedRadius = radius * 3.5 + 5.0;
             }
@@ -1212,6 +1249,18 @@ namespace FlowMy.Views.NodeControls
                 case BrushPreset.Pencil:
                     DrawBrush_Pencil(alphaMask, width, height, cx, cy, radius, flow);
                     break;
+                case BrushPreset.Airbrush:
+                    DrawBrush_Airbrush(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.Splatter:
+                    DrawBrush_Splatter(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.Charcoal:
+                    DrawBrush_Charcoal(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
+                case BrushPreset.OilBrush:
+                    DrawBrush_OilBrush(alphaMask, width, height, cx, cy, radius, flow);
+                    break;
                 default: // RoundHard
                     DrawBrush_RoundHard(alphaMask, width, height, cx, cy, radius, hardness, flow);
                     break;
@@ -1662,6 +1711,281 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private void DrawBrush_Airbrush(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            double r = radius * 0.5;
+            if (r <= 0.5)
+            {
+                int px = (int)Math.Floor(cx + 0.5);
+                int py = (int)Math.Floor(cy + 0.5);
+                if (px >= 0 && px < width && py >= 0 && py < height)
+                {
+                    if (IsInsideSelection(px, py))
+                    {
+                        int newAlpha = (int)(flow / 100.0 * 255.0);
+                        int maskOffset = py * width + px;
+                        int existingAlpha = alphaMask[maskOffset];
+                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                    }
+                }
+                return;
+            }
+
+            double outerRadius = r * 1.8 + 0.5;
+            int startX = Math.Max(0, (int)Math.Floor(cx - outerRadius));
+            int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + outerRadius));
+            int startY = Math.Max(0, (int)Math.Floor(cy - outerRadius));
+            int endY = Math.Min(height - 1, (int)Math.Ceiling(cy + outerRadius));
+
+            double flowMul = flow / 100.0;
+            double divisor = Math.Max(0.1, r * 0.8);
+
+            for (int y = startY; y <= endY; y++)
+            {
+                int rowOffset = y * width;
+                double dy = y - cy;
+                double dy2 = dy * dy;
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    double dx = x - cx;
+                    double dist2 = dx * dx + dy2;
+
+                    if (dist2 <= outerRadius * outerRadius)
+                    {
+                        if (!IsInsideSelection(x, y)) continue;
+
+                        double dist = Math.Sqrt(dist2);
+                        double exponent = -dist / divisor;
+                        double falloff = Math.Exp(exponent);
+                        double edgeOpacity = Math.Clamp(outerRadius - dist, 0.0, 1.0);
+                        double pixelOpacity = falloff * edgeOpacity;
+
+                        int newAlpha = (int)(pixelOpacity * flowMul * 255.0);
+                        if (newAlpha <= 0) continue;
+
+                        int maskOffset = rowOffset + x;
+                        int existingAlpha = alphaMask[maskOffset];
+                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                    }
+                }
+            }
+        }
+
+        private void DrawBrush_Splatter(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            double r = radius * 0.5;
+            double flowMul = flow / 100.0;
+            double offsetMul = r * 6.0;
+
+            if (r <= 0.5)
+            {
+                foreach (var offset in SplatterPresetOffsets)
+                {
+                    double spotCx = cx + offset.x * offsetMul;
+                    double spotCy = cy + offset.y * offsetMul;
+                    int px = (int)Math.Floor(spotCx + 0.5);
+                    int py = (int)Math.Floor(spotCy + 0.5);
+                    if (px >= 0 && px < width && py >= 0 && py < height)
+                    {
+                        if (IsInsideSelection(px, py))
+                        {
+                            int newAlpha = (int)(flowMul * offset.opacity * 255.0);
+                            if (newAlpha <= 0) continue;
+                            int maskOffset = py * width + px;
+                            int existingAlpha = alphaMask[maskOffset];
+                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        }
+                    }
+                }
+                return;
+            }
+
+            foreach (var offset in SplatterPresetOffsets)
+            {
+                double spotCx = cx + offset.x * offsetMul;
+                double spotCy = cy + offset.y * offsetMul;
+                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.4;
+
+                int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
+                int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
+                int startY = Math.Max(0, (int)Math.Floor(spotCy - spotRadius - 0.5));
+                int endY = Math.Min(height - 1, (int)Math.Ceiling(spotCy + spotRadius + 0.5));
+                double sr2 = (spotRadius + 0.5) * (spotRadius + 0.5);
+
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * width;
+                    double dy = y - spotCy;
+                    double dy2 = dy * dy;
+
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        double dx = x - spotCx;
+                        double dist2 = dx * dx + dy2;
+                        if (dist2 <= sr2)
+                        {
+                            if (!IsInsideSelection(x, y)) continue;
+
+                            double dist = Math.Sqrt(dist2);
+                            double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
+                            int newAlpha = (int)(edgeOpacity * flowMul * offset.opacity * 255.0);
+                            if (newAlpha <= 0) continue;
+
+                            int maskOffset = rowOffset + x;
+                            int existingAlpha = alphaMask[maskOffset];
+                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void DrawBrush_Charcoal(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            double r = radius * 0.5;
+            double flowMul = flow / 100.0;
+            double offsetMul = r * 4.0;
+
+            if (r <= 0.5)
+            {
+                foreach (var offset in CharcoalPresetOffsets)
+                {
+                    double spotCx = cx + offset.x * offsetMul;
+                    double spotCy = cy + offset.y * offsetMul;
+                    int px = (int)Math.Floor(spotCx + 0.5);
+                    int py = (int)Math.Floor(spotCy + 0.5);
+                    if (px >= 0 && px < width && py >= 0 && py < height)
+                    {
+                        if (IsInsideSelection(px, py))
+                        {
+                            double noise = Math.Abs(Math.Sin(px * 12.9898 + py * 78.233) * 43758.5453) % 1.0;
+                            if (noise < 0.3) continue;
+                            int newAlpha = (int)(flowMul * offset.opacity * 200.0);
+                            if (newAlpha <= 0) continue;
+                            int maskOffset = py * width + px;
+                            int existingAlpha = alphaMask[maskOffset];
+                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        }
+                    }
+                }
+                return;
+            }
+
+            foreach (var offset in CharcoalPresetOffsets)
+            {
+                double spotCx = cx + offset.x * offsetMul;
+                double spotCy = cy + offset.y * offsetMul;
+                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.45;
+
+                int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
+                int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
+                int startY = Math.Max(0, (int)Math.Floor(spotCy - spotRadius - 0.5));
+                int endY = Math.Min(height - 1, (int)Math.Ceiling(spotCy + spotRadius + 0.5));
+                double sr2 = (spotRadius + 0.5) * (spotRadius + 0.5);
+
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * width;
+                    double dy = y - spotCy;
+                    double dy2 = dy * dy;
+
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        double dx = x - spotCx;
+                        double dist2 = dx * dx + dy2;
+                        if (dist2 <= sr2)
+                        {
+                            if (!IsInsideSelection(x, y)) continue;
+
+                            double noise = Math.Abs(Math.Sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1.0;
+                            if (noise < 0.35) continue;
+
+                            double dist = Math.Sqrt(dist2);
+                            double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
+                            int newAlpha = (int)(edgeOpacity * flowMul * offset.opacity * 200.0);
+                            if (newAlpha <= 0) continue;
+
+                            int maskOffset = rowOffset + x;
+                            int existingAlpha = alphaMask[maskOffset];
+                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void DrawBrush_OilBrush(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        {
+            double r = radius * 0.5;
+            double flowMul = flow / 100.0;
+            double offsetMul = r * 3.5;
+
+            if (r <= 0.5)
+            {
+                foreach (var offset in OilBrushPresetOffsets)
+                {
+                    double spotCx = cx + offset.x * offsetMul;
+                    double spotCy = cy + offset.y * offsetMul;
+                    int px = (int)Math.Floor(spotCx + 0.5);
+                    int py = (int)Math.Floor(spotCy + 0.5);
+                    if (px >= 0 && px < width && py >= 0 && py < height)
+                    {
+                        if (IsInsideSelection(px, py))
+                        {
+                            int newAlpha = (int)(flowMul * 180.0);
+                            if (newAlpha <= 0) continue;
+                            int maskOffset = py * width + px;
+                            int existingAlpha = alphaMask[maskOffset];
+                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        }
+                    }
+                }
+                return;
+            }
+
+            foreach (var offset in OilBrushPresetOffsets)
+            {
+                double spotCx = cx + offset.x * offsetMul;
+                double spotCy = cy + offset.y * offsetMul;
+                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.25;
+
+                double bristleFlow = 0.6 + 0.4 * (Math.Abs(Math.Sin(offset.x * 37.13 + offset.y * 53.45) * 1000.0) % 1.0);
+
+                int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
+                int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
+                int startY = Math.Max(0, (int)Math.Floor(spotCy - spotRadius - 0.5));
+                int endY = Math.Min(height - 1, (int)Math.Ceiling(spotCy + spotRadius + 0.5));
+                double sr2 = (spotRadius + 0.5) * (spotRadius + 0.5);
+
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * width;
+                    double dy = y - spotCy;
+                    double dy2 = dy * dy;
+
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        double dx = x - spotCx;
+                        double dist2 = dx * dx + dy2;
+                        if (dist2 <= sr2)
+                        {
+                            if (!IsInsideSelection(x, y)) continue;
+
+                            double dist = Math.Sqrt(dist2);
+                            double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
+                            int newAlpha = (int)(edgeOpacity * flowMul * bristleFlow * 255.0);
+                            if (newAlpha <= 0) continue;
+
+                            int maskOffset = rowOffset + x;
+                            int existingAlpha = alphaMask[maskOffset];
+                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        }
+                    }
+                }
+            }
+        }
+
         #endregion
 
         private void DrawBrushLine(byte[] alphaMask, int width, int height, Point p1, Point p2, double radius, double hardness, double flow,
@@ -1678,15 +2002,16 @@ namespace FlowMy.Views.NodeControls
             }
 
             double step;
-            if (preset == BrushPreset.RoundSoft)
+            if (preset == BrushPreset.RoundSoft || preset == BrushPreset.Airbrush || preset == BrushPreset.Charcoal || preset == BrushPreset.OilBrush)
             {
-                // Spacing is 10% of diameter (20% of radius) for soft brush
-                step = Math.Max(0.1, radius * 0.2);
+                // Spacing is 10% of diameter (20% of radius) for continuous feel
+                step = Math.Max(0.1, radius * 0.15);
             }
-            else if (preset == BrushPreset.Spray || preset == BrushPreset.Scatter || preset == BrushPreset.Chalk)
+            else if (preset == BrushPreset.Spray || preset == BrushPreset.Scatter || preset == BrushPreset.Chalk || preset == BrushPreset.Splatter)
             {
-                // Spacing is proportional to the expanded offset scale (radius * 6.0)
-                step = Math.Max(1.0, radius * 6.0);
+                // Spacing is proportional to the expanded offset scale
+                double factor = (preset == BrushPreset.Splatter) ? 5.0 : 6.0;
+                step = Math.Max(1.0, radius * factor);
             }
             else if (preset == BrushPreset.Pencil)
             {
@@ -2071,6 +2396,99 @@ namespace FlowMy.Views.NodeControls
                             VerticalAlignment = VerticalAlignment.Center
                         };
                         grid.Children.Add(ellipse);
+                    }
+                    break;
+
+                case BrushPreset.Airbrush:
+                    {
+                        var ellipse = new Ellipse
+                        {
+                            Width = diameter,
+                            Height = diameter,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        var gradient = new RadialGradientBrush();
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(f * 255 * 0.25), brushColor.R, brushColor.G, brushColor.B), 0.3));
+                        gradient.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+                        ellipse.Fill = gradient;
+                        grid.Children.Add(ellipse);
+                    }
+                    break;
+
+                case BrushPreset.Splatter:
+                    {
+                        var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
+                        double centerX = width / 2;
+                        double centerY = height / 2;
+
+                        double previewRadius = radius / 6.0;
+                        foreach (var offset in SplatterPresetOffsets)
+                        {
+                            double spotRadius = 0.5 + (previewRadius - 0.5) * offset.size * 0.4;
+                            double spotDiameter = spotRadius * 2;
+                            var dot = new Ellipse
+                            {
+                                Width = spotDiameter,
+                                Height = spotDiameter,
+                                Fill = new SolidColorBrush(Color.FromArgb((byte)(f * offset.opacity * 255), brushColor.R, brushColor.G, brushColor.B))
+                            };
+                            Canvas.SetLeft(dot, centerX + offset.x * radius - spotRadius);
+                            Canvas.SetTop(dot, centerY + offset.y * radius - spotRadius);
+                            canvas.Children.Add(dot);
+                        }
+                        grid.Children.Add(canvas);
+                    }
+                    break;
+
+                case BrushPreset.Charcoal:
+                    {
+                        var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
+                        double centerX = width / 2;
+                        double centerY = height / 2;
+
+                        double previewRadius = radius / 6.0;
+                        foreach (var offset in CharcoalPresetOffsets)
+                        {
+                            double spotRadius = 0.5 + (previewRadius - 0.5) * offset.size * 0.45;
+                            double spotDiameter = spotRadius * 2;
+                            var dot = new Ellipse
+                            {
+                                Width = spotDiameter,
+                                Height = spotDiameter,
+                                Fill = new SolidColorBrush(Color.FromArgb((byte)(f * offset.opacity * 200), brushColor.R, brushColor.G, brushColor.B))
+                            };
+                            Canvas.SetLeft(dot, centerX + offset.x * radius - spotRadius);
+                            Canvas.SetTop(dot, centerY + offset.y * radius - spotRadius);
+                            canvas.Children.Add(dot);
+                        }
+                        grid.Children.Add(canvas);
+                    }
+                    break;
+
+                case BrushPreset.OilBrush:
+                    {
+                        var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
+                        double centerX = width / 2;
+                        double centerY = height / 2;
+
+                        double previewRadius = radius / 6.0;
+                        foreach (var offset in OilBrushPresetOffsets)
+                        {
+                            double spotRadius = 0.5 + (previewRadius - 0.5) * offset.size * 0.25;
+                            double spotDiameter = spotRadius * 2;
+                            var dot = new Ellipse
+                            {
+                                Width = spotDiameter,
+                                Height = spotDiameter,
+                                Fill = new SolidColorBrush(Color.FromArgb((byte)(f * 200), brushColor.R, brushColor.G, brushColor.B))
+                            };
+                            Canvas.SetLeft(dot, centerX + offset.x * radius - spotRadius);
+                            Canvas.SetTop(dot, centerY + offset.y * radius - spotRadius);
+                            canvas.Children.Add(dot);
+                        }
+                        grid.Children.Add(canvas);
                     }
                     break;
 

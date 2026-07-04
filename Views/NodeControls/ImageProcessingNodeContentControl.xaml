@@ -485,6 +485,10 @@
                                                 <ComboBoxItem Content="Spray"/>
                                                 <ComboBoxItem Content="Scatter"/>
                                                 <ComboBoxItem Content="Pencil"/>
+                                                <ComboBoxItem Content="Airbrush"/>
+                                                <ComboBoxItem Content="Splatter"/>
+                                                <ComboBoxItem Content="Charcoal"/>
+                                                <ComboBoxItem Content="Oil Brush"/>
                                             </ComboBox>
                                         </DockPanel>
 
