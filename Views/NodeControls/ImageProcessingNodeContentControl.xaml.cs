@@ -577,7 +577,7 @@ namespace FlowMy.Views.NodeControls
                         }
 
                         double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
-                        double radius = EditorPanel.BrushSize * scaleX; 
+                        double radius = (EditorPanel.BrushSize * scaleX) / 2.0; 
                         double diameter = radius * 2;
 
                         var containerPos = Mouse.GetPosition(ImageContainer);
@@ -586,12 +586,16 @@ namespace FlowMy.Views.NodeControls
                         double flow = EditorPanel.BrushFlow / 100.0;
                         Color brushColor = _node.EditorDoc.ForegroundColor;
 
+                        double imgRadius = EditorPanel.BrushSize / 2.0;
+
                         if (_currentBrushPreset == BrushPreset.Chalk)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
+                            double offsetMul = radius * 6.0;
                             foreach (var offset in ChalkPresetOffsets)
                             {
-                                double spotRadius = offset.size * Math.Max(0.5, radius / 10.0);
+                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * (offset.size * 0.15);
+                                double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
                                 {
@@ -599,18 +603,20 @@ namespace FlowMy.Views.NodeControls
                                     Height = spotDiameter,
                                     Fill = new SolidColorBrush(Color.FromArgb((byte)(flow * 180), brushColor.R, brushColor.G, brushColor.B))
                                 };
-                                Canvas.SetLeft(spotEllipse, containerPos.X + offset.x * radius - spotRadius);
-                                Canvas.SetTop(spotEllipse, containerPos.Y + offset.y * radius - spotRadius);
+                                Canvas.SetLeft(spotEllipse, containerPos.X + offset.x * offsetMul - spotRadius);
+                                Canvas.SetTop(spotEllipse, containerPos.Y + offset.y * offsetMul - spotRadius);
                                 BrushCursorCanvas.Children.Add(spotEllipse);
                             }
                         }
                         else if (_currentBrushPreset == BrushPreset.Spray)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
+                            double offsetMul = radius * 6.0;
                             foreach (var offset in SprayPresetOffsets)
                             {
-                                double spotRadius = 1.0;
-                                double spotDiameter = 2.0;
+                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * 0.25;
+                                double spotRadius = imgSpotRadius * scaleX;
+                                double spotDiameter = spotRadius * 2;
                                 double distRatio = Math.Sqrt(offset.x * offset.x + offset.y * offset.y);
                                 var spotEllipse = new Ellipse
                                 {
@@ -618,17 +624,19 @@ namespace FlowMy.Views.NodeControls
                                     Height = spotDiameter,
                                     Fill = new SolidColorBrush(Color.FromArgb((byte)(flow * 200 * (1.0 - distRatio * 0.5)), brushColor.R, brushColor.G, brushColor.B))
                                 };
-                                Canvas.SetLeft(spotEllipse, containerPos.X + offset.x * radius - spotRadius);
-                                Canvas.SetTop(spotEllipse, containerPos.Y + offset.y * radius - spotRadius);
+                                Canvas.SetLeft(spotEllipse, containerPos.X + offset.x * offsetMul - spotRadius);
+                                Canvas.SetTop(spotEllipse, containerPos.Y + offset.y * offsetMul - spotRadius);
                                 BrushCursorCanvas.Children.Add(spotEllipse);
                             }
                         }
                         else if (_currentBrushPreset == BrushPreset.Scatter)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
+                            double offsetMul = radius * 6.0;
                             foreach (var offset in ScatterPresetOffsets)
                             {
-                                double spotRadius = radius * offset.scale;
+                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.scale;
+                                double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
                                 {
@@ -636,8 +644,8 @@ namespace FlowMy.Views.NodeControls
                                     Height = spotDiameter,
                                     Fill = new SolidColorBrush(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B))
                                 };
-                                Canvas.SetLeft(spotEllipse, containerPos.X + offset.x * radius - spotRadius);
-                                Canvas.SetTop(spotEllipse, containerPos.Y + offset.y * radius - spotRadius);
+                                Canvas.SetLeft(spotEllipse, containerPos.X + offset.x * offsetMul - spotRadius);
+                                Canvas.SetTop(spotEllipse, containerPos.Y + offset.y * offsetMul - spotRadius);
                                 BrushCursorCanvas.Children.Add(spotEllipse);
                             }
                         }
@@ -662,7 +670,36 @@ namespace FlowMy.Views.NodeControls
                             Canvas.SetTop(rect, containerPos.Y - radius / 3.0);
                             BrushCursorCanvas.Children.Add(rect);
                         }
-                        else
+                        else if (_currentBrushPreset == BrushPreset.RoundSoft)
+                        {
+                            BrushPreviewCursor.Width = diameter;
+                            BrushPreviewCursor.Height = diameter;
+                            Canvas.SetLeft(BrushPreviewCursor, containerPos.X - radius);
+                            Canvas.SetTop(BrushPreviewCursor, containerPos.Y - radius);
+
+                            var radialBrush = new RadialGradientBrush();
+                            radialBrush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
+                            radialBrush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255 * 0.5), brushColor.R, brushColor.G, brushColor.B), 0.4));
+                            radialBrush.GradientStops.Add(new GradientStop(Color.FromArgb(0, brushColor.R, brushColor.G, brushColor.B), 1.0));
+
+                            BrushPreviewCursor.Fill = radialBrush;
+                            BrushPreviewCursor.OpacityMask = null;
+                            BrushPreviewCursor.Visibility = Visibility.Visible;
+                        }
+                        else if (_currentBrushPreset == BrushPreset.Pencil)
+                        {
+                            double pencilRadius = Math.Min(radius, Math.Max(1.5 * scaleX, radius * 0.5));
+                            double pencilDiameter = pencilRadius * 2;
+                            BrushPreviewCursor.Width = pencilDiameter;
+                            BrushPreviewCursor.Height = pencilDiameter;
+                            Canvas.SetLeft(BrushPreviewCursor, containerPos.X - pencilRadius);
+                            Canvas.SetTop(BrushPreviewCursor, containerPos.Y - pencilRadius);
+
+                            BrushPreviewCursor.Fill = new SolidColorBrush(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B));
+                            BrushPreviewCursor.OpacityMask = null;
+                            BrushPreviewCursor.Visibility = Visibility.Visible;
+                        }
+                        else // RoundHard
                         {
                             BrushPreviewCursor.Width = diameter;
                             BrushPreviewCursor.Height = diameter;
@@ -672,7 +709,7 @@ namespace FlowMy.Views.NodeControls
                             var radialBrush = new RadialGradientBrush();
                             radialBrush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B), 0.0));
 
-                            double stopOffset = Math.Max(0.0, hardness);
+                            double stopOffset = radius > 0.001 ? Math.Min(hardness, Math.Max(0.0, (radius - scaleX) / radius)) : hardness;
                             if (stopOffset < 0.99)
                             {
                                 radialBrush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(flow * 255), brushColor.R, brushColor.G, brushColor.B), stopOffset));
@@ -686,7 +723,6 @@ namespace FlowMy.Views.NodeControls
 
                             BrushPreviewCursor.Fill = radialBrush;
                             BrushPreviewCursor.OpacityMask = null;
-
                             BrushPreviewCursor.Visibility = Visibility.Visible;
                         }
                         return;
