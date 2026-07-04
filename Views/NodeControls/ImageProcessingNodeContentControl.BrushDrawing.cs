@@ -459,7 +459,12 @@ namespace FlowMy.Views.NodeControls
                 DrawBrushCircle(_strokeAlphaMask, w, h, px, py, radius, hardness, flow, _currentBrushPreset);
                 ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, w, h, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
 
-                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), _tempDrawingPixels, stride, 0);
+                int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                if (dirtyW > 0 && dirtyH > 0)
+                {
+                    activeLayer.Bitmap.WritePixels(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, _strokeMinX, _strokeMinY);
+                }
                 // Defer composite — chỉ đánh dấu dirty, timer sẽ composite ở ~30fps
                 MarkCompositeDirty();
 
@@ -571,7 +576,12 @@ namespace FlowMy.Views.NodeControls
             ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, activeLayer.Width, activeLayer.Height, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
 
             int stride = activeLayer.Width * 4;
-            activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), _tempDrawingPixels, stride, 0);
+            int dirtyW = _strokeMaxX - _strokeMinX + 1;
+            int dirtyH = _strokeMaxY - _strokeMinY + 1;
+            if (dirtyW > 0 && dirtyH > 0)
+            {
+                activeLayer.Bitmap.WritePixels(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, _strokeMinX, _strokeMinY);
+            }
             // Defer composite — chỉ đánh dấu dirty, timer xử lý
             MarkCompositeDirty();
         }
