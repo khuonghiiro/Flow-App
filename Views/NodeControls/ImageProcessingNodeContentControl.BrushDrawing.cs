@@ -2159,6 +2159,46 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private bool IsClickInsidePopupOrComboBox(DependencyObject clickedElement, DependencyObject popupChild)
+        {
+            if (clickedElement == null || popupChild == null) return false;
+
+            DependencyObject current = clickedElement;
+            while (current != null)
+            {
+                if (current == popupChild || current == PopupBrushPreset)
+                    return true;
+
+                if (current is ComboBox || current is ComboBoxItem)
+                    return true;
+
+                if (current is System.Windows.Controls.Primitives.Popup p)
+                {
+                    if (p.PlacementTarget != null && IsClickInsidePopupOrComboBox(p.PlacementTarget, popupChild))
+                        return true;
+                }
+
+                DependencyObject next = null;
+                if (current is Visual)
+                {
+                    next = VisualTreeHelper.GetParent(current);
+                }
+                
+                if (next == null && current is FrameworkElement fe)
+                {
+                    next = fe.Parent ?? fe.TemplatedParent;
+                }
+                
+                if (next == null && current is FrameworkContentElement fce)
+                {
+                    next = fce.Parent ?? fce.TemplatedParent;
+                }
+
+                current = next;
+            }
+            return false;
+        }
+
         private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (BrushSettingsPopup == null || !BrushSettingsPopup.IsOpen) return;
@@ -2166,13 +2206,16 @@ namespace FlowMy.Views.NodeControls
             var child = BrushSettingsPopup.Child as FrameworkElement;
             if (child != null)
             {
-                var mousePosPopup = e.GetPosition(child);
-                var popupRect = new Rect(0, 0, child.ActualWidth, child.ActualHeight);
+                var clickedElement = e.OriginalSource as DependencyObject;
+                if (IsClickInsidePopupOrComboBox(clickedElement, child))
+                {
+                    return; // Nhấp vào bên trong Popup hoặc ComboBox Dropdown, không đóng Popup
+                }
 
                 var mousePosBtn = e.GetPosition(BtnBrushPreviewDropdown);
                 var btnRect = new Rect(0, 0, BtnBrushPreviewDropdown.ActualWidth, BtnBrushPreviewDropdown.ActualHeight);
 
-                if (!popupRect.Contains(mousePosPopup) && !btnRect.Contains(mousePosBtn))
+                if (!btnRect.Contains(mousePosBtn))
                 {
                     BrushSettingsPopup.IsOpen = false;
 
