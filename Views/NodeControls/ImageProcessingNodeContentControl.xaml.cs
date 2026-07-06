@@ -880,6 +880,13 @@ namespace FlowMy.Views.NodeControls
                                 Canvas.SetLeft(EyedropperPreviewContainer, containerPos.X);
                                 Canvas.SetTop(EyedropperPreviewContainer, containerPos.Y);
 
+                                if (EyedropperScaleTransform != null && ImageZoomScale != null)
+                                {
+                                    double invScale = 1.0 / Math.Max(0.01, ImageZoomScale.ScaleX);
+                                    EyedropperScaleTransform.ScaleX = invScale;
+                                    EyedropperScaleTransform.ScaleY = invScale;
+                                }
+
                                 EyedropperPreviewContainer.Visibility = Visibility.Visible;
                                 return;
                             }

@@ -1011,13 +1011,16 @@
                             </Ellipse>
                         </Canvas>
 
-                        <!-- Eyedropper cursor preview (Photoshop style split ring & hex text) -->
+                        <!-- Eyedropper cursor preview (split square & hex text) -->
                         <Canvas x:Name="EyedropperCursorCanvas" IsHitTestVisible="False" Panel.ZIndex="155"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                            <Grid x:Name="EyedropperPreviewContainer" Visibility="Collapsed">
-                                <StackPanel Orientation="Horizontal" Margin="-25,-65,0,0">
-                                    <!-- Split preview circle -->
-                                    <Border Width="50" Height="50" CornerRadius="25" ClipToBounds="True" BorderBrush="White" BorderThickness="2" Background="{StaticResource PsCheckeredBrush}">
+                            <Grid x:Name="EyedropperPreviewContainer" Visibility="Collapsed" RenderTransformOrigin="0,0">
+                                <Grid.RenderTransform>
+                                    <ScaleTransform x:Name="EyedropperScaleTransform" ScaleX="1" ScaleY="1"/>
+                                </Grid.RenderTransform>
+                                <StackPanel Orientation="Horizontal" Margin="-18,-51,0,0">
+                                    <!-- Split preview square -->
+                                    <Border Width="36" Height="36" CornerRadius="3" ClipToBounds="True" BorderBrush="#353945" BorderThickness="1" Background="{StaticResource PsCheckeredBrush}">
                                         <Border.Effect>
                                             <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.5" Color="Black"/>
                                         </Border.Effect>
