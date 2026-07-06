@@ -30,7 +30,10 @@ namespace FlowMy.Views.NodeControls
 
         private bool _isDrawingPixels;
         private byte[]? _tempDrawingPixels;
-        private byte[]? _strokeAlphaMask;
+        private float[]? _strokeAlphaMaskF;
+        private float[]? _tempAlphaMaskF;
+        private double _strokeDistanceAccumulator;
+        private readonly List<Point> _strokePoints = new();
         private Point _lastDrawingPixelPoint;
         private byte[]? _oldPixelsForUndo;
         private BrushPreset _currentBrushPreset = BrushPreset.RoundHard;
@@ -436,7 +439,11 @@ namespace FlowMy.Views.NodeControls
                 _tempDrawingPixels = new byte[stride * h];
                 Array.Copy(_oldPixelsForUndo, _tempDrawingPixels, _oldPixelsForUndo.Length);
 
-                _strokeAlphaMask = new byte[w * h];
+                _strokeAlphaMaskF = new float[w * h];
+                _tempAlphaMaskF = new float[w * h];
+                _strokePoints.Clear();
+                _strokePoints.Add(new Point(px, py));
+                _strokeDistanceAccumulator = 0.0;
 
                 bool isEraser = (tool == "Eraser");
                 double radius = EditorPanel.BrushSize;
@@ -456,8 +463,8 @@ namespace FlowMy.Views.NodeControls
                 _strokeMinY = Math.Clamp((int)(py - extendedRadius), 0, h - 1);
                 _strokeMaxY = Math.Clamp((int)(py + extendedRadius), 0, h - 1);
 
-                DrawBrushCircle(_strokeAlphaMask, w, h, px, py, radius, hardness, flow, _currentBrushPreset);
-                ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, w, h, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
+                DrawBrushCircle(_strokeAlphaMaskF, w, h, px, py, radius, hardness, flow, _currentBrushPreset);
+                ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMaskF, w, h, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
 
                 int dirtyW = _strokeMaxX - _strokeMinX + 1;
                 int dirtyH = _strokeMaxY - _strokeMinY + 1;
@@ -542,7 +549,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (!_isDrawingPixels || _tempDrawingPixels == null) return;
+            if (!_isDrawingPixels || _tempDrawingPixels == null || _strokeAlphaMaskF == null || _tempAlphaMaskF == null) return;
 
             bool isEraser = (tool == "Eraser");
             double radius = EditorPanel.BrushSize;
@@ -553,8 +560,32 @@ namespace FlowMy.Views.NodeControls
             var currentPoint = new Point(px, py);
             var prevPoint = _lastDrawingPixelPoint;
 
-            DrawBrushLine(_strokeAlphaMask, activeLayer.Width, activeLayer.Height, prevPoint, currentPoint, radius, hardness, flow, _currentBrushPreset);
+            if (_strokePoints.Count > 0 && _strokePoints[^1] == currentPoint) return;
+            _strokePoints.Add(currentPoint);
             _lastDrawingPixelPoint = currentPoint;
+
+            int n = _strokePoints.Count - 1;
+            int activeW = activeLayer.Width;
+            int activeH = activeLayer.Height;
+
+            if (n == 1)
+            {
+                DrawBrushLine(_strokeAlphaMaskF, activeW, activeH, _strokePoints[0], _strokePoints[1], radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
+            }
+            else if (n == 2)
+            {
+                Point pExtrapolated = new Point(2 * _strokePoints[0].X - _strokePoints[1].X, 2 * _strokePoints[0].Y - _strokePoints[1].Y);
+                DrawBrushSplineSegment(_strokeAlphaMaskF, activeW, activeH, pExtrapolated, _strokePoints[0], _strokePoints[1], _strokePoints[2], radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
+            }
+            else if (n >= 3)
+            {
+                DrawBrushSplineSegment(_strokeAlphaMaskF, activeW, activeH, _strokePoints[n-3], _strokePoints[n-2], _strokePoints[n-1], _strokePoints[n], radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
+            }
+
+            Array.Copy(_strokeAlphaMaskF, _tempAlphaMaskF, _strokeAlphaMaskF.Length);
+
+            double tempDistanceAccumulator = _strokeDistanceAccumulator;
+            DrawBrushLine(_tempAlphaMaskF, activeW, activeH, _strokePoints[n-1], _strokePoints[n], radius, hardness, flow, _currentBrushPreset, ref tempDistanceAccumulator);
 
             double extendedRadius = radius + 2.0;
             if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter ||
@@ -573,7 +604,7 @@ namespace FlowMy.Views.NodeControls
             _strokeMinY = Math.Min(_strokeMinY, segmentMinY);
             _strokeMaxY = Math.Max(_strokeMaxY, segmentMaxY);
 
-            ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMask, activeLayer.Width, activeLayer.Height, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
+            ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _tempAlphaMaskF, activeLayer.Width, activeLayer.Height, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
 
             int stride = activeLayer.Width * 4;
             int dirtyW = _strokeMaxX - _strokeMinX + 1;
@@ -582,7 +613,6 @@ namespace FlowMy.Views.NodeControls
             {
                 activeLayer.Bitmap.WritePixels(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, _strokeMinX, _strokeMinY);
             }
-            // Defer composite — chỉ đánh dấu dirty, timer xử lý
             MarkCompositeDirty();
         }
 
@@ -699,18 +729,51 @@ namespace FlowMy.Views.NodeControls
 
             if (activeLayer == null || _oldPixelsForUndo == null) return;
 
-            int stride = activeLayer.Width * 4;
-            var newPixels = new byte[stride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+            if (_strokePoints.Count >= 2 && _strokeAlphaMaskF != null)
+            {
+                int n = _strokePoints.Count - 1;
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                double radius = EditorPanel.BrushSize;
+                double hardness = EditorPanel.BrushHardness;
+                double flow = EditorPanel.BrushFlow;
+                Color color = _node.EditorDoc.ForegroundColor;
+                string tool = EditorPanel.ActiveToolName;
+                bool isEraser = (tool == "Eraser");
+
+                if (n > 1)
+                {
+                    Point pExtrapolated = new Point(2 * _strokePoints[n].X - _strokePoints[n-1].X, 2 * _strokePoints[n].Y - _strokePoints[n-1].Y);
+                    DrawBrushSplineSegment(_strokeAlphaMaskF, w, h, _strokePoints[n-2], _strokePoints[n-1], _strokePoints[n], pExtrapolated, radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
+                }
+
+                if (_tempDrawingPixels != null)
+                {
+                    ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMaskF, w, h, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
+
+                    int stride = w * 4;
+                    int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                    int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                    if (dirtyW > 0 && dirtyH > 0)
+                    {
+                        activeLayer.Bitmap.WritePixels(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, _strokeMinX, _strokeMinY);
+                    }
+                }
+            }
+
+            int strideFinal = activeLayer.Width * 4;
+            var newPixels = new byte[strideFinal * activeLayer.Height];
+            activeLayer.Bitmap.CopyPixels(newPixels, strideFinal, 0);
 
             var cmd = new PixelEditCommand(activeLayer, _oldPixelsForUndo, newPixels);
             _node.EditorDoc.History.Execute(cmd);
 
             _tempDrawingPixels = null;
             _oldPixelsForUndo = null;
-            _strokeAlphaMask = null;
+            _strokeAlphaMaskF = null;
+            _tempAlphaMaskF = null;
+            _strokePoints.Clear();
 
-            // Flush: dừng timer, sync thumbnail + composite cuối cùng
             FlushCompositeAndSync();
         }
 
@@ -1236,7 +1299,7 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private void DrawBrushCircle(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow,
+        private void DrawBrushCircle(float[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow,
             BrushPreset preset = BrushPreset.RoundHard)
         {
             switch (preset)
@@ -1280,7 +1343,7 @@ namespace FlowMy.Views.NodeControls
         #region ═══ BRUSH PRESETS ═══
 
         /// <summary>Round Hard — cọ tròn cứng (mặc định gốc).</summary>
-        private void DrawBrush_RoundHard(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
+        private void DrawBrush_RoundHard(float[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
         {
             double r = radius * 0.5;
             if (r <= 0.5)
@@ -1291,10 +1354,9 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (IsInsideSelection(px, py))
                     {
-                        int newAlpha = (int)(flow / 100.0 * 255.0);
+                        float stampOpacity = (float)(flow / 100.0);
                         int maskOffset = py * width + px;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
                 return;
@@ -1330,19 +1392,18 @@ namespace FlowMy.Views.NodeControls
                         t = Math.Clamp(t, 0.0, 1.0);
                         double pixelOpacity = 1.0 - (t * t * (3.0 - 2.0 * t));
 
-                        int newAlpha = (int)(pixelOpacity * flowMul * 255.0);
-                        if (newAlpha <= 0) continue;
+                        float stampOpacity = (float)(pixelOpacity * flowMul);
+                        if (stampOpacity <= 0f) continue;
 
                         int maskOffset = rowOffset + x;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
             }
         }
 
         /// <summary>Round Soft — gaussian-like smooth falloff.</summary>
-        private void DrawBrush_RoundSoft(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_RoundSoft(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             if (r <= 0.5)
@@ -1353,10 +1414,9 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (IsInsideSelection(px, py))
                     {
-                        int newAlpha = (int)(flow / 100.0 * 255.0);
+                        float stampOpacity = (float)(flow / 100.0);
                         int maskOffset = py * width + px;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
                 return;
@@ -1392,19 +1452,18 @@ namespace FlowMy.Views.NodeControls
                         double edgeOpacity = Math.Clamp((outerRadius - dist), 0.0, 1.0);
                         double pixelOpacity = gaussianOpacity * edgeOpacity;
 
-                        int newAlpha = (int)(pixelOpacity * flowMul * 255.0);
-                        if (newAlpha <= 0) continue;
+                        float stampOpacity = (float)(pixelOpacity * flowMul);
+                        if (stampOpacity <= 0f) continue;
 
                         int maskOffset = rowOffset + x;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
             }
         }
 
         /// <summary>Flat — cọ dẹp hình chữ nhật ngang, ratio ~3:1.</summary>
-        private void DrawBrush_Flat(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
+        private void DrawBrush_Flat(float[] alphaMask, int width, int height, double cx, double cy, double radius, double hardness, double flow)
         {
             double halfW = radius;          // chiều rộng = diameter
             double halfH = radius / 3.0;    // chiều cao = 1/3 diameter
@@ -1434,17 +1493,16 @@ namespace FlowMy.Views.NodeControls
                     if (edgeDist > innerEdge && innerEdge < 1.0)
                         pixelOpacity = 1.0 - (edgeDist - innerEdge) / (1.0 - innerEdge);
 
-                    int newAlpha = (int)(pixelOpacity * flowMul * 255.0);
-                    if (newAlpha <= 0) continue;
+                    float stampOpacity = (float)(pixelOpacity * flowMul);
+                    if (stampOpacity <= 0f) continue;
 
                     int maskOffset = rowOffset + x;
-                    int existingAlpha = alphaMask[maskOffset];
-                    alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                    alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                 }
             }
         }
 
-        private void DrawBrush_Chalk(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Chalk(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
@@ -1462,11 +1520,10 @@ namespace FlowMy.Views.NodeControls
                     {
                         if (IsInsideSelection(px, py))
                         {
-                            int newAlpha = (int)(flowMul * 180.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(flowMul * 180.0 / 255.0);
+                            if (stampOpacity <= 0f) continue;
                             int maskOffset = py * width + px;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1501,12 +1558,11 @@ namespace FlowMy.Views.NodeControls
 
                             double dist = Math.Sqrt(dist2);
                             double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
-                            int newAlpha = (int)(edgeOpacity * flowMul * 180.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(edgeOpacity * flowMul * 180.0 / 255.0);
+                            if (stampOpacity <= 0f) continue;
 
                             int maskOffset = rowOffset + x;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1514,7 +1570,7 @@ namespace FlowMy.Views.NodeControls
         }
 
         /// <summary>Spray — bình xịt, sử dụng phân bổ điểm cố định để đồng bộ hoàn toàn với preview.</summary>
-        private void DrawBrush_Spray(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Spray(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
@@ -1534,11 +1590,10 @@ namespace FlowMy.Views.NodeControls
                         {
                             double distRatio = Math.Sqrt(offset.x * offset.x + offset.y * offset.y);
                             double opacityScale = 1.0 - distRatio * 0.5;
-                            int newAlpha = (int)(opacityScale * flowMul * 255.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(opacityScale * flowMul);
+                            if (stampOpacity <= 0f) continue;
                             int maskOffset = py * width + px;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1577,12 +1632,11 @@ namespace FlowMy.Views.NodeControls
 
                             double dist = Math.Sqrt(dist2);
                             double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
-                            int newAlpha = (int)(edgeOpacity * opacityScale * flowMul * 255.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(edgeOpacity * opacityScale * flowMul);
+                            if (stampOpacity <= 0f) continue;
 
                             int maskOffset = rowOffset + x;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1590,7 +1644,7 @@ namespace FlowMy.Views.NodeControls
         }
 
         /// <summary>Scatter — điểm rải rác, sử dụng phân bổ cố định để đồng bộ hoàn toàn với preview.</summary>
-        private void DrawBrush_Scatter(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Scatter(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
@@ -1608,11 +1662,10 @@ namespace FlowMy.Views.NodeControls
                     {
                         if (IsInsideSelection(px, py))
                         {
-                            int newAlpha = (int)(flowMul * 255.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)flowMul;
+                            if (stampOpacity <= 0f) continue;
                             int maskOffset = py * width + px;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1647,12 +1700,11 @@ namespace FlowMy.Views.NodeControls
                             double falloff = 1.0 - (dist / outerRadius);
                             double edgeOpacity = Math.Clamp((outerRadius - dist), 0.0, 1.0);
                             double pixelOpacity = falloff * edgeOpacity;
-                            int newAlpha = (int)Math.Clamp(pixelOpacity * flowMul * 255.0, 0, 255);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)Math.Clamp(pixelOpacity * flowMul, 0.0, 1.0);
+                            if (stampOpacity <= 0f) continue;
                             
                             int maskOffset = rowOffset + x;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1660,7 +1712,7 @@ namespace FlowMy.Views.NodeControls
         }
 
         /// <summary>Pencil — bút chì, nét nhỏ cứng với slight jitter.</summary>
-        private void DrawBrush_Pencil(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Pencil(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             if (r <= 0.5)
@@ -1671,10 +1723,9 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (IsInsideSelection(px, py))
                     {
-                        int newAlpha = (int)(flow / 100.0 * 255.0);
+                        float stampOpacity = (float)(flow / 100.0);
                         int maskOffset = py * width + px;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
                 return;
@@ -1710,18 +1761,17 @@ namespace FlowMy.Views.NodeControls
                         if (!IsInsideSelection(x, y)) continue;
 
                         // Hard edge — full opacity within circle
-                        int newAlpha = (int)(flowMul * 255.0);
-                        if (newAlpha <= 0) continue;
+                        float stampOpacity = (float)flowMul;
+                        if (stampOpacity <= 0f) continue;
 
                         int maskOffset = rowOffset + x;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
             }
         }
 
-        private void DrawBrush_Airbrush(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Airbrush(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             if (r <= 0.5)
@@ -1732,10 +1782,9 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (IsInsideSelection(px, py))
                     {
-                        int newAlpha = (int)(flow / 100.0 * 255.0);
+                        float stampOpacity = (float)(flow / 100.0);
                         int maskOffset = py * width + px;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
                 return;
@@ -1771,18 +1820,17 @@ namespace FlowMy.Views.NodeControls
                         double edgeOpacity = Math.Clamp(outerRadius - dist, 0.0, 1.0);
                         double pixelOpacity = falloff * edgeOpacity;
 
-                        int newAlpha = (int)(pixelOpacity * flowMul * 255.0);
-                        if (newAlpha <= 0) continue;
+                        float stampOpacity = (float)(pixelOpacity * flowMul);
+                        if (stampOpacity <= 0f) continue;
 
                         int maskOffset = rowOffset + x;
-                        int existingAlpha = alphaMask[maskOffset];
-                        alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                     }
                 }
             }
         }
 
-        private void DrawBrush_Splatter(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Splatter(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
@@ -1800,11 +1848,10 @@ namespace FlowMy.Views.NodeControls
                     {
                         if (IsInsideSelection(px, py))
                         {
-                            int newAlpha = (int)(flowMul * offset.opacity * 255.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(flowMul * offset.opacity);
+                            if (stampOpacity <= 0f) continue;
                             int maskOffset = py * width + px;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1839,19 +1886,18 @@ namespace FlowMy.Views.NodeControls
 
                             double dist = Math.Sqrt(dist2);
                             double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
-                            int newAlpha = (int)(edgeOpacity * flowMul * offset.opacity * 255.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(edgeOpacity * flowMul * offset.opacity);
+                            if (stampOpacity <= 0f) continue;
 
                             int maskOffset = rowOffset + x;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
             }
         }
 
-        private void DrawBrush_Charcoal(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_Charcoal(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
@@ -1871,11 +1917,10 @@ namespace FlowMy.Views.NodeControls
                         {
                             double noise = Math.Abs(Math.Sin(px * 12.9898 + py * 78.233) * 43758.5453) % 1.0;
                             if (noise < 0.3) continue;
-                            int newAlpha = (int)(flowMul * offset.opacity * 200.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(flowMul * offset.opacity * 200.0 / 255.0);
+                            if (stampOpacity <= 0f) continue;
                             int maskOffset = py * width + px;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1913,19 +1958,18 @@ namespace FlowMy.Views.NodeControls
 
                             double dist = Math.Sqrt(dist2);
                             double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
-                            int newAlpha = (int)(edgeOpacity * flowMul * offset.opacity * 200.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(edgeOpacity * flowMul * offset.opacity * 200.0 / 255.0);
+                            if (stampOpacity <= 0f) continue;
 
                             int maskOffset = rowOffset + x;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
             }
         }
 
-        private void DrawBrush_OilBrush(byte[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
+        private void DrawBrush_OilBrush(float[] alphaMask, int width, int height, double cx, double cy, double radius, double flow)
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
@@ -1943,11 +1987,10 @@ namespace FlowMy.Views.NodeControls
                     {
                         if (IsInsideSelection(px, py))
                         {
-                            int newAlpha = (int)(flowMul * 180.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(flowMul * 180.0 / 255.0);
+                            if (stampOpacity <= 0f) continue;
                             int maskOffset = py * width + px;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1984,12 +2027,11 @@ namespace FlowMy.Views.NodeControls
 
                             double dist = Math.Sqrt(dist2);
                             double edgeOpacity = Math.Clamp((spotRadius + 0.5 - dist), 0.0, 1.0);
-                            int newAlpha = (int)(edgeOpacity * flowMul * bristleFlow * 255.0);
-                            if (newAlpha <= 0) continue;
+                            float stampOpacity = (float)(edgeOpacity * flowMul * bristleFlow);
+                            if (stampOpacity <= 0f) continue;
 
                             int maskOffset = rowOffset + x;
-                            int existingAlpha = alphaMask[maskOffset];
-                            alphaMask[maskOffset] = (byte)(existingAlpha + newAlpha - (existingAlpha * newAlpha) / 255);
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
                         }
                     }
                 }
@@ -1998,8 +2040,30 @@ namespace FlowMy.Views.NodeControls
 
         #endregion
 
-        private void DrawBrushLine(byte[] alphaMask, int width, int height, Point p1, Point p2, double radius, double hardness, double flow,
-            BrushPreset preset = BrushPreset.RoundHard)
+        private double GetBrushStep(BrushPreset preset, double radius)
+        {
+            if (preset == BrushPreset.RoundSoft || preset == BrushPreset.Airbrush || preset == BrushPreset.Charcoal || preset == BrushPreset.OilBrush)
+            {
+                return Math.Max(0.1, radius * 0.15);
+            }
+            else if (preset == BrushPreset.Spray || preset == BrushPreset.Scatter || preset == BrushPreset.Chalk || preset == BrushPreset.Splatter)
+            {
+                double factor = (preset == BrushPreset.Splatter) ? 5.0 : 6.0;
+                return Math.Max(1.0, radius * factor);
+            }
+            else if (preset == BrushPreset.Pencil)
+            {
+                double pencilRadius = Math.Min(radius, Math.Max(1.5, radius * 0.5));
+                return Math.Max(0.1, pencilRadius * 0.2);
+            }
+            else
+            {
+                return Math.Max(0.1, radius * 0.2);
+            }
+        }
+
+        private void DrawBrushLine(float[] alphaMask, int width, int height, Point p1, Point p2, double radius, double hardness, double flow,
+            BrushPreset preset, ref double distanceAccumulator)
         {
             double dx = p2.X - p1.X;
             double dy = p2.Y - p1.Y;
@@ -2011,40 +2075,83 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            double step;
-            if (preset == BrushPreset.RoundSoft || preset == BrushPreset.Airbrush || preset == BrushPreset.Charcoal || preset == BrushPreset.OilBrush)
-            {
-                // Spacing is 10% of diameter (20% of radius) for continuous feel
-                step = Math.Max(0.1, radius * 0.15);
-            }
-            else if (preset == BrushPreset.Spray || preset == BrushPreset.Scatter || preset == BrushPreset.Chalk || preset == BrushPreset.Splatter)
-            {
-                // Spacing is proportional to the expanded offset scale
-                double factor = (preset == BrushPreset.Splatter) ? 5.0 : 6.0;
-                step = Math.Max(1.0, radius * factor);
-            }
-            else if (preset == BrushPreset.Pencil)
-            {
-                // Pencil spacing is 10% of pencil diameter
-                double pencilRadius = Math.Min(radius, Math.Max(1.5, radius * 0.5));
-                step = Math.Max(0.1, pencilRadius * 0.2);
-            }
-            else
-            {
-                // Standard hard brush spacing is 10% of diameter (20% of radius)
-                step = Math.Max(0.1, radius * 0.2);
-            }
+            double step = GetBrushStep(preset, radius);
 
-            for (double d = 0; d <= len; d += step)
+            double d = 0;
+            while (d <= len)
             {
-                double cx = p1.X + (dx * d / len);
-                double cy = p1.Y + (dy * d / len);
-                DrawBrushCircle(alphaMask, width, height, cx, cy, radius, hardness, flow, preset);
+                double remainingToStep = step - distanceAccumulator;
+                if (d + remainingToStep <= len)
+                {
+                    d += remainingToStep;
+                    double cx = p1.X + (dx * d / len);
+                    double cy = p1.Y + (dy * d / len);
+                    DrawBrushCircle(alphaMask, width, height, cx, cy, radius, hardness, flow, preset);
+                    distanceAccumulator = 0;
+                }
+                else
+                {
+                    distanceAccumulator += (len - d);
+                    break;
+                }
             }
-            DrawBrushCircle(alphaMask, width, height, p2.X, p2.Y, radius, hardness, flow, preset);
         }
 
-        private void ApplyStrokeToPixels(byte[] destPixels, byte[] srcPixels, byte[] alphaMask, int width, int height, Color color, bool isEraser, int minX, int minY, int maxX, int maxY)
+        private Point CatmullRom(Point p0, Point p1, Point p2, Point p3, float t)
+        {
+            float t2 = t * t;
+            float t3 = t2 * t;
+            float x = 0.5f * (float)((2 * p1.X) + (-p0.X + p2.X) * t
+                + (2 * p0.X - 5 * p1.X + 4 * p2.X - p3.X) * t2
+                + (-p0.X + 3 * p1.X - 3 * p2.X + p3.X) * t3);
+            float y = 0.5f * (float)((2 * p1.Y) + (-p0.Y + p2.Y) * t
+                + (2 * p0.Y - 5 * p1.Y + 4 * p2.Y - p3.Y) * t2
+                + (-p0.Y + 3 * p1.Y - 3 * p2.Y + p3.Y) * t3);
+            return new Point(x, y);
+        }
+
+        private void DrawBrushSplineSegment(float[] alphaMask, int width, int height, Point p0, Point p1, Point p2, Point p3, double radius, double hardness, double flow, BrushPreset preset, ref double distanceAccumulator)
+        {
+            double step = GetBrushStep(preset, radius);
+            double estLength = Point.Subtract(p2, p1).Length;
+            int subdivisions = Math.Max(20, (int)(estLength * 2.0));
+            subdivisions = Math.Min(subdivisions, 200);
+
+            Point pPrev = p1;
+            for (int i = 1; i <= subdivisions; i++)
+            {
+                float t = (float)i / subdivisions;
+                Point pCurr = CatmullRom(p0, p1, p2, p3, t);
+                double dist = Point.Subtract(pCurr, pPrev).Length;
+
+                if (dist == 0) continue;
+
+                double dx = pCurr.X - pPrev.X;
+                double dy = pCurr.Y - pPrev.Y;
+
+                double d = 0;
+                while (d <= dist)
+                {
+                    double remainingToStep = step - distanceAccumulator;
+                    if (d + remainingToStep <= dist)
+                    {
+                        d += remainingToStep;
+                        double cx = pPrev.X + (dx * d / dist);
+                        double cy = pPrev.Y + (dy * d / dist);
+                        DrawBrushCircle(alphaMask, width, height, cx, cy, radius, hardness, flow, preset);
+                        distanceAccumulator = 0;
+                    }
+                    else
+                    {
+                        distanceAccumulator += (dist - d);
+                        break;
+                    }
+                }
+                pPrev = pCurr;
+            }
+        }
+
+        private void ApplyStrokeToPixels(byte[] destPixels, byte[] srcPixels, float[] alphaMask, int width, int height, Color color, bool isEraser, int minX, int minY, int maxX, int maxY)
         {
             minX = Math.Clamp(minX, 0, width - 1);
             maxX = Math.Clamp(maxX, 0, width - 1);
@@ -2072,8 +2179,8 @@ namespace FlowMy.Views.NodeControls
                     }
 
                     int maskOffset = rowOffset + x;
-                    byte maskAlphaByte = alphaMask[maskOffset];
-                    if (maskAlphaByte == 0)
+                    float maskAlpha = alphaMask[maskOffset];
+                    if (maskAlpha == 0f)
                     {
                         int pixelOffset = pixelRowOffset + x * 4;
                         destPixels[pixelOffset] = srcPixels[pixelOffset];
@@ -2083,7 +2190,6 @@ namespace FlowMy.Views.NodeControls
                         continue;
                     }
 
-                    double maskAlpha = maskAlphaByte / 255.0;
                     int pOffset = pixelRowOffset + x * 4;
 
                     if (isEraser)
@@ -2092,7 +2198,7 @@ namespace FlowMy.Views.NodeControls
                         destPixels[pOffset] = srcPixels[pOffset];
                         destPixels[pOffset + 1] = srcPixels[pOffset + 1];
                         destPixels[pOffset + 2] = srcPixels[pOffset + 2];
-                        destPixels[pOffset + 3] = (byte)Math.Clamp(srcA * (1.0 - maskAlpha), 0, 255);
+                        destPixels[pOffset + 3] = (byte)Math.Clamp(srcA * (1.0f - maskAlpha), 0f, 255f);
                     }
                     else
                     {
