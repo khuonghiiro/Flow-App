@@ -163,7 +163,7 @@ namespace FlowMy.Models.ImageEditor
                 {
                     foreach (var layer in Layers)
                     {
-                        if (!layer.IsVisible || layer.Opacity <= 0) continue;
+                        if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
 
                         drawingContext.PushOpacity(layer.Opacity);
 
@@ -216,7 +216,7 @@ namespace FlowMy.Models.ImageEditor
 
                 foreach (var layer in Layers)
                 {
-                    if (!layer.IsVisible || layer.Opacity <= 0) continue;
+                    if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
 
                     var layerPixels = new byte[stride * Height];
                     layer.Bitmap.CopyPixels(layerPixels, stride, 0);

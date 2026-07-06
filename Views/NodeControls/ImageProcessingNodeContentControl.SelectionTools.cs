@@ -784,6 +784,7 @@ namespace FlowMy.Views.NodeControls
             var list = new List<SelectionToolItem>
             {
                 new SelectionToolItem { Name = "CropCanvas", DisplayName = "Crop Tool", Description = "Cắt xén kích thước ảnh (C)", IconKey = "crop duotone" },
+                new SelectionToolItem { Name = "Transform", DisplayName = "Transform Tool", Description = "Co dãn, xoay ảnh (Ctrl+T)", IconKey = "expand duotone" },
                 new SelectionToolItem { Name = "Slice", DisplayName = "Slice Tool", Description = "Chia cắt ảnh thành các phần (K)", IconKey = "scalpel sharp-duotone-solid" },
                 new SelectionToolItem { Name = "SliceSelect", DisplayName = "Slice Select Tool", Description = "Chọn và chỉnh sửa lát cắt (Shift+K)", IconKey = "scalpel-line-dashed sharp-duotone-solid" }
             };

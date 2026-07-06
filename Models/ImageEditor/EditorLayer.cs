@@ -63,6 +63,9 @@ namespace FlowMy.Models.ImageEditor
             set => SetField(ref _isVisible, value);
         }
 
+        /// <summary>Tạm ẩn layer trong quá trình biến đổi.</summary>
+        public bool IsTempHidden { get; set; }
+
         /// <summary>Khoá layer (không cho vẽ/sửa).</summary>
         public bool IsLocked
         {

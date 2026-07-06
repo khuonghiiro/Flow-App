@@ -442,3 +442,7 @@ paintbrush sharp-duotone-solid
 object-group sharp-duotone-solid
 scalpel sharp-duotone-solid
 scalpel-line-dashed sharp-duotone-solid
+rotate-right solid
+rotate-left solid
+arrows-left-right duotone
+arrows-up-down duotone

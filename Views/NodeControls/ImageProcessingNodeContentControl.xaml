@@ -675,6 +675,65 @@
                     <Button Content="Clear All Slices" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptSliceClearAll_Click"/>
                     <Button Content="Export Slices as Images" Style="{StaticResource IpAdjBtn}" Click="OptSliceExport_Click"/>
                 </StackPanel>
+
+                <!-- ═══ MOVE / TRANSFORM OPTIONS ═══ -->
+                <!-- ═══ MOVE OPTIONS ═══ -->
+                <StackPanel x:Name="OptMovePanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="✋ Move Layer" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- ═══ TRANSFORM OPTIONS ═══ -->
+                <StackPanel x:Name="OptTransformPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="📐 Free Transform" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    
+                    <!-- Rotation Buttons -->
+                    <Button Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" ToolTip="Xoay trái 90 độ" Click="OptMoveRotate90Left_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:SvgViewboxEx Width="10" Height="10" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-left solid'}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="-90°" FontSize="9" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" ToolTip="Xoay phải 90 độ" Click="OptMoveRotate90Right_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:SvgViewboxEx Width="10" Height="10" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-right solid'}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="+90°" FontSize="9" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" ToolTip="Xoay phải 45 độ" Click="OptMoveRotate45_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:SvgViewboxEx Width="10" Height="10" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-right solid'}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="+45°" FontSize="9" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" ToolTip="Xoay 180 độ" Click="OptMoveRotate180_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:SvgViewboxEx Width="10" Height="10" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-right solid'}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="180°" FontSize="9" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Height="12" Width="1" Background="#353945" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+                    <!-- Flip Buttons -->
+                    <Button Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" ToolTip="Lật Ngang" Click="OptMoveFlipH_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:SvgViewboxEx Width="10" Height="10" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-left-right duotone'}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Flip H" FontSize="9" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" ToolTip="Lật Dọc" Click="OptMoveFlipV_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:SvgViewboxEx Width="10" Height="10" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-up-down duotone'}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Flip V" FontSize="9" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Height="12" Width="1" Background="#353945" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+                    <!-- Apply / Cancel Session -->
+                    <Button Content="Apply (Enter)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptMoveApply_Click"/>
+                    <Button Content="Cancel (Esc)" Style="{StaticResource IpAdjBtn}" Click="OptMoveCancel_Click"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -791,7 +850,7 @@
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='crop duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                                <TextBlock Text="3" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
+                                <TextBlock Text="4" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"
                                            Margin="0,0,1,1" IsHitTestVisible="False"/>
                             </Grid>
@@ -1175,6 +1234,57 @@
                         <!-- Slices Overlay Canvas -->
                         <Canvas x:Name="SlicesCanvas" IsHitTestVisible="False" Panel.ZIndex="140"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Collapsed"/>
+
+                         <!-- Transform Preview Image for smooth real-time GPU scaling/rotation -->
+                        <Image x:Name="TransformPreviewImage" Stretch="Uniform"
+                               HorizontalAlignment="Left" VerticalAlignment="Top"
+                               Visibility="Collapsed" Panel.ZIndex="143"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <TransformGroup x:Name="TransformPreviewGroup">
+                                    <ScaleTransform x:Name="TransformPreviewScale" ScaleX="1" ScaleY="1"/>
+                                    <RotateTransform x:Name="TransformPreviewRotate" Angle="0"/>
+                                    <TranslateTransform x:Name="TransformPreviewTranslate" X="0" Y="0"/>
+                                </TransformGroup>
+                            </Image.RenderTransform>
+                        </Image>
+
+                        <!-- Transform interactive overlay bounds and handles (Photoshop Ctrl+T style) -->
+                        <Canvas x:Name="TransformOverlayCanvas" IsHitTestVisible="True" Panel.ZIndex="144"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Collapsed"
+                                Background="Transparent"
+                                MouseLeftButtonDown="TransformOverlay_MouseDown"
+                                MouseMove="TransformOverlay_MouseMove"
+                                MouseLeftButtonUp="TransformOverlay_MouseUp">
+                            <Canvas x:Name="TransformBoxVisual" RenderTransformOrigin="0.5,0.5">
+                                <Canvas.RenderTransform>
+                                    <TransformGroup x:Name="TransformBoxGroup">
+                                        <ScaleTransform x:Name="TransformBoxScale" ScaleX="1" ScaleY="1"/>
+                                        <RotateTransform x:Name="TransformBoxRotate" Angle="0"/>
+                                        <TranslateTransform x:Name="TransformBoxTranslate" X="0" Y="0"/>
+                                    </TransformGroup>
+                                </Canvas.RenderTransform>
+                                <!-- Bounding Border -->
+                                <Path x:Name="TransformBoxBorderPath" Stroke="#00cfff" StrokeThickness="2.5" StrokeDashArray="3 3"/>
+                                <!-- Handles (8 resize markers) -->
+                                <Canvas x:Name="TransformHandlesCanvas">
+                                    <Rectangle x:Name="TransHandle_TL" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNWSE" Tag="TL"/>
+                                    <Rectangle x:Name="TransHandle_T" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNS" Tag="T"/>
+                                    <Rectangle x:Name="TransHandle_TR" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNESW" Tag="TR"/>
+                                    <Rectangle x:Name="TransHandle_R" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeWE" Tag="R"/>
+                                    <Rectangle x:Name="TransHandle_BR" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNWSE" Tag="BR"/>
+                                    <Rectangle x:Name="TransHandle_B" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNS" Tag="B"/>
+                                    <Rectangle x:Name="TransHandle_BL" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNESW" Tag="BL"/>
+                                    <Rectangle x:Name="TransHandle_L" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeWE" Tag="L"/>
+                                </Canvas>
+                            </Canvas>
+
+                            <!-- Custom Floating Rotate Cursor -->
+                            <Canvas x:Name="RotateCursorCanvas" IsHitTestVisible="False" Panel.ZIndex="999" Visibility="Collapsed">
+                                <controls:SvgViewboxEx x:Name="RotateCursorIconOutline" Width="18" Height="18" Fill="Black" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-right solid'}" Canvas.Left="-1" Canvas.Top="-1"/>
+                                <controls:SvgViewboxEx x:Name="RotateCursorIcon" Width="16" Height="16" Fill="White" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-right solid'}"/>
+                            </Canvas>
+                        </Canvas>
 
                         <!-- Crop Overlay Canvas (Photoshop style) -->
                         <Canvas x:Name="CropOverlayCanvas" IsHitTestVisible="True" Panel.ZIndex="145"

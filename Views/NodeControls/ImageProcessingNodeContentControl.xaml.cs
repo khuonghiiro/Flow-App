@@ -95,6 +95,7 @@ namespace FlowMy.Views.NodeControls
 
             InitializeComponent();
             this.Loaded += (s, e) => InitializeFxDots();
+            this.Unloaded += (s, e) => CommitPendingMoveTranslation();
             MainImage.SizeChanged += (s, e) => {
                 if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
                 {
@@ -1803,6 +1804,7 @@ namespace FlowMy.Views.NodeControls
             _toolboxBorders["CropCanvas"] = TbxCropActive;
             _toolboxBorders["Slice"] = TbxCropActive;
             _toolboxBorders["SliceSelect"] = TbxCropActive;
+            _toolboxBorders["Transform"] = TbxCropActive;
         }
 
         private void EditorToolbox_Click(object sender, MouseButtonEventArgs e)
@@ -2724,7 +2726,7 @@ namespace FlowMy.Views.NodeControls
                                activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || 
                                activeTool == "Eyedropper" || activeTool == "MagicWand" || activeTool == "QuickSelection" || 
                                activeTool == "ObjectSelection" || activeTool == "CropCanvas" || activeTool == "Slice" || 
-                               activeTool == "SliceSelect");
+                               activeTool == "SliceSelect" || activeTool == "Move" || activeTool == "Transform");
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
             {
@@ -2746,6 +2748,33 @@ namespace FlowMy.Views.NodeControls
                 else if (CropOverlayCanvas != null)
                 {
                     CropOverlayCanvas.Visibility = Visibility.Collapsed;
+                }
+
+                if (OptMovePanel != null)
+                {
+                    OptMovePanel.Visibility = (activeTool == "Move") ? Visibility.Visible : Visibility.Collapsed;
+                    if (activeTool != "Move")
+                    {
+                        CommitPendingMoveTranslation();
+                    }
+                }
+
+                if (OptTransformPanel != null)
+                {
+                    OptTransformPanel.Visibility = (activeTool == "Transform") ? Visibility.Visible : Visibility.Collapsed;
+                    if (activeTool == "Transform")
+                    {
+                        UpdateTransformOverlayDisplay();
+                    }
+                    else
+                    {
+                        if (_transformSessionActive)
+                        {
+                            CancelTransformSession();
+                        }
+                        if (TransformOverlayCanvas != null) TransformOverlayCanvas.Visibility = Visibility.Collapsed;
+                        if (TransformPreviewImage != null) TransformPreviewImage.Visibility = Visibility.Collapsed;
+                    }
                 }
 
                 OptSlicePanel.Visibility = (activeTool == "Slice" || activeTool == "SliceSelect") ? Visibility.Visible : Visibility.Collapsed;
@@ -2902,6 +2931,7 @@ namespace FlowMy.Views.NodeControls
 
         private void EditorPanel_ActiveLayerChanged(object? sender, EventArgs e)
         {
+            CommitPendingMoveTranslation();
             if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
 
