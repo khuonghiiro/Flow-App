@@ -298,6 +298,26 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
+
+
+            if (tool == "Slice")
+            {
+                _isSelecting = true;
+                _selectionStartPoint = clickPos;
+                SelectionBoxRect.Visibility = Visibility.Visible;
+                SelectionBoxRect.Width = 0;
+                SelectionBoxRect.Height = 0;
+                SelectionBoxRect.Margin = new Thickness(clickPos.X, clickPos.Y, 0, 0);
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "SliceSelect")
+            {
+                HandleSliceSelectMouseDown(clickPos, px, py);
+                return;
+            }
+
             if (tool == "Selection" || tool == "ObjectSelection")
             {
                 if (_currentSelectionMode == SelectionMode.New)
@@ -525,6 +545,26 @@ namespace FlowMy.Views.NodeControls
                     SelectionBoxRect.Width = w;
                     SelectionBoxRect.Height = h;
                 }
+                else if (tool == "Slice")
+                {
+                    double x = Math.Min(_selectionStartPoint.X, mousePos.X);
+                    double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
+                    double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
+                    double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
+
+                    x = Math.Clamp(x, 0, MainImage.ActualWidth);
+                    y = Math.Clamp(y, 0, MainImage.ActualHeight);
+                    w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
+                    h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+
+                    SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
+                    SelectionBoxRect.Width = w;
+                    SelectionBoxRect.Height = h;
+                }
+                else if (tool == "SliceSelect")
+                {
+                    HandleSliceSelectMouseMove(mousePos, px, py);
+                }
                 else if (tool == "Lasso")
                 {
                     var newPt = new Point(px, py);
@@ -726,6 +766,33 @@ namespace FlowMy.Views.NodeControls
                     _isSelecting = false;
                     MainScrollViewer.ReleaseMouseCapture();
                     CommitQuickSelection();
+                }
+                else if (tool == "Slice")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+                    if (SelectionBoxRect.Width > 4 && SelectionBoxRect.Height > 4)
+                    {
+                        double scaleX = activeLayer.Width / MainImage.ActualWidth;
+                        double scaleY = activeLayer.Height / MainImage.ActualHeight;
+
+                        double lx = SelectionBoxRect.Margin.Left * scaleX;
+                        double ly = SelectionBoxRect.Margin.Top * scaleY;
+                        double lw = SelectionBoxRect.Width * scaleX;
+                        double lh = SelectionBoxRect.Height * scaleY;
+
+                        _slices.Add(new Rect(lx, ly, lw, lh));
+                        _selectedSliceIndex = _slices.Count - 1;
+                        UpdateSlicesDisplay();
+                    }
+                    SelectionBoxRect.Visibility = Visibility.Collapsed;
+                }
+                else if (tool == "SliceSelect")
+                {
+                    _isSelecting = false;
+                    _sliceResizeHandle = "";
+                    MainScrollViewer.ReleaseMouseCapture();
+                    UpdateSlicesDisplay();
                 }
                 else if (tool == "Lasso")
                 {
@@ -1267,7 +1334,45 @@ namespace FlowMy.Views.NodeControls
                         e.Handled = true;
                         return;
                     }
+                    if (e.Key == Key.C)
+                    {
+                        EditorPanel.SelectToolByName("CropCanvas");
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
+                    if (e.Key == Key.K)
+                    {
+                        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                        {
+                            if (EditorPanel.ActiveToolName == "Slice")
+                                EditorPanel.SelectToolByName("SliceSelect");
+                            else
+                                EditorPanel.SelectToolByName("Slice");
+                        }
+                        else
+                        {
+                            EditorPanel.SelectToolByName("Slice");
+                        }
+                        SyncToolboxHighlight();
+                        e.Handled = true;
+                        return;
+                    }
                 }
+            }
+
+            // CropCanvas apply: Enter, cancel: Escape
+            if (e.Key == Key.Enter && _node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && EditorPanel.ActiveToolName == "CropCanvas")
+            {
+                OptCropApply_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Escape && _node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && EditorPanel.ActiveToolName == "CropCanvas")
+            {
+                OptCropCancel_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+                return;
             }
 
             // PolyLasso close path: Enter

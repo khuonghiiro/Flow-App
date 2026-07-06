@@ -440,3 +440,5 @@ paintbrush-fine duotone
 wand-magic-sparkles sharp-duotone-solid
 paintbrush sharp-duotone-solid
 object-group sharp-duotone-solid
+scalpel sharp-duotone-solid
+scalpel-line-dashed sharp-duotone-solid

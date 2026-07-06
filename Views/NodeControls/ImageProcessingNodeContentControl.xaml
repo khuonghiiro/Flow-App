@@ -645,6 +645,36 @@
                     <Button Content="Paste (Ctrl+V)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptPaste_Click"/>
                     <Button Content="Delete (Del)" Style="{StaticResource IpAdjBtn}" Click="OptDelete_Click"/>
                 </StackPanel>
+
+                <!-- ═══ CROP OPTIONS ═══ -->
+                <StackPanel x:Name="OptCropPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="✂️ Crop Canvas" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <TextBlock Text="Ratio:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="OptCropRatioCombo" Height="18" Width="100" FontSize="9" Style="{StaticResource IpComboBoxStyle}" VerticalContentAlignment="Center" SelectionChanged="OptCropRatioCombo_SelectionChanged" Margin="0,0,12,0">
+                        <ComboBoxItem Content="Tự do" Tag="Free" IsSelected="True"/>
+                        <ComboBoxItem Content="1:1 (Square)" Tag="1:1"/>
+                        <ComboBoxItem Content="16:9 (Widescreen)" Tag="16:9"/>
+                        <ComboBoxItem Content="4:3 (Standard)" Tag="4:3"/>
+                        <ComboBoxItem Content="Tỉ lệ tự nhập" Tag="Custom"/>
+                    </ComboBox>
+
+                    <StackPanel x:Name="OptCropCustomInputs" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" Margin="0,0,12,0">
+                        <TextBox x:Name="OptCropCustomW" Width="25" Height="18" FontSize="9" Text="1" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" BorderBrush="#353945" Background="#12141c" Foreground="White" TextChanged="OptCropCustomRatio_TextChanged"/>
+                        <TextBlock Text=":" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                        <TextBox x:Name="OptCropCustomH" Width="25" Height="18" FontSize="9" Text="1" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" BorderBrush="#353945" Background="#12141c" Foreground="White" TextChanged="OptCropCustomRatio_TextChanged"/>
+                    </StackPanel>
+
+                    <Button Content="Crop (Enter)" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptCropApply_Click"/>
+                    <Button Content="Cancel (Esc)" Style="{StaticResource IpAdjBtn}" Click="OptCropCancel_Click"/>
+                </StackPanel>
+
+                <!-- ═══ SLICE OPTIONS ═══ -->
+                <StackPanel x:Name="OptSlicePanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="🍕 Slices" FontSize="9" FontWeight="Bold" Foreground="#4fffb0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Content="Clear All Slices" Style="{StaticResource IpAdjBtn}" Margin="0,0,6,0" Click="OptSliceClearAll_Click"/>
+                    <Button Content="Export Slices as Images" Style="{StaticResource IpAdjBtn}" Click="OptSliceExport_Click"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -746,6 +776,20 @@
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
                                     Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wand-magic-sparkles sharp-duotone-solid'}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBlock Text="3" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
+                                           HorizontalAlignment="Right" VerticalAlignment="top"
+                                           Margin="0,0,1,1" IsHitTestVisible="False"/>
+                            </Grid>
+                        </Border>
+
+                        <Border x:Name="TbxCropActive" Tag="CropCanvas" ToolTip="Crop Tool (C)"
+                                Style="{StaticResource FxToolBtnStyle}"
+                                MouseLeftButtonDown="SelectionGroupBtn_LeftClick"
+                                MouseRightButtonUp="CropGroupBtn_RightClick">
+                            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
+                                    Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='crop duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                                 <TextBlock Text="3" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"
@@ -1127,6 +1171,37 @@
                               StrokeDashArray="4 4"
                               Fill="Transparent"
                               Visibility="Collapsed" IsHitTestVisible="False"/>
+
+                        <!-- Slices Overlay Canvas -->
+                        <Canvas x:Name="SlicesCanvas" IsHitTestVisible="False" Panel.ZIndex="140"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Collapsed"/>
+
+                        <!-- Crop Overlay Canvas (Photoshop style) -->
+                        <Canvas x:Name="CropOverlayCanvas" IsHitTestVisible="True" Panel.ZIndex="145"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Collapsed"
+                                Background="Transparent"
+                                MouseLeftButtonDown="CropOverlay_MouseDown"
+                                MouseMove="CropOverlay_MouseMove"
+                                MouseLeftButtonUp="CropOverlay_MouseUp">
+                            <!-- Shield: Darkened area outside crop box -->
+                            <Path x:Name="CropShieldPath" Fill="#B0000000"/>
+                            <!-- Crop Box Border -->
+                            <Path x:Name="CropBoxBorderPath" Stroke="#00cfff" StrokeThickness="1.5"/>
+                            <!-- Rule of Thirds Grid Lines -->
+                            <Path x:Name="CropGridLinesPath" Stroke="#aa00cfff" StrokeThickness="1" StrokeDashArray="3 3"/>
+                            
+                            <!-- Handles (8 resize markers) -->
+                            <Canvas x:Name="CropHandlesCanvas">
+                                <Rectangle x:Name="Handle_TL" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNWSE" Tag="TL"/>
+                                <Rectangle x:Name="Handle_T" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNS" Tag="T"/>
+                                <Rectangle x:Name="Handle_TR" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNESW" Tag="TR"/>
+                                <Rectangle x:Name="Handle_R" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeWE" Tag="R"/>
+                                <Rectangle x:Name="Handle_BR" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNWSE" Tag="BR"/>
+                                <Rectangle x:Name="Handle_B" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNS" Tag="B"/>
+                                <Rectangle x:Name="Handle_BL" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeNESW" Tag="BL"/>
+                                <Rectangle x:Name="Handle_L" Width="8" Height="8" Fill="White" Stroke="#12141c" StrokeThickness="1.5" Cursor="SizeWE" Tag="L"/>
+                            </Canvas>
+                        </Canvas>
 
                         <!-- Text Tool Interactive Box Overlay -->
                         <Grid x:Name="TextMoveContainer" HorizontalAlignment="Left" VerticalAlignment="Top"

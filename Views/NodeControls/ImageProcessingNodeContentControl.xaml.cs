@@ -95,6 +95,12 @@ namespace FlowMy.Views.NodeControls
 
             InitializeComponent();
             this.Loaded += (s, e) => InitializeFxDots();
+            MainImage.SizeChanged += (s, e) => {
+                if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
+                {
+                    UpdateCropOverlayDisplay();
+                }
+            };
             EditorPanel.DocumentModified += OnEditorDocumentModified;
             EditorPanel.TextPropertiesChanged += EditorPanel_TextPropertiesChanged;
             EditorPanel.BrushPropertiesChanged += EditorPanel_BrushPropertiesChanged;
@@ -441,6 +447,11 @@ namespace FlowMy.Views.NodeControls
             ImageZoomScale.ScaleX = newScale;
             ImageZoomScale.ScaleY = newScale;
             MainScrollViewer.UpdateLayout();
+
+            if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
+            {
+                UpdateCropOverlayDisplay();
+            }
 
             extentWidth = MainScrollViewer.ExtentWidth;
             extentHeight = MainScrollViewer.ExtentHeight;
@@ -1789,6 +1800,9 @@ namespace FlowMy.Views.NodeControls
             _toolboxBorders["MagicWand"] = TbxSmartSelectionActive;
             _toolboxBorders["QuickSelection"] = TbxSmartSelectionActive;
             _toolboxBorders["ObjectSelection"] = TbxSmartSelectionActive;
+            _toolboxBorders["CropCanvas"] = TbxCropActive;
+            _toolboxBorders["Slice"] = TbxCropActive;
+            _toolboxBorders["SliceSelect"] = TbxCropActive;
         }
 
         private void EditorToolbox_Click(object sender, MouseButtonEventArgs e)
@@ -2709,7 +2723,8 @@ namespace FlowMy.Views.NodeControls
             bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || 
                                activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || 
                                activeTool == "Eyedropper" || activeTool == "MagicWand" || activeTool == "QuickSelection" || 
-                               activeTool == "ObjectSelection");
+                               activeTool == "ObjectSelection" || activeTool == "CropCanvas" || activeTool == "Slice" || 
+                               activeTool == "SliceSelect");
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
             {
@@ -2723,6 +2738,25 @@ namespace FlowMy.Views.NodeControls
                     UpdateSelModeVisuals();
                 }
                 
+                OptCropPanel.Visibility = (activeTool == "CropCanvas") ? Visibility.Visible : Visibility.Collapsed;
+                if (activeTool == "CropCanvas")
+                {
+                    StartCropMode();
+                }
+                else if (CropOverlayCanvas != null)
+                {
+                    CropOverlayCanvas.Visibility = Visibility.Collapsed;
+                }
+
+                OptSlicePanel.Visibility = (activeTool == "Slice" || activeTool == "SliceSelect") ? Visibility.Visible : Visibility.Collapsed;
+
+                if (SlicesCanvas != null)
+                {
+                    bool showSlices = (activeTool == "Slice" || activeTool == "SliceSelect");
+                    SlicesCanvas.Visibility = (showSlices && _slices.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+                    if (showSlices) UpdateSlicesDisplay();
+                }
+
                 if (OptColorPanel != null)
                 {
                     OptColorPanel.Visibility = (activeTool == "Brush" || activeTool == "Eyedropper") ? Visibility.Visible : Visibility.Collapsed;
