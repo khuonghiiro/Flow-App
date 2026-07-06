@@ -298,7 +298,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (tool == "Selection")
+            if (tool == "Selection" || tool == "ObjectSelection")
             {
                 if (_currentSelectionMode == SelectionMode.New)
                 {
@@ -315,6 +315,20 @@ namespace FlowMy.Views.NodeControls
                 SelectionBoxRect.Width = 0;
                 SelectionBoxRect.Height = 0;
                 SelectionBoxRect.Margin = new Thickness(clickPos.X, clickPos.Y, 0, 0);
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "MagicWand")
+            {
+                RunMagicWandSelection(px, py);
+                return;
+            }
+
+            if (tool == "QuickSelection")
+            {
+                double radius = EditorPanel.BrushSize;
+                StartQuickSelection(px, py, radius);
                 MainScrollViewer.CaptureMouse();
                 return;
             }
@@ -495,7 +509,7 @@ namespace FlowMy.Views.NodeControls
 
             if (_isSelecting)
             {
-                if (tool == "Selection")
+                if (tool == "Selection" || tool == "ObjectSelection")
                 {
                     double x = Math.Min(_selectionStartPoint.X, mousePos.X);
                     double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
@@ -523,6 +537,11 @@ namespace FlowMy.Views.NodeControls
                 else if (tool == "PolyLasso" && _selectionPoints.Count > 0)
                 {
                     UpdatePolyLassoPreview(mousePos);
+                }
+                else if (tool == "QuickSelection")
+                {
+                    double qSelRadius = EditorPanel.BrushSize;
+                    GrowQuickSelection(px, py, qSelRadius);
                 }
                 return;
             }
@@ -664,7 +683,7 @@ namespace FlowMy.Views.NodeControls
             if (_isSelecting)
             {
                 string tool = EditorPanel.ActiveToolName;
-                if (tool == "Selection")
+                if (tool == "Selection" || tool == "ObjectSelection")
                 {
                     _isSelecting = false;
                     MainScrollViewer.ReleaseMouseCapture();
@@ -681,14 +700,32 @@ namespace FlowMy.Views.NodeControls
 
                         if (lw > 2 && lh > 2)
                         {
-                            var rectGeom = new RectangleGeometry(new Rect(lx, ly, lw, lh));
-                            ApplyNewGeometry(rectGeom);
+                            if (tool == "ObjectSelection")
+                            {
+                                int rx1 = (int)Math.Clamp(lx, 0, activeLayer.Width - 1);
+                                int ry1 = (int)Math.Clamp(ly, 0, activeLayer.Height - 1);
+                                int rx2 = (int)Math.Clamp(lx + lw, 0, activeLayer.Width - 1);
+                                int ry2 = (int)Math.Clamp(ly + lh, 0, activeLayer.Height - 1);
+
+                                RunObjectSelection(rx1, ry1, rx2, ry2);
+                            }
+                            else
+                            {
+                                var rectGeom = new RectangleGeometry(new Rect(lx, ly, lw, lh));
+                                ApplyNewGeometry(rectGeom);
+                            }
                         }
                         else
                         {
                             ClearSelection();
                         }
                     }
+                }
+                else if (tool == "QuickSelection")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+                    CommitQuickSelection();
                 }
                 else if (tool == "Lasso")
                 {

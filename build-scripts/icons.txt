@@ -437,3 +437,6 @@ pen-swirl duotone
 square-dashed-circle-plus sharp-duotone-solid
 share-nodes jelly-regular
 paintbrush-fine duotone
+wand-magic-sparkles sharp-duotone-solid
+paintbrush sharp-duotone-solid
+object-group sharp-duotone-solid

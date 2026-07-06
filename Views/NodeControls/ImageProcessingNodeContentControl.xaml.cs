@@ -1786,6 +1786,9 @@ namespace FlowMy.Views.NodeControls
             _toolboxBorders["Selection"] = TbxSelectionActive;
             _toolboxBorders["Lasso"] = TbxSelectionActive;
             _toolboxBorders["PolyLasso"] = TbxSelectionActive;
+            _toolboxBorders["MagicWand"] = TbxSmartSelectionActive;
+            _toolboxBorders["QuickSelection"] = TbxSmartSelectionActive;
+            _toolboxBorders["ObjectSelection"] = TbxSmartSelectionActive;
         }
 
         private void EditorToolbox_Click(object sender, MouseButtonEventArgs e)
@@ -2703,14 +2706,18 @@ namespace FlowMy.Views.NodeControls
         {
             if (TopOptionsBar == null) return;
 
-            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || activeTool == "Eyedropper");
+            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || 
+                               activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || 
+                               activeTool == "Eyedropper" || activeTool == "MagicWand" || activeTool == "QuickSelection" || 
+                               activeTool == "ObjectSelection");
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
             {
                 TopOptionsBar.Visibility = Visibility.Visible;
-                OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser") ? Visibility.Visible : Visibility.Collapsed;
+                OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "QuickSelection") ? Visibility.Visible : Visibility.Collapsed;
                 OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
-                OptSelectionPanel.Visibility = (activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso") ? Visibility.Visible : Visibility.Collapsed;
+                OptSelectionPanel.Visibility = (activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || 
+                                                activeTool == "MagicWand" || activeTool == "QuickSelection" || activeTool == "ObjectSelection") ? Visibility.Visible : Visibility.Collapsed;
                 if (OptSelectionPanel.Visibility == Visibility.Visible)
                 {
                     UpdateSelModeVisuals();
