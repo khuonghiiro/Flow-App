@@ -278,23 +278,6 @@ namespace FlowMy.Views.NodeControls
                 SelectSingleLayer(clickedLayer);
             }
 
-            _isSyncingSelection = true;
-            try
-            {
-                LayersList.SelectedItems.Clear();
-                foreach (var l in _doc.Layers)
-                {
-                    if (l.IsSelected)
-                    {
-                        LayersList.SelectedItems.Add(l);
-                    }
-                }
-            }
-            finally
-            {
-                _isSyncingSelection = false;
-            }
-
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
             SyncBlendModeCombo();
@@ -336,24 +319,6 @@ namespace FlowMy.Views.NodeControls
                 SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
-                
-                // Đồng bộ Selection của ListBox
-                _isSyncingSelection = true;
-                try
-                {
-                    LayersList.SelectedItems.Clear();
-                    foreach (var l in _doc.Layers)
-                    {
-                        if (l.IsSelected)
-                        {
-                            LayersList.SelectedItems.Add(l);
-                        }
-                    }
-                }
-                finally
-                {
-                    _isSyncingSelection = false;
-                }
 
                 ActiveLayerChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -461,6 +426,7 @@ namespace FlowMy.Views.NodeControls
             _draggedLayer = null;
             _dragStartIndex = -1;
             _isDraggingLayer = false;
+            e.Handled = true;
         }
 
         private void LayerVisibilityToggle_Click(object sender, MouseButtonEventArgs e)
@@ -916,22 +882,9 @@ namespace FlowMy.Views.NodeControls
             _doc.History.Execute(cmd);
             
             // Re-select the duplicated layers
-            _isSyncingSelection = true;
-            try
+            foreach (var l in _doc.Layers)
             {
-                LayersList.SelectedItems.Clear();
-                foreach (var l in _doc.Layers)
-                {
-                    l.IsSelected = cmd.DuplicatedLayers.Contains(l);
-                    if (l.IsSelected)
-                    {
-                        LayersList.SelectedItems.Add(l);
-                    }
-                }
-            }
-            finally
-            {
-                _isSyncingSelection = false;
+                l.IsSelected = cmd.DuplicatedLayers.Contains(l);
             }
 
             RefreshLayersList();
