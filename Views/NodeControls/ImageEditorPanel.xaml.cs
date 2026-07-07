@@ -294,11 +294,20 @@ namespace FlowMy.Views.NodeControls
         private void SelectSingleLayer(EditorLayer clickedLayer)
         {
             if (_doc == null) return;
-            foreach (var l in _doc.Layers)
+            bool wasSyncing = _isSyncingSelection;
+            _isSyncingSelection = true;
+            try
             {
-                l.IsSelected = (l == clickedLayer);
+                foreach (var l in _doc.Layers)
+                {
+                    l.IsSelected = (l == clickedLayer);
+                }
+                _doc.ActiveLayer = clickedLayer;
             }
-            _doc.ActiveLayer = clickedLayer;
+            finally
+            {
+                _isSyncingSelection = wasSyncing;
+            }
         }
 
         public List<EditorLayer> SelectedLayers
@@ -496,7 +505,7 @@ namespace FlowMy.Views.NodeControls
                 var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
                 _doc.History.Execute(cmd);
 
-                _doc.ActiveLayer = newLayer;
+                SelectSingleLayer(newLayer);
                 SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
@@ -528,7 +537,7 @@ namespace FlowMy.Views.NodeControls
             var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
             _doc.History.Execute(cmd);
 
-            _doc.ActiveLayer = newLayer;
+            SelectSingleLayer(newLayer);
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
             SyncBlendModeCombo();
@@ -1023,12 +1032,7 @@ namespace FlowMy.Views.NodeControls
                     var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
                     _doc.History.Execute(cmd);
 
-                    _doc.ActiveLayer = newLayer;
-                    
-                    foreach (var l in _doc.Layers)
-                    {
-                        l.IsSelected = (l == newLayer);
-                    }
+                    SelectSingleLayer(newLayer);
 
                     RefreshLayersList();
                     OnDocumentModified();
