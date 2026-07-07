@@ -9,10 +9,10 @@ using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Helpers;
 using FlowMy.Models;
-using FlowMy.Models.Nodes;
-using FlowMy.Services.Interaction;
 using FlowMy.Models.ImageEditor;
 using FlowMy.Models.ImageEditor.Commands;
+using FlowMy.Models.Nodes;
+using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -20,10 +20,10 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Shapes;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using WinForms = System.Windows.Forms;
 
@@ -96,7 +96,8 @@ namespace FlowMy.Views.NodeControls
             InitializeComponent();
             this.Loaded += (s, e) => InitializeFxDots();
             this.Unloaded += (s, e) => CommitPendingMoveTranslation();
-            MainImage.SizeChanged += (s, e) => {
+            MainImage.SizeChanged += (s, e) =>
+            {
                 if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
                 {
                     UpdateCropOverlayDisplay();
@@ -469,6 +470,12 @@ namespace FlowMy.Views.NodeControls
         {
             MainScrollViewer.Focus();
 
+            if (EditorPanel != null)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "Transform" || tool == "CropCanvas") return;
+            }
+
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
             {
                 if (_isSpacePressed)
@@ -520,6 +527,12 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (EditorPanel != null)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "Transform" || tool == "CropCanvas") return;
+            }
+
             if (_isDrawingPixels || _isSelecting || _isMovingLayer)
             {
                 HandleManualEditorMouseUp();
@@ -538,6 +551,12 @@ namespace FlowMy.Views.NodeControls
         {
             UpdateBrushCursorPosition();
             UpdateEyedropperCursorPosition(e);
+
+            if (EditorPanel != null)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "Transform" || tool == "CropCanvas") return;
+            }
 
             if (_isDrawingPixels || _isSelecting || _isMovingLayer)
             {
@@ -605,7 +624,7 @@ namespace FlowMy.Views.NodeControls
                         }
 
                         double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
-                        double radius = (EditorPanel.BrushSize * scaleX) / 2.0; 
+                        double radius = (EditorPanel.BrushSize * scaleX) / 2.0;
                         double diameter = radius * 2;
 
                         var containerPos = Mouse.GetPosition(ImageContainer);
@@ -1459,7 +1478,7 @@ namespace FlowMy.Views.NodeControls
                 CropsLabelText.LayoutTransform = identity;
                 RenderLabelText.LayoutTransform = identity;
                 EditorPanel.LayoutTransform = new ScaleTransform(typoMul, typoMul);
-                
+
                 var formatMode = typoMul == 1.0 ? TextFormattingMode.Display : TextFormattingMode.Ideal;
                 TextOptions.SetTextFormattingMode(EditorPanel, formatMode);
                 TextOptions.SetTextFormattingMode(RightMenuBorder, formatMode);
@@ -1536,7 +1555,7 @@ namespace FlowMy.Views.NodeControls
             RightMenuBorder.LayoutTransform = ipScale;
             TextOptions.SetTextFormattingMode(RightMenuBorder, TextFormattingMode.Ideal);
             TextOptions.SetTextFormattingMode(IpProcessorHost, TextFormattingMode.Ideal);
-            
+
             // Tính toán tỉ lệ co dãn của EditorPanel để vừa khít chiều rộng cột 2 (220px)
             double editorScaleVal = Math.Max(0.5, (_node.Width * 0.32) / 220.0);
             EditorPanel.LayoutTransform = new ScaleTransform(editorScaleVal, editorScaleVal);
@@ -1760,6 +1779,8 @@ namespace FlowMy.Views.NodeControls
                 MainImage.Source = composite;
             }
             catch { /* ignore composite errors */ }
+
+            UpdateTransformOverlayDisplay();
         }
 
         private void SyncModeButtonStyles()
@@ -1999,70 +2020,70 @@ namespace FlowMy.Views.NodeControls
         private static readonly Dictionary<string, FxParamDef[]> _fxParamMap = new()
         {
             // Blur
-            ["GaussianBlur"]     = new[] { new FxParamDef("Radius", 3, 0, 30), new FxParamDef("Sigma", 1.5, 0.1, 15, 0.1) },
-            ["MotionBlur"]       = new[] { new FxParamDef("Radius", 8, 0, 40), new FxParamDef("Sigma", 4, 0.1, 20, 0.1), new FxParamDef("Angle", 0, -180, 180) },
-            ["RadialBlur"]       = new[] { new FxParamDef("Angle", 5, 0, 45) },
-            ["AdaptiveBlur"]     = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
-            ["Blur"]             = new[] { new FxParamDef("Radius", 5, 0, 30), new FxParamDef("Sigma", 2, 0.1, 15, 0.1) },
+            ["GaussianBlur"] = new[] { new FxParamDef("Radius", 3, 0, 30), new FxParamDef("Sigma", 1.5, 0.1, 15, 0.1) },
+            ["MotionBlur"] = new[] { new FxParamDef("Radius", 8, 0, 40), new FxParamDef("Sigma", 4, 0.1, 20, 0.1), new FxParamDef("Angle", 0, -180, 180) },
+            ["RadialBlur"] = new[] { new FxParamDef("Angle", 5, 0, 45) },
+            ["AdaptiveBlur"] = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Blur"] = new[] { new FxParamDef("Radius", 5, 0, 30), new FxParamDef("Sigma", 2, 0.1, 15, 0.1) },
             // Sharpen
-            ["Sharpen"]          = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
-            ["UnsharpMask"]      = new[] { new FxParamDef("Radius", 2, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1), new FxParamDef("Amount", 1, 0, 5, 0.1), new FxParamDef("Threshold", 0.05, 0, 1, 0.01) },
-            ["AdaptiveSharpen"]  = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
-            ["Kuwahara"]         = new[] { new FxParamDef("Radius", 3, 1, 15), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Sharpen"] = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["UnsharpMask"] = new[] { new FxParamDef("Radius", 2, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1), new FxParamDef("Amount", 1, 0, 5, 0.1), new FxParamDef("Threshold", 0.05, 0, 1, 0.01) },
+            ["AdaptiveSharpen"] = new[] { new FxParamDef("Radius", 0, 0, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Kuwahara"] = new[] { new FxParamDef("Radius", 3, 1, 15), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
             // Artistic
-            ["OilPaint"]         = new[] { new FxParamDef("Radius", 4, 1, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
-            ["Charcoal"]         = new[] { new FxParamDef("Radius", 2, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1) },
-            ["Sketch"]           = new[] { new FxParamDef("Radius", 2, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1), new FxParamDef("Angle", 0, -180, 180) },
-            ["Emboss"]           = new[] { new FxParamDef("Radius", 0, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1) },
-            ["Vignette"]         = new[] { new FxParamDef("Sigma", 10, 1, 50) },
-            ["Swirl"]            = new[] { new FxParamDef("Degrees", 60, -360, 360) },
-            ["Wave"]             = new[] { new FxParamDef("Amplitude", 5, 1, 50), new FxParamDef("Length", 50, 5, 300) },
-            ["Spread"]           = new[] { new FxParamDef("Radius", 4, 1, 30) },
-            ["Implode"]          = new[] { new FxParamDef("Amount", 0.3, -1, 1, 0.05) },
-            ["Explode"]          = new[] { new FxParamDef("Amount", 0.3, 0, 1, 0.05) },
-            ["Shade"]            = new[] { new FxParamDef("Azimuth", 30, 0, 360), new FxParamDef("Elevation", 30, 0, 90) },
-            ["Pixelate"]         = new[] { new FxParamDef("BlockSize", 8, 2, 64) },
-            ["Polaroid"]         = new[] { new FxParamDef("Angle", 0, -30, 30) },
-            ["Frame"]            = new[] { new FxParamDef("Size", 6, 1, 20) },
-            ["Raise"]            = new[] { new FxParamDef("Size", 8, 1, 20) },
+            ["OilPaint"] = new[] { new FxParamDef("Radius", 4, 1, 20), new FxParamDef("Sigma", 1, 0.1, 10, 0.1) },
+            ["Charcoal"] = new[] { new FxParamDef("Radius", 2, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1) },
+            ["Sketch"] = new[] { new FxParamDef("Radius", 2, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1), new FxParamDef("Angle", 0, -180, 180) },
+            ["Emboss"] = new[] { new FxParamDef("Radius", 0, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1) },
+            ["Vignette"] = new[] { new FxParamDef("Sigma", 10, 1, 50) },
+            ["Swirl"] = new[] { new FxParamDef("Degrees", 60, -360, 360) },
+            ["Wave"] = new[] { new FxParamDef("Amplitude", 5, 1, 50), new FxParamDef("Length", 50, 5, 300) },
+            ["Spread"] = new[] { new FxParamDef("Radius", 4, 1, 30) },
+            ["Implode"] = new[] { new FxParamDef("Amount", 0.3, -1, 1, 0.05) },
+            ["Explode"] = new[] { new FxParamDef("Amount", 0.3, 0, 1, 0.05) },
+            ["Shade"] = new[] { new FxParamDef("Azimuth", 30, 0, 360), new FxParamDef("Elevation", 30, 0, 90) },
+            ["Pixelate"] = new[] { new FxParamDef("BlockSize", 8, 2, 64) },
+            ["Polaroid"] = new[] { new FxParamDef("Angle", 0, -30, 30) },
+            ["Frame"] = new[] { new FxParamDef("Size", 6, 1, 20) },
+            ["Raise"] = new[] { new FxParamDef("Size", 8, 1, 20) },
             // Edge
-            ["EdgeDetect"]       = new[] { new FxParamDef("Radius", 1, 0, 10) },
-            ["CannyEdge"]        = new[] { new FxParamDef("Radius", 0, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1), new FxParamDef("LowPct", 10, 0, 100), new FxParamDef("HighPct", 30, 0, 100) },
-            ["Threshold"]        = new[] { new FxParamDef("Percent", 50, 0, 100) },
-            ["AdaptiveThreshold"]= new[] { new FxParamDef("Width", 10, 3, 30), new FxParamDef("Height", 10, 3, 30), new FxParamDef("Bias", 0, -10, 10, 0.5) },
+            ["EdgeDetect"] = new[] { new FxParamDef("Radius", 1, 0, 10) },
+            ["CannyEdge"] = new[] { new FxParamDef("Radius", 0, 0, 10), new FxParamDef("Sigma", 1, 0.1, 5, 0.1), new FxParamDef("LowPct", 10, 0, 100), new FxParamDef("HighPct", 30, 0, 100) },
+            ["Threshold"] = new[] { new FxParamDef("Percent", 50, 0, 100) },
+            ["AdaptiveThreshold"] = new[] { new FxParamDef("Width", 10, 3, 30), new FxParamDef("Height", 10, 3, 30), new FxParamDef("Bias", 0, -10, 10, 0.5) },
             // Color / Brightness
-            ["BrightnessUp"]     = new[] { new FxParamDef("Brightness", 15, 1, 100) },
-            ["BrightnessDown"]   = new[] { new FxParamDef("Brightness", 15, 1, 100) },
-            ["GammaCorrect"]     = new[] { new FxParamDef("Gamma", 1.5, 0.1, 5, 0.1) },
-            ["SaturationUp"]     = new[] { new FxParamDef("Saturation", 140, 101, 300) },
-            ["SaturationDown"]   = new[] { new FxParamDef("Saturation", 60, 0, 99) },
-            ["Posterize"]        = new[] { new FxParamDef("Levels", 4, 2, 20) },
-            ["Solarize"]         = new[] { new FxParamDef("Threshold", 50, 0, 100) },
-            ["SepiaTone"]        = new[] { new FxParamDef("Threshold", 80, 0, 100) },
+            ["BrightnessUp"] = new[] { new FxParamDef("Brightness", 15, 1, 100) },
+            ["BrightnessDown"] = new[] { new FxParamDef("Brightness", 15, 1, 100) },
+            ["GammaCorrect"] = new[] { new FxParamDef("Gamma", 1.5, 0.1, 5, 0.1) },
+            ["SaturationUp"] = new[] { new FxParamDef("Saturation", 140, 101, 300) },
+            ["SaturationDown"] = new[] { new FxParamDef("Saturation", 60, 0, 99) },
+            ["Posterize"] = new[] { new FxParamDef("Levels", 4, 2, 20) },
+            ["Solarize"] = new[] { new FxParamDef("Threshold", 50, 0, 100) },
+            ["SepiaTone"] = new[] { new FxParamDef("Threshold", 80, 0, 100) },
             ["SigmoidalContrastUp"] = new[] { new FxParamDef("Contrast", 3, 0.5, 20, 0.5), new FxParamDef("Midpoint", 50, 0, 100) },
-            ["LinearStretch"]    = new[] { new FxParamDef("BlackPct", 1, 0, 20, 0.5), new FxParamDef("WhitePct", 1, 0, 20, 0.5) },
-            ["BlueShift"]        = new[] { new FxParamDef("Factor", 1.5, 0.5, 3, 0.1) },
-            ["QuantizeColors"]   = new[] { new FxParamDef("Colors", 16, 2, 256) },
-            ["ContrastDown"]     = new[] { new FxParamDef("Contrast", 15, 1, 50) },
+            ["LinearStretch"] = new[] { new FxParamDef("BlackPct", 1, 0, 20, 0.5), new FxParamDef("WhitePct", 1, 0, 20, 0.5) },
+            ["BlueShift"] = new[] { new FxParamDef("Factor", 1.5, 0.5, 3, 0.1) },
+            ["QuantizeColors"] = new[] { new FxParamDef("Colors", 16, 2, 256) },
+            ["ContrastDown"] = new[] { new FxParamDef("Contrast", 15, 1, 50) },
             // Noise
             ["AddNoiseGaussian"] = new[] { new FxParamDef("Attenuate", 1, 0.1, 10, 0.1) },
-            ["AddNoiseImpulse"]  = new[] { new FxParamDef("Attenuate", 1, 0.1, 10, 0.1) },
-            ["MedianFilter"]     = new[] { new FxParamDef("Radius", 2, 1, 10) },
-            ["ReduceNoise"]      = new[] { new FxParamDef("Order", 2, 1, 10) },
+            ["AddNoiseImpulse"] = new[] { new FxParamDef("Attenuate", 1, 0.1, 10, 0.1) },
+            ["MedianFilter"] = new[] { new FxParamDef("Radius", 2, 1, 10) },
+            ["ReduceNoise"] = new[] { new FxParamDef("Order", 2, 1, 10) },
             // Morphology
-            ["Dilate"]           = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["MorphErode"]       = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["Opening"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["Closing"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["EdgeIn"]           = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["EdgeOut"]          = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["TopHat"]           = new[] { new FxParamDef("Iterations", 1, 1, 10) },
-            ["BottomHat"]        = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["Dilate"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["MorphErode"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["Opening"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["Closing"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["EdgeIn"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["EdgeOut"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["TopHat"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
+            ["BottomHat"] = new[] { new FxParamDef("Iterations", 1, 1, 10) },
             // Transform
-            ["Deskew"]           = new[] { new FxParamDef("Threshold", 40, 0, 100) },
-            ["Shear"]            = new[] { new FxParamDef("X", 15, -45, 45), new FxParamDef("Y", 0, -45, 45) },
-            ["Roll"]             = new[] { new FxParamDef("X", 50, -200, 200), new FxParamDef("Y", 50, -200, 200) },
-            ["Shave"]            = new[] { new FxParamDef("Pixels", 10, 1, 100) },
+            ["Deskew"] = new[] { new FxParamDef("Threshold", 40, 0, 100) },
+            ["Shear"] = new[] { new FxParamDef("X", 15, -45, 45), new FxParamDef("Y", 0, -45, 45) },
+            ["Roll"] = new[] { new FxParamDef("X", 50, -200, 200), new FxParamDef("Y", 50, -200, 200) },
+            ["Shave"] = new[] { new FxParamDef("Pixels", 10, 1, 100) },
         };
 
         /// <summary>Show dark-themed parameter dialog. Returns null if cancelled.</summary>
@@ -2351,100 +2372,100 @@ namespace FlowMy.Views.NodeControls
             switch (effectName)
             {
                 // Blur/Sharpen
-                case "GaussianBlur":     img.GaussianBlur(P("Radius", 3), P("Sigma", 1.5)); break;
-                case "Blur":             img.Blur(P("Radius", 5), P("Sigma", 2)); break;
-                case "MotionBlur":       img.MotionBlur(P("Radius", 8), P("Sigma", 4), P("Angle", 0)); break;
-                case "RadialBlur":       img.RotationalBlur(P("Angle", 5)); break;
-                case "AdaptiveBlur":     img.AdaptiveBlur(P("Radius", 0), P("Sigma", 1)); break;
-                case "Sharpen":          img.Sharpen(P("Radius", 0), P("Sigma", 1)); break;
-                case "UnsharpMask":      img.UnsharpMask(P("Radius", 2), P("Sigma", 1), P("Amount", 1), P("Threshold", 0.05)); break;
-                case "AdaptiveSharpen":  img.AdaptiveSharpen(P("Radius", 0), P("Sigma", 1)); break;
-                case "Kuwahara":         img.Kuwahara(P("Radius", 3), P("Sigma", 1)); break;
+                case "GaussianBlur": img.GaussianBlur(P("Radius", 3), P("Sigma", 1.5)); break;
+                case "Blur": img.Blur(P("Radius", 5), P("Sigma", 2)); break;
+                case "MotionBlur": img.MotionBlur(P("Radius", 8), P("Sigma", 4), P("Angle", 0)); break;
+                case "RadialBlur": img.RotationalBlur(P("Angle", 5)); break;
+                case "AdaptiveBlur": img.AdaptiveBlur(P("Radius", 0), P("Sigma", 1)); break;
+                case "Sharpen": img.Sharpen(P("Radius", 0), P("Sigma", 1)); break;
+                case "UnsharpMask": img.UnsharpMask(P("Radius", 2), P("Sigma", 1), P("Amount", 1), P("Threshold", 0.05)); break;
+                case "AdaptiveSharpen": img.AdaptiveSharpen(P("Radius", 0), P("Sigma", 1)); break;
+                case "Kuwahara": img.Kuwahara(P("Radius", 3), P("Sigma", 1)); break;
 
                 // Artistic
-                case "OilPaint":         img.OilPaint(P("Radius", 4), P("Sigma", 1)); break;
-                case "Charcoal":         img.Charcoal(P("Radius", 2), P("Sigma", 1)); break;
-                case "Sketch":           img.Sketch(P("Radius", 2), P("Sigma", 1), P("Angle", 0)); break;
-                case "Emboss":           img.Emboss(P("Radius", 0), P("Sigma", 1)); break;
-                case "Vignette":         img.Vignette(0, P("Sigma", 10), 10, 10); break;
-                case "Swirl":            img.Swirl(P("Degrees", 60)); break;
-                case "Wave":             img.Wave(ImageMagick.PixelInterpolateMethod.Bilinear, P("Amplitude", 5), P("Length", 50)); img.Trim(); break;
-                case "Spread":           img.Spread(P("Radius", 4)); break;
-                case "Implode":          img.Implode(P("Amount", 0.3), ImageMagick.PixelInterpolateMethod.Bilinear); break;
-                case "Shade":            img.Shade(P("Azimuth", 30), P("Elevation", 30)); break;
+                case "OilPaint": img.OilPaint(P("Radius", 4), P("Sigma", 1)); break;
+                case "Charcoal": img.Charcoal(P("Radius", 2), P("Sigma", 1)); break;
+                case "Sketch": img.Sketch(P("Radius", 2), P("Sigma", 1), P("Angle", 0)); break;
+                case "Emboss": img.Emboss(P("Radius", 0), P("Sigma", 1)); break;
+                case "Vignette": img.Vignette(0, P("Sigma", 10), 10, 10); break;
+                case "Swirl": img.Swirl(P("Degrees", 60)); break;
+                case "Wave": img.Wave(ImageMagick.PixelInterpolateMethod.Bilinear, P("Amplitude", 5), P("Length", 50)); img.Trim(); break;
+                case "Spread": img.Spread(P("Radius", 4)); break;
+                case "Implode": img.Implode(P("Amount", 0.3), ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Shade": img.Shade(P("Azimuth", 30), P("Elevation", 30)); break;
                 case "Pixelate":
                     int bs = PI("BlockSize", 8);
                     int pw = (int)img.Width, ph = (int)img.Height;
                     img.Scale((uint)Math.Max(1, pw / bs), (uint)Math.Max(1, ph / bs));
                     img.Sample((uint)pw, (uint)ph);
                     break;
-                case "Polaroid":         img.Polaroid("FlowMy", P("Angle", 0), ImageMagick.PixelInterpolateMethod.Bilinear); break;
-                case "Frame":            var fs = PI("Size", 6); img.Frame((uint)fs, (uint)fs, 2, 2); break;
-                case "Explode":          img.Implode(-P("Amount", 0.3), ImageMagick.PixelInterpolateMethod.Bilinear); break;
-                case "Raise":            img.Raise(PI("Size", 8)); break;
+                case "Polaroid": img.Polaroid("FlowMy", P("Angle", 0), ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Frame": var fs = PI("Size", 6); img.Frame((uint)fs, (uint)fs, 2, 2); break;
+                case "Explode": img.Implode(-P("Amount", 0.3), ImageMagick.PixelInterpolateMethod.Bilinear); break;
+                case "Raise": img.Raise(PI("Size", 8)); break;
 
                 // Edge
-                case "EdgeDetect":       img.Edge(P("Radius", 1)); break;
-                case "CannyEdge":        img.CannyEdge(P("Radius", 0), P("Sigma", 1), new ImageMagick.Percentage(P("LowPct", 10)), new ImageMagick.Percentage(P("HighPct", 30))); break;
-                case "Threshold":        img.Threshold(new ImageMagick.Percentage(P("Percent", 50))); break;
-                case "AdaptiveThreshold":img.AdaptiveThreshold((uint)PI("Width", 10), (uint)PI("Height", 10), new ImageMagick.Percentage(P("Bias", 0.0))); break;
-                case "OrderedDither":    img.OrderedDither("o8x8"); break;
+                case "EdgeDetect": img.Edge(P("Radius", 1)); break;
+                case "CannyEdge": img.CannyEdge(P("Radius", 0), P("Sigma", 1), new ImageMagick.Percentage(P("LowPct", 10)), new ImageMagick.Percentage(P("HighPct", 30))); break;
+                case "Threshold": img.Threshold(new ImageMagick.Percentage(P("Percent", 50))); break;
+                case "AdaptiveThreshold": img.AdaptiveThreshold((uint)PI("Width", 10), (uint)PI("Height", 10), new ImageMagick.Percentage(P("Bias", 0.0))); break;
+                case "OrderedDither": img.OrderedDither("o8x8"); break;
 
                 // Color
-                case "Posterize":        img.Posterize(PI("Levels", 4)); break;
-                case "Solarize":         img.Solarize(new ImageMagick.Percentage(P("Threshold", 50))); break;
-                case "AutoLevel":        img.AutoLevel(); break;
-                case "AutoGamma":        img.AutoGamma(); break;
-                case "Equalize":         img.Equalize(); break;
-                case "Normalize":        img.Normalize(); break;
-                case "Negate":           img.Negate(); break;
-                case "SepiaTone":        img.SepiaTone(new ImageMagick.Percentage(P("Threshold", 80))); break;
-                case "Grayscale":        img.Grayscale(); break;
-                case "BrightnessUp":     img.BrightnessContrast(new ImageMagick.Percentage(P("Brightness", 15)), new ImageMagick.Percentage(0)); break;
-                case "BrightnessDown":   img.BrightnessContrast(new ImageMagick.Percentage(-P("Brightness", 15)), new ImageMagick.Percentage(0)); break;
-                case "GammaCorrect":     img.GammaCorrect(P("Gamma", 1.5)); break;
-                case "SaturationUp":     img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(P("Saturation", 140)), new ImageMagick.Percentage(100)); break;
-                case "SaturationDown":   img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(P("Saturation", 60)), new ImageMagick.Percentage(100)); break;
-                case "Tint":             img.Colorize(new ImageMagick.MagickColor(255, 220, 180), new ImageMagick.Percentage(25)); break;
-                case "ContrastUp":       img.Contrast(); break;
-                case "ContrastDown":     img.BrightnessContrast(new ImageMagick.Percentage(0), new ImageMagick.Percentage(-P("Contrast", 15))); break;
-                case "BlueShift":        img.BlueShift(P("Factor", 1.5)); break;
-                case "LinearStretch":    img.LinearStretch(new ImageMagick.Percentage(P("BlackPct", 1)), new ImageMagick.Percentage(P("WhitePct", 1))); break;
-                case "QuantizeColors":   img.Quantize(new ImageMagick.QuantizeSettings { Colors = (uint)PI("Colors", 16) }); break;
-                case "SigmoidalContrastUp":   img.SigmoidalContrast(P("Contrast", 3.0), new ImageMagick.Percentage(P("Midpoint", 50))); break;
+                case "Posterize": img.Posterize(PI("Levels", 4)); break;
+                case "Solarize": img.Solarize(new ImageMagick.Percentage(P("Threshold", 50))); break;
+                case "AutoLevel": img.AutoLevel(); break;
+                case "AutoGamma": img.AutoGamma(); break;
+                case "Equalize": img.Equalize(); break;
+                case "Normalize": img.Normalize(); break;
+                case "Negate": img.Negate(); break;
+                case "SepiaTone": img.SepiaTone(new ImageMagick.Percentage(P("Threshold", 80))); break;
+                case "Grayscale": img.Grayscale(); break;
+                case "BrightnessUp": img.BrightnessContrast(new ImageMagick.Percentage(P("Brightness", 15)), new ImageMagick.Percentage(0)); break;
+                case "BrightnessDown": img.BrightnessContrast(new ImageMagick.Percentage(-P("Brightness", 15)), new ImageMagick.Percentage(0)); break;
+                case "GammaCorrect": img.GammaCorrect(P("Gamma", 1.5)); break;
+                case "SaturationUp": img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(P("Saturation", 140)), new ImageMagick.Percentage(100)); break;
+                case "SaturationDown": img.Modulate(new ImageMagick.Percentage(100), new ImageMagick.Percentage(P("Saturation", 60)), new ImageMagick.Percentage(100)); break;
+                case "Tint": img.Colorize(new ImageMagick.MagickColor(255, 220, 180), new ImageMagick.Percentage(25)); break;
+                case "ContrastUp": img.Contrast(); break;
+                case "ContrastDown": img.BrightnessContrast(new ImageMagick.Percentage(0), new ImageMagick.Percentage(-P("Contrast", 15))); break;
+                case "BlueShift": img.BlueShift(P("Factor", 1.5)); break;
+                case "LinearStretch": img.LinearStretch(new ImageMagick.Percentage(P("BlackPct", 1)), new ImageMagick.Percentage(P("WhitePct", 1))); break;
+                case "QuantizeColors": img.Quantize(new ImageMagick.QuantizeSettings { Colors = (uint)PI("Colors", 16) }); break;
+                case "SigmoidalContrastUp": img.SigmoidalContrast(P("Contrast", 3.0), new ImageMagick.Percentage(P("Midpoint", 50))); break;
 
                 // Noise
                 case "AddNoiseGaussian": img.AddNoise(ImageMagick.NoiseType.Gaussian, P("Attenuate", 1.0)); break;
-                case "AddNoiseImpulse":  img.AddNoise(ImageMagick.NoiseType.Impulse, P("Attenuate", 1.0)); break;
-                case "Denoise":          img.Enhance(); break;
-                case "Despeckle":        img.Despeckle(); break;
-                case "MedianFilter":     img.MedianFilter((uint)PI("Radius", 2)); break;
-                case "ReduceNoise":      img.ReduceNoise((uint)PI("Order", 2)); break;
+                case "AddNoiseImpulse": img.AddNoise(ImageMagick.NoiseType.Impulse, P("Attenuate", 1.0)); break;
+                case "Denoise": img.Enhance(); break;
+                case "Despeckle": img.Despeckle(); break;
+                case "MedianFilter": img.MedianFilter((uint)PI("Radius", 2)); break;
+                case "ReduceNoise": img.ReduceNoise((uint)PI("Order", 2)); break;
 
                 // Morphology
-                case "Dilate":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Dilate, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "MorphErode":       img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Erode, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "Opening":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Open, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "Closing":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Close, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "EdgeIn":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeIn, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "EdgeOut":          img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeOut, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "TopHat":           img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.TopHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
-                case "BottomHat":        img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.BottomHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "Dilate": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Dilate, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "MorphErode": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Erode, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "Opening": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Open, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "Closing": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.Close, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "EdgeIn": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeIn, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "EdgeOut": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.EdgeOut, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "TopHat": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.TopHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
+                case "BottomHat": img.Morphology(new ImageMagick.MorphologySettings { Method = ImageMagick.MorphologyMethod.BottomHat, Kernel = ImageMagick.Kernel.Diamond, Iterations = PI("Iterations", 1) }); break;
 
                 // Transform
-                case "Deskew":           img.Deskew(new ImageMagick.Percentage(P("Threshold", 40))); break;
-                case "Trim":             img.Trim(); break;
-                case "AutoOrient":       img.AutoOrient(); break;
-                case "Rotate90":         img.Rotate(90); break;
-                case "Rotate180":        img.Rotate(180); break;
-                case "Rotate270":        img.Rotate(270); break;
-                case "Flop":             img.Flop(); break;
-                case "Flip":             img.Flip(); break;
-                case "Shear":            img.Shear(P("X", 15), P("Y", 0)); break;
-                case "Roll":             img.Roll(PI("X", 50), PI("Y", 50)); break;
-                case "Shave":            var sv = PI("Pixels", 10); img.Shave((uint)sv, (uint)sv); break;
-                case "Magnify":          img.Magnify(); break;
-                case "Minify":           img.Minify(); break;
+                case "Deskew": img.Deskew(new ImageMagick.Percentage(P("Threshold", 40))); break;
+                case "Trim": img.Trim(); break;
+                case "AutoOrient": img.AutoOrient(); break;
+                case "Rotate90": img.Rotate(90); break;
+                case "Rotate180": img.Rotate(180); break;
+                case "Rotate270": img.Rotate(270); break;
+                case "Flop": img.Flop(); break;
+                case "Flip": img.Flip(); break;
+                case "Shear": img.Shear(P("X", 15), P("Y", 0)); break;
+                case "Roll": img.Roll(PI("X", 50), PI("Y", 50)); break;
+                case "Shave": var sv = PI("Pixels", 10); img.Shave((uint)sv, (uint)sv); break;
+                case "Magnify": img.Magnify(); break;
+                case "Minify": img.Minify(); break;
             }
         }
 
@@ -2467,9 +2488,9 @@ namespace FlowMy.Views.NodeControls
         private void GroupToolBtn_RightClick(object sender, MouseButtonEventArgs e)
         {
             e.Handled = true; // Chặn nổi bọt lên parent để không mở ImageProcessingNodeDialog
-            
+
             if (sender is not Border border) return;
-            
+
             // Nếu popup đang mở cho chính nút này, đóng nó lại (tạo hiệu ứng toggle)
             if (FxGroupPopup.IsOpen && FxGroupPopup.PlacementTarget == border)
             {
@@ -2483,25 +2504,25 @@ namespace FlowMy.Views.NodeControls
                 _activeGroupBorder.Background = System.Windows.Media.Brushes.Transparent;
                 _activeGroupBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
             }
-            
+
             _activeGroupBorder = border;
-            
+
             // Lấy danh sách hiệu ứng thuộc nhóm tương ứng
             var list = GetFxGroupItems(border.Name);
             if (list == null || list.Count == 0) return;
-            
+
             FxPopupItemsControl.ItemsSource = list;
-            
+
             // Định vị và hiển thị Popup
             FxGroupPopup.PlacementTarget = border;
             FxGroupPopup.Placement = System.Windows.Controls.Primitives.PlacementMode.Right;
             FxGroupPopup.HorizontalOffset = 6;
             FxGroupPopup.VerticalOffset = -4;
-            
+
             // Highlight nút này với viền xanh ngọc nhạt và nền xám trắng mờ (Active state)
             border.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
             border.BorderBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4fffb0"));
-            
+
             FxGroupPopup.IsOpen = true;
         }
 
@@ -2532,7 +2553,7 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "AdaptiveSharpen", DisplayName = "Adaptive Sharpen", Description = "Tăng sắc nét bảo toàn chi tiết phẳng", IconKey = "bolt duotone" });
                     items.Add(new FxToolItem { Name = "Kuwahara", DisplayName = "Kuwahara Filter", Description = "Lọc nghệ thuật Kuwahara làm mịn ảnh giữ cạnh", IconKey = "arrows-to-circle duotone" });
                     break;
-                    
+
                 case "TbxArtActive":
                     items.Add(new FxToolItem { Name = "OilPaint", DisplayName = "Oil Paint", Description = "Hiệu ứng tranh sơn dầu nghệ thuật", IconKey = "palette duotone" });
                     items.Add(new FxToolItem { Name = "Charcoal", DisplayName = "Charcoal Drawing", Description = "Hiệu ứng phác thảo tranh than củi", IconKey = "pencil duotone" });
@@ -2641,7 +2662,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         var svg = grid.Children[0] as SvgViewboxEx;
                         var txt = grid.Children[1] as TextBlock;
-                        
+
                         if (svg != null && txt != null)
                         {
                             if (!string.IsNullOrEmpty(selectedItem.TextIcon))
@@ -2660,7 +2681,7 @@ namespace FlowMy.Views.NodeControls
                         }
                     }
                 }
-                
+
                 // Đóng Popup
                 FxGroupPopup.IsOpen = false;
                 e.Handled = true;
@@ -2722,10 +2743,10 @@ namespace FlowMy.Views.NodeControls
         {
             if (TopOptionsBar == null) return;
 
-            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" || 
-                               activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || 
-                               activeTool == "Eyedropper" || activeTool == "MagicWand" || activeTool == "QuickSelection" || 
-                               activeTool == "ObjectSelection" || activeTool == "CropCanvas" || activeTool == "Slice" || 
+            bool hasOptions = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "Text" ||
+                               activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" ||
+                               activeTool == "Eyedropper" || activeTool == "MagicWand" || activeTool == "QuickSelection" ||
+                               activeTool == "ObjectSelection" || activeTool == "CropCanvas" || activeTool == "Slice" ||
                                activeTool == "SliceSelect" || activeTool == "Move" || activeTool == "Transform");
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual && hasOptions)
@@ -2733,13 +2754,13 @@ namespace FlowMy.Views.NodeControls
                 TopOptionsBar.Visibility = Visibility.Visible;
                 OptBrushPanel.Visibility = (activeTool == "Brush" || activeTool == "Eraser" || activeTool == "QuickSelection") ? Visibility.Visible : Visibility.Collapsed;
                 OptTextPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
-                OptSelectionPanel.Visibility = (activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" || 
+                OptSelectionPanel.Visibility = (activeTool == "Selection" || activeTool == "Lasso" || activeTool == "PolyLasso" ||
                                                 activeTool == "MagicWand" || activeTool == "QuickSelection" || activeTool == "ObjectSelection") ? Visibility.Visible : Visibility.Collapsed;
                 if (OptSelectionPanel.Visibility == Visibility.Visible)
                 {
                     UpdateSelModeVisuals();
                 }
-                
+
                 OptCropPanel.Visibility = (activeTool == "CropCanvas") ? Visibility.Visible : Visibility.Collapsed;
                 if (activeTool == "CropCanvas")
                 {
@@ -2902,7 +2923,7 @@ namespace FlowMy.Views.NodeControls
                 OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
             if (OptBtnTextColor != null)
                 OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
-            
+
             if (OptFontFamily != null)
             {
                 foreach (ComboBoxItem item in OptFontFamily.Items)

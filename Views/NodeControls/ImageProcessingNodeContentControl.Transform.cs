@@ -34,6 +34,8 @@ namespace FlowMy.Views.NodeControls
         private double _startDragTranslateY = 0.0;
 
         private Point _transformCenter;
+        private double _sessionCanvasWidth = 0.0;
+        private double _sessionCanvasHeight = 0.0;
 
         #region TOP OPTION BUTTONS CLICKS
 
@@ -90,8 +92,8 @@ namespace FlowMy.Views.NodeControls
             if (activeLayer == null) return;
 
             // Compute final pixel transformation from original pixels
-            double width = MainImage.ActualWidth;
-            double height = MainImage.ActualHeight;
+            double width = _sessionCanvasWidth;
+            double height = _sessionCanvasHeight;
 
             double pixelScaleX = activeLayer.Width / width;
             double pixelScaleY = activeLayer.Height / height;
@@ -156,6 +158,12 @@ namespace FlowMy.Views.NodeControls
 
         private void ResetVisualTransforms()
         {
+            _sessionScaleX = 1.0;
+            _sessionScaleY = 1.0;
+            _sessionAngle = 0.0;
+            _sessionTranslateX = 0.0;
+            _sessionTranslateY = 0.0;
+
             TransformPreviewScale.ScaleX = 1.0;
             TransformPreviewScale.ScaleY = 1.0;
             TransformPreviewRotate.Angle = 0;
@@ -349,7 +357,7 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             bool isTransformTool = EditorPanel.ActiveToolName == "Transform";
 
-            if (activeLayer == null || !isTransformTool)
+            if (activeLayer == null || !isTransformTool || !activeLayer.IsVisible)
             {
                 TransformOverlayCanvas.Visibility = Visibility.Collapsed;
                 TransformPreviewImage.Visibility = Visibility.Collapsed;
@@ -357,8 +365,8 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            double width = MainImage.ActualWidth;
-            double height = MainImage.ActualHeight;
+            double width = _transformSessionActive ? _sessionCanvasWidth : MainImage.ActualWidth;
+            double height = _transformSessionActive ? _sessionCanvasHeight : MainImage.ActualHeight;
             if (width <= 0 || height <= 0) return;
 
             double scaleX = width / activeLayer.Width;
@@ -432,6 +440,14 @@ namespace FlowMy.Views.NodeControls
             TransformBoxVisual.Height = height;
 
             TransformOverlayCanvas.Visibility = Visibility.Visible;
+            if (_transformSessionActive)
+            {
+                TransformPreviewImage.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                TransformPreviewImage.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void TransformOverlay_MouseDown(object sender, MouseButtonEventArgs e)
@@ -447,8 +463,8 @@ namespace FlowMy.Views.NodeControls
 
             double threshold = 16.0 / zoom;
 
-            double width = MainImage.ActualWidth;
-            double height = MainImage.ActualHeight;
+            double width = _transformSessionActive ? _sessionCanvasWidth : MainImage.ActualWidth;
+            double height = _transformSessionActive ? _sessionCanvasHeight : MainImage.ActualHeight;
             double scaleX = width / activeLayer.Width;
             double scaleY = height / activeLayer.Height;
 
@@ -528,6 +544,9 @@ namespace FlowMy.Views.NodeControls
                 if (!_transformSessionActive)
                 {
                     _transformSessionActive = true;
+                    _sessionCanvasWidth = width;
+                    _sessionCanvasHeight = height;
+
                     int stride = activeLayer.Width * 4;
                     _originalTransformPixels = new byte[stride * activeLayer.Height];
                     activeLayer.Bitmap.CopyPixels(_originalTransformPixels, stride, 0);
@@ -549,8 +568,8 @@ namespace FlowMy.Views.NodeControls
                     TransformBoxVisual.RenderTransformOrigin = new Point(normX, normY);
 
                     TransformPreviewImage.Source = activeLayer.Bitmap;
-                    TransformPreviewImage.Width = MainImage.ActualWidth;
-                    TransformPreviewImage.Height = MainImage.ActualHeight;
+                    TransformPreviewImage.Width = width;
+                    TransformPreviewImage.Height = height;
 
                     activeLayer.IsTempHidden = true;
                     OnEditorDocumentModified();
@@ -582,8 +601,8 @@ namespace FlowMy.Views.NodeControls
         {
             var currentMouse = e.GetPosition(TransformOverlayCanvas);
 
-            double width = MainImage.ActualWidth;
-            double height = MainImage.ActualHeight;
+            double width = _transformSessionActive ? _sessionCanvasWidth : MainImage.ActualWidth;
+            double height = _transformSessionActive ? _sessionCanvasHeight : MainImage.ActualHeight;
             if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
@@ -782,6 +801,34 @@ namespace FlowMy.Views.NodeControls
             TransformBoxRotate.Angle = _sessionAngle;
             TransformBoxTranslate.X = _sessionTranslateX;
             TransformBoxTranslate.Y = _sessionTranslateY;
+
+            // Apply inverse scale to handles so their visual size on screen remains constant
+            double invScaleX = Math.Abs(_sessionScaleX) > 0.001 ? 1.0 / _sessionScaleX : 1.0;
+            double invScaleY = Math.Abs(_sessionScaleY) > 0.001 ? 1.0 / _sessionScaleY : 1.0;
+            var invScale = new ScaleTransform(invScaleX, invScaleY);
+
+            var handles = new[] { TransHandle_TL, TransHandle_T, TransHandle_TR, TransHandle_R, TransHandle_BR, TransHandle_B, TransHandle_BL, TransHandle_L };
+            foreach (var h in handles)
+            {
+                if (h != null)
+                {
+                    h.RenderTransformOrigin = new Point(0.5, 0.5);
+                    h.RenderTransform = invScale;
+                }
+            }
+
+            // Compensate border StrokeThickness so it doesn't get thick/thin when scaled
+            if (TransformBoxBorderPath != null)
+            {
+                double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
+                if (zoom <= 0) zoom = 1.0;
+                double baseThickness = 2.5 / zoom;
+                double avgScale = (Math.Abs(_sessionScaleX) + Math.Abs(_sessionScaleY)) / 2.0;
+                if (avgScale > 0.001)
+                {
+                    TransformBoxBorderPath.StrokeThickness = baseThickness / avgScale;
+                }
+            }
         }
 
         private void TransformOverlay_MouseUp(object sender, MouseButtonEventArgs e)
