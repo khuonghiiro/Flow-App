@@ -259,7 +259,12 @@ namespace FlowMy.Views.NodeControls
                 drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, layer.Width, layer.Height));
                 drawingContext.PushTransform(transform);
                 var sourceBitmap = (keepOriginalTransform ? layer.OriginalTransformBitmap : null) ?? layer.Bitmap;
-                drawingContext.DrawImage(sourceBitmap, new Rect(0, 0, layer.Width, layer.Height));
+                var destRect = (keepOriginalTransform && layer.OriginalTransformBitmap != null) ? layer.ContentBounds : new Rect(0, 0, layer.Width, layer.Height);
+                if (destRect.IsEmpty || destRect.Width <= 0 || destRect.Height <= 0)
+                {
+                    destRect = new Rect(0, 0, layer.Width, layer.Height);
+                }
+                drawingContext.DrawImage(sourceBitmap, destRect);
                 drawingContext.Pop();
             }
 

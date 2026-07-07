@@ -448,6 +448,10 @@ namespace FlowMy.Views.NodeControls
 
             ImageZoomScale.ScaleX = newScale;
             ImageZoomScale.ScaleY = newScale;
+            if (MainImage != null)
+            {
+                RenderOptions.SetBitmapScalingMode(MainImage, newScale > 1.001 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
+            }
             MainScrollViewer.UpdateLayout();
 
             if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)

@@ -232,56 +232,36 @@ namespace FlowMy.Models.ImageEditor
             double srcW = converted.PixelWidth;
             double srcH = converted.PixelHeight;
 
-            // Tính toán tỷ lệ scale để giữ nguyên tỷ lệ
-            double scale = 1.0;
-            if (srcW > Width || srcH > Height)
+            // Tính vị trí căn giữa trên Canvas
+            double x = (Width - srcW) / 2.0;
+            double y = (Height - srcH) / 2.0;
+
+            // Render ảnh gốc vào layer's Bitmap (kích thước Document, sẽ bị clip phần thừa ngoài canvas)
+            var drawingVisual = new DrawingVisual();
+            RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
+            using (var drawingContext = drawingVisual.RenderOpen())
             {
-                scale = Math.Min((double)Width / srcW, (double)Height / srcH);
+                // Vẽ ảnh nguồn ở đúng kích thước gốc và căn giữa
+                drawingContext.DrawImage(converted, new Rect(x, y, srcW, srcH));
             }
 
-            int destW = (int)Math.Round(srcW * scale);
-            int destH = (int)Math.Round(srcH * scale);
-            
-            // Tránh kích thước bằng 0
-            if (destW <= 0) destW = 1;
-            if (destH <= 0) destH = 1;
+            // Render ra RenderTargetBitmap
+            var rtb = new RenderTargetBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(drawingVisual);
 
-            // Scale ảnh
-            if (scale != 1.0)
-            {
-                var scaled = new TransformedBitmap(converted, new ScaleTransform(scale, scale));
-                converted = new FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
-            }
+            // Chuyển sang format Bgra32 để ghi vào layer's Bitmap
+            var finalBmp = new FormatConvertedBitmap(rtb, PixelFormats.Bgra32, null, 0);
 
-            // Tính vị trí căn giữa
-            int x = (Width - destW) / 2;
-            int y = (Height - destH) / 2;
-
-            // Tạo mảng pixel trống (trong suốt)
             var stride = Width * 4;
             var pixels = new byte[stride * Height];
-
-            // Copy pixel từ ảnh đã scale vào vị trí căn giữa trên canvas trống
-            int srcStride = destW * 4;
-            byte[] srcPixels = new byte[srcStride * destH];
-            converted.CopyPixels(srcPixels, srcStride, 0);
-
-            for (int row = 0; row < destH; row++)
-            {
-                int targetY = y + row;
-                if (targetY < 0 || targetY >= Height) continue;
-
-                int srcOffset = row * srcStride;
-                int destOffset = targetY * stride + x * 4;
-
-                Buffer.BlockCopy(srcPixels, srcOffset, pixels, destOffset, srcStride);
-            }
+            finalBmp.CopyPixels(pixels, stride, 0);
 
             Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixels, stride, 0);
             
-            // Đặt OriginalTransformBitmap và ContentBounds cho Smart Transform
-            OriginalTransformBitmap = Bitmap.Clone();
-            ContentBounds = new Rect(x, y, destW, destH);
+            // Đặt OriginalTransformBitmap là ảnh gốc chất lượng cao và kích thước nguyên bản (không bị scale hay clip!)
+            OriginalTransformBitmap = new WriteableBitmap(converted);
+            // Đặt ContentBounds bằng kích thước gốc căn giữa
+            ContentBounds = new Rect(x, y, srcW, srcH);
 
             InvalidateThumbnail();
         }

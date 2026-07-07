@@ -189,7 +189,12 @@ namespace FlowMy.Models.ImageEditor
                             transformGroup.Children.Add(new TranslateTransform(centerX + totalDx, centerY + totalDy));
 
                             drawingContext.PushTransform(transformGroup);
-                            drawingContext.DrawImage(layer.OriginalTransformBitmap, new Rect(0, 0, Width, Height));
+                            var destRect = layer.ContentBounds;
+                            if (destRect.IsEmpty || destRect.Width <= 0 || destRect.Height <= 0)
+                            {
+                                destRect = new Rect(0, 0, Width, Height);
+                            }
+                            drawingContext.DrawImage(layer.OriginalTransformBitmap, destRect);
                             drawingContext.Pop();
                         }
                         else if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
