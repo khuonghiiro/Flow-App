@@ -574,7 +574,7 @@
                              Text="#FFFFFF" LostFocus="OptColorHexInput_LostFocus" KeyDown="OptColorHexInput_KeyDown"/>
                     
                     <Border x:Name="OptFgColorSwatch" Width="18" Height="18" Margin="6,0,6,0" CornerRadius="3"
-                            BorderBrush="#dde3ef" BorderThickness="1.5" Cursor="Hand"
+                            BorderBrush="#dde3ef" BorderThickness="1" Cursor="Hand"
                             ToolTip="Foreground Color"
                             MouseLeftButtonDown="OptFgColorSwatch_MouseLeftButtonDown"/>
                     
@@ -584,7 +584,7 @@
                             Click="EditorToolbox_SwapColors_Click"/>
                     
                     <Border x:Name="OptBgColorSwatch" Width="18" Height="18" Margin="6,0,12,0" CornerRadius="3"
-                            BorderBrush="#252932" BorderThickness="1.5" Cursor="Hand"
+                            BorderBrush="#252932" BorderThickness="1" Cursor="Hand"
                             ToolTip="Background Color"
                             MouseLeftButtonDown="OptBgColorSwatch_MouseLeftButtonDown"/>
                 </StackPanel>
@@ -897,13 +897,13 @@
                         <Grid Width="32" Height="32" Margin="0,0,0,2">
                             <Border x:Name="TbxBgColor" Width="18" Height="18"
                                     Background="White" CornerRadius="3"
-                                    BorderBrush="#252932" BorderThickness="1.5"
+                                    BorderBrush="#252932" BorderThickness="1"
                                     HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                     Cursor="Hand" ToolTip="Background color"
                                     MouseLeftButtonDown="EditorToolbox_BgColor_Click"/>
                             <Border x:Name="TbxFgColor" Width="18" Height="18"
                                     Background="Black" CornerRadius="3"
-                                    BorderBrush="#dde3ef" BorderThickness="2"
+                                    BorderBrush="#dde3ef" BorderThickness="1"
                                     HorizontalAlignment="Left" VerticalAlignment="Top"
                                     Cursor="Hand" ToolTip="Foreground color"
                                     MouseLeftButtonDown="EditorToolbox_FgColor_Click"/>

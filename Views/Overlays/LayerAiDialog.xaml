@@ -1,0 +1,287 @@
+<Window x:Class="FlowMy.Views.Overlays.LayerAiDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
+        Title="AI Layer Editor"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Width="680"
+        Height="460">
+    <Window.Resources>
+        <!-- Reusable dark theme brush copies if global ones are not available -->
+        <SolidColorBrush x:Key="DialogBg" Color="#111318"/>
+        <SolidColorBrush x:Key="BorderColor" Color="#2a2e3d"/>
+        <SolidColorBrush x:Key="TextMain" Color="#dde3ef"/>
+        <SolidColorBrush x:Key="TextMuted" Color="#788296"/>
+        <SolidColorBrush x:Key="AccentColor" Color="#4fffb0"/>
+
+        <!-- Photoshop dark checkered brush for transparency -->
+        <VisualBrush x:Key="PsDarkCheckeredBrush" TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
+            <VisualBrush.Visual>
+                <Grid Width="16" Height="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="8"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="8"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#12141c"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#1b1e29"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#1b1e29"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#12141c"/>
+                </Grid>
+            </VisualBrush.Visual>
+        </VisualBrush>
+
+        <!-- Photoshop light checkered brush for transparency -->
+        <VisualBrush x:Key="PsCheckeredBrush" TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
+            <VisualBrush.Visual>
+                <Grid Width="16" Height="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="8"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="8"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#cbcbcb"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#ffffff"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#ffffff"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#cbcbcb"/>
+                </Grid>
+            </VisualBrush.Visual>
+        </VisualBrush>
+
+        <!-- Dynamic themed ComboBox Style for Dialog -->
+        <Style x:Key="IpComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Background" Value="#1e222d"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+            <Setter Property="BorderThickness" Value="1.2"/>
+            <Setter Property="Padding" Value="6,0,6,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4"/>
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="8,0,20,0"
+                                              VerticalAlignment="Center"/>
+                            <TextBlock Text="▾"
+                                       HorizontalAlignment="Right"
+                                       Margin="0,0,8,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextMuted}"
+                                       FontSize="10"/>
+                            <ToggleButton x:Name="ToggleButton"
+                                          IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide">
+                                <Border Background="#1e222d"
+                                        BorderBrush="{StaticResource BorderColor}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        MaxHeight="200"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        Margin="0,2,0,0">
+                                    <ScrollViewer SnapsToDevicePixels="True">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
+                        <Setter Property="Background" Value="#1e222d"/>
+                        <Setter Property="Padding" Value="8,5"/>
+                        <Setter Property="FontSize" Value="9.5"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="ItemBd"
+                                            Background="{TemplateBinding Background}"
+                                            Padding="{TemplateBinding Padding}"
+                                            CornerRadius="2"
+                                            Margin="2,1">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="#252a39"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="#1a4fffb0"/>
+                                            <Setter Property="Foreground" Value="{StaticResource AccentColor}"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
+    <Border CornerRadius="12" BorderBrush="{StaticResource BorderColor}" BorderThickness="1.5" Background="{StaticResource DialogBg}">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.6" Color="#000000"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- HEADER -->
+            <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1" Padding="16,12" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="✨ AI LAYER EDITOR" Foreground="{StaticResource AccentColor}"
+                               FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" x:Name="BtnClose" Width="24" Height="24" Content="✕" FontSize="11" FontWeight="Bold"
+                            Style="{DynamicResource DangerButton}" Cursor="Hand" Click="BtnClose_Click"/>
+                </Grid>
+            </Border>
+
+            <!-- CONTENT ROW 1: PREVIEW & PROMPT -->
+            <Grid Grid.Row="1" Margin="16,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- COLUMN 1: PREVIEW (2/3) -->
+                <Border Grid.Column="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                    <Grid>
+                        <!-- Checkerboard background to indicate transparency -->
+                        <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
+                        <Image x:Name="ImgPreview" Stretch="Uniform" Margin="8"/>
+                    </Grid>
+                </Border>
+
+                <!-- COLUMN 2: PROMPT (1/3) -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="PROMPT gợi ý chỉnh sửa" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
+                    <Border Grid.Row="1" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
+                        <TextBox x:Name="TxtPrompt"
+                                 Background="Transparent" Foreground="{StaticResource TextMain}"
+                                 BorderThickness="0"
+                                 Padding="8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- CONTENT ROW 2: CONFIG & ACTIONS -->
+            <Border Grid.Row="2" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,1,0,0" Padding="16,12" Background="#0e1014" CornerRadius="0,0,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Configurations (Left) -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Batch size -->
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="Số lượng ảnh" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="CmbBatchSize" Width="80" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="1">
+                                <ComboBoxItem Content="1"/>
+                                <ComboBoxItem Content="2"/>
+                                <ComboBoxItem Content="3"/>
+                                <ComboBoxItem Content="4"/>
+                             </ComboBox>
+                        </StackPanel>
+
+                        <!-- Aspect ratio -->
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="Tỉ lệ khung hình" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="CmbAspectRatio" Width="130" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="0" SelectionChanged="CmbAspectRatio_SelectionChanged">
+                                <ComboBoxItem Content="Tỉ lệ mặc định"/>
+                                <ComboBoxItem Content="16:9"/>
+                                <ComboBoxItem Content="4:3"/>
+                                <ComboBoxItem Content="1:1"/>
+                                <ComboBoxItem Content="3:4"/>
+                                <ComboBoxItem Content="9:16"/>
+                                <ComboBoxItem Content="Tỉ lệ tự do"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Custom width/height (only visible for Free aspect ratio) -->
+                        <StackPanel x:Name="PanelCustomSize" Orientation="Horizontal" Visibility="Collapsed">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Rộng (px)" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtCustomWidth" Width="60" Height="28" Padding="6,0" VerticalContentAlignment="Center" Text="512" TextChanged="TxtCustomSize_TextChanged"
+                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#404fffb0"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Cao (px)" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtCustomHeight" Width="60" Height="28" Padding="6,0" VerticalContentAlignment="Center" Text="512" TextChanged="TxtCustomSize_TextChanged"
+                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#404fffb0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Buttons (Right) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                        <Button x:Name="BtnCancel" Content="Huỷ" Style="{DynamicResource DangerButton}" Width="80" Height="30" Margin="0,0,8,0" Cursor="Hand" Click="BtnCancel_Click"/>
+                        <Button x:Name="BtnSend" Content="✨ Gửi AI" Style="{DynamicResource SuccessButton}" Width="90" Height="30" Cursor="Hand" Click="BtnSend_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -20,6 +20,49 @@ namespace FlowMy.Models.ImageEditor
         private BlendMode _blendMode = BlendMode.Normal;
         private WriteableBitmap? _thumbnailCache;
 
+        // Parent/Child/Variant hierarchy for AI edits
+        private EditorLayer? _parentLayer;
+        public EditorLayer? ParentLayer
+        {
+            get => _parentLayer;
+            set
+            {
+                if (SetField(ref _parentLayer, value))
+                {
+                    OnPropertyChanged(nameof(IsChildLayer));
+                }
+            }
+        }
+
+        public System.Collections.ObjectModel.ObservableCollection<EditorLayer> ChildLayers { get; } = new();
+
+        private EditorLayer? _activeChildLayer;
+        public EditorLayer? ActiveChildLayer
+        {
+            get => _activeChildLayer;
+            set
+            {
+                if (SetField(ref _activeChildLayer, value))
+                {
+                    foreach (var child in ChildLayers)
+                    {
+                        child.IsActiveVariant = (child == value);
+                    }
+                    OnPropertyChanged(nameof(IsParentOriginalActive));
+                }
+            }
+        }
+
+        private bool _isActiveVariant;
+        public bool IsActiveVariant
+        {
+            get => _isActiveVariant;
+            set => SetField(ref _isActiveVariant, value);
+        }
+
+        public bool IsChildLayer => ParentLayer != null;
+        public bool IsParentOriginalActive => ParentLayer == null && ActiveChildLayer == null;
+
         public EditorLayer(int width, int height, string name = "Layer")
         {
             if (width <= 0 || height <= 0)

@@ -129,7 +129,7 @@ public partial class FloatingWidgetWindow : Window
         DataContext = _viewModel;
 
         // Apply config to window
-        Topmost = Config.AlwaysOnTop;
+        Topmost = System.Diagnostics.Debugger.IsAttached ? false : Config.AlwaysOnTop;
         ShowInTaskbar = Config.ShowInTaskbar;
 
         // Set title (ưu tiên WidgetName, fallback node.Title)
@@ -1002,9 +1002,18 @@ public partial class FloatingWidgetWindow : Window
     {
         if (Config.PinnedNoAutoHide) return;
 
-        // Nếu widget đang được focus (user đang tương tác), coi như "not idle"
-        // → reset thời gian hoạt động để countdown chỉ bắt đầu sau khi mất focus.
-        if (IsActive)
+        // Nếu widget hoặc bất kỳ cửa sổ con (owned window) nào của nó đang active/tương tác, coi như "not idle"
+        bool isAnyChildActive = false;
+        foreach (Window? win in this.OwnedWindows)
+        {
+            if (win != null && win.IsActive)
+            {
+                isAnyChildActive = true;
+                break;
+            }
+        }
+
+        if (IsActive || isAnyChildActive)
         {
             MarkActivity();
             return;
@@ -4409,6 +4418,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private void ReassertTopmostIfNeeded()
     {
+        if (System.Diagnostics.Debugger.IsAttached) return;
         if (!Config.AlwaysOnTop) return;
 
         // Khi đang maximize, KHÔNG force topmost để user có thể chuyển sang app khác

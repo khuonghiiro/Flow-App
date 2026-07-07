@@ -94,6 +94,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             InitializeComponent();
+            EditorPanel.SetNodeAndHost(_node, _host);
             this.Loaded += (s, e) => InitializeFxDots();
             this.Unloaded += (s, e) => CommitPendingMoveTranslation();
             MainImage.SizeChanged += (s, e) =>

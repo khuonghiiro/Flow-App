@@ -1,5 +1,7 @@
 using FlowMy.Models.ImageEditor;
 using FlowMy.Models.ImageEditor.Commands;
+using FlowMy.Models.Nodes;
+using FlowMy.Services.Interaction;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -115,6 +117,15 @@ namespace FlowMy.Views.NodeControls
             TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        private ImageProcessingNode? _node;
+        private IWorkflowEditorHost? _host;
+
+        public void SetNodeAndHost(ImageProcessingNode node, IWorkflowEditorHost host)
+        {
+            _node = node;
+            _host = host;
+        }
+
         /// <summary>Gán document để panel bind vào.</summary>
         public void SetDocument(EditorDocument? doc)
         {
@@ -152,7 +163,19 @@ namespace FlowMy.Views.NodeControls
         {
             if (_doc == null) return;
             // Hiển thị reversed: top layer ở trên (giống Photoshop)
-            var targetList = _doc.Layers.Reverse().ToList();
+            var reversedParents = _doc.Layers.Reverse().ToList();
+            var targetList = new List<EditorLayer>();
+            foreach (var parent in reversedParents)
+            {
+                targetList.Add(parent);
+                if (parent.ChildLayers != null)
+                {
+                    foreach (var child in parent.ChildLayers)
+                    {
+                        targetList.Add(child);
+                    }
+                }
+            }
 
             if (LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
             {
@@ -193,6 +216,18 @@ namespace FlowMy.Views.NodeControls
                 {
                     layer.IsSelected = true;
                 }
+
+                if (layer.ChildLayers != null)
+                {
+                    foreach (var child in layer.ChildLayers)
+                    {
+                        child.IsActive = (child == _doc.ActiveLayer);
+                        if (child.IsActive && !child.IsSelected)
+                        {
+                            child.IsSelected = true;
+                        }
+                    }
+                }
             }
         }
 
@@ -211,12 +246,27 @@ namespace FlowMy.Views.NodeControls
                     if (newActive != null && _doc.ActiveLayer != newActive)
                     {
                         _doc.ActiveLayer = newActive;
+                        if (newActive.ParentLayer != null)
+                        {
+                            newActive.ParentLayer.ActiveChildLayer = newActive;
+                        }
+                        else
+                        {
+                            newActive.ActiveChildLayer = null;
+                        }
                     }
                 }
                 
                 foreach (var layer in _doc.Layers)
                 {
                     layer.IsSelected = selectedLayers.Contains(layer);
+                    if (layer.ChildLayers != null)
+                    {
+                        foreach (var child in layer.ChildLayers)
+                        {
+                            child.IsSelected = selectedLayers.Contains(child);
+                        }
+                    }
                 }
             }
             finally
@@ -227,6 +277,7 @@ namespace FlowMy.Views.NodeControls
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
             SyncBlendModeCombo();
+            OnDocumentModified();
         }
 
         private void HandleLayerClick(EditorLayer clickedLayer, bool ctrl, bool shift)
@@ -604,12 +655,32 @@ namespace FlowMy.Views.NodeControls
         /// <summary>Inline delete button trên mỗi layer item — xoá layer được click.</summary>
         private void BtnDeleteLayer_Click(object sender, MouseButtonEventArgs e)
         {
-            if (_doc == null || _doc.Layers.Count <= 1) return;
+            if (_doc == null) return;
             if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
             {
-                var cmd = new LayerRemoveCommand(_doc, layer);
-                _doc.History.Execute(cmd);
-                OnDocumentModified();
+                if (layer.ParentLayer != null)
+                {
+                    var parent = layer.ParentLayer;
+                    parent.ChildLayers.Remove(layer);
+                    
+                    if (parent.ActiveChildLayer == layer)
+                    {
+                        parent.ActiveChildLayer = null;
+                    }
+                    if (_doc.ActiveLayer == layer)
+                    {
+                        _doc.ActiveLayer = parent;
+                    }
+                    RefreshLayersList();
+                    OnDocumentModified();
+                }
+                else
+                {
+                    if (_doc.Layers.Count <= 1) return;
+                    var cmd = new LayerRemoveCommand(_doc, layer);
+                    _doc.History.Execute(cmd);
+                    OnDocumentModified();
+                }
             }
             e.Handled = true;
         }
@@ -1042,6 +1113,72 @@ namespace FlowMy.Views.NodeControls
                     MessageBox.Show($"Không thể tải ảnh: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
+        }
+
+        private void LayerItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_doc == null) return;
+            if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
+            {
+                if (!layer.IsSelected)
+                {
+                    SelectSingleLayer(layer);
+                }
+
+                int selectedCount = SelectedLayers.Count;
+                if (selectedCount == 1)
+                {
+                    PopupBtnAI.Visibility = Visibility.Visible;
+                    PopupBtnMerge.Visibility = Visibility.Collapsed;
+                }
+                else if (selectedCount > 1)
+                {
+                    PopupBtnAI.Visibility = Visibility.Collapsed;
+                    PopupBtnMerge.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    return;
+                }
+
+                LayerActionPopup.PlacementTarget = fe;
+                LayerActionPopup.IsOpen = true;
+                e.Handled = true;
+            }
+        }
+
+        private void PopupBtnMerge_Click(object sender, MouseButtonEventArgs e)
+        {
+            LayerActionPopup.IsOpen = false;
+            if (_doc == null) return;
+
+            var selected = SelectedLayers;
+            if (selected.Count < 2) return;
+
+            var cmd = new MergeLayersCommand(_doc, selected);
+            _doc.History.Execute(cmd);
+
+            RefreshLayersList();
+            OnDocumentModified();
+            e.Handled = true;
+        }
+
+        private void PopupBtnAI_Click(object sender, MouseButtonEventArgs e)
+        {
+            LayerActionPopup.IsOpen = false;
+            if (_doc == null || _node == null || _host == null) return;
+
+            var active = _doc.ActiveLayer;
+            if (active == null) return;
+
+            var ownerWindow = Window.GetWindow(this);
+            var dialog = new Views.Overlays.LayerAiDialog(active, _node, _host, _doc, ownerWindow);
+            if (dialog.ShowDialog() == true)
+            {
+                RefreshLayersList();
+                OnDocumentModified();
+            }
+            e.Handled = true;
         }
     }
 }

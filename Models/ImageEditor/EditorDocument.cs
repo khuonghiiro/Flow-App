@@ -168,10 +168,21 @@ namespace FlowMy.Models.ImageEditor
 
                         drawingContext.PushOpacity(layer.Opacity);
 
-                        if (layer.OriginalTransformBitmap != null && layer.TempSelectionGeometry == null)
+                        var activeBmp = layer.Bitmap;
+                        var activeOrig = layer.OriginalTransformBitmap;
+                        var activeContentBounds = layer.ContentBounds;
+
+                        if (layer.ActiveChildLayer != null)
+                        {
+                            activeBmp = layer.ActiveChildLayer.Bitmap;
+                            activeOrig = layer.ActiveChildLayer.OriginalTransformBitmap;
+                            activeContentBounds = layer.ActiveChildLayer.ContentBounds;
+                        }
+
+                        if (activeOrig != null && layer.TempSelectionGeometry == null)
                         {
                             // Dynamic non-destructive high-quality transformation rendering from the original bitmap using cached bounds
-                            var contentBounds = layer.ContentBounds;
+                            var contentBounds = activeContentBounds;
                             if (contentBounds.IsEmpty || contentBounds.Width <= 0 || contentBounds.Height <= 0)
                             {
                                 contentBounds = new Rect(0, 0, Width, Height);
@@ -189,12 +200,12 @@ namespace FlowMy.Models.ImageEditor
                             transformGroup.Children.Add(new TranslateTransform(centerX + totalDx, centerY + totalDy));
 
                             drawingContext.PushTransform(transformGroup);
-                            var destRect = layer.ContentBounds;
+                            var destRect = activeContentBounds;
                             if (destRect.IsEmpty || destRect.Width <= 0 || destRect.Height <= 0)
                             {
                                 destRect = new Rect(0, 0, Width, Height);
                             }
-                            drawingContext.DrawImage(layer.OriginalTransformBitmap, destRect);
+                            drawingContext.DrawImage(activeOrig, destRect);
                             drawingContext.Pop();
                         }
                         else if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
@@ -205,25 +216,25 @@ namespace FlowMy.Models.ImageEditor
                                 var boundsGeom = new RectangleGeometry(new Rect(0, 0, Width, Height));
                                 var bgGeom = Geometry.Combine(boundsGeom, layer.TempSelectionGeometry, GeometryCombineMode.Exclude, null);
                                 drawingContext.PushClip(bgGeom);
-                                drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, Width, Height));
+                                drawingContext.DrawImage(activeBmp, new Rect(0, 0, Width, Height));
                                 drawingContext.Pop();
 
                                 // Draw shifted selection
                                 var transform = new TranslateTransform(layer.TempMoveDx, layer.TempMoveDy);
                                 var fgGeom = Geometry.Combine(layer.TempSelectionGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
                                 drawingContext.PushClip(fgGeom);
-                                drawingContext.DrawImage(layer.Bitmap, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
+                                drawingContext.DrawImage(activeBmp, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
                                 drawingContext.Pop();
                             }
                             else
                             {
                                 // Shift entire layer
-                                drawingContext.DrawImage(layer.Bitmap, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
+                                drawingContext.DrawImage(activeBmp, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
                             }
                         }
                         else
                         {
-                            drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, Width, Height));
+                            drawingContext.DrawImage(activeBmp, new Rect(0, 0, Width, Height));
                         }
 
                         drawingContext.Pop();
@@ -248,8 +259,9 @@ namespace FlowMy.Models.ImageEditor
                 {
                     if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
 
+                    var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
                     var layerPixels = new byte[stride * Height];
-                    layer.Bitmap.CopyPixels(layerPixels, stride, 0);
+                    activeBmp.CopyPixels(layerPixels, stride, 0);
 
                     double layerOpacity = layer.Opacity;
                     BlendLayerPixels(resultPixels, layerPixels, layerOpacity, layer.BlendMode);
