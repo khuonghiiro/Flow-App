@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -186,7 +187,141 @@ namespace FlowMy.Views.NodeControls
         {
             if (_doc == null) return;
             foreach (var layer in _doc.Layers)
+            {
                 layer.IsActive = (layer == _doc.ActiveLayer);
+                if (layer.IsActive && !layer.IsSelected)
+                {
+                    layer.IsSelected = true;
+                }
+            }
+        }
+
+        private bool _isSyncingSelection = false;
+        private void LayersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_doc == null || _isSyncingSelection) return;
+
+            _isSyncingSelection = true;
+            try
+            {
+                var selectedLayers = LayersList.SelectedItems.Cast<EditorLayer>().ToList();
+                if (selectedLayers.Count > 0)
+                {
+                    var lastSelected = selectedLayers.LastOrDefault();
+                    if (lastSelected != null && _doc.ActiveLayer != lastSelected)
+                    {
+                        _doc.ActiveLayer = lastSelected;
+                    }
+                }
+                
+                foreach (var layer in _doc.Layers)
+                {
+                    layer.IsSelected = selectedLayers.Contains(layer);
+                }
+            }
+            finally
+            {
+                _isSyncingSelection = false;
+            }
+
+            SyncActiveLayerHighlight();
+            SyncActiveLayerOpacity();
+            SyncBlendModeCombo();
+        }
+
+        private void HandleLayerClick(EditorLayer clickedLayer, bool ctrl, bool shift)
+        {
+            if (_doc == null) return;
+
+            if (shift)
+            {
+                var active = _doc.ActiveLayer;
+                if (active == null)
+                {
+                    SelectSingleLayer(clickedLayer);
+                }
+                else
+                {
+                    int idx1 = _doc.Layers.IndexOf(active);
+                    int idx2 = _doc.Layers.IndexOf(clickedLayer);
+                    if (idx1 >= 0 && idx2 >= 0)
+                    {
+                        int min = Math.Min(idx1, idx2);
+                        int max = Math.Max(idx1, idx2);
+
+                        foreach (var l in _doc.Layers)
+                        {
+                            int idx = _doc.Layers.IndexOf(l);
+                            l.IsSelected = (idx >= min && idx <= max);
+                        }
+                        
+                        _doc.ActiveLayer = clickedLayer;
+                    }
+                }
+            }
+            else if (ctrl)
+            {
+                clickedLayer.IsSelected = !clickedLayer.IsSelected;
+                
+                if (!clickedLayer.IsSelected && _doc.ActiveLayer == clickedLayer)
+                {
+                    var nextActive = _doc.Layers.LastOrDefault(l => l.IsSelected);
+                    _doc.ActiveLayer = nextActive;
+                }
+                else if (clickedLayer.IsSelected)
+                {
+                    _doc.ActiveLayer = clickedLayer;
+                }
+            }
+            else
+            {
+                SelectSingleLayer(clickedLayer);
+            }
+
+            _isSyncingSelection = true;
+            try
+            {
+                LayersList.SelectedItems.Clear();
+                foreach (var l in _doc.Layers)
+                {
+                    if (l.IsSelected)
+                    {
+                        LayersList.SelectedItems.Add(l);
+                    }
+                }
+            }
+            finally
+            {
+                _isSyncingSelection = false;
+            }
+
+            SyncActiveLayerHighlight();
+            SyncActiveLayerOpacity();
+            SyncBlendModeCombo();
+        }
+
+        private void SelectSingleLayer(EditorLayer clickedLayer)
+        {
+            if (_doc == null) return;
+            foreach (var l in _doc.Layers)
+            {
+                l.IsSelected = (l == clickedLayer);
+            }
+            _doc.ActiveLayer = clickedLayer;
+        }
+
+        public List<EditorLayer> SelectedLayers
+        {
+            get
+            {
+                if (_doc == null) return new List<EditorLayer>();
+                var list = _doc.Layers.Where(l => l.IsSelected).ToList();
+                if (list.Count == 0 && _doc.ActiveLayer != null)
+                {
+                    list.Add(_doc.ActiveLayer);
+                }
+                return list;
+            }
         }
 
         private void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -201,6 +336,25 @@ namespace FlowMy.Views.NodeControls
                 SyncActiveLayerHighlight();
                 SyncActiveLayerOpacity();
                 SyncBlendModeCombo();
+                
+                // Đồng bộ Selection của ListBox
+                _isSyncingSelection = true;
+                try
+                {
+                    LayersList.SelectedItems.Clear();
+                    foreach (var l in _doc.Layers)
+                    {
+                        if (l.IsSelected)
+                        {
+                            LayersList.SelectedItems.Add(l);
+                        }
+                    }
+                }
+                finally
+                {
+                    _isSyncingSelection = false;
+                }
+
                 ActiveLayerChanged?.Invoke(this, EventArgs.Empty);
             }
             else if (e.PropertyName == nameof(EditorDocument.ForegroundColor) ||
@@ -221,10 +375,12 @@ namespace FlowMy.Views.NodeControls
             if (_doc == null) return;
             if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
             {
-                _doc.ActiveLayer = layer;
-                SyncActiveLayerHighlight();
-                SyncActiveLayerOpacity();
-                SyncBlendModeCombo();
+                LayersList.Focus();
+
+                bool ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+                bool shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+                HandleLayerClick(layer, ctrl, shift);
 
                 // Setup drag state
                 _draggedLayer = layer;
@@ -748,6 +904,163 @@ namespace FlowMy.Views.NodeControls
         private void OnDocumentModified()
         {
             DocumentModified?.Invoke();
+        }
+
+        public void DuplicateSelectedLayers()
+        {
+            if (_doc == null) return;
+            var selected = SelectedLayers;
+            if (selected.Count == 0) return;
+
+            var cmd = new DuplicateLayersCommand(_doc, selected);
+            _doc.History.Execute(cmd);
+            
+            // Re-select the duplicated layers
+            _isSyncingSelection = true;
+            try
+            {
+                LayersList.SelectedItems.Clear();
+                foreach (var l in _doc.Layers)
+                {
+                    l.IsSelected = cmd.DuplicatedLayers.Contains(l);
+                    if (l.IsSelected)
+                    {
+                        LayersList.SelectedItems.Add(l);
+                    }
+                }
+            }
+            finally
+            {
+                _isSyncingSelection = false;
+            }
+
+            RefreshLayersList();
+            OnDocumentModified();
+        }
+
+        public void DeleteSelectedLayers()
+        {
+            if (_doc == null || _doc.Layers.Count <= 1) return;
+            var selected = SelectedLayers;
+            if (selected.Count == 0) return;
+
+            if (selected.Count >= _doc.Layers.Count)
+            {
+                MessageBox.Show("Không thể xoá tất cả các layer. Tài liệu phải chứa ít nhất một layer.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var cmd = new DeleteLayersCommand(_doc, selected);
+            _doc.History.Execute(cmd);
+
+            RefreshLayersList();
+            OnDocumentModified();
+        }
+
+        public void MergeSelectedLayers()
+        {
+            if (_doc == null) return;
+
+            var selected = SelectedLayers;
+            List<EditorLayer> mergeSet;
+
+            if (selected.Count >= 2)
+            {
+                mergeSet = selected;
+            }
+            else
+            {
+                var active = _doc.ActiveLayer;
+                if (active == null) return;
+
+                int idx = _doc.Layers.IndexOf(active);
+                if (idx <= 0) return;
+
+                mergeSet = new List<EditorLayer> { _doc.Layers[idx - 1], active };
+            }
+
+            var cmd = new MergeLayersCommand(_doc, mergeSet);
+            _doc.History.Execute(cmd);
+
+            RefreshLayersList();
+            OnDocumentModified();
+        }
+
+        public void UndoAction()
+        {
+            if (_doc == null) return;
+            _doc.History.Undo();
+            RefreshLayersList();
+            OnDocumentModified();
+        }
+
+        public void RedoAction()
+        {
+            if (_doc == null) return;
+            _doc.History.Redo();
+            RefreshLayersList();
+            OnDocumentModified();
+        }
+
+        private void BtnAddImageLayer_Click(object sender, RoutedEventArgs e)
+        {
+            if (_doc == null) return;
+
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Image Files|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp|All Files|*.*",
+                Title = "Chọn ảnh để thêm vào Layer mới"
+            };
+
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.UriSource = new Uri(dlg.FileName);
+                    bmp.EndInit();
+                    bmp.Freeze();
+
+                    string fileNameWithoutExt = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+                    string layerName = $"layer {fileNameWithoutExt}";
+
+                    string finalName = layerName;
+                    int count = 1;
+                    while (_doc.Layers.Any(l => string.Equals(l.Name, finalName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        finalName = $"{layerName} ({count++})";
+                    }
+
+                    var newLayer = new EditorLayer(_doc.Width, _doc.Height, finalName);
+                    newLayer.CopyFrom(bmp);
+
+                    int insertIndex = _doc.Layers.Count;
+                    if (_doc.ActiveLayer != null)
+                    {
+                        int idx = _doc.Layers.IndexOf(_doc.ActiveLayer);
+                        if (idx >= 0) insertIndex = idx + 1;
+                    }
+
+                    var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
+                    _doc.History.Execute(cmd);
+
+                    _doc.ActiveLayer = newLayer;
+                    
+                    foreach (var l in _doc.Layers)
+                    {
+                        l.IsSelected = (l == newLayer);
+                    }
+
+                    RefreshLayersList();
+                    OnDocumentModified();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Không thể tải ảnh: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
     }
 }

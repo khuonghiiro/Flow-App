@@ -1186,6 +1186,13 @@ namespace FlowMy.Views.NodeControls
 
         private void ImageProcessingNodeContentControl_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Do not intercept if mouse is outside and not in FloatingWidgetWindow
+            bool isInWidget = _ownerWindow is FlowMy.Views.Overlays.FloatingWidgetWindow;
+            if (!isInWidget && !this.IsMouseOver)
+            {
+                return;
+            }
+
             // Do not intercept if typing in a TextBox/ComboBox or renaming layer
             if (e.OriginalSource is TextBox || e.OriginalSource is ComboBox)
             {
@@ -1289,6 +1296,46 @@ namespace FlowMy.Views.NodeControls
                 if (e.Key == Key.D && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
                     ClearSelection();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Ctrl+J: Duplicate Layer(s)
+                if (e.Key == Key.J && Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    EditorPanel.DuplicateSelectedLayers();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Delete: Delete Layer(s)
+                if (e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.None)
+                {
+                    EditorPanel.DeleteSelectedLayers();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Ctrl+E: Merge Layer(s)
+                if (e.Key == Key.E && Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    EditorPanel.MergeSelectedLayers();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Ctrl+Z: Undo in manual editor
+                if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    EditorPanel.UndoAction();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Ctrl+Y: Redo in manual editor
+                if (e.Key == Key.Y && Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    EditorPanel.RedoAction();
                     e.Handled = true;
                     return;
                 }
@@ -3337,6 +3384,77 @@ namespace FlowMy.Views.NodeControls
             _moveInitialFullPixels = null;
             activeLayer.InvalidateThumbnail();
             OnEditorDocumentModified();
+        }
+
+        public bool CanHandleKey(KeyEventArgs e)
+        {
+            if (_node.ProcessingMode != Models.Nodes.ImageProcessingMode.Manual)
+                return false;
+
+            // Do not handle if focused on input fields
+            if (e.OriginalSource is TextBox || e.OriginalSource is ComboBox)
+                return false;
+
+            var modifiers = Keyboard.Modifiers;
+
+            // 1. Layer navigation / Move tool nudging
+            if (e.Key == Key.Up || e.Key == Key.Down || e.Key == Key.Left || e.Key == Key.Right)
+            {
+                if (EditorPanel.ActiveToolName == "Move" || EditorPanel.LayersList.IsKeyboardFocusWithin)
+                    return true;
+            }
+
+            // 2. Spacebar for panning
+            if (e.Key == Key.Space)
+                return true;
+
+            // 3. Brush size adjustment
+            if (e.Key == Key.OemOpenBrackets || e.Key == Key.OemCloseBrackets)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "Brush" || tool == "Eraser")
+                    return true;
+            }
+
+            // 4. Reset/Swap colors (X / D)
+            if ((e.Key == Key.X || e.Key == Key.D) && modifiers == ModifierKeys.None)
+                return true;
+
+            // 5. Deselect (Ctrl + D)
+            if (e.Key == Key.D && modifiers == ModifierKeys.Control)
+                return true;
+
+            // 6. Tool selection (V, B, E, M, I, G, T, C, K)
+            if (modifiers == ModifierKeys.None || (modifiers == ModifierKeys.Shift && e.Key == Key.K))
+            {
+                if (e.Key == Key.V || e.Key == Key.B || e.Key == Key.E || e.Key == Key.M ||
+                    e.Key == Key.I || e.Key == Key.G || e.Key == Key.T || e.Key == Key.C || e.Key == Key.K)
+                    return true;
+            }
+
+            // 7. Crop / Transform / PolyLasso confirmation/cancellation (Enter / Escape)
+            if (e.Key == Key.Enter || e.Key == Key.Escape)
+            {
+                string tool = EditorPanel.ActiveToolName;
+                if (tool == "CropCanvas" || tool == "Move" || tool == "Transform" || tool == "PolyLasso")
+                    return true;
+            }
+
+            // 8. Layer actions: Ctrl+J (duplicate), Del (delete), Ctrl+E (merge)
+            if (e.Key == Key.J && modifiers == ModifierKeys.Control)
+                return true;
+            if (e.Key == Key.Delete && modifiers == ModifierKeys.None)
+                return true;
+            if (e.Key == Key.E && modifiers == ModifierKeys.Control)
+                return true;
+
+            // 9. Undo/Redo: Ctrl+Z, Ctrl+Y
+            if (e.Key == Key.Z && modifiers == ModifierKeys.Control)
+                return true;
+            if (e.Key == Key.Y && modifiers == ModifierKeys.Control)
+                return true;
+
+            return false;
         }
 
         #endregion

@@ -446,3 +446,5 @@ rotate-right solid
 rotate-left solid
 arrows-left-right duotone
 arrows-up-down duotone
+copy sharp-duotone-light
+image-circle-plus light

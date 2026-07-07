@@ -193,7 +193,7 @@
                                         Fill="{StaticResource ipText}"
                                         Source="{Binding Source={x:Static sys:String.Empty},
                                                  Converter={StaticResource IconKeyToPathConverter},
-                                                 ConverterParameter='copy duotone-light'}"
+                                                 ConverterParameter='copy sharp-duotone-light'}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                         IsHitTestVisible="False"/>
                                 </Border>
@@ -268,9 +268,13 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter TargetName="LayerItemBd" Property="Background" Value="{StaticResource ipHover}"/>
                 </Trigger>
+                <!-- Selected layer highlight -->
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter TargetName="LayerItemBd" Property="Background" Value="#222e3f"/>
+                </DataTrigger>
                 <!-- Active layer highlight (Photoshop style) -->
                 <DataTrigger Binding="{Binding IsActive}" Value="True">
-                    <Setter TargetName="LayerItemBd" Property="Background" Value="#2a3240"/>
+                    <Setter TargetName="LayerItemBd" Property="Background" Value="#2d3c54"/>
                     <Setter TargetName="ActiveStripe" Property="Background" Value="#00cfff"/>
                 </DataTrigger>
                 <!-- Hidden layer opacity -->
@@ -478,6 +482,36 @@
                             </Track>
                         </Grid>
                     </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ═══ SLEEK LISTBOX STYLE ═══ -->
+        <Style x:Key="IpListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="SelectionMode" Value="Extended"/>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -764,6 +798,19 @@
                                        Foreground="{StaticResource ipMuted}"
                                        VerticalAlignment="Center"/>
                         </Border>
+                        <!-- Add image to layer button (Right aligned) -->
+                        <Button x:Name="BtnAddImageLayer" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                Width="20" Height="20" Cursor="Hand" Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Thêm ảnh mới vào Layer (Import Image)"
+                                Click="BtnAddImageLayer_Click" Margin="0,0,2,0">
+                            <controls:SvgViewboxEx Width="12" Height="12"
+                                Fill="{StaticResource ipText}"
+                                Source="{Binding Source={x:Static sys:String.Empty},
+                                         Converter={StaticResource IconKeyToPathConverter},
+                                         ConverterParameter='image-circle-plus light'}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        </Button>
                     </DockPanel>
                 </Border>
 
@@ -809,17 +856,16 @@
                 <Border Grid.Row="2" Background="{StaticResource ipSurface}"
                         BorderBrush="{StaticResource ipBorder}" BorderThickness="1,0,1,0"
                         Padding="2">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="LayersList"
-                                      ItemTemplate="{StaticResource LayerItemTemplate}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Vertical"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    <ListBox x:Name="LayersList"
+                             Style="{StaticResource IpListBoxStyle}"
+                             ItemTemplate="{StaticResource LayerItemTemplate}"
+                             SelectionChanged="LayersList_SelectionChanged">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Vertical"/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
                 </Border>
             </Grid>
 
