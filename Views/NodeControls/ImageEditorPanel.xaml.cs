@@ -205,12 +205,12 @@ namespace FlowMy.Views.NodeControls
             try
             {
                 var selectedLayers = LayersList.SelectedItems.Cast<EditorLayer>().ToList();
-                if (selectedLayers.Count > 0)
+                if (e.AddedItems.Count > 0)
                 {
-                    var lastSelected = selectedLayers.LastOrDefault();
-                    if (lastSelected != null && _doc.ActiveLayer != lastSelected)
+                    var newActive = e.AddedItems[0] as EditorLayer;
+                    if (newActive != null && _doc.ActiveLayer != newActive)
                     {
-                        _doc.ActiveLayer = lastSelected;
+                        _doc.ActiveLayer = newActive;
                     }
                 }
                 
@@ -233,49 +233,57 @@ namespace FlowMy.Views.NodeControls
         {
             if (_doc == null) return;
 
-            if (shift)
+            _isSyncingSelection = true;
+            try
             {
-                var active = _doc.ActiveLayer;
-                if (active == null)
+                if (shift)
                 {
-                    SelectSingleLayer(clickedLayer);
-                }
-                else
-                {
-                    int idx1 = _doc.Layers.IndexOf(active);
-                    int idx2 = _doc.Layers.IndexOf(clickedLayer);
-                    if (idx1 >= 0 && idx2 >= 0)
+                    var active = _doc.ActiveLayer;
+                    if (active == null)
                     {
-                        int min = Math.Min(idx1, idx2);
-                        int max = Math.Max(idx1, idx2);
-
-                        foreach (var l in _doc.Layers)
+                        SelectSingleLayer(clickedLayer);
+                    }
+                    else
+                    {
+                        int idx1 = _doc.Layers.IndexOf(active);
+                        int idx2 = _doc.Layers.IndexOf(clickedLayer);
+                        if (idx1 >= 0 && idx2 >= 0)
                         {
-                            int idx = _doc.Layers.IndexOf(l);
-                            l.IsSelected = (idx >= min && idx <= max);
+                            int min = Math.Min(idx1, idx2);
+                            int max = Math.Max(idx1, idx2);
+
+                            foreach (var l in _doc.Layers)
+                            {
+                                int idx = _doc.Layers.IndexOf(l);
+                                l.IsSelected = (idx >= min && idx <= max);
+                            }
+                            
+                            _doc.ActiveLayer = clickedLayer;
                         }
-                        
+                    }
+                }
+                else if (ctrl)
+                {
+                    clickedLayer.IsSelected = !clickedLayer.IsSelected;
+                    
+                    if (!clickedLayer.IsSelected && _doc.ActiveLayer == clickedLayer)
+                    {
+                        var nextActive = _doc.Layers.LastOrDefault(l => l.IsSelected);
+                        _doc.ActiveLayer = nextActive;
+                    }
+                    else if (clickedLayer.IsSelected)
+                    {
                         _doc.ActiveLayer = clickedLayer;
                     }
                 }
-            }
-            else if (ctrl)
-            {
-                clickedLayer.IsSelected = !clickedLayer.IsSelected;
-                
-                if (!clickedLayer.IsSelected && _doc.ActiveLayer == clickedLayer)
+                else
                 {
-                    var nextActive = _doc.Layers.LastOrDefault(l => l.IsSelected);
-                    _doc.ActiveLayer = nextActive;
-                }
-                else if (clickedLayer.IsSelected)
-                {
-                    _doc.ActiveLayer = clickedLayer;
+                    SelectSingleLayer(clickedLayer);
                 }
             }
-            else
+            finally
             {
-                SelectSingleLayer(clickedLayer);
+                _isSyncingSelection = false;
             }
 
             SyncActiveLayerHighlight();
@@ -881,10 +889,18 @@ namespace FlowMy.Views.NodeControls
             var cmd = new DuplicateLayersCommand(_doc, selected);
             _doc.History.Execute(cmd);
             
-            // Re-select the duplicated layers
-            foreach (var l in _doc.Layers)
+            _isSyncingSelection = true;
+            try
             {
-                l.IsSelected = cmd.DuplicatedLayers.Contains(l);
+                // Re-select the duplicated layers
+                foreach (var l in _doc.Layers)
+                {
+                    l.IsSelected = cmd.DuplicatedLayers.Contains(l);
+                }
+            }
+            finally
+            {
+                _isSyncingSelection = false;
             }
 
             RefreshLayersList();
