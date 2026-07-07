@@ -214,6 +214,78 @@ namespace FlowMy.Models.ImageEditor
             InvalidateThumbnail();
         }
 
+        /// <summary>
+        /// Copy pixel data từ BitmapSource vào layer, giữ nguyên tỷ lệ aspect ratio và căn giữa.
+        /// Nếu ảnh lớn hơn canvas, thu nhỏ tỷ lệ để vừa với canvas.
+        /// </summary>
+        public void CopyFromPreserveAspectRatio(BitmapSource source)
+        {
+            if (source == null) return;
+
+            // Convert sang BGRA32 nếu cần
+            var converted = source;
+            if (source.Format != PixelFormats.Bgra32)
+            {
+                converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            }
+
+            double srcW = converted.PixelWidth;
+            double srcH = converted.PixelHeight;
+
+            // Tính toán tỷ lệ scale để giữ nguyên tỷ lệ
+            double scale = 1.0;
+            if (srcW > Width || srcH > Height)
+            {
+                scale = Math.Min((double)Width / srcW, (double)Height / srcH);
+            }
+
+            int destW = (int)Math.Round(srcW * scale);
+            int destH = (int)Math.Round(srcH * scale);
+            
+            // Tránh kích thước bằng 0
+            if (destW <= 0) destW = 1;
+            if (destH <= 0) destH = 1;
+
+            // Scale ảnh
+            if (scale != 1.0)
+            {
+                var scaled = new TransformedBitmap(converted, new ScaleTransform(scale, scale));
+                converted = new FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
+            }
+
+            // Tính vị trí căn giữa
+            int x = (Width - destW) / 2;
+            int y = (Height - destH) / 2;
+
+            // Tạo mảng pixel trống (trong suốt)
+            var stride = Width * 4;
+            var pixels = new byte[stride * Height];
+
+            // Copy pixel từ ảnh đã scale vào vị trí căn giữa trên canvas trống
+            int srcStride = destW * 4;
+            byte[] srcPixels = new byte[srcStride * destH];
+            converted.CopyPixels(srcPixels, srcStride, 0);
+
+            for (int row = 0; row < destH; row++)
+            {
+                int targetY = y + row;
+                if (targetY < 0 || targetY >= Height) continue;
+
+                int srcOffset = row * srcStride;
+                int destOffset = targetY * stride + x * 4;
+
+                Buffer.BlockCopy(srcPixels, srcOffset, pixels, destOffset, srcStride);
+            }
+
+            Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixels, stride, 0);
+            
+            // Đặt OriginalTransformBitmap và ContentBounds cho Smart Transform
+            OriginalTransformBitmap = Bitmap.Clone();
+            ContentBounds = new Rect(x, y, destW, destH);
+
+            InvalidateThumbnail();
+        }
+
         /// <summary>Tạo bản copy đầy đủ của layer (pixel + properties).</summary>
         public EditorLayer Duplicate()
         {

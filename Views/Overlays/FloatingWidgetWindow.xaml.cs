@@ -1576,6 +1576,55 @@ public partial class FloatingWidgetWindow : Window
         if (_isDragging || _pendingInteraction) return;
         if (_titleRevealHost?.IsMouseOver == true) return;
 
+        // Prevent collapse when foreground window is a dialog or child of this widget window
+        IntPtr activeHWnd = GetForegroundWindow();
+        if (activeHWnd != IntPtr.Zero)
+        {
+            var helper = new WindowInteropHelper(this);
+            IntPtr myHWnd = helper.Handle;
+
+            // 1. Direct/indirect owner check via GW_OWNER traversal
+            IntPtr ownerHWnd = activeHWnd;
+            while (ownerHWnd != IntPtr.Zero)
+            {
+                if (ownerHWnd == myHWnd)
+                {
+                    return; // Owned by widget, do not collapse
+                }
+                ownerHWnd = GetWindow(ownerHWnd, GW_OWNER);
+            }
+
+            // 2. Process check - prevent collapse if it's a dialog/popup belonging to our process, but not the main workspace windows
+            GetWindowThreadProcessId(activeHWnd, out uint activeProcessId);
+            uint currentProcessId = (uint)Process.GetCurrentProcess().Id;
+            if (activeProcessId == currentProcessId)
+            {
+                bool isMainWorkspace = false;
+                foreach (Window win in Application.Current.Windows)
+                {
+                    try
+                    {
+                        var winHelper = new WindowInteropHelper(win);
+                        if (winHelper.Handle == activeHWnd)
+                        {
+                            string typeName = win.GetType().Name;
+                            if (typeName == "MainWindow" || typeName == "WorkflowEditorWindow")
+                            {
+                                isMainWorkspace = true;
+                            }
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (!isMainWorkspace)
+                {
+                    return; // Do not collapse
+                }
+            }
+        }
+
         CollapseWidget();
     }
 
@@ -4694,6 +4743,17 @@ window.hostAsync.values = window.hostAsync.values || {};
         }
         catch { }
     }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    private const uint GW_OWNER = 4;
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);

@@ -1020,7 +1020,7 @@ namespace FlowMy.Views.NodeControls
                     string finalName = $"layer {maxNum + 1}";
 
                     var newLayer = new EditorLayer(_doc.Width, _doc.Height, finalName);
-                    newLayer.CopyFrom(bmp);
+                    newLayer.CopyFromPreserveAspectRatio(bmp);
 
                     int insertIndex = _doc.Layers.Count;
                     if (_doc.ActiveLayer != null)
