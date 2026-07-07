@@ -179,7 +179,7 @@
                                     Fill="{StaticResource ipText}"
                                     Source="{Binding Source={x:Static sys:String.Empty},
                                              Converter={StaticResource IconKeyToPathConverter},
-                                             ConverterParameter='eye light'}"
+                                             ConverterParameter='eye regular'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                     IsHitTestVisible="False"/>
                             </Border>
@@ -276,7 +276,8 @@
                 <!-- Hidden layer opacity -->
                 <DataTrigger Binding="{Binding IsVisible}" Value="False">
                     <Setter TargetName="LayerItemBd" Property="Opacity" Value="0.45"/>
-                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.0"/>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.5"/>
+                    <Setter TargetName="EyeIcon" Property="Source" Value="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='eye-slash regular'}"/>
                 </DataTrigger>
                 <!-- Hover visibility toggle (ghost eye) -->
                 <MultiDataTrigger>
@@ -284,7 +285,7 @@
                         <Condition Binding="{Binding IsVisible}" Value="False"/>
                         <Condition Binding="{Binding ElementName=LayerVisibilityToggle, Path=IsMouseOver}" Value="True"/>
                     </MultiDataTrigger.Conditions>
-                    <Setter TargetName="EyeIcon" Property="Opacity" Value="0.25"/>
+                    <Setter TargetName="EyeIcon" Property="Opacity" Value="1.0"/>
                     <Setter TargetName="LayerVisibilityToggle" Property="Background" Value="#15ffffff"/>
                 </MultiDataTrigger>
                 <!-- Hover visibility when active -->
