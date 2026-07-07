@@ -803,7 +803,7 @@
                                 Width="20" Height="20" Cursor="Hand" Style="{StaticResource IpMiniBtn}"
                                 ToolTip="Thêm ảnh mới vào Layer (Import Image)"
                                 Click="BtnAddImageLayer_Click" Margin="0,0,2,0">
-                            <controls:SvgViewboxEx Width="12" Height="12"
+                            <controls:SvgViewboxEx Width="18" Height="18"
                                 Fill="{StaticResource ipText}"
                                 Source="{Binding Source={x:Static sys:String.Empty},
                                          Converter={StaticResource IconKeyToPathConverter},

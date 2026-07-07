@@ -976,15 +976,23 @@ namespace FlowMy.Views.NodeControls
                     bmp.EndInit();
                     bmp.Freeze();
 
-                    string fileNameWithoutExt = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
-                    string layerName = $"layer {fileNameWithoutExt}";
-
-                    string finalName = layerName;
-                    int count = 1;
-                    while (_doc.Layers.Any(l => string.Equals(l.Name, finalName, StringComparison.OrdinalIgnoreCase)))
+                    int maxNum = 0;
+                    foreach (var l in _doc.Layers)
                     {
-                        finalName = $"{layerName} ({count++})";
+                        string name = l.Name.Trim();
+                        if (name.StartsWith("layer ", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string numPart = name.Substring(6).Trim();
+                            if (int.TryParse(numPart, out int parsed))
+                            {
+                                if (parsed > maxNum)
+                                {
+                                    maxNum = parsed;
+                                }
+                            }
+                        }
                     }
+                    string finalName = $"layer {maxNum + 1}";
 
                     var newLayer = new EditorLayer(_doc.Width, _doc.Height, finalName);
                     newLayer.CopyFrom(bmp);
