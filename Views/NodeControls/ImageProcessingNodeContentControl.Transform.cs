@@ -20,6 +20,7 @@ namespace FlowMy.Views.NodeControls
 
         // Photoshop-like Transform Session state variables
         private bool _transformSessionActive = false;
+        private EditorLayer? _sessionLayer;
         private byte[] _originalTransformPixels;
         private double _sessionScaleX = 1.0;
         private double _sessionScaleY = 1.0;
@@ -88,8 +89,15 @@ namespace FlowMy.Views.NodeControls
         private void CommitTransformSession()
         {
             if (!_transformSessionActive || _node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
+            var activeLayer = _sessionLayer;
             if (activeLayer == null) return;
+
+            // Cache the final transform parameters before ResetVisualTransforms wipes them!
+            double finalScaleX = _sessionScaleX;
+            double finalScaleY = _sessionScaleY;
+            double finalAngle = _sessionAngle;
+            double finalTranslateX = _sessionTranslateX;
+            double finalTranslateY = _sessionTranslateY;
 
             // Compute final pixel transformation from original pixels
             double width = _sessionCanvasWidth;
@@ -100,13 +108,13 @@ namespace FlowMy.Views.NodeControls
 
             double localCenterX = _transformCenter.X * pixelScaleX;
             double localCenterY = _transformCenter.Y * pixelScaleY;
-            double localTranslateX = _sessionTranslateX * pixelScaleX;
-            double localTranslateY = _sessionTranslateY * pixelScaleY;
+            double localTranslateX = finalTranslateX * pixelScaleX;
+            double localTranslateY = finalTranslateY * pixelScaleY;
 
             var transformGroup = new TransformGroup();
             transformGroup.Children.Add(new TranslateTransform(-localCenterX, -localCenterY));
-            transformGroup.Children.Add(new ScaleTransform(_sessionScaleX, _sessionScaleY));
-            transformGroup.Children.Add(new RotateTransform(_sessionAngle));
+            transformGroup.Children.Add(new ScaleTransform(finalScaleX, finalScaleY));
+            transformGroup.Children.Add(new RotateTransform(finalAngle));
             transformGroup.Children.Add(new TranslateTransform(localCenterX + localTranslateX, localCenterY + localTranslateY));
 
             // Restore original pixels before drawing final transform
@@ -116,17 +124,33 @@ namespace FlowMy.Views.NodeControls
             // Temporarily reset canvas transforms so ApplyLayerTransform draws correctly
             ResetVisualTransforms();
 
-            // Perform transformation on pixels and write to history
-            ApplyLayerTransform(activeLayer, transformGroup);
+            // Capture old state for Undo/Redo tracking
+            double oldScaleX = activeLayer.LayerScaleX;
+            double oldScaleY = activeLayer.LayerScaleY;
+            double oldAngle = activeLayer.LayerAngle;
+            double oldTranslateX = activeLayer.LayerTranslateX;
+            double oldTranslateY = activeLayer.LayerTranslateY;
+            var oldOrig = activeLayer.OriginalTransformBitmap;
 
-            // Clean up session
+            // Save the new accumulated scale/translate/rotate values on the layer
+            activeLayer.LayerScaleX = finalScaleX;
+            activeLayer.LayerScaleY = finalScaleY;
+            activeLayer.LayerAngle = finalAngle;
+            activeLayer.LayerTranslateX = finalTranslateX;
+            activeLayer.LayerTranslateY = finalTranslateY;
+
+            // Clean up session state variables BEFORE executing transform to prevent inconsistent overlay updates
             _transformSessionActive = false;
+            _sessionLayer = null;
             _originalTransformPixels = null;
 
             activeLayer.IsVisible = true;
             activeLayer.IsTempHidden = false;
             TransformPreviewImage.Visibility = Visibility.Collapsed;
             if (RotateCursorCanvas != null) RotateCursorCanvas.Visibility = Visibility.Collapsed;
+
+            // Perform transformation on pixels and write to history
+            ApplyLayerTransform(activeLayer, transformGroup, oldScaleX, oldScaleY, oldAngle, oldTranslateX, oldTranslateY, oldOrig, true);
 
             OnEditorDocumentModified();
             UpdateTransformOverlayDisplay();
@@ -135,7 +159,7 @@ namespace FlowMy.Views.NodeControls
         private void CancelTransformSession()
         {
             if (!_transformSessionActive || _node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
+            var activeLayer = _sessionLayer;
             if (activeLayer == null) return;
 
             // Revert to original pixels
@@ -145,6 +169,7 @@ namespace FlowMy.Views.NodeControls
             ResetVisualTransforms();
 
             _transformSessionActive = false;
+            _sessionLayer = null;
             _originalTransformPixels = null;
 
             activeLayer.IsVisible = true;
@@ -216,7 +241,10 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private void ApplyLayerTransform(EditorLayer layer, Transform transform)
+        private void ApplyLayerTransform(EditorLayer layer, Transform transform,
+                                         double oldScaleX = 1.0, double oldScaleY = 1.0, double oldAngle = 0.0,
+                                         double oldTranslateX = 0.0, double oldTranslateY = 0.0, WriteableBitmap? oldOrig = null,
+                                         bool keepOriginalTransform = false)
         {
             if (_node.EditorDoc == null) return;
 
@@ -225,11 +253,13 @@ namespace FlowMy.Views.NodeControls
             layer.Bitmap.CopyPixels(oldPixels, stride, 0);
 
             var drawingVisual = new DrawingVisual();
+            RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
             using (var drawingContext = drawingVisual.RenderOpen())
             {
                 drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, layer.Width, layer.Height));
                 drawingContext.PushTransform(transform);
-                drawingContext.DrawImage(layer.Bitmap, new Rect(0, 0, layer.Width, layer.Height));
+                var sourceBitmap = (keepOriginalTransform ? layer.OriginalTransformBitmap : null) ?? layer.Bitmap;
+                drawingContext.DrawImage(sourceBitmap, new Rect(0, 0, layer.Width, layer.Height));
                 drawingContext.Pop();
             }
 
@@ -240,7 +270,19 @@ namespace FlowMy.Views.NodeControls
             byte[] newPixels = new byte[stride * layer.Height];
             converted.CopyPixels(newPixels, stride, 0);
 
-            var cmd = new PixelEditCommand(layer, oldPixels, newPixels);
+            PixelEditCommand cmd;
+            if (keepOriginalTransform)
+            {
+                cmd = new PixelEditCommand(layer, oldPixels, newPixels, oldScaleX, oldScaleY, oldAngle, oldTranslateX, oldTranslateY, oldOrig);
+                cmd.KeepOriginalTransformBitmap = true;
+                cmd.CaptureNewTransformState();
+            }
+            else
+            {
+                cmd = new PixelEditCommand(layer, oldPixels, newPixels);
+                cmd.KeepOriginalTransformBitmap = false;
+            }
+
             _node.EditorDoc.History.Execute(cmd);
 
             layer.InvalidateThumbnail();
@@ -264,45 +306,56 @@ namespace FlowMy.Views.NodeControls
             return Math.Sqrt(dx * dx + dy * dy);
         }
 
-        private Rect GetLayerContentBounds(EditorLayer layer)
+        private Rect GetLayerContentBounds(WriteableBitmap? bitmap)
         {
-            int w = layer.Width;
-            int h = layer.Height;
-            int stride = w * 4;
-            byte[] pixels = new byte[stride * h];
-            layer.Bitmap.CopyPixels(pixels, stride, 0);
-
-            int minX = w, maxX = 0, minY = h, maxY = 0;
-            bool found = false;
-
-            for (int y = 0; y < h; y++)
+            if (bitmap == null) return new Rect(0, 0, 100, 100);
+            try
             {
-                int rowOffset = y * stride;
-                for (int x = 0; x < w; x++)
+                int w = bitmap.PixelWidth;
+                int h = bitmap.PixelHeight;
+                if (w <= 0 || h <= 0) return new Rect(0, 0, 100, 100);
+
+                int stride = w * 4;
+                byte[] pixels = new byte[stride * h];
+                bitmap.CopyPixels(pixels, stride, 0);
+
+                int minX = w, maxX = 0, minY = h, maxY = 0;
+                bool found = false;
+
+                for (int y = 0; y < h; y++)
                 {
-                    byte alpha = pixels[rowOffset + x * 4 + 3];
-                    if (alpha > 5) // Ignore transparent edges
+                    int rowOffset = y * stride;
+                    for (int x = 0; x < w; x++)
                     {
-                        if (x < minX) minX = x;
-                        if (x > maxX) maxX = x;
-                        if (y < minY) minY = y;
-                        if (y > maxY) maxY = y;
-                        found = true;
+                        byte alpha = pixels[rowOffset + x * 4 + 3];
+                        if (alpha > 5) // Ignore transparent edges
+                        {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                            found = true;
+                        }
                     }
                 }
-            }
 
-            if (!found)
+                if (!found)
+                {
+                    return new Rect(0, 0, w, h);
+                }
+
+                minX = Math.Max(0, minX - 4);
+                minY = Math.Max(0, minY - 4);
+                maxX = Math.Min(w - 1, maxX + 4);
+                maxY = Math.Min(h - 1, maxY + 4);
+
+                return new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+            }
+            catch (Exception ex)
             {
-                return new Rect(0, 0, w, h);
+                System.Diagnostics.Debug.WriteLine("GetLayerContentBounds error: " + ex);
+                return new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
             }
-
-            minX = Math.Max(0, minX - 4);
-            minY = Math.Max(0, minY - 4);
-            maxX = Math.Min(w - 1, maxX + 4);
-            maxY = Math.Min(h - 1, maxY + 4);
-
-            return new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
         }
 
         private Point GetTransformedPoint(Point p, Point center, double scaleX, double scaleY, double angle, double translateX, double translateY)
@@ -376,7 +429,30 @@ namespace FlowMy.Views.NodeControls
             // When dragging, WPF's GPU RenderTransform scale/rotate properties handle visually updating the elements.
             if (!_transformSessionActive)
             {
-                _activeTransformRect = GetLayerContentBounds(activeLayer);
+                if (activeLayer.OriginalTransformBitmap != null)
+                {
+                    // Align bounding box with original unscaled bounds, and sync session variables using cached bounds
+                    _activeTransformRect = activeLayer.ContentBounds;
+                    if (_activeTransformRect.IsEmpty || _activeTransformRect.Width <= 0 || _activeTransformRect.Height <= 0)
+                    {
+                        _activeTransformRect = new Rect(0, 0, activeLayer.Width, activeLayer.Height);
+                    }
+                    _sessionScaleX = activeLayer.LayerScaleX;
+                    _sessionScaleY = activeLayer.LayerScaleY;
+                    _sessionAngle = activeLayer.LayerAngle;
+                    _sessionTranslateX = activeLayer.LayerTranslateX;
+                    _sessionTranslateY = activeLayer.LayerTranslateY;
+                }
+                else
+                {
+                    // Align bounding box with current visual transformed pixels
+                    _activeTransformRect = GetLayerContentBounds(activeLayer.Bitmap);
+                    _sessionScaleX = 1.0;
+                    _sessionScaleY = 1.0;
+                    _sessionAngle = 0.0;
+                    _sessionTranslateX = 0.0;
+                    _sessionTranslateY = 0.0;
+                }
 
                 // Base untransformed rectangle in display space
                 Rect displayRect = new Rect(
@@ -388,6 +464,12 @@ namespace FlowMy.Views.NodeControls
 
                 // Compute current center
                 _transformCenter = new Point(displayRect.Left + displayRect.Width / 2.0, displayRect.Top + displayRect.Height / 2.0);
+
+                // Sync transform origins based on current center
+                double normX = _transformCenter.X / width;
+                double normY = _transformCenter.Y / height;
+                TransformPreviewImage.RenderTransformOrigin = new Point(normX, normY);
+                TransformBoxVisual.RenderTransformOrigin = new Point(normX, normY);
 
                 // Base coordinates
                 Point pTL = new Point(displayRect.Left, displayRect.Top);
@@ -448,6 +530,9 @@ namespace FlowMy.Views.NodeControls
             {
                 TransformPreviewImage.Visibility = Visibility.Collapsed;
             }
+
+            // Always apply the visual transforms to align the box and handles!
+            UpdateVisualTransforms();
         }
 
         private void TransformOverlay_MouseDown(object sender, MouseButtonEventArgs e)
@@ -521,11 +606,20 @@ namespace FlowMy.Views.NodeControls
             }
             else
             {
-                // 2. Check distance to rotated bounding box border for Rotate vs Move
+                // 2. Check distance to rotated bounding box border and corners for Rotate vs Move (Photoshop style: rotate from corners only)
                 Point localClick = GetUntransformedPoint(clickPos, _transformCenter, _sessionScaleX, _sessionScaleY, _sessionAngle, _sessionTranslateX, _sessionTranslateY);
                 double distToBorder = GetDistanceToRect(displayRect, localClick) * zoom;
 
-                if (distToBorder > 0 && distToBorder <= 32.0)
+                double dTL = Distance(clickPos, pTL);
+                double dTR = Distance(clickPos, pTR);
+                double dBR = Distance(clickPos, pBR);
+                double dBL = Distance(clickPos, pBL);
+                double minCornerDist = Math.Min(Math.Min(dTL, dTR), Math.Min(dBR, dBL));
+
+                double resizeThreshold = 16.0 / zoom;
+                double rotateMaxThreshold = 48.0 / zoom;
+
+                if (distToBorder > 0 && minCornerDist > resizeThreshold && minCornerDist <= rotateMaxThreshold)
                 {
                     _activeTransformHandle = "Rotate";
                 }
@@ -544,6 +638,7 @@ namespace FlowMy.Views.NodeControls
                 if (!_transformSessionActive)
                 {
                     _transformSessionActive = true;
+                    _sessionLayer = activeLayer;
                     _sessionCanvasWidth = width;
                     _sessionCanvasHeight = height;
 
@@ -551,11 +646,41 @@ namespace FlowMy.Views.NodeControls
                     _originalTransformPixels = new byte[stride * activeLayer.Height];
                     activeLayer.Bitmap.CopyPixels(_originalTransformPixels, stride, 0);
 
-                    _sessionScaleX = 1.0;
-                    _sessionScaleY = 1.0;
-                    _sessionAngle = 0;
-                    _sessionTranslateX = 0;
-                    _sessionTranslateY = 0;
+                    // Setup Smart Transform to prevent resolution loss
+                    if (activeLayer.OriginalTransformBitmap == null)
+                    {
+                        activeLayer.OriginalTransformBitmap = activeLayer.Bitmap.Clone();
+                        activeLayer.LayerScaleX = 1.0;
+                        activeLayer.LayerScaleY = 1.0;
+                        activeLayer.LayerAngle = 0.0;
+                        activeLayer.LayerTranslateX = 0.0;
+                        activeLayer.LayerTranslateY = 0.0;
+                    }
+
+                    _sessionScaleX = activeLayer.LayerScaleX;
+                    _sessionScaleY = activeLayer.LayerScaleY;
+                    _sessionAngle = activeLayer.LayerAngle;
+                    _sessionTranslateX = activeLayer.LayerTranslateX;
+                    _sessionTranslateY = activeLayer.LayerTranslateY;
+
+                    // Recalculate _activeTransformRect using the cached OriginalTransformBitmap bounds for session calculations!
+                    _activeTransformRect = activeLayer.ContentBounds;
+                    if (_activeTransformRect.IsEmpty || _activeTransformRect.Width <= 0 || _activeTransformRect.Height <= 0)
+                    {
+                        _activeTransformRect = new Rect(0, 0, activeLayer.Width, activeLayer.Height);
+                    }
+
+                    // Recompute displayRect and _transformCenter based on the untransformed original bounds
+                    scaleX = width / activeLayer.Width;
+                    scaleY = height / activeLayer.Height;
+                    displayRect = new Rect(
+                        _activeTransformRect.X * scaleX,
+                        _activeTransformRect.Y * scaleY,
+                        _activeTransformRect.Width * scaleX,
+                        _activeTransformRect.Height * scaleY
+                    );
+                    _transformCenter = new Point(displayRect.Left + displayRect.Width / 2.0, displayRect.Top + displayRect.Height / 2.0);
+                    _transformDragStartRect = displayRect; // Update start rect to the original bounds!
 
                     double normX = _transformCenter.X / width;
                     double normY = _transformCenter.Y / height;
@@ -567,7 +692,7 @@ namespace FlowMy.Views.NodeControls
                     TransformPreviewImage.RenderTransformOrigin = new Point(normX, normY);
                     TransformBoxVisual.RenderTransformOrigin = new Point(normX, normY);
 
-                    TransformPreviewImage.Source = activeLayer.Bitmap;
+                    TransformPreviewImage.Source = activeLayer.OriginalTransformBitmap;
                     TransformPreviewImage.Width = width;
                     TransformPreviewImage.Height = height;
 
@@ -575,6 +700,7 @@ namespace FlowMy.Views.NodeControls
                     OnEditorDocumentModified();
 
                     TransformPreviewImage.Visibility = Visibility.Visible;
+                    UpdateVisualTransforms(); // Instantly apply accumulated scales and translation!
                 }
 
                 // Cache start coordinates for cumulative additions
@@ -674,17 +800,26 @@ namespace FlowMy.Views.NodeControls
                     Point localMouse = GetUntransformedPoint(currentMouse, untransformedCenter, _sessionScaleX, _sessionScaleY, _sessionAngle, _sessionTranslateX, _sessionTranslateY);
                     double distToBorder = GetDistanceToRect(displayRect, localMouse) * zoom;
 
-                    if (distToBorder > 0 && distToBorder <= 32.0)
+                    double dTL = Distance(currentMouse, pTL);
+                    double dTR = Distance(currentMouse, pTR);
+                    double dBR = Distance(currentMouse, pBR);
+                    double dBL = Distance(currentMouse, pBL);
+                    double minCornerDist = Math.Min(Math.Min(dTL, dTR), Math.Min(dBR, dBL));
+
+                    double resizeThreshold = 16.0 / zoom;
+                    double rotateMaxThreshold = 48.0 / zoom;
+
+                    if (distToBorder > 0 && minCornerDist > resizeThreshold && minCornerDist <= rotateMaxThreshold)
                     {
                         TransformOverlayCanvas.Cursor = Cursors.None;
                         if (RotateCursorCanvas != null)
                         {
                             RotateCursorCanvas.Visibility = Visibility.Visible;
-                            Canvas.SetLeft(RotateCursorCanvas, currentMouse.X + 12);
-                            Canvas.SetTop(RotateCursorCanvas, currentMouse.Y + 12);
+                            double cursorSize = 14.0 / zoom;
+                            Canvas.SetLeft(RotateCursorCanvas, currentMouse.X - cursorSize / 2.0);
+                            Canvas.SetTop(RotateCursorCanvas, currentMouse.Y - cursorSize / 2.0);
 
                             // Dynamically scale rotate cursor to be readable/large with zoom
-                            double cursorSize = 20.0 / zoom;
                             RotateCursorCanvas.Width = cursorSize;
                             RotateCursorCanvas.Height = cursorSize;
                             if (RotateCursorIcon != null)
@@ -728,11 +863,11 @@ namespace FlowMy.Views.NodeControls
                 {
                     double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
                     if (zoom <= 0) zoom = 1.0;
-                    double cursorSize = 20.0 / zoom;
+                    double cursorSize = 14.0 / zoom;
 
                     RotateCursorCanvas.Visibility = Visibility.Visible;
-                    Canvas.SetLeft(RotateCursorCanvas, currentMouse.X + 12);
-                    Canvas.SetTop(RotateCursorCanvas, currentMouse.Y + 12);
+                    Canvas.SetLeft(RotateCursorCanvas, currentMouse.X - cursorSize / 2.0);
+                    Canvas.SetTop(RotateCursorCanvas, currentMouse.Y - cursorSize / 2.0);
 
                     RotateCursorCanvas.Width = cursorSize;
                     RotateCursorCanvas.Height = cursorSize;

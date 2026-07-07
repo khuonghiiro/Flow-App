@@ -66,6 +66,78 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Tạm ẩn layer trong quá trình biến đổi.</summary>
         public bool IsTempHidden { get; set; }
 
+        private WriteableBitmap? _originalTransformBitmap;
+        public WriteableBitmap? OriginalTransformBitmap
+        {
+            get => _originalTransformBitmap;
+            set
+            {
+                _originalTransformBitmap = value;
+                if (value == null)
+                {
+                    LayerScaleX = 1.0;
+                    LayerScaleY = 1.0;
+                    LayerAngle = 0.0;
+                    LayerTranslateX = 0.0;
+                    LayerTranslateY = 0.0;
+                    ContentBounds = Rect.Empty;
+                }
+                else
+                {
+                    ContentBounds = CalculateContentBounds(value);
+                }
+            }
+        }
+
+        public Rect ContentBounds { get; set; } = Rect.Empty;
+
+        private static Rect CalculateContentBounds(WriteableBitmap bitmap)
+        {
+            int w = bitmap.PixelWidth;
+            int h = bitmap.PixelHeight;
+            int stride = w * 4;
+            byte[] pixels = new byte[stride * h];
+            bitmap.CopyPixels(pixels, stride, 0);
+
+            int minX = w, maxX = 0, minY = h, maxY = 0;
+            bool found = false;
+
+            for (int y = 0; y < h; y++)
+            {
+                int rowOffset = y * stride;
+                for (int x = 0; x < w; x++)
+                {
+                    byte alpha = pixels[rowOffset + x * 4 + 3];
+                    if (alpha > 5) // Ignore transparent edges
+                    {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                        found = true;
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                return new Rect(0, 0, w, h);
+            }
+
+            minX = Math.Max(0, minX - 4);
+            minY = Math.Max(0, minY - 4);
+            maxX = Math.Min(w - 1, maxX + 4);
+            maxY = Math.Min(h - 1, maxY + 4);
+
+            return new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
+
+        public double LayerScaleX { get; set; } = 1.0;
+        public double LayerScaleY { get; set; } = 1.0;
+        public double LayerAngle { get; set; } = 0.0;
+        public double LayerTranslateX { get; set; } = 0.0;
+        public double LayerTranslateY { get; set; } = 0.0;
+
         /// <summary>Khoá layer (không cho vẽ/sửa).</summary>
         public bool IsLocked
         {

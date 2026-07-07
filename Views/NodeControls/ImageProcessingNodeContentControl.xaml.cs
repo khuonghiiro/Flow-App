@@ -1778,9 +1778,27 @@ namespace FlowMy.Views.NodeControls
                 var composite = _node.EditorDoc.Composite();
                 MainImage.Source = composite;
             }
-            catch { /* ignore composite errors */ }
+            catch (Exception ex)
+            {
+                try
+                {
+                    System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "Composite error:\n" + ex.ToString());
+                }
+                catch { }
+            }
 
-            UpdateTransformOverlayDisplay();
+            try
+            {
+                UpdateTransformOverlayDisplay();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "UpdateOverlay error:\n" + ex.ToString());
+                }
+                catch { }
+            }
         }
 
         private void SyncModeButtonStyles()
@@ -1887,6 +1905,13 @@ namespace FlowMy.Views.NodeControls
             if (_toolboxBorders.Count == 0) InitToolboxBorders();
 
             string activeTool = EditorPanel.ActiveToolName;
+
+            // Auto-commit transform session if switching away from Transform tool
+            if (activeTool != "Transform" && _transformSessionActive)
+            {
+                CommitTransformSession();
+            }
+
             var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x4f, 0xff, 0xb0));
             var activeBorder = new SolidColorBrush(Color.FromRgb(0x4f, 0xff, 0xb0));
 
@@ -1913,6 +1938,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             UpdatePolygonDisplay();
+            UpdateTransformOverlayDisplay(); // Ensure transform bounding box updates immediately when active tool changes!
         }
 
         private void SyncToolboxColors()
@@ -2953,6 +2979,13 @@ namespace FlowMy.Views.NodeControls
         private void EditorPanel_ActiveLayerChanged(object? sender, EventArgs e)
         {
             CommitPendingMoveTranslation();
+            
+            // Auto commit transform session on active layer change!
+            if (_transformSessionActive)
+            {
+                CommitTransformSession();
+            }
+
             if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
 
@@ -2997,6 +3030,8 @@ namespace FlowMy.Views.NodeControls
                 }
                 TextMoveContainer.Visibility = Visibility.Collapsed;
             }
+
+            UpdateTransformOverlayDisplay();
         }
 
         private void TextToolbar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

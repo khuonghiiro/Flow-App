@@ -159,6 +159,7 @@ namespace FlowMy.Models.ImageEditor
             if (useGPU)
             {
                 var drawingVisual = new DrawingVisual();
+                RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
                 using (var drawingContext = drawingVisual.RenderOpen())
                 {
                     foreach (var layer in Layers)
@@ -167,7 +168,31 @@ namespace FlowMy.Models.ImageEditor
 
                         drawingContext.PushOpacity(layer.Opacity);
 
-                        if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
+                        if (layer.OriginalTransformBitmap != null && layer.TempSelectionGeometry == null)
+                        {
+                            // Dynamic non-destructive high-quality transformation rendering from the original bitmap using cached bounds
+                            var contentBounds = layer.ContentBounds;
+                            if (contentBounds.IsEmpty || contentBounds.Width <= 0 || contentBounds.Height <= 0)
+                            {
+                                contentBounds = new Rect(0, 0, Width, Height);
+                            }
+                            double centerX = contentBounds.Left + contentBounds.Width / 2.0;
+                            double centerY = contentBounds.Top + contentBounds.Height / 2.0;
+
+                            var transformGroup = new TransformGroup();
+                            transformGroup.Children.Add(new TranslateTransform(-centerX, -centerY));
+                            transformGroup.Children.Add(new ScaleTransform(layer.LayerScaleX, layer.LayerScaleY));
+                            transformGroup.Children.Add(new RotateTransform(layer.LayerAngle));
+
+                            double totalDx = layer.LayerTranslateX + layer.TempMoveDx;
+                            double totalDy = layer.LayerTranslateY + layer.TempMoveDy;
+                            transformGroup.Children.Add(new TranslateTransform(centerX + totalDx, centerY + totalDy));
+
+                            drawingContext.PushTransform(transformGroup);
+                            drawingContext.DrawImage(layer.OriginalTransformBitmap, new Rect(0, 0, Width, Height));
+                            drawingContext.Pop();
+                        }
+                        else if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
                         {
                             if (layer.TempSelectionGeometry != null)
                             {
