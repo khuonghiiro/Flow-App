@@ -694,12 +694,13 @@ namespace FlowMy.Views.NodeControls
                     TransformBoxVisual.Width = width;
                     TransformBoxVisual.Height = height;
 
-                    TransformPreviewImage.RenderTransformOrigin = new Point(normX, normY);
+                    TransformPreviewImage.RenderTransformOrigin = new Point(0.5, 0.5);
                     TransformBoxVisual.RenderTransformOrigin = new Point(normX, normY);
 
                     TransformPreviewImage.Source = activeLayer.OriginalTransformBitmap;
-                    TransformPreviewImage.Width = width;
-                    TransformPreviewImage.Height = height;
+                    TransformPreviewImage.Width = displayRect.Width;
+                    TransformPreviewImage.Height = displayRect.Height;
+                    TransformPreviewImage.Margin = new Thickness(displayRect.X, displayRect.Y, 0, 0);
 
                     activeLayer.IsTempHidden = true;
                     OnEditorDocumentModified();

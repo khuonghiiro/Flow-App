@@ -1110,9 +1110,12 @@
                     
                     <!-- Image container with checkered transparency pattern and selection overlay -->
                     <Grid x:Name="ImageContainer" HorizontalAlignment="Left" VerticalAlignment="Top">
-                        <Grid.Background>
-                            <StaticResource ResourceKey="PsCheckeredBrush"/>
-                        </Grid.Background>
+                        <!-- Canvas Background representing the actual document bounds (Photoshop style) -->
+                        <Rectangle Width="{Binding ElementName=MainImage, Path=Width}"
+                                   Height="{Binding ElementName=MainImage, Path=Height}"
+                                   Fill="{StaticResource PsCheckeredBrush}"
+                                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                                   IsHitTestVisible="False"/>
                         
                         <Image x:Name="MainImage" Stretch="Uniform"
                                HorizontalAlignment="Left" VerticalAlignment="Top"/>
@@ -1236,7 +1239,7 @@
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Visibility="Collapsed"/>
 
                          <!-- Transform Preview Image for smooth real-time GPU scaling/rotation -->
-                        <Image x:Name="TransformPreviewImage" Stretch="Uniform"
+                        <Image x:Name="TransformPreviewImage" Stretch="Fill"
                                HorizontalAlignment="Left" VerticalAlignment="Top"
                                Visibility="Collapsed" Panel.ZIndex="143"
                                RenderTransformOrigin="0.5,0.5"
