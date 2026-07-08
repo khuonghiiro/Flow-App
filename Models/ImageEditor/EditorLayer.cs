@@ -68,6 +68,68 @@ namespace FlowMy.Models.ImageEditor
             set => SetField(ref _isLoading, value);
         }
 
+        private int _loadingProgress;
+        public int LoadingProgress
+        {
+            get => _loadingProgress;
+            set => SetField(ref _loadingProgress, value);
+        }
+
+        private bool _isLoadingError;
+        public bool IsLoadingError
+        {
+            get => _isLoadingError;
+            set => SetField(ref _isLoadingError, value);
+        }
+
+        private bool _isChildrenCollapsed;
+        public bool IsChildrenCollapsed
+        {
+            get => _isChildrenCollapsed;
+            set
+            {
+                if (SetField(ref _isChildrenCollapsed, value))
+                {
+                    OnPropertyChanged(nameof(CollapseIcon));
+                }
+            }
+        }
+
+        /// <summary>Icon cho nút collapse: ▼ khi mở, ▶ khi đóng.</summary>
+        public string CollapseIcon => _isChildrenCollapsed ? "▶" : "▼";
+
+        /// <summary>Có ChildLayers không (dùng cho Visibility của nút collapse).</summary>
+        public bool HasChildren => ChildLayers.Count > 0;
+
+        private System.Windows.Threading.DispatcherTimer? _loadingTimer;
+
+        /// <summary>Bắt đầu timer tăng LoadingProgress 1%/giây (max 99%).</summary>
+        public void StartLoadingTimer()
+        {
+            LoadingProgress = 0;
+            IsLoadingError = false;
+            _loadingTimer?.Stop();
+            _loadingTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _loadingTimer.Tick += (s, e) =>
+            {
+                if (LoadingProgress < 99)
+                    LoadingProgress++;
+            };
+            _loadingTimer.Start();
+        }
+
+        /// <summary>Dừng timer. Nếu thành công → 100%, nếu lỗi → giữ nguyên.</summary>
+        public void StopLoadingTimer(bool isError = false)
+        {
+            _loadingTimer?.Stop();
+            _loadingTimer = null;
+            if (!isError)
+                LoadingProgress = 100;
+        }
+
         public bool IsChildLayer => ParentLayer != null;
         public bool IsParentOriginalActive => ParentLayer == null && ActiveChildLayer == null;
 
@@ -526,7 +588,7 @@ namespace FlowMy.Models.ImageEditor
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
+        internal void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)

@@ -7,6 +7,7 @@ using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls;
 using FlowMy.Views.NodeControls.Helpers;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,6 +22,8 @@ namespace FlowMy.Views.Overlays
 {
     public partial class LayerAiDialog : Window
     {
+        public static readonly ConcurrentQueue<string> PendingExecutionIds = new ConcurrentQueue<string>();
+
         private readonly EditorLayer _activeLayer;
         private readonly ImageProcessingNode _node;
         private readonly IWorkflowEditorHost _host;
@@ -81,17 +84,15 @@ namespace FlowMy.Views.Overlays
             try
             {
                 BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
-                var bounds = _activeLayer.ContentBounds;
-                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
-                {
-                    bounds = GetLayerContentBounds(_activeLayer.Bitmap);
-                }
+
+                // Luôn tính bounds trực tiếp từ sourceImg (tránh mismatch giữa ContentBounds cache và OriginalTransformBitmap)
+                var bounds = GetLayerContentBounds(sourceImg);
                 if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
                 {
                     int x = Math.Clamp((int)bounds.X, 0, sourceImg.PixelWidth - 1);
                     int y = Math.Clamp((int)bounds.Y, 0, sourceImg.PixelHeight - 1);
-                    int w = Math.Clamp((int)bounds.Width, 1, sourceImg.PixelWidth - x);
-                    int h = Math.Clamp((int)bounds.Height, 1, sourceImg.PixelHeight - y);
+                    int w = Math.Clamp((int)Math.Ceiling(bounds.Width), 1, sourceImg.PixelWidth - x);
+                    int h = Math.Clamp((int)Math.Ceiling(bounds.Height), 1, sourceImg.PixelHeight - y);
                     if (w > 0 && h > 0 && (x > 0 || y > 0 || w < sourceImg.PixelWidth || h < sourceImg.PixelHeight))
                     {
                         sourceImg = new CroppedBitmap(sourceImg, new Int32Rect(x, y, w, h));
@@ -141,17 +142,13 @@ namespace FlowMy.Views.Overlays
             try
             {
                 BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
-                var bounds = _activeLayer.ContentBounds;
-                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
-                {
-                    bounds = GetLayerContentBounds(_activeLayer.Bitmap);
-                }
+                var bounds = GetLayerContentBounds(sourceImg);
                 if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
                 {
                     int x = Math.Clamp((int)bounds.X, 0, sourceImg.PixelWidth - 1);
                     int y = Math.Clamp((int)bounds.Y, 0, sourceImg.PixelHeight - 1);
-                    int w = Math.Clamp((int)bounds.Width, 1, sourceImg.PixelWidth - x);
-                    int h = Math.Clamp((int)bounds.Height, 1, sourceImg.PixelHeight - y);
+                    int w = Math.Clamp((int)Math.Ceiling(bounds.Width), 1, sourceImg.PixelWidth - x);
+                    int h = Math.Clamp((int)Math.Ceiling(bounds.Height), 1, sourceImg.PixelHeight - y);
                     if (w > 0 && h > 0 && (x > 0 || y > 0 || w < sourceImg.PixelWidth || h < sourceImg.PixelHeight))
                     {
                         sourceImg = new CroppedBitmap(sourceImg, new Int32Rect(x, y, w, h));
@@ -215,6 +212,8 @@ namespace FlowMy.Views.Overlays
                 var execIdPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "executionId", StringComparison.OrdinalIgnoreCase));
                 if (execIdPort != null) execIdPort.UserValueOverride = execId;
 
+                PendingExecutionIds.Enqueue(execId);
+
                 _node.IsVerticalMode = (selectedIndex == 4 || selectedIndex == 5);
                 var aspectPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase));
                 if (aspectPort != null)
@@ -241,9 +240,13 @@ namespace FlowMy.Views.Overlays
                     var placeholder = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
                     placeholder.ParentLayer = destinationParent;
                     placeholder.IsLoading = true;
+                    placeholder.StartLoadingTimer();
                     destinationParent.ChildLayers.Add(placeholder);
                     placeholders.Add(placeholder);
                 }
+
+                // Notify HasChildren changed on parent so collapse toggle appears
+                destinationParent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
 
                 // Refresh main panel immediately to render loading placeholders in the layers ListBox
                 var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
@@ -371,6 +374,7 @@ namespace FlowMy.Views.Overlays
                                         {
                                             childLayer = placeholders[placeholderIndex];
                                             childLayer.IsLoading = false;
+                                            childLayer.StopLoadingTimer();
                                         }
                                         else
                                         {
@@ -429,13 +433,8 @@ namespace FlowMy.Views.Overlays
             }
             catch (Exception ex)
             {
-                // Pre-workflow error (e.g. image processing) — clean up placeholders and show error
-                foreach (var placeholder in placeholders)
-                {
-                    destinationParent.ChildLayers.Remove(placeholder);
-                }
-                var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
-                editorPanel?.RefreshLayersList();
+                // Pre-workflow error (e.g. image processing) — mark placeholders as error
+                CleanupPlaceholders(placeholders, destinationParent, this.Owner);
 
                 MessageBox.Show("Lỗi thực thi AI: " + ex.Message, "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Error);
                 ResetButtons();
@@ -446,7 +445,11 @@ namespace FlowMy.Views.Overlays
         {
             foreach (var placeholder in placeholders)
             {
-                parent.ChildLayers.Remove(placeholder);
+                // Mark as error state instead of removing — user can delete manually
+                placeholder.IsLoading = false;
+                placeholder.StopLoadingTimer(isError: true);
+                placeholder.IsLoadingError = true;
+                placeholder.Name = placeholder.Name + " (Lỗi)";
             }
             if (owner != null)
             {
@@ -643,11 +646,8 @@ namespace FlowMy.Views.Overlays
             }
 
             // Load custom width and height
-            var bounds = _activeLayer.ContentBounds;
-            if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
-            {
-                bounds = GetLayerContentBounds(_activeLayer.Bitmap);
-            }
+            BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+            var bounds = GetLayerContentBounds(sourceImg);
 
             var savedWidth = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropWidth", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
             if (!string.IsNullOrEmpty(savedWidth))
@@ -843,8 +843,15 @@ namespace FlowMy.Views.Overlays
                 converted = new FormatConvertedBitmap(croppedAiRegion, PixelFormats.Bgra32, null, 0);
             }
 
-            int posX = (int)Math.Clamp(originalBounds.X, 0, childLayer.Width - 1);
-            int posY = (int)Math.Clamp(originalBounds.Y, 0, childLayer.Height - 1);
+            double parentX = 0;
+            double parentY = 0;
+            if (activeLayer.OriginalTransformBitmap != null)
+            {
+                parentX = activeLayer.ContentBounds.X;
+                parentY = activeLayer.ContentBounds.Y;
+            }
+            int posX = (int)Math.Clamp(parentX + originalBounds.X, 0, childLayer.Width - 1);
+            int posY = (int)Math.Clamp(parentY + originalBounds.Y, 0, childLayer.Height - 1);
             int finalW = Math.Clamp(srcW, 1, childLayer.Width - posX);
             int finalH = Math.Clamp(srcH, 1, childLayer.Height - posY);
 

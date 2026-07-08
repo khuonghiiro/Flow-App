@@ -168,7 +168,7 @@ namespace FlowMy.Views.NodeControls
             foreach (var parent in reversedParents)
             {
                 targetList.Add(parent);
-                if (parent.ChildLayers != null)
+                if (parent.ChildLayers != null && !parent.IsChildrenCollapsed)
                 {
                     foreach (var child in parent.ChildLayers)
                     {
@@ -240,27 +240,42 @@ namespace FlowMy.Views.NodeControls
             if (_doc == null) return;
             var activeLayer = _doc.ActiveLayer;
 
-            // Chỉ cập nhật layer thay đổi, không loop toàn bộ
-            if (_lastActiveLayer != activeLayer)
+            // Loop all layers — chỉ set property khi thay đổi (avoid unnecessary PropertyChanged)
+            foreach (var layer in _doc.Layers)
             {
-                if (_lastActiveLayer != null)
+                bool shouldBeActive = (layer == activeLayer);
+                if (layer.IsActive != shouldBeActive) layer.IsActive = shouldBeActive;
+
+                if (!_isSyncingSelection)
                 {
-                    _lastActiveLayer.IsActive = false;
-                    if (!_isSyncingSelection) _lastActiveLayer.IsSelected = false;
+                    bool shouldBeSelected = (layer == activeLayer);
+                    if (layer.IsSelected != shouldBeSelected) layer.IsSelected = shouldBeSelected;
                 }
-                if (activeLayer != null)
+                else
                 {
-                    activeLayer.IsActive = true;
-                    activeLayer.IsSelected = true;
+                    if (shouldBeActive && !layer.IsSelected) layer.IsSelected = true;
                 }
-                _lastActiveLayer = activeLayer;
+
+                if (layer.ChildLayers != null)
+                {
+                    foreach (var child in layer.ChildLayers)
+                    {
+                        bool childActive = (child == activeLayer);
+                        if (child.IsActive != childActive) child.IsActive = childActive;
+
+                        if (!_isSyncingSelection)
+                        {
+                            bool childSelected = (child == activeLayer);
+                            if (child.IsSelected != childSelected) child.IsSelected = childSelected;
+                        }
+                        else
+                        {
+                            if (childActive && !child.IsSelected) child.IsSelected = true;
+                        }
+                    }
+                }
             }
-            else if (activeLayer != null)
-            {
-                // Đảm bảo active layer luôn selected
-                if (!activeLayer.IsActive) activeLayer.IsActive = true;
-                if (!activeLayer.IsSelected) activeLayer.IsSelected = true;
-            }
+            _lastActiveLayer = activeLayer;
         }
 
         private bool _isSyncingSelection = false;
@@ -305,6 +320,8 @@ namespace FlowMy.Views.NodeControls
             {
                 _isSyncingSelection = false;
             }
+
+            _lastActiveLayer = _doc.ActiveLayer;
 
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
@@ -368,6 +385,9 @@ namespace FlowMy.Views.NodeControls
             {
                 _isSyncingSelection = false;
             }
+
+            // Sync _lastActiveLayer trước khi SyncActiveLayerHighlight chạy
+            _lastActiveLayer = _doc.ActiveLayer;
 
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
@@ -1227,14 +1247,25 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 int selectedCount = SelectedLayers.Count;
-                if (selectedCount == 1)
+
+                // Reset all popup buttons
+                PopupBtnAI.Visibility = Visibility.Collapsed;
+                PopupBtnMerge.Visibility = Visibility.Collapsed;
+                PopupBtnDuplicate.Visibility = Visibility.Collapsed;
+                PopupBtnDeleteChild.Visibility = Visibility.Collapsed;
+
+                if (layer.IsChildLayer)
+                {
+                    // Child/variant layer: only show Duplicate + Delete (no AI)
+                    PopupBtnDuplicate.Visibility = Visibility.Visible;
+                    PopupBtnDeleteChild.Visibility = Visibility.Visible;
+                }
+                else if (selectedCount == 1)
                 {
                     PopupBtnAI.Visibility = Visibility.Visible;
-                    PopupBtnMerge.Visibility = Visibility.Collapsed;
                 }
                 else if (selectedCount > 1)
                 {
-                    PopupBtnAI.Visibility = Visibility.Collapsed;
                     PopupBtnMerge.Visibility = Visibility.Visible;
                 }
                 else
@@ -1246,6 +1277,71 @@ namespace FlowMy.Views.NodeControls
                 LayerActionPopup.IsOpen = true;
                 e.Handled = true;
             }
+        }
+
+        private void CollapseToggle_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is EditorLayer layer)
+            {
+                layer.IsChildrenCollapsed = !layer.IsChildrenCollapsed;
+                RefreshLayersList();
+                e.Handled = true;
+            }
+        }
+
+        private void PopupBtnDuplicate_Click(object sender, MouseButtonEventArgs e)
+        {
+            LayerActionPopup.IsOpen = false;
+            if (_doc == null) return;
+
+            var active = _doc.ActiveLayer;
+            if (active == null) return;
+
+            // Promote variant to standalone layer (same as BtnPromoteLayer_Click)
+            var parent = active.ParentLayer ?? active;
+            var promoted = active.Duplicate();
+            promoted.ParentLayer = null;
+            promoted.Name = _doc.GetNextLayerName();
+            int idx = _doc.Layers.IndexOf(parent);
+            _doc.Layers.Insert(idx + 1, promoted);
+            _doc.ActiveLayer = promoted;
+            _lastActiveLayer = promoted;
+
+            RefreshLayersList();
+            OnDocumentModified();
+            e.Handled = true;
+        }
+
+        private void PopupBtnDeleteChild_Click(object sender, MouseButtonEventArgs e)
+        {
+            LayerActionPopup.IsOpen = false;
+            if (_doc == null) return;
+
+            var active = _doc.ActiveLayer;
+            if (active == null || active.ParentLayer == null) return;
+
+            var parent = active.ParentLayer;
+            parent.ChildLayers.Remove(active);
+
+            // Notify HasChildren changed
+            parent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
+
+            // Select parent or another child
+            if (parent.ChildLayers.Count > 0)
+            {
+                parent.ActiveChildLayer = parent.ChildLayers.Last();
+                _doc.ActiveLayer = parent.ActiveChildLayer;
+            }
+            else
+            {
+                parent.ActiveChildLayer = null;
+                _doc.ActiveLayer = parent;
+            }
+            _lastActiveLayer = _doc.ActiveLayer;
+
+            RefreshLayersList();
+            OnDocumentModified();
+            e.Handled = true;
         }
 
         private void PopupBtnMerge_Click(object sender, MouseButtonEventArgs e)

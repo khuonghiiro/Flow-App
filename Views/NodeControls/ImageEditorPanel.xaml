@@ -171,6 +171,15 @@
 
                     <Border Grid.Column="1" Padding="6,4">
                         <DockPanel>
+                             <!-- Collapse/Expand toggle for parent layers with children (▼/▶) -->
+                             <Border x:Name="CollapseToggle" DockPanel.Dock="Left" Width="16" Height="20" Margin="0,0,2,0"
+                                     VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
+                                     Background="Transparent" Visibility="Collapsed"
+                                     MouseLeftButtonDown="CollapseToggle_Click">
+                                 <TextBlock Text="{Binding CollapseIcon}" Foreground="{StaticResource ipMuted}" FontSize="8"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            IsHitTestVisible="False"/>
+                             </Border>
                              <!-- Eye toggle (left) -->
                              <Border x:Name="LayerVisibilityToggle" DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,4,0"
                                      VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
@@ -267,9 +276,16 @@
                                                MaxHeight="30" MaxWidth="42"
                                                HorizontalAlignment="Left" VerticalAlignment="Center"
                                                RenderOptions.BitmapScalingMode="HighQuality"/>
-                                        <!-- Loading Spinner/Hourglass Overlay -->
-                                        <Border Background="#cc0a0c10" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <TextBlock Text="⏳" Foreground="#00cfff" FontSize="11" FontWeight="Bold"
+                                        <!-- Loading Spinner/Hourglass Overlay with Progress % -->
+                                        <Border x:Name="LoadingOverlay" Background="#cc0a0c10" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock x:Name="LoadingText" Foreground="#00cfff" FontSize="9" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Run Text="⏳"/><Run Text=" "/><Run Text="{Binding LoadingProgress, Mode=OneWay}"/><Run Text="%"/>
+                                            </TextBlock>
+                                        </Border>
+                                        <!-- Error overlay (when AI generation failed) -->
+                                        <Border x:Name="ErrorOverlay" Background="#cc2a0a0c" Visibility="{Binding IsLoadingError, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="❌" Foreground="#ff6b6b" FontSize="11" FontWeight="Bold"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <!-- Text layer type badge overlay -->
@@ -315,6 +331,16 @@
                     <Setter TargetName="LayerItemBd" Property="Background" Value="#2d3c54"/>
                     <Setter TargetName="ActiveStripe" Property="Background" Value="#00cfff"/>
                 </DataTrigger>
+                <!-- Error state (AI generation failed) - light red background -->
+                <DataTrigger Binding="{Binding IsLoadingError}" Value="True">
+                    <Setter TargetName="LayerItemBd" Property="Background" Value="#2a1a1a"/>
+                    <Setter TargetName="LayerItemBd" Property="BorderBrush" Value="#4dff4444"/>
+                    <Setter TargetName="LayerItemBd" Property="BorderThickness" Value="1"/>
+                </DataTrigger>
+                <!-- Show collapse toggle for parent layers with children -->
+                <DataTrigger Binding="{Binding HasChildren}" Value="True">
+                    <Setter TargetName="CollapseToggle" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
                 <!-- Triggers for child/variant layers -->
                 <DataTrigger Binding="{Binding IsChildLayer}" Value="True">
                     <Setter TargetName="LayerItemBd" Property="Margin" Value="24,1,0,1"/>
@@ -323,6 +349,7 @@
                     <Setter TargetName="BtnCopyLayerInline" Property="Visibility" Value="Collapsed"/>
                     <Setter TargetName="BtnPromoteLayerInline" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="LayerLockToggle" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="CollapseToggle" Property="Visibility" Value="Collapsed"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsActiveVariant}" Value="True">
                     <Setter TargetName="VariantRadioDot" Property="Visibility" Value="Visible"/>
@@ -989,6 +1016,60 @@
                                 <StackPanel VerticalAlignment="Center" IsHitTestVisible="False">
                                     <TextBlock Text="AI Chỉnh Sửa" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                     <TextBlock Text="Sử dụng AI để sinh hoặc sửa đổi ảnh layer" Foreground="#788296" FontSize="8" Margin="0,1,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <!-- Duplicate button (shown for child/variant layers) -->
+                        <Border x:Name="PopupBtnDuplicate" Background="Transparent" CornerRadius="4" 
+                                Padding="8,6" Cursor="Hand" Margin="0,1" Visibility="Collapsed"
+                                BorderBrush="Transparent" BorderThickness="0.5"
+                                MouseLeftButtonDown="PopupBtnDuplicate_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#202533"/>
+                                            <Setter Property="BorderBrush" Value="#404fffb0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <DockPanel LastChildFill="True">
+                                <controls:SvgViewboxEx Width="14" Height="14" Fill="#dde3ef" Margin="0,0,10,0" DockPanel.Dock="Left"
+                                                      Source="{Binding Source={x:Static sys:String.Empty},
+                                                               Converter={StaticResource IconKeyToPathConverter},
+                                                               ConverterParameter='copy sharp-duotone-light'}"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <StackPanel VerticalAlignment="Center" IsHitTestVisible="False">
+                                    <TextBlock Text="Nhân bản" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Nhân bản layer này thành layer mới" Foreground="#788296" FontSize="8" Margin="0,1,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <!-- Delete child layer button -->
+                        <Border x:Name="PopupBtnDeleteChild" Background="Transparent" CornerRadius="4" 
+                                Padding="8,6" Cursor="Hand" Margin="0,1" Visibility="Collapsed"
+                                BorderBrush="Transparent" BorderThickness="0.5"
+                                MouseLeftButtonDown="PopupBtnDeleteChild_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#2a1a1a"/>
+                                            <Setter Property="BorderBrush" Value="#40ff4444"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <DockPanel LastChildFill="True">
+                                <controls:SvgViewboxEx Width="14" Height="14" Fill="#ff6b6b" Margin="0,0,10,0" DockPanel.Dock="Left"
+                                                      Source="{Binding Source={x:Static sys:String.Empty},
+                                                               Converter={StaticResource IconKeyToPathConverter},
+                                                               ConverterParameter='trash-can regular'}"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <StackPanel VerticalAlignment="Center" IsHitTestVisible="False">
+                                    <TextBlock Text="Xoá" Foreground="#ff6b6b" FontSize="10" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Xoá layer này" Foreground="#788296" FontSize="8" Margin="0,1,0,0"/>
                                 </StackPanel>
                             </DockPanel>
                         </Border>
