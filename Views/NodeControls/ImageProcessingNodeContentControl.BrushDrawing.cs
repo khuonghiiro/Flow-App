@@ -1292,6 +1292,21 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
+                // Ctrl+S: Save FX Config
+                if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    if (BtnSaveFxQuick != null)
+                    {
+                        SaveFxConfig(BtnSaveFxQuick);
+                    }
+                    else
+                    {
+                        FlowMy.Utils.FxConfigCache.SaveToFile();
+                    }
+                    e.Handled = true;
+                    return;
+                }
+
                 // Ctrl+D: Deselect
                 if (e.Key == Key.D && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {

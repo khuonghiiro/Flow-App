@@ -126,8 +126,8 @@ namespace FlowMy.Views.NodeControls
             IpProcessorHost.Content = ipFe;
             _setIpImage = setIp;
 
-            CropsListControl.ItemsSource = _node.Crops;
-            RenderGroupsControl.ItemsSource = _node.Crops;
+            // CropsListControl.ItemsSource = _node.Crops;
+            // RenderGroupsControl.ItemsSource = _node.Crops;
 
             ApplyGpuRenderOptions();
             ApplyHostBackground();
@@ -407,11 +407,7 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateColorCropButtonBackground()
         {
-            if (!ImageProcessingNodeControl._activeCropColorIndex.TryGetValue(_node, out var idx))
-                idx = 0;
-            var colors = ImageProcessingNodeControl._cropColors;
-            idx = ((idx % colors.Length) + colors.Length) % colors.Length;
-            ColorCropButton.Background = new SolidColorBrush(colors[idx]);
+            // ColorCropButton đã được ẩn đi, không cần cập nhật UI background
         }
 
         private void WireScrollPanZoomMagnifier()
@@ -512,7 +508,7 @@ namespace FlowMy.Views.NodeControls
                     e.Handled = true;
                     ImageProcessingNodeControl.AddCropPointFromClick(
                         _node, MainImage, ImageZoomScale, e.GetPosition(MainImage),
-                        ImageAreaGrid, CropToolButton, _onCropClickForIp);
+                        ImageAreaGrid, null, _onCropClickForIp);
                     return;
                 }
 
@@ -949,7 +945,7 @@ namespace FlowMy.Views.NodeControls
         private void MainScrollViewer_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter &&
-                ImageProcessingNodeControl.CompleteActiveCrop(_node, CropToolButton))
+                ImageProcessingNodeControl.CompleteActiveCrop(_node, null))
             {
                 e.Handled = true;
             }
@@ -1289,36 +1285,11 @@ namespace FlowMy.Views.NodeControls
 
         private void ColorCropButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                using var dlg = new WinForms.ColorDialog();
-                if (dlg.ShowDialog() == WinForms.DialogResult.OK)
-                {
-                    var c = dlg.Color;
-                    var mediaColor = Color.FromArgb(255, c.R, c.G, c.B);
-                    if (ImageProcessingNodeControl._cropColors.Length > 0)
-                    {
-                        ImageProcessingNodeControl._cropColors[0] = mediaColor;
-                        ImageProcessingNodeControl._activeCropColorIndex[_node] = 0;
-                    }
-                    ColorCropButton.Background = new SolidColorBrush(mediaColor);
-                    e.Handled = true;
-                    return;
-                }
-            }
-            catch { /* ColorDialog error → cycle */ }
-
-            if (!ImageProcessingNodeControl._activeCropColorIndex.TryGetValue(_node, out var idx))
-                idx = 0;
-            idx = (idx + 1) % ImageProcessingNodeControl._cropColors.Length;
-            ImageProcessingNodeControl._activeCropColorIndex[_node] = idx;
-            UpdateColorCropButtonBackground();
             e.Handled = true;
         }
 
         private void CropToolButton_Click(object sender, RoutedEventArgs e)
         {
-            ImageProcessingNodeControl._activeCropRegion[_node] = null;
             e.Handled = true;
         }
 
@@ -1350,7 +1321,6 @@ namespace FlowMy.Views.NodeControls
                 ReferenceEquals(active, reg))
             {
                 ImageProcessingNodeControl._activeCropRegion[_node] = null;
-                CropToolButton.IsEnabled = true;
             }
         }
 
@@ -1387,7 +1357,7 @@ namespace FlowMy.Views.NodeControls
             MainScrollViewer.PreviewMouseRightButtonDown += (_, e) =>
             {
                 e.Handled = true;
-                ImageProcessingNodeControl.CompleteActiveCrop(_node, CropToolButton);
+                ImageProcessingNodeControl.CompleteActiveCrop(_node, null);
             };
 
             if (_chromeBorder != null)
@@ -1448,7 +1418,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (_chromeBorder == null && _freezeScaleInWidget)
             {
-                LeftMenuViewbox.StretchDirection = StretchDirection.DownOnly;
+                // LeftMenuViewbox.StretchDirection = StretchDirection.DownOnly;
 
                 double widgetW = ActualWidth > 1 ? ActualWidth : WidthSyncTarget.ActualWidth;
                 double widgetH = ActualHeight > 1 ? ActualHeight : WidthSyncTarget.ActualHeight;
@@ -1476,17 +1446,17 @@ namespace FlowMy.Views.NodeControls
 
                 var identity = Transform.Identity;
                 TopMenuBorder.LayoutTransform = identity;
-                RightMenuBorder.LayoutTransform = identity;
+                // RightMenuBorder.LayoutTransform = identity;
                 IpProcessorHost.LayoutTransform = identity;
-                LeftMenuBorder.LayoutTransform = identity;
+                // LeftMenuBorder.LayoutTransform = identity;
                 PlaceholderTextBlock.LayoutTransform = identity;
-                CropsLabelText.LayoutTransform = identity;
-                RenderLabelText.LayoutTransform = identity;
+                // CropsLabelText.LayoutTransform = identity;
+                // RenderLabelText.LayoutTransform = identity;
                 EditorPanel.LayoutTransform = new ScaleTransform(typoMul, typoMul);
 
                 var formatMode = typoMul == 1.0 ? TextFormattingMode.Display : TextFormattingMode.Ideal;
                 TextOptions.SetTextFormattingMode(EditorPanel, formatMode);
-                TextOptions.SetTextFormattingMode(RightMenuBorder, formatMode);
+                // TextOptions.SetTextFormattingMode(RightMenuBorder, formatMode);
                 TextOptions.SetTextFormattingMode(IpProcessorHost, formatMode);
 
                 int Sz(double b) => Math.Max(1, (int)Math.Round(b * typoMul));
@@ -1495,15 +1465,12 @@ namespace FlowMy.Views.NodeControls
 
                 ImageTitleTextBlock.FontSize = Sz(BaseTitleFontSize);
                 PlaceholderTextBlock.FontSize = Sz(BasePlaceholderFontSize);
-                CropsLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
-                RenderLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
+                // CropsLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
+                // RenderLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
                 MagCoordTextBlock.FontSize = Sz(9);
 
-                CropToolButton.Width = B(30);
-                CropToolButton.Height = B(30);
-                CropToolButton.FontSize = B(16);
-                ColorCropButton.Width = B(30);
-                ColorCropButton.Height = B(30);
+                // ColorCropButton.Width = B(30);
+                // ColorCropButton.Height = B(30);
 
                 IpToggleButton.Width = B(28);
                 IpToggleButton.Height = B(22);
@@ -1517,7 +1484,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            LeftMenuViewbox.StretchDirection = StretchDirection.Both;
+            // LeftMenuViewbox.StretchDirection = StretchDirection.Both;
             RootLayout.ColumnDefinitions[0].Width = new GridLength(0.6, GridUnitType.Star);
 
             PutFontResource(Resources, "WidgetCropOrderFontSize", 10);
@@ -1527,15 +1494,15 @@ namespace FlowMy.Views.NodeControls
 
             ImageTitleTextBlock.FontSize = BaseTitleFontSize;
             PlaceholderTextBlock.FontSize = BasePlaceholderFontSize;
-            CropsLabelText.FontSize = BaseCropLabelFontSize;
-            RenderLabelText.FontSize = BaseCropLabelFontSize;
+            // CropsLabelText.FontSize = BaseCropLabelFontSize;
+            // RenderLabelText.FontSize = BaseCropLabelFontSize;
             MagCoordTextBlock.FontSize = 9;
 
-            CropToolButton.Width = 30;
-            CropToolButton.Height = 30;
-            CropToolButton.FontSize = 16;
-            ColorCropButton.Width = 30;
-            ColorCropButton.Height = 30;
+            // CropToolButton.Width = 30;
+            // CropToolButton.Height = 30;
+            // CropToolButton.FontSize = 16;
+            // ColorCropButton.Width = 30;
+            // ColorCropButton.Height = 30;
             IpToggleButton.Width = 28;
             IpToggleButton.Height = 22;
             IpToggleIcon.Width = 14;
@@ -1556,9 +1523,9 @@ namespace FlowMy.Views.NodeControls
             var topBarScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
             TopMenuBorder.LayoutTransform = topBarScale;
             IpProcessorHost.LayoutTransform = topBarScale;
-            var ipScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
-            RightMenuBorder.LayoutTransform = ipScale;
-            TextOptions.SetTextFormattingMode(RightMenuBorder, TextFormattingMode.Ideal);
+            // var ipScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
+            // RightMenuBorder.LayoutTransform = ipScale;
+            // TextOptions.SetTextFormattingMode(RightMenuBorder, TextFormattingMode.Ideal);
             TextOptions.SetTextFormattingMode(IpProcessorHost, TextFormattingMode.Ideal);
 
             // Tính toán tỉ lệ co dãn của EditorPanel để vừa khít chiều rộng cột 2 (220px)
@@ -1568,10 +1535,10 @@ namespace FlowMy.Views.NodeControls
 
             var canvasIpTextTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
             PlaceholderTextBlock.LayoutTransform = canvasIpTextTransform;
-            CropsLabelText.LayoutTransform = Transform.Identity;
-            RenderLabelText.LayoutTransform = Transform.Identity;
+            // CropsLabelText.LayoutTransform = Transform.Identity;
+            // RenderLabelText.LayoutTransform = Transform.Identity;
 
-            LeftMenuBorder.LayoutTransform = new ScaleTransform(widthScaleFactor, widthScaleFactor);
+            // LeftMenuBorder.LayoutTransform = new ScaleTransform(widthScaleFactor, widthScaleFactor);
 
             var interactionScale = Math.Max(Math.Max(heightScaleFactor, widthScaleFactor), ipTextScaleFactor);
             ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, interactionScale);
@@ -1584,7 +1551,7 @@ namespace FlowMy.Views.NodeControls
                 src != null && fe != null && VisualTreeHelper.GetParent(src) != null && fe.IsAncestorOf(src);
 
             if (!IsInside(MainScrollViewer) &&
-                !IsInside(LeftMenuBorder) &&
+                // !IsInside(LeftMenuBorder) &&
                 !IsInside(EditorToolbox) &&
                 !IsInside(EditorPanel) &&
                 !IsInside(IpProcessorHost))
@@ -1678,57 +1645,41 @@ namespace FlowMy.Views.NodeControls
         }
         // ═══════ MODE SWITCHING (AI ↔ Editor) ═══════
 
-        private void BtnModeAI_Click(object sender, RoutedEventArgs e)
-        {
-            SwitchToMode(Models.Nodes.ImageProcessingMode.AI);
-            e.Handled = true;
-        }
-
-        private void BtnModeEditor_Click(object sender, RoutedEventArgs e)
-        {
-            SwitchToMode(Models.Nodes.ImageProcessingMode.Manual);
-            e.Handled = true;
-        }
+        // private void BtnModeAI_Click(object sender, RoutedEventArgs e)
+        // {
+        //     SwitchToMode(Models.Nodes.ImageProcessingMode.AI);
+        //     e.Handled = true;
+        // }
+        // 
+        // private void BtnModeEditor_Click(object sender, RoutedEventArgs e)
+        // {
+        //     SwitchToMode(Models.Nodes.ImageProcessingMode.Manual);
+        //     e.Handled = true;
+        // }
 
         private void SwitchToMode(Models.Nodes.ImageProcessingMode mode)
         {
-            _node.ProcessingMode = mode;
+            // Luôn cưỡng ép chạy ở chế độ chỉnh sửa thủ công (Editor/Manual) vì cơ chế AI đã chuyển sang LayerAiDialog
+            _node.ProcessingMode = Models.Nodes.ImageProcessingMode.Manual;
 
-            if (mode == Models.Nodes.ImageProcessingMode.AI)
+            // Ẩn AI panels, hiện Editor
+            // RightMenuBorder.Visibility = Visibility.Collapsed;
+            EditorPanel.Visibility = Visibility.Visible;
+            // LeftMenuBorder.Visibility = Visibility.Collapsed;
+            EditorToolbox.Visibility = Visibility.Visible;
+
+            // Tắt cột Image Processor nếu đang mở
+            if (_ipColumnVisible)
             {
-                // Hiện AI panels, ẩn Editor
-                RightMenuBorder.Visibility = Visibility.Visible;
-                EditorPanel.Visibility = Visibility.Collapsed;
-                LeftMenuBorder.Visibility = Visibility.Visible;
-                EditorToolbox.Visibility = Visibility.Collapsed;
-
-                if (TopOptionsBar != null)
-                {
-                    TopOptionsBar.Visibility = Visibility.Collapsed;
-                }
-            }
-            else
-            {
-                // Ẩn AI panels, hiện Editor
-                RightMenuBorder.Visibility = Visibility.Collapsed;
-                EditorPanel.Visibility = Visibility.Visible;
-                LeftMenuBorder.Visibility = Visibility.Collapsed;
-                EditorToolbox.Visibility = Visibility.Visible;
-
-                // Tắt cột Image Processor nếu đang mở
-                if (_ipColumnVisible)
-                {
-                    ToggleIPColumn();
-                }
-
-                // Tạo EditorDocument nếu chưa có
-                EnsureEditorDocument();
-
-                // Sync toolbox visual state với active tool
-                SyncToolboxHighlight();
-                SyncToolboxColors();
+                ToggleIPColumn();
             }
 
+            // Tạo EditorDocument nếu chưa có
+            EnsureEditorDocument();
+
+            // Sync toolbox visual state với active tool
+            SyncToolboxHighlight();
+            SyncToolboxColors();
             SyncModeButtonStyles();
         }
 
@@ -1816,10 +1767,10 @@ namespace FlowMy.Views.NodeControls
             var inactiveBg = new SolidColorBrush(Color.FromArgb(0x18, 0xff, 0xff, 0xff));
             var inactiveFg = new SolidColorBrush(Color.FromRgb(0x5a, 0x60, 0x72));
 
-            BtnModeAI.Background = isAI ? activeBg : inactiveBg;
-            BtnModeAI.Foreground = isAI ? activeFg : inactiveFg;
-            BtnModeEditor.Background = isAI ? inactiveBg : activeBg;
-            BtnModeEditor.Foreground = isAI ? inactiveFg : activeFg;
+            // BtnModeAI.Background = isAI ? activeBg : inactiveBg;
+            // BtnModeAI.Foreground = isAI ? activeFg : inactiveFg;
+            // BtnModeEditor.Background = isAI ? inactiveBg : activeBg;
+            // BtnModeEditor.Foreground = isAI ? inactiveFg : activeFg;
 
             // AI mode có IP toggle, Editor mode ẩn nó
             IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;

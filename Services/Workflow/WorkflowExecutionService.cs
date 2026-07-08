@@ -45,6 +45,14 @@ namespace FlowMy.Services.Workflow
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>>> _stickyScopedStringOutputsByRoot =
             new(StringComparer.Ordinal);
 
+        // Cache để lưu kết quả của các lần chạy (executionId -> nodeId -> key -> value) nhằm tránh race condition khi nhiều luồng AI chạy song song.
+        public static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>> ScopedOutputsHistoricalCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        // Map từ dialog-generated execId sang actual execution runId
+        public static readonly ConcurrentDictionary<string, string> ExecutionIdMapping =
+            new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Giới hạn số snapshot run còn giữ trong RAM (tránh rò nếu quên Clear); run cũ nhất bị evict.</summary>
         private const int MaxScopedRunsRetained = 64;
 
@@ -67,6 +75,13 @@ namespace FlowMy.Services.Workflow
             var byKey = byNode.GetOrAdd(nodeId,
                 static _ => new ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
             byKey[k] = value;
+
+            // Ghi vào historical cache để sau khi run kết thúc (và đã ClearScopedOutputsForRun) vẫn có thể đọc được kết quả chính xác theo executionId.
+            var histByNode = ScopedOutputsHistoricalCache.GetOrAdd(executionId,
+                static _ => new ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>(StringComparer.OrdinalIgnoreCase));
+            var histByKey = histByNode.GetOrAdd(nodeId,
+                static _ => new ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
+            histByKey[k] = value;
 
             // Mirror vào sticky theo root run để downstream vẫn đọc được dù primary scoped bị evict/clear sớm.
             var rootId = NormalizeToRootRunId(executionId);

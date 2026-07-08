@@ -3,6 +3,7 @@ using FlowMy.Models.ImageEditor;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
+using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls;
 using FlowMy.Views.NodeControls.Helpers;
 using System;
@@ -209,7 +210,23 @@ namespace FlowMy.Views.Overlays
                     return;
                 }
 
-                var raw = ResolveFromNodeIfAny(_host, _node.RenderNodeId, _node.RenderNodeOutputKey);
+                // Định tuyến và tìm executionId thực tế được chạy trong workflow
+                string actualRunId = execId;
+                if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
+                {
+                    actualRunId = mappedRunId;
+                }
+
+                var raw = ResolveFromHistoricalCache(_node.RenderNodeId, _node.RenderNodeOutputKey, actualRunId);
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    raw = ResolveFromNodeIfAny(_host, _node.RenderNodeId, _node.RenderNodeOutputKey);
+                }
+
+                // Dọn dẹp cache của lần chạy này để tránh rò rỉ RAM
+                WorkflowExecutionService.ExecutionIdMapping.TryRemove(execId, out _);
+                WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(actualRunId, out _);
+
                 if (string.IsNullOrWhiteSpace(raw))
                 {
                     MessageBox.Show("Node render chưa có dữ liệu output trả về từ AI.", "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -426,6 +443,20 @@ namespace FlowMy.Views.Overlays
                 }
             }
             catch { }
+            return null;
+        }
+
+        private static string? ResolveFromHistoricalCache(string nodeId, string key, string executionId)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(executionId)) return null;
+
+            if (WorkflowExecutionService.ScopedOutputsHistoricalCache.TryGetValue(executionId, out var byNode) &&
+                byNode.TryGetValue(nodeId, out var byKey) &&
+                byKey.TryGetValue(key, out var value))
+            {
+                if (value == "—") return null;
+                return value;
+            }
             return null;
         }
     }

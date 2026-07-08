@@ -1115,6 +1115,11 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        public void AddImageLayer()
+        {
+            BtnAddImageLayer_Click(this, new RoutedEventArgs());
+        }
+
         private void LayerItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (_doc == null) return;

@@ -85,6 +85,55 @@
             </Setter>
         </Style>
 
+        <Style x:Key="MenuBarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource ipText}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="8,2,8,2"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipHover}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ipSurface2}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DarkContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="Background" Value="#111318"/>
+            <Setter Property="BorderBrush" Value="#252932"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="2">
+                            <ScrollViewer x:Name="MenuScrollViewer" CanContentScroll="True">
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ═══ COMBOBOX STYLE ═══ -->
         <Style x:Key="IpComboBoxStyle" TargetType="ComboBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -346,7 +395,7 @@
                 Background="#2DFFFFFF" Padding="8,4,8,4" Panel.ZIndex="10">
             <Border Background="Transparent" IsHitTestVisible="True">
                 <DockPanel LastChildFill="True">
-                    <Button x:Name="IpToggleButton" DockPanel.Dock="Right"
+                    <Button x:Name="IpToggleButton" DockPanel.Dock="Right" Visibility="Collapsed"
                             ToolTip="Ẩn/hiện Image Processor"
                             Width="28" Height="22" Padding="0"
                             Cursor="Hand" VerticalAlignment="Center"
@@ -358,7 +407,7 @@
                                                 Fill="{DynamicResource WhiteBrush}"/>
                     </Button>
 
-                    <!-- Save FX Config button (Editor mode only) -->
+                    <!-- Save FX Config button (Editor mode only - kept here for code-behind references or sync logic) -->
                     <Button x:Name="BtnSaveFxConfig" DockPanel.Dock="Right"
                             ToolTip="Lưu cấu hình FX (Ctrl+S)"
                             Width="28" Height="22" Padding="0" Margin="0,0,4,0"
@@ -370,37 +419,90 @@
                                    VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
 
-                    <!-- Open Image button -->
-                    <Border DockPanel.Dock="Left" Margin="0,0,6,0" VerticalAlignment="Center"
-                            Background="Transparent" Cursor="Hand" CornerRadius="3"
-                            Width="24" Height="22" ToolTip="Mở ảnh (Open Image)"
-                            MouseLeftButtonDown="BtnOpenImageTab_Click">
-                        <controls:SvgViewboxEx Width="13" Height="13"
-                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open sharp-duotone-regular'}"
-                            Fill="{DynamicResource WhiteBrush}"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            IsHitTestVisible="False"/>
-                    </Border>
+                    <!-- Left Aligned Menu and Icons -->
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <!-- File Menu Button -->
+                        <Button x:Name="BtnFileMenu" Content="File" 
+                                Style="{StaticResource MenuBarButtonStyle}"
+                                Click="BtnFileMenu_Click" Margin="0,0,6,0">
+                            <Button.ContextMenu>
+                                <ContextMenu Style="{StaticResource DarkContextMenuStyle}">
+                                    <ContextMenu.Resources>
+                                        <!-- Custom style for dark menu items -->
+                                        <Style TargetType="MenuItem">
+                                            <Setter Property="Foreground" Value="#dde3ef"/>
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="MenuItem">
+                                                        <Border x:Name="Border" Background="{TemplateBinding Background}" SnapsToDevicePixels="True" CornerRadius="2">
+                                                            <Grid Margin="10,5,10,5">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
+                                                                    <ColumnDefinition Width="*" SharedSizeGroup="Text"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <ContentPresenter x:Name="Icon" Margin="0,0,8,0" VerticalAlignment="Center" ContentSource="Icon"/>
+                                                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" ContentSource="Header" RecognizesAccessKey="True"/>
+                                                            </Grid>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsHighlighted" Value="True">
+                                                                <Setter TargetName="Border" Property="Background" Value="#252932"/>
+                                                                <Setter Property="Foreground" Value="White"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsEnabled" Value="False">
+                                                                <Setter Property="Opacity" Value="0.4"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                        <Style TargetType="Separator">
+                                            <Setter Property="Background" Value="#252932"/>
+                                            <Setter Property="Height" Value="1"/>
+                                            <Setter Property="Margin" Value="0,4,0,4"/>
+                                        </Style>
+                                    </ContextMenu.Resources>
+                                    <MenuItem Header="📁 Mở ảnh (Open)..." Click="MenuItemOpen_Click"/>
+                                    <MenuItem Header="📂 Mở dự án (.iep)..." Click="MenuItemOpenProject_Click"/>
+                                    <MenuItem Header="💾 Lưu cấu hình FX (Save)" Click="MenuItemSave_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="📥 Import ảnh vào Layer..." Click="MenuItemImport_Click"/>
+                                    <MenuItem Header="⚡ Xuất ảnh nhanh PNG..." Click="MenuItemQuickExport_Click"/>
+                                    <MenuItem Header="🖼️ Xuất ảnh (Export As)..." Click="MenuItemExportAs_Click"/>
+                                    <MenuItem Header="📦 Xuất dự án (.iep)..." Click="MenuItemExportProject_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
 
-                    <!-- Mode toggle: AI | Editor — segment control -->
-                    <Border DockPanel.Dock="Right" Margin="6,0,6,0" VerticalAlignment="Center"
-                            Background="#18FFFFFF" CornerRadius="5"
-                            Padding="2" BorderBrush="#252932"
-                            BorderThickness="1">
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="BtnModeAI" Content="🤖 AI"
-                                    Width="50" Height="20" FontSize="9" Padding="2,0"
-                                    Cursor="Hand" ToolTip="Chế độ AI (crop + gửi xử lý)"
-                                    BorderThickness="0" Foreground="White"
-                                    Click="BtnModeAI_Click"/>
-                            <Button x:Name="BtnModeEditor" Content="🎨 Editor"
-                                    Width="56" Height="20" FontSize="9" Padding="2,0"
-                                    Cursor="Hand" ToolTip="Chế độ chỉnh sửa thủ công"
-                                    BorderThickness="0" Foreground="White"
-                                    Click="BtnModeEditor_Click"/>
-                        </StackPanel>
-                    </Border>
+                        <!-- Separator line -->
+                        <Rectangle Width="1" Height="14" Fill="#3Fffffff" Margin="4,0,8,0" VerticalAlignment="Center"/>
 
+                        <!-- Open Image button -->
+                        <Button x:Name="BtnOpenImageQuick" Width="24" Height="22" Margin="0,0,6,0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Mở ảnh (Open Image)" Click="BtnOpenImageQuick_Click">
+                            <controls:SvgViewboxEx Width="13" Height="13"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open sharp-duotone-regular'}"
+                                Fill="{DynamicResource WhiteBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        </Button>
+
+                        <!-- Save FX button -->
+                        <Button x:Name="BtnSaveFxQuick" Width="24" Height="22"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Lưu cấu hình FX (Ctrl+S)" Click="BtnSaveFxQuick_Click">
+                            <TextBlock Text="💾" FontSize="12" Foreground="White"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Spacer -->
+                    <Grid/>
                 </DockPanel>
             </Border>
         </Border>
@@ -737,7 +839,8 @@
             </Grid>
         </Border>
 
-        <!-- Left toolbar -->
+        <!-- Left toolbar (Đã được thay đổi sang LayerAiDialog, comment lại không sử dụng) -->
+        <!--
         <Border x:Name="LeftMenuBorder" Grid.Row="2" Grid.Column="0"
                 Background="#28FFFFFF" Padding="4,0,4,6"
                 Visibility="Collapsed">
@@ -745,7 +848,6 @@
                      HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <StackPanel Width="auto" Orientation="Vertical"
                             HorizontalAlignment="Center" VerticalAlignment="Top">
-                    <!-- Open Image button removed — now in top bar tab strip -->
                     <Border BorderBrush="#78FFFFFF" BorderThickness="1" CornerRadius="4"
                             Padding="2" Margin="4,0,4,6">
                         <StackPanel Orientation="Vertical"
@@ -770,6 +872,7 @@
                 </StackPanel>
             </Viewbox>
         </Border>
+        -->
 
         <!-- Left vertical/horizontal wrap toolbox: Editor mode (Photoshop-style) -->
         <Border x:Name="EditorToolbox" Grid.Row="2" Grid.Column="0"
@@ -1356,7 +1459,8 @@
         </ScrollViewer>
         </Grid> <!-- end center tab+image Grid -->
 
-        <!-- Right panel: AI mode (crops + renders) -->
+        <!-- Right panel: AI mode (crops + renders) (Đã được thay đổi sang LayerAiDialog, comment lại không sử dụng) -->
+        <!--
         <Border x:Name="RightMenuBorder" Grid.Row="2" Grid.Column="2"
                 Background="#28000000" Padding="4"
                 Visibility="Collapsed">
@@ -1394,6 +1498,7 @@
                 </ScrollViewer>
             </Grid>
         </Border>
+        -->
 
         <!-- Right panel: Editor mode (layers, tools, colors) -->
         <local:ImageEditorPanel x:Name="EditorPanel" Grid.Row="2" Grid.Column="2"

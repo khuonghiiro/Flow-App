@@ -28,6 +28,7 @@ namespace FlowMy.ViewModels
     {
         private readonly FlowMy.Workflow.TemplateFactory _templateFactory;
         private readonly WorkflowExecutionService _workflowExecutionService;
+        public WorkflowExecutionService WorkflowExecutionService => _workflowExecutionService;
         private readonly IWorkflowPersistenceService _persistenceService;
         private readonly IWorkflowExecutionVisualizer _executionVisualizer;
 

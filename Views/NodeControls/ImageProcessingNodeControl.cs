@@ -1303,6 +1303,9 @@ namespace FlowMy.Views.NodeControls
             btnStart.Click += async (s, e) =>
             {
                 e.Handled = true;
+                // Chức năng Xử lý AI/Crop cũ trên node widget đã được comment lại để không sử dụng nữa.
+                // Cơ chế mới được chạy trực tiếp từ Editor thông qua LayerAiDialog.
+                /*
                 if (processedBitmap == null)
                 {
                     MessageBox.Show("Chưa có ảnh đã xử lý.", "Image Processor",
@@ -1437,6 +1440,8 @@ namespace FlowMy.Views.NodeControls
                 {
                     System.Diagnostics.Debug.WriteLine($"ImageProcessor StartWorkflow dispatch error: {ex.Message}");
                 }
+                */
+                await System.Threading.Tasks.Task.CompletedTask;
             };
 
             // Set image action (exposed to caller)

@@ -76,7 +76,7 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>ID duy nhất của layer.</summary>
-        public string Id { get; }
+        public string Id { get; internal set; }
 
         /// <summary>Kích thước layer (luôn bằng document).</summary>
         public int Width { get; internal set; }
