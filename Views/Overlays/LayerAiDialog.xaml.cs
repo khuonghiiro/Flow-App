@@ -238,7 +238,7 @@ namespace FlowMy.Views.Overlays
                 // Create variant placeholders in parent's ChildLayers before starting workflow execution
                 for (int i = 0; i < batchSize; i++)
                 {
-                    var placeholder = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
+                    var placeholder = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
                     placeholder.ParentLayer = destinationParent;
                     placeholder.IsLoading = true;
                     destinationParent.ChildLayers.Add(placeholder);
@@ -374,7 +374,7 @@ namespace FlowMy.Views.Overlays
                                         }
                                         else
                                         {
-                                            childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
+                                            childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
                                             childLayer.ParentLayer = destinationParent;
                                             destinationParent.ChildLayers.Add(childLayer);
                                         }

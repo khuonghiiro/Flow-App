@@ -125,6 +125,9 @@ namespace FlowMy.Views.NodeControls
         private int _keyDeltaY;
         private DispatcherTimer? _keyMoveCommitTimer;
 
+        // ── Selection marching ants animation (WPF composition thread) ──
+        private DoubleAnimation? _marchingAntsAnimation;
+
         /// <summary>Đánh dấu cần composite lại — timer sẽ xử lý ở tick tiếp theo (~30fps).</summary>
         private void MarkCompositeDirty()
         {
@@ -379,6 +382,7 @@ namespace FlowMy.Views.NodeControls
                 _selectionRect = null;
                 _selectionPoints.Add(new Point(px, py));
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
+                if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
                 UpdateLassoPreview();
                 MainScrollViewer.CaptureMouse();
                 return;
@@ -395,6 +399,7 @@ namespace FlowMy.Views.NodeControls
                     _isSelecting = true;
                     _selectionRect = null;
                     SelectionBoxRect.Visibility = Visibility.Collapsed;
+                    if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
                     _selectionPoints.Add(new Point(px, py));
                     UpdatePolyLassoPreview(clickPos);
                     MainScrollViewer.CaptureMouse();
@@ -556,6 +561,15 @@ namespace FlowMy.Views.NodeControls
                     SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
                     SelectionBoxRect.Width = w;
                     SelectionBoxRect.Height = h;
+                    // Sync black background rect
+                    if (SelectionBoxRectBg != null)
+                    {
+                        SelectionBoxRectBg.Margin = SelectionBoxRect.Margin;
+                        SelectionBoxRectBg.Width = w;
+                        SelectionBoxRectBg.Height = h;
+                        SelectionBoxRectBg.Visibility = Visibility.Visible;
+                    }
+                    ApplyPreviewStrokeStyle();
                 }
                 else if (tool == "Slice")
                 {
@@ -797,6 +811,7 @@ namespace FlowMy.Views.NodeControls
                         UpdateSlicesDisplay();
                     }
                     SelectionBoxRect.Visibility = Visibility.Collapsed;
+                    if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
                 }
                 else if (tool == "SliceSelect")
                 {
@@ -904,6 +919,10 @@ namespace FlowMy.Views.NodeControls
             {
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
             }
+            if (SelectionBoxRectBg != null)
+            {
+                SelectionBoxRectBg.Visibility = Visibility.Collapsed;
+            }
             if (SelectionPolygon != null)
             {
                 SelectionPolygon.Visibility = Visibility.Collapsed;
@@ -918,6 +937,11 @@ namespace FlowMy.Views.NodeControls
             {
                 SelectionPreviewPolygon.Visibility = Visibility.Collapsed;
                 SelectionPreviewPolygon.Data = null;
+            }
+            if (SelectionPreviewPolygonBg != null)
+            {
+                SelectionPreviewPolygonBg.Visibility = Visibility.Collapsed;
+                SelectionPreviewPolygonBg.Data = null;
             }
         }
 
@@ -1030,10 +1054,16 @@ namespace FlowMy.Views.NodeControls
 
             _selectionPoints.Clear();
             if (SelectionBoxRect != null) SelectionBoxRect.Visibility = Visibility.Collapsed;
+            if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
             if (SelectionPreviewPolygon != null)
             {
                 SelectionPreviewPolygon.Visibility = Visibility.Collapsed;
                 SelectionPreviewPolygon.Data = null;
+            }
+            if (SelectionPreviewPolygonBg != null)
+            {
+                SelectionPreviewPolygonBg.Visibility = Visibility.Collapsed;
+                SelectionPreviewPolygonBg.Data = null;
             }
         }
 
@@ -1087,14 +1117,26 @@ namespace FlowMy.Views.NodeControls
 
                 var outlined = scaledGeometry.GetOutlinedPathGeometry();
 
+                // Scale stroke thickness inversely with zoom — ~1px on screen
+                double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
+                if (zoom <= 0) zoom = 1.0;
+                double strokeW = 1.0 / zoom;
+                double dashLen = 2.0 / zoom;
+
                 SelectionPolygon.Data = outlined;
+                SelectionPolygon.StrokeThickness = strokeW;
+                SelectionPolygon.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
                 SelectionPolygon.Visibility = Visibility.Visible;
 
                 if (SelectionPolygonBg != null)
                 {
                     SelectionPolygonBg.Data = outlined;
+                    SelectionPolygonBg.StrokeThickness = strokeW;
                     SelectionPolygonBg.Visibility = Visibility.Visible;
                 }
+
+                // Start color-swap animation timer
+                StartMarchingAnts();
             }
             else
             {
@@ -1106,7 +1148,34 @@ namespace FlowMy.Views.NodeControls
                     SelectionPolygonBg.Data = null;
                     SelectionPolygonBg.Visibility = Visibility.Collapsed;
                 }
+
+                // Stop color-swap animation timer
+                StopMarchingAnts();
             }
+        }
+
+        private void StartMarchingAnts()
+        {
+            if (SelectionPolygon == null || _marchingAntsAnimation != null) return;
+
+            // WPF BeginAnimation runs on the composition thread — hardware accelerated, no jitter
+            _marchingAntsAnimation = new DoubleAnimation
+            {
+                From = 0,
+                To = 4,               // dash total = 2+2 = 4 → seamless loop
+                Duration = new Duration(TimeSpan.FromSeconds(0.6)),
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            SelectionPolygon.BeginAnimation(System.Windows.Shapes.Path.StrokeDashOffsetProperty, _marchingAntsAnimation);
+        }
+
+        private void StopMarchingAnts()
+        {
+            if (SelectionPolygon != null)
+            {
+                SelectionPolygon.BeginAnimation(System.Windows.Shapes.Path.StrokeDashOffsetProperty, null);
+            }
+            _marchingAntsAnimation = null;
         }
 
         private void ClosePolyLassoSelection()
@@ -1156,6 +1225,7 @@ namespace FlowMy.Views.NodeControls
                 pathGeometry.Figures.Add(pathFigure);
                 SelectionPreviewPolygon.Data = pathGeometry;
             }
+            ApplyPreviewStrokeStyle();
             SelectionPreviewPolygon.Visibility = Visibility.Visible;
         }
 
@@ -1180,7 +1250,45 @@ namespace FlowMy.Views.NodeControls
                 pathGeometry.Figures.Add(pathFigure);
                 SelectionPreviewPolygon.Data = pathGeometry;
             }
+            ApplyPreviewStrokeStyle();
             SelectionPreviewPolygon.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>Apply Photoshop-style black+white stroke with zoom scaling to preview paths.</summary>
+        private void ApplyPreviewStrokeStyle()
+        {
+            double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
+            if (zoom <= 0) zoom = 1.0;
+            // Photoshop always shows ~1px stroke on screen
+            double strokeW = 1.0 / zoom;
+            double dashLen = 2.0 / zoom;
+
+            if (SelectionPreviewPolygon != null)
+            {
+                SelectionPreviewPolygon.StrokeThickness = strokeW;
+                SelectionPreviewPolygon.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
+            }
+            if (SelectionPreviewPolygonBg != null)
+            {
+                SelectionPreviewPolygonBg.Data = SelectionPreviewPolygon?.Data;
+                SelectionPreviewPolygonBg.StrokeThickness = strokeW;
+                SelectionPreviewPolygonBg.Visibility = Visibility.Visible;
+            }
+            // Also scale SelectionBoxRect (marquee) if it's visible
+            if (SelectionBoxRect != null && SelectionBoxRect.Visibility == Visibility.Visible)
+            {
+                SelectionBoxRect.StrokeThickness = strokeW;
+                SelectionBoxRect.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
+            }
+            // Sync black background for marquee rect
+            if (SelectionBoxRectBg != null && SelectionBoxRect != null && SelectionBoxRect.Visibility == Visibility.Visible)
+            {
+                SelectionBoxRectBg.StrokeThickness = strokeW;
+                SelectionBoxRectBg.Margin = SelectionBoxRect.Margin;
+                SelectionBoxRectBg.Width = SelectionBoxRect.Width;
+                SelectionBoxRectBg.Height = SelectionBoxRect.Height;
+                SelectionBoxRectBg.Visibility = Visibility.Visible;
+            }
         }
 
 
@@ -1324,6 +1432,25 @@ namespace FlowMy.Views.NodeControls
                 if (e.Key == Key.D && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
                     ClearSelection();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Ctrl+A: Select All — create selection encompassing the entire active layer
+                if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    if (_node.EditorDoc != null)
+                    {
+                        var activeLayer = _node.EditorDoc.ActiveLayer;
+                        if (activeLayer != null)
+                        {
+                            var fullRect = new RectangleGeometry(new Rect(0, 0, activeLayer.Width, activeLayer.Height));
+                            _activeSelectionGeometry = fullRect;
+                            _selectionRect = fullRect.Bounds;
+                            BuildSelectionMask();
+                            UpdatePolygonDisplay();
+                        }
+                    }
                     e.Handled = true;
                     return;
                 }

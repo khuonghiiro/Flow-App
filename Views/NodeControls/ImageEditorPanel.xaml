@@ -217,6 +217,19 @@
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                         IsHitTestVisible="False"/>
                                 </Border>
+                                <!-- Promote variant to standalone layer button (visible only for child layers) -->
+                                <Border x:Name="BtnPromoteLayerInline" Width="20" Height="20" Cursor="Hand" CornerRadius="3"
+                                        Background="Transparent" ToolTip="Nhân đôi thành Layer mới (Ctrl+J)"
+                                        Visibility="Collapsed"
+                                        MouseLeftButtonDown="BtnPromoteLayer_Click">
+                                    <controls:SvgViewboxEx Width="12" Height="12"
+                                        Fill="{StaticResource ipText}"
+                                        Source="{Binding Source={x:Static sys:String.Empty},
+                                                 Converter={StaticResource IconKeyToPathConverter},
+                                                 ConverterParameter='layer-plus sharp-duotone-solid'}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        IsHitTestVisible="False"/>
+                                </Border>
                                 <!-- Delete layer button -->
                                 <Border x:Name="BtnDeleteLayerInline" Width="20" Height="20" Cursor="Hand" CornerRadius="3"
                                         Background="Transparent" ToolTip="Xoá Layer"
@@ -308,6 +321,7 @@
                     <Setter TargetName="LayerVisibilityToggle" Property="Visibility" Value="Collapsed"/>
                     <Setter TargetName="VariantRadioIndicator" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="BtnCopyLayerInline" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="BtnPromoteLayerInline" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="LayerLockToggle" Property="Visibility" Value="Collapsed"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsActiveVariant}" Value="True">

@@ -1266,74 +1266,41 @@
                             </Grid>
                         </Canvas>
 
-                        <!-- Selection Overlay (Photoshop ants style) -->
-                        <Rectangle x:Name="SelectionBoxRect"
-                                   Stroke="#00cfff" StrokeThickness="1.2"
-                                   StrokeDashArray="4 4"
+                        <!-- Selection Overlay (marching ants: black solid bg + white dashed with offset animation) -->
+                        <!-- Marquee Black background stroke -->
+                        <Rectangle x:Name="SelectionBoxRectBg"
+                                   Stroke="Black" StrokeThickness="1"
                                    Fill="Transparent"
                                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                                   Visibility="Collapsed" IsHitTestVisible="False">
-                            <Rectangle.Style>
-                                <Style TargetType="Rectangle">
-                                    <Style.Triggers>
-                                        <Trigger Property="Visibility" Value="Visible">
-                                            <Trigger.EnterActions>
-                                                <BeginStoryboard Name="RectAntsStoryboard">
-                                                    <Storyboard>
-                                                        <DoubleAnimation
-                                                            Storyboard.TargetProperty="StrokeDashOffset"
-                                                            From="0" To="8" Duration="0:0:0.5"
-                                                            RepeatBehavior="Forever"/>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </Trigger.EnterActions>
-                                            <Trigger.ExitActions>
-                                                <StopStoryboard BeginStoryboardName="RectAntsStoryboard"/>
-                                            </Trigger.ExitActions>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Rectangle.Style>
-                        </Rectangle>
+                                   Visibility="Collapsed" IsHitTestVisible="False"/>
+                        <!-- Marquee White dashed foreground stroke (no animation during draw) -->
+                        <Rectangle x:Name="SelectionBoxRect"
+                                   Stroke="White" StrokeThickness="1"
+                                   StrokeDashArray="2 2"
+                                   Fill="Transparent"
+                                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                                   Visibility="Collapsed" IsHitTestVisible="False"/>
 
-                        <!-- Selection Polygon Overlay (Photoshop ants style) -->
-                        <!-- Selection Polygon Background (Black dashes) -->
+                        <!-- Committed Selection Polygon Background (Black solid) -->
                         <Path x:Name="SelectionPolygonBg"
-                              Stroke="Black" StrokeThickness="1.2"
+                              Stroke="Black" StrokeThickness="1"
+                              Visibility="Collapsed" IsHitTestVisible="False"/>
+                        <!-- Committed Selection Polygon Foreground (White dashed + marching ants) -->
+                        <Path x:Name="SelectionPolygon"
+                              Stroke="White" StrokeThickness="1"
+                              StrokeDashArray="2 2"
+                              Fill="Transparent"
                               Visibility="Collapsed" IsHitTestVisible="False"/>
 
-                        <!-- Selection Polygon Foreground (White dashes) -->
-                        <Path x:Name="SelectionPolygon"
-                              Stroke="White" StrokeThickness="1.2"
-                              StrokeDashArray="4 4"
+                        <!-- Selection Preview Background (Black solid, static) -->
+                        <Path x:Name="SelectionPreviewPolygonBg"
+                              Stroke="Black" StrokeThickness="1"
                               Fill="Transparent"
-                              Visibility="Collapsed" IsHitTestVisible="False">
-                            <Path.Style>
-                                <Style TargetType="Path">
-                                    <Style.Triggers>
-                                        <Trigger Property="Visibility" Value="Visible">
-                                            <Trigger.EnterActions>
-                                                <BeginStoryboard Name="PathAntsStoryboard">
-                                                    <Storyboard>
-                                                        <DoubleAnimation
-                                                            Storyboard.TargetProperty="StrokeDashOffset"
-                                                            From="0" To="8" Duration="0:0:0.7"
-                                                            RepeatBehavior="Forever"/>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </Trigger.EnterActions>
-                                            <Trigger.ExitActions>
-                                                <StopStoryboard BeginStoryboardName="PathAntsStoryboard"/>
-                                            </Trigger.ExitActions>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Path.Style>
-                        </Path>
-                        <!-- Selection Preview Polygon Overlay (Dashed style for active drawing preview) -->
+                              Visibility="Collapsed" IsHitTestVisible="False"/>
+                        <!-- Selection Preview Foreground (White dashed, static) -->
                         <Path x:Name="SelectionPreviewPolygon"
-                              Stroke="#00cfff" StrokeThickness="1.2"
-                              StrokeDashArray="4 4"
+                              Stroke="White" StrokeThickness="1"
+                              StrokeDashArray="2 2"
                               Fill="Transparent"
                               Visibility="Collapsed" IsHitTestVisible="False"/>
 

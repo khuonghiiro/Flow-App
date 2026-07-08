@@ -580,8 +580,23 @@ namespace FlowMy.Views.NodeControls
 
             if (SelectionPreviewPolygon != null)
             {
-                SelectionPreviewPolygon.Data = scaledGeom.GetOutlinedPathGeometry();
+                var outlinedPreview = scaledGeom.GetOutlinedPathGeometry();
+                double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
+                if (zoom <= 0) zoom = 1.0;
+                double strokeW = 1.0 / zoom;
+                double dashLen = 2.0 / zoom;
+
+                SelectionPreviewPolygon.Data = outlinedPreview;
+                SelectionPreviewPolygon.StrokeThickness = strokeW;
+                SelectionPreviewPolygon.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
                 SelectionPreviewPolygon.Visibility = Visibility.Visible;
+
+                if (SelectionPreviewPolygonBg != null)
+                {
+                    SelectionPreviewPolygonBg.Data = outlinedPreview;
+                    SelectionPreviewPolygonBg.StrokeThickness = strokeW;
+                    SelectionPreviewPolygonBg.Visibility = Visibility.Visible;
+                }
             }
         }
 

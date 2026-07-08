@@ -595,6 +595,34 @@ namespace FlowMy.Views.NodeControls
             e.Handled = true;
         }
 
+        private void BtnPromoteLayer_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_doc == null) return;
+            if (sender is FrameworkElement fe && fe.DataContext is EditorLayer childLayer && childLayer.ParentLayer != null)
+            {
+                var parent = childLayer.ParentLayer;
+
+                // Duplicate the child layer as standalone
+                var newLayer = childLayer.Duplicate();
+                newLayer.ParentLayer = null; // detach from parent
+                newLayer.Name = GenerateCopyName(childLayer.Name);
+
+                // Insert after the parent in the main layers list
+                int parentIndex = _doc.Layers.IndexOf(parent);
+                int insertIndex = parentIndex >= 0 ? parentIndex + 1 : _doc.Layers.Count;
+
+                var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
+                _doc.History.Execute(cmd);
+
+                SelectSingleLayer(newLayer);
+                SyncActiveLayerHighlight();
+                SyncActiveLayerOpacity();
+                SyncBlendModeCombo();
+                OnDocumentModified();
+            }
+            e.Handled = true;
+        }
+
         private void AddNewLayerFromActive()
         {
             int insertIndex = _doc.Layers.Count;
