@@ -42,7 +42,7 @@ namespace FlowMy.Models.ImageEditor.Commands
                 if (isFirstTime)
                 {
                     dup = src.Duplicate();
-                    dup.Name = GenerateCopyName(src.Name);
+                    dup.Name = _doc.GetNextLayerName();
                     _duplicatedLayers.Add(dup);
                 }
                 else

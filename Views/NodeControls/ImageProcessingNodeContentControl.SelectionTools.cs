@@ -242,14 +242,14 @@ namespace FlowMy.Views.NodeControls
             if (_selectionClipboardIsFullLayer && _selectionClipboardLayerSource != null)
             {
                 newLayer = _selectionClipboardLayerSource.Duplicate();
-                newLayer.Name = EditorPanel.GenerateCopyName(_selectionClipboardLayerSource.Name);
+                newLayer.Name = _node.EditorDoc.GetNextLayerName();
             }
             else if (_selectionClipboardPixels != null && _selectionClipboardRect.HasValue)
             {
                 int docW = _node.EditorDoc.Width;
                 int docH = _node.EditorDoc.Height;
 
-                newLayer = new EditorLayer(docW, docH, $"layer {_node.EditorDoc.Layers.Count}");
+                newLayer = new EditorLayer(docW, docH, _node.EditorDoc.GetNextLayerName());
                 newLayer.Clear();
 
                 int startX = (int)_selectionClipboardRect.Value.Left;

@@ -17,6 +17,7 @@ namespace FlowMy.Models.ImageEditor
         private EditorLayer? _activeLayer;
         private Color _foregroundColor = Colors.Black;
         private Color _backgroundColor = Colors.White;
+        private int _nextLayerNumber = 1;
 
         public EditorDocument(int width, int height)
         {
@@ -74,6 +75,7 @@ namespace FlowMy.Models.ImageEditor
 
             doc.Layers.Add(bgLayer);
             doc.ActiveLayer = bgLayer;
+            doc._nextLayerNumber = 1;
             return doc;
         }
 
@@ -89,7 +91,14 @@ namespace FlowMy.Models.ImageEditor
 
             doc.Layers.Add(bgLayer);
             doc.ActiveLayer = bgLayer;
+            doc._nextLayerNumber = 1;
             return doc;
+        }
+
+        /// <summary>Lấy tên layer tiếp theo (số duy nhất, không bao giờ tái sử dụng).</summary>
+        public string GetNextLayerName()
+        {
+            return $"layer {_nextLayerNumber++}";
         }
 
         /// <summary>Thêm 1 layer mới (transparent) lên trên active layer.</summary>
@@ -103,7 +112,7 @@ namespace FlowMy.Models.ImageEditor
             }
 
             if (string.IsNullOrEmpty(name))
-                name = $"layer {Layers.Count}";
+                name = GetNextLayerName();
 
             var layer = new EditorLayer(Width, Height, name);
             Layers.Insert(insertIndex, layer);

@@ -436,7 +436,7 @@ namespace FlowMy.Views.NodeControls
                 var doc = _node.EditorDoc;
                 if (doc != null)
                 {
-                    var textLayer = new EditorLayer(doc.Width, doc.Height, "Text Layer " + (doc.Layers.Count + 1));
+                    var textLayer = new EditorLayer(doc.Width, doc.Height, "Text " + doc.GetNextLayerName());
                     textLayer.IsTextLayer = true;
                     textLayer.TextContent = "Nhập chữ...";
                     textLayer.TextX = clickPos.X;

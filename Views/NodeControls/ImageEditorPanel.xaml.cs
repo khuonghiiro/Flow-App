@@ -177,30 +177,52 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            // Luôn dùng in-place sync để tránh phá huỷ toàn bộ ListBoxItem containers
-            if (LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
+            if (LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> cc)
             {
-                for (int i = 0; i < targetList.Count; i++)
+                // Fast path: kiểm tra nếu giống hệt → skip hoàn toàn
+                if (cc.Count == targetList.Count)
                 {
-                    var item = targetList[i];
-                    if (i < currentCollection.Count && currentCollection[i] == item) continue;
-                    int curIdx = -1;
-                    for (int j = i; j < currentCollection.Count; j++)
+                    bool same = true;
+                    for (int i = 0; i < targetList.Count; i++)
                     {
-                        if (currentCollection[j] == item) { curIdx = j; break; }
+                        if (cc[i] != targetList[i]) { same = false; break; }
                     }
-                    if (curIdx == -1)
+                    if (same) { SyncActiveLayerHighlight(); return; }
+                }
+
+                // Incremental diff: chỉ Insert item mới hoặc Remove item đã xoá
+                // Giống cách Photoshop chỉ thêm/xoá đúng item thay đổi
+                var targetSet = new HashSet<EditorLayer>(targetList);
+                var currentSet = new HashSet<EditorLayer>(cc);
+
+                // Bước 1: Remove các item không còn trong target (lặp ngược để giữ index)
+                for (int i = cc.Count - 1; i >= 0; i--)
+                {
+                    if (!targetSet.Contains(cc[i]))
                     {
-                        currentCollection.Insert(i, item);
-                    }
-                    else if (curIdx != i)
-                    {
-                        currentCollection.Move(curIdx, i);
+                        cc.RemoveAt(i);
                     }
                 }
-                while (currentCollection.Count > targetList.Count)
+
+                // Bước 2: Insert các item mới vào đúng vị trí
+                for (int i = 0; i < targetList.Count; i++)
                 {
-                    currentCollection.RemoveAt(currentCollection.Count - 1);
+                    if (i < cc.Count && cc[i] == targetList[i]) continue;
+
+                    if (!currentSet.Contains(targetList[i]))
+                    {
+                        // Item mới, insert vào đúng vị trí
+                        cc.Insert(i, targetList[i]);
+                    }
+                    else if (i < cc.Count && cc[i] != targetList[i])
+                    {
+                        // Item đã tồn tại nhưng sai vị trí → move
+                        int curIdx = cc.IndexOf(targetList[i]);
+                        if (curIdx >= 0 && curIdx != i)
+                        {
+                            cc.Move(curIdx, i);
+                        }
+                    }
                 }
             }
             else
@@ -211,38 +233,33 @@ namespace FlowMy.Views.NodeControls
             SyncActiveLayerHighlight();
         }
 
+        private EditorLayer? _lastActiveLayer;
+
         private void SyncActiveLayerHighlight()
         {
             if (_doc == null) return;
-            foreach (var layer in _doc.Layers)
-            {
-                layer.IsActive = (layer == _doc.ActiveLayer);
-                if (!_isSyncingSelection)
-                {
-                    layer.IsSelected = (layer == _doc.ActiveLayer);
-                }
-                else
-                {
-                    if (layer.IsActive && !layer.IsSelected)
-                        layer.IsSelected = true;
-                }
+            var activeLayer = _doc.ActiveLayer;
 
-                if (layer.ChildLayers != null)
+            // Chỉ cập nhật layer thay đổi, không loop toàn bộ
+            if (_lastActiveLayer != activeLayer)
+            {
+                if (_lastActiveLayer != null)
                 {
-                    foreach (var child in layer.ChildLayers)
-                    {
-                        child.IsActive = (child == _doc.ActiveLayer);
-                        if (!_isSyncingSelection)
-                        {
-                            child.IsSelected = (child == _doc.ActiveLayer);
-                        }
-                        else
-                        {
-                            if (child.IsActive && !child.IsSelected)
-                                child.IsSelected = true;
-                        }
-                    }
+                    _lastActiveLayer.IsActive = false;
+                    if (!_isSyncingSelection) _lastActiveLayer.IsSelected = false;
                 }
+                if (activeLayer != null)
+                {
+                    activeLayer.IsActive = true;
+                    activeLayer.IsSelected = true;
+                }
+                _lastActiveLayer = activeLayer;
+            }
+            else if (activeLayer != null)
+            {
+                // Đảm bảo active layer luôn selected
+                if (!activeLayer.IsActive) activeLayer.IsActive = true;
+                if (!activeLayer.IsSelected) activeLayer.IsSelected = true;
             }
         }
 
@@ -641,11 +658,11 @@ namespace FlowMy.Views.NodeControls
             if (_doc.ActiveLayer != null)
             {
                 newLayer = _doc.ActiveLayer.Duplicate();
-                newLayer.Name = GenerateCopyName(_doc.ActiveLayer.Name);
+                newLayer.Name = _doc.GetNextLayerName();
             }
             else
             {
-                newLayer = new EditorLayer(_doc.Width, _doc.Height, $"layer {_doc.Layers.Count}");
+                newLayer = new EditorLayer(_doc.Width, _doc.Height, _doc.GetNextLayerName());
             }
 
             var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
@@ -1047,16 +1064,17 @@ namespace FlowMy.Views.NodeControls
             _isSyncingSelection = true;
             try
             {
-                // Re-select the duplicated layers
-                foreach (var l in _doc.Layers)
-                {
-                    l.IsSelected = cmd.DuplicatedLayers.Contains(l);
-                }
+                // Chỉ deselect source layers và select duplicated layers (targeted, không loop all)
+                foreach (var s in selected) s.IsSelected = false;
+                foreach (var d in cmd.DuplicatedLayers) d.IsSelected = true;
             }
             finally
             {
                 _isSyncingSelection = false;
             }
+
+            // Sync _lastActiveLayer vì ActiveLayerChanged bị suppress trong ExecuteHistoryAction
+            _lastActiveLayer = _doc.ActiveLayer;
 
             RefreshLayersList();
             OnDocumentModified();
@@ -1076,6 +1094,9 @@ namespace FlowMy.Views.NodeControls
 
             var cmd = new DeleteLayersCommand(_doc, selected);
             ExecuteHistoryAction(() => _doc.History.Execute(cmd));
+
+            // Sync _lastActiveLayer vì ActiveLayerChanged bị suppress
+            _lastActiveLayer = _doc.ActiveLayer;
 
             RefreshLayersList();
             OnDocumentModified();
