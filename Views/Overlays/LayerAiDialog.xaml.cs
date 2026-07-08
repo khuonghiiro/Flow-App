@@ -135,6 +135,10 @@ namespace FlowMy.Views.Overlays
             BtnCancel.IsEnabled = false;
             BtnSend.Content = "Đang xử lý...";
 
+            var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
+            var placeholders = new List<EditorLayer>();
+            bool success = false;
+
             try
             {
                 BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
@@ -156,6 +160,10 @@ namespace FlowMy.Views.Overlays
                 }
                 BitmapSource processedImg;
 
+                double? targetRatio = null;
+                int? customW = null;
+                int? customH = null;
+
                 int selectedIndex = CmbAspectRatio.SelectedIndex;
                 if (selectedIndex == 0)
                 {
@@ -163,13 +171,13 @@ namespace FlowMy.Views.Overlays
                 }
                 else if (selectedIndex == 6)
                 {
-                    int targetW = int.TryParse(TxtCustomWidth.Text, out var w) ? w : 512;
-                    int targetH = int.TryParse(TxtCustomHeight.Text, out var h) ? h : 512;
-                    processedImg = DrawPreviewImage(sourceImg, null, targetW, targetH, drawCheckerboard: false);
+                    customW = int.TryParse(TxtCustomWidth.Text, out var w) ? w : 512;
+                    customH = int.TryParse(TxtCustomHeight.Text, out var h) ? h : 512;
+                    processedImg = DrawPreviewImage(sourceImg, null, customW, customH, drawCheckerboard: false);
                 }
                 else
                 {
-                    double ratio = selectedIndex switch
+                    targetRatio = selectedIndex switch
                     {
                         1 => 16.0 / 9.0,
                         2 => 4.0 / 3.0,
@@ -178,7 +186,7 @@ namespace FlowMy.Views.Overlays
                         5 => 9.0 / 16.0,
                         _ => 1.0
                     };
-                    processedImg = DrawPreviewImage(sourceImg, ratio, null, null, drawCheckerboard: false);
+                    processedImg = DrawPreviewImage(sourceImg, targetRatio, null, null, drawCheckerboard: false);
                 }
 
                 // Convert to base64
@@ -228,6 +236,20 @@ namespace FlowMy.Views.Overlays
                 // Refresh outputs list in node dialog immediately to reflect the generated overrides
                 RefreshRelatedNodeDialogs();
 
+                // Create variant placeholders in parent's ChildLayers before starting workflow execution
+                for (int i = 0; i < batchSize; i++)
+                {
+                    var placeholder = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
+                    placeholder.ParentLayer = destinationParent;
+                    placeholder.IsLoading = true;
+                    destinationParent.ChildLayers.Add(placeholder);
+                    placeholders.Add(placeholder);
+                }
+
+                // Refresh main panel immediately to render loading placeholders in the layers ListBox
+                var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
+                editorPanel?.RefreshLayersList();
+
                 // Run workflow
                 var vm = _host.ViewModel;
                 if (vm != null)
@@ -254,7 +276,7 @@ namespace FlowMy.Views.Overlays
                     return;
                 }
 
-                // Định tuyến và tìm executionId thực tế được chạy trong workflow
+                // Tìm executionId thực tế được chạy trong workflow
                 string actualRunId = execId;
                 if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
                 {
@@ -311,6 +333,7 @@ namespace FlowMy.Views.Overlays
                 }
 
                 int countAdded = 0;
+                int placeholderIndex = 0;
                 foreach (var entry in list)
                 {
                     if (string.IsNullOrWhiteSpace(entry)) continue;
@@ -323,19 +346,35 @@ namespace FlowMy.Views.Overlays
 
                     if (bmp != null)
                     {
+                        EditorLayer childLayer;
+                        if (placeholderIndex < placeholders.Count)
+                        {
+                            // Overwrite the placeholder layer at this index
+                            childLayer = placeholders[placeholderIndex];
+                            childLayer.IsLoading = false;
+                        }
+                        else
+                        {
+                            // Create a new child layer if we received more variant images than batch size
+                            childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
+                            childLayer.ParentLayer = destinationParent;
+                            destinationParent.ChildLayers.Add(childLayer);
+                        }
+
+                        ProcessAndApplyAiImage(childLayer, bmp, _activeLayer, bounds, targetRatio, customW, customH);
                         countAdded++;
-                        var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
-                        // Create child layer
-                        var childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
-                        childLayer.ParentLayer = destinationParent;
-                        childLayer.CopyFromPreserveAspectRatio(bmp);
-                        destinationParent.ChildLayers.Add(childLayer);
+                        placeholderIndex++;
                     }
+                }
+
+                // Remove any unused placeholders (e.g. if the AI returned fewer images than requested)
+                for (int i = placeholders.Count - 1; i >= placeholderIndex; i--)
+                {
+                    destinationParent.ChildLayers.Remove(placeholders[i]);
                 }
 
                 if (countAdded > 0)
                 {
-                    var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
                     destinationParent.ActiveChildLayer = destinationParent.ChildLayers.Last();
                     _doc.ActiveLayer = destinationParent.ActiveChildLayer;
                     
@@ -349,13 +388,27 @@ namespace FlowMy.Views.Overlays
                     destinationParent.IsSelected = false;
                 }
 
+                success = true;
                 DialogResult = true;
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Đã xảy ra lỗi: " + ex.Message, "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Lỗi thực thi AI: " + ex.Message, "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Error);
                 ResetButtons();
+            }
+            finally
+            {
+                if (!success)
+                {
+                    // Clean up placeholders in case of failure or early abort
+                    foreach (var placeholder in placeholders)
+                    {
+                        destinationParent.ChildLayers.Remove(placeholder);
+                    }
+                    var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
+                    editorPanel?.RefreshLayersList();
+                }
             }
         }
 
@@ -635,6 +688,169 @@ namespace FlowMy.Views.Overlays
             {
                 return new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
             }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T t)
+                {
+                    return t;
+                }
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                {
+                    return childOfChild;
+                }
+            }
+            return null;
+        }
+
+        private void ProcessAndApplyAiImage(
+            EditorLayer childLayer, 
+            BitmapSource aiBmp, 
+            EditorLayer activeLayer, 
+            Rect originalBounds, 
+            double? targetRatio, 
+            int? customW, 
+            int? customH)
+        {
+            // 1. Get original crop dimensions
+            BitmapSource sourceImg = activeLayer.OriginalTransformBitmap ?? activeLayer.Bitmap;
+            int srcW = (int)originalBounds.Width;
+            int srcH = (int)originalBounds.Height;
+            if (srcW <= 0) srcW = sourceImg.PixelWidth;
+            if (srcH <= 0) srcH = sourceImg.PixelHeight;
+
+            // 2. Compute the newW and newH (the size of the image sent to AI)
+            int newW = srcW;
+            int newH = srcH;
+            double currentRatio = (double)srcW / srcH;
+
+            if (customW.HasValue && customH.HasValue)
+            {
+                newW = customW.Value;
+                newH = customH.Value;
+            }
+            else if (targetRatio.HasValue)
+            {
+                double ratio = targetRatio.Value;
+                if (currentRatio > ratio)
+                {
+                    newH = (int)Math.Ceiling(srcW / ratio);
+                }
+                else if (currentRatio < ratio)
+                {
+                    newW = (int)Math.Ceiling(srcH * ratio);
+                }
+            }
+
+            // 3. Resize AI image to newW x newH with High Quality
+            BitmapSource resizedAi;
+            if (aiBmp.PixelWidth == newW && aiBmp.PixelHeight == newH)
+            {
+                resizedAi = aiBmp;
+            }
+            else
+            {
+                var scaleX = (double)newW / aiBmp.PixelWidth;
+                var scaleY = (double)newH / aiBmp.PixelHeight;
+                var scale = new ScaleTransform(scaleX, scaleY);
+                resizedAi = new TransformedBitmap(aiBmp, scale);
+            }
+
+            // 4. Calculate crop offsets (where the original crop region is located in the newW x newH image)
+            double xOffset = 0;
+            double yOffset = 0;
+            BitmapSource croppedAiRegion;
+
+            if (customW.HasValue && customH.HasValue)
+            {
+                // For custom size, the image was scaled (stretched) to customW x customH.
+                // So we just take the whole image, and it will be scaled back to srcW x srcH.
+                croppedAiRegion = resizedAi;
+            }
+            else
+            {
+                xOffset = (newW - srcW) / 2.0;
+                yOffset = (newH - srcH) / 2.0;
+                int cropX = Math.Clamp((int)Math.Round(xOffset), 0, newW - 1);
+                int cropY = Math.Clamp((int)Math.Round(yOffset), 0, newH - 1);
+                int cropW = Math.Clamp(srcW, 1, newW - cropX);
+                int cropH = Math.Clamp(srcH, 1, newH - cropY);
+                
+                croppedAiRegion = new CroppedBitmap(resizedAi, new Int32Rect(cropX, cropY, cropW, cropH));
+            }
+
+            // 5. If it needs to be scaled back to original bounds (for custom size, etc.)
+            if (croppedAiRegion.PixelWidth != srcW || croppedAiRegion.PixelHeight != srcH)
+            {
+                var scaleX = (double)srcW / croppedAiRegion.PixelWidth;
+                var scaleY = (double)srcH / croppedAiRegion.PixelHeight;
+                croppedAiRegion = new TransformedBitmap(croppedAiRegion, new ScaleTransform(scaleX, scaleY));
+            }
+
+            // 6. Mask the AI pixels using the original layer's alpha channel to preserve lasso/polygon shapes
+            var converted = croppedAiRegion;
+            if (croppedAiRegion.Format != PixelFormats.Bgra32)
+            {
+                converted = new FormatConvertedBitmap(croppedAiRegion, PixelFormats.Bgra32, null, 0);
+            }
+
+            int posX = (int)Math.Clamp(originalBounds.X, 0, childLayer.Width - 1);
+            int posY = (int)Math.Clamp(originalBounds.Y, 0, childLayer.Height - 1);
+            int finalW = Math.Clamp(srcW, 1, childLayer.Width - posX);
+            int finalH = Math.Clamp(srcH, 1, childLayer.Height - posY);
+
+            // Resize converted to match final clamped bounds if needed
+            if (converted.PixelWidth != finalW || converted.PixelHeight != finalH)
+            {
+                converted = new TransformedBitmap(converted, new ScaleTransform((double)finalW / converted.PixelWidth, (double)finalH / converted.PixelHeight));
+            }
+
+            var aiPixels = new byte[finalW * 4 * finalH];
+            converted.CopyPixels(aiPixels, finalW * 4, 0);
+
+            var maskPixels = new byte[finalW * 4 * finalH];
+            activeLayer.Bitmap.CopyPixels(new Int32Rect(posX, posY, finalW, finalH), maskPixels, finalW * 4, 0);
+
+            for (int i = 0; i < aiPixels.Length; i += 4)
+            {
+                aiPixels[i + 3] = maskPixels[i + 3];
+            }
+
+            var maskedBmp = new WriteableBitmap(finalW, finalH, 96, 96, PixelFormats.Bgra32, null);
+            maskedBmp.WritePixels(new Int32Rect(0, 0, finalW, finalH), aiPixels, finalW * 4, 0);
+
+            // Render into the destination layer's WriteableBitmap
+            var drawingVisual = new DrawingVisual();
+            RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
+            using (var drawingContext = drawingVisual.RenderOpen())
+            {
+                // Draw the transparent background (clear the layer)
+                drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, childLayer.Width, childLayer.Height));
+                // Draw the masked processed AI cropped region at the exact original position
+                drawingContext.DrawImage(maskedBmp, new Rect(posX, posY, finalW, finalH));
+            }
+
+            var rtb = new RenderTargetBitmap(childLayer.Width, childLayer.Height, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(drawingVisual);
+
+            var finalBmp = new FormatConvertedBitmap(rtb, PixelFormats.Bgra32, null, 0);
+            var stride = childLayer.Width * 4;
+            var pixels = new byte[stride * childLayer.Height];
+            finalBmp.CopyPixels(pixels, stride, 0);
+
+            childLayer.Bitmap.WritePixels(new Int32Rect(0, 0, childLayer.Width, childLayer.Height), pixels, stride, 0);
+            
+            // Set OriginalTransformBitmap and ContentBounds so that transform tool works properly
+            childLayer.OriginalTransformBitmap = new WriteableBitmap(maskedBmp);
+            childLayer.ContentBounds = new Rect(posX, posY, finalW, finalH);
+            
+            childLayer.InvalidateThumbnail();
         }
     }
 }

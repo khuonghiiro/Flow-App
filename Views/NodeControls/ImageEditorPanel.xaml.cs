@@ -212,9 +212,14 @@ namespace FlowMy.Views.NodeControls
             foreach (var layer in _doc.Layers)
             {
                 layer.IsActive = (layer == _doc.ActiveLayer);
-                if (layer.IsActive && !layer.IsSelected)
+                if (!_isSyncingSelection)
                 {
-                    layer.IsSelected = true;
+                    layer.IsSelected = (layer == _doc.ActiveLayer);
+                }
+                else
+                {
+                    if (layer.IsActive && !layer.IsSelected)
+                        layer.IsSelected = true;
                 }
 
                 if (layer.ChildLayers != null)
@@ -222,9 +227,14 @@ namespace FlowMy.Views.NodeControls
                     foreach (var child in layer.ChildLayers)
                     {
                         child.IsActive = (child == _doc.ActiveLayer);
-                        if (child.IsActive && !child.IsSelected)
+                        if (!_isSyncingSelection)
                         {
-                            child.IsSelected = true;
+                            child.IsSelected = (child == _doc.ActiveLayer);
+                        }
+                        else
+                        {
+                            if (child.IsActive && !child.IsSelected)
+                                child.IsSelected = true;
                         }
                     }
                 }
@@ -352,6 +362,13 @@ namespace FlowMy.Views.NodeControls
                 foreach (var l in _doc.Layers)
                 {
                     l.IsSelected = (l == clickedLayer);
+                    if (l.ChildLayers != null)
+                    {
+                        foreach (var child in l.ChildLayers)
+                        {
+                            child.IsSelected = (child == clickedLayer);
+                        }
+                    }
                 }
                 _doc.ActiveLayer = clickedLayer;
             }
@@ -665,11 +682,11 @@ namespace FlowMy.Views.NodeControls
                     
                     if (parent.ActiveChildLayer == layer)
                     {
-                        parent.ActiveChildLayer = null;
+                        parent.ActiveChildLayer = parent.ChildLayers.LastOrDefault();
                     }
                     if (_doc.ActiveLayer == layer)
                     {
-                        _doc.ActiveLayer = parent;
+                        _doc.ActiveLayer = parent.ActiveChildLayer ?? parent;
                     }
                     RefreshLayersList();
                     OnDocumentModified();

@@ -188,9 +188,20 @@
                              <!-- Radio indicator for child layer variants -->
                              <Border x:Name="VariantRadioIndicator" DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,4,0"
                                      VerticalAlignment="Center" CornerRadius="10"
-                                     Background="Transparent" BorderBrush="{StaticResource ipBorder}" BorderThickness="1.5"
+                                     Background="Transparent" BorderThickness="1.5"
                                      Visibility="Collapsed" IsHitTestVisible="False">
-                                 <Ellipse x:Name="VariantRadioDot" Width="8" Height="8" Fill="#00cfff" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                 <Border.Style>
+                                     <Style TargetType="Border">
+                                         <Setter Property="BorderBrush" Value="{StaticResource ipMuted}"/>
+                                     </Style>
+                                 </Border.Style>
+                                 <Ellipse x:Name="VariantRadioDot" Width="8" Height="8" Fill="#00cfff" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                     <Ellipse.Style>
+                                         <Style TargetType="Ellipse">
+                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                         </Style>
+                                     </Ellipse.Style>
+                                 </Ellipse>
                              </Border>
                             <!-- Layer action buttons (right) -->
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
@@ -243,6 +254,11 @@
                                                MaxHeight="30" MaxWidth="42"
                                                HorizontalAlignment="Left" VerticalAlignment="Center"
                                                RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        <!-- Loading Spinner/Hourglass Overlay -->
+                                        <Border Background="#cc0a0c10" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="⏳" Foreground="#00cfff" FontSize="11" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
                                         <!-- Text layer type badge overlay -->
                                         <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                                 Background="#111318" CornerRadius="2" Width="11" Height="11"

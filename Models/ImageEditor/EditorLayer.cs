@@ -60,6 +60,13 @@ namespace FlowMy.Models.ImageEditor
             set => SetField(ref _isActiveVariant, value);
         }
 
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetField(ref _isLoading, value);
+        }
+
         public bool IsChildLayer => ParentLayer != null;
         public bool IsParentOriginalActive => ParentLayer == null && ActiveChildLayer == null;
 
