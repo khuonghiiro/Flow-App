@@ -606,7 +606,7 @@ Height="32"/>
                                        TextWrapping="Wrap"/>
 
                             <!-- Danh sách ReuseRoutes -->
-                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                            <ItemsControl x:Name="ReuseRoutesItemsControl" ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,12"

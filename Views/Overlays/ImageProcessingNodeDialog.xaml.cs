@@ -183,6 +183,51 @@ namespace FlowMy.Views.Overlays
         {
             // Không cần thiết nữa - ViewModel tự động refresh qua binding
         }
+
+        protected override void BeforeSaveOnClose()
+        {
+            FlushReuseRoutesComboBoxBindings();
+            base.BeforeSaveOnClose();
+        }
+
+        private void FlushReuseRoutesComboBoxBindings()
+        {
+            var itemsControl = this.FindName("ReuseRoutesItemsControl") as ItemsControl;
+            if (itemsControl != null)
+            {
+                foreach (var item in itemsControl.Items)
+                {
+                    if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is ContentPresenter contentPresenter)
+                    {
+                        var comboBoxes = FindVisualChildren<ComboBox>(contentPresenter);
+                        foreach (var comboBox in comboBoxes)
+                        {
+                            comboBox.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
+                            comboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
+                        }
+                    }
+                }
+            }
+        }
+
+        private static System.Collections.Generic.IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+                {
+                    var child = VisualTreeHelper.GetChild(parent, i);
+                    if (child is T t)
+                    {
+                        yield return t;
+                    }
+                    foreach (var childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
+        }
     }
 }
 

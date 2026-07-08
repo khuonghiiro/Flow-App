@@ -1361,6 +1361,39 @@ namespace FlowMy.Services.Workflow
 
             var connectionList = connections?.ToList() ?? new List<WorkflowConnection>();
 
+            // Detect cycle: central loop detection checking if node was visited consecutively or too many times.
+            if (executionPath == null)
+            {
+                executionPath = new List<string>();
+            }
+
+            var nodeIndex = executionPath.FindIndex(id => string.Equals(id, node.Id, StringComparison.OrdinalIgnoreCase));
+            if (nodeIndex >= 0)
+            {
+                var isConsecutiveCycle = nodeIndex == executionPath.Count - 1;
+                var occurrenceCount = executionPath.Count(id => string.Equals(id, node.Id, StringComparison.OrdinalIgnoreCase));
+
+                if (isConsecutiveCycle || occurrenceCount > 10)
+                {
+                    var cyclePath = string.Join(" → ", executionPath.Select(id =>
+                    {
+                        var n = connectionList.SelectMany(c => new[] { c.FromNode, c.ToNode })
+                                              .FirstOrDefault(x => x?.Id == id);
+                        return n != null ? $"{n.Title}" : id;
+                    }));
+
+                    var errorMsg = $"⚠️ Vòng lặp vô hạn được phát hiện!\n\n" +
+                                   $"Node \"{node.Title}\" đã được thực thi trước đó trong luồng này.\n" +
+                                   $"Đường đi: {cyclePath} → {node.Title}\n\n" +
+                                   $"Kiểm tra lại cấu hình ReuseRoutes hoặc connections trong workflow.";
+
+                    onNodeFailed?.Invoke(node, errorMsg);
+                    return;
+                }
+            }
+
+            executionPath = new List<string>(executionPath) { node.Id };
+
             // Tính trước tập các node có thể đi tới End (dùng chung cho toàn bộ đệ quy)
             if (reachableToEnd == null)
             {
