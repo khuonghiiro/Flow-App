@@ -145,8 +145,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // cropBase64 được set từ Image Processor khi nhấn "Bắt đầu", không set ở đây
                 SetOutput(imageNode, "promptSize", imageNode.PromptSize.ToString());
                 
-                // aspectRatio: dùng từ IsVerticalMode của node
-                string aspectRatio = imageNode.IsVerticalMode ? "9:16" : "16:9";
+                // aspectRatio: giữ nguyên UserValueOverride hiện tại nếu đã được set, ngược lại dùng IsVerticalMode
+                var aspectPort = imageNode.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase));
+                string aspectRatio = aspectPort?.UserValueOverride;
+                if (string.IsNullOrWhiteSpace(aspectRatio) || string.Equals(aspectRatio, "Default", StringComparison.OrdinalIgnoreCase))
+                {
+                    aspectRatio = imageNode.IsVerticalMode ? "9:16" : "16:9";
+                }
                 SetOutput(imageNode, "aspectRatio", aspectRatio);
                 
                 // prompt: text từ Image Processor

@@ -646,6 +646,8 @@ public partial class FloatingWidgetWindow : Window
         // If snap-to-edge is enabled, snap after collapse
         if (Config.SnapToEdge)
             SnapToNearestEdge();
+
+        ReassertTopmostIfNeeded();
     }
 
     // ═══════════════════════════════════════════
@@ -4418,7 +4420,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private void ReassertTopmostIfNeeded()
     {
-        if (System.Diagnostics.Debugger.IsAttached) return;
+        if (System.Diagnostics.Debugger.IsAttached && _isExpanded) return;
         if (!Config.AlwaysOnTop) return;
 
         // Khi đang maximize, KHÔNG force topmost để user có thể chuyển sang app khác

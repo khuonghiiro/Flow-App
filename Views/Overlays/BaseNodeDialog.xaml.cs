@@ -246,6 +246,13 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        public void RefreshOutputsUI()
+        {
+            if (ViewModel == null) return;
+            ViewModel.RefreshOutputs();
+            LoadOutputs();
+        }
+
         /// <summary>
         /// Tạo UI cho một input item. Có thể override để tùy chỉnh.
         /// </summary>

@@ -425,6 +425,11 @@ namespace FlowMy.ViewModels
             }
         }
 
+        public void RefreshOutputs()
+        {
+            LoadOutputs();
+        }
+
         /// <summary>
         /// Load danh sách cấu hình "tái sử dụng flow" dựa trên các node nối trực tiếp vào/ra node hiện tại.
         /// </summary>

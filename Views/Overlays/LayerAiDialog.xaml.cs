@@ -35,6 +35,9 @@ namespace FlowMy.Views.Overlays
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _doc = doc ?? throw new ArgumentNullException(nameof(doc));
 
+            // Load saved settings
+            LoadSavedSettings();
+
             // Load preview image
             UpdatePreviewImage();
         }
@@ -153,10 +156,12 @@ namespace FlowMy.Views.Overlays
                 var cropBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropBase64", StringComparison.OrdinalIgnoreCase));
                 if (cropBase64Port != null) cropBase64Port.UserValueOverride = b64;
 
+                _node.ProcessorPrompt = TxtPrompt.Text;
                 var promptPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase));
                 if (promptPort != null) promptPort.UserValueOverride = TxtPrompt.Text;
 
                 int batchSize = CmbBatchSize.SelectedIndex + 1;
+                _node.PromptSize = batchSize;
                 var sizePort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "promptSize", StringComparison.OrdinalIgnoreCase));
                 if (sizePort != null) sizePort.UserValueOverride = batchSize.ToString();
 
@@ -171,6 +176,7 @@ namespace FlowMy.Views.Overlays
                 var execIdPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "executionId", StringComparison.OrdinalIgnoreCase));
                 if (execIdPort != null) execIdPort.UserValueOverride = execId;
 
+                _node.IsVerticalMode = (selectedIndex == 4 || selectedIndex == 5);
                 var aspectPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase));
                 if (aspectPort != null)
                 {
@@ -187,6 +193,9 @@ namespace FlowMy.Views.Overlays
                     aspectPort.UserValueOverride = aspectStr;
                 }
 
+                // Refresh outputs list in node dialog immediately to reflect the generated overrides
+                RefreshRelatedNodeDialogs();
+
                 // Run workflow
                 var vm = _host.ViewModel;
                 if (vm != null)
@@ -201,6 +210,9 @@ namespace FlowMy.Views.Overlays
                         }
                     }
                 }
+
+                // Refresh outputs list again to show final outputs/execution IDs
+                RefreshRelatedNodeDialogs();
 
                 // Resolve AI outputs
                 if (string.IsNullOrWhiteSpace(_node.RenderNodeId) || string.IsNullOrWhiteSpace(_node.RenderNodeOutputKey))
@@ -458,6 +470,73 @@ namespace FlowMy.Views.Overlays
                 return value;
             }
             return null;
+        }
+
+        private void LoadSavedSettings()
+        {
+            if (_node == null) return;
+
+            // Load prompt
+            var savedPrompt = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedPrompt))
+            {
+                TxtPrompt.Text = savedPrompt;
+            }
+            else
+            {
+                TxtPrompt.Text = _node.ProcessorPrompt ?? string.Empty;
+            }
+
+            // Load batch size (promptSize)
+            var savedSize = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "promptSize", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedSize) && int.TryParse(savedSize, out var bSize))
+            {
+                CmbBatchSize.SelectedIndex = Math.Clamp(bSize - 1, 0, 3);
+            }
+            else
+            {
+                CmbBatchSize.SelectedIndex = Math.Clamp(_node.PromptSize - 1, 0, 3);
+            }
+
+            // Load aspect ratio
+            var savedAspect = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedAspect))
+            {
+                CmbAspectRatio.SelectedIndex = savedAspect switch
+                {
+                    "16:9" => 1,
+                    "4:3" => 2,
+                    "1:1" => 3,
+                    "3:4" => 4,
+                    "9:16" => 5,
+                    "Free" => 6,
+                    _ => 0
+                };
+            }
+
+            // Load custom width and height
+            var savedWidth = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropWidth", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedWidth))
+            {
+                TxtCustomWidth.Text = savedWidth;
+            }
+
+            var savedHeight = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropHeight", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedHeight))
+            {
+                TxtCustomHeight.Text = savedHeight;
+            }
+        }
+
+        private void RefreshRelatedNodeDialogs()
+        {
+            foreach (Window win in Application.Current.Windows)
+            {
+                if (win is BaseNodeDialog baseDialog && baseDialog.DataContext is FlowMy.ViewModels.BaseNodeDialogViewModel dialogVm && dialogVm.Node == _node)
+                {
+                    baseDialog.Dispatcher.Invoke(() => baseDialog.RefreshOutputsUI());
+                }
+            }
         }
     }
 }
