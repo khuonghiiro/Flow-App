@@ -317,6 +317,15 @@ namespace FlowMy.Views.Overlays
                                 // Dọn dẹp cache của lần chạy này để tránh rò rỉ RAM
                                 WorkflowExecutionService.ExecutionIdMapping.TryRemove(execId, out _);
                                 WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(actualRunId, out _);
+                                
+                                var childPrefix = actualRunId + ":";
+                                var childrenKeys = WorkflowExecutionService.ScopedOutputsHistoricalCache.Keys
+                                    .Where(k => k.StartsWith(childPrefix, StringComparison.OrdinalIgnoreCase))
+                                    .ToList();
+                                foreach (var childKey in childrenKeys)
+                                {
+                                    WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(childKey, out _);
+                                }
 
                                 if (string.IsNullOrWhiteSpace(raw))
                                 {
@@ -593,13 +602,28 @@ namespace FlowMy.Views.Overlays
         {
             if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(executionId)) return null;
 
+            // 1. Thử lấy trực tiếp bằng executionId chính xác
             if (WorkflowExecutionService.ScopedOutputsHistoricalCache.TryGetValue(executionId, out var byNode) &&
                 byNode.TryGetValue(nodeId, out var byKey) &&
                 byKey.TryGetValue(key, out var value))
             {
-                if (value == "—") return null;
-                return value;
+                if (value != "—" && !string.IsNullOrWhiteSpace(value)) return value;
             }
+
+            // 2. Nếu không thấy, duyệt qua cache tìm các run con (ví dụ: executionId + ":dispatch-..." hoặc executionId + ":at-manual-...")
+            var prefix = executionId + ":";
+            foreach (var kv in WorkflowExecutionService.ScopedOutputsHistoricalCache)
+            {
+                if (kv.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (kv.Value.TryGetValue(nodeId, out var childKey) &&
+                        childKey.TryGetValue(key, out var childVal))
+                    {
+                        if (childVal != "—" && !string.IsNullOrWhiteSpace(childVal)) return childVal;
+                    }
+                }
+            }
+
             return null;
         }
 
@@ -792,18 +816,7 @@ namespace FlowMy.Views.Overlays
             }
 
             // 3. Resize AI image to newW x newH with High Quality
-            BitmapSource resizedAi;
-            if (aiBmp.PixelWidth == newW && aiBmp.PixelHeight == newH)
-            {
-                resizedAi = aiBmp;
-            }
-            else
-            {
-                var scaleX = (double)newW / aiBmp.PixelWidth;
-                var scaleY = (double)newH / aiBmp.PixelHeight;
-                var scale = new ScaleTransform(scaleX, scaleY);
-                resizedAi = new TransformedBitmap(aiBmp, scale);
-            }
+            BitmapSource resizedAi = ResizeBitmapHighQuality(aiBmp, newW, newH, uniformToFill: !customW.HasValue);
 
             // 4. Calculate crop offsets (where the original crop region is located in the newW x newH image)
             double xOffset = 0;
@@ -831,9 +844,7 @@ namespace FlowMy.Views.Overlays
             // 5. If it needs to be scaled back to original bounds (for custom size, etc.)
             if (croppedAiRegion.PixelWidth != srcW || croppedAiRegion.PixelHeight != srcH)
             {
-                var scaleX = (double)srcW / croppedAiRegion.PixelWidth;
-                var scaleY = (double)srcH / croppedAiRegion.PixelHeight;
-                croppedAiRegion = new TransformedBitmap(croppedAiRegion, new ScaleTransform(scaleX, scaleY));
+                croppedAiRegion = ResizeBitmapHighQuality(croppedAiRegion, srcW, srcH, uniformToFill: false);
             }
 
             // 6. Mask the AI pixels using the original layer's alpha channel to preserve lasso/polygon shapes
@@ -858,7 +869,7 @@ namespace FlowMy.Views.Overlays
             // Resize converted to match final clamped bounds if needed
             if (converted.PixelWidth != finalW || converted.PixelHeight != finalH)
             {
-                converted = new TransformedBitmap(converted, new ScaleTransform((double)finalW / converted.PixelWidth, (double)finalH / converted.PixelHeight));
+                converted = ResizeBitmapHighQuality(converted, finalW, finalH, uniformToFill: false);
             }
 
             var aiPixels = new byte[finalW * 4 * finalH];
@@ -901,6 +912,40 @@ namespace FlowMy.Views.Overlays
             childLayer.ContentBounds = new Rect(posX, posY, finalW, finalH);
             
             childLayer.InvalidateThumbnail();
+        }
+
+        private static BitmapSource ResizeBitmapHighQuality(BitmapSource source, int targetWidth, int targetHeight, bool uniformToFill = false)
+        {
+            if (source.PixelWidth == targetWidth && source.PixelHeight == targetHeight)
+            {
+                return source;
+            }
+
+            int drawW = targetWidth;
+            int drawH = targetHeight;
+            double x = 0;
+            double y = 0;
+
+            if (uniformToFill)
+            {
+                double scale = Math.Max((double)targetWidth / source.PixelWidth, (double)targetHeight / source.PixelHeight);
+                drawW = (int)Math.Ceiling(source.PixelWidth * scale);
+                drawH = (int)Math.Ceiling(source.PixelHeight * scale);
+                x = (targetWidth - drawW) / 2.0;
+                y = (targetHeight - drawH) / 2.0;
+            }
+
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.HighQuality);
+                dc.DrawImage(source, new Rect(x, y, drawW, drawH));
+            }
+
+            var rtb = new RenderTargetBitmap(targetWidth, targetHeight, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(visual);
+            rtb.Freeze();
+            return rtb;
         }
     }
 }

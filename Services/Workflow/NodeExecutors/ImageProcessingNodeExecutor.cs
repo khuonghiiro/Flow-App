@@ -53,20 +53,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 imageNode.LastExecutionId = env.ExecutionId;
 
                 // Ánh xạ dialog-generated executionId (execId) sang actual runId (env.ExecutionId) để định tuyến kết quả xử lý ảnh chính xác.
-                string? dialogExecId = null;
-                if (FlowMy.Views.Overlays.LayerAiDialog.PendingExecutionIds.TryDequeue(out var dequeuedId))
+                // Chỉ thực hiện map ở lần chạy đầu tiên của lượt chạy này (tránh việc lặp lại trong vòng lặp quay lui cướp hàng đợi)
+                if (!WorkflowExecutionService.ExecutionIdMapping.Values.Contains(env.ExecutionId))
                 {
-                    dialogExecId = dequeuedId;
-                }
-                else
-                {
-                    var execIdPort = imageNode.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "executionId", StringComparison.OrdinalIgnoreCase));
-                    dialogExecId = execIdPort?.UserValueOverride;
-                }
+                    string? dialogExecId = null;
+                    if (FlowMy.Views.Overlays.LayerAiDialog.PendingExecutionIds.TryDequeue(out var dequeuedId))
+                    {
+                        dialogExecId = dequeuedId;
+                    }
+                    else
+                    {
+                        var execIdPort = imageNode.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "executionId", StringComparison.OrdinalIgnoreCase));
+                        dialogExecId = execIdPort?.UserValueOverride;
+                    }
 
-                if (!string.IsNullOrWhiteSpace(dialogExecId))
-                {
-                    WorkflowExecutionService.ExecutionIdMapping[dialogExecId] = env.ExecutionId;
+                    if (!string.IsNullOrWhiteSpace(dialogExecId))
+                    {
+                        WorkflowExecutionService.ExecutionIdMapping[dialogExecId] = env.ExecutionId;
+                    }
                 }
 
                 // Clear UserValueOverride cho các key bị skip để tránh giá trị cũ từ lần chạy trước
@@ -142,17 +146,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 var outBase64 = Convert.ToBase64String(outBytes);
 
-                SetOutput(imageNode, "imagePath", finalImagePath);
-                SetOutput(imageNode, "imageBase64", outBase64);
+                SetOutput(imageNode, "imagePath", finalImagePath, env);
+                SetOutput(imageNode, "imageBase64", outBase64, env);
 
                 // Tạo danh sách base64 cho từng vùng crop đã được định nghĩa
                 // Đồng thời set LastExecutionId cho từng crop để map ảnh render về đúng crop
                 var cropList = await GenerateCropBase64ListAsync(imageNode, inputBytes, env.ExecutionId, env.CancellationToken).ConfigureAwait(false);
-                SetOutput(imageNode, "cropListBase64", JsonSerializer.Serialize(cropList));
+                SetOutput(imageNode, "cropListBase64", JsonSerializer.Serialize(cropList), env);
 
                 // Thêm các key mới: cropBase64 (đã được set từ Image Processor), aspectRatio, promptSize, prompt
                 // cropBase64 được set từ Image Processor khi nhấn "Bắt đầu", không set ở đây
-                SetOutput(imageNode, "promptSize", imageNode.PromptSize.ToString());
+                SetOutput(imageNode, "promptSize", imageNode.PromptSize.ToString(), env);
                 
                 // aspectRatio: giữ nguyên UserValueOverride hiện tại nếu đã được set, ngược lại dùng IsVerticalMode
                 var aspectPort = imageNode.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase));
@@ -161,13 +165,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     aspectRatio = imageNode.IsVerticalMode ? "9:16" : "16:9";
                 }
-                SetOutput(imageNode, "aspectRatio", aspectRatio);
+                SetOutput(imageNode, "aspectRatio", aspectRatio, env);
                 
                 // prompt: text từ Image Processor
-                SetOutput(imageNode, "prompt", imageNode.ProcessorPrompt ?? string.Empty);
+                SetOutput(imageNode, "prompt", imageNode.ProcessorPrompt ?? string.Empty, env);
 
                 // executionId: id duy nhất cho lần chạy này, dùng để map ảnh render về đúng crop
-                SetOutput(imageNode, "executionId", env.ExecutionId);
+                SetOutput(imageNode, "executionId", env.ExecutionId, env);
             }
             catch (Exception ex)
             {
@@ -183,7 +187,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await env.TraverseOutputsAsync(imageNode);
         }
 
-        private static void SetOutput(ImageProcessingNode node, string key, string value)
+        private static void SetOutput(ImageProcessingNode node, string key, string value, NodeExecutionEnvironment env)
         {
             // Kiểm tra SkipOutputs: nếu key bị skip thì không set output
             if (node.SkipOutputs != null && node.SkipOutputs.Contains(key))
@@ -194,6 +198,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (port != null)
             {
                 port.UserValueOverride = value ?? string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(env.ExecutionId))
+            {
+                env.Service.SetScopedNodeStringOutput(env.ExecutionId, node.Id, key, value);
             }
         }
 
