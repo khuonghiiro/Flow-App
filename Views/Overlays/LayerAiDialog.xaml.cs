@@ -137,7 +137,6 @@ namespace FlowMy.Views.Overlays
 
             var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
             var placeholders = new List<EditorLayer>();
-            bool success = false;
 
             try
             {
@@ -250,165 +249,209 @@ namespace FlowMy.Views.Overlays
                 var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
                 editorPanel?.RefreshLayersList();
 
-                // Run workflow
-                var vm = _host.ViewModel;
-                if (vm != null)
-                {
-                    var vmType = vm.GetType();
-                    var startTestMethod = vmType.GetMethod("StartTest", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (startTestMethod != null)
-                    {
-                        if (startTestMethod.Invoke(vm, null) is Task t)
-                        {
-                            await t;
-                        }
-                    }
-                }
+                // Close dialog immediately — workflow runs in background, results applied to placeholders
+                DialogResult = true;
+                Close();
 
-                // Refresh outputs list again to show final outputs/execution IDs
-                RefreshRelatedNodeDialogs();
+                // Capture references needed for background processing
+                var activeLayerRef = _activeLayer;
+                var docRef = _doc;
+                var nodeRef = _node;
+                var hostRef = _host;
+                var ownerRef = this.Owner;
 
-                // Resolve AI outputs
-                if (string.IsNullOrWhiteSpace(_node.RenderNodeId) || string.IsNullOrWhiteSpace(_node.RenderNodeOutputKey))
-                {
-                    MessageBox.Show("Chưa cấu hình Render Node Id hoặc Output Key trong thiết lập Node.", "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    ResetButtons();
-                    return;
-                }
-
-                // Tìm executionId thực tế được chạy trong workflow
-                string actualRunId = execId;
-                if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
-                {
-                    actualRunId = mappedRunId;
-                }
-
-                var raw = ResolveFromHistoricalCache(_node.RenderNodeId, _node.RenderNodeOutputKey, actualRunId);
-                if (string.IsNullOrWhiteSpace(raw))
-                {
-                    raw = ResolveFromNodeIfAny(_host, _node.RenderNodeId, _node.RenderNodeOutputKey);
-                }
-
-                // Dọn dẹp cache của lần chạy này để tránh rò rỉ RAM
-                WorkflowExecutionService.ExecutionIdMapping.TryRemove(execId, out _);
-                WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(actualRunId, out _);
-
-                if (string.IsNullOrWhiteSpace(raw))
-                {
-                    MessageBox.Show("Node render chưa có dữ liệu output trả về từ AI.", "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    ResetButtons();
-                    return;
-                }
-
-                raw = raw.Trim();
-                List<string> list = new List<string>();
-                if (raw.StartsWith("["))
+                // Fire-and-forget: run workflow, then process results on UI thread
+                _ = Task.Run(async () =>
                 {
                     try
                     {
-                        list = System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw) ?? new List<string>();
-                    }
-                    catch
-                    {
-                        var inner = raw.Trim();
-                        if (inner.StartsWith("[")) inner = inner.Substring(1);
-                        if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
-                        var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                         .Select(p => p.Trim().Trim('"'))
-                                         .Where(p => !string.IsNullOrWhiteSpace(p))
-                                         .ToList();
-                        list = parts.Count > 0 ? parts : new List<string> { raw };
-                    }
-                }
-                else
-                {
-                    list = new List<string> { raw };
-                }
-
-                if (list.Count == 0)
-                {
-                    MessageBox.Show("Output của Render Node rỗng.", "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    ResetButtons();
-                    return;
-                }
-
-                int countAdded = 0;
-                int placeholderIndex = 0;
-                foreach (var entry in list)
-                {
-                    if (string.IsNullOrWhiteSpace(entry)) continue;
-
-                    BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry.Trim());
-                    if (bmp == null)
-                    {
-                        bmp = CreateBitmapFromBase64(entry.Trim());
-                    }
-
-                    if (bmp != null)
-                    {
-                        EditorLayer childLayer;
-                        if (placeholderIndex < placeholders.Count)
+                        // Run workflow on background thread via reflection
+                        await Application.Current.Dispatcher.InvokeAsync(async () =>
                         {
-                            // Overwrite the placeholder layer at this index
-                            childLayer = placeholders[placeholderIndex];
-                            childLayer.IsLoading = false;
-                        }
-                        else
+                            var vm = hostRef.ViewModel;
+                            if (vm != null)
+                            {
+                                var vmType = vm.GetType();
+                                var startTestMethod = vmType.GetMethod("StartTest", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                if (startTestMethod != null)
+                                {
+                                    if (startTestMethod.Invoke(vm, null) is Task t)
+                                    {
+                                        await t;
+                                    }
+                                }
+                            }
+                        }).Task.Unwrap();
+
+                        // Process results on UI thread
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
-                            // Create a new child layer if we received more variant images than batch size
-                            childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
-                            childLayer.ParentLayer = destinationParent;
-                            destinationParent.ChildLayers.Add(childLayer);
-                        }
+                            try
+                            {
+                                // Refresh outputs list again to show final outputs/execution IDs
+                                RefreshRelatedNodeDialogs();
 
-                        ProcessAndApplyAiImage(childLayer, bmp, _activeLayer, bounds, targetRatio, customW, customH);
-                        countAdded++;
-                        placeholderIndex++;
+                                // Resolve AI outputs
+                                if (string.IsNullOrWhiteSpace(nodeRef.RenderNodeId) || string.IsNullOrWhiteSpace(nodeRef.RenderNodeOutputKey))
+                                {
+                                    CleanupPlaceholders(placeholders, destinationParent, ownerRef);
+                                    return;
+                                }
+
+                                // Tìm executionId thực tế được chạy trong workflow
+                                string actualRunId = execId;
+                                if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
+                                {
+                                    actualRunId = mappedRunId;
+                                }
+
+                                var raw = ResolveFromHistoricalCache(nodeRef.RenderNodeId, nodeRef.RenderNodeOutputKey, actualRunId);
+                                if (string.IsNullOrWhiteSpace(raw))
+                                {
+                                    raw = ResolveFromNodeIfAny(hostRef, nodeRef.RenderNodeId, nodeRef.RenderNodeOutputKey);
+                                }
+
+                                // Dọn dẹp cache của lần chạy này để tránh rò rỉ RAM
+                                WorkflowExecutionService.ExecutionIdMapping.TryRemove(execId, out _);
+                                WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(actualRunId, out _);
+
+                                if (string.IsNullOrWhiteSpace(raw))
+                                {
+                                    CleanupPlaceholders(placeholders, destinationParent, ownerRef);
+                                    return;
+                                }
+
+                                raw = raw.Trim();
+                                List<string> list = new List<string>();
+                                if (raw.StartsWith("["))
+                                {
+                                    try
+                                    {
+                                        list = System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw) ?? new List<string>();
+                                    }
+                                    catch
+                                    {
+                                        var inner = raw.Trim();
+                                        if (inner.StartsWith("[")) inner = inner.Substring(1);
+                                        if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
+                                        var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                                         .Select(p => p.Trim().Trim('"'))
+                                                         .Where(p => !string.IsNullOrWhiteSpace(p))
+                                                         .ToList();
+                                        list = parts.Count > 0 ? parts : new List<string> { raw };
+                                    }
+                                }
+                                else
+                                {
+                                    list = new List<string> { raw };
+                                }
+
+                                if (list.Count == 0)
+                                {
+                                    CleanupPlaceholders(placeholders, destinationParent, ownerRef);
+                                    return;
+                                }
+
+                                int countAdded = 0;
+                                int placeholderIndex = 0;
+                                foreach (var entry in list)
+                                {
+                                    if (string.IsNullOrWhiteSpace(entry)) continue;
+
+                                    BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry.Trim());
+                                    if (bmp == null)
+                                    {
+                                        bmp = CreateBitmapFromBase64(entry.Trim());
+                                    }
+
+                                    if (bmp != null)
+                                    {
+                                        EditorLayer childLayer;
+                                        if (placeholderIndex < placeholders.Count)
+                                        {
+                                            childLayer = placeholders[placeholderIndex];
+                                            childLayer.IsLoading = false;
+                                        }
+                                        else
+                                        {
+                                            childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"{destinationParent.Name} variant {destinationParent.ChildLayers.Count + 1}");
+                                            childLayer.ParentLayer = destinationParent;
+                                            destinationParent.ChildLayers.Add(childLayer);
+                                        }
+
+                                        ProcessAndApplyAiImage(childLayer, bmp, activeLayerRef, bounds, targetRatio, customW, customH);
+                                        countAdded++;
+                                        placeholderIndex++;
+                                    }
+                                }
+
+                                // Remove any unused placeholders
+                                for (int i = placeholders.Count - 1; i >= placeholderIndex; i--)
+                                {
+                                    destinationParent.ChildLayers.Remove(placeholders[i]);
+                                }
+
+                                if (countAdded > 0)
+                                {
+                                    destinationParent.ActiveChildLayer = destinationParent.ChildLayers.Last();
+                                    docRef.ActiveLayer = destinationParent.ActiveChildLayer;
+
+                                    foreach (var child in destinationParent.ChildLayers)
+                                    {
+                                        child.IsActive = (child == destinationParent.ActiveChildLayer);
+                                        child.IsSelected = (child == destinationParent.ActiveChildLayer);
+                                    }
+                                    destinationParent.IsActive = false;
+                                    destinationParent.IsSelected = false;
+                                }
+
+                                // Refresh panel to show AI results and trigger re-composite
+                                var panel = FindVisualChild<ImageEditorPanel>(ownerRef);
+                                panel?.RefreshLayersList();
+                                panel?.OnDocumentModified();
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine("AI result processing error: " + ex.Message);
+                                CleanupPlaceholders(placeholders, destinationParent, ownerRef);
+                            }
+                        });
                     }
-                }
-
-                // Remove any unused placeholders (e.g. if the AI returned fewer images than requested)
-                for (int i = placeholders.Count - 1; i >= placeholderIndex; i--)
-                {
-                    destinationParent.ChildLayers.Remove(placeholders[i]);
-                }
-
-                if (countAdded > 0)
-                {
-                    destinationParent.ActiveChildLayer = destinationParent.ChildLayers.Last();
-                    _doc.ActiveLayer = destinationParent.ActiveChildLayer;
-                    
-                    // Sync active variants status
-                    foreach (var child in destinationParent.ChildLayers)
+                    catch (Exception ex)
                     {
-                        child.IsActive = (child == destinationParent.ActiveChildLayer);
-                        child.IsSelected = (child == destinationParent.ActiveChildLayer);
+                        System.Diagnostics.Debug.WriteLine("AI workflow error: " + ex.Message);
+                        Application.Current?.Dispatcher?.Invoke(() =>
+                        {
+                            CleanupPlaceholders(placeholders, destinationParent, ownerRef);
+                        });
                     }
-                    destinationParent.IsActive = false;
-                    destinationParent.IsSelected = false;
-                }
-
-                success = true;
-                DialogResult = true;
-                Close();
+                });
             }
             catch (Exception ex)
             {
+                // Pre-workflow error (e.g. image processing) — clean up placeholders and show error
+                foreach (var placeholder in placeholders)
+                {
+                    destinationParent.ChildLayers.Remove(placeholder);
+                }
+                var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
+                editorPanel?.RefreshLayersList();
+
                 MessageBox.Show("Lỗi thực thi AI: " + ex.Message, "AI Layer Editor", MessageBoxButton.OK, MessageBoxImage.Error);
                 ResetButtons();
             }
-            finally
+        }
+
+        private void CleanupPlaceholders(List<EditorLayer> placeholders, EditorLayer parent, Window? owner)
+        {
+            foreach (var placeholder in placeholders)
             {
-                if (!success)
-                {
-                    // Clean up placeholders in case of failure or early abort
-                    foreach (var placeholder in placeholders)
-                    {
-                        destinationParent.ChildLayers.Remove(placeholder);
-                    }
-                    var editorPanel = FindVisualChild<ImageEditorPanel>(this.Owner);
-                    editorPanel?.RefreshLayersList();
-                }
+                parent.ChildLayers.Remove(placeholder);
+            }
+            if (owner != null)
+            {
+                var panel = FindVisualChild<ImageEditorPanel>(owner);
+                panel?.RefreshLayersList();
             }
         }
 

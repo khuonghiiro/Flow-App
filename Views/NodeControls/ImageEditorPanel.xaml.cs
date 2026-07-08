@@ -350,6 +350,7 @@ namespace FlowMy.Views.NodeControls
             SyncActiveLayerHighlight();
             SyncActiveLayerOpacity();
             SyncBlendModeCombo();
+            OnDocumentModified();
         }
 
         private void SelectSingleLayer(EditorLayer clickedLayer)
@@ -371,6 +372,18 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
                 _doc.ActiveLayer = clickedLayer;
+
+                // Sync ActiveChildLayer on the parent so radio indicators update correctly
+                if (clickedLayer.ParentLayer != null)
+                {
+                    // User clicked a child variant → activate it on the parent
+                    clickedLayer.ParentLayer.ActiveChildLayer = clickedLayer;
+                }
+                else
+                {
+                    // User clicked a parent layer → deactivate any active child variant
+                    clickedLayer.ActiveChildLayer = null;
+                }
             }
             finally
             {
@@ -972,7 +985,7 @@ namespace FlowMy.Views.NodeControls
         /// <summary>Gọi khi document thay đổi — trigger re-composite.</summary>
         public event Action? DocumentModified;
 
-        private void OnDocumentModified()
+        internal void OnDocumentModified()
         {
             DocumentModified?.Invoke();
         }
