@@ -140,8 +140,9 @@ namespace FlowMy.Models.ImageEditor
         }
 
         public Rect ContentBounds { get; set; } = Rect.Empty;
+        public Geometry? ContentGeometry { get; set; }
 
-        private static Rect CalculateContentBounds(WriteableBitmap bitmap)
+        public static Rect CalculateContentBounds(WriteableBitmap bitmap)
         {
             int w = bitmap.PixelWidth;
             int h = bitmap.PixelHeight;
@@ -336,6 +337,20 @@ namespace FlowMy.Models.ImageEditor
             copy.TextFontFamily = TextFontFamily;
             copy.TextFontStyle = TextFontStyle;
             copy.IsSelected = IsSelected;
+            copy.ContentBounds = ContentBounds;
+            if (OriginalTransformBitmap != null)
+            {
+                copy.OriginalTransformBitmap = new WriteableBitmap(OriginalTransformBitmap);
+            }
+            copy.LayerScaleX = LayerScaleX;
+            copy.LayerScaleY = LayerScaleY;
+            copy.LayerAngle = LayerAngle;
+            copy.LayerTranslateX = LayerTranslateX;
+            copy.LayerTranslateY = LayerTranslateY;
+            if (ContentGeometry != null)
+            {
+                copy.ContentGeometry = ContentGeometry.Clone();
+            }
 
             var stride = Width * 4;
             copy.Bitmap.Lock();
@@ -380,54 +395,61 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Tạo thumbnail cho layer list. Detect landscape/portrait → tính tỉ lệ đúng.</summary>
         private BitmapSource GenerateThumbnail(int maxSize = 0)
         {
-            // Xác định ảnh ngang hay dọc, tính tỉ lệ từ dimension lớn hơn
-            int thumbW, thumbH;
-            double scale;
-
-            if (Width >= Height)
+            // Determine crop bounds
+            Rect bounds = ContentBounds;
+            if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
             {
-                // Ảnh ngang hoặc vuông: fix width = 128, tính height theo tỉ lệ
+                bounds = CalculateContentBounds(Bitmap);
+            }
+            int bx = (int)Math.Max(0, bounds.X);
+            int by = (int)Math.Max(0, bounds.Y);
+            int bw = (int)Math.Min(Width - bx, bounds.Width);
+            int bh = (int)Math.Min(Height - by, bounds.Height);
+
+            if (bw <= 0 || bh <= 0)
+            {
+                bx = 0;
+                by = 0;
+                bw = Width;
+                bh = Height;
+            }
+
+            // Target dimensions
+            int thumbW, thumbH;
+            if (bw >= bh)
+            {
                 int targetW = maxSize > 0 ? maxSize : 128;
-                scale = (double)targetW / Width;
+                double scale = (double)targetW / bw;
                 thumbW = targetW;
-                thumbH = Math.Max(1, (int)(Height * scale));
+                thumbH = Math.Max(1, (int)(bh * scale));
             }
             else
             {
-                // Ảnh dọc: fix height = 88, tính width theo tỉ lệ
                 int targetH = maxSize > 0 ? maxSize : 88;
-                scale = (double)targetH / Height;
+                double scale = (double)targetH / bh;
                 thumbH = targetH;
-                thumbW = Math.Max(1, (int)(Width * scale));
+                thumbW = Math.Max(1, (int)(bw * scale));
             }
 
-            var thumb = new WriteableBitmap(thumbW, thumbH, 96, 96, PixelFormats.Bgra32, null);
-            // Simple nearest-neighbor downsample
-            var srcStride = Width * 4;
-            var srcPixels = new byte[srcStride * Height];
-            Bitmap.CopyPixels(srcPixels, srcStride, 0);
+            // Crop the bitmap first natively
+            BitmapSource source = Bitmap;
+            if (bx > 0 || by > 0 || bw < Width || bh < Height)
+            {
+                source = new CroppedBitmap(Bitmap, new Int32Rect(bx, by, bw, bh));
+            }
 
+            // Scale it down natively using WPF layout pipelines
+            var scaleTransform = new ScaleTransform((double)thumbW / bw, (double)thumbH / bh);
+            var scaled = new TransformedBitmap(source, scaleTransform);
+            
+            // Convert to Bgra32
+            var formatted = new FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
+
+            // Copy to a new independent WriteableBitmap to prevent freezing the source layer's WriteableBitmap
+            var thumb = new WriteableBitmap(thumbW, thumbH, 96, 96, PixelFormats.Bgra32, null);
             var dstStride = thumbW * 4;
             var dstPixels = new byte[dstStride * thumbH];
-
-            for (int y = 0; y < thumbH; y++)
-            {
-                int srcY = (int)(y / scale);
-                if (srcY >= Height) srcY = Height - 1;
-                for (int x = 0; x < thumbW; x++)
-                {
-                    int srcX = (int)(x / scale);
-                    if (srcX >= Width) srcX = Width - 1;
-
-                    int srcIdx = srcY * srcStride + srcX * 4;
-                    int dstIdx = y * dstStride + x * 4;
-                    dstPixels[dstIdx] = srcPixels[srcIdx];
-                    dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1];
-                    dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2];
-                    dstPixels[dstIdx + 3] = srcPixels[srcIdx + 3];
-                }
-            }
-
+            formatted.CopyPixels(dstPixels, dstStride, 0);
             thumb.WritePixels(new Int32Rect(0, 0, thumbW, thumbH), dstPixels, dstStride, 0);
             thumb.Freeze();
             return thumb;

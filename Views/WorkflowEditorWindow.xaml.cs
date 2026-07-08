@@ -1818,6 +1818,25 @@ namespace FlowMy.Views
             ViewModel.SavedScreenHeight = ActualHeight > 0 ? ActualHeight : SystemParameters.PrimaryScreenHeight;
         }
 
+        private ImageProcessingNodeContentControl? GetActiveImageEditorNode()
+        {
+            var underMouse = GetImageEditorNodeUnderMouse();
+            if (underMouse != null) return underMouse;
+
+            if (Keyboard.FocusedElement is DependencyObject depObj)
+            {
+                while (depObj != null)
+                {
+                    if (depObj is ImageProcessingNodeContentControl ipNode)
+                    {
+                        return ipNode;
+                    }
+                    depObj = VisualTreeHelper.GetParent(depObj);
+                }
+            }
+            return null;
+        }
+
         private ImageProcessingNodeContentControl? GetImageEditorNodeUnderMouse()
         {
             var mousePos = Mouse.GetPosition(this);
@@ -1839,10 +1858,14 @@ namespace FlowMy.Views
 
         private void WorkflowEditorWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            var imageEditor = GetImageEditorNodeUnderMouse();
+            var imageEditor = GetActiveImageEditorNode();
             if (imageEditor != null && imageEditor.CanHandleKey(e))
             {
-                return;
+                imageEditor.HandleShortcutKey(e);
+                if (e.Handled)
+                {
+                    return;
+                }
             }
 
             // Undo/Redo: Ctrl+Z / Ctrl+Y (trước clipboard shortcuts vì cùng modifier Ctrl)

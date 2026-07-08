@@ -177,7 +177,7 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            if (LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
+            if (_isDraggingLayer && LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
             {
                 // Đồng bộ phần tử in-place để tránh huỷ container (giữ mouse capture khi kéo thả)
                 for (int i = 0; i < targetList.Count; i++)

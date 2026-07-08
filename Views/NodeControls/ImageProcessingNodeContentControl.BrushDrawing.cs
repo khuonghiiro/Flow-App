@@ -204,6 +204,7 @@ namespace FlowMy.Views.NodeControls
         private Point _moveStartMousePos;
         private Geometry? _moveInitialGeometry;
         private byte[]? _moveInitialFullPixels;
+        private EditorLayer? _movingLayer;
         private double _accumulatedMoveDx = 0;
         private double _accumulatedMoveDy = 0;
 
@@ -269,6 +270,7 @@ namespace FlowMy.Views.NodeControls
                 if (!canGrab) return; // ignore click
 
                 _isMovingLayer = true;
+                _movingLayer = activeLayer;
                 _moveStartMousePos = clickPos;
 
                 int w = activeLayer.Width;
@@ -721,25 +723,27 @@ namespace FlowMy.Views.NodeControls
                 _isMovingLayer = false;
                 MainScrollViewer.ReleaseMouseCapture();
 
-                if (activeLayer != null && _moveInitialFullPixels != null)
+                var targetLayer = _movingLayer ?? activeLayer;
+                if (targetLayer != null && _moveInitialFullPixels != null)
                 {
                     if (_moveInitialGeometry != null)
                     {
-                        int dx = (int)Math.Round(activeLayer.TempMoveDx);
-                        int dy = (int)Math.Round(activeLayer.TempMoveDy);
+                        int dx = (int)Math.Round(targetLayer.TempMoveDx);
+                        int dy = (int)Math.Round(targetLayer.TempMoveDy);
 
-                        activeLayer.TempMoveDx = 0;
-                        activeLayer.TempMoveDy = 0;
-                        activeLayer.TempSelectionGeometry = null;
+                        targetLayer.TempMoveDx = 0;
+                        targetLayer.TempMoveDy = 0;
+                        targetLayer.TempSelectionGeometry = null;
 
-                        CommitSelectionMove(activeLayer, _moveInitialFullPixels, dx, dy);
+                        CommitSelectionMove(targetLayer, _moveInitialFullPixels, dx, dy);
                         _moveInitialFullPixels = null;
                         _moveInitialGeometry = null;
+                        _movingLayer = null;
                     }
                     else
                     {
-                        _accumulatedMoveDx = activeLayer.TempMoveDx;
-                        _accumulatedMoveDy = activeLayer.TempMoveDy;
+                        _accumulatedMoveDx = targetLayer.TempMoveDx;
+                        _accumulatedMoveDy = targetLayer.TempMoveDy;
                     }
                 }
                 return;
@@ -998,6 +1002,47 @@ namespace FlowMy.Views.NodeControls
             string newLayerName = $"{originalLayer.Name} Selection";
             var newLayer = new EditorLayer(w, h, newLayerName);
             newLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), newLayerPixels, stride, 0);
+
+            // Create a tight WriteableBitmap of size bw x bh for OriginalTransformBitmap
+            int bw = endX - startX + 1;
+            int bh = endY - startY + 1;
+            if (bw > 0 && bh > 0)
+            {
+                int tightStride = bw * 4;
+                byte[] tightPixels = new byte[tightStride * bh];
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * stride;
+                    int tightRowOffset = (y - startY) * tightStride;
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        if (IsInsideSelection(x, y))
+                        {
+                            int idx = rowOffset + x * 4;
+                            int tightIdx = tightRowOffset + (x - startX) * 4;
+                            tightPixels[tightIdx] = sourceFullPixels[idx];
+                            tightPixels[tightIdx + 1] = sourceFullPixels[idx + 1];
+                            tightPixels[tightIdx + 2] = sourceFullPixels[idx + 2];
+                            tightPixels[tightIdx + 3] = sourceFullPixels[idx + 3];
+                        }
+                    }
+                }
+                var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
+                origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
+                newLayer.OriginalTransformBitmap = origBmp;
+                newLayer.ContentBounds = new Rect(startX + dx, startY + dy, bw, bh);
+            }
+
+            if (_activeSelectionGeometry != null)
+            {
+                var copyGeom = _activeSelectionGeometry.Clone();
+                if (dx != 0 || dy != 0)
+                {
+                    copyGeom.Transform = new TranslateTransform(dx, dy);
+                }
+                newLayer.ContentGeometry = copyGeom.GetOutlinedPathGeometry();
+            }
+
             newLayer.InvalidateThumbnail();
 
             // Insert new layer above originalLayer
@@ -1121,11 +1166,10 @@ namespace FlowMy.Views.NodeControls
                 double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
                 if (zoom <= 0) zoom = 1.0;
                 double strokeW = 1.0 / zoom;
-                double dashLen = 2.0 / zoom;
 
                 SelectionPolygon.Data = outlined;
                 SelectionPolygon.StrokeThickness = strokeW;
-                SelectionPolygon.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
+                SelectionPolygon.StrokeDashArray = new DoubleCollection { 2.0, 2.0 };
                 SelectionPolygon.Visibility = Visibility.Visible;
 
                 if (SelectionPolygonBg != null)
@@ -1261,12 +1305,11 @@ namespace FlowMy.Views.NodeControls
             if (zoom <= 0) zoom = 1.0;
             // Photoshop always shows ~1px stroke on screen
             double strokeW = 1.0 / zoom;
-            double dashLen = 2.0 / zoom;
 
             if (SelectionPreviewPolygon != null)
             {
                 SelectionPreviewPolygon.StrokeThickness = strokeW;
-                SelectionPreviewPolygon.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
+                SelectionPreviewPolygon.StrokeDashArray = new DoubleCollection { 2.0, 2.0 };
             }
             if (SelectionPreviewPolygonBg != null)
             {
@@ -1278,7 +1321,7 @@ namespace FlowMy.Views.NodeControls
             if (SelectionBoxRect != null && SelectionBoxRect.Visibility == Visibility.Visible)
             {
                 SelectionBoxRect.StrokeThickness = strokeW;
-                SelectionBoxRect.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
+                SelectionBoxRect.StrokeDashArray = new DoubleCollection { 2.0, 2.0 };
             }
             // Sync black background for marquee rect
             if (SelectionBoxRectBg != null && SelectionBoxRect != null && SelectionBoxRect.Visibility == Visibility.Visible)
@@ -1296,7 +1339,7 @@ namespace FlowMy.Views.NodeControls
         {
             // Do not intercept if mouse is outside and not in FloatingWidgetWindow
             bool isInWidget = _ownerWindow is FlowMy.Views.Overlays.FloatingWidgetWindow;
-            if (!isInWidget && !this.IsMouseOver)
+            if (!isInWidget && !this.IsMouseOver && !this.IsKeyboardFocusWithin)
             {
                 return;
             }
@@ -1436,7 +1479,7 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                // Ctrl+A: Select All — create selection encompassing the entire active layer
+                // Ctrl+A: Select All — create selection encompassing the active layer's content bounds
                 if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
                     if (_node.EditorDoc != null)
@@ -1444,9 +1487,22 @@ namespace FlowMy.Views.NodeControls
                         var activeLayer = _node.EditorDoc.ActiveLayer;
                         if (activeLayer != null)
                         {
-                            var fullRect = new RectangleGeometry(new Rect(0, 0, activeLayer.Width, activeLayer.Height));
-                            _activeSelectionGeometry = fullRect;
-                            _selectionRect = fullRect.Bounds;
+                            if (activeLayer.ContentGeometry != null)
+                            {
+                                _activeSelectionGeometry = activeLayer.ContentGeometry.Clone();
+                                _selectionRect = activeLayer.ContentGeometry.Bounds;
+                            }
+                            else
+                            {
+                                var bounds = activeLayer.ContentBounds;
+                                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+                                {
+                                    bounds = EditorLayer.CalculateContentBounds(activeLayer.Bitmap);
+                                }
+                                var fullRect = new RectangleGeometry(bounds);
+                                _activeSelectionGeometry = fullRect;
+                                _selectionRect = bounds;
+                            }
                             BuildSelectionMask();
                             UpdatePolygonDisplay();
                         }
@@ -3508,36 +3564,59 @@ namespace FlowMy.Views.NodeControls
 
         private void CommitPendingMoveTranslation()
         {
+            var targetLayer = _movingLayer ?? _node.EditorDoc?.ActiveLayer;
+            if (targetLayer == null || _moveInitialFullPixels == null)
+            {
+                _moveInitialFullPixels = null;
+                _movingLayer = null;
+                return;
+            }
+
+            if (_moveInitialGeometry != null)
+            {
+                int dx = (int)Math.Round(targetLayer.TempMoveDx);
+                int dy = (int)Math.Round(targetLayer.TempMoveDy);
+
+                targetLayer.TempMoveDx = 0;
+                targetLayer.TempMoveDy = 0;
+                targetLayer.TempSelectionGeometry = null;
+
+                CommitSelectionMove(targetLayer, _moveInitialFullPixels, dx, dy);
+                _moveInitialFullPixels = null;
+                _moveInitialGeometry = null;
+                _movingLayer = null;
+                return;
+            }
+
             if (_accumulatedMoveDx == 0 && _accumulatedMoveDy == 0)
             {
                 _moveInitialFullPixels = null;
+                _movingLayer = null;
                 return;
             }
-            if (_node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
-            if (activeLayer == null || _moveInitialFullPixels == null) return;
 
-            int dx = (int)Math.Round(_accumulatedMoveDx);
-            int dy = (int)Math.Round(_accumulatedMoveDy);
+            int dxLayer = (int)Math.Round(_accumulatedMoveDx);
+            int dyLayer = (int)Math.Round(_accumulatedMoveDy);
 
             _accumulatedMoveDx = 0;
             _accumulatedMoveDy = 0;
 
-            activeLayer.TempMoveDx = 0;
-            activeLayer.TempMoveDy = 0;
+            targetLayer.TempMoveDx = 0;
+            targetLayer.TempMoveDy = 0;
 
             // Apply shift once
-            ShiftBitmapPixels(activeLayer, _moveInitialFullPixels, dx, dy);
+            ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
 
-            int moveStride = activeLayer.Width * 4;
-            var finalPixels = new byte[moveStride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
+            int moveStride = targetLayer.Width * 4;
+            var finalPixels = new byte[moveStride * targetLayer.Height];
+            targetLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
 
-            var moveCmd = new PixelEditCommand(activeLayer, _moveInitialFullPixels, finalPixels);
-            _node.EditorDoc.History.Execute(moveCmd);
+            var moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, finalPixels);
+            _node.EditorDoc?.History.Execute(moveCmd);
 
             _moveInitialFullPixels = null;
-            activeLayer.InvalidateThumbnail();
+            _movingLayer = null;
+            targetLayer.InvalidateThumbnail();
             OnEditorDocumentModified();
         }
 
@@ -3595,8 +3674,16 @@ namespace FlowMy.Views.NodeControls
                     return true;
             }
 
-            // 8. Layer actions: Ctrl+J (duplicate), Del (delete), Ctrl+E (merge)
+            // 8. Layer actions: Ctrl+J (duplicate), Del (delete), Ctrl+E (merge), Ctrl+A/C/V/X
             if (e.Key == Key.J && modifiers == ModifierKeys.Control)
+                return true;
+            if (e.Key == Key.A && modifiers == ModifierKeys.Control)
+                return true;
+            if (e.Key == Key.C && modifiers == ModifierKeys.Control)
+                return true;
+            if (e.Key == Key.V && modifiers == ModifierKeys.Control)
+                return true;
+            if (e.Key == Key.X && modifiers == ModifierKeys.Control)
                 return true;
             if (e.Key == Key.Delete && modifiers == ModifierKeys.None)
                 return true;
@@ -3610,6 +3697,11 @@ namespace FlowMy.Views.NodeControls
                 return true;
 
             return false;
+        }
+
+        public void HandleShortcutKey(KeyEventArgs e)
+        {
+            ImageProcessingNodeContentControl_PreviewKeyDown(this, e);
         }
 
         #endregion

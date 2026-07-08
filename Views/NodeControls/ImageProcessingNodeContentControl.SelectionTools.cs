@@ -28,6 +28,7 @@ namespace FlowMy.Views.NodeControls
         private Rect? _selectionClipboardRect;
         private bool _selectionClipboardIsFullLayer;
         private EditorLayer? _selectionClipboardLayerSource;
+        private Geometry? _selectionClipboardGeometry;
         private int _magicWandTolerance = 25;
         private bool[,]? _quickSelectionVisited;
         private byte[]? _quickSelectionPixels;
@@ -154,26 +155,74 @@ namespace FlowMy.Views.NodeControls
                 int h = endY - startY + 1;
                 if (w <= 0 || h <= 0) return;
 
-                var rect = new Int32Rect(startX, startY, w, h);
-                int stride = w * 4;
-                _selectionClipboardPixels = new byte[stride * h];
-                activeLayer.Bitmap.CopyPixels(rect, _selectionClipboardPixels, stride, 0);
+                int stride = activeLayer.Width * 4;
+                byte[] tempFullPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(tempFullPixels, stride, 0);
 
-                // Clear pixels outside the polygon using the cached mask
-                for (int dy = 0; dy < h; dy++)
+                // Scan for tight bounds of non-transparent pixels inside selection
+                int minX = int.MaxValue;
+                int maxX = int.MinValue;
+                int minY = int.MaxValue;
+                int maxY = int.MinValue;
+
+                for (int y = startY; y <= endY; y++)
                 {
-                    for (int dx = 0; dx < w; dx++)
+                    int rowOffset = y * stride;
+                    for (int x = startX; x <= endX; x++)
                     {
-                        if (!_cachedSelectionMask[dx, dy])
+                        if (IsInsideSelection(x, y))
                         {
-                            _selectionClipboardPixels[(dy * w + dx) * 4 + 3] = 0; // Alpha = 0 (Transparent)
+                            int idx = rowOffset + x * 4;
+                            if (tempFullPixels[idx + 3] > 0)
+                            {
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                            }
                         }
                     }
                 }
 
-                _selectionClipboardRect = new Rect(startX, startY, w, h);
+                if (minX > maxX || minY > maxY)
+                {
+                    // No non-transparent pixels inside selection!
+                    _selectionClipboardPixels = null;
+                    _selectionClipboardRect = null;
+                    _selectionClipboardGeometry = null;
+                    return;
+                }
+
+                int bw = maxX - minX + 1;
+                int bh = maxY - minY + 1;
+                int tightStride = bw * 4;
+                _selectionClipboardPixels = new byte[tightStride * bh];
+
+                for (int y = minY; y <= maxY; y++)
+                {
+                    int rowOffset = y * stride;
+                    int tightRowOffset = (y - minY) * tightStride;
+                    for (int x = minX; x <= maxX; x++)
+                    {
+                        if (IsInsideSelection(x, y))
+                        {
+                            int idx = rowOffset + x * 4;
+                            int tightIdx = tightRowOffset + (x - minX) * 4;
+                            _selectionClipboardPixels[tightIdx] = tempFullPixels[idx];
+                            _selectionClipboardPixels[tightIdx + 1] = tempFullPixels[idx + 1];
+                            _selectionClipboardPixels[tightIdx + 2] = tempFullPixels[idx + 2];
+                            _selectionClipboardPixels[tightIdx + 3] = tempFullPixels[idx + 3];
+                        }
+                    }
+                }
+
+                _selectionClipboardRect = new Rect(minX, minY, bw, bh);
                 _selectionClipboardIsFullLayer = false;
                 _selectionClipboardLayerSource = null;
+
+                // Intersect selection geometry with the tight rect geometry
+                var tightRectGeom = new RectangleGeometry(new Rect(minX, minY, bw, bh));
+                _selectionClipboardGeometry = Geometry.Combine(_activeSelectionGeometry.Clone(), tightRectGeom, GeometryCombineMode.Intersect, null).GetOutlinedPathGeometry();
             }
             else
             {
@@ -181,6 +230,7 @@ namespace FlowMy.Views.NodeControls
                 _selectionClipboardRect = null;
                 _selectionClipboardIsFullLayer = true;
                 _selectionClipboardLayerSource = activeLayer.Duplicate();
+                _selectionClipboardGeometry = activeLayer.ContentGeometry?.Clone();
             }
         }
 
@@ -209,6 +259,16 @@ namespace FlowMy.Views.NodeControls
 
                 int stride = w * 4;
                 newLayer.Bitmap.WritePixels(new Int32Rect(startX, startY, w, h), _selectionClipboardPixels, stride, 0);
+                
+                var origBmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+                origBmp.WritePixels(new Int32Rect(0, 0, w, h), _selectionClipboardPixels, stride, 0);
+                newLayer.OriginalTransformBitmap = origBmp;
+                newLayer.ContentBounds = new Rect(startX, startY, w, h);
+                
+                if (_selectionClipboardGeometry != null)
+                {
+                    newLayer.ContentGeometry = _selectionClipboardGeometry.Clone();
+                }
                 newLayer.InvalidateThumbnail();
             }
             else
@@ -584,11 +644,10 @@ namespace FlowMy.Views.NodeControls
                 double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
                 if (zoom <= 0) zoom = 1.0;
                 double strokeW = 1.0 / zoom;
-                double dashLen = 2.0 / zoom;
 
                 SelectionPreviewPolygon.Data = outlinedPreview;
                 SelectionPreviewPolygon.StrokeThickness = strokeW;
-                SelectionPreviewPolygon.StrokeDashArray = new DoubleCollection { dashLen, dashLen };
+                SelectionPreviewPolygon.StrokeDashArray = new DoubleCollection { 2.0, 2.0 };
                 SelectionPreviewPolygon.Visibility = Visibility.Visible;
 
                 if (SelectionPreviewPolygonBg != null)
