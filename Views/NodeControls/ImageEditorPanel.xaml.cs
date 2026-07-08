@@ -931,16 +931,28 @@ namespace FlowMy.Views.NodeControls
             TxtHistoryStatus.Text = $"{_doc.History.UndoCount} steps";
         }
 
+        private void ExecuteHistoryAction(Action action)
+        {
+            if (_doc == null) return;
+            _doc.Layers.CollectionChanged -= OnLayersCollectionChanged;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                _doc.Layers.CollectionChanged += OnLayersCollectionChanged;
+            }
+        }
+
         private void BtnUndo_Click(object sender, RoutedEventArgs e)
         {
-            _doc?.History.Undo();
-            OnDocumentModified();
+            UndoAction();
         }
 
         private void BtnRedo_Click(object sender, RoutedEventArgs e)
         {
-            _doc?.History.Redo();
-            OnDocumentModified();
+            RedoAction();
         }
 
 
@@ -1025,7 +1037,7 @@ namespace FlowMy.Views.NodeControls
             if (selected.Count == 0) return;
 
             var cmd = new DuplicateLayersCommand(_doc, selected);
-            _doc.History.Execute(cmd);
+            ExecuteHistoryAction(() => _doc.History.Execute(cmd));
             
             _isSyncingSelection = true;
             try
@@ -1058,7 +1070,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             var cmd = new DeleteLayersCommand(_doc, selected);
-            _doc.History.Execute(cmd);
+            ExecuteHistoryAction(() => _doc.History.Execute(cmd));
 
             RefreshLayersList();
             OnDocumentModified();
@@ -1087,7 +1099,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             var cmd = new MergeLayersCommand(_doc, mergeSet);
-            _doc.History.Execute(cmd);
+            ExecuteHistoryAction(() => _doc.History.Execute(cmd));
 
             RefreshLayersList();
             OnDocumentModified();
@@ -1096,7 +1108,7 @@ namespace FlowMy.Views.NodeControls
         public void UndoAction()
         {
             if (_doc == null) return;
-            _doc.History.Undo();
+            ExecuteHistoryAction(() => _doc.History.Undo());
             RefreshLayersList();
             OnDocumentModified();
         }
@@ -1104,7 +1116,7 @@ namespace FlowMy.Views.NodeControls
         public void RedoAction()
         {
             if (_doc == null) return;
-            _doc.History.Redo();
+            ExecuteHistoryAction(() => _doc.History.Redo());
             RefreshLayersList();
             OnDocumentModified();
         }
@@ -1159,7 +1171,7 @@ namespace FlowMy.Views.NodeControls
                     }
 
                     var cmd = new LayerAddCommand(_doc, newLayer, insertIndex);
-                    _doc.History.Execute(cmd);
+                    ExecuteHistoryAction(() => _doc.History.Execute(cmd));
 
                     SelectSingleLayer(newLayer);
 
@@ -1219,7 +1231,7 @@ namespace FlowMy.Views.NodeControls
             if (selected.Count < 2) return;
 
             var cmd = new MergeLayersCommand(_doc, selected);
-            _doc.History.Execute(cmd);
+            ExecuteHistoryAction(() => _doc.History.Execute(cmd));
 
             RefreshLayersList();
             OnDocumentModified();
