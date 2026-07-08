@@ -1724,37 +1724,49 @@ namespace FlowMy.Views.NodeControls
             _node.EditorDoc.PropertyChanged += EditorDoc_PropertyChanged;
         }
 
+        private bool _compositeScheduled;
+
         private void OnEditorDocumentModified()
         {
-            // Re-composite layers → hiển thị lên MainImage
             if (_node.EditorDoc == null) return;
 
-            try
-            {
-                var composite = _node.EditorDoc.Composite();
-                MainImage.Source = composite;
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "Composite error:\n" + ex.ToString());
-                }
-                catch { }
-            }
+            // Coalesce: nếu đã có schedule thì không cần thêm
+            if (_compositeScheduled) return;
+            _compositeScheduled = true;
 
-            try
+            // Defer composite sang cuối vòng lặp Dispatcher để không block UI
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
             {
-                UpdateTransformOverlayDisplay();
-            }
-            catch (Exception ex)
-            {
+                _compositeScheduled = false;
+                if (_node.EditorDoc == null) return;
+
                 try
                 {
-                    System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "UpdateOverlay error:\n" + ex.ToString());
+                    var composite = _node.EditorDoc.Composite();
+                    MainImage.Source = composite;
                 }
-                catch { }
-            }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "Composite error:\n" + ex.ToString());
+                    }
+                    catch { }
+                }
+
+                try
+                {
+                    UpdateTransformOverlayDisplay();
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "UpdateOverlay error:\n" + ex.ToString());
+                    }
+                    catch { }
+                }
+            }));
         }
 
         private void SyncModeButtonStyles()

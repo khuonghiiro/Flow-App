@@ -177,13 +177,18 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            if (_isDraggingLayer && LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
+            // Luôn dùng in-place sync để tránh phá huỷ toàn bộ ListBoxItem containers
+            if (LayersList.ItemsSource is System.Collections.ObjectModel.ObservableCollection<EditorLayer> currentCollection)
             {
-                // Đồng bộ phần tử in-place để tránh huỷ container (giữ mouse capture khi kéo thả)
                 for (int i = 0; i < targetList.Count; i++)
                 {
                     var item = targetList[i];
-                    int curIdx = currentCollection.IndexOf(item);
+                    if (i < currentCollection.Count && currentCollection[i] == item) continue;
+                    int curIdx = -1;
+                    for (int j = i; j < currentCollection.Count; j++)
+                    {
+                        if (currentCollection[j] == item) { curIdx = j; break; }
+                    }
                     if (curIdx == -1)
                     {
                         currentCollection.Insert(i, item);

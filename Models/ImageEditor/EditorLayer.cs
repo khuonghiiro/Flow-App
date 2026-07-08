@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace FlowMy.Models.ImageEditor
 {
@@ -340,7 +341,8 @@ namespace FlowMy.Models.ImageEditor
             copy.ContentBounds = ContentBounds;
             if (OriginalTransformBitmap != null)
             {
-                copy.OriginalTransformBitmap = new WriteableBitmap(OriginalTransformBitmap);
+                // Gán trực tiếp field để bỏ qua setter (setter gọi CalculateContentBounds quét O(W×H) pixel)
+                copy._originalTransformBitmap = new WriteableBitmap(OriginalTransformBitmap);
             }
             copy.LayerScaleX = LayerScaleX;
             copy.LayerScaleY = LayerScaleY;
@@ -363,7 +365,8 @@ namespace FlowMy.Models.ImageEditor
             {
                 copy.Bitmap.Unlock();
             }
-            copy.InvalidateThumbnail();
+            // Chỉ xoá cache, không gọi InvalidateThumbnail (tránh trigger PropertyChanged đồng bộ)
+            copy._cachedThumbnail = null;
             return copy;
         }
 
@@ -392,67 +395,57 @@ namespace FlowMy.Models.ImageEditor
             InvalidateThumbnail();
         }
 
-        /// <summary>Tạo thumbnail cho layer list. Detect landscape/portrait → tính tỉ lệ đúng.</summary>
+        /// <summary>Tạo thumbnail cho layer list. GPU-accelerated, dùng cached bounds.</summary>
         private BitmapSource GenerateThumbnail(int maxSize = 0)
         {
-            // Determine crop bounds
+            // Dùng cached ContentBounds nếu có, tránh quét toàn bộ pixel O(W×H)
             Rect bounds = ContentBounds;
-            if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+            int bx, by, bw, bh;
+            if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
             {
-                bounds = CalculateContentBounds(Bitmap);
+                bx = (int)Math.Max(0, bounds.X);
+                by = (int)Math.Max(0, bounds.Y);
+                bw = (int)Math.Min(Width - bx, bounds.Width);
+                bh = (int)Math.Min(Height - by, bounds.Height);
             }
-            int bx = (int)Math.Max(0, bounds.X);
-            int by = (int)Math.Max(0, bounds.Y);
-            int bw = (int)Math.Min(Width - bx, bounds.Width);
-            int bh = (int)Math.Min(Height - by, bounds.Height);
-
-            if (bw <= 0 || bh <= 0)
+            else
             {
-                bx = 0;
-                by = 0;
-                bw = Width;
-                bh = Height;
+                bx = 0; by = 0; bw = Width; bh = Height;
             }
+            if (bw <= 0 || bh <= 0) { bx = 0; by = 0; bw = Width; bh = Height; }
 
-            // Target dimensions
+            // Thumbnail nhỏ để tạo nhanh
             int thumbW, thumbH;
             if (bw >= bh)
             {
-                int targetW = maxSize > 0 ? maxSize : 128;
+                int targetW = maxSize > 0 ? maxSize : 64;
                 double scale = (double)targetW / bw;
                 thumbW = targetW;
                 thumbH = Math.Max(1, (int)(bh * scale));
             }
             else
             {
-                int targetH = maxSize > 0 ? maxSize : 88;
+                int targetH = maxSize > 0 ? maxSize : 48;
                 double scale = (double)targetH / bh;
                 thumbH = targetH;
                 thumbW = Math.Max(1, (int)(bw * scale));
             }
 
-            // Crop the bitmap first natively
-            BitmapSource source = Bitmap;
-            if (bx > 0 || by > 0 || bw < Width || bh < Height)
+            // GPU-accelerated render thumbnail
+            var dv = new DrawingVisual();
+            RenderOptions.SetBitmapScalingMode(dv, BitmapScalingMode.LowQuality);
+            using (var dc = dv.RenderOpen())
             {
-                source = new CroppedBitmap(Bitmap, new Int32Rect(bx, by, bw, bh));
+                dc.DrawImage(Bitmap, new Rect(
+                    -bx * (double)thumbW / bw,
+                    -by * (double)thumbH / bh,
+                    Width * (double)thumbW / bw,
+                    Height * (double)thumbH / bh));
             }
-
-            // Scale it down natively using WPF layout pipelines
-            var scaleTransform = new ScaleTransform((double)thumbW / bw, (double)thumbH / bh);
-            var scaled = new TransformedBitmap(source, scaleTransform);
-            
-            // Convert to Bgra32
-            var formatted = new FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
-
-            // Copy to a new independent WriteableBitmap to prevent freezing the source layer's WriteableBitmap
-            var thumb = new WriteableBitmap(thumbW, thumbH, 96, 96, PixelFormats.Bgra32, null);
-            var dstStride = thumbW * 4;
-            var dstPixels = new byte[dstStride * thumbH];
-            formatted.CopyPixels(dstPixels, dstStride, 0);
-            thumb.WritePixels(new Int32Rect(0, 0, thumbW, thumbH), dstPixels, dstStride, 0);
-            thumb.Freeze();
-            return thumb;
+            var rtb = new RenderTargetBitmap(thumbW, thumbH, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(dv);
+            rtb.Freeze();
+            return rtb;
         }
 
         /// <summary>Cached thumbnail for XAML binding. Returns a frozen copy (new object on each invalidation).</summary>
@@ -472,10 +465,23 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Đánh dấu thumbnail cần rebuild (gọi sau khi pixel thay đổi).</summary>
         public void InvalidateThumbnail()
         {
-            _cachedThumbnail = null;          // clear cache → next Thumbnail read generates NEW object
-            _thumbnailCache = null;           // legacy cache clear
-            OnPropertyChanged(nameof(Bitmap));
-            OnPropertyChanged(nameof(Thumbnail));
+            _cachedThumbnail = null;
+            _thumbnailCache = null;
+            // Defer PropertyChanged sang DispatcherPriority.Background để không block UI
+            var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+            if (dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                {
+                    OnPropertyChanged(nameof(Bitmap));
+                    OnPropertyChanged(nameof(Thumbnail));
+                }));
+            }
+            else
+            {
+                OnPropertyChanged(nameof(Bitmap));
+                OnPropertyChanged(nameof(Thumbnail));
+            }
         }
 
         private Int32Rect ClipRect(Int32Rect rect)
