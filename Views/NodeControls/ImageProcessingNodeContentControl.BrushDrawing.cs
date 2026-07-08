@@ -1212,6 +1212,19 @@ namespace FlowMy.Views.NodeControls
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
             {
+                // Enter key to crop active selection to new layer
+                if (e.Key == Key.Enter)
+                {
+                    if (_activeSelectionGeometry != null && _hasCachedSelectionMask)
+                    {
+                        CopyActiveSelection();
+                        PasteSelectionAsLayer();
+                        ClearSelection();
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
                 // Arrow keys nudging for Move tool
                 string activeTool = EditorPanel.ActiveToolName;
                 if (activeTool == "Move")

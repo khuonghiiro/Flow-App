@@ -917,13 +917,13 @@
          HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </Border>
                         
-                        <Border x:Name="TbxSelectionActive" Tag="Selection" ToolTip="Selection (M)"
+                        <Border x:Name="TbxSelectionActive" Tag="Lasso" ToolTip="Lasso Tool (L)"
                                 Style="{StaticResource FxToolBtnStyle}"
                                 MouseLeftButtonDown="SelectionGroupBtn_LeftClick"
                                 MouseRightButtonUp="SelectionGroupBtn_RightClick">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <controls:SvgViewboxEx Width="16" Height="16" Fill="#dde3ef"
-                                    Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='square-dashed-circle-plus sharp-duotone-solid'}"
+                                    Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pen-swirl duotone'}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                                 <TextBlock Text="3" FontSize="7.5" FontWeight="Bold" Foreground="#a0dde3ef"
                                            HorizontalAlignment="Right" VerticalAlignment="top"

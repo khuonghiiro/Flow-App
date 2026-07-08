@@ -437,6 +437,7 @@ namespace FlowMy.Services.Interaction
 
         private static bool IsInteractiveElement(DependencyObject? source)
         {
+            bool insideScrollViewer = false;
             while (source != null)
             {
                 // Những control này phải ưu tiên thao tác UI thay vì kéo node
@@ -448,6 +449,29 @@ namespace FlowMy.Services.Interaction
                 if (source is Slider) return true;
                 if (source is ScrollBar) return true;
                 if (source is MenuItem) return true;
+                if (source is ImageEditorPanel) return true;
+
+                // Nếu là MainScrollViewer trong ImageProcessingNodeContentControl
+                if (source is ScrollViewer sv && sv.Name == "MainScrollViewer")
+                {
+                    insideScrollViewer = true;
+                }
+
+                // Nếu click vào các tool button (TbxBrush, TbxEraser...)
+                if (source is FrameworkElement fe && !string.IsNullOrEmpty(fe.Name) && fe.Name.StartsWith("Tbx"))
+                {
+                    return true;
+                }
+
+                if (source is ImageProcessingNodeContentControl ipcc)
+                {
+                    // Nếu click bên trong MainScrollViewer của ImageProcessingNodeContentControl ở chế độ Manual (Editor)
+                    var node = ipcc.DataContext as ImageProcessingNode;
+                    if (insideScrollViewer && node != null && node.ProcessingMode == ImageProcessingMode.Manual)
+                    {
+                        return true;
+                    }
+                }
 
                 // Đi lên Visual tree
                 source = VisualTreeHelper.GetParent(source) ?? (source as FrameworkElement)?.Parent;

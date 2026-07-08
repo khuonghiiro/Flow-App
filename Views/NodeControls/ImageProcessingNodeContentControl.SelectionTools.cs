@@ -225,6 +225,17 @@ namespace FlowMy.Views.NodeControls
 
             var cmd = new Models.ImageEditor.Commands.LayerAddCommand(_node.EditorDoc, newLayer, insertIndex);
             _node.EditorDoc.History.Execute(cmd);
+            foreach (var l in _node.EditorDoc.Layers)
+            {
+                l.IsSelected = (l == newLayer);
+                if (l.ChildLayers != null)
+                {
+                    foreach (var c in l.ChildLayers)
+                    {
+                        c.IsSelected = (c == newLayer);
+                    }
+                }
+            }
             _node.EditorDoc.ActiveLayer = newLayer;
 
             EditorPanel.RefreshLayersList();
@@ -1111,9 +1122,46 @@ namespace FlowMy.Views.NodeControls
 
         public void StartCropMode()
         {
-            if (MainImage.ActualWidth == 0 || MainImage.ActualHeight == 0) return;
+            if (MainImage.ActualWidth == 0 || MainImage.ActualHeight == 0 || _node.EditorDoc == null) return;
 
             _normalizedCropRect = new Rect(0, 0, 1, 1);
+
+            double docW = _node.EditorDoc.Width;
+            double docH = _node.EditorDoc.Height;
+
+            if (docW > 0 && docH > 0)
+            {
+                if (_activeSelectionGeometry != null && !_activeSelectionGeometry.IsEmpty())
+                {
+                    var docBounds = _activeSelectionGeometry.Bounds;
+                    double normX = Math.Clamp(docBounds.X / docW, 0, 1);
+                    double normY = Math.Clamp(docBounds.Y / docH, 0, 1);
+                    double normW = Math.Clamp(docBounds.Width / docW, 0, 1 - normX);
+                    double normH = Math.Clamp(docBounds.Height / docH, 0, 1 - normY);
+                    _normalizedCropRect = new Rect(normX, normY, normW, normH);
+                }
+                else
+                {
+                    var activeLayer = _node.EditorDoc.ActiveLayer;
+                    if (activeLayer != null)
+                    {
+                        Rect layerBounds = activeLayer.ContentBounds;
+                        if (layerBounds.IsEmpty || layerBounds.Width <= 0 || layerBounds.Height <= 0)
+                        {
+                            layerBounds = GetLayerContentBounds(activeLayer.Bitmap);
+                        }
+
+                        if (!layerBounds.IsEmpty && layerBounds.Width > 0 && layerBounds.Height > 0)
+                        {
+                            double normX = Math.Clamp(layerBounds.X / docW, 0, 1);
+                            double normY = Math.Clamp(layerBounds.Y / docH, 0, 1);
+                            double normW = Math.Clamp(layerBounds.Width / docW, 0, 1 - normX);
+                            double normH = Math.Clamp(layerBounds.Height / docH, 0, 1 - normY);
+                            _normalizedCropRect = new Rect(normX, normY, normW, normH);
+                        }
+                    }
+                }
+            }
             
             if (CropOverlayCanvas != null)
             {

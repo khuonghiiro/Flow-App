@@ -80,7 +80,23 @@ namespace FlowMy.Views.Overlays
 
             try
             {
-                var sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+                BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+                var bounds = _activeLayer.ContentBounds;
+                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+                {
+                    bounds = GetLayerContentBounds(_activeLayer.Bitmap);
+                }
+                if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
+                {
+                    int x = Math.Clamp((int)bounds.X, 0, sourceImg.PixelWidth - 1);
+                    int y = Math.Clamp((int)bounds.Y, 0, sourceImg.PixelHeight - 1);
+                    int w = Math.Clamp((int)bounds.Width, 1, sourceImg.PixelWidth - x);
+                    int h = Math.Clamp((int)bounds.Height, 1, sourceImg.PixelHeight - y);
+                    if (w > 0 && h > 0 && (x > 0 || y > 0 || w < sourceImg.PixelWidth || h < sourceImg.PixelHeight))
+                    {
+                        sourceImg = new CroppedBitmap(sourceImg, new Int32Rect(x, y, w, h));
+                    }
+                }
                 BitmapSource processedImg;
 
                 int selectedIndex = CmbAspectRatio.SelectedIndex;
@@ -121,7 +137,23 @@ namespace FlowMy.Views.Overlays
 
             try
             {
-                var sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+                BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+                var bounds = _activeLayer.ContentBounds;
+                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+                {
+                    bounds = GetLayerContentBounds(_activeLayer.Bitmap);
+                }
+                if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
+                {
+                    int x = Math.Clamp((int)bounds.X, 0, sourceImg.PixelWidth - 1);
+                    int y = Math.Clamp((int)bounds.Y, 0, sourceImg.PixelHeight - 1);
+                    int w = Math.Clamp((int)bounds.Width, 1, sourceImg.PixelWidth - x);
+                    int h = Math.Clamp((int)bounds.Height, 1, sourceImg.PixelHeight - y);
+                    if (w > 0 && h > 0 && (x > 0 || y > 0 || w < sourceImg.PixelWidth || h < sourceImg.PixelHeight))
+                    {
+                        sourceImg = new CroppedBitmap(sourceImg, new Int32Rect(x, y, w, h));
+                    }
+                }
                 BitmapSource processedImg;
 
                 int selectedIndex = CmbAspectRatio.SelectedIndex;
@@ -515,16 +547,36 @@ namespace FlowMy.Views.Overlays
             }
 
             // Load custom width and height
+            var bounds = _activeLayer.ContentBounds;
+            if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+            {
+                bounds = GetLayerContentBounds(_activeLayer.Bitmap);
+            }
+
             var savedWidth = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropWidth", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
             if (!string.IsNullOrEmpty(savedWidth))
             {
                 TxtCustomWidth.Text = savedWidth;
+            }
+            else
+            {
+                if (!bounds.IsEmpty && bounds.Width > 0)
+                {
+                    TxtCustomWidth.Text = ((int)bounds.Width).ToString();
+                }
             }
 
             var savedHeight = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropHeight", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
             if (!string.IsNullOrEmpty(savedHeight))
             {
                 TxtCustomHeight.Text = savedHeight;
+            }
+            else
+            {
+                if (!bounds.IsEmpty && bounds.Height > 0)
+                {
+                    TxtCustomHeight.Text = ((int)bounds.Height).ToString();
+                }
             }
         }
 
@@ -536,6 +588,57 @@ namespace FlowMy.Views.Overlays
                 {
                     baseDialog.Dispatcher.Invoke(() => baseDialog.RefreshOutputsUI());
                 }
+            }
+        }
+
+        private static Rect GetLayerContentBounds(BitmapSource bitmap)
+        {
+            if (bitmap == null) return Rect.Empty;
+            try
+            {
+                int w = bitmap.PixelWidth;
+                int h = bitmap.PixelHeight;
+                if (w <= 0 || h <= 0) return Rect.Empty;
+
+                int stride = w * 4;
+                byte[] pixels = new byte[stride * h];
+                bitmap.CopyPixels(pixels, stride, 0);
+
+                int minX = w, maxX = 0, minY = h, maxY = 0;
+                bool found = false;
+
+                for (int y = 0; y < h; y++)
+                {
+                    int rowOffset = y * stride;
+                    for (int x = 0; x < w; x++)
+                    {
+                        byte alpha = pixels[rowOffset + x * 4 + 3];
+                        if (alpha > 5) // Ignore transparent edges
+                        {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                            found = true;
+                        }
+                    }
+                }
+
+                if (!found)
+                {
+                    return new Rect(0, 0, w, h);
+                }
+
+                minX = Math.Max(0, minX - 4);
+                minY = Math.Max(0, minY - 4);
+                maxX = Math.Min(w - 1, maxX + 4);
+                maxY = Math.Min(h - 1, maxY + 4);
+
+                return new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+            }
+            catch
+            {
+                return new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
             }
         }
     }
