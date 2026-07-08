@@ -204,7 +204,7 @@
                     <Grid>
                         <!-- Checkerboard background to indicate transparency -->
                         <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
-                        <Image x:Name="ImgPreview" Stretch="Uniform" Margin="8"/>
+                        <Image x:Name="ImgPreview" Stretch="Uniform" Margin="0"/>
                     </Grid>
                 </Border>
 

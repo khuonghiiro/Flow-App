@@ -629,11 +629,6 @@ namespace FlowMy.Views.Overlays
                     return new Rect(0, 0, w, h);
                 }
 
-                minX = Math.Max(0, minX - 4);
-                minY = Math.Max(0, minY - 4);
-                maxX = Math.Min(w - 1, maxX + 4);
-                maxY = Math.Min(h - 1, maxY + 4);
-
                 return new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
             }
             catch
