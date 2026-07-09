@@ -458,7 +458,17 @@ Cursor="Hand"
                         </Border>
                     </StackPanel>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,2,0">
+                <ScrollViewer Grid.Row="1" Padding="0,0,2,0">
+                    <ScrollViewer.Style>
+                        <Style TargetType="ScrollViewer">
+                            <Setter Property="VerticalScrollBarVisibility" Value="Hidden"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, ElementName=LeftMenuBorder}" Value="True">
+                                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ScrollViewer.Style>
                     <StackPanel Margin="0,0,0,8" x:Name="NodeTemplatesPanel">
                         <StackPanel.Resources>
                             <!-- Icon-only palette item (drag from templates) -->
