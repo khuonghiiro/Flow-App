@@ -166,6 +166,12 @@ public sealed partial class FileWorkflowPersistenceService
             {
                 delayNode.TargetTime = tt;
             }
+
+            if (properties.TryGetValue("TargetTimeOnly", out var ttoObj) && ttoObj != null &&
+                TimeSpan.TryParse(ttoObj.ToString(), out var tto))
+            {
+                delayNode.TargetTimeOnly = tto;
+            }
     }
 
     private static void RestoreCallbackNodeProperties(CallbackNode callbackNode, Dictionary<string, object> properties)
@@ -594,6 +600,8 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["DelaySourceOutputKey"] = delayNode.DelaySourceOutputKey;
             if (delayNode.TargetTime.HasValue)
                 dict["TargetTime"] = delayNode.TargetTime.Value.ToString("O");
+            if (delayNode.TargetTimeOnly.HasValue)
+                dict["TargetTimeOnly"] = delayNode.TargetTimeOnly.Value.ToString("c");
     }
 
     private static void GetCallbackNodeProperties(CallbackNode callbackNode, Dictionary<string, object> dict)

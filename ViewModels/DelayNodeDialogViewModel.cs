@@ -70,10 +70,16 @@ namespace FlowMy.ViewModels
         private bool _isTimeMode;
 
         [ObservableProperty]
-        private bool _isNotTimeMode;
+        private bool _isTimeOnlyMode;
+
+        [ObservableProperty]
+        private bool _isNotTimeOrTimeOnlyMode;
 
         [ObservableProperty]
         private DateTime? _targetTime;
+
+        [ObservableProperty]
+        private DateTime? _targetTimeOnly;
 
         public ObservableCollection<DelayUnitOption> DelayUnitOptions { get; } = new()
         {
@@ -88,7 +94,8 @@ namespace FlowMy.ViewModels
             new DelayTimingModeOption(DelayTimingMode.None, "Không có"),
             new DelayTimingModeOption(DelayTimingMode.Random, "Số ngẫu nhiên (min–max)"),
             new DelayTimingModeOption(DelayTimingMode.NodeKey, "Lấy từ node / output key"),
-            new DelayTimingModeOption(DelayTimingMode.Time, "Thời gian cụ thể"),
+            new DelayTimingModeOption(DelayTimingMode.Time, "Ngày và giờ"),
+            new DelayTimingModeOption(DelayTimingMode.TimeOnly, "Thời gian"),
         };
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
@@ -107,6 +114,16 @@ namespace FlowMy.ViewModels
             DelaySourceNodeId = string.IsNullOrWhiteSpace(node.DelaySourceNodeId) ? null : node.DelaySourceNodeId;
             DelaySourceOutputKey = string.IsNullOrWhiteSpace(node.DelaySourceOutputKey) ? null : node.DelaySourceOutputKey;
             TargetTime = node.TargetTime ?? DateTime.Now;
+            // TargetTimeOnly: convert TimeSpan? -> DateTime? for DateTimePicker (Time mode)
+            if (node.TargetTimeOnly.HasValue)
+            {
+                var ts = node.TargetTimeOnly.Value;
+                TargetTimeOnly = DateTime.Today.Add(ts);
+            }
+            else
+            {
+                TargetTimeOnly = DateTime.Today.Add(DateTime.Now.TimeOfDay);
+            }
 
             UpdateModeFlags();
             RefreshAvailableNodes();
@@ -132,6 +149,11 @@ namespace FlowMy.ViewModels
                         DelaySourceOutputKey = string.IsNullOrWhiteSpace(node.DelaySourceOutputKey) ? null : node.DelaySourceOutputKey;
                     else if (e.PropertyName == nameof(DelayNode.TargetTime))
                         TargetTime = node.TargetTime ?? DateTime.Now;
+                    else if (e.PropertyName == nameof(DelayNode.TargetTimeOnly))
+                    {
+                        if (node.TargetTimeOnly.HasValue)
+                            TargetTimeOnly = DateTime.Today.Add(node.TargetTimeOnly.Value);
+                    }
                 };
             }
         }
@@ -146,6 +168,53 @@ namespace FlowMy.ViewModels
         partial void OnDelaySourceNodeIdChanged(string? value)
         {
             RefreshOutputKeyOptions();
+            var newVal = value ?? string.Empty;
+            if (_delayNode.DelaySourceNodeId != newVal)
+                _delayNode.DelaySourceNodeId = newVal;
+        }
+
+        partial void OnDelayValueChanged(double value)
+        {
+            if (Math.Abs(_delayNode.DelayValue - value) > 0.0000001d)
+                _delayNode.DelayValue = value;
+        }
+
+        partial void OnDelayUnitChanged(DelayTimeUnit value)
+        {
+            if (_delayNode.DelayUnit != value)
+                _delayNode.DelayUnit = value;
+        }
+
+        partial void OnRandomMinValueChanged(double value)
+        {
+            if (Math.Abs(_delayNode.RandomMinValue - value) > 0.0000001d)
+                _delayNode.RandomMinValue = value;
+        }
+
+        partial void OnRandomMaxValueChanged(double value)
+        {
+            if (Math.Abs(_delayNode.RandomMaxValue - value) > 0.0000001d)
+                _delayNode.RandomMaxValue = value;
+        }
+
+        partial void OnDelaySourceOutputKeyChanged(string? value)
+        {
+            var newVal = value ?? string.Empty;
+            if (_delayNode.DelaySourceOutputKey != newVal)
+                _delayNode.DelaySourceOutputKey = newVal;
+        }
+
+        partial void OnTargetTimeChanged(DateTime? value)
+        {
+            if (_delayNode.TargetTime != value)
+                _delayNode.TargetTime = value;
+        }
+
+        partial void OnTargetTimeOnlyChanged(DateTime? value)
+        {
+            var newTimeOnly = value?.TimeOfDay;
+            if (_delayNode.TargetTimeOnly != newTimeOnly)
+                _delayNode.TargetTimeOnly = newTimeOnly;
         }
 
         private void UpdateModeFlags()
@@ -154,7 +223,8 @@ namespace FlowMy.ViewModels
             IsRandomMode = TimingMode == DelayTimingMode.Random;
             IsNodeKeyMode = TimingMode == DelayTimingMode.NodeKey;
             IsTimeMode = TimingMode == DelayTimingMode.Time;
-            IsNotTimeMode = !IsTimeMode;
+            IsTimeOnlyMode = TimingMode == DelayTimingMode.TimeOnly;
+            IsNotTimeOrTimeOnlyMode = !IsTimeMode && !IsTimeOnlyMode;
         }
 
         private void RefreshAvailableNodes()
@@ -245,6 +315,14 @@ namespace FlowMy.ViewModels
             if (_delayNode.TargetTime != TargetTime)
             {
                 _delayNode.TargetTime = TargetTime;
+                needSync = true;
+            }
+
+            // Convert DateTime? -> TimeSpan? for TargetTimeOnly
+            var newTimeOnly = TargetTimeOnly?.TimeOfDay;
+            if (_delayNode.TargetTimeOnly != newTimeOnly)
+            {
+                _delayNode.TargetTimeOnly = newTimeOnly;
                 needSync = true;
             }
 

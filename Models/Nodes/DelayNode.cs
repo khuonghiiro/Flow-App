@@ -11,8 +11,10 @@ namespace FlowMy.Models
         Random = 1,
         /// <summary>Lấy số từ output key của node nguồn (theo DelayUnit).</summary>
         NodeKey = 2,
-        /// <summary>Chờ đến một mốc thời gian cụ thể (chỉ chọn hiện tại và tương lai).</summary>
-        Time = 3
+        /// <summary>Chờ đến một mốc ngày và giờ cụ thể (chỉ chọn hiện tại và tương lai).</summary>
+        Time = 3,
+        /// <summary>Chờ đến một mốc thời gian trong ngày (giờ:phút:giây). Nếu đã qua thì chờ sang ngày mai.</summary>
+        TimeOnly = 4
     }
 
     /// <summary>
@@ -31,6 +33,7 @@ namespace FlowMy.Models
         private string _delaySourceNodeId = string.Empty;
         private string _delaySourceOutputKey = string.Empty;
         private DateTime? _targetTime = DateTime.Now;
+        private TimeSpan? _targetTimeOnly;
 
         public DelayNode()
         {
@@ -120,7 +123,7 @@ namespace FlowMy.Models
         }
 
         /// <summary>
-        /// Mốc thời gian cụ thể để chờ khi <see cref="TimingMode"/> = Time.
+        /// Mốc ngày và giờ cụ thể để chờ khi <see cref="TimingMode"/> = Time.
         /// </summary>
         public DateTime? TargetTime
         {
@@ -129,6 +132,21 @@ namespace FlowMy.Models
             {
                 if (_targetTime == value) return;
                 _targetTime = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Mốc thời gian trong ngày (giờ:phút:giây) để chờ khi <see cref="TimingMode"/> = TimeOnly.
+        /// Nếu thời gian hiện tại đã qua mốc này thì chờ sang ngày mai.
+        /// </summary>
+        public TimeSpan? TargetTimeOnly
+        {
+            get => _targetTimeOnly;
+            set
+            {
+                if (_targetTimeOnly == value) return;
+                _targetTimeOnly = value;
                 OnPropertyChanged();
             }
         }

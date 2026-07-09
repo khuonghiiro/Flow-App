@@ -120,6 +120,19 @@ namespace FlowMy.Views.NodeControls
                             summaryLabelText.Text = "Chưa chọn";
                         }
                         break;
+                    case DelayTimingMode.TimeOnly:
+                        if (node.TargetTimeOnly.HasValue)
+                        {
+                            var tto = node.TargetTimeOnly.Value;
+                            summaryNumberText.Text = $"{tto.Hours:D2}:{tto.Minutes:D2}:{tto.Seconds:D2}";
+                            summaryLabelText.Text = "Mỗi ngày";
+                        }
+                        else
+                        {
+                            summaryNumberText.Text = "--:--:--";
+                            summaryLabelText.Text = "Chưa chọn";
+                        }
+                        break;
                     default:
                         summaryNumberText.Text = FormatNumber(node.DelayValue);
                         summaryLabelText.Text = GetUnitLabel(node.DelayUnit);
@@ -187,6 +200,7 @@ namespace FlowMy.Views.NodeControls
                 [nameof(DelayNode.DelaySourceNodeId)] = _ => SyncSummary(),
                 [nameof(DelayNode.DelaySourceOutputKey)] = _ => SyncSummary(),
                 [nameof(DelayNode.TargetTime)] = _ => SyncSummary(),
+                [nameof(DelayNode.TargetTimeOnly)] = _ => SyncSummary(),
             };
 
             // --- Initialize with fluent API ---

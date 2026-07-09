@@ -439,8 +439,15 @@ namespace FlowMy.Controls
             var scrollViewer = sender as ScrollViewer;
             if (scrollViewer == null) return;
 
+            // Scroll theo hướng chuột
             double offset = scrollViewer.VerticalOffset - (e.Delta / 3.0);
-            scrollViewer.ScrollToVerticalOffset(offset);
+
+            // Snap về vị trí item gần nhất (mỗi item cao 35px)
+            int snappedIndex = (int)Math.Round(offset / 35.0);
+            snappedIndex = Math.Max(0, snappedIndex);
+            double snappedOffset = snappedIndex * 35.0;
+
+            scrollViewer.ScrollToVerticalOffset(snappedOffset);
 
             e.Handled = true;
         }

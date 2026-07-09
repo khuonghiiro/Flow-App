@@ -138,7 +138,7 @@
                                               DisplayMemberPath="DisplayName"
                                               SelectedValue="{Binding TimingMode, Mode=TwoWay}"/>
 
-                                    <StackPanel Visibility="{Binding IsNotTimeMode, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel Visibility="{Binding IsNotTimeOrTimeOnlyMode, Converter={StaticResource BoolToVisibility}}">
                                         <TextBlock Text="Đơn vị thời gian (áp dụng cho các chế độ)" 
                                                    Foreground="{DynamicResource TextMuted}" 
                                                    FontSize="10" Margin="0,0,0,4"/>
@@ -224,9 +224,9 @@
                                                   SelectedValue="{Binding DelaySourceOutputKey, Mode=TwoWay}"/>
                                     </StackPanel>
 
-                                    <!-- Chế độ thời gian cụ thể -->
+                                    <!-- Chế độ ngày và giờ -->
                                     <StackPanel Visibility="{Binding IsTimeMode, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
-                                        <TextBlock Text="Chọn mốc thời gian cụ thể (chỉ chọn hiện tại/tương lai, thời gian quá khứ sẽ pass ngay)" 
+                                        <TextBlock Text="Chọn mốc ngày và giờ cụ thể (chỉ chọn hiện tại/tương lai, thời gian quá khứ sẽ pass ngay)" 
                                                    Foreground="{DynamicResource TextMuted}" 
                                                    FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
                                         <controls:DateTimePickerUserControl 
@@ -238,6 +238,22 @@
                                             AllowNull="False"
                                             PlaceholderText="Chọn thời gian..."
                                             SelectedDateTime="{Binding TargetTime, Mode=TwoWay}"
+                                            Margin="0,0,0,8" ControlHeight="35"/>
+                                    </StackPanel>
+
+                                    <!-- Chế độ thời gian (chỉ giờ:phút:giây) -->
+                                    <StackPanel Visibility="{Binding IsTimeOnlyMode, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
+                                        <TextBlock Text="Chọn mốc thời gian trong ngày (khi đến giờ này sẽ pass, nếu đã qua thì chờ sang ngày mai)" 
+                                                   Foreground="{DynamicResource TextMuted}" 
+                                                   FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                        <controls:DateTimePickerUserControl 
+                                            PickerMode="Time"
+                                            DefaultMode="CurrentDateTime"
+                                            ShowClearButton="False"
+                                            ShowTodayButton="False"
+                                            AllowNull="False"
+                                            PlaceholderText="Chọn giờ..."
+                                            SelectedDateTime="{Binding TargetTimeOnly, Mode=TwoWay}"
                                             Margin="0,0,0,8" ControlHeight="35"/>
                                     </StackPanel>
                                 </StackPanel>

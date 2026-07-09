@@ -29,6 +29,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 DelayTimingMode.Random => ComputeRandomMilliseconds(delayNode),
                 DelayTimingMode.NodeKey => ComputeNodeKeyMilliseconds(delayNode, env),
                 DelayTimingMode.Time => ComputeTimeModeMilliseconds(delayNode),
+                DelayTimingMode.TimeOnly => ComputeTimeOnlyModeMilliseconds(delayNode),
                 _ => delayNode.DelayMilliseconds
             };
         }
@@ -80,6 +81,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (diff.TotalMilliseconds <= 0)
                 return 0;
                 
+            return ClampToIntMilliseconds(diff.TotalMilliseconds);
+        }
+
+        private static int ComputeTimeOnlyModeMilliseconds(DelayNode delayNode)
+        {
+            if (delayNode.TargetTimeOnly == null)
+                return 0;
+
+            var now = DateTime.Now;
+            var targetToday = now.Date.Add(delayNode.TargetTimeOnly.Value);
+            var diff = targetToday - now;
+
+            // Nếu đã qua mốc hôm nay → chờ sang ngày mai
+            if (diff.TotalMilliseconds <= 0)
+                diff = diff.Add(TimeSpan.FromDays(1));
+
             return ClampToIntMilliseconds(diff.TotalMilliseconds);
         }
 

@@ -96,7 +96,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 📍 Input từ node khác -->
+                    <!-- 📍 Input từ node khác (với MaxHeight để không che UI bên dưới) -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
@@ -107,6 +107,7 @@
                             <TextBlock Text="Mỗi dòng = một biến trong code" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,6"/>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
                             <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -162,6 +163,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            </ScrollViewer>
                             <Button Content="+ Thêm input" Height="32" Margin="0,8,0,0"
                                     Command="{Binding AddInputMappingCommand}"
                                     Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
@@ -172,15 +174,14 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 💻 Code Editor -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="💻 Code Editor" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            
+                    <!-- 3 tabs: Code / Output keys / Ví dụ -->
+                    <TabControl x:Name="CodeTabsControl"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Margin="0,0,0,8">
+                        <!-- Tab 1: Code -->
+                        <TabItem Header="💻 Code" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <StackPanel Margin="0,4,0,4">
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -188,7 +189,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Code (JavaScript). return { key: value }; hoặc dùng function main()."
                                            Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center"
-                                           ToolTip="Xem thêm: mở 'Ví dụ chạy code &amp; Gợi ý' để biết cách trả về khi có nhiều hàm."/>
+                                           ToolTip="Xem thêm: mở tab 'Ví dụ' để biết cách trả về khi có nhiều hàm."/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                     <Button x:Name="ExpandCodeButton" Content="⛶ Phóng to" Width="90" Height="28" Margin="0,0,6,0"
                                             ToolTip="Mở cửa sổ soạn code lớn hơn"
@@ -218,16 +219,48 @@
                                      CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
                                      IsAutoHighlightEnabled="False"
                                      MinHeight="140" MaxHeight="320" Margin="0,0,0,0"/>
-                        </StackPanel>
-                    </Border>
+                            </StackPanel>
+                        </TabItem>
 
-                    <!-- Ví dụ & Gợi ý -->
-                    <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
-                        <Expander.Header>
-                            <TextBlock Text="Ví dụ chạy code &amp; Gợi ý" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
-                        </Expander.Header>
-                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
-                            <StackPanel>
+                        <!-- Tab 2: Output keys -->
+                        <TabItem Header="📊 Output keys" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <StackPanel Margin="0,4,0,4">
+                                <TextBlock Text="Output keys (trùng với key trong object return)" 
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="280">
+                                        <ItemsControl x:Name="OutputKeysItemsControl" ItemsSource="{Binding OutputKeysList}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                                                 FontSize="13"/>
+                                                        <Button Grid.Column="1" Content="−" Width="28" Height="28" Margin="8,0,0,0"
+                                                                Command="{Binding DataContext.RemoveOutputKeyCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                                <Button Content="+ Thêm output key" Height="32" Margin="0,0,0,0"
+                                        Command="{Binding AddOutputKeyCommand}"
+                                        Width="160"
+                                        Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- Tab 3: Ví dụ & Gợi ý -->
+                        <TabItem Header="📖 Ví dụ" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <StackPanel Margin="0,4,0,4">
                                 <TextBlock Text="Cách chạy:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
                                     <Run Text="1) Chọn Node + Key làm input (ví dụ node HttpRequest, key responseBody)."/>
@@ -304,42 +337,8 @@
                                         Width="140" Height="28" Margin="0,10,0,0" HorizontalAlignment="Left"
                                         Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" Cursor="Hand" Padding="8,0" FontSize="12"/>
                             </StackPanel>
-                        </Border>
-                    </Expander>
-
-                    <!-- 📊 Output keys -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📊 Output keys (trùng với key trong object return)" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            <ItemsControl x:Name="OutputKeysItemsControl" ItemsSource="{Binding OutputKeysList}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBox Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32"
-                                                     FontSize="13"/>
-                                            <Button Grid.Column="1" Content="-" Width="28" Height="28" Margin="8,0,0,0"
-                                                    Command="{Binding DataContext.RemoveOutputKeyCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Button Content="+ Thêm output key" Height="32" Margin="0,8,0,0"
-                                    Command="{Binding AddOutputKeyCommand}"
-                                    Width="120"
-                                    Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
-                        </StackPanel>
-                    </Border>
+                        </TabItem>
+                    </TabControl>
 
                     <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
                     <StackPanel x:Name="OutputsPanel" Visibility="Collapsed"/>
