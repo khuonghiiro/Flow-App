@@ -820,6 +820,16 @@ public sealed partial class FileWorkflowPersistenceService
             {
                 httpRequestNode.AutoAppendCurlWriteOut = autoWriteOut;
             }
+
+            if (properties.TryGetValue("IsStream", out var isStreamObj) &&
+                bool.TryParse(isStreamObj?.ToString(), out var isStream))
+            {
+                httpRequestNode.IsStream = isStream;
+            }
+            if (properties.TryGetValue("StreamDelimiter", out var delimObj))
+            {
+                httpRequestNode.StreamDelimiter = delimObj?.ToString() ?? "\n";
+            }
     }
 
     // -- GET (Serialize) --
@@ -1267,13 +1277,16 @@ public sealed partial class FileWorkflowPersistenceService
             if (!string.IsNullOrEmpty(httpRequestNode.CurlSourceOutputKey))
                 dict["CurlSourceOutputKey"] = httpRequestNode.CurlSourceOutputKey;
 
-            // Serialize Anti-bot / bypass (libcurl)
             dict["UseCurl"] = httpRequestNode.UseCurl;
             if (!string.IsNullOrWhiteSpace(httpRequestNode.CurlPath))
                 dict["CurlPath"] = httpRequestNode.CurlPath;
             if (!string.IsNullOrWhiteSpace(httpRequestNode.ImpersonateBrowser))
                 dict["ImpersonateBrowser"] = httpRequestNode.ImpersonateBrowser;
             dict["AutoAppendCurlWriteOut"] = httpRequestNode.AutoAppendCurlWriteOut;
+
+            dict["IsStream"] = httpRequestNode.IsStream;
+            if (httpRequestNode.StreamDelimiter != null)
+                dict["StreamDelimiter"] = httpRequestNode.StreamDelimiter;
     }
 
 }

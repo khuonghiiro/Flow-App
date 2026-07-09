@@ -467,7 +467,7 @@ namespace FlowMy.Services.Utils
             return result;
         }
 
-        private static void KillProcessTreeSafe(Process? process)
+        internal static void KillProcessTreeSafe(Process? process)
         {
             if (process == null) return;
             try
@@ -655,7 +655,7 @@ namespace FlowMy.Services.Utils
         // HELPERS
         // -------------------------------------------------------
 
-        private static bool IsCurlImpersonate(string? customPath)
+        internal static bool IsCurlImpersonate(string? customPath)
         {
             try
             {
@@ -689,7 +689,7 @@ namespace FlowMy.Services.Utils
             }
         }
 
-        private static string? FindCurlExe(string? customPath)
+        internal static string? FindCurlExe(string? customPath)
         {
             if (!string.IsNullOrWhiteSpace(customPath) && File.Exists(customPath))
                 return customPath;
@@ -718,7 +718,7 @@ namespace FlowMy.Services.Utils
             return null;
         }
 
-        private static Dictionary<string, string> ParseHeaderBlock(string headerBlock)
+        internal static Dictionary<string, string> ParseHeaderBlock(string headerBlock)
         {
             var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (string.IsNullOrWhiteSpace(headerBlock)) return dict;
@@ -800,7 +800,7 @@ namespace FlowMy.Services.Utils
                 : (!string.IsNullOrWhiteSpace(stderr) ? stderr.Trim() : $"HTTP {statusCode}");
         }
 
-        private static int TryGetStatusCodeFromHeaderBlock(string headerBlock)
+        internal static int TryGetStatusCodeFromHeaderBlock(string headerBlock)
         {
             if (string.IsNullOrWhiteSpace(headerBlock))
             {
@@ -1062,7 +1062,7 @@ namespace FlowMy.Services.Utils
             return bytes.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;
         }
 
-        private static void TryDeleteFile(string? path)
+        internal static void TryDeleteFile(string? path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {

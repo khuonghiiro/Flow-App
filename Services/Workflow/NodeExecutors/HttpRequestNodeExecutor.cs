@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Web;
+using System.IO;
 using HttpMethod = FlowMy.Models.Nodes.HttpMethod;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
@@ -71,12 +72,33 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     if (!string.IsNullOrWhiteSpace(curlCommand) && IsCurlCommand(curlCommand))
                     {
                         boundRawCurlCommand = curlCommand;
-                        // Raw-curl mode sẽ chạy trực tiếp command đã bind, không mutate node config
-                        // để tránh race khi AsyncTask dispatch song song nhiều iteration.
-                        var willRunRawCurl = httpNode.UseCurl && httpNode.AutoAppendCurlWriteOut;
-                        if (!willRunRawCurl && !ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
+                        
+                        // Check if the command is a stream request
+                        var isStreamCurl = curlCommand.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
+                        
+                        if (isStreamCurl)
                         {
-                            Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound cURL: {errorMsg}");
+                            // If it is a stream, we MUST parse and apply it to node config so we can stream it!
+                            if (ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
+                            {
+                                httpNode.IsStream = true;
+                                // Clear boundRawCurlCommand to prevent executing as raw non-stream cURL
+                                boundRawCurlCommand = null;
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound streaming cURL: {errorMsg}");
+                            }
+                        }
+                        else
+                        {
+                            // Raw-curl mode sẽ chạy trực tiếp command đã bind, không mutate node config
+                            // để tránh race khi AsyncTask dispatch song song nhiều iteration.
+                            var willRunRawCurl = httpNode.UseCurl && httpNode.AutoAppendCurlWriteOut;
+                            if (!willRunRawCurl && !ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
+                            {
+                                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound cURL: {errorMsg}");
+                            }
                         }
                     }
                 }
@@ -131,6 +153,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Executing {httpNode.HttpMethod} {url}");
 
+                // Resolve headers and body using shared helper
+                ResolveHeadersAndBody(httpNode, connections, env, formDataSnapshot, out var resolvedHeaders, out var resolvedBody);
+
+                // Auto-detect stream based on request headers
+                var isStream = httpNode.IsStream;
+                if (!isStream)
+                {
+                    if (resolvedHeaders.TryGetValue("Accept", out var acceptHeader) &&
+                        acceptHeader.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase))
+                    {
+                        isStream = true;
+                        httpNode.IsStream = true;
+                    }
+                }
+
+                if (isStream)
+                {
+                    if (httpNode.UseCurl)
+                    {
+                        await ExecuteStreamViaCurlExeAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, sw);
+                    }
+                    else
+                    {
+                        await ExecuteStreamViaHttpClientAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, sw);
+                    }
+                    return;
+                }
+
                 // ⚡ BYPASS MODE: dùng libcurl (CurlThin/curl.exe) thay HttpClient
                 if (httpNode.UseCurl)
                 {
@@ -143,7 +193,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         return;
                     }
 
-                    await ExecuteViaCurlAsync(httpNode, url, connections, env, sw);
+                    await ExecuteViaCurlAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, sw);
                     return;
                 }
 
@@ -152,12 +202,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 using var request = new HttpRequestMessage(method, url);
 
                 // Add headers
-                foreach (var header in headersSnapshot.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
+                foreach (var header in resolvedHeaders)
                 {
-                    var value = ResolveKeyValuePairValue(header, connections, httpNode, env);
                     try
                     {
-                        request.Headers.TryAddWithoutValidation(header.Key, value);
+                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }
                     catch (Exception ex)
                     {
@@ -165,18 +214,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                 }
 
-                // Add authentication (resolves Bearer token and API Key value from binding when set)
-                AddAuthentication(request, httpNode, connections, env);
-
                 // Add body
-                AddBody(request, httpNode, connections, env, formDataSnapshot);
+                if (resolvedBody != null)
+                {
+                    var contentType = resolvedHeaders.TryGetValue("Content-Type", out var ctHeader) ? ctHeader : "application/json";
+                    request.Content = new StringContent(resolvedBody, Encoding.UTF8, contentType);
+                }
 
                 // Set timeout
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(httpNode.TimeoutSeconds));
 
-                // Execute request
-                using var response = await _httpClient.SendAsync(request, cts.Token);
+                // Execute request with ResponseHeadersRead completion option
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+
+                // Auto-detect response stream at runtime
+                var isStreamResponse = false;
+                if (response.Headers.TransferEncodingChunked == true || 
+                    (response.Content.Headers.ContentType?.MediaType?.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (response.Headers.Connection.Any(c => string.Equals(c, "keep-alive", StringComparison.OrdinalIgnoreCase)) && 
+                     response.Headers.TransferEncoding.Any(te => string.Equals(te.Value, "chunked", StringComparison.OrdinalIgnoreCase))))
+                {
+                    isStreamResponse = true;
+                    httpNode.IsStream = true;
+                }
+
+                if (isStreamResponse)
+                {
+                    await ProcessStreamResponseAsync(httpNode, response, resolvedHeaders, connections, env, sw, cts.Token);
+                    return;
+                }
 
                 sw.Stop();
 
@@ -200,7 +267,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Anti-bot/403 detected from HttpClient, retrying via cURL backend");
                     var curlRetrySw = Stopwatch.StartNew();
-                    await ExecuteViaCurlAsync(httpNode, url, connections, env, curlRetrySw);
+                    await ExecuteViaCurlAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, curlRetrySw);
                     return;
                 }
 
@@ -278,38 +345,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await env.TraverseOutputsAsync(httpNode);
         }
 
-        /// <summary>
-        /// Thực hiện HTTP request qua libcurl (CurlThin/curl.exe bypass).
-        /// Build resolved headers/body từ node config, gọi CurlNativeExecutor, set results.
-        /// </summary>
-        private async Task ExecuteViaCurlAsync(
+        private void ResolveHeadersAndBody(
             HttpRequestNode httpNode,
-            string url,
             List<WorkflowConnection> connections,
             NodeExecutionEnvironment env,
-            Stopwatch sw)
+            List<HttpKeyValuePair> formDataSnapshot,
+            out Dictionary<string, string> resolvedHeaders,
+            out string? resolvedBody)
         {
-            // ⚡ Local snapshot cho thread-safety (mỗi async task có copy riêng)
             List<HttpKeyValuePair> headersSnapshot;
-            List<HttpKeyValuePair> formDataSnapshot;
             lock (httpNode)
             {
                 headersSnapshot = httpNode.Headers.ToList();
-                formDataSnapshot = httpNode.FormData.ToList();
             }
 
-            // Build resolved headers dict
-            var resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var header in headersSnapshot.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
             {
                 resolvedHeaders[header.Key] = ResolveKeyValuePairValue(header, connections, httpNode, env);
             }
 
-            // Add authentication headers
+            // Add auth headers
             AddAuthToHeaders(resolvedHeaders, httpNode, connections, env);
 
-            // Build resolved body
-            string? resolvedBody = null;
+            // Default User-Agent to bypass simple blocks
+            if (!resolvedHeaders.ContainsKey("User-Agent"))
+            {
+                resolvedHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+            }
+
+            resolvedBody = null;
             if (httpNode.HttpMethod != HttpMethod.GET && httpNode.HttpMethod != HttpMethod.HEAD)
             {
                 switch (httpNode.BodyType)
@@ -333,7 +398,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         break;
                 }
             }
+        }
 
+        /// <summary>
+        /// Thực hiện HTTP request qua libcurl (CurlThin/curl.exe bypass).
+        /// </summary>
+        private async Task ExecuteViaCurlAsync(
+            HttpRequestNode httpNode,
+            string url,
+            Dictionary<string, string> resolvedHeaders,
+            string? resolvedBody,
+            List<WorkflowConnection> connections,
+            NodeExecutionEnvironment env,
+            Stopwatch sw)
+        {
             try
             {
                 Debug.WriteLine($"[HttpNode-Curl] {httpNode.HttpMethod} {url}, Headers={resolvedHeaders.Count}, UseCurl=true");
@@ -964,6 +1042,504 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         private static void PublishScopedHttpOutputs(
+            string executionId,
+            WorkflowExecutionService service,
+            HttpRequestNode node,
+            int? statusCode,
+            string? responseBody,
+            Dictionary<string, string>? responseHeaders,
+            bool? isSuccess,
+            string? errorMessage,
+            long? responseTimeMs,
+            string? curlCommand)
+        {
+            if (service == null || string.IsNullOrWhiteSpace(executionId) || node == null) return;
+            // Always publish all known keys into scoped store for this execution.
+            // This prevents fallback to shared node.Last* values from another parallel branch.
+            service.SetScopedNodeStringOutput(executionId, node.Id, "statuscode",
+                statusCode.HasValue ? statusCode.Value.ToString() : string.Empty);
+            service.SetScopedNodeStringOutput(executionId, node.Id, "responsebody",
+                responseBody ?? string.Empty);
+            service.SetScopedNodeStringOutput(executionId, node.Id, "responseheaders",
+                responseHeaders != null && responseHeaders.Count > 0
+                    ? JsonSerializer.Serialize(responseHeaders)
+                    : string.Empty);
+            service.SetScopedNodeStringOutput(executionId, node.Id, "issuccess",
+                isSuccess.HasValue ? isSuccess.Value.ToString() : string.Empty);
+            service.SetScopedNodeStringOutput(executionId, node.Id, "errormessage",
+                errorMessage ?? string.Empty);
+            service.SetScopedNodeStringOutput(executionId, node.Id, "responsetimems",
+                responseTimeMs.HasValue ? responseTimeMs.Value.ToString() : string.Empty);
+            service.SetScopedNodeStringOutput(executionId, node.Id, "curl",
+                curlCommand ?? string.Empty);
+        }
+
+        private static void PublishScopedHttpOutputs(
+            NodeExecutionEnvironment env,
+            HttpRequestNode node,
+            int? statusCode,
+            string? responseBody,
+            Dictionary<string, string>? responseHeaders,
+            bool? isSuccess,
+            string? errorMessage,
+            long? responseTimeMs,
+            string? curlCommand)
+        {
+            PublishScopedHttpOutputs(
+                env?.ExecutionId ?? string.Empty,
+                env?.Service!,
+                node,
+                statusCode,
+                responseBody,
+                responseHeaders,
+                isSuccess,
+                errorMessage,
+                responseTimeMs,
+                curlCommand);
+        }
+
+        private async Task ExecuteStreamViaHttpClientAsync(
+            HttpRequestNode httpNode,
+            string url,
+            Dictionary<string, string> resolvedHeaders,
+            string? resolvedBody,
+            List<WorkflowConnection> connections,
+            NodeExecutionEnvironment env,
+            Stopwatch sw)
+        {
+            try
+            {
+                var method = GetHttpMethod(httpNode.HttpMethod);
+                using var request = new HttpRequestMessage(method, url);
+
+                foreach (var h in resolvedHeaders)
+                {
+                    try
+                    {
+                        request.Headers.TryAddWithoutValidation(h.Key, h.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[HttpNode-Stream][{env.ExecutionId}] Failed to add header {h.Key}: {ex.Message}");
+                    }
+                }
+
+                if (resolvedBody != null)
+                {
+                    var contentType = resolvedHeaders.TryGetValue("Content-Type", out var ctHeader) ? ctHeader : "application/json";
+                    request.Content = new StringContent(resolvedBody, Encoding.UTF8, contentType);
+                }
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(httpNode.TimeoutSeconds));
+
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+
+                await ProcessStreamResponseAsync(httpNode, response, resolvedHeaders, connections, env, sw, cts.Token);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                sw.Stop();
+                httpNode.LastIsSuccess = false;
+                httpNode.LastErrorMessage = ex.Message;
+                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+
+                PublishScopedHttpOutputs(
+                    env.ExecutionId,
+                    env.Service,
+                    httpNode,
+                    httpNode.LastStatusCode,
+                    null,
+                    httpNode.LastResponseHeaders,
+                    false,
+                    ex.Message,
+                    sw.ElapsedMilliseconds,
+                    httpNode.LastCurlCommand);
+
+                Debug.WriteLine($"[HttpNode-Stream][{env.ExecutionId}] Error - {ex.Message}");
+                env.OnNodeCompleted?.Invoke(httpNode, sw.Elapsed);
+            }
+        }
+
+        private async Task ProcessStreamResponseAsync(
+            HttpRequestNode httpNode,
+            HttpResponseMessage response,
+            Dictionary<string, string> resolvedHeaders,
+            List<WorkflowConnection> connections,
+            NodeExecutionEnvironment env,
+            Stopwatch sw,
+            CancellationToken token)
+        {
+            var service = env.Service;
+
+            try
+            {
+                var responseHeaders = new Dictionary<string, string>();
+                foreach (var header in response.Headers)
+                {
+                    responseHeaders[header.Key] = string.Join(", ", header.Value);
+                }
+                foreach (var header in response.Content.Headers)
+                {
+                    responseHeaders[header.Key] = string.Join(", ", header.Value);
+                }
+
+                httpNode.LastStatusCode = (int)response.StatusCode;
+                httpNode.LastResponseHeaders = responseHeaders;
+                httpNode.LastIsSuccess = response.IsSuccessStatusCode;
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}. Details: {errorBody}");
+                }
+
+                // Read response stream
+                using var stream = await response.Content.ReadAsStreamAsync(token);
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+
+                int chunkIndex = 0;
+                while (!reader.EndOfStream && !token.IsCancellationRequested)
+                {
+                    var line = await reader.ReadLineAsync(token);
+                    if (line == null) continue;
+
+                    chunkIndex++;
+                    var streamExecutionId = $"{env.ExecutionId}:stream-{chunkIndex}";
+
+                    // Publish chunk outputs to this streamExecutionId
+                    PublishScopedHttpOutputs(
+                        streamExecutionId,
+                        service,
+                        httpNode,
+                        (int)response.StatusCode,
+                        line,
+                        responseHeaders,
+                        response.IsSuccessStatusCode,
+                        null,
+                        sw.ElapsedMilliseconds,
+                        httpNode.LastCurlCommand);
+
+                    // Traverse downstream for this chunk asynchronously without blocking the stream reader
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await TraverseDownstreamForStreamAsync(httpNode, env, streamExecutionId, chunkIndex);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[HttpNode-Stream] Downstream error: {ex.Message}");
+                        }
+                    });
+                }
+
+                sw.Stop();
+                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                httpNode.LastErrorMessage = null;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                sw.Stop();
+                httpNode.LastIsSuccess = false;
+                httpNode.LastErrorMessage = ex.Message;
+                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+
+                PublishScopedHttpOutputs(
+                    env.ExecutionId,
+                    service,
+                    httpNode,
+                    httpNode.LastStatusCode,
+                    null,
+                    httpNode.LastResponseHeaders,
+                    false,
+                    ex.Message,
+                    sw.ElapsedMilliseconds,
+                    httpNode.LastCurlCommand);
+
+                Debug.WriteLine($"[HttpNode-Stream][{env.ExecutionId}] Error - {ex.Message}");
+            }
+            finally
+            {
+                env.OnNodeCompleted?.Invoke(httpNode, sw.Elapsed);
+            }
+        }
+
+        private static string BuildCurlStreamArgs(
+            HttpRequestNode node,
+            string url,
+            Dictionary<string, string> headers,
+            string? body,
+            string headerOutputPath)
+        {
+            var sb = new StringBuilder();
+
+            sb.Append("-s");
+            sb.Append(" --location");
+            sb.Append(" --insecure");
+            sb.Append(" --compressed");
+            sb.Append($" --max-time {node.TimeoutSeconds}");
+
+            if (!string.IsNullOrWhiteSpace(node.ImpersonateBrowser) && CurlNativeExecutor.IsCurlImpersonate(node.CurlPath))
+                sb.Append($" --impersonate {node.ImpersonateBrowser}");
+
+            sb.Append($" -X {node.HttpMethod.ToString().ToUpperInvariant()}");
+
+            foreach (var h in headers)
+            {
+                var escaped = h.Value.Replace("\"", "\\\"");
+                sb.Append($" -H \"{h.Key}: {escaped}\"");
+            }
+
+            if (!string.IsNullOrEmpty(body) &&
+                node.HttpMethod != Models.Nodes.HttpMethod.GET &&
+                node.HttpMethod != Models.Nodes.HttpMethod.HEAD)
+            {
+                var escapedBody = body.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                sb.Append($" --data \"{escapedBody}\"");
+            }
+
+            sb.Append($" -D \"{headerOutputPath.Replace("\"", "\\\"")}\"");
+
+            sb.Append($" \"{url.Replace("\"", "\\\"")}\"");
+
+            return sb.ToString();
+        }
+
+        private async Task ExecuteStreamViaCurlExeAsync(
+            HttpRequestNode httpNode,
+            string url,
+            Dictionary<string, string> resolvedHeaders,
+            string? resolvedBody,
+            List<WorkflowConnection> connections,
+            NodeExecutionEnvironment env,
+            Stopwatch sw)
+        {
+            var service = env.Service;
+            Process? process = null;
+            string? tempHeaderPath = null;
+
+            try
+            {
+                var curlPath = CurlNativeExecutor.FindCurlExe(httpNode.CurlPath);
+                if (string.IsNullOrEmpty(curlPath))
+                {
+                    throw new InvalidOperationException("curl.exe không tìm thấy. Hãy cài curl hoặc chỉ định CurlPath trong settings.");
+                }
+
+                tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_curl_headers_{Guid.NewGuid():N}.txt");
+
+                var args = BuildCurlStreamArgs(httpNode, url, resolvedHeaders, resolvedBody, tempHeaderPath);
+                Debug.WriteLine($"[CurlExe-Stream] {curlPath} {args}");
+
+                process = new Process();
+                process.StartInfo = new ProcessStartInfo
+                {
+                    FileName = curlPath,
+                    Arguments = args,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    StandardErrorEncoding = Encoding.UTF8
+                };
+
+                process.Start();
+
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(httpNode.TimeoutSeconds + 30));
+
+                var reader = process.StandardOutput;
+                int chunkIndex = 0;
+                var responseHeaders = new Dictionary<string, string>();
+                var statusCode = 200;
+
+                while (!reader.EndOfStream && !timeoutCts.Token.IsCancellationRequested)
+                {
+                    var line = await reader.ReadLineAsync(timeoutCts.Token);
+                    if (line == null) continue;
+
+                    chunkIndex++;
+                    var streamExecutionId = $"{env.ExecutionId}:stream-{chunkIndex}";
+
+                    if (chunkIndex == 1)
+                    {
+                        try
+                        {
+                            for (int i = 0; i < 5; i++)
+                            {
+                                if (File.Exists(tempHeaderPath) && new FileInfo(tempHeaderPath).Length > 0)
+                                    break;
+                                await Task.Delay(100, timeoutCts.Token);
+                            }
+
+                            if (File.Exists(tempHeaderPath))
+                            {
+                                var headerBlock = await File.ReadAllTextAsync(tempHeaderPath, Encoding.UTF8, timeoutCts.Token);
+                                responseHeaders = CurlNativeExecutor.ParseHeaderBlock(headerBlock);
+                                statusCode = CurlNativeExecutor.TryGetStatusCodeFromHeaderBlock(headerBlock);
+                                if (statusCode == 0) statusCode = 200;
+                            }
+                        }
+                        catch (Exception exHeaders)
+                        {
+                            Debug.WriteLine($"[CurlExe-Stream] Error reading headers: {exHeaders.Message}");
+                        }
+                    }
+
+                    // Publish chunk outputs to this streamExecutionId
+                    PublishScopedHttpOutputs(
+                        streamExecutionId,
+                        service,
+                        httpNode,
+                        statusCode,
+                        line,
+                        responseHeaders,
+                        statusCode >= 200 && statusCode < 300,
+                        null,
+                        sw.ElapsedMilliseconds,
+                        null);
+
+                    // Traverse downstream for this chunk asynchronously without blocking the stream reader
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await TraverseDownstreamForStreamAsync(httpNode, env, streamExecutionId, chunkIndex);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[HttpNode-Stream] Downstream error: {ex.Message}");
+                        }
+                    });
+                }
+
+                await process.WaitForExitAsync(timeoutCts.Token);
+                sw.Stop();
+
+                if (File.Exists(tempHeaderPath))
+                {
+                    try
+                    {
+                        var headerBlock = await File.ReadAllTextAsync(tempHeaderPath, Encoding.UTF8, timeoutCts.Token);
+                        responseHeaders = CurlNativeExecutor.ParseHeaderBlock(headerBlock);
+                        statusCode = CurlNativeExecutor.TryGetStatusCodeFromHeaderBlock(headerBlock);
+                        if (statusCode == 0) statusCode = 200;
+                    }
+                    catch { }
+                }
+
+                httpNode.LastStatusCode = statusCode;
+                httpNode.LastResponseHeaders = responseHeaders;
+                httpNode.LastIsSuccess = statusCode >= 200 && statusCode < 300;
+                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                httpNode.LastErrorMessage = null;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                sw.Stop();
+                httpNode.LastIsSuccess = false;
+                httpNode.LastErrorMessage = ex.Message;
+                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+
+                PublishScopedHttpOutputs(
+                    env.ExecutionId,
+                    service,
+                    httpNode,
+                    httpNode.LastStatusCode,
+                    null,
+                    httpNode.LastResponseHeaders,
+                    false,
+                    ex.Message,
+                    sw.ElapsedMilliseconds,
+                    null);
+
+                Debug.WriteLine($"[CurlExe-Stream][{env.ExecutionId}] Error - {ex.Message}");
+            }
+            finally
+            {
+                CurlNativeExecutor.KillProcessTreeSafe(process);
+                CurlNativeExecutor.TryDeleteFile(tempHeaderPath);
+                env.OnNodeCompleted?.Invoke(httpNode, sw.Elapsed);
+            }
+        }
+
+        private static async Task TraverseDownstreamForStreamAsync(
+            HttpRequestNode httpNode,
+            NodeExecutionEnvironment env,
+            string streamExecutionId,
+            int chunkIndex)
+        {
+            var connections = env.Connections;
+            var service = env.Service;
+
+            // Find output ports & connections
+            var outputPort = httpNode.Ports?.FirstOrDefault(p => !p.IsInput && p.IsVisible);
+            var baseNextConnections = outputPort != null
+                ? service.GetConnectionsFromPort(outputPort, httpNode, connections).ToList()
+                : new List<WorkflowConnection>();
+
+            var legacyNext = connections
+                .Where(c => c.FromNode == httpNode && c.FromPort == null)
+                .ToList();
+
+            var allNext = baseNextConnections.Concat(legacyNext).ToList();
+
+            var tasks = new List<Task>();
+            foreach (var conn in allNext)
+            {
+                if (conn.ToNode == null) continue;
+
+                if (WorkflowExecutionService.IsLoopBodyReturnConnection(conn))
+                {
+                    service.SignalLoopBodyReturn(conn, streamExecutionId, $"{env.BranchId}:stream-{chunkIndex}");
+                    continue;
+                }
+
+                // Run downstream path for this chunk
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
+                    {
+                        await service.ExecuteNodeAsync(
+                            conn.ToNode,
+                            connections,
+                            env.CancellationToken,
+                            env.OnEnteringNode,
+                            env.OnNodeStarted,
+                            env.OnNodeCompleted,
+                            env.OnNodeFailed,
+                            conn,
+                            env.ReachableToEnd,
+                            false,
+                            new List<string>(env.ExecutionPath) { httpNode.Id },
+                            streamExecutionId,
+                            env.FlowScopeId,
+                            $"{env.BranchId}:stream-{chunkIndex}",
+                            env.ParentFlowScopeId);
+                    }
+                    catch (Exception ex)
+                    {
+                        env.OnNodeFailed?.Invoke(conn.ToNode, $"Stream execution error: {ex.Message}");
+                    }
+                }));
+            }
+
+            try
+            {
+                if (tasks.Count > 0)
+                {
+                    await Task.WhenAll(tasks);
+                }
+            }
+            finally
+            {
+                service.ClearScopedOutputsForRun(streamExecutionId);
+            }
+        }
+
+        private static void PublishScopedHttpOutputsDeprecated(
             NodeExecutionEnvironment env,
             HttpRequestNode node,
             int? statusCode,

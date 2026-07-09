@@ -243,6 +243,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool _autoAppendCurlWriteOut = true;
 
+        [ObservableProperty]
+        private bool _isLibCurlAvailable = true;
+
         #endregion
 
         #region Collections
@@ -310,6 +313,7 @@ namespace FlowMy.ViewModels
             _curlPath = node.CurlPath;
             _impersonateBrowser = node.ImpersonateBrowser;
             _autoAppendCurlWriteOut = node.AutoAppendCurlWriteOut;
+            _isLibCurlAvailable = FlowMy.Services.Utils.CurlNativeExecutor.IsCurlThinAvailable;
 
             // Load key-value pairs
             LoadHeaders();

@@ -258,11 +258,12 @@ namespace FlowMy.Services.Workflow
         {
             if (string.IsNullOrWhiteSpace(executionId)) return false;
             return executionId.Contains(":dispatch-", StringComparison.Ordinal) ||
-                   executionId.Contains(":at-manual-", StringComparison.Ordinal);
+                   executionId.Contains(":at-manual-", StringComparison.Ordinal) ||
+                   executionId.Contains(":stream-", StringComparison.Ordinal);
         }
 
         /// <summary>
-        /// Bóc toàn bộ hậu tố <c>:dispatch-…</c> và <c>:at-manual-…</c> để lấy id gốc của root run
+        /// Bóc toàn bộ hậu tố <c>:dispatch-…</c>, <c>:at-manual-…</c> và <c>:stream-…</c> để lấy id gốc của root run
         /// (dùng làm khóa cho <see cref="_stickyScopedStringOutputsByRoot"/>).
         /// </summary>
         private static string NormalizeToRootRunId(string? executionId)
@@ -273,7 +274,8 @@ namespace FlowMy.Services.Workflow
             {
                 var iA = id.LastIndexOf(":at-manual-", StringComparison.Ordinal);
                 var iD = id.LastIndexOf(":dispatch-", StringComparison.Ordinal);
-                var i = Math.Max(iA, iD);
+                var iS = id.LastIndexOf(":stream-", StringComparison.Ordinal);
+                var i = Math.Max(iA, Math.Max(iD, iS));
                 if (i < 0) return id;
                 id = id[..i];
             }

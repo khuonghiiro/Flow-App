@@ -40,38 +40,55 @@ namespace FlowMy.Views.NodeControls
             };
             grid.Children.Add(iconSvg);
 
-            var isCurlAvailable = CurlNativeExecutor.IsCurlThinAvailable;
-
             var curlBadge = new Border
             {
-                Background = isCurlAvailable 
-                    ? new SolidColorBrush(Color.FromRgb(30, 41, 59)) 
-                    : new SolidColorBrush(Color.FromRgb(59, 30, 30)),
-                BorderBrush = isCurlAvailable 
-                    ? new SolidColorBrush(Color.FromRgb(251, 191, 36)) 
-                    : new SolidColorBrush(Color.FromRgb(239, 68, 68)),
+                Background = new SolidColorBrush(Color.FromRgb(30, 41, 59)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(2, 0, 2, 0),
+                Padding = new Thickness(3, 1, 3, 1),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(0, 0, -5, -5),
                 Visibility = node.UseCurl ? Visibility.Visible : Visibility.Collapsed,
                 IsHitTestVisible = true,
-                ToolTip = isCurlAvailable ? "Sử dụng libcurl bypass" : "Lỗi: Chưa cài thư viện libcurl"
+                ToolTip = "Sử dụng cURL (Bypass Cloudflare/Anti-bot)"
             };
             var curlText = new TextBlock
             {
-                Text = isCurlAvailable ? "⚡" : "⚠️",
-                Foreground = isCurlAvailable 
-                    ? new SolidColorBrush(Color.FromRgb(251, 191, 36)) 
-                    : new SolidColorBrush(Color.FromRgb(239, 68, 68)),
-                FontSize = 10,
+                Text = "cURL",
+                Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                FontSize = 8,
                 FontWeight = FontWeights.Bold,
                 VerticalAlignment = VerticalAlignment.Center
             };
             curlBadge.Child = curlText;
             grid.Children.Add(curlBadge);
+
+            var streamBadge = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(2, 0, 2, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(-5, 0, 0, -5),
+                Visibility = node.IsStream ? Visibility.Visible : Visibility.Collapsed,
+                IsHitTestVisible = true,
+                ToolTip = "Phản hồi thời gian thực (Real-time Stream)"
+            };
+            var streamText = new TextBlock
+            {
+                Text = "📡",
+                Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            streamBadge.Child = streamText;
+            grid.Children.Add(streamBadge);
 
             var titleTextBlock = new TextBlock
             {
@@ -119,24 +136,13 @@ namespace FlowMy.Views.NodeControls
                 {
                     iconSvg.Fill = GetTextBrush(node.ColorKey);
                 },
+                [nameof(HttpRequestNode.IsStream)] = ctx =>
+                {
+                    streamBadge.Visibility = node.IsStream ? Visibility.Visible : Visibility.Collapsed;
+                },
                 [nameof(HttpRequestNode.UseCurl)] = ctx =>
                 {
                     curlBadge.Visibility = node.UseCurl ? Visibility.Visible : Visibility.Collapsed;
-                    if (node.UseCurl)
-                    {
-                        var available = CurlNativeExecutor.IsCurlThinAvailable;
-                        curlBadge.Background = available 
-                            ? new SolidColorBrush(Color.FromRgb(30, 41, 59)) 
-                            : new SolidColorBrush(Color.FromRgb(59, 30, 30));
-                        curlBadge.BorderBrush = available 
-                            ? new SolidColorBrush(Color.FromRgb(251, 191, 36)) 
-                            : new SolidColorBrush(Color.FromRgb(239, 68, 68));
-                        curlBadge.ToolTip = available ? "Sử dụng libcurl bypass" : "Lỗi: Chưa cài thư viện libcurl";
-                        curlText.Text = available ? "⚡" : "⚠️";
-                        curlText.Foreground = available 
-                            ? new SolidColorBrush(Color.FromRgb(251, 191, 36)) 
-                            : new SolidColorBrush(Color.FromRgb(239, 68, 68));
-                    }
                 }
             };
 

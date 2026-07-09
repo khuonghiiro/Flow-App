@@ -29,19 +29,30 @@ public static class WorkflowKeyValueStore
         if (string.IsNullOrWhiteSpace(executionId)) return string.Empty;
         var id = executionId.Trim();
         const string marker = ":dispatch-";
+        const string streamMarker = ":stream-";
         while (true)
         {
             var i = id.LastIndexOf(marker, StringComparison.Ordinal);
-            if (i < 0) return id;
-            id = id[..i];
+            if (i >= 0)
+            {
+                id = id[..i];
+                continue;
+            }
+            var s = id.LastIndexOf(streamMarker, StringComparison.Ordinal);
+            if (s >= 0)
+            {
+                id = id[..s];
+                continue;
+            }
+            return id;
         }
     }
 
     private const string AsyncManualBranchMarker = ":at-manual-";
 
     /// <summary>
-    /// Duyệt <paramref name="executionId"/> từ cụ thể đến tổ tiên (bỏ hậu tố <c>:at-manual-…</c> rồi <c>:dispatch-…</c>)
-    /// để đọc scoped output của node chạy trên luồng cha (trước AsyncTask body / nhánh song song).
+    /// Duyệt <paramref name="executionId"/> từ cụ thể đến tổ tiên (bỏ hậu tố <c>:at-manual-…</c>, <c>:dispatch-…</c> rồi <c>:stream-…</c>)
+    /// để đọc scoped output của node chạy trên luồng cha (trước AsyncTask body / nhánh song song / stream).
     /// </summary>
     public static IEnumerable<string> EnumerateScopedLookupExecutionIds(string? executionId)
     {
@@ -66,6 +77,14 @@ public static class WorkflowKeyValueStore
             if (di >= 0)
             {
                 current = current[..di];
+                continue;
+            }
+
+            const string streamMarker = ":stream-";
+            var si = current.LastIndexOf(streamMarker, StringComparison.Ordinal);
+            if (si >= 0)
+            {
+                current = current[..si];
                 continue;
             }
 

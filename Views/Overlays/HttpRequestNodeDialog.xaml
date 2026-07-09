@@ -18,7 +18,7 @@
     <Window.Resources>
         <converters:InverseStringNullOrEmptyToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
     </Window.Resources>
     
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
@@ -549,10 +549,34 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: 🛡 Bypass / Anti-Bot -->
-                <TabItem Header="🛡 Bypass / Anti-Bot" Style="{StaticResource HttpTabItemStyle}">
+                <TabItem Style="{StaticResource HttpTabItemStyle}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🛡 Bypass / Anti-Bot" VerticalAlignment="Center"/>
+                            <Ellipse Width="8" Height="8" Fill="#EF4444" Margin="6,0,0,0" VerticalAlignment="Center"
+                                     Visibility="{Binding IsLibCurlAvailable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                     ToolTip="Cảnh báo: Không tìm thấy libcurl.dll!"/>
+                        </StackPanel>
+                    </TabItem.Header>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16">
+                            <!-- Warning banner if libcurl is missing -->
+                            <Border Visibility="{Binding IsLibCurlAvailable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                    Background="#33EF4444" 
+                                    BorderBrush="#FFEF4444" 
+                                    BorderThickness="1" 
+                                    CornerRadius="8" 
+                                    Padding="12" 
+                                    Margin="0,0,0,16">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚠️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="#FFFF8080" FontSize="11" LineHeight="16" VerticalAlignment="Center">
+                                         <Bold>Cảnh báo:</Bold> Thư viện <Run FontWeight="Bold">libcurl.dll</Run> không tìm thấy hoặc thiếu phụ thuộc (OpenSSL/zlib).<LineBreak/>
+                                         Hệ thống sẽ tự động fallback sang chạy bằng <Run FontWeight="Bold">curl.exe</Run> từ máy của bạn.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
                             <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                                 <StackPanel>
                                     <TextBlock Text="🛡 Bypass / Anti-Bot (libcurl)" Foreground="{DynamicResource WarningColor}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
@@ -567,9 +591,23 @@
                                     <!-- Toggle UseCurl -->
                                     <CheckBox Content="Dùng libcurl (bypass CORS, Cloudflare, TLS fingerprint)"
                                               IsChecked="{Binding UseCurl, Mode=TwoWay}"
-                                              Foreground="{DynamicResource TextBrush}"
                                               FontSize="13"
-                                              Margin="0,0,0,10"/>
+                                              Margin="0,0,0,10">
+                                        <CheckBox.Style>
+                                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding UseCurl}" Value="True"/>
+                                                            <Condition Binding="{Binding IsLibCurlAvailable}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Foreground" Value="#EF4848"/>
+                                                        <Setter Property="ToolTip" Value="Cảnh báo: Không tìm thấy libcurl.dll, hệ thống sẽ chạy bằng curl.exe"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </CheckBox.Style>
+                                    </CheckBox>
 
                                     <!-- Impersonate Browser -->
                                     <TextBlock Text="Impersonate Browser (TLS fingerprint):" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>

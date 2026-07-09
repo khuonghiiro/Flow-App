@@ -145,6 +145,10 @@ namespace FlowMy.Models.Nodes
         private string _impersonateBrowser = string.Empty;
         private bool _autoAppendCurlWriteOut = false;
 
+        // Streaming settings
+        private bool _isStream = false;
+        private string _streamDelimiter = "\n";
+
         public HttpRequestNode()
         {
             Type = NodeType.HttpRequest;
@@ -566,6 +570,24 @@ namespace FlowMy.Models.Nodes
         {
             get => _autoAppendCurlWriteOut;
             set { if (_autoAppendCurlWriteOut != value) { _autoAppendCurlWriteOut = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Cho biết request có nhận kết quả stream thời gian thực hay không.
+        /// </summary>
+        public bool IsStream
+        {
+            get => _isStream;
+            set { if (_isStream != value) { _isStream = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Ký tự phân tách dữ liệu stream (mặc định là \n).
+        /// </summary>
+        public string StreamDelimiter
+        {
+            get => _streamDelimiter;
+            set { if (_streamDelimiter != value) { _streamDelimiter = value; OnPropertyChanged(); } }
         }
 
         #endregion
