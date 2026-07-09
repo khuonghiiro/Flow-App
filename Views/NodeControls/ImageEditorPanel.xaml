@@ -854,6 +854,206 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- ══════ COLOR ADJUST PANEL ══════ -->
+                    <StackPanel x:Name="ColorAdjustPanel" Visibility="Visible">
+                        <Border Padding="6,4" CornerRadius="3" Margin="2,6,0,3"
+                                Background="{StaticResource ipSurface}" Cursor="Hand"
+                                MouseLeftButtonDown="ColorAdjustHeader_Click">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" BorderBrush="#ffb347"
+                                        BorderThickness="2,0,0,0" Padding="2,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="☀" FontSize="10" Margin="0,0,4,0"
+                                                   Foreground="#ffb347" VerticalAlignment="Center"/>
+                                        <TextBlock Text="COLOR ADJUST" FontSize="9" FontWeight="Bold"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                            HorizontalAlignment="Right">
+                                    <!-- Reset button -->
+                                    <Button Content="↺" ToolTip="Reset tất cả về 0"
+                                            Style="{StaticResource IpMiniBtn}"
+                                            Width="20" Height="18" FontSize="12"
+                                            Click="BtnResetColorAdjust_Click"/>
+                                    <!-- Collapse toggle -->
+                                    <TextBlock x:Name="ColorAdjustCollapseIcon" Text="▶"
+                                               FontSize="8" Foreground="{StaticResource ipMuted}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border x:Name="ColorAdjustBody" Background="{StaticResource ipSurface2}"
+                                CornerRadius="4" Padding="6,5" Margin="0,0,0,2"
+                                Visibility="Collapsed">
+                            <StackPanel>
+                                <!-- ═══ Tab Headers ═══ -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                    <Border x:Name="TabHeaderSliders" Padding="6,3" CornerRadius="3,3,0,0"
+                                            Background="{StaticResource ipHover}" Cursor="Hand"
+                                            MouseLeftButtonDown="ColorAdjustTab_Click" Tag="Sliders">
+                                        <TextBlock Text="◉ Sliders" FontSize="8.5" FontWeight="Bold"
+                                                   Foreground="{StaticResource ipAccent2}"/>
+                                    </Border>
+                                    <Border x:Name="TabHeaderCurves" Padding="6,3" CornerRadius="3,3,0,0"
+                                            Background="{StaticResource ipSurface}" Cursor="Hand" Margin="2,0,0,0"
+                                            MouseLeftButtonDown="ColorAdjustTab_Click" Tag="Curves">
+                                        <TextBlock Text="◎ Curves" FontSize="8.5"
+                                                   Foreground="{StaticResource ipMuted}"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- ═══ Tab 1: SLIDERS ═══ -->
+                                <StackPanel x:Name="ColorAdjustTabSliders" Visibility="Visible">
+                                    <!-- Brightness -->
+                                    <DockPanel Margin="0,0,0,3" ToolTip="Brightness — Tăng/giảm độ sáng ảnh (-100 → +100)">
+                                        <TextBlock DockPanel.Dock="Left" Text="Bright"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="8.5" Width="36" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="2,1" MinWidth="30">
+                                            <TextBlock x:Name="TxtBrightness" FontSize="8.5"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="0"/>
+                                        </Border>
+                                        <Slider x:Name="SliderBrightness" Minimum="-100" Maximum="100" Value="0"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="ColorAdjustSlider_ValueChanged"
+                                                PreviewMouseLeftButtonDown="ColorAdjustSlider_PreviewMouseDown"
+                                                PreviewMouseLeftButtonUp="ColorAdjustSlider_PreviewMouseUp"/>
+                                    </DockPanel>
+
+                                    <!-- Contrast -->
+                                    <DockPanel Margin="0,0,0,3" ToolTip="Contrast — Tăng/giảm độ tương phản (-100 → +100)">
+                                        <TextBlock DockPanel.Dock="Left" Text="Contra"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="8.5" Width="36" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="2,1" MinWidth="30">
+                                            <TextBlock x:Name="TxtContrast" FontSize="8.5"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="0"/>
+                                        </Border>
+                                        <Slider x:Name="SliderContrast" Minimum="-100" Maximum="100" Value="0"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="ColorAdjustSlider_ValueChanged"
+                                                PreviewMouseLeftButtonDown="ColorAdjustSlider_PreviewMouseDown"
+                                                PreviewMouseLeftButtonUp="ColorAdjustSlider_PreviewMouseUp"/>
+                                    </DockPanel>
+
+                                    <!-- Saturation -->
+                                    <DockPanel Margin="0,0,0,3" ToolTip="Saturation — Tăng/giảm độ bão hoà màu (-100 → +100)">
+                                        <TextBlock DockPanel.Dock="Left" Text="Satur"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="8.5" Width="36" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="2,1" MinWidth="30">
+                                            <TextBlock x:Name="TxtSaturation" FontSize="8.5"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="0"/>
+                                        </Border>
+                                        <Slider x:Name="SliderSaturation" Minimum="-100" Maximum="100" Value="0"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="ColorAdjustSlider_ValueChanged"
+                                                PreviewMouseLeftButtonDown="ColorAdjustSlider_PreviewMouseDown"
+                                                PreviewMouseLeftButtonUp="ColorAdjustSlider_PreviewMouseUp"/>
+                                    </DockPanel>
+
+                                    <!-- Hue -->
+                                    <DockPanel Margin="0,0,0,3" ToolTip="Hue — Xoay vòng màu (-180° → +180°)">
+                                        <TextBlock DockPanel.Dock="Left" Text="Hue"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   FontSize="8.5" Width="36" VerticalAlignment="Center"/>
+                                        <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}"
+                                                CornerRadius="2" Padding="2,1" MinWidth="30">
+                                            <TextBlock x:Name="TxtHue" FontSize="8.5"
+                                                       Foreground="{StaticResource ipAccent2}"
+                                                       FontFamily="Consolas" HorizontalAlignment="Center"
+                                                       Text="0°"/>
+                                        </Border>
+                                        <Slider x:Name="SliderHue" Minimum="-180" Maximum="180" Value="0"
+                                                VerticalAlignment="Center" Margin="4,0"
+                                                ValueChanged="ColorAdjustSlider_ValueChanged"
+                                                PreviewMouseLeftButtonDown="ColorAdjustSlider_PreviewMouseDown"
+                                                PreviewMouseLeftButtonUp="ColorAdjustSlider_PreviewMouseUp"/>
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <!-- ═══ Tab 2: CURVES ═══ -->
+                                <StackPanel x:Name="ColorAdjustTabCurves" Visibility="Collapsed">
+                                    <!-- Channel selector -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="Channel:" FontSize="8.5"
+                                                   Foreground="{StaticResource ipMuted}"
+                                                   VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <ComboBox x:Name="CmbCurveChannel" Width="70" Height="20" FontSize="8.5"
+                                                  SelectedIndex="0"
+                                                  SelectionChanged="CmbCurveChannel_SelectionChanged">
+                                            <ComboBoxItem Content="RGB"/>
+                                            <ComboBoxItem Content="Red"/>
+                                            <ComboBoxItem Content="Green"/>
+                                            <ComboBoxItem Content="Blue"/>
+                                        </ComboBox>
+                                        <Button Content="↺" ToolTip="Reset curve"
+                                                Style="{StaticResource IpMiniBtn}"
+                                                Width="20" Height="18" FontSize="12" Margin="4,0,0,0"
+                                                Click="BtnResetCurve_Click"/>
+                                    </StackPanel>
+
+                                    <!-- Curves Canvas with histogram -->
+                                    <Border Background="#1a1a2e" CornerRadius="3" Padding="1"
+                                            BorderBrush="{StaticResource ipBorder}" BorderThickness="1">
+                                        <Canvas x:Name="CurvesCanvas" Width="180" Height="180"
+                                                Background="Transparent"
+                                                ClipToBounds="True"
+                                                MouseLeftButtonDown="CurvesCanvas_MouseLeftButtonDown"
+                                                MouseMove="CurvesCanvas_MouseMove"
+                                                MouseLeftButtonUp="CurvesCanvas_MouseLeftButtonUp"
+                                                MouseRightButtonUp="CurvesCanvas_MouseRightButtonUp">
+                                            <!-- Histogram bars (drawn in code-behind) -->
+                                            <!-- Grid lines -->
+                                            <Line X1="45" Y1="0" X2="45" Y2="180" Stroke="#22ffffff" StrokeThickness="0.5"/>
+                                            <Line X1="90" Y1="0" X2="90" Y2="180" Stroke="#22ffffff" StrokeThickness="0.5"/>
+                                            <Line X1="135" Y1="0" X2="135" Y2="180" Stroke="#22ffffff" StrokeThickness="0.5"/>
+                                            <Line X1="0" Y1="45" X2="180" Y2="45" Stroke="#22ffffff" StrokeThickness="0.5"/>
+                                            <Line X1="0" Y1="90" X2="180" Y2="90" Stroke="#22ffffff" StrokeThickness="0.5"/>
+                                            <Line X1="0" Y1="135" X2="180" Y2="135" Stroke="#22ffffff" StrokeThickness="0.5"/>
+                                            <!-- Identity line (diagonal) -->
+                                            <Line X1="0" Y1="180" X2="180" Y2="0" Stroke="#33ffffff" StrokeThickness="0.5"
+                                                  StrokeDashArray="3,3"/>
+                                            <!-- Curve polyline (drawn in code-behind) -->
+                                            <Polyline x:Name="CurvePolyline" Stroke="#4fc3f7" StrokeThickness="1.5"
+                                                      IsHitTestVisible="False"/>
+                                        </Canvas>
+                                    </Border>
+
+                                    <!-- Input/Output display -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                        <TextBlock Text="In:" FontSize="8" Foreground="{StaticResource ipMuted}" Margin="0,0,2,0"/>
+                                        <TextBlock x:Name="TxtCurveInput" Text="—" FontSize="8"
+                                                   Foreground="{StaticResource ipAccent2}" FontFamily="Consolas"
+                                                   Width="24"/>
+                                        <TextBlock Text="Out:" FontSize="8" Foreground="{StaticResource ipMuted}" Margin="6,0,2,0"/>
+                                        <TextBlock x:Name="TxtCurveOutput" Text="—" FontSize="8"
+                                                   Foreground="{StaticResource ipAccent2}" FontFamily="Consolas"
+                                                   Width="24"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Apply button (shared) -->
+                                <Button x:Name="BtnApplyColorAdjust" Content="✓ Apply" 
+                                        ToolTip="Áp dụng thay đổi màu vào pixel layer (có thể Undo)"
+                                        Style="{StaticResource IpAdjBtn}"
+                                        HorizontalAlignment="Stretch" Margin="0,4,0,0"
+                                        Click="BtnApplyColorAdjust_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
                 </StackPanel>
             </ScrollViewer>
