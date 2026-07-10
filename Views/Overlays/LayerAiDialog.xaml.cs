@@ -116,6 +116,9 @@ namespace FlowMy.Views.Overlays
 
             // Refresh all slots UI
             RefreshAllSlotsUI();
+
+            // Setup two-way drag and drop between WPF and WebView2
+            SetupDragAndDrop();
         }
 
         #region Header & Window Actions
@@ -154,6 +157,7 @@ namespace FlowMy.Views.Overlays
         private System.Windows.Controls.Primitives.Popup? _suggestPopup;
         private ListBox? _suggestListBox;
         private System.Windows.Threading.DispatcherTimer? _suggestDebounceTimer;
+        private Point _dragStartPoint;
 
         private string GetActivePromptText()
         {
@@ -2048,6 +2052,277 @@ namespace FlowMy.Views.Overlays
             rtb.Freeze();
             return rtb;
         }
+
+        #region Two-Way Drag and Drop (WPF <-> WebView2)
+
+        private void SetupDragAndDrop()
+        {
+            // --- WPF-to-WebView Drag Source Setup ---
+            var dragSources = new FrameworkElement[]
+            {
+                ImgPreview, ImgPreviewWv,
+                SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3,
+                SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3
+            };
+
+            foreach (var src in dragSources)
+            {
+                if (src == null) continue;
+                src.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    _dragStartPoint = e.GetPosition(null);
+                };
+                src.MouseMove += (s, e) =>
+                {
+                    if (e.LeftButton == MouseButtonState.Pressed)
+                    {
+                        var currentPosition = e.GetPosition(null);
+                        if (Math.Abs(currentPosition.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                            Math.Abs(currentPosition.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                        {
+                            StartDragDrop(s);
+                        }
+                    }
+                };
+            }
+
+            // --- WebView-to-WPF Drop Target Setup ---
+            var dropTargets = new FrameworkElement[]
+            {
+                ImgPreview, ImgPreviewWv,
+                SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3,
+                SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3
+            };
+
+            foreach (var target in dropTargets)
+            {
+                if (target == null) continue;
+                target.AllowDrop = true;
+                target.DragOver += (s, e) =>
+                {
+                    e.Effects = DragDropEffects.Copy;
+                    e.Handled = true;
+                };
+                target.Drop += Control_Drop;
+            }
+        }
+
+        private void StartDragDrop(object sender)
+        {
+            try
+            {
+                BitmapSource? bitmap = null;
+                string tempFileName = "dragged_image.png";
+
+                if (sender is Image img)
+                {
+                    bitmap = img.Source as BitmapSource;
+                    if (img.Name == "ImgPreview" || img.Name == "ImgPreviewWv")
+                    {
+                        tempFileName = "LayerAi_MainImage.png";
+                    }
+                    else
+                    {
+                        tempFileName = $"LayerAi_Slot_{img.Name}.png";
+                    }
+                }
+                else if (sender is Border border)
+                {
+                    if (border.Name == "ImgPreview" || border.Name == "ImgPreviewWv")
+                    {
+                        bitmap = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+                        tempFileName = "LayerAi_MainImage.png";
+                    }
+                    else if (border.Tag is string tagStr && int.TryParse(tagStr, out int idx) && idx >= 0 && idx < 4)
+                    {
+                        bitmap = _secondaryImages[idx].Bitmap;
+                        tempFileName = $"LayerAi_Slot_{idx}.png";
+                    }
+                }
+
+                if (bitmap == null) return;
+
+                // Save bitmap to temporary file
+                var tempPath = Path.Combine(Path.GetTempPath(), tempFileName);
+                using (var fileStream = new FileStream(tempPath, FileMode.Create))
+                {
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                    encoder.Save(fileStream);
+                }
+
+                // Create DataObject
+                var data = new DataObject();
+                var fileList = new System.Collections.Specialized.StringCollection { tempPath };
+                data.SetFileDropList(fileList);
+
+                // Execute drag drop
+                DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error starting drag drop: {ex.Message}");
+            }
+        }
+
+        private async void Control_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                BitmapSource? droppedBitmap = null;
+
+                // 1. Check FileDrop (local file path)
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                    if (files != null && files.Length > 0)
+                    {
+                        var filePath = files[0];
+                        if (File.Exists(filePath))
+                        {
+                            droppedBitmap = new BitmapImage(new Uri(filePath, UriKind.Absolute));
+                        }
+                    }
+                }
+                // 2. Check Text or UniformResourceLocator (image URL from browser)
+                else if (e.Data.GetDataPresent(DataFormats.Text) || e.Data.GetDataPresent(DataFormats.UnicodeText))
+                {
+                    var text = (e.Data.GetData(DataFormats.Text) ?? e.Data.GetData(DataFormats.UnicodeText)) as string;
+                    if (!string.IsNullOrWhiteSpace(text) && Uri.TryCreate(text, UriKind.Absolute, out var uri) && 
+                        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                    {
+                        droppedBitmap = await DownloadImageAsync(uri);
+                    }
+                }
+                else if (e.Data.GetDataPresent("UniformResourceLocator"))
+                {
+                    var url = e.Data.GetData("UniformResourceLocator") as string;
+                    if (!string.IsNullOrWhiteSpace(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri) && 
+                        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                    {
+                        droppedBitmap = await DownloadImageAsync(uri);
+                    }
+                }
+                // 3. Check Bitmap
+                else if (e.Data.GetDataPresent(DataFormats.Bitmap))
+                {
+                    droppedBitmap = e.Data.GetData(DataFormats.Bitmap) as BitmapSource;
+                }
+
+                if (droppedBitmap == null) return;
+
+                Dispatcher.Invoke(() =>
+                {
+                    ProcessDroppedImage(sender, droppedBitmap);
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error on drop: {ex.Message}");
+            }
+        }
+
+        private void ProcessDroppedImage(object sender, BitmapSource bitmap)
+        {
+            bool isMainImage = false;
+            if (sender is FrameworkElement fe && (fe.Name == "ImgPreview" || fe.Name == "ImgPreviewWv"))
+            {
+                isMainImage = true;
+            }
+
+            if (isMainImage)
+            {
+                try
+                {
+                    int layerW = _activeLayer.Width;
+                    int layerH = _activeLayer.Height;
+                    var resized = ResizeBitmapHighQuality(bitmap, layerW, layerH, uniformToFill: true);
+                    
+                    var stride = layerW * 4;
+                    var pixels = new byte[stride * layerH];
+                    resized.CopyPixels(pixels, stride, 0);
+                    
+                    _activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, layerW, layerH), pixels, stride, 0);
+                    _activeLayer.InvalidateThumbnail();
+                    
+                    UpdatePreviewImage();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to update main image from drop: {ex.Message}");
+                }
+                return;
+            }
+
+            // Otherwise, it is a slot drop
+            int idx = -1;
+            if (sender is FrameworkElement feSlot && feSlot.Tag is string tagStr && int.TryParse(tagStr, out int tagIdx))
+            {
+                idx = tagIdx;
+            }
+            else if (sender is FrameworkElement feSlot2)
+            {
+                var name = feSlot2.Name ?? "";
+                if (name.EndsWith("0")) idx = 0;
+                else if (name.EndsWith("1")) idx = 1;
+                else if (name.EndsWith("2")) idx = 2;
+                else if (name.EndsWith("3")) idx = 3;
+            }
+
+            if (idx >= 0 && idx < 4)
+            {
+                _secondaryImages[idx].Bitmap = bitmap;
+                _secondaryImages[idx].FilePath = null;
+                _secondaryImages[idx].IsSelected = true;
+                RefreshAllSlotsUI();
+            }
+            else
+            {
+                int targetIdx = -1;
+                for (int i = 0; i < 4; i++)
+                {
+                    if (!_secondaryImages[i].HasImage)
+                    {
+                        targetIdx = i;
+                        break;
+                    }
+                }
+                if (targetIdx == -1) targetIdx = 0;
+
+                _secondaryImages[targetIdx].Bitmap = bitmap;
+                _secondaryImages[targetIdx].FilePath = null;
+                _secondaryImages[targetIdx].IsSelected = true;
+                RefreshAllSlotsUI();
+            }
+        }
+
+        private async System.Threading.Tasks.Task<BitmapSource?> DownloadImageAsync(Uri uri)
+        {
+            try
+            {
+                using (var client = new System.Net.Http.HttpClient())
+                {
+                    var data = await client.GetByteArrayAsync(uri);
+                    using (var ms = new System.IO.MemoryStream(data))
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.StreamSource = ms;
+                        bitmap.EndInit();
+                        bitmap.Freeze();
+                        return bitmap;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to download dropped image: {ex.Message}");
+                return null;
+            }
+        }
+
+        #endregion
 
         #endregion
     }
