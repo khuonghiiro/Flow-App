@@ -197,6 +197,7 @@ namespace FlowMy.Views.Overlays
 
         private void ExpandDialogToScreen()
         {
+            WindowStartupLocation = WindowStartupLocation.Manual;
             var screenW = SystemParameters.PrimaryScreenWidth;
             var screenH = SystemParameters.PrimaryScreenHeight;
             var targetW = Math.Min(screenW * 0.90, screenW - 60);
@@ -214,6 +215,11 @@ namespace FlowMy.Views.Overlays
             // Sync prompt from current tab to all others
             SyncPromptTo(newTab);
             _activeTab = newTab;
+
+            if (_node != null)
+            {
+                _node.LayerAiActiveTab = newTab.ToString();
+            }
 
             // Toggle layout visibility and widths
             if (newTab == ActiveTab.Prompt)
@@ -287,10 +293,26 @@ namespace FlowMy.Views.Overlays
 
         private void CenterOnScreen()
         {
-            if (Owner != null)
+            if (Owner != null && !double.IsNaN(Owner.Left) && !double.IsNaN(Owner.Top))
             {
+                WindowStartupLocation = WindowStartupLocation.Manual;
                 Left = Owner.Left + (Owner.Width - Width) / 2;
                 Top = Owner.Top + (Owner.Height - Height) / 2;
+            }
+            else
+            {
+                if (this.IsLoaded)
+                {
+                    WindowStartupLocation = WindowStartupLocation.Manual;
+                    var screenW = SystemParameters.PrimaryScreenWidth;
+                    var screenH = SystemParameters.PrimaryScreenHeight;
+                    Left = (screenW - Width) / 2;
+                    Top = (screenH - Height) / 2;
+                }
+                else
+                {
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                }
             }
         }
 
@@ -1764,6 +1786,19 @@ namespace FlowMy.Views.Overlays
                     TxtCustomHeight.Text = ((int)bounds.Height).ToString();
                 }
             }
+
+            // Restore active tab selection
+            var savedTabStr = _node.LayerAiActiveTab ?? "Prompt";
+            var savedTab = savedTabStr switch
+            {
+                "WebView" => ActiveTab.WebView,
+                "WebBrowser" => ActiveTab.WebBrowser,
+                _ => ActiveTab.Prompt
+            };
+            
+            // Force SwitchToTab to run fully by setting _activeTab to a different state first
+            _activeTab = (savedTab == ActiveTab.Prompt) ? ActiveTab.WebBrowser : ActiveTab.Prompt;
+            SwitchToTab(savedTab);
         }
 
         private void RefreshRelatedNodeDialogs()

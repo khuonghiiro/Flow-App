@@ -252,6 +252,15 @@ namespace FlowMy.Models.Nodes
             set { if (_layerAiCacheProfileName != value) { _layerAiCacheProfileName = value ?? "Shared"; OnPropertyChanged(); } }
         }
 
+        private string _layerAiActiveTab = "Prompt";
+
+        /// <summary>Tab đang mở trong LayerAiDialog (Prompt, WebView, WebBrowser).</summary>
+        public string LayerAiActiveTab
+        {
+            get => _layerAiActiveTab;
+            set { if (_layerAiActiveTab != value) { _layerAiActiveTab = value ?? "Prompt"; OnPropertyChanged(); } }
+        }
+
         /// <summary>Chế độ xử lý hiện tại (AI hoặc Manual).</summary>
         public ImageProcessingMode ProcessingMode
         {
