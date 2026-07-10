@@ -59,6 +59,7 @@ namespace FlowMy.Views.Overlays
         private double _originalWidth;
         private double _originalHeight;
         private FrameworkElement? _hoveredImageContainer = null;
+        private bool _isMouseDownOnImage = false;
 
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
@@ -2365,15 +2366,21 @@ namespace FlowMy.Views.Overlays
                 src.PreviewMouseLeftButtonDown += (s, e) =>
                 {
                     _dragStartPoint = e.GetPosition(null);
+                    _isMouseDownOnImage = true;
+                };
+                src.PreviewMouseLeftButtonUp += (s, e) =>
+                {
+                    _isMouseDownOnImage = false;
                 };
                 src.MouseMove += (s, e) =>
                 {
-                    if (e.LeftButton == MouseButtonState.Pressed)
+                    if (_isMouseDownOnImage && e.LeftButton == MouseButtonState.Pressed)
                     {
                         var currentPosition = e.GetPosition(null);
                         if (Math.Abs(currentPosition.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
                             Math.Abs(currentPosition.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
                         {
+                            _isMouseDownOnImage = false;
                             StartDragDrop(s);
                         }
                     }
@@ -2774,16 +2781,23 @@ namespace FlowMy.Views.Overlays
 
                 if (hBitmap != IntPtr.Zero)
                 {
-                    var helper = (IDragSourceHelper)new DragDropHelper();
-                    var pshdi = new SHDRAGIMAGE
+                    try
                     {
-                        sizeDragImage = new SIZE { cx = targetW, cy = targetH },
-                        ptOffset = new POINT { x = targetW / 2, y = targetH / 2 },
-                        hbmpDragImage = hBitmap,
-                        crColorKey = 0x00000000
-                    };
-                    
-                    helper.InitializeFromBitmap(ref pshdi, (System.Runtime.InteropServices.ComTypes.IDataObject)dataObject);
+                        var helper = (IDragSourceHelper)new DragDropHelper();
+                        var pshdi = new SHDRAGIMAGE
+                        {
+                            sizeDragImage = new SIZE { cx = targetW, cy = targetH },
+                            ptOffset = new POINT { x = targetW / 2, y = targetH / 2 },
+                            hbmpDragImage = hBitmap,
+                            crColorKey = 0x00000000
+                        };
+                        
+                        helper.InitializeFromBitmap(ref pshdi, (System.Runtime.InteropServices.ComTypes.IDataObject)dataObject);
+                    }
+                    catch (InvalidCastException)
+                    {
+                        // Interface not supported on this thread/apartment, ignore silently
+                    }
                 }
             }
             catch (Exception ex)
@@ -3207,8 +3221,8 @@ namespace FlowMy.Views.Overlays
                                         e.dataTransfer.setData('text/plain', absoluteUrl);
                                         e.dataTransfer.setData('text/uri-list', absoluteUrl);
                                         
-                                        // Stop propagation so React / SPA page scripts cannot block the drag
-                                        e.stopPropagation();
+                                        // Disable preventDefault so React / SPA page scripts cannot cancel the native drag
+                                        e.preventDefault = function() {};
                                     } catch (err) {
                                         console.error('Failed to resolve URL on dragstart:', err);
                                     }
