@@ -228,7 +228,7 @@
                             <Border Grid.Row="1" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="8" ClipToBounds="True">
                                 <Grid>
                                     <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                    <Image x:Name="ImgPreview" Stretch="Uniform" Margin="0"/>
+                                     <Image x:Name="ImgPreview" Stretch="Uniform" Margin="0" MouseEnter="ImgPreview_MouseEnter" MouseLeave="ImgPreview_MouseLeave"/>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -354,7 +354,7 @@
                             <Border Grid.Row="1" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="6" ClipToBounds="True">
                                 <Grid>
                                     <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                    <Image x:Name="ImgPreviewWv" Stretch="Uniform" Margin="0"/>
+                                     <Image x:Name="ImgPreviewWv" Stretch="Uniform" Margin="0" MouseEnter="ImgPreview_MouseEnter" MouseLeave="ImgPreview_MouseLeave"/>
                                 </Grid>
                             </Border>
                         </Grid>

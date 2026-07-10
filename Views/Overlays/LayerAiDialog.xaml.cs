@@ -58,6 +58,7 @@ namespace FlowMy.Views.Overlays
         // Tab + dialog state
         private double _originalWidth;
         private double _originalHeight;
+        private FrameworkElement? _hoveredImageContainer = null;
 
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
@@ -128,6 +129,9 @@ namespace FlowMy.Views.Overlays
 
             // Setup two-way drag and drop between WPF and WebView2
             SetupDragAndDrop();
+
+            // Listen to Ctrl+V paste event when hovering over images/slots
+            this.PreviewKeyDown += LayerAiDialog_PreviewKeyDown;
         }
 
         #region Header & Window Actions
@@ -379,6 +383,7 @@ namespace FlowMy.Views.Overlays
                     var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
 
                     await webView.EnsureCoreWebView2Async(env);
+                    await InjectDragDropInterceptorScriptAsync(webView);
                     cacheState.DynamicWebView = webView;
                 }
                 else
@@ -483,6 +488,7 @@ namespace FlowMy.Views.Overlays
                     }
 
                     await webBrowser.EnsureCoreWebView2Async(env);
+                    await InjectDragDropInterceptorScriptAsync(webBrowser);
                     cacheState.WebBrowser = webBrowser;
 
                     // Navigate to saved URL
@@ -613,7 +619,8 @@ namespace FlowMy.Views.Overlays
                         }
 
                         await _webBrowser.EnsureCoreWebView2Async(env);
-
+                        await InjectDragDropInterceptorScriptAsync(_webBrowser);
+ 
                         // Update cache
                         var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
                         cacheState.WebBrowser = _webBrowser;
@@ -1033,6 +1040,7 @@ namespace FlowMy.Views.Overlays
 
         private void Slot_MouseEnter(object sender, MouseEventArgs e)
         {
+            _hoveredImageContainer = sender as FrameworkElement;
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
                 if (idx >= 0 && idx < 4)
@@ -1053,6 +1061,10 @@ namespace FlowMy.Views.Overlays
 
         private void Slot_MouseLeave(object sender, MouseEventArgs e)
         {
+            if (_hoveredImageContainer == sender)
+            {
+                _hoveredImageContainer = null;
+            }
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
                 if (idx >= 0 && idx < 4)
@@ -1074,6 +1086,248 @@ namespace FlowMy.Views.Overlays
                     _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
                 }
             }
+        }
+
+        private void ImgPreview_MouseEnter(object sender, MouseEventArgs e)
+        {
+            _hoveredImageContainer = sender as FrameworkElement;
+        }
+
+        private void ImgPreview_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (_hoveredImageContainer == sender)
+            {
+                _hoveredImageContainer = null;
+            }
+        }
+
+        private async void LayerAiDialog_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                if (_hoveredImageContainer != null)
+                {
+                    var bmp = await GetImageFromClipboardAsync();
+                    if (bmp != null)
+                    {
+                        e.Handled = true;
+                        ProcessHoveredSlotPaste(bmp);
+                    }
+                }
+            }
+        }
+
+        private void ProcessHoveredSlotPaste(BitmapSource bitmap)
+        {
+            if (_hoveredImageContainer == null) return;
+            FlashSlotBorder(_hoveredImageContainer);
+
+            string name = _hoveredImageContainer.Name ?? "";
+            bool isMainImage = name == "ImgPreview" || name == "ImgPreviewWv";
+
+            if (isMainImage)
+            {
+                try
+                {
+                    int layerW = _activeLayer.Width;
+                    int layerH = _activeLayer.Height;
+                    var resized = ResizeBitmapHighQuality(bitmap, layerW, layerH, uniformToFill: true);
+                    
+                    var stride = layerW * 4;
+                    var pixels = new byte[stride * layerH];
+                    resized.CopyPixels(pixels, stride, 0);
+                    
+                    _activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, layerW, layerH), pixels, stride, 0);
+                    _activeLayer.InvalidateThumbnail();
+                    
+                    UpdatePreviewImage();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to update main image from paste: {ex.Message}");
+                }
+            }
+            else
+            {
+                // It is a slot border
+                int idx = -1;
+                if (_hoveredImageContainer is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int tagIdx))
+                {
+                    idx = tagIdx;
+                }
+                else
+                {
+                    if (name.EndsWith("0")) idx = 0;
+                    else if (name.EndsWith("1")) idx = 1;
+                    else if (name.EndsWith("2")) idx = 2;
+                    else if (name.EndsWith("3")) idx = 3;
+                }
+
+                if (idx >= 0 && idx < 4)
+                {
+                    _secondaryImages[idx].Bitmap = bitmap;
+                    _secondaryImages[idx].FilePath = null;
+                    _secondaryImages[idx].IsSelected = true;
+                    RefreshAllSlotsUI();
+                }
+            }
+        }
+
+        private async Task<BitmapSource?> GetImageFromClipboardAsync()
+        {
+            try
+            {
+                var dataObject = Clipboard.GetDataObject();
+                if (dataObject == null) return null;
+
+                // 0a. Check FileContents (direct original compressed file data from clipboard)
+                if (dataObject.GetDataPresent("FileContents"))
+                {
+                    var bmp = GetImageFromFileContentsCOM(dataObject);
+                    if (bmp != null) return bmp;
+                }
+
+                // 0. Check DeviceIndependentBitmap / DeviceIndependentBitmapV5
+                if (dataObject.GetDataPresent("DeviceIndependentBitmap"))
+                {
+                    var data = dataObject.GetData("DeviceIndependentBitmap");
+                    if (data is MemoryStream ms)
+                    {
+                        var bmp = GetImageFromDIB(ms);
+                        if (bmp != null) return bmp;
+                    }
+                }
+                if (dataObject.GetDataPresent("DeviceIndependentBitmapV5"))
+                {
+                    var data = dataObject.GetData("DeviceIndependentBitmapV5");
+                    if (data is MemoryStream ms)
+                    {
+                        var bmp = GetImageFromDIB(ms);
+                        if (bmp != null) return bmp;
+                    }
+                }
+
+                // 1. Check Bitmap directly
+                if (dataObject.GetDataPresent(DataFormats.Bitmap))
+                {
+                    if (dataObject.GetData(DataFormats.Bitmap) is BitmapSource bmp)
+                    {
+                        return bmp;
+                    }
+                }
+
+                // 2. Check FileDrop
+                if (dataObject.GetDataPresent(DataFormats.FileDrop))
+                {
+                    if (dataObject.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                    {
+                        var filePath = files[0];
+                        if (File.Exists(filePath))
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.UriSource = new Uri(filePath, UriKind.Absolute);
+                            bmp.EndInit();
+                            bmp.Freeze();
+                            return bmp;
+                        }
+                    }
+                }
+
+                // 3. Check HTML Format / URL
+                string? url = null;
+                string? sourcePageUrl = null;
+                if (dataObject.GetDataPresent(DataFormats.Html))
+                {
+                    if (dataObject.GetData(DataFormats.Html) is string htmlText)
+                    {
+                        var sourceUrlMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"SourceURL:\s*([^\r\n]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (sourceUrlMatch.Success)
+                        {
+                            sourcePageUrl = sourceUrlMatch.Groups[1].Value.Trim();
+                        }
+
+                        string? foundUrl = null;
+                        var attributes = new[] { "data-src", "data-original", "data-srcset", "srcset", "src" };
+                        foreach (var attr in attributes)
+                        {
+                            var regex = new System.Text.RegularExpressions.Regex(
+                                attr + @"\s*=\s*[""']([^""' >]+)[""']", 
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                            var match = regex.Match(htmlText);
+                            if (match.Success)
+                            {
+                                foundUrl = match.Groups[1].Value;
+                                break;
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(foundUrl))
+                        {
+                            url = foundUrl;
+                            url = System.Net.WebUtility.HtmlDecode(url);
+                        }
+                    }
+                }
+
+                if (string.IsNullOrEmpty(url) && dataObject.GetDataPresent(DataFormats.Text))
+                {
+                    url = dataObject.GetData(DataFormats.Text) as string;
+                }
+
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    url = url.Trim();
+                    if (url.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return CreateBitmapFromBase64(url);
+                    }
+
+                    Uri? uri = null;
+                    if (Uri.TryCreate(url, UriKind.Absolute, out var absoluteUri))
+                    {
+                        uri = absoluteUri;
+                    }
+                    else
+                    {
+                        string? pageUrl = sourcePageUrl;
+                        if (string.IsNullOrWhiteSpace(pageUrl))
+                        {
+                            Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
+                            if (_activeTab == ActiveTab.WebBrowser) activeWv = _webBrowser;
+                            else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
+                            if (activeWv?.Source != null)
+                            {
+                                pageUrl = activeWv.Source.ToString();
+                            }
+                        }
+                        if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = _node?.LayerAiWebUrl;
+                        if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = TxtWebUrl?.Text;
+
+                        if (!string.IsNullOrWhiteSpace(pageUrl) && Uri.TryCreate(pageUrl, UriKind.Absolute, out var baseUri))
+                        {
+                            if (Uri.TryCreate(baseUri, url, out var resolvedUri))
+                            {
+                                uri = resolvedUri;
+                            }
+                        }
+                    }
+
+                    if (uri != null)
+                    {
+                        if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                        {
+                            return await DownloadImageAsync(uri);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to get image from clipboard: {ex.Message}");
+            }
+            return null;
         }
 
         private void RefreshAllSlotsUI()
@@ -2254,6 +2508,33 @@ namespace FlowMy.Views.Overlays
 
         private async Task<BitmapSource?> GetImageFromDragEventArgsAsync(DragEventArgs e)
         {
+            // 0a. Check FileContents (direct original compressed file data from Chrome/Edge)
+            if (e.Data.GetDataPresent("FileContents"))
+            {
+                var bmp = GetImageFromFileContentsCOM(e.Data);
+                if (bmp != null) return bmp;
+            }
+
+            // 0. Check DeviceIndependentBitmap / DeviceIndependentBitmapV5 (direct raw pixels from Chrome/Edge)
+            if (e.Data.GetDataPresent("DeviceIndependentBitmap"))
+            {
+                var data = e.Data.GetData("DeviceIndependentBitmap");
+                if (data is MemoryStream ms)
+                {
+                    var bmp = GetImageFromDIB(ms);
+                    if (bmp != null) return bmp;
+                }
+            }
+            if (e.Data.GetDataPresent("DeviceIndependentBitmapV5"))
+            {
+                var data = e.Data.GetData("DeviceIndependentBitmapV5");
+                if (data is MemoryStream ms)
+                {
+                    var bmp = GetImageFromDIB(ms);
+                    if (bmp != null) return bmp;
+                }
+            }
+
             // 1. Check Bitmap directly
             if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
@@ -2291,16 +2572,65 @@ namespace FlowMy.Views.Overlays
 
             // 3. Try to extract URL from various formats
             string? url = null;
+            string? sourcePageUrl = null;
 
             // 3a. Check HTML Format (HTML snippet dragged from WebView2/Browser)
             if (e.Data.GetDataPresent(DataFormats.Html))
             {
                 if (e.Data.GetData(DataFormats.Html) is string htmlText)
                 {
-                    var match = System.Text.RegularExpressions.Regex.Match(htmlText, @"<img\s[^>]*src=[""']([^""' >]+)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                    if (match.Success)
+                    // Try to extract SourceURL from HTML format header
+                    var sourceUrlMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"SourceURL:\s*([^\r\n]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (sourceUrlMatch.Success)
                     {
-                        url = match.Groups[1].Value;
+                        sourcePageUrl = sourceUrlMatch.Groups[1].Value.Trim();
+                    }
+
+                    // Try to find source attributes in order of preference (real lazy-loaded/responsive image url first)
+                    string? foundUrl = null;
+                    var attributes = new[] { "data-src", "data-original", "data-srcset", "srcset", "src" };
+                    foreach (var attr in attributes)
+                    {
+                        var regex = new System.Text.RegularExpressions.Regex(
+                            attr + @"\s*=\s*[""']([^""' >]+)[""']", 
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        var match = regex.Match(htmlText);
+                        if (match.Success)
+                        {
+                            foundUrl = match.Groups[1].Value;
+                            if (attr == "srcset" || attr == "data-srcset")
+                            {
+                                var parts = foundUrl.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                                var firstUrl = parts.FirstOrDefault(p => p.StartsWith("http") || p.StartsWith("//") || p.StartsWith("/"));
+                                if (firstUrl != null) foundUrl = firstUrl;
+                            }
+                            break;
+                        }
+                    }
+
+                    // Fallback to href if it points to an image
+                    if (string.IsNullOrEmpty(foundUrl))
+                    {
+                        var linkMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"href\s*=\s*[""']([^""' >]+\.(?:png|jpg|jpeg|gif|webp|bmp))[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (linkMatch.Success)
+                        {
+                            foundUrl = linkMatch.Groups[1].Value;
+                        }
+                    }
+
+                    // Fallback to CSS background-image url()
+                    if (string.IsNullOrEmpty(foundUrl))
+                    {
+                        var bgMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"url\(\s*['""]?([^'"")]+?)['""]?\s*\)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (bgMatch.Success)
+                        {
+                            foundUrl = bgMatch.Groups[1].Value;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(foundUrl))
+                    {
+                        url = foundUrl;
                         url = System.Net.WebUtility.HtmlDecode(url);
                     }
                 }
@@ -2343,7 +2673,38 @@ namespace FlowMy.Views.Overlays
                     return CreateBitmapFromBase64(url);
                 }
 
-                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                Uri? uri = null;
+                if (Uri.TryCreate(url, UriKind.Absolute, out var absoluteUri))
+                {
+                    uri = absoluteUri;
+                }
+                else
+                {
+                    // Relative URL resolution based on base browser page URL
+                    string? pageUrl = sourcePageUrl;
+                    if (string.IsNullOrWhiteSpace(pageUrl))
+                    {
+                        Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
+                        if (_activeTab == ActiveTab.WebBrowser) activeWv = _webBrowser;
+                        else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
+                        if (activeWv?.Source != null)
+                        {
+                            pageUrl = activeWv.Source.ToString();
+                        }
+                    }
+                    if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = _node?.LayerAiWebUrl;
+                    if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = TxtWebUrl?.Text;
+
+                    if (!string.IsNullOrWhiteSpace(pageUrl) && Uri.TryCreate(pageUrl, UriKind.Absolute, out var baseUri))
+                    {
+                        if (Uri.TryCreate(baseUri, url, out var resolvedUri))
+                        {
+                            uri = resolvedUri;
+                        }
+                    }
+                }
+
+                if (uri != null)
                 {
                     if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
                     {
@@ -2431,12 +2792,86 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        private static BitmapSource? GetImageFromDIB(MemoryStream dibStream)
+        {
+            try
+            {
+                byte[] dibBytes = dibStream.ToArray();
+                if (dibBytes.Length < 40) return null; // BITMAPINFOHEADER is at least 40 bytes
+
+                // Read BITMAPINFOHEADER fields
+                int headerSize = BitConverter.ToInt32(dibBytes, 0);
+                int width = BitConverter.ToInt32(dibBytes, 4);
+                int height = BitConverter.ToInt32(dibBytes, 8);
+                short planes = BitConverter.ToInt16(dibBytes, 12);
+                short bitCount = BitConverter.ToInt16(dibBytes, 14);
+                int compression = BitConverter.ToInt32(dibBytes, 16);
+                int imageSize = BitConverter.ToInt32(dibBytes, 20);
+                int colorsUsed = BitConverter.ToInt32(dibBytes, 32);
+
+                // Calculate header sizes and offsets
+                int colorTableSize = 0;
+                if (bitCount <= 8)
+                {
+                    colorTableSize = (colorsUsed > 0 ? colorsUsed : (1 << bitCount)) * 4;
+                }
+                else if (compression == 3) // BI_BITFIELDS
+                {
+                    colorTableSize = 12; // 3 color masks (4 bytes each)
+                }
+
+                int pixelOffset = 14 + headerSize + colorTableSize;
+                int totalFileSize = 14 + dibBytes.Length;
+
+                byte[] bmpBytes = new byte[totalFileSize];
+                
+                // 1. Write BITMAPFILEHEADER
+                // bfType (ASCII 'BM')
+                bmpBytes[0] = 0x42;
+                bmpBytes[1] = 0x4D;
+                // bfSize
+                Array.Copy(BitConverter.GetBytes(totalFileSize), 0, bmpBytes, 2, 4);
+                // bfReserved1, bfReserved2 (0)
+                bmpBytes[6] = 0;
+                bmpBytes[7] = 0;
+                bmpBytes[8] = 0;
+                bmpBytes[9] = 0;
+                // bfOffBits
+                Array.Copy(BitConverter.GetBytes(pixelOffset), 0, bmpBytes, 10, 4);
+
+                // 2. Copy the DIB bytes
+                Array.Copy(dibBytes, 0, bmpBytes, 14, dibBytes.Length);
+
+                // 3. Load using BmpBitmapDecoder
+                using (var ms = new MemoryStream(bmpBytes))
+                {
+                    var decoder = new BmpBitmapDecoder(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                    if (decoder.Frames.Count > 0)
+                    {
+                        var frame = decoder.Frames[0];
+                        frame.Freeze();
+                        return frame;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to parse DIB: {ex.Message}");
+            }
+            return null;
+        }
+
         private void ProcessDroppedImage(object sender, BitmapSource bitmap)
         {
             bool isMainImage = false;
             if (sender is FrameworkElement fe && (fe.Name == "ImgPreview" || fe.Name == "ImgPreviewWv"))
             {
                 isMainImage = true;
+            }
+ 
+            if (sender is FrameworkElement feContainer)
+            {
+                FlashSlotBorder(feContainer);
             }
 
             if (isMainImage)
@@ -2505,12 +2940,95 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        private async void FlashSlotBorder(FrameworkElement slotContainer)
+        {
+            try
+            {
+                // Find parent border or border itself
+                Border? border = slotContainer as Border;
+                if (border == null && slotContainer is Image img)
+                {
+                    // Find the parent Border of the Image
+                    border = img.Parent as Border;
+                }
+
+                if (border != null)
+                {
+                    var originalBrush = border.BorderBrush;
+                    var originalThickness = border.BorderThickness;
+
+                    // Flash vibrant green
+                    var flashBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+                    border.BorderBrush = flashBrush;
+                    border.BorderThickness = new Thickness(originalThickness.Left + 1);
+
+                    // Blink: wait 150ms
+                    await System.Threading.Tasks.Task.Delay(150);
+                    border.BorderBrush = Brushes.Transparent;
+                    await System.Threading.Tasks.Task.Delay(150);
+                    
+                    // Restore original
+                    border.BorderBrush = originalBrush;
+                    border.BorderThickness = originalThickness;
+                }
+            }
+            catch { }
+        }
+
         private async System.Threading.Tasks.Task<BitmapSource?> DownloadImageAsync(Uri uri)
         {
             try
             {
+                // Find the active WebView2 instance to extract session cookies
+                Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
+                if (_activeTab == ActiveTab.WebBrowser) activeWv = _webBrowser;
+                else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
+
                 using (var client = new System.Net.Http.HttpClient())
                 {
+                    // Add standard browser headers
+                    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+                    // Set Referer to the current page URL
+                    string? pageUrl = null;
+                    if (activeWv?.Source != null)
+                    {
+                        pageUrl = activeWv.Source.ToString();
+                    }
+                    if (string.IsNullOrWhiteSpace(pageUrl))
+                    {
+                        pageUrl = _node?.LayerAiWebUrl;
+                    }
+                    if (string.IsNullOrWhiteSpace(pageUrl))
+                    {
+                        pageUrl = TxtWebUrl?.Text;
+                    }
+                    
+                    if (!string.IsNullOrWhiteSpace(pageUrl))
+                    {
+                        client.DefaultRequestHeaders.Referrer = new Uri(pageUrl);
+                    }
+
+                    // Extract and add cookies as raw header string (avoids CookieContainer exceptions)
+                    if (activeWv?.CoreWebView2 != null)
+                    {
+                        try
+                        {
+                            var cookieManager = activeWv.CoreWebView2.CookieManager;
+                            var cookies = await cookieManager.GetCookiesAsync(uri.ToString());
+                            if (cookies != null && cookies.Count > 0)
+                            {
+                                var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
+                                string cookieHeaderValue = string.Join("; ", cookiePairs);
+                                client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to get WebView2 cookies: {ex.Message}");
+                        }
+                    }
+
                     var data = await client.GetByteArrayAsync(uri);
                     using (var ms = new System.IO.MemoryStream(data))
                     {
@@ -2531,8 +3049,184 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        #endregion
+        private static BitmapSource? GetImageFromFileContentsCOM(System.Windows.IDataObject dataObject)
+        {
+            try
+            {
+                if (!(dataObject is System.Runtime.InteropServices.ComTypes.IDataObject comDataObject))
+                    return null;
 
+                // Get format ID for FileContents
+                int formatId = System.Windows.DataFormats.GetDataFormat("FileContents").Id;
+                if (formatId == 0) return null;
+
+                var formatetc = new System.Runtime.InteropServices.ComTypes.FORMATETC
+                {
+                    cfFormat = (short)formatId,
+                    dwAspect = System.Runtime.InteropServices.ComTypes.DVASPECT.DVASPECT_CONTENT,
+                    lindex = 0, // first file
+                    tymed = System.Runtime.InteropServices.ComTypes.TYMED.TYMED_ISTREAM | System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL
+                };
+
+                System.Runtime.InteropServices.ComTypes.STGMEDIUM medium;
+                comDataObject.GetData(ref formatetc, out medium);
+                
+                if (medium.tymed == System.Runtime.InteropServices.ComTypes.TYMED.TYMED_ISTREAM && medium.unionmember != IntPtr.Zero)
+                {
+                    var stream = (System.Runtime.InteropServices.ComTypes.IStream)System.Runtime.InteropServices.Marshal.GetObjectForIUnknown(medium.unionmember);
+                    using (var ms = new MemoryStream())
+                    {
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        IntPtr bytesReadPtr = System.Runtime.InteropServices.Marshal.AllocHGlobal(sizeof(int));
+                        try
+                        {
+                            do
+                            {
+                                stream.Read(buffer, buffer.Length, bytesReadPtr);
+                                bytesRead = System.Runtime.InteropServices.Marshal.ReadInt32(bytesReadPtr);
+                                if (bytesRead > 0)
+                                {
+                                    ms.Write(buffer, 0, bytesRead);
+                                }
+                            } while (bytesRead > 0);
+                        }
+                        finally
+                        {
+                            System.Runtime.InteropServices.Marshal.FreeHGlobal(bytesReadPtr);
+                        }
+
+                        ms.Position = 0;
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.StreamSource = ms;
+                        bmp.EndInit();
+                        bmp.Freeze();
+                        return bmp;
+                    }
+                }
+                else if (medium.tymed == System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL && medium.unionmember != IntPtr.Zero)
+                {
+                    IntPtr hGlobal = medium.unionmember;
+                    IntPtr ptr = GlobalLock(hGlobal);
+                    try
+                    {
+                        int size = GlobalSize(hGlobal);
+                        if (size > 0)
+                        {
+                            byte[] bytes = new byte[size];
+                            System.Runtime.InteropServices.Marshal.Copy(ptr, bytes, 0, size);
+                            using (var ms = new MemoryStream(bytes))
+                            {
+                                var bmp = new BitmapImage();
+                                bmp.BeginInit();
+                                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                                bmp.StreamSource = ms;
+                                bmp.EndInit();
+                                bmp.Freeze();
+                                return bmp;
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        GlobalUnlock(hGlobal);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"COM FileContents retrieval failed: {ex.Message}");
+            }
+            return null;
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool GlobalUnlock(IntPtr hMem);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern int GlobalSize(IntPtr hMem);
+
+        private async System.Threading.Tasks.Task InjectDragDropInterceptorScriptAsync(Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        {
+            if (webView?.CoreWebView2 == null) return;
+            try
+            {
+                // Inject the JS script to run on every page load
+                string script = @"
+                    (function() {
+                        // 1. Force draggable=true when user starts to drag or click-down on images and links
+                        document.addEventListener('mousedown', function(e) {
+                            let target = e.target;
+                            while (target && target.tagName !== 'IMG' && target.tagName !== 'A') {
+                                target = target.parentNode;
+                            }
+                            if (target) {
+                                if (target.tagName === 'IMG' && target.getAttribute('draggable') !== 'true') {
+                                    target.setAttribute('draggable', 'true');
+                                } else if (target.tagName === 'A') {
+                                    const img = target.querySelector('img');
+                                    if (img && img.getAttribute('draggable') !== 'true') {
+                                        img.setAttribute('draggable', 'true');
+                                    }
+                                    if (target.getAttribute('draggable') !== 'true') {
+                                        target.setAttribute('draggable', 'true');
+                                    }
+                                }
+                            }
+                        }, true);
+
+                        // 2. Intercept dragstart in capture phase to bypass target-level blockages
+                        document.addEventListener('dragstart', function(e) {
+                            let target = e.target;
+                            while (target && target.tagName !== 'IMG' && target.tagName !== 'A') {
+                                target = target.parentNode;
+                            }
+                            if (target) {
+                                let imageUrl = '';
+                                if (target.tagName === 'IMG') {
+                                    imageUrl = target.src;
+                                } else if (target.tagName === 'A') {
+                                    const img = target.querySelector('img');
+                                    if (img) {
+                                        imageUrl = img.src;
+                                    } else if (/\.(png|jpg|jpeg|gif|webp|bmp)/i.test(target.href)) {
+                                        imageUrl = target.href;
+                                    }
+                                }
+                                if (imageUrl) {
+                                    try {
+                                        const absoluteUrl = new URL(imageUrl, window.location.href).href;
+                                        // Set data transfer details
+                                        e.dataTransfer.effectAllowed = 'copyLink';
+                                        e.dataTransfer.setData('text/plain', absoluteUrl);
+                                        e.dataTransfer.setData('text/uri-list', absoluteUrl);
+                                        
+                                        // Stop propagation so React / SPA page scripts cannot block the drag
+                                        e.stopPropagation();
+                                    } catch (err) {
+                                        console.error('Failed to resolve URL on dragstart:', err);
+                                    }
+                                }
+                            }
+                        }, true);
+                    })();
+                ";
+                await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to inject drag-drop interceptor script: {ex.Message}");
+            }
+        }
+ 
+        #endregion
+ 
         #endregion
     }
 
