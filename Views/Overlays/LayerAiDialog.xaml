@@ -9,8 +9,8 @@
         Background="Transparent"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
-        Width="680"
-        Height="460">
+        Width="920"
+        Height="540">
     <Window.Resources>
         <!-- Reusable dark theme brush copies if global ones are not available -->
         <SolidColorBrush x:Key="DialogBg" Color="#111318"/>
@@ -164,6 +164,16 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Secondary Image Slot Style -->
+        <Style x:Key="SecondaryImageBorder" TargetType="Border">
+            <Setter Property="BorderBrush" Value="#2a2e3d"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Background" Value="#15171e"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
     </Window.Resources>
     
     <Border CornerRadius="12" BorderBrush="{StaticResource BorderColor}" BorderThickness="1.5" Background="{StaticResource DialogBg}">
@@ -191,37 +201,189 @@
                 </Grid>
             </Border>
 
-            <!-- CONTENT ROW 1: PREVIEW & PROMPT -->
+            <!-- CONTENT: 3-COLUMN LAYOUT -->
             <Grid Grid.Row="1" Margin="16,12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="ColPreview" Width="3*"/>
+                    <ColumnDefinition x:Name="ColGap1" Width="10"/>
+                    <ColumnDefinition x:Name="ColSecondary" Width="3*"/>
+                    <ColumnDefinition x:Name="ColGap2" Width="10"/>
+                    <ColumnDefinition x:Name="ColPrompt" Width="3*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- COLUMN 1: PREVIEW (2/3) -->
-                <Border Grid.Column="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
-                    <Grid>
-                        <!-- Checkerboard background to indicate transparency -->
-                        <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
-                        <Image x:Name="ImgPreview" Stretch="Uniform" Margin="0"/>
-                    </Grid>
-                </Border>
-
-                <!-- COLUMN 2: PROMPT (1/3) -->
-                <Grid Grid.Column="2">
+                <!-- COLUMN 1: PREVIEW (ảnh chính) -->
+                <Grid Grid.Column="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="PROMPT gợi ý chỉnh sửa" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
-                    <Border Grid.Row="1" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
-                        <TextBox x:Name="TxtPrompt"
-                                 Background="Transparent" Foreground="{StaticResource TextMain}"
-                                 BorderThickness="0"
-                                 Padding="8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
+                    <TextBlock Grid.Row="0" Text="📸 ẢNH CHÍNH (Preview)" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
+                    <Border Grid.Row="1" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="8" ClipToBounds="True">
+                        <Grid>
+                            <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
+                            <Image x:Name="ImgPreview" Stretch="Uniform" Margin="0"/>
+                        </Grid>
                     </Border>
+                </Grid>
+
+                <!-- COLUMN 2: ẢNH PHỤ (4 slots - Grid 2x2) -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Text="🖼️ ẢNH PHỤ (tối đa 4)" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
+                    
+                    <!-- 2x2 Grid of secondary image slots -->
+                    <Grid x:Name="SecondaryImagesGrid" Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="4"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Slot 1 -->
+                        <Border x:Name="SlotBorder0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="0">
+                            <Grid>
+                                <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                <Image x:Name="SlotImage0" Stretch="Uniform" Margin="2"/>
+                                <TextBlock x:Name="SlotPlaceholder0" Text="＋" FontSize="24" Foreground="#3a3f52"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <!-- Selection check overlay -->
+                                <Border x:Name="SlotCheck0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
+                                    <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                                <!-- Remove button -->
+                                <Border x:Name="SlotRemove0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand"
+                                        Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="0">
+                                    <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Slot 2 -->
+                        <Border x:Name="SlotBorder1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="1">
+                            <Grid>
+                                <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                <Image x:Name="SlotImage1" Stretch="Uniform" Margin="2"/>
+                                <TextBlock x:Name="SlotPlaceholder1" Text="＋" FontSize="24" Foreground="#3a3f52"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <Border x:Name="SlotCheck1" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
+                                    <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                                <Border x:Name="SlotRemove1" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand"
+                                        Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="1">
+                                    <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Slot 3 -->
+                        <Border x:Name="SlotBorder2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="2">
+                            <Grid>
+                                <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                <Image x:Name="SlotImage2" Stretch="Uniform" Margin="2"/>
+                                <TextBlock x:Name="SlotPlaceholder2" Text="＋" FontSize="24" Foreground="#3a3f52"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <Border x:Name="SlotCheck2" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
+                                    <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                                <Border x:Name="SlotRemove2" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand"
+                                        Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="2">
+                                    <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Slot 4 -->
+                        <Border x:Name="SlotBorder3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="3">
+                            <Grid>
+                                <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                <Image x:Name="SlotImage3" Stretch="Uniform" Margin="2"/>
+                                <TextBlock x:Name="SlotPlaceholder3" Text="＋" FontSize="24" Foreground="#3a3f52"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <Border x:Name="SlotCheck3" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
+                                    <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                                <Border x:Name="SlotRemove3" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand"
+                                        Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="3">
+                                    <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Add image button -->
+                    <Button x:Name="BtnAddSecondary" Grid.Row="2" Content="＋ Thêm ảnh phụ" Height="28" Margin="0,6,0,0"
+                            Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
+                </Grid>
+
+                <!-- COLUMN 3: PROMPT + UI TABS -->
+                <Grid Grid.Column="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Tab header (manual, styled) -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Border x:Name="TabHeaderPrompt" Background="#1a4fffb0" BorderBrush="{StaticResource AccentColor}" BorderThickness="1"
+                                CornerRadius="4,4,0,0" Padding="10,4" Cursor="Hand" MouseLeftButtonDown="TabPrompt_Click">
+                            <TextBlock Text="💬 Prompt" Foreground="{StaticResource AccentColor}" FontSize="10" FontWeight="Bold"/>
+                        </Border>
+                        <Border x:Name="TabHeaderWebView" Background="Transparent" BorderBrush="{StaticResource BorderColor}" BorderThickness="1,1,1,0"
+                                CornerRadius="4,4,0,0" Padding="10,4" Cursor="Hand" Margin="4,0,0,0" MouseLeftButtonDown="TabWebView_Click">
+                            <TextBlock x:Name="TabHeaderWebViewText" Text="🌐 UI động" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Tab content: Prompt -->
+                    <Grid x:Name="TabContentPrompt" Grid.Row="1">
+                        <Border Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
+                            <TextBox x:Name="TxtPrompt"
+                                     Background="Transparent" Foreground="{StaticResource TextMain}"
+                                     BorderThickness="0"
+                                     Padding="8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Tab content: WebView2 (placeholder for Phase 3) -->
+                    <Grid x:Name="TabContentWebView" Grid.Row="1" Visibility="Collapsed">
+                        <Border Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <!-- WebView2 will be injected here in Phase 3 -->
+                                <Border x:Name="WebViewContainer" CornerRadius="4" ClipToBounds="True">
+                                    <TextBlock Text="🌐 UI động sẽ được render ở đây&#x0a;(Cấu hình trong tab 'Layer AI'&#x0a;của dialog Xử lý ảnh)"
+                                               Foreground="{StaticResource TextMuted}" FontSize="11"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               TextAlignment="Center" LineHeight="20"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Grid>
             </Grid>
 
@@ -272,6 +434,11 @@
                                 <TextBox x:Name="TxtCustomHeight" Width="60" Height="28" Padding="6,0" VerticalContentAlignment="Center" Text="512" TextChanged="TxtCustomSize_TextChanged"
                                          Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#404fffb0"/>
                             </StackPanel>
+                        </StackPanel>
+
+                        <!-- Secondary images count badge -->
+                        <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtSecondaryInfo" Text="" Foreground="{StaticResource AccentColor}" FontSize="10" FontWeight="SemiBold"/>
                         </StackPanel>
                     </StackPanel>
 

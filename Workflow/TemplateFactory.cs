@@ -173,12 +173,14 @@ namespace FlowMy.Workflow
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "cropName", DisplayName = "Crop Name (Image_{Order}_{DateTime})", IsMultiple = false, OutputType = WorkflowDataType.String });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "cropWidth", DisplayName = "Crop Width", IsMultiple = false, OutputType = WorkflowDataType.Number });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "cropHeight", DisplayName = "Crop Height", IsMultiple = false, OutputType = WorkflowDataType.Number });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "listBase64", DisplayName = "Layer AI - List Base64 ảnh phụ (JSON)", IsMultiple = false, OutputType = WorkflowDataType.String });
             
             // Mặc định checked cho imageBase64 và cropListBase64 (skip = true nghĩa là không xử lý)
             // Nhưng theo yêu cầu: checked = không xử lý, unchecked = xử lý
             // Vậy mặc định checked = thêm vào SkipOutputs
             node.SkipOutputs.Add("imageBase64");
             node.SkipOutputs.Add("cropListBase64");
+            node.SkipOutputs.Add("listBase64");
 
             return node;
         }

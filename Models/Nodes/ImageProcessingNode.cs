@@ -195,6 +195,44 @@ namespace FlowMy.Models.Nodes
         /// <summary>Danh sách output keys bị skip (checked = true nghĩa là không xử lý output đó).</summary>
         public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // ═══════ Layer AI: Dynamic UI Configuration ═══════
+
+        private string _layerAiHtmlCode = string.Empty;
+        private string _layerAiCssCode = string.Empty;
+        private string _layerAiJsCode = string.Empty;
+        private string _layerAiParamsCode = string.Empty;
+
+        /// <summary>HTML template cho UI động trong LayerAiDialog.</summary>
+        public string LayerAiHtmlCode
+        {
+            get => _layerAiHtmlCode;
+            set { if (_layerAiHtmlCode != value) { _layerAiHtmlCode = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>CSS styles cho UI động trong LayerAiDialog.</summary>
+        public string LayerAiCssCode
+        {
+            get => _layerAiCssCode;
+            set { if (_layerAiCssCode != value) { _layerAiCssCode = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>JavaScript logic cho UI động trong LayerAiDialog.</summary>
+        public string LayerAiJsCode
+        {
+            get => _layerAiJsCode;
+            set { if (_layerAiJsCode != value) { _layerAiJsCode = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Params/config cho UI động trong LayerAiDialog.</summary>
+        public string LayerAiParamsCode
+        {
+            get => _layerAiParamsCode;
+            set { if (_layerAiParamsCode != value) { _layerAiParamsCode = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Input mappings cho Layer AI (node nguồn + key → biến dùng trong HTML/JS).</summary>
+        public System.Collections.Generic.List<CodeInputMapping> LayerAiInputMappings { get; set; } = new();
+
         /// <summary>Chế độ xử lý hiện tại (AI hoặc Manual).</summary>
         public ImageProcessingMode ProcessingMode
         {

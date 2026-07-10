@@ -6,6 +6,7 @@ using FlowMy.Services.Rendering;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls;
 using FlowMy.Views.NodeControls.Helpers;
+using Microsoft.Win32;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -29,6 +30,35 @@ namespace FlowMy.Views.Overlays
         private readonly IWorkflowEditorHost _host;
         private readonly EditorDocument _doc;
 
+        // Secondary images management
+        private class SecondaryImageItem
+        {
+            public BitmapSource? Bitmap { get; set; }
+            public string? FilePath { get; set; }
+            public bool IsSelected { get; set; } = true;
+            public bool HasImage => Bitmap != null;
+        }
+
+        private readonly SecondaryImageItem[] _secondaryImages = new SecondaryImageItem[4]
+        {
+            new SecondaryImageItem(),
+            new SecondaryImageItem(),
+            new SecondaryImageItem(),
+            new SecondaryImageItem()
+        };
+
+        // Cached references to UI elements for each slot
+        private Border[] _slotBorders = null!;
+        private Image[] _slotImages = null!;
+        private TextBlock[] _slotPlaceholders = null!;
+        private Border[] _slotChecks = null!;
+        private Border[] _slotRemoves = null!;
+
+        // Tab state
+        private bool _isWebViewTabActive = false;
+        private double _originalWidth;
+        private double _originalHeight;
+
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
             InitializeComponent();
@@ -38,12 +68,27 @@ namespace FlowMy.Views.Overlays
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _doc = doc ?? throw new ArgumentNullException(nameof(doc));
 
+            _originalWidth = Width;
+            _originalHeight = Height;
+
+            // Initialize slot references
+            _slotBorders = new[] { SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3 };
+            _slotImages = new[] { SlotImage0, SlotImage1, SlotImage2, SlotImage3 };
+            _slotPlaceholders = new[] { SlotPlaceholder0, SlotPlaceholder1, SlotPlaceholder2, SlotPlaceholder3 };
+            _slotChecks = new[] { SlotCheck0, SlotCheck1, SlotCheck2, SlotCheck3 };
+            _slotRemoves = new[] { SlotRemove0, SlotRemove1, SlotRemove2, SlotRemove3 };
+
             // Load saved settings
             LoadSavedSettings();
 
             // Load preview image
             UpdatePreviewImage();
+
+            // Refresh all slots UI
+            RefreshAllSlotsUI();
         }
+
+        #region Header & Window Actions
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -64,6 +109,291 @@ namespace FlowMy.Views.Overlays
             DialogResult = false;
             Close();
         }
+
+        #endregion
+
+        #region Tab Switching (Prompt / WebView)
+
+        private void TabPrompt_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isWebViewTabActive) return;
+            _isWebViewTabActive = false;
+
+            TabContentPrompt.Visibility = Visibility.Visible;
+            TabContentWebView.Visibility = Visibility.Collapsed;
+
+            TabHeaderPrompt.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
+            TabHeaderPrompt.BorderBrush = FindResource("AccentColor") as Brush;
+            TabHeaderWebView.Background = Brushes.Transparent;
+            TabHeaderWebView.BorderBrush = FindResource("BorderColor") as Brush;
+            TabHeaderWebViewText.Foreground = FindResource("TextMuted") as Brush;
+
+            // Restore original dialog size (columns stay fixed)
+            Width = _originalWidth;
+            Height = _originalHeight;
+            CenterOnScreen();
+        }
+
+        private void TabWebView_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (_isWebViewTabActive) return;
+            _isWebViewTabActive = true;
+
+            TabContentPrompt.Visibility = Visibility.Collapsed;
+            TabContentWebView.Visibility = Visibility.Visible;
+
+            TabHeaderWebView.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
+            TabHeaderWebView.BorderBrush = FindResource("AccentColor") as Brush;
+            TabHeaderWebViewText.Foreground = FindResource("AccentColor") as Brush;
+            TabHeaderPrompt.Background = Brushes.Transparent;
+            TabHeaderPrompt.BorderBrush = FindResource("BorderColor") as Brush;
+
+            // Expand dialog Width + Height so the right column naturally grows
+            // to phone/tablet size. Columns ratio stays fixed (3*/10/3*/10/3*).
+            var screenW = SystemParameters.PrimaryScreenWidth;
+            var screenH = SystemParameters.PrimaryScreenHeight;
+
+            // Target: fill ~90% of screen width, ~85% of screen height
+            var targetW = Math.Min(screenW * 0.90, screenW - 60);
+            var targetH = Math.Min(screenH * 0.85, screenH - 80);
+
+            // Ensure at least original size
+            Width = Math.Max(_originalWidth, targetW);
+            Height = Math.Max(_originalHeight, targetH);
+
+            // Center on screen
+            Left = (screenW - Width) / 2;
+            Top = (screenH - Height) / 2;
+        }
+
+        private void CenterOnScreen()
+        {
+            if (Owner != null)
+            {
+                Left = Owner.Left + (Owner.Width - Width) / 2;
+                Top = Owner.Top + (Owner.Height - Height) / 2;
+            }
+        }
+
+        #endregion
+
+        #region Secondary Images Slots
+
+        private void BtnAddSecondary_Click(object sender, RoutedEventArgs e)
+        {
+            // Find first empty slot
+            int emptySlot = -1;
+            for (int i = 0; i < 4; i++)
+            {
+                if (!_secondaryImages[i].HasImage)
+                {
+                    emptySlot = i;
+                    break;
+                }
+            }
+
+            if (emptySlot == -1)
+            {
+                MessageBox.Show("Đã đủ 4 ảnh phụ. Hãy xóa ảnh cũ trước.", "Ảnh phụ", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dlg = new OpenFileDialog
+            {
+                Title = "Chọn ảnh phụ",
+                Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|All Files|*.*",
+                CheckFileExists = true,
+                Multiselect = true
+            };
+
+            if (dlg.ShowDialog(this) == true)
+            {
+                int slotIdx = emptySlot;
+                foreach (var file in dlg.FileNames)
+                {
+                    if (slotIdx >= 4) break;
+
+                    // Find next empty slot
+                    while (slotIdx < 4 && _secondaryImages[slotIdx].HasImage)
+                        slotIdx++;
+                    if (slotIdx >= 4) break;
+
+                    try
+                    {
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.UriSource = new Uri(file);
+                        bmp.EndInit();
+                        bmp.Freeze();
+
+                        _secondaryImages[slotIdx].Bitmap = bmp;
+                        _secondaryImages[slotIdx].FilePath = file;
+                        _secondaryImages[slotIdx].IsSelected = true;
+                        slotIdx++;
+                    }
+                    catch { }
+                }
+
+                RefreshAllSlotsUI();
+            }
+        }
+
+        private void Slot_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
+            {
+                if (idx < 0 || idx >= 4) return;
+
+                if (_secondaryImages[idx].HasImage)
+                {
+                    // Toggle selection
+                    _secondaryImages[idx].IsSelected = !_secondaryImages[idx].IsSelected;
+                    RefreshSlotUI(idx);
+                }
+                else
+                {
+                    // Empty slot — open file dialog for this specific slot
+                    var dlg = new OpenFileDialog
+                    {
+                        Title = "Chọn ảnh phụ",
+                        Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|All Files|*.*",
+                        CheckFileExists = true,
+                        Multiselect = false
+                    };
+
+                    if (dlg.ShowDialog(this) == true)
+                    {
+                        try
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.UriSource = new Uri(dlg.FileName);
+                            bmp.EndInit();
+                            bmp.Freeze();
+
+                            _secondaryImages[idx].Bitmap = bmp;
+                            _secondaryImages[idx].FilePath = dlg.FileName;
+                            _secondaryImages[idx].IsSelected = true;
+                        }
+                        catch { }
+                        RefreshAllSlotsUI();
+                    }
+                }
+
+                e.Handled = true;
+            }
+        }
+
+        private void SlotRemove_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
+            {
+                if (idx >= 0 && idx < 4)
+                {
+                    _secondaryImages[idx].Bitmap = null;
+                    _secondaryImages[idx].FilePath = null;
+                    _secondaryImages[idx].IsSelected = false;
+                    RefreshAllSlotsUI();
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void Slot_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
+            {
+                if (idx >= 0 && idx < 4)
+                {
+                    // Hover glow effect
+                    border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+                    border.BorderThickness = new Thickness(2);
+
+                    // Show remove button if has image
+                    if (_secondaryImages[idx].HasImage)
+                    {
+                        _slotRemoves[idx].Visibility = Visibility.Visible;
+                    }
+                }
+            }
+        }
+
+        private void Slot_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
+            {
+                if (idx >= 0 && idx < 4)
+                {
+                    // Reset border based on selection state
+                    if (_secondaryImages[idx].HasImage && _secondaryImages[idx].IsSelected)
+                    {
+                        border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+                        border.BorderThickness = new Thickness(2);
+                    }
+                    else
+                    {
+                        border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+                        border.BorderThickness = new Thickness(1.5);
+                    }
+
+                    // Hide remove button
+                    _slotRemoves[idx].Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        private void RefreshAllSlotsUI()
+        {
+            for (int i = 0; i < 4; i++)
+                RefreshSlotUI(i);
+            UpdateSecondaryInfo();
+        }
+
+        private void RefreshSlotUI(int idx)
+        {
+            if (idx < 0 || idx >= 4) return;
+
+            var item = _secondaryImages[idx];
+
+            if (item.HasImage)
+            {
+                _slotImages[idx].Source = item.Bitmap;
+                _slotPlaceholders[idx].Visibility = Visibility.Collapsed;
+                _slotChecks[idx].Visibility = item.IsSelected ? Visibility.Visible : Visibility.Collapsed;
+
+                if (item.IsSelected)
+                {
+                    _slotBorders[idx].BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+                    _slotBorders[idx].BorderThickness = new Thickness(2);
+                }
+                else
+                {
+                    _slotBorders[idx].BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+                    _slotBorders[idx].BorderThickness = new Thickness(1.5);
+                }
+            }
+            else
+            {
+                _slotImages[idx].Source = null;
+                _slotPlaceholders[idx].Visibility = Visibility.Visible;
+                _slotChecks[idx].Visibility = Visibility.Collapsed;
+                _slotBorders[idx].BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+                _slotBorders[idx].BorderThickness = new Thickness(1.5);
+            }
+        }
+
+        private void UpdateSecondaryInfo()
+        {
+            int total = _secondaryImages.Count(s => s.HasImage);
+            int selected = _secondaryImages.Count(s => s.HasImage && s.IsSelected);
+            TxtSecondaryInfo.Text = total > 0 ? $"Ảnh phụ: {selected}/{total} đã chọn" : "";
+        }
+
+        #endregion
+
+        #region Aspect Ratio & Preview
 
         private void CmbAspectRatio_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -130,6 +460,10 @@ namespace FlowMy.Views.Overlays
             catch { }
         }
 
+        #endregion
+
+        #region Send AI (BtnSend_Click)
+
         private async void BtnSend_Click(object sender, RoutedEventArgs e)
         {
             BtnSend.IsEnabled = false;
@@ -185,10 +519,10 @@ namespace FlowMy.Views.Overlays
                     processedImg = DrawPreviewImage(sourceImg, targetRatio, null, null, drawCheckerboard: false);
                 }
 
-                // Convert to base64
+                // Convert main image to base64
                 var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(processedImg));
 
-                // Bind outputs
+                // Bind main image base64 output
                 var cropBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropBase64", StringComparison.OrdinalIgnoreCase));
                 if (cropBase64Port != null) cropBase64Port.UserValueOverride = b64;
 
@@ -230,6 +564,9 @@ namespace FlowMy.Views.Overlays
                     };
                     aspectPort.UserValueOverride = aspectStr;
                 }
+
+                // *** NEW: Collect secondary images base64 and set listBase64 output ***
+                await CollectAndSetListBase64Async();
 
                 // Refresh outputs list in node dialog immediately to reflect the generated overrides
                 RefreshRelatedNodeDialogs();
@@ -449,6 +786,41 @@ namespace FlowMy.Views.Overlays
                 ResetButtons();
             }
         }
+
+        /// <summary>
+        /// Collect selected secondary images, convert to base64, and set the listBase64 output.
+        /// </summary>
+        private async Task CollectAndSetListBase64Async()
+        {
+            var selectedImages = _secondaryImages
+                .Where(s => s.HasImage && s.IsSelected && s.Bitmap != null)
+                .Select(s => s.Bitmap!)
+                .ToList();
+
+            if (selectedImages.Count == 0)
+            {
+                // Set empty array
+                var listBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "listBase64", StringComparison.OrdinalIgnoreCase));
+                if (listBase64Port != null) listBase64Port.UserValueOverride = "[]";
+                return;
+            }
+
+            var base64List = new List<string>();
+            foreach (var bmp in selectedImages)
+            {
+                var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(bmp));
+                base64List.Add(b64);
+            }
+
+            // Serialize as JSON array
+            var jsonArray = System.Text.Json.JsonSerializer.Serialize(base64List);
+            var port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "listBase64", StringComparison.OrdinalIgnoreCase));
+            if (port != null) port.UserValueOverride = jsonArray;
+        }
+
+        #endregion
+
+        #region Helpers
 
         private void CleanupPlaceholders(List<EditorLayer> placeholders, EditorLayer parent, Window? owner)
         {
@@ -947,5 +1319,7 @@ namespace FlowMy.Views.Overlays
             rtb.Freeze();
             return rtb;
         }
+
+        #endregion
     }
 }

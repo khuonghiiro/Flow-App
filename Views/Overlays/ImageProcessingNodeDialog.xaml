@@ -673,6 +673,175 @@ Height="32"/>
                     </ScrollViewer>
                 </TabItem>
 
+                <!-- Tab: Layer AI -->
+                <TabItem Header="🧠 Layer AI" Style="{DynamicResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- 📡 Input Mappings -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="📡 Input Mappings (node nguồn → biến)"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <Button Grid.Column="1" Content="＋ Thêm" Style="{DynamicResource PrimaryButton}"
+                                                Height="24" Padding="8,0" FontSize="10"
+                                                Command="{Binding AddLayerAiInputMappingCommand}" Cursor="Hand"/>
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding LayerAiInputMappingsList}" Margin="0,8,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource WindowBackground}"
+                                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                        BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,6">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <!-- Node nguồn -->
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="Node nguồn" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                            <controls:NodeSearchComboBoxUserControl Height="28"
+                                                                ItemsSource="{Binding DataContext.LayerAiNodeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
+                                                        </StackPanel>
+                                                        <!-- Output Key -->
+                                                        <StackPanel Grid.Column="2">
+                                                            <TextBlock Text="Output Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                            <ComboBox Height="28" Style="{DynamicResource BaseComboBox}"
+                                                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                      SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                                      SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
+                                                        </StackPanel>
+                                                        <!-- Tên biến -->
+                                                        <StackPanel Grid.Column="4">
+                                                            <TextBlock Text="Tên biến" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                            <TextBox Height="28" Style="{DynamicResource BaseTextBoxV2}"
+                                                                     Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
+                                                                     ToolTip="Tên biến dùng trong JS (nếu trống sẽ dùng output key)"/>
+                                                        </StackPanel>
+                                                        <!-- Xóa -->
+                                                        <Button Grid.Column="5" Content="✕" Width="24" Height="24"
+                                                                Style="{DynamicResource DangerButton}" Margin="6,14,0,0"
+                                                                Command="{Binding DataContext.RemoveLayerAiInputMappingCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}" Cursor="Hand" VerticalAlignment="Bottom"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 💻 Code Editors (HTML/CSS/JS/Params) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="💻 Code (HTML/CSS/JS/Params)"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="A−" Width="24" Height="24" Style="{DynamicResource SecondaryButton}"
+                                                    Command="{Binding DecreaseLayerAiCodeFontSizeCommand}" Cursor="Hand" Margin="0,0,4,0"/>
+                                            <Button Content="A+" Width="24" Height="24" Style="{DynamicResource SecondaryButton}"
+                                                    Command="{Binding IncreaseLayerAiCodeFontSizeCommand}" Cursor="Hand"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Sub-tab headers for code -->
+                                    <TabControl x:Name="LayerAiCodeTabs" Grid.Row="1"
+                                                Background="Transparent" BorderThickness="0">
+                                        <!-- HTML -->
+                                        <TabItem Header="HTML" Style="{DynamicResource HttpTabItemStyle}">
+                                            <Border Background="{DynamicResource WindowBackground}"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6" Margin="0,8,0,0" Padding="0">
+                                                <TextBox x:Name="LayerAiHtmlEditor"
+                                                         Text="{Binding LayerAiHtmlCode, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                         AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         HorizontalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas" FontSize="{Binding LayerAiCodeFontSize}"
+                                                         MinHeight="200" MaxHeight="400"/>
+                                            </Border>
+                                        </TabItem>
+                                        <!-- CSS -->
+                                        <TabItem Header="CSS" Style="{DynamicResource HttpTabItemStyle}">
+                                            <Border Background="{DynamicResource WindowBackground}"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6" Margin="0,8,0,0" Padding="0">
+                                                <TextBox x:Name="LayerAiCssEditor"
+                                                         Text="{Binding LayerAiCssCode, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                         AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         HorizontalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas" FontSize="{Binding LayerAiCodeFontSize}"
+                                                         MinHeight="200" MaxHeight="400"/>
+                                            </Border>
+                                        </TabItem>
+                                        <!-- JS -->
+                                        <TabItem Header="JS" Style="{DynamicResource HttpTabItemStyle}">
+                                            <Border Background="{DynamicResource WindowBackground}"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6" Margin="0,8,0,0" Padding="0">
+                                                <TextBox x:Name="LayerAiJsEditor"
+                                                         Text="{Binding LayerAiJsCode, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                         AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         HorizontalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas" FontSize="{Binding LayerAiCodeFontSize}"
+                                                         MinHeight="200" MaxHeight="400"/>
+                                            </Border>
+                                        </TabItem>
+                                        <!-- Params -->
+                                        <TabItem Header="Params" Style="{DynamicResource HttpTabItemStyle}">
+                                            <Border Background="{DynamicResource WindowBackground}"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6" Margin="0,8,0,0" Padding="0">
+                                                <TextBox x:Name="LayerAiParamsEditor"
+                                                         Text="{Binding LayerAiParamsCode, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                         AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         HorizontalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas" FontSize="{Binding LayerAiCodeFontSize}"
+                                                         MinHeight="200" MaxHeight="400"/>
+                                            </Border>
+                                        </TabItem>
+                                    </TabControl>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
             </TabControl>
         </Grid>
     </Border>

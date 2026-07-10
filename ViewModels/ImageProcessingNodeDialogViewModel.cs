@@ -5,6 +5,7 @@ using FlowMy.Services.Rendering;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -70,6 +71,16 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
         public ObservableCollection<WorkflowDataSourceOption> RenderNodeOptions { get; } = new();
 
+        // ═══════ Layer AI: Dynamic UI Configuration ═══════
+        [ObservableProperty] private string _layerAiHtmlCode = string.Empty;
+        [ObservableProperty] private string _layerAiCssCode = string.Empty;
+        [ObservableProperty] private string _layerAiJsCode = string.Empty;
+        [ObservableProperty] private string _layerAiParamsCode = string.Empty;
+        [ObservableProperty] private int _layerAiCodeFontSize = 13;
+
+        public ObservableCollection<CodeInputMappingItemViewModel> LayerAiInputMappingsList { get; } = new();
+        public ObservableCollection<WorkflowDataSourceOption> LayerAiNodeOptions { get; } = new();
+
         public ImageProcessingNodeDialogViewModel(ImageProcessingNode node, IWorkflowEditorHost host)
             : base(node, host)
         {
@@ -94,8 +105,15 @@ namespace FlowMy.ViewModels
             RenderNodeId = _imageNode.RenderNodeId;
             RenderNodeOutputKey = _imageNode.RenderNodeOutputKey;
 
+            // Layer AI code
+            LayerAiHtmlCode = _imageNode.LayerAiHtmlCode ?? string.Empty;
+            LayerAiCssCode = _imageNode.LayerAiCssCode ?? string.Empty;
+            LayerAiJsCode = _imageNode.LayerAiJsCode ?? string.Empty;
+            LayerAiParamsCode = _imageNode.LayerAiParamsCode ?? string.Empty;
+
             RefreshAvailableNodes();
             RefreshRenderNodeOptions();
+            LoadLayerAiInputMappings();
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -352,6 +370,13 @@ namespace FlowMy.ViewModels
                 _imageNode.RaisePropertyChanged(nameof(ImageProcessingNode.ImageBase64));
             }
 
+            // Layer AI code
+            _imageNode.LayerAiHtmlCode = LayerAiHtmlCode ?? string.Empty;
+            _imageNode.LayerAiCssCode = LayerAiCssCode ?? string.Empty;
+            _imageNode.LayerAiJsCode = LayerAiJsCode ?? string.Empty;
+            _imageNode.LayerAiParamsCode = LayerAiParamsCode ?? string.Empty;
+            SyncLayerAiInputMappingsToNode();
+
             _host.RequestSyncDataPanels(immediate: true);
         }
 
@@ -389,6 +414,104 @@ namespace FlowMy.ViewModels
             {
                 SyncToNode(previewRefresh: false);
             }
+        }
+
+        // ═══════ Layer AI Input Mappings ═══════
+
+        private void LoadLayerAiInputMappings()
+        {
+            LayerAiInputMappingsList.Clear();
+            var mappings = _imageNode.LayerAiInputMappings ?? new List<CodeInputMapping>();
+            if (mappings.Count == 0) mappings.Add(new CodeInputMapping());
+
+            foreach (var m in mappings)
+            {
+                var item = new CodeInputMappingItemViewModel
+                {
+                    SourceNodeId = m.SourceNodeId,
+                    SourceOutputKey = m.SourceOutputKey,
+                    InputKeyOverride = m.InputKeyOverride ?? string.Empty,
+                    AutoRefreshEnabled = m.AutoRefreshEnabled,
+                    AutoRefreshInterval = m.AutoRefreshInterval,
+                    AutoRefreshUnit = m.AutoRefreshUnit ?? "ms"
+                };
+                RefreshLayerAiOutputKeyOptionsFor(item);
+                item.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(CodeInputMappingItemViewModel.SourceNodeId))
+                        RefreshLayerAiOutputKeyOptionsFor((CodeInputMappingItemViewModel)s!);
+                };
+                LayerAiInputMappingsList.Add(item);
+            }
+
+            // Refresh node options for Layer AI tab
+            RefreshLayerAiNodeOptions();
+        }
+
+        public void RefreshLayerAiNodeOptions()
+        {
+            LayerAiNodeOptions.Clear();
+            if (_host.ViewModel?.Nodes == null) return;
+            foreach (var n in _host.ViewModel.Nodes)
+            {
+                if (ReferenceEquals(n, _imageNode)) continue;
+                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                LayerAiNodeOptions.Add(CreateDataSourceOption(n));
+            }
+        }
+
+        private void RefreshLayerAiOutputKeyOptionsFor(CodeInputMappingItemViewModel item)
+        {
+            item.AvailableOutputKeyOptions.Clear();
+            var options = GetOutputKeysForNode(item.SourceNodeId);
+            foreach (var o in options)
+                item.AvailableOutputKeyOptions.Add(o);
+        }
+
+        private void SyncLayerAiInputMappingsToNode()
+        {
+            _imageNode.LayerAiInputMappings = LayerAiInputMappingsList.Select(x => new CodeInputMapping
+            {
+                SourceNodeId = x.SourceNodeId,
+                SourceOutputKey = x.SourceOutputKey,
+                InputKeyOverride = x.InputKeyOverride,
+                AutoRefreshEnabled = x.AutoRefreshEnabled,
+                AutoRefreshInterval = x.AutoRefreshInterval,
+                AutoRefreshUnit = x.AutoRefreshUnit
+            }).ToList();
+        }
+
+        [RelayCommand]
+        private void AddLayerAiInputMapping()
+        {
+            var item = new CodeInputMappingItemViewModel();
+            item.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(CodeInputMappingItemViewModel.SourceNodeId))
+                    RefreshLayerAiOutputKeyOptionsFor((CodeInputMappingItemViewModel)s!);
+            };
+            LayerAiInputMappingsList.Add(item);
+        }
+
+        [RelayCommand]
+        private void RemoveLayerAiInputMapping(CodeInputMappingItemViewModel? item)
+        {
+            if (item != null && LayerAiInputMappingsList.Contains(item) && LayerAiInputMappingsList.Count > 1)
+            {
+                LayerAiInputMappingsList.Remove(item);
+            }
+        }
+
+        [RelayCommand]
+        private void IncreaseLayerAiCodeFontSize()
+        {
+            if (LayerAiCodeFontSize < 24) LayerAiCodeFontSize++;
+        }
+
+        [RelayCommand]
+        private void DecreaseLayerAiCodeFontSize()
+        {
+            if (LayerAiCodeFontSize > 9) LayerAiCodeFontSize--;
         }
     }
 }
