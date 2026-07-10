@@ -254,7 +254,7 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Slot 1 -->
-                                <Border x:Name="SlotBorder0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorder0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="0">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
@@ -266,11 +266,14 @@
                                         <Border x:Name="SlotRemove0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="0">
                                             <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
                                         </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="1" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
 
                                 <!-- Slot 2 -->
-                                <Border x:Name="SlotBorder1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorder1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="1">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
@@ -282,11 +285,14 @@
                                         <Border x:Name="SlotRemove1" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="1">
                                             <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
                                         </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="2" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
 
                                 <!-- Slot 3 -->
-                                <Border x:Name="SlotBorder2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorder2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="2">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
@@ -298,11 +304,14 @@
                                         <Border x:Name="SlotRemove2" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="2">
                                             <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
                                         </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="3" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
 
                                 <!-- Slot 4 -->
-                                <Border x:Name="SlotBorder3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorder3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="3">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
@@ -313,6 +322,9 @@
                                         </Border>
                                         <Border x:Name="SlotRemove3" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="3">
                                             <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="4" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -367,36 +379,60 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- 4 compact slots -->
-                                <Border x:Name="SlotBorderWv0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorderWv0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="0">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
                                         <Image x:Name="SlotImageWv0" Stretch="Uniform" Margin="1"/>
                                         <TextBlock x:Name="SlotPlaceholderWv0" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        <Border x:Name="SlotRemoveWv0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="0">
+                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="1" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
-                                <Border x:Name="SlotBorderWv1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorderWv1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="1">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
                                         <Image x:Name="SlotImageWv1" Stretch="Uniform" Margin="1"/>
                                         <TextBlock x:Name="SlotPlaceholderWv1" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        <Border x:Name="SlotRemoveWv1" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="1">
+                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="2" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
-                                <Border x:Name="SlotBorderWv2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorderWv2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="2">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
                                         <Image x:Name="SlotImageWv2" Stretch="Uniform" Margin="1"/>
                                         <TextBlock x:Name="SlotPlaceholderWv2" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        <Border x:Name="SlotRemoveWv2" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="2">
+                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="3" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
-                                <Border x:Name="SlotBorderWv3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                <Border x:Name="SlotBorderWv3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
                                         MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="3">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
                                         <Image x:Name="SlotImageWv3" Stretch="Uniform" Margin="1"/>
                                         <TextBlock x:Name="SlotPlaceholderWv3" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        <Border x:Name="SlotRemoveWv3" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="3">
+                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
+                                            <TextBlock Text="4" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
                             </Grid>

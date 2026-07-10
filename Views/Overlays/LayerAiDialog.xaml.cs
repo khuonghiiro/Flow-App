@@ -52,6 +52,7 @@ namespace FlowMy.Views.Overlays
         private Border[] _slotBordersWv = null!;
         private Image[] _slotImagesWv = null!;
         private TextBlock[] _slotPlaceholdersWv = null!;
+        private Border[] _slotRemovesWv = null!;
 
         // Tab + dialog state
         private double _originalWidth;
@@ -113,6 +114,7 @@ namespace FlowMy.Views.Overlays
             _slotBordersWv = new[] { SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3 };
             _slotImagesWv = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
             _slotPlaceholdersWv = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
+            _slotRemovesWv = new[] { SlotRemoveWv0, SlotRemoveWv1, SlotRemoveWv2, SlotRemoveWv3 };
 
             // Load saved settings
             LoadSavedSettings();
@@ -968,6 +970,7 @@ namespace FlowMy.Views.Overlays
         {
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
+                border.Focus();
                 if (idx < 0 || idx >= 4) return;
 
                 if (_secondaryImages[idx].HasImage)
@@ -1040,6 +1043,7 @@ namespace FlowMy.Views.Overlays
                     if (_secondaryImages[idx].HasImage)
                     {
                         _slotRemoves[idx].Visibility = Visibility.Visible;
+                        _slotRemovesWv[idx].Visibility = Visibility.Visible;
                     }
                 }
             }
@@ -1065,6 +1069,7 @@ namespace FlowMy.Views.Overlays
 
                     // Hide remove button
                     _slotRemoves[idx].Visibility = Visibility.Collapsed;
+                    _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
                 }
             }
         }
@@ -1117,10 +1122,12 @@ namespace FlowMy.Views.Overlays
                 _slotImages[idx].Source = null;
                 _slotPlaceholders[idx].Visibility = Visibility.Visible;
                 _slotChecks[idx].Visibility = Visibility.Collapsed;
+                _slotRemoves[idx].Visibility = Visibility.Collapsed;
 
                 // Expanded slots
                 _slotImagesWv[idx].Source = null;
                 _slotPlaceholdersWv[idx].Visibility = Visibility.Visible;
+                _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
 
                 var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
                 _slotBorders[idx].BorderBrush = normalBrush;
@@ -2139,18 +2146,24 @@ namespace FlowMy.Views.Overlays
             try
             {
                 BitmapSource? bitmap = null;
-                string tempFileName = "dragged_image.png";
+                string tempFileName = "dragged_image";
 
                 if (sender is Image img)
                 {
                     bitmap = img.Source as BitmapSource;
                     if (img.Name == "ImgPreview" || img.Name == "ImgPreviewWv")
                     {
-                        tempFileName = "LayerAi_MainImage.png";
+                        tempFileName = "Main";
                     }
                     else
                     {
-                        tempFileName = $"LayerAi_Slot_{img.Name}.png";
+                        var name = img.Name ?? "";
+                        int slotNum = 1;
+                        if (name.EndsWith("0")) slotNum = 1;
+                        else if (name.EndsWith("1")) slotNum = 2;
+                        else if (name.EndsWith("2")) slotNum = 3;
+                        else if (name.EndsWith("3")) slotNum = 4;
+                        tempFileName = $"{slotNum}.Slot";
                     }
                 }
                 else if (sender is Border border)
@@ -2158,21 +2171,19 @@ namespace FlowMy.Views.Overlays
                     if (border.Name == "ImgPreview" || border.Name == "ImgPreviewWv")
                     {
                         bitmap = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
-                        tempFileName = "LayerAi_MainImage.png";
+                        tempFileName = "Main";
                     }
                     else if (border.Tag is string tagStr && int.TryParse(tagStr, out int idx) && idx >= 0 && idx < 4)
                     {
                         bitmap = _secondaryImages[idx].Bitmap;
-                        tempFileName = $"LayerAi_Slot_{idx}.png";
+                        tempFileName = $"{idx + 1}.Slot";
                     }
                 }
 
                 if (bitmap == null) return;
 
                 // Save bitmap to unique temporary file to prevent access conflicts
-                var ext = Path.GetExtension(tempFileName);
-                var baseName = Path.GetFileNameWithoutExtension(tempFileName);
-                var uniqueName = $"{baseName}_{Guid.NewGuid():N}{ext}";
+                var uniqueName = $"{tempFileName}_{Guid.NewGuid():N}.png";
                 var tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
                 using (var fileStream = new FileStream(tempPath, FileMode.Create))
                 {
@@ -2192,6 +2203,24 @@ namespace FlowMy.Views.Overlays
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error starting drag drop: {ex.Message}");
+            }
+        }
+
+        private void SlotBorder_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete)
+            {
+                if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
+                {
+                    if (idx >= 0 && idx < 4)
+                    {
+                        _secondaryImages[idx].Bitmap = null;
+                        _secondaryImages[idx].FilePath = null;
+                        _secondaryImages[idx].IsSelected = false;
+                        RefreshAllSlotsUI();
+                    }
+                    e.Handled = true;
+                }
             }
         }
 
