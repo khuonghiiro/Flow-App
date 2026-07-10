@@ -200,15 +200,14 @@
                             Style="{DynamicResource DangerButton}" Cursor="Hand" Click="BtnClose_Click"/>
                 </Grid>
             </Border>
-
-            <!-- CONTENT: 3-COLUMN LAYOUT -->
-            <Grid Grid.Row="1" Margin="16,12">
+            <!-- ===== LAYOUT A: NORMAL (Prompt tab) — 3 cột: Preview | Ảnh phụ | Prompt ===== -->
+            <Grid x:Name="GridNormalLayout" Grid.Row="1" Margin="16,12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="ColPreview" Width="3*"/>
-                    <ColumnDefinition x:Name="ColGap1" Width="10"/>
-                    <ColumnDefinition x:Name="ColSecondary" Width="3*"/>
-                    <ColumnDefinition x:Name="ColGap2" Width="10"/>
-                    <ColumnDefinition x:Name="ColPrompt" Width="3*"/>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="3*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- COLUMN 1: PREVIEW (ảnh chính) -->
@@ -257,12 +256,10 @@
                                 <Image x:Name="SlotImage0" Stretch="Uniform" Margin="2"/>
                                 <TextBlock x:Name="SlotPlaceholder0" Text="＋" FontSize="24" Foreground="#3a3f52"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <!-- Selection check overlay -->
                                 <Border x:Name="SlotCheck0" HorizontalAlignment="Left" VerticalAlignment="Top"
                                         Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
                                     <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
                                 </Border>
-                                <!-- Remove button -->
                                 <Border x:Name="SlotRemove0" HorizontalAlignment="Right" VerticalAlignment="Top"
                                         Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand"
                                         Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="0">
@@ -337,7 +334,7 @@
                             Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
                 </Grid>
 
-                <!-- COLUMN 3: PROMPT + UI TABS -->
+                <!-- COLUMN 3: PROMPT + TAB HEADERS -->
                 <Grid Grid.Column="4">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -356,7 +353,7 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Tab content: Prompt -->
+                    <!-- Tab content: Prompt (visible by default) -->
                     <Grid x:Name="TabContentPrompt" Grid.Row="1">
                         <Border Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
                             <TextBox x:Name="TxtPrompt"
@@ -366,22 +363,138 @@
                                      VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
                         </Border>
                     </Grid>
+                </Grid>
+            </Grid>
 
-                    <!-- Tab content: WebView2 (placeholder for Phase 3) -->
-                    <Grid x:Name="TabContentWebView" Grid.Row="1" Visibility="Collapsed">
-                        <Border Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="8">
+            <!-- ===== LAYOUT B: WEBVIEW (UI động tab) — 2 cột: Images(1*) | WebView+Prompt(2*) ===== -->
+            <Grid x:Name="GridWebViewLayout" Grid.Row="1" Margin="16,12" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- LEFT COLUMN: Images stacked (Row1: ảnh chính, Row2: ảnh phụ) -->
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Row 1: Ảnh chính (preview) -->
+                    <Grid Grid.Row="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="📸 Ảnh chính" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <Border Grid.Row="1" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="6" ClipToBounds="True">
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <!-- WebView2 will be injected here in Phase 3 -->
-                                <Border x:Name="WebViewContainer" CornerRadius="4" ClipToBounds="True">
-                                    <TextBlock Text="🌐 UI động sẽ được render ở đây&#x0a;(Cấu hình trong tab 'Layer AI'&#x0a;của dialog Xử lý ảnh)"
-                                               Foreground="{StaticResource TextMuted}" FontSize="11"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               TextAlignment="Center" LineHeight="20"/>
-                                </Border>
+                                <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                <Image x:Name="ImgPreviewWv" Stretch="Uniform" Margin="0"/>
                             </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Row 2: Ảnh phụ (2x2 compact) -->
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="🖼️ Ảnh phụ" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <Grid x:Name="SecondaryImagesGridWv" Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="3"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="3"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 4 compact slot borders (mirror of the normal slots, showing same images) -->
+                            <Border x:Name="SlotBorderWv0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                    MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="0">
+                                <Grid>
+                                    <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                    <Image x:Name="SlotImageWv0" Stretch="Uniform" Margin="1"/>
+                                    <TextBlock x:Name="SlotPlaceholderWv0" Text="＋" FontSize="16" Foreground="#3a3f52"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+                            </Border>
+                            <Border x:Name="SlotBorderWv1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                    MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="1">
+                                <Grid>
+                                    <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                    <Image x:Name="SlotImageWv1" Stretch="Uniform" Margin="1"/>
+                                    <TextBlock x:Name="SlotPlaceholderWv1" Text="＋" FontSize="16" Foreground="#3a3f52"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+                            </Border>
+                            <Border x:Name="SlotBorderWv2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}"
+                                    MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="2">
+                                <Grid>
+                                    <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                    <Image x:Name="SlotImageWv2" Stretch="Uniform" Margin="1"/>
+                                    <TextBlock x:Name="SlotPlaceholderWv2" Text="＋" FontSize="16" Foreground="#3a3f52"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+                            </Border>
+                            <Border x:Name="SlotBorderWv3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}"
+                                    MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="3">
+                                <Grid>
+                                    <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
+                                    <Image x:Name="SlotImageWv3" Stretch="Uniform" Margin="1"/>
+                                    <TextBlock x:Name="SlotPlaceholderWv3" Text="＋" FontSize="16" Foreground="#3a3f52"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                <!-- RIGHT COLUMN: WebView (4/5) + Prompt (1/5) -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="4*"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Row 1: WebView2 placeholder -->
+                    <Border Grid.Row="0" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
+                        <Grid>
+                            <!-- Tab header inside WebView area -->
+                            <Border VerticalAlignment="Top" HorizontalAlignment="Left" Background="#0d0f14" CornerRadius="0,0,6,0" Padding="8,4" Opacity="0.85">
+                                <TextBlock Text="🌐 UI động" Foreground="{StaticResource AccentColor}" FontSize="10" FontWeight="Bold"/>
+                            </Border>
+                            <!-- WebView2 will be injected here in Phase 3 -->
+                            <Border x:Name="WebViewContainer" CornerRadius="4" ClipToBounds="True" Margin="0,24,0,0">
+                                <TextBlock Text="🌐 UI động sẽ được render ở đây&#x0a;(Cấu hình trong tab 'Layer AI'&#x0a;của dialog Xử lý ảnh)"
+                                           Foreground="{StaticResource TextMuted}" FontSize="11"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           TextAlignment="Center" LineHeight="20"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Row 2: Prompt gợi ý (compact) -->
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="💬 Prompt gợi ý" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <Border Grid.Row="1" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
+                            <TextBox x:Name="TxtPromptWv"
+                                     Background="Transparent" Foreground="{StaticResource TextMain}"
+                                     BorderThickness="0"
+                                     Padding="8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
                         </Border>
                     </Grid>
                 </Grid>

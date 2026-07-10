@@ -119,16 +119,21 @@ namespace FlowMy.Views.Overlays
             if (!_isWebViewTabActive) return;
             _isWebViewTabActive = false;
 
-            TabContentPrompt.Visibility = Visibility.Visible;
-            TabContentWebView.Visibility = Visibility.Collapsed;
+            // Sync prompt text back from WebView layout
+            TxtPrompt.Text = TxtPromptWv.Text;
 
+            // Toggle layouts
+            GridNormalLayout.Visibility = Visibility.Visible;
+            GridWebViewLayout.Visibility = Visibility.Collapsed;
+
+            // Tab header styling
             TabHeaderPrompt.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
             TabHeaderPrompt.BorderBrush = FindResource("AccentColor") as Brush;
             TabHeaderWebView.Background = Brushes.Transparent;
             TabHeaderWebView.BorderBrush = FindResource("BorderColor") as Brush;
             TabHeaderWebViewText.Foreground = FindResource("TextMuted") as Brush;
 
-            // Restore original dialog size (columns stay fixed)
+            // Restore original dialog size
             Width = _originalWidth;
             Height = _originalHeight;
             CenterOnScreen();
@@ -139,31 +144,50 @@ namespace FlowMy.Views.Overlays
             if (_isWebViewTabActive) return;
             _isWebViewTabActive = true;
 
-            TabContentPrompt.Visibility = Visibility.Collapsed;
-            TabContentWebView.Visibility = Visibility.Visible;
+            // Sync prompt text to WebView layout
+            TxtPromptWv.Text = TxtPrompt.Text;
 
+            // Sync images to WebView layout mirrors
+            SyncImagesToWebViewLayout();
+
+            // Toggle layouts
+            GridNormalLayout.Visibility = Visibility.Collapsed;
+            GridWebViewLayout.Visibility = Visibility.Visible;
+
+            // Tab header styling
             TabHeaderWebView.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
             TabHeaderWebView.BorderBrush = FindResource("AccentColor") as Brush;
             TabHeaderWebViewText.Foreground = FindResource("AccentColor") as Brush;
             TabHeaderPrompt.Background = Brushes.Transparent;
             TabHeaderPrompt.BorderBrush = FindResource("BorderColor") as Brush;
 
-            // Expand dialog Width + Height so the right column naturally grows
-            // to phone/tablet size. Columns ratio stays fixed (3*/10/3*/10/3*).
+            // Expand dialog to fill screen
             var screenW = SystemParameters.PrimaryScreenWidth;
             var screenH = SystemParameters.PrimaryScreenHeight;
-
-            // Target: fill ~90% of screen width, ~85% of screen height
             var targetW = Math.Min(screenW * 0.90, screenW - 60);
             var targetH = Math.Min(screenH * 0.85, screenH - 80);
-
-            // Ensure at least original size
             Width = Math.Max(_originalWidth, targetW);
             Height = Math.Max(_originalHeight, targetH);
 
             // Center on screen
             Left = (screenW - Width) / 2;
             Top = (screenH - Height) / 2;
+        }
+
+        /// <summary>Copy ảnh chính + ảnh phụ sang các Image element trong GridWebViewLayout.</summary>
+        private void SyncImagesToWebViewLayout()
+        {
+            // Sync preview image
+            ImgPreviewWv.Source = ImgPreview.Source;
+
+            // Sync secondary image slots
+            var wvImages = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
+            var wvPlaceholders = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
+            for (int i = 0; i < 4; i++)
+            {
+                wvImages[i].Source = _slotImages[i].Source;
+                wvPlaceholders[i].Visibility = _secondaryImages[i] == null ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
         private void CenterOnScreen()
@@ -526,9 +550,10 @@ namespace FlowMy.Views.Overlays
                 var cropBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropBase64", StringComparison.OrdinalIgnoreCase));
                 if (cropBase64Port != null) cropBase64Port.UserValueOverride = b64;
 
-                _node.ProcessorPrompt = TxtPrompt.Text;
+                var activePromptText = _isWebViewTabActive ? TxtPromptWv.Text : TxtPrompt.Text;
+                _node.ProcessorPrompt = activePromptText;
                 var promptPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase));
-                if (promptPort != null) promptPort.UserValueOverride = TxtPrompt.Text;
+                if (promptPort != null) promptPort.UserValueOverride = activePromptText;
 
                 int batchSize = CmbBatchSize.SelectedIndex + 1;
                 _node.PromptSize = batchSize;
