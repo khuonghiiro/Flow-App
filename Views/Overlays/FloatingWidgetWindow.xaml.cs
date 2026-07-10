@@ -4415,6 +4415,15 @@ window.hostAsync.values = window.hostAsync.values || {};
         _titleRevealOutsideCollapseToggleButton = null;
         _titleRevealPinToggleButton = null;
 
+        if (_node != null)
+        {
+            try
+            {
+                FlowMy.Views.Overlays.LayerAiWebViewCache.DisposeAll(_node.Id);
+            }
+            catch { }
+        }
+
         base.OnClosed(e);
     }
 

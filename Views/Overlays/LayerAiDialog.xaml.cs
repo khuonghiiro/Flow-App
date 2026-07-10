@@ -81,6 +81,11 @@ namespace FlowMy.Views.Overlays
                 {
                     _ownerWindow.Topmost = true;
                 }
+                try
+                {
+                    LayerAiWebViewCache.ReleaseToSleep(_node.Id);
+                }
+                catch { }
             };
 
             _activeLayer = activeLayer ?? throw new ArgumentNullException(nameof(activeLayer));
@@ -145,6 +150,7 @@ namespace FlowMy.Views.Overlays
         // WebView2 browser (lazy init)
         private Microsoft.Web.WebView2.Wpf.WebView2? _webBrowser;
         private bool _webBrowserInitialized = false;
+        private Microsoft.Web.WebView2.Wpf.WebView2? _dynamicWebView;
         private System.Windows.Controls.Primitives.Popup? _suggestPopup;
         private ListBox? _suggestListBox;
         private System.Windows.Threading.DispatcherTimer? _suggestDebounceTimer;
@@ -251,6 +257,12 @@ namespace FlowMy.Views.Overlays
             {
                 InitWebBrowserAsync();
             }
+
+            // Lazy-init/refresh Dynamic UI when tab activated
+            if (newTab == ActiveTab.WebView)
+            {
+                InitDynamicWebViewAsync();
+            }
         }
 
         private void TabPrompt_Click(object sender, MouseButtonEventArgs e) => SwitchToTab(ActiveTab.Prompt);
@@ -314,6 +326,83 @@ namespace FlowMy.Views.Overlays
             return options;
         }
 
+        private async void InitDynamicWebViewAsync()
+        {
+            try
+            {
+                var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
+                if (cacheState.DynamicWebView == null)
+                {
+                    var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+                    
+                    // Add WebView2 to container FIRST so it's in the visual tree!
+                    WebViewContainer.Child = webView;
+
+                    var cachePath = WebNodeCacheHelper.GetProfileCachePath("DynamicUi_" + _node.Id);
+                    Directory.CreateDirectory(cachePath);
+                    var options = GetBrowserEnvironmentOptions();
+                    var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+
+                    await webView.EnsureCoreWebView2Async(env);
+                    cacheState.DynamicWebView = webView;
+                }
+                else
+                {
+                    var webView = cacheState.DynamicWebView;
+                    if (webView.Parent is Border parentBorder)
+                    {
+                        parentBorder.Child = null;
+                    }
+                    WebViewContainer.Child = webView;
+                    try { webView.CoreWebView2?.Resume(); } catch { }
+                }
+
+                _dynamicWebView = cacheState.DynamicWebView;
+                RenderDynamicUi();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LayerAI DynamicWebView init failed: {ex.Message}");
+            }
+        }
+
+        private void RenderDynamicUi()
+        {
+            if (_dynamicWebView?.CoreWebView2 == null) return;
+
+            try
+            {
+                var htmlCode = _node.LayerAiHtmlCode ?? "";
+                var cssCode = _node.LayerAiCssCode ?? "";
+                var jsCode = _node.LayerAiJsCode ?? "";
+
+                var builder = new System.Text.StringBuilder();
+                builder.AppendLine("<!DOCTYPE html>");
+                builder.AppendLine("<html>");
+                builder.AppendLine("<head>");
+                builder.AppendLine("<meta charset=\"utf-8\" />");
+                builder.AppendLine("<style>");
+                builder.AppendLine("body { margin: 0; padding: 12px; background-color: #111318; color: #dde3ef; font-family: sans-serif; }");
+                builder.AppendLine(cssCode);
+                builder.AppendLine("</style>");
+                builder.AppendLine("</head>");
+                builder.AppendLine("<body>");
+                builder.AppendLine(htmlCode);
+                builder.AppendLine("<script>");
+                builder.AppendLine(jsCode);
+                builder.AppendLine("</script>");
+                builder.AppendLine("</body>");
+                builder.AppendLine("</html>");
+
+                var fullHtml = builder.ToString();
+                _dynamicWebView.CoreWebView2.NavigateToString(fullHtml);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to render dynamic UI: {ex.Message}");
+            }
+        }
+
         private async void InitWebBrowserAsync()
         {
             _webBrowserInitialized = true;
@@ -323,64 +412,89 @@ namespace FlowMy.Views.Overlays
                 // Load profile combo
                 LoadWebProfiles();
 
-                // Create WebView2
-                _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
-
-                // Add WebView2 to container FIRST so it's in the visual tree!
-                WebBrowserContainer.Children.Clear();
-                WebBrowserContainer.Children.Add(_webBrowser);
-
-                var profileName = _node.LayerAiCacheProfileName ?? "Shared";
-                Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
-
-                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
+                var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
+                if (cacheState.WebBrowser == null)
                 {
-                    try
+                    var webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
+
+                    // Add WebView2 to container FIRST so it's in the visual tree!
+                    WebBrowserContainer.Children.Clear();
+                    WebBrowserContainer.Children.Add(webBrowser);
+
+                    var profileName = _node.LayerAiCacheProfileName ?? "Shared";
+                    Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
+
+                    if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
                     {
-                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                        try
+                        {
+                            env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                        }
+                        catch (Exception exShared)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Shared env failed, falling back: {exShared.Message}");
+                            var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
+                            Directory.CreateDirectory(cachePath);
+                            var options = GetBrowserEnvironmentOptions();
+                            env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                        }
                     }
-                    catch (Exception exShared)
+                    else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Shared env failed, falling back: {exShared.Message}");
-                        var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
+                        var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
                         Directory.CreateDirectory(cachePath);
                         var options = GetBrowserEnvironmentOptions();
                         env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
                     }
+
+                    await webBrowser.EnsureCoreWebView2Async(env);
+                    cacheState.WebBrowser = webBrowser;
+
+                    // Navigate to saved URL
+                    var url = _node.LayerAiWebUrl;
+                    if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
+                    TxtWebUrl.Text = url;
+                    webBrowser.CoreWebView2.Navigate(url);
+
+                    // Track navigation
+                    webBrowser.CoreWebView2.NavigationCompleted += (s, args) =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            try
+                            {
+                                var currentUrl = webBrowser.CoreWebView2?.Source;
+                                if (!string.IsNullOrEmpty(currentUrl))
+                                {
+                                    TxtWebUrl.Text = currentUrl;
+                                    _node.LayerAiWebUrl = currentUrl;
+                                }
+                            }
+                            catch { }
+                        });
+                    };
                 }
                 else
                 {
-                    var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                    Directory.CreateDirectory(cachePath);
-                    var options = GetBrowserEnvironmentOptions();
-                    env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                    var webBrowser = cacheState.WebBrowser;
+                    if (webBrowser.Parent is Panel parentPanel)
+                    {
+                        parentPanel.Children.Remove(webBrowser);
+                    }
+                    WebBrowserContainer.Children.Clear();
+                    WebBrowserContainer.Children.Add(webBrowser);
+
+                    try { webBrowser.CoreWebView2?.Resume(); } catch { }
+
+                    var currentUrl = webBrowser.CoreWebView2?.Source;
+                    if (!string.IsNullOrEmpty(currentUrl))
+                    {
+                        TxtWebUrl.Text = currentUrl;
+                        _node.LayerAiWebUrl = currentUrl;
+                    }
                 }
 
-                await _webBrowser.EnsureCoreWebView2Async(env);
-
-                // Navigate to saved URL
-                var url = _node.LayerAiWebUrl;
-                if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
-                TxtWebUrl.Text = url;
-                _webBrowser.CoreWebView2.Navigate(url);
-
-                // Track navigation
-                _webBrowser.CoreWebView2.NavigationCompleted += (s, args) =>
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        try
-                        {
-                            var currentUrl = _webBrowser.CoreWebView2?.Source;
-                            if (!string.IsNullOrEmpty(currentUrl))
-                            {
-                                TxtWebUrl.Text = currentUrl;
-                                _node.LayerAiWebUrl = currentUrl;
-                            }
-                        }
-                        catch { }
-                    });
-                };
+                _webBrowser = cacheState.WebBrowser;
 
                 // Setup Google Suggest popup
                 SetupSuggestPopup();
@@ -464,6 +578,10 @@ namespace FlowMy.Views.Overlays
                         }
 
                         await _webBrowser.EnsureCoreWebView2Async(env);
+
+                        // Update cache
+                        var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
+                        cacheState.WebBrowser = _webBrowser;
 
                         _webBrowser.CoreWebView2.Navigate(oldUrl);
                         _webBrowser.CoreWebView2.NavigationCompleted += (s2, args) =>
@@ -1897,5 +2015,129 @@ namespace FlowMy.Views.Overlays
         }
 
         #endregion
+    }
+
+    public static class LayerAiWebViewCache
+    {
+        private static readonly System.Collections.Generic.Dictionary<string, CachedWebViewState> _cache = new();
+
+        public class CachedWebViewState
+        {
+            public Microsoft.Web.WebView2.Wpf.WebView2? DynamicWebView { get; set; }
+            public Microsoft.Web.WebView2.Wpf.WebView2? WebBrowser { get; set; }
+            public DateTime LastUsed { get; set; } = DateTime.Now;
+            public System.Timers.Timer? SleepTimer { get; set; }
+        }
+
+        public static CachedWebViewState GetOrCreateState(string nodeId)
+        {
+            lock (_cache)
+            {
+                if (!_cache.TryGetValue(nodeId, out var state))
+                {
+                    state = new CachedWebViewState();
+                    _cache[nodeId] = state;
+                }
+                state.LastUsed = DateTime.Now;
+
+                // Stop sleep timer if it is running
+                if (state.SleepTimer != null)
+                {
+                    state.SleepTimer.Stop();
+                    state.SleepTimer.Dispose();
+                    state.SleepTimer = null;
+                }
+
+                return state;
+            }
+        }
+
+        public static void ReleaseToSleep(string nodeId)
+        {
+            lock (_cache)
+            {
+                if (_cache.TryGetValue(nodeId, out var state))
+                {
+                    state.LastUsed = DateTime.Now;
+
+                    // Set a timer to put WebView2s to sleep after 10 minutes (600,000 ms)
+                    state.SleepTimer?.Stop();
+                    state.SleepTimer?.Dispose();
+
+                    state.SleepTimer = new System.Timers.Timer(10 * 60 * 1000); // 10 minutes
+                    state.SleepTimer.AutoReset = false;
+                    state.SleepTimer.Elapsed += (s, e) =>
+                    {
+                        PutWebViewsToSleep(nodeId);
+                    };
+                    state.SleepTimer.Start();
+                }
+            }
+        }
+
+        private static void PutWebViewsToSleep(string nodeId)
+        {
+            lock (_cache)
+            {
+                if (_cache.TryGetValue(nodeId, out var state))
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(async () =>
+                    {
+                        try
+                        {
+                            if (state.DynamicWebView?.CoreWebView2 != null)
+                            {
+                                await state.DynamicWebView.CoreWebView2.TrySuspendAsync();
+                                System.Diagnostics.Debug.WriteLine($"WebView2 Dynamic UI suspended for node {nodeId}");
+                            }
+                            if (state.WebBrowser?.CoreWebView2 != null)
+                            {
+                                await state.WebBrowser.CoreWebView2.TrySuspendAsync();
+                                System.Diagnostics.Debug.WriteLine($"WebView2 WebBrowser suspended for node {nodeId}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error suspending WebView2: {ex.Message}");
+                        }
+                    });
+                }
+            }
+        }
+
+        public static void DisposeAll(string nodeId)
+        {
+            lock (_cache)
+            {
+                if (_cache.TryGetValue(nodeId, out var state))
+                {
+                    state.SleepTimer?.Stop();
+                    state.SleepTimer?.Dispose();
+
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            state.DynamicWebView?.Dispose();
+                            state.WebBrowser?.Dispose();
+                        }
+                        catch { }
+                    });
+                    _cache.Remove(nodeId);
+                }
+            }
+        }
+
+        public static void DisposeAll()
+        {
+            lock (_cache)
+            {
+                var keys = System.Linq.Enumerable.ToList(_cache.Keys);
+                foreach (var key in keys)
+                {
+                    DisposeAll(key);
+                }
+            }
+        }
     }
 }
