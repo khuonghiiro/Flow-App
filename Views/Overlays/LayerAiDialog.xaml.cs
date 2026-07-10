@@ -49,6 +49,9 @@ namespace FlowMy.Views.Overlays
         private TextBlock[] _slotPlaceholders = null!;
         private Border[] _slotChecks = null!;
         private Border[] _slotRemoves = null!;
+        private Border[] _slotBordersWv = null!;
+        private Image[] _slotImagesWv = null!;
+        private TextBlock[] _slotPlaceholdersWv = null!;
 
         // Tab + dialog state
         private double _originalWidth;
@@ -107,6 +110,9 @@ namespace FlowMy.Views.Overlays
             _slotPlaceholders = new[] { SlotPlaceholder0, SlotPlaceholder1, SlotPlaceholder2, SlotPlaceholder3 };
             _slotChecks = new[] { SlotCheck0, SlotCheck1, SlotCheck2, SlotCheck3 };
             _slotRemoves = new[] { SlotRemove0, SlotRemove1, SlotRemove2, SlotRemove3 };
+            _slotBordersWv = new[] { SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3 };
+            _slotImagesWv = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
+            _slotPlaceholdersWv = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
 
             // Load saved settings
             LoadSavedSettings();
@@ -1078,28 +1084,49 @@ namespace FlowMy.Views.Overlays
 
             if (item.HasImage)
             {
+                // Normal slots
                 _slotImages[idx].Source = item.Bitmap;
                 _slotPlaceholders[idx].Visibility = Visibility.Collapsed;
                 _slotChecks[idx].Visibility = item.IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
+                // Expanded slots
+                _slotImagesWv[idx].Source = item.Bitmap;
+                _slotPlaceholdersWv[idx].Visibility = Visibility.Collapsed;
+
+                var activeBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+                var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+
                 if (item.IsSelected)
                 {
-                    _slotBorders[idx].BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+                    _slotBorders[idx].BorderBrush = activeBrush;
                     _slotBorders[idx].BorderThickness = new Thickness(2);
+                    _slotBordersWv[idx].BorderBrush = activeBrush;
+                    _slotBordersWv[idx].BorderThickness = new Thickness(2);
                 }
                 else
                 {
-                    _slotBorders[idx].BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+                    _slotBorders[idx].BorderBrush = normalBrush;
                     _slotBorders[idx].BorderThickness = new Thickness(1.5);
+                    _slotBordersWv[idx].BorderBrush = normalBrush;
+                    _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
                 }
             }
             else
             {
+                // Normal slots
                 _slotImages[idx].Source = null;
                 _slotPlaceholders[idx].Visibility = Visibility.Visible;
                 _slotChecks[idx].Visibility = Visibility.Collapsed;
-                _slotBorders[idx].BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+
+                // Expanded slots
+                _slotImagesWv[idx].Source = null;
+                _slotPlaceholdersWv[idx].Visibility = Visibility.Visible;
+
+                var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+                _slotBorders[idx].BorderBrush = normalBrush;
                 _slotBorders[idx].BorderThickness = new Thickness(1.5);
+                _slotBordersWv[idx].BorderBrush = normalBrush;
+                _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
             }
         }
 
@@ -2142,8 +2169,11 @@ namespace FlowMy.Views.Overlays
 
                 if (bitmap == null) return;
 
-                // Save bitmap to temporary file
-                var tempPath = Path.Combine(Path.GetTempPath(), tempFileName);
+                // Save bitmap to unique temporary file to prevent access conflicts
+                var ext = Path.GetExtension(tempFileName);
+                var baseName = Path.GetFileNameWithoutExtension(tempFileName);
+                var uniqueName = $"{baseName}_{Guid.NewGuid():N}{ext}";
+                var tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
                 using (var fileStream = new FileStream(tempPath, FileMode.Create))
                 {
                     var encoder = new PngBitmapEncoder();
