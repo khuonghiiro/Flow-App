@@ -5,14 +5,9 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls;
-using FlowMy.Views.NodeControls.Helpers;
 using Microsoft.Win32;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -29,6 +24,7 @@ namespace FlowMy.Views.Overlays
         private readonly ImageProcessingNode _node;
         private readonly IWorkflowEditorHost _host;
         private readonly EditorDocument _doc;
+        private readonly Window? _ownerWindow;
 
         // Secondary images management
         private class SecondaryImageItem
@@ -61,7 +57,32 @@ namespace FlowMy.Views.Overlays
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
             InitializeComponent();
+            _ownerWindow = owner;
             Owner = owner;
+
+            // Handle Activated and Deactivated to dynamically control Topmost,
+            // preventing this dialog from permanently overlapping other applications (like Chrome)
+            // while ensuring it stays on top of the topmost FloatingWidgetWindow when active.
+            this.Activated += (s, e) =>
+            {
+                if (Owner != null) Owner.Topmost = true;
+                this.Topmost = true;
+            };
+
+            this.Deactivated += (s, e) =>
+            {
+                this.Topmost = false;
+                if (Owner != null) Owner.Topmost = false;
+            };
+
+            this.Closed += (s, e) =>
+            {
+                if (_ownerWindow != null)
+                {
+                    _ownerWindow.Topmost = true;
+                }
+            };
+
             _activeLayer = activeLayer ?? throw new ArgumentNullException(nameof(activeLayer));
             _node = node ?? throw new ArgumentNullException(nameof(node));
             _host = host ?? throw new ArgumentNullException(nameof(host));
@@ -69,6 +90,11 @@ namespace FlowMy.Views.Overlays
 
             _originalWidth = Width;
             _originalHeight = Height;
+
+            if (owner == null)
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
 
             // Initialize slot references
             _slotBorders = new[] { SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3 };
@@ -260,6 +286,34 @@ namespace FlowMy.Views.Overlays
 
         #region Web Browser (WebView2 + Search + Profile)
 
+        private Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions GetBrowserEnvironmentOptions()
+        {
+            var options = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
+            var browserArgs = new System.Text.StringBuilder();
+
+            browserArgs.Append("--disable-background-timer-throttling ");
+            browserArgs.Append("--disable-backgrounding-occluded-windows ");
+            browserArgs.Append("--disable-renderer-backgrounding ");
+            browserArgs.Append("--calculate-native-win-occlusion=false ");
+
+            if (GpuDetectionHelper.IsGpuAvailable)
+            {
+                browserArgs.Append("--enable-gpu-rasterization ");
+                browserArgs.Append("--enable-zero-copy ");
+                browserArgs.Append("--enable-features=VaapiVideoDecoder ");
+                browserArgs.Append("--ignore-gpu-blacklist ");
+                browserArgs.Append("--enable-accelerated-2d-canvas ");
+                browserArgs.Append("--enable-accelerated-video-decode ");
+            }
+            else
+            {
+                browserArgs.Append("--disable-gpu ");
+            }
+
+            options.AdditionalBrowserArguments = browserArgs.ToString().Trim();
+            return options;
+        }
+
         private async void InitWebBrowserAsync()
         {
             _webBrowserInitialized = true;
@@ -272,12 +326,36 @@ namespace FlowMy.Views.Overlays
                 // Create WebView2
                 _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
 
-                var profileName = _node.LayerAiCacheProfileName ?? "Shared";
-                var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                Directory.CreateDirectory(cachePath);
+                // Add WebView2 to container FIRST so it's in the visual tree!
+                WebBrowserContainer.Children.Clear();
+                WebBrowserContainer.Children.Add(_webBrowser);
 
-                var options = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
-                var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                var profileName = _node.LayerAiCacheProfileName ?? "Shared";
+                Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
+
+                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                    }
+                    catch (Exception exShared)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Shared env failed, falling back: {exShared.Message}");
+                        var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
+                        Directory.CreateDirectory(cachePath);
+                        var options = GetBrowserEnvironmentOptions();
+                        env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                    }
+                }
+                else
+                {
+                    var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                    Directory.CreateDirectory(cachePath);
+                    var options = GetBrowserEnvironmentOptions();
+                    env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                }
+
                 await _webBrowser.EnsureCoreWebView2Async(env);
 
                 // Navigate to saved URL
@@ -304,16 +382,13 @@ namespace FlowMy.Views.Overlays
                     });
                 };
 
-                // Add WebView2 to container
-                WebBrowserContainer.Children.Clear();
-                WebBrowserContainer.Children.Add(_webBrowser);
-
                 // Setup Google Suggest popup
                 SetupSuggestPopup();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LayerAI WebBrowser init failed: {ex.Message}");
+                MessageBox.Show($"Lỗi khởi tạo trình duyệt Web: {ex.Message}\n\nChi tiết: {ex.InnerException?.Message}\n\nStack: {ex.StackTrace}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -358,11 +433,36 @@ namespace FlowMy.Views.Overlays
                         _webBrowser = null;
 
                         _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
-                        var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                        Directory.CreateDirectory(cachePath);
 
-                        var options = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
-                        var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                        // Add WebView2 to container FIRST so it's in the visual tree!
+                        WebBrowserContainer.Children.Clear();
+                        WebBrowserContainer.Children.Add(_webBrowser);
+
+                        Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
+
+                        if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                            }
+                            catch (Exception exShared)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Shared env failed, falling back: {exShared.Message}");
+                                var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
+                                Directory.CreateDirectory(cachePath);
+                                var options = GetBrowserEnvironmentOptions();
+                                env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                            }
+                        }
+                        else
+                        {
+                            var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                            Directory.CreateDirectory(cachePath);
+                            var options = GetBrowserEnvironmentOptions();
+                            env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                        }
+
                         await _webBrowser.EnsureCoreWebView2Async(env);
 
                         _webBrowser.CoreWebView2.Navigate(oldUrl);
@@ -382,13 +482,11 @@ namespace FlowMy.Views.Overlays
                                 catch { }
                             });
                         };
-
-                        WebBrowserContainer.Children.Clear();
-                        WebBrowserContainer.Children.Add(_webBrowser);
                     }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Profile switch failed: {ex.Message}");
+                        MessageBox.Show($"Lỗi chuyển đổi Profile trình duyệt: {ex.Message}\n\nStack: {ex.StackTrace}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -400,7 +498,8 @@ namespace FlowMy.Views.Overlays
             var dialog = new Window
             {
                 Title = "Tạo Profile mới",
-                Width = 320, Height = 140,
+                Width = 320,
+                Height = 190,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 WindowStyle = WindowStyle.ToolWindow,
@@ -412,9 +511,12 @@ namespace FlowMy.Views.Overlays
             var lbl = new TextBlock { Text = "Tên profile:", Foreground = Brushes.White, FontSize = 12, Margin = new Thickness(0, 0, 0, 6) };
             var txt = new TextBox
             {
-                Height = 28, FontSize = 12, Padding = new Thickness(6, 4, 6, 4),
+                Height = 28,
+                FontSize = 12,
+                Padding = new Thickness(6, 4, 6, 4),
                 Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1e222d")),
-                Foreground = Brushes.White, BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d")),
+                Foreground = Brushes.White,
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d")),
                 CaretBrush = Brushes.Lime
             };
             var btnOk = new Button { Content = "Tạo", Width = 80, Height = 28, Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Right, Cursor = Cursors.Hand };
@@ -1128,7 +1230,7 @@ namespace FlowMy.Views.Overlays
                                 // Dọn dẹp cache của lần chạy này để tránh rò rỉ RAM
                                 WorkflowExecutionService.ExecutionIdMapping.TryRemove(execId, out _);
                                 WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(actualRunId, out _);
-                                
+
                                 var childPrefix = actualRunId + ":";
                                 var childrenKeys = WorkflowExecutionService.ScopedOutputsHistoricalCache.Keys
                                     .Where(k => k.StartsWith(childPrefix, StringComparison.OrdinalIgnoreCase))
@@ -1324,7 +1426,7 @@ namespace FlowMy.Views.Overlays
         {
             int srcW = src.PixelWidth;
             int srcH = src.PixelHeight;
-            
+
             int newW = srcW;
             int newH = srcH;
             double currentRatio = (double)srcW / srcH;
@@ -1623,12 +1725,12 @@ namespace FlowMy.Views.Overlays
         }
 
         private void ProcessAndApplyAiImage(
-            EditorLayer childLayer, 
-            BitmapSource aiBmp, 
-            EditorLayer activeLayer, 
-            Rect originalBounds, 
-            double? targetRatio, 
-            int? customW, 
+            EditorLayer childLayer,
+            BitmapSource aiBmp,
+            EditorLayer activeLayer,
+            Rect originalBounds,
+            double? targetRatio,
+            int? customW,
             int? customH)
         {
             // 1. Get original crop dimensions
@@ -1683,7 +1785,7 @@ namespace FlowMy.Views.Overlays
                 int cropY = Math.Clamp((int)Math.Round(yOffset), 0, newH - 1);
                 int cropW = Math.Clamp(srcW, 1, newW - cropX);
                 int cropH = Math.Clamp(srcH, 1, newH - cropY);
-                
+
                 croppedAiRegion = new CroppedBitmap(resizedAi, new Int32Rect(cropX, cropY, cropW, cropH));
             }
 
@@ -1752,11 +1854,11 @@ namespace FlowMy.Views.Overlays
             finalBmp.CopyPixels(pixels, stride, 0);
 
             childLayer.Bitmap.WritePixels(new Int32Rect(0, 0, childLayer.Width, childLayer.Height), pixels, stride, 0);
-            
+
             // Set OriginalTransformBitmap and ContentBounds so that transform tool works properly
             childLayer.OriginalTransformBitmap = new WriteableBitmap(maskedBmp);
             childLayer.ContentBounds = new Rect(posX, posY, finalW, finalH);
-            
+
             childLayer.InvalidateThumbnail();
         }
 
