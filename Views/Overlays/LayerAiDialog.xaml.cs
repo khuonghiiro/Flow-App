@@ -13,6 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Runtime.InteropServices;
 
 namespace FlowMy.Views.Overlays
 {
@@ -978,6 +979,7 @@ namespace FlowMy.Views.Overlays
                     // Toggle selection
                     _secondaryImages[idx].IsSelected = !_secondaryImages[idx].IsSelected;
                     RefreshSlotUI(idx);
+                    UpdateSecondaryInfo();
                 }
                 else
                 {
@@ -1209,6 +1211,10 @@ namespace FlowMy.Views.Overlays
                 }
 
                 ImgPreview.Source = processedImg;
+                if (ImgPreviewWv != null)
+                {
+                    ImgPreviewWv.Source = processedImg;
+                }
             }
             catch { }
         }
@@ -2197,6 +2203,9 @@ namespace FlowMy.Views.Overlays
                 var fileList = new System.Collections.Specialized.StringCollection { tempPath };
                 data.SetFileDropList(fileList);
 
+                // Set beautiful drag ghost image!
+                SetDragImage(data, bitmap);
+
                 // Execute drag drop
                 DragDrop.DoDragDrop((DependencyObject)sender, data, DragDropEffects.Copy);
             }
@@ -2228,45 +2237,7 @@ namespace FlowMy.Views.Overlays
         {
             try
             {
-                BitmapSource? droppedBitmap = null;
-
-                // 1. Check FileDrop (local file path)
-                if (e.Data.GetDataPresent(DataFormats.FileDrop))
-                {
-                    var files = e.Data.GetData(DataFormats.FileDrop) as string[];
-                    if (files != null && files.Length > 0)
-                    {
-                        var filePath = files[0];
-                        if (File.Exists(filePath))
-                        {
-                            droppedBitmap = new BitmapImage(new Uri(filePath, UriKind.Absolute));
-                        }
-                    }
-                }
-                // 2. Check Text or UniformResourceLocator (image URL from browser)
-                else if (e.Data.GetDataPresent(DataFormats.Text) || e.Data.GetDataPresent(DataFormats.UnicodeText))
-                {
-                    var text = (e.Data.GetData(DataFormats.Text) ?? e.Data.GetData(DataFormats.UnicodeText)) as string;
-                    if (!string.IsNullOrWhiteSpace(text) && Uri.TryCreate(text, UriKind.Absolute, out var uri) && 
-                        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
-                    {
-                        droppedBitmap = await DownloadImageAsync(uri);
-                    }
-                }
-                else if (e.Data.GetDataPresent("UniformResourceLocator"))
-                {
-                    var url = e.Data.GetData("UniformResourceLocator") as string;
-                    if (!string.IsNullOrWhiteSpace(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri) && 
-                        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
-                    {
-                        droppedBitmap = await DownloadImageAsync(uri);
-                    }
-                }
-                // 3. Check Bitmap
-                else if (e.Data.GetDataPresent(DataFormats.Bitmap))
-                {
-                    droppedBitmap = e.Data.GetData(DataFormats.Bitmap) as BitmapSource;
-                }
+                BitmapSource? droppedBitmap = await GetImageFromDragEventArgsAsync(e);
 
                 if (droppedBitmap == null) return;
 
@@ -2278,6 +2249,185 @@ namespace FlowMy.Views.Overlays
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error on drop: {ex.Message}");
+            }
+        }
+
+        private async Task<BitmapSource?> GetImageFromDragEventArgsAsync(DragEventArgs e)
+        {
+            // 1. Check Bitmap directly
+            if (e.Data.GetDataPresent(DataFormats.Bitmap))
+            {
+                if (e.Data.GetData(DataFormats.Bitmap) is BitmapSource bmp)
+                {
+                    return bmp;
+                }
+            }
+
+            // 2. Check FileDrop
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    var filePath = files[0];
+                    if (File.Exists(filePath))
+                    {
+                        try
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.UriSource = new Uri(filePath, UriKind.Absolute);
+                            bmp.EndInit();
+                            bmp.Freeze();
+                            return bmp;
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error loading dropped file: {ex.Message}");
+                        }
+                    }
+                }
+            }
+
+            // 3. Try to extract URL from various formats
+            string? url = null;
+
+            // 3a. Check HTML Format (HTML snippet dragged from WebView2/Browser)
+            if (e.Data.GetDataPresent(DataFormats.Html))
+            {
+                if (e.Data.GetData(DataFormats.Html) is string htmlText)
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(htmlText, @"<img\s[^>]*src=[""']([^""' >]+)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        url = match.Groups[1].Value;
+                        url = System.Net.WebUtility.HtmlDecode(url);
+                    }
+                }
+            }
+
+            // 3b. Check UniformResourceLocator (WebView2 drops URL as a MemoryStream)
+            if (string.IsNullOrEmpty(url) && e.Data.GetDataPresent("UniformResourceLocator"))
+            {
+                var data = e.Data.GetData("UniformResourceLocator");
+                if (data is MemoryStream ms)
+                {
+                    byte[] bytes = ms.ToArray();
+                    string rawUrl = System.Text.Encoding.ASCII.GetString(bytes).Trim('\0');
+                    if (!string.IsNullOrWhiteSpace(rawUrl))
+                    {
+                        url = rawUrl;
+                    }
+                }
+            }
+
+            // 3c. Check Text / UnicodeText
+            if (string.IsNullOrEmpty(url))
+            {
+                if (e.Data.GetDataPresent(DataFormats.Text))
+                {
+                    url = e.Data.GetData(DataFormats.Text) as string;
+                }
+                else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+                {
+                    url = e.Data.GetData(DataFormats.UnicodeText) as string;
+                }
+            }
+
+            // 4. Resolve URL (either Web URL or Data URL)
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                url = url.Trim();
+                if (url.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+                {
+                    return CreateBitmapFromBase64(url);
+                }
+
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                    {
+                        return await DownloadImageAsync(uri);
+                    }
+                    else if (uri.Scheme == "data")
+                    {
+                        return CreateBitmapFromBase64(url);
+                    }
+                    else if (uri.Scheme == Uri.UriSchemeFile)
+                    {
+                        try
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.UriSource = uri;
+                            bmp.EndInit();
+                            bmp.Freeze();
+                            return bmp;
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static void SetDragImage(DataObject dataObject, BitmapSource source)
+        {
+            try
+            {
+                // 1. Determine size (max 128x128)
+                int maxW = 128;
+                int maxH = 128;
+                double ratio = (double)source.PixelWidth / source.PixelHeight;
+                int targetW, targetH;
+                if (ratio > 1)
+                {
+                    targetW = maxW;
+                    targetH = (int)(maxW / ratio);
+                }
+                else
+                {
+                    targetH = maxH;
+                    targetW = (int)(maxH * ratio);
+                }
+                if (targetW <= 0) targetW = 1;
+                if (targetH <= 0) targetH = 1;
+
+                // 2. Resize BitmapSource to target size
+                var resized = ResizeBitmapHighQuality(source, targetW, targetH, uniformToFill: false);
+
+                // 3. Convert to 32bpp ARGB GDI Bitmap and get Hbitmap
+                IntPtr hBitmap = IntPtr.Zero;
+                using (var ms = new MemoryStream())
+                {
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(resized));
+                    encoder.Save(ms);
+                    using (var gdiBmp = new System.Drawing.Bitmap(ms))
+                    {
+                        hBitmap = gdiBmp.GetHbitmap();
+                    }
+                }
+
+                if (hBitmap != IntPtr.Zero)
+                {
+                    var helper = (IDragSourceHelper)new DragDropHelper();
+                    var pshdi = new SHDRAGIMAGE
+                    {
+                        sizeDragImage = new SIZE { cx = targetW, cy = targetH },
+                        ptOffset = new POINT { x = targetW / 2, y = targetH / 2 },
+                        hbmpDragImage = hBitmap,
+                        crColorKey = 0x00000000
+                    };
+                    
+                    helper.InitializeFromBitmap(ref pshdi, (System.Runtime.InteropServices.ComTypes.IDataObject)dataObject);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to set drag image: {ex.Message}");
             }
         }
 
@@ -2509,4 +2659,50 @@ namespace FlowMy.Views.Overlays
             }
         }
     }
+
+    #region Drag Drop Ghost COM Interfaces & Helpers
+    [ComImport]
+    [Guid("DE5CB7E3-F38A-4818-B9C3-0D3D322B60CC")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IDragSourceHelper
+    {
+        void InitializeFromBitmap(
+            ref SHDRAGIMAGE pshdi,
+            System.Runtime.InteropServices.ComTypes.IDataObject pDataObject);
+
+        void InitializeFromWindow(
+            IntPtr hwnd,
+            ref POINT ppt,
+            System.Runtime.InteropServices.ComTypes.IDataObject pDataObject);
+    }
+
+    [ComImport]
+    [Guid("4657278A-411B-11d2-839A-00C04FD918D0")]
+    public class DragDropHelper
+    {
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SHDRAGIMAGE
+    {
+        public SIZE sizeDragImage;
+        public POINT ptOffset;
+        public IntPtr hbmpDragImage;
+        public int crColorKey;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SIZE
+    {
+        public int cx;
+        public int cy;
+    }
+    #endregion
 }
