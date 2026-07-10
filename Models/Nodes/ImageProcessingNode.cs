@@ -233,6 +233,25 @@ namespace FlowMy.Models.Nodes
         /// <summary>Input mappings cho Layer AI (node nguồn + key → biến dùng trong HTML/JS).</summary>
         public System.Collections.Generic.List<CodeInputMapping> LayerAiInputMappings { get; set; } = new();
 
+        // ═══════ Layer AI: Web Browser Configuration ═══════
+
+        private string _layerAiWebUrl = "https://google.com";
+        private string _layerAiCacheProfileName = "Shared";
+
+        /// <summary>URL đang mở trong WebView2 tab Web của LayerAiDialog.</summary>
+        public string LayerAiWebUrl
+        {
+            get => _layerAiWebUrl;
+            set { if (_layerAiWebUrl != value) { _layerAiWebUrl = value ?? "https://google.com"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Tên profile cache WebView2 (dùng chung với WebNode). Mặc định "Shared".</summary>
+        public string LayerAiCacheProfileName
+        {
+            get => _layerAiCacheProfileName;
+            set { if (_layerAiCacheProfileName != value) { _layerAiCacheProfileName = value ?? "Shared"; OnPropertyChanged(); } }
+        }
+
         /// <summary>Chế độ xử lý hiện tại (AI hoặc Manual).</summary>
         public ImageProcessingMode ProcessingMode
         {

@@ -54,8 +54,7 @@ namespace FlowMy.Views.Overlays
         private Border[] _slotChecks = null!;
         private Border[] _slotRemoves = null!;
 
-        // Tab state
-        private bool _isWebViewTabActive = false;
+        // Tab + dialog state
         private double _originalWidth;
         private double _originalHeight;
 
@@ -112,81 +111,139 @@ namespace FlowMy.Views.Overlays
 
         #endregion
 
-        #region Tab Switching (Prompt / WebView)
+        #region Tab Switching (Prompt / WebView / WebBrowser)
 
-        private void TabPrompt_Click(object sender, MouseButtonEventArgs e)
+        private enum ActiveTab { Prompt, WebView, WebBrowser }
+        private ActiveTab _activeTab = ActiveTab.Prompt;
+
+        // WebView2 browser (lazy init)
+        private Microsoft.Web.WebView2.Wpf.WebView2? _webBrowser;
+        private bool _webBrowserInitialized = false;
+        private System.Windows.Controls.Primitives.Popup? _suggestPopup;
+        private ListBox? _suggestListBox;
+        private System.Windows.Threading.DispatcherTimer? _suggestDebounceTimer;
+
+        private string GetActivePromptText()
         {
-            if (!_isWebViewTabActive) return;
-            _isWebViewTabActive = false;
-
-            // Sync prompt text back from WebView layout
-            TxtPrompt.Text = TxtPromptWv.Text;
-
-            // Toggle layouts
-            GridNormalLayout.Visibility = Visibility.Visible;
-            GridWebViewLayout.Visibility = Visibility.Collapsed;
-
-            // Tab header styling
-            TabHeaderPrompt.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
-            TabHeaderPrompt.BorderBrush = FindResource("AccentColor") as Brush;
-            TabHeaderWebView.Background = Brushes.Transparent;
-            TabHeaderWebView.BorderBrush = FindResource("BorderColor") as Brush;
-            TabHeaderWebViewText.Foreground = FindResource("TextMuted") as Brush;
-
-            // Restore original dialog size
-            Width = _originalWidth;
-            Height = _originalHeight;
-            CenterOnScreen();
+            return _activeTab switch
+            {
+                ActiveTab.WebView => TxtPromptWv.Text,
+                ActiveTab.WebBrowser => TxtPromptWeb.Text,
+                _ => TxtPrompt.Text
+            };
         }
 
-        private void TabWebView_Click(object sender, MouseButtonEventArgs e)
+        private void SyncPromptTo(ActiveTab target)
         {
-            if (_isWebViewTabActive) return;
-            _isWebViewTabActive = true;
+            var text = GetActivePromptText();
+            if (target != ActiveTab.Prompt) TxtPrompt.Text = text;
+            if (target != ActiveTab.WebView) TxtPromptWv.Text = text;
+            if (target != ActiveTab.WebBrowser) TxtPromptWeb.Text = text;
+        }
 
-            // Sync prompt text to WebView layout
-            TxtPromptWv.Text = TxtPrompt.Text;
+        private void SetTabStyles(ActiveTab active)
+        {
+            var accent = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+            var border = FindResource("BorderColor") as Brush ?? Brushes.DimGray;
+            var muted = FindResource("TextMuted") as Brush ?? Brushes.Gray;
+            var activeBg = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
 
-            // Sync images to WebView layout mirrors
-            SyncImagesToWebViewLayout();
+            // Prompt tab
+            TabHeaderPrompt.Background = active == ActiveTab.Prompt ? activeBg : Brushes.Transparent;
+            TabHeaderPrompt.BorderBrush = active == ActiveTab.Prompt ? accent : border;
 
-            // Toggle layouts
-            GridNormalLayout.Visibility = Visibility.Collapsed;
-            GridWebViewLayout.Visibility = Visibility.Visible;
+            // WebView tab
+            TabHeaderWebView.Background = active == ActiveTab.WebView ? activeBg : Brushes.Transparent;
+            TabHeaderWebView.BorderBrush = active == ActiveTab.WebView ? accent : border;
+            TabHeaderWebViewText.Foreground = active == ActiveTab.WebView ? accent : muted;
 
-            // Tab header styling
-            TabHeaderWebView.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a4fffb0"));
-            TabHeaderWebView.BorderBrush = FindResource("AccentColor") as Brush;
-            TabHeaderWebViewText.Foreground = FindResource("AccentColor") as Brush;
-            TabHeaderPrompt.Background = Brushes.Transparent;
-            TabHeaderPrompt.BorderBrush = FindResource("BorderColor") as Brush;
+            // Web Browser tab
+            TabHeaderWebBrowser.Background = active == ActiveTab.WebBrowser ? activeBg : Brushes.Transparent;
+            TabHeaderWebBrowser.BorderBrush = active == ActiveTab.WebBrowser ? accent : border;
+            TabHeaderWebBrowserText.Foreground = active == ActiveTab.WebBrowser ? accent : muted;
+        }
 
-            // Expand dialog to fill screen
+        private void ExpandDialogToScreen()
+        {
             var screenW = SystemParameters.PrimaryScreenWidth;
             var screenH = SystemParameters.PrimaryScreenHeight;
             var targetW = Math.Min(screenW * 0.90, screenW - 60);
             var targetH = Math.Min(screenH * 0.85, screenH - 80);
             Width = Math.Max(_originalWidth, targetW);
             Height = Math.Max(_originalHeight, targetH);
-
-            // Center on screen
             Left = (screenW - Width) / 2;
             Top = (screenH - Height) / 2;
         }
 
-        /// <summary>Copy ảnh chính + ảnh phụ sang các Image element trong GridWebViewLayout.</summary>
-        private void SyncImagesToWebViewLayout()
+        private void SwitchToTab(ActiveTab newTab)
         {
-            // Sync preview image
-            ImgPreviewWv.Source = ImgPreview.Source;
+            if (_activeTab == newTab) return;
 
-            // Sync secondary image slots
-            var wvImages = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
-            var wvPlaceholders = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
-            for (int i = 0; i < 4; i++)
+            // Sync prompt from current tab to all others
+            SyncPromptTo(newTab);
+            _activeTab = newTab;
+
+            // Toggle layout visibility and widths
+            if (newTab == ActiveTab.Prompt)
             {
-                wvImages[i].Source = _slotImages[i].Source;
-                wvPlaceholders[i].Visibility = _secondaryImages[i] == null ? Visibility.Visible : Visibility.Collapsed;
+                ColLeft.Width = new GridLength(6, GridUnitType.Star);
+                ColRight.Width = new GridLength(3, GridUnitType.Star);
+                GridLeftNormal.Visibility = Visibility.Visible;
+                GridLeftExpanded.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                ColLeft.Width = new GridLength(1, GridUnitType.Star);
+                ColRight.Width = new GridLength(2, GridUnitType.Star);
+                GridLeftNormal.Visibility = Visibility.Collapsed;
+                GridLeftExpanded.Visibility = Visibility.Visible;
+            }
+
+            TabContentPrompt.Visibility = newTab == ActiveTab.Prompt ? Visibility.Visible : Visibility.Collapsed;
+            TabContentWebView.Visibility = newTab == ActiveTab.WebView ? Visibility.Visible : Visibility.Collapsed;
+            TabContentWebBrowser.Visibility = newTab == ActiveTab.WebBrowser ? Visibility.Visible : Visibility.Collapsed;
+
+            // Tab header styling
+            SetTabStyles(newTab);
+
+            if (newTab == ActiveTab.Prompt)
+            {
+                // Restore original dialog size
+                Width = _originalWidth;
+                Height = _originalHeight;
+                CenterOnScreen();
+            }
+            else
+            {
+                // Sync images to the active expanded layout
+                SyncImagesToLayout(newTab);
+                ExpandDialogToScreen();
+            }
+
+            // Lazy-init WebView2 browser when Web tab first activated
+            if (newTab == ActiveTab.WebBrowser && !_webBrowserInitialized)
+            {
+                InitWebBrowserAsync();
+            }
+        }
+
+        private void TabPrompt_Click(object sender, MouseButtonEventArgs e) => SwitchToTab(ActiveTab.Prompt);
+        private void TabWebView_Click(object sender, MouseButtonEventArgs e) => SwitchToTab(ActiveTab.WebView);
+        private void TabWebBrowser_Click(object sender, MouseButtonEventArgs e) => SwitchToTab(ActiveTab.WebBrowser);
+
+        /// <summary>Sync ảnh chính + ảnh phụ sang layout mở rộng (GridLeftExpanded).</summary>
+        private void SyncImagesToLayout(ActiveTab tab)
+        {
+            if (tab != ActiveTab.Prompt)
+            {
+                ImgPreviewWv.Source = ImgPreview.Source;
+                var wvImages = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
+                var wvPlaceholders = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
+                for (int i = 0; i < 4; i++)
+                {
+                    wvImages[i].Source = _slotImages[i].Source;
+                    wvPlaceholders[i].Visibility = _secondaryImages[i]?.HasImage == true ? Visibility.Collapsed : Visibility.Visible;
+                }
             }
         }
 
@@ -196,6 +253,398 @@ namespace FlowMy.Views.Overlays
             {
                 Left = Owner.Left + (Owner.Width - Width) / 2;
                 Top = Owner.Top + (Owner.Height - Height) / 2;
+            }
+        }
+
+        #endregion
+
+        #region Web Browser (WebView2 + Search + Profile)
+
+        private async void InitWebBrowserAsync()
+        {
+            _webBrowserInitialized = true;
+
+            try
+            {
+                // Load profile combo
+                LoadWebProfiles();
+
+                // Create WebView2
+                _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
+
+                var profileName = _node.LayerAiCacheProfileName ?? "Shared";
+                var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                Directory.CreateDirectory(cachePath);
+
+                var options = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
+                var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                await _webBrowser.EnsureCoreWebView2Async(env);
+
+                // Navigate to saved URL
+                var url = _node.LayerAiWebUrl;
+                if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
+                TxtWebUrl.Text = url;
+                _webBrowser.CoreWebView2.Navigate(url);
+
+                // Track navigation
+                _webBrowser.CoreWebView2.NavigationCompleted += (s, args) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            var currentUrl = _webBrowser.CoreWebView2?.Source;
+                            if (!string.IsNullOrEmpty(currentUrl))
+                            {
+                                TxtWebUrl.Text = currentUrl;
+                                _node.LayerAiWebUrl = currentUrl;
+                            }
+                        }
+                        catch { }
+                    });
+                };
+
+                // Add WebView2 to container
+                WebBrowserContainer.Children.Clear();
+                WebBrowserContainer.Children.Add(_webBrowser);
+
+                // Setup Google Suggest popup
+                SetupSuggestPopup();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LayerAI WebBrowser init failed: {ex.Message}");
+            }
+        }
+
+        private void LoadWebProfiles()
+        {
+            CmbWebProfile.Items.Clear();
+            var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+            foreach (var p in profiles)
+            {
+                CmbWebProfile.Items.Add(new ComboBoxItem { Content = p, Tag = p });
+            }
+
+            // Select current profile
+            var current = _node.LayerAiCacheProfileName ?? "Shared";
+            for (int i = 0; i < CmbWebProfile.Items.Count; i++)
+            {
+                if (CmbWebProfile.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase))
+                {
+                    CmbWebProfile.SelectedIndex = i;
+                    break;
+                }
+            }
+            if (CmbWebProfile.SelectedIndex < 0 && CmbWebProfile.Items.Count > 0)
+                CmbWebProfile.SelectedIndex = 0;
+        }
+
+        private async void CmbWebProfile_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CmbWebProfile.SelectedItem is ComboBoxItem item && item.Tag is string profileName)
+            {
+                if (_node.LayerAiCacheProfileName == profileName) return;
+                _node.LayerAiCacheProfileName = profileName;
+
+                // Recreate WebView2 with new profile
+                if (_webBrowser != null && _webBrowserInitialized)
+                {
+                    try
+                    {
+                        var oldUrl = _webBrowser.CoreWebView2?.Source ?? "https://google.com";
+                        WebBrowserContainer.Children.Clear();
+                        _webBrowser.Dispose();
+                        _webBrowser = null;
+
+                        _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
+                        var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                        Directory.CreateDirectory(cachePath);
+
+                        var options = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
+                        var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                        await _webBrowser.EnsureCoreWebView2Async(env);
+
+                        _webBrowser.CoreWebView2.Navigate(oldUrl);
+                        _webBrowser.CoreWebView2.NavigationCompleted += (s2, args) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                try
+                                {
+                                    var currentUrl = _webBrowser.CoreWebView2?.Source;
+                                    if (!string.IsNullOrEmpty(currentUrl))
+                                    {
+                                        TxtWebUrl.Text = currentUrl;
+                                        _node.LayerAiWebUrl = currentUrl;
+                                    }
+                                }
+                                catch { }
+                            });
+                        };
+
+                        WebBrowserContainer.Children.Clear();
+                        WebBrowserContainer.Children.Add(_webBrowser);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Profile switch failed: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private void BtnNewProfile_Click(object sender, RoutedEventArgs e)
+        {
+            // Simple inline input dialog
+            var dialog = new Window
+            {
+                Title = "Tạo Profile mới",
+                Width = 320, Height = 140,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                WindowStyle = WindowStyle.ToolWindow,
+                ResizeMode = ResizeMode.NoResize,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a1c23"))
+            };
+
+            var sp = new StackPanel { Margin = new Thickness(16) };
+            var lbl = new TextBlock { Text = "Tên profile:", Foreground = Brushes.White, FontSize = 12, Margin = new Thickness(0, 0, 0, 6) };
+            var txt = new TextBox
+            {
+                Height = 28, FontSize = 12, Padding = new Thickness(6, 4, 6, 4),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1e222d")),
+                Foreground = Brushes.White, BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d")),
+                CaretBrush = Brushes.Lime
+            };
+            var btnOk = new Button { Content = "Tạo", Width = 80, Height = 28, Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Right, Cursor = Cursors.Hand };
+            btnOk.Click += (s2, e2) => { dialog.DialogResult = true; dialog.Close(); };
+            txt.KeyDown += (s2, e2) => { if (e2.Key == Key.Enter) { dialog.DialogResult = true; dialog.Close(); } };
+
+            sp.Children.Add(lbl);
+            sp.Children.Add(txt);
+            sp.Children.Add(btnOk);
+            dialog.Content = sp;
+
+            if (dialog.ShowDialog() == true)
+            {
+                var name = txt.Text?.Trim();
+                if (!string.IsNullOrWhiteSpace(name) && !System.Text.RegularExpressions.Regex.IsMatch(name, @"[\\/:*?""<>|]"))
+                {
+                    // Create directory
+                    var path = WebNodeCacheHelper.GetProfileCachePath(name);
+                    Directory.CreateDirectory(path);
+
+                    // Refresh combo and select new
+                    LoadWebProfiles();
+                    for (int i = 0; i < CmbWebProfile.Items.Count; i++)
+                    {
+                        if (CmbWebProfile.Items[i] is ComboBoxItem ci && string.Equals(ci.Tag as string, name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            CmbWebProfile.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void NavigateWebBrowser(string input)
+        {
+            if (_webBrowser?.CoreWebView2 == null) return;
+            var trimmed = input?.Trim() ?? "";
+            if (string.IsNullOrEmpty(trimmed)) return;
+
+            string url;
+            if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"))
+            {
+                url = trimmed;
+            }
+            else if (trimmed.Contains('.') && !trimmed.Contains(' '))
+            {
+                url = "https://" + trimmed;
+            }
+            else
+            {
+                url = $"https://www.google.com/search?q={Uri.EscapeDataString(trimmed)}";
+            }
+
+            TxtWebUrl.Text = url;
+            _webBrowser.CoreWebView2.Navigate(url);
+        }
+
+        private void BtnWebGo_Click(object sender, RoutedEventArgs e) => NavigateWebBrowser(TxtWebUrl.Text);
+
+        private void TxtWebUrl_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                // If suggest popup is open and item selected, use that
+                if (_suggestPopup?.IsOpen == true && _suggestListBox?.SelectedItem is string selectedSuggest)
+                {
+                    TxtWebUrl.Text = selectedSuggest;
+                    _suggestPopup.IsOpen = false;
+                }
+                NavigateWebBrowser(TxtWebUrl.Text);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && _suggestPopup?.IsOpen == true)
+            {
+                _suggestPopup.IsOpen = false;
+                e.Handled = true;
+            }
+            else if (_suggestPopup?.IsOpen == true && _suggestListBox != null)
+            {
+                if (e.Key == Key.Down)
+                {
+                    _suggestListBox.SelectedIndex = Math.Min(_suggestListBox.SelectedIndex + 1, _suggestListBox.Items.Count - 1);
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Up)
+                {
+                    _suggestListBox.SelectedIndex = Math.Max(_suggestListBox.SelectedIndex - 1, 0);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void TxtWebUrl_GotFocus(object sender, RoutedEventArgs e)
+        {
+            TxtWebUrl.SelectAll();
+        }
+
+        private void SetupSuggestPopup()
+        {
+            _suggestListBox = new ListBox
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0x28, 0x2C, 0x34)),
+                Foreground = Brushes.White,
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                MaxHeight = 240,
+                FontSize = 12,
+                Padding = new Thickness(0)
+            };
+            ScrollViewer.SetHorizontalScrollBarVisibility(_suggestListBox, ScrollBarVisibility.Disabled);
+
+            var itemStyle = new Style(typeof(ListBoxItem));
+            itemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(10, 6, 10, 6)));
+            itemStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            itemStyle.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            itemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            itemStyle.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
+
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromArgb(60, 100, 180, 255))));
+            itemStyle.Triggers.Add(hoverTrigger);
+
+            var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
+            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromArgb(90, 100, 180, 255))));
+            itemStyle.Triggers.Add(selectedTrigger);
+            _suggestListBox.ItemContainerStyle = itemStyle;
+
+            // Click on suggestion → navigate
+            _suggestListBox.MouseLeftButtonUp += (s, e) =>
+            {
+                if (_suggestListBox.SelectedItem is string sel)
+                {
+                    TxtWebUrl.Text = sel;
+                    _suggestPopup!.IsOpen = false;
+                    NavigateWebBrowser(sel);
+                }
+            };
+
+            _suggestPopup = new System.Windows.Controls.Primitives.Popup
+            {
+                PlacementTarget = TxtWebUrl,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                StaysOpen = false,
+                AllowsTransparency = true,
+                PopupAnimation = System.Windows.Controls.Primitives.PopupAnimation.Fade,
+                Child = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(0x28, 0x2C, 0x34)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(0, 0, 8, 8),
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 12, ShadowDepth = 3, Opacity = 0.3 },
+                    Child = _suggestListBox
+                }
+            };
+
+            // Bind popup width
+            TxtWebUrl.SizeChanged += (s, e) =>
+            {
+                if (_suggestPopup != null)
+                    _suggestPopup.Width = TxtWebUrl.ActualWidth + 40; // +40 for border padding
+            };
+
+            // Debounced TextChanged for Google Suggest
+            _suggestDebounceTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _suggestDebounceTimer.Tick += async (s, e) =>
+            {
+                _suggestDebounceTimer.Stop();
+                await FetchGoogleSuggestionsAsync(TxtWebUrl.Text);
+            };
+
+            TxtWebUrl.TextChanged += (s, e) =>
+            {
+                if (TxtWebUrl.IsFocused && !string.IsNullOrWhiteSpace(TxtWebUrl.Text))
+                {
+                    _suggestDebounceTimer?.Stop();
+                    _suggestDebounceTimer?.Start();
+                }
+                else
+                {
+                    if (_suggestPopup != null) _suggestPopup.IsOpen = false;
+                }
+            };
+        }
+
+        private async Task FetchGoogleSuggestionsAsync(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query) || _suggestListBox == null || _suggestPopup == null) return;
+
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(3);
+                var response = await http.GetStringAsync($"https://suggestqueries.google.com/complete/search?client=firefox&q={Uri.EscapeDataString(query)}");
+
+                // Parse JSON: ["query", ["suggestion1", "suggestion2", ...]]
+                var suggestions = new List<string>();
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(response);
+                    if (doc.RootElement.GetArrayLength() > 1)
+                    {
+                        foreach (var item in doc.RootElement[1].EnumerateArray())
+                        {
+                            var s = item.GetString();
+                            if (!string.IsNullOrWhiteSpace(s)) suggestions.Add(s);
+                            if (suggestions.Count >= 8) break;
+                        }
+                    }
+                }
+                catch { }
+
+                Dispatcher.Invoke(() =>
+                {
+                    _suggestListBox.Items.Clear();
+                    if (suggestions.Count > 0 && TxtWebUrl.IsFocused)
+                    {
+                        foreach (var s in suggestions) _suggestListBox.Items.Add(s);
+                        _suggestPopup.IsOpen = true;
+                    }
+                    else
+                    {
+                        _suggestPopup.IsOpen = false;
+                    }
+                });
+            }
+            catch
+            {
+                Dispatcher.Invoke(() => { if (_suggestPopup != null) _suggestPopup.IsOpen = false; });
             }
         }
 
@@ -550,7 +999,7 @@ namespace FlowMy.Views.Overlays
                 var cropBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropBase64", StringComparison.OrdinalIgnoreCase));
                 if (cropBase64Port != null) cropBase64Port.UserValueOverride = b64;
 
-                var activePromptText = _isWebViewTabActive ? TxtPromptWv.Text : TxtPrompt.Text;
+                var activePromptText = GetActivePromptText();
                 _node.ProcessorPrompt = activePromptText;
                 var promptPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase));
                 if (promptPort != null) promptPort.UserValueOverride = activePromptText;
