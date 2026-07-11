@@ -2585,7 +2585,20 @@ namespace FlowMy.Views.Overlays
             int finalH = Math.Clamp(srcH, 1, childLayer.Height - posY);
 
             // 5. Get original mask template and resize it to match high-resolution cropped AI region
-            BitmapSource maskTemplate = new CroppedBitmap(activeLayer.Bitmap, new Int32Rect(posX, posY, finalW, finalH));
+            BitmapSource maskTemplate = activeLayer.OriginalTransformBitmap ?? activeLayer.Bitmap;
+            var maskBounds = GetLayerContentBounds(maskTemplate);
+            if (!maskBounds.IsEmpty && maskBounds.Width > 0 && maskBounds.Height > 0)
+            {
+                int mx = Math.Clamp((int)maskBounds.X, 0, maskTemplate.PixelWidth - 1);
+                int my = Math.Clamp((int)maskBounds.Y, 0, maskTemplate.PixelHeight - 1);
+                int mw = Math.Clamp((int)Math.Ceiling(maskBounds.Width), 1, maskTemplate.PixelWidth - mx);
+                int mh = Math.Clamp((int)Math.Ceiling(maskBounds.Height), 1, maskTemplate.PixelHeight - my);
+                if (mw > 0 && mh > 0 && (mx > 0 || my > 0 || mw < maskTemplate.PixelWidth || mh < maskTemplate.PixelHeight))
+                {
+                    maskTemplate = new CroppedBitmap(maskTemplate, new Int32Rect(mx, my, mw, mh));
+                }
+            }
+
             BitmapSource resizedMask = ResizeBitmapHighQuality(maskTemplate, croppedAiRegion.PixelWidth, croppedAiRegion.PixelHeight, uniformToFill: false);
             if (resizedMask.Format != PixelFormats.Bgra32)
             {
