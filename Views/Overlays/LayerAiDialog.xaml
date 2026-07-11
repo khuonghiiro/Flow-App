@@ -351,9 +351,10 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="8"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Row 1: Ảnh chính -->
+                        <!-- Row 0: Ảnh chính -->
                         <Grid Grid.Row="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -445,6 +446,19 @@
                                     </Grid>
                                 </Border>
                             </Grid>
+                        </Grid>
+
+                        <!-- Row 3: Buttons -->
+                        <Grid Grid.Row="3" Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="BtnAddSecondaryExpanded" Grid.Column="0" Content="＋ Thêm ảnh phụ" Height="28" Margin="0"
+                                    Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
+                            <Button x:Name="BtnToggleSendModeExpanded" Grid.Column="2" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
+                                    Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>
                         </Grid>
                     </Grid>
                 </Grid>

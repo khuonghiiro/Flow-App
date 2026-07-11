@@ -1473,29 +1473,34 @@ namespace FlowMy.Views.Overlays
         {
             try
             {
-                int finalW = croppedOriginal.PixelWidth;
-                int finalH = croppedOriginal.PixelHeight;
+                int srcW = croppedOriginal.PixelWidth;
+                int srcH = croppedOriginal.PixelHeight;
 
-                // 1. Resize secondary image to match final bounds
-                BitmapSource resizedSecondary = ResizeBitmapHighQuality(secondary, finalW, finalH, uniformToFill: true);
+                // Compute high-resolution dimensions matching the croppedOriginal aspect ratio
+                double scale = Math.Max(1.0, Math.Max((double)secondary.PixelWidth / srcW, (double)secondary.PixelHeight / srcH));
+                int hiW = (int)Math.Round(srcW * scale);
+                int hiH = (int)Math.Round(srcH * scale);
+
+                // 1. Resize secondary image to match high-resolution dimensions (crop/fill aspect ratio)
+                BitmapSource resizedSecondary = ResizeBitmapHighQuality(secondary, hiW, hiH, uniformToFill: true);
                 if (resizedSecondary.Format != PixelFormats.Bgra32)
                 {
                     resizedSecondary = new FormatConvertedBitmap(resizedSecondary, PixelFormats.Bgra32, null, 0);
                 }
 
-                // 2. Convert croppedOriginal to Bgra32 if needed to extract alpha safely
-                BitmapSource bgraOriginal = croppedOriginal;
-                if (croppedOriginal.Format != PixelFormats.Bgra32)
+                // 2. Resize original cropped image (which contains the mask) to match high-resolution dimensions
+                BitmapSource resizedOriginal = ResizeBitmapHighQuality(croppedOriginal, hiW, hiH, uniformToFill: false);
+                if (resizedOriginal.Format != PixelFormats.Bgra32)
                 {
-                    bgraOriginal = new FormatConvertedBitmap(croppedOriginal, PixelFormats.Bgra32, null, 0);
+                    resizedOriginal = new FormatConvertedBitmap(resizedOriginal, PixelFormats.Bgra32, null, 0);
                 }
 
                 // 3. Copy pixels
-                var secondaryPixels = new byte[finalW * 4 * finalH];
-                resizedSecondary.CopyPixels(secondaryPixels, finalW * 4, 0);
+                var secondaryPixels = new byte[hiW * 4 * hiH];
+                resizedSecondary.CopyPixels(secondaryPixels, hiW * 4, 0);
 
-                var originalPixels = new byte[finalW * 4 * finalH];
-                bgraOriginal.CopyPixels(originalPixels, finalW * 4, 0);
+                var originalPixels = new byte[hiW * 4 * hiH];
+                resizedOriginal.CopyPixels(originalPixels, hiW * 4, 0);
 
                 // 4. Copy alpha channel from original to secondary
                 for (int i = 0; i < secondaryPixels.Length; i += 4)
@@ -1503,8 +1508,8 @@ namespace FlowMy.Views.Overlays
                     secondaryPixels[i + 3] = originalPixels[i + 3];
                 }
 
-                var maskedBmp = new WriteableBitmap(finalW, finalH, 96, 96, PixelFormats.Bgra32, null);
-                maskedBmp.WritePixels(new Int32Rect(0, 0, finalW, finalH), secondaryPixels, finalW * 4, 0);
+                var maskedBmp = new WriteableBitmap(hiW, hiH, 96, 96, PixelFormats.Bgra32, null);
+                maskedBmp.WritePixels(new Int32Rect(0, 0, hiW, hiH), secondaryPixels, hiW * 4, 0);
 
                 return maskedBmp;
             }
@@ -2044,30 +2049,36 @@ namespace FlowMy.Views.Overlays
         private void BtnToggleSendMode_Click(object sender, RoutedEventArgs e)
         {
             _sendModeOn = !_sendModeOn;
-            if (_sendModeOn)
+            
+            var onStyle = FindResource("SuccessButton") as Style;
+            var offStyle = FindResource("DangerButton") as Style;
+            string text = _sendModeOn ? "Gửi AI: ON" : "Gửi AI: OFF";
+            var style = _sendModeOn ? onStyle : offStyle;
+
+            if (BtnToggleSendMode != null)
             {
-                BtnToggleSendMode.Content = "Gửi AI: ON";
-                BtnToggleSendMode.Style = FindResource("SuccessButton") as Style;
-
-                BtnSend.Visibility = Visibility.Visible;
-                if (BtnSendWv != null) BtnSendWv.Visibility = Visibility.Visible;
-                if (BtnSendWeb != null) BtnSendWeb.Visibility = Visibility.Visible;
-
-                if (BtnApply != null) BtnApply.Visibility = Visibility.Collapsed;
-                if (BtnCancel != null) BtnCancel.Margin = new Thickness(0);
+                BtnToggleSendMode.Content = text;
+                BtnToggleSendMode.Style = style;
             }
-            else
+            if (BtnToggleSendModeExpanded != null)
             {
-                BtnToggleSendMode.Content = "Gửi AI: OFF";
-                BtnToggleSendMode.Style = FindResource("DangerButton") as Style;
+                BtnToggleSendModeExpanded.Content = text;
+                BtnToggleSendModeExpanded.Style = style;
+            }
 
-                BtnSend.Visibility = Visibility.Collapsed;
-                if (BtnSendWv != null) BtnSendWv.Visibility = Visibility.Collapsed;
-                if (BtnSendWeb != null) BtnSendWeb.Visibility = Visibility.Collapsed;
+            var sendVisibility = _sendModeOn ? Visibility.Visible : Visibility.Collapsed;
+            var applyVisibility = _sendModeOn ? Visibility.Collapsed : Visibility.Visible;
+            var cancelMargin = _sendModeOn ? new Thickness(0) : new Thickness(0, 0, 8, 0);
 
-                if (BtnApply != null) BtnApply.Visibility = Visibility.Visible;
-                if (BtnCancel != null) BtnCancel.Margin = new Thickness(0, 0, 8, 0);
+            if (BtnSend != null) BtnSend.Visibility = sendVisibility;
+            if (BtnSendWv != null) BtnSendWv.Visibility = sendVisibility;
+            if (BtnSendWeb != null) BtnSendWeb.Visibility = sendVisibility;
 
+            if (BtnApply != null) BtnApply.Visibility = applyVisibility;
+            if (BtnCancel != null) BtnCancel.Margin = cancelMargin;
+
+            if (!_sendModeOn)
+            {
                 // Enforce single select for slots in OFF mode: deselect all but the first selected slot
                 int firstSelectedIdx = -1;
                 for (int i = 0; i < 4; i++)
@@ -2087,6 +2098,7 @@ namespace FlowMy.Views.Overlays
                 RefreshAllSlotsUI();
                 UpdateSecondaryInfo();
             }
+
             UpdateSendButtonsState();
             UpdatePreviewImage();
         }
@@ -2531,45 +2543,35 @@ namespace FlowMy.Views.Overlays
                 }
             }
 
-            // 3. Resize AI image to newW x newH with High Quality
-            BitmapSource resizedAi = ResizeBitmapHighQuality(aiBmp, newW, newH, uniformToFill: !customW.HasValue);
+            // 3. Compute resolution scale to preserve the high quality of the AI/slot image
+            double resolutionScale = Math.Max(1.0, Math.Max((double)aiBmp.PixelWidth / newW, (double)aiBmp.PixelHeight / newH));
+            int hiNewW = (int)Math.Round(newW * resolutionScale);
+            int hiNewH = (int)Math.Round(newH * resolutionScale);
+            int hiSrcW = (int)Math.Round(srcW * resolutionScale);
+            int hiSrcH = (int)Math.Round(srcH * resolutionScale);
 
-            // 4. Calculate crop offsets (where the original crop region is located in the newW x newH image)
-            double xOffset = 0;
-            double yOffset = 0;
+            // Resize to high-resolution target dimensions
+            BitmapSource resizedAi = ResizeBitmapHighQuality(aiBmp, hiNewW, hiNewH, uniformToFill: !customW.HasValue);
+
+            // 4. Calculate crop offsets in high resolution
             BitmapSource croppedAiRegion;
-
             if (customW.HasValue && customH.HasValue)
             {
-                // For custom size, the image was scaled (stretched) to customW x customH.
-                // So we just take the whole image, and it will be scaled back to srcW x srcH.
                 croppedAiRegion = resizedAi;
             }
             else
             {
-                xOffset = (newW - srcW) / 2.0;
-                yOffset = (newH - srcH) / 2.0;
-                int cropX = Math.Clamp((int)Math.Round(xOffset), 0, newW - 1);
-                int cropY = Math.Clamp((int)Math.Round(yOffset), 0, newH - 1);
-                int cropW = Math.Clamp(srcW, 1, newW - cropX);
-                int cropH = Math.Clamp(srcH, 1, newH - cropY);
+                double xOffset = (hiNewW - hiSrcW) / 2.0;
+                double yOffset = (hiNewH - hiSrcH) / 2.0;
+                int cropX = Math.Clamp((int)Math.Round(xOffset), 0, hiNewW - 1);
+                int cropY = Math.Clamp((int)Math.Round(yOffset), 0, hiNewH - 1);
+                int cropW = Math.Clamp(hiSrcW, 1, hiNewW - cropX);
+                int cropH = Math.Clamp(hiSrcH, 1, hiNewH - cropY);
 
                 croppedAiRegion = new CroppedBitmap(resizedAi, new Int32Rect(cropX, cropY, cropW, cropH));
             }
 
-            // 5. If it needs to be scaled back to original bounds (for custom size, etc.)
-            if (croppedAiRegion.PixelWidth != srcW || croppedAiRegion.PixelHeight != srcH)
-            {
-                croppedAiRegion = ResizeBitmapHighQuality(croppedAiRegion, srcW, srcH, uniformToFill: false);
-            }
-
-            // 6. Mask the AI pixels using the original layer's alpha channel to preserve lasso/polygon shapes
-            var converted = croppedAiRegion;
-            if (croppedAiRegion.Format != PixelFormats.Bgra32)
-            {
-                converted = new FormatConvertedBitmap(croppedAiRegion, PixelFormats.Bgra32, null, 0);
-            }
-
+            // Calculate parent positioning
             double parentX = 0;
             double parentY = 0;
             if (activeLayer.OriginalTransformBitmap != null)
@@ -2582,34 +2584,45 @@ namespace FlowMy.Views.Overlays
             int finalW = Math.Clamp(srcW, 1, childLayer.Width - posX);
             int finalH = Math.Clamp(srcH, 1, childLayer.Height - posY);
 
-            // Resize converted to match final clamped bounds if needed
-            if (converted.PixelWidth != finalW || converted.PixelHeight != finalH)
+            // 5. Get original mask template and resize it to match high-resolution cropped AI region
+            BitmapSource maskTemplate = new CroppedBitmap(activeLayer.Bitmap, new Int32Rect(posX, posY, finalW, finalH));
+            BitmapSource resizedMask = ResizeBitmapHighQuality(maskTemplate, croppedAiRegion.PixelWidth, croppedAiRegion.PixelHeight, uniformToFill: false);
+            if (resizedMask.Format != PixelFormats.Bgra32)
             {
-                converted = ResizeBitmapHighQuality(converted, finalW, finalH, uniformToFill: false);
+                resizedMask = new FormatConvertedBitmap(resizedMask, PixelFormats.Bgra32, null, 0);
             }
 
-            var aiPixels = new byte[finalW * 4 * finalH];
-            converted.CopyPixels(aiPixels, finalW * 4, 0);
+            var converted = croppedAiRegion;
+            if (croppedAiRegion.Format != PixelFormats.Bgra32)
+            {
+                converted = new FormatConvertedBitmap(croppedAiRegion, PixelFormats.Bgra32, null, 0);
+            }
 
-            var maskPixels = new byte[finalW * 4 * finalH];
-            activeLayer.Bitmap.CopyPixels(new Int32Rect(posX, posY, finalW, finalH), maskPixels, finalW * 4, 0);
+            int hiW = converted.PixelWidth;
+            int hiH = converted.PixelHeight;
+
+            var aiPixels = new byte[hiW * 4 * hiH];
+            converted.CopyPixels(aiPixels, hiW * 4, 0);
+
+            var maskPixels = new byte[hiW * 4 * hiH];
+            resizedMask.CopyPixels(maskPixels, hiW * 4, 0);
 
             for (int i = 0; i < aiPixels.Length; i += 4)
             {
                 aiPixels[i + 3] = maskPixels[i + 3];
             }
 
-            var maskedBmp = new WriteableBitmap(finalW, finalH, 96, 96, PixelFormats.Bgra32, null);
-            maskedBmp.WritePixels(new Int32Rect(0, 0, finalW, finalH), aiPixels, finalW * 4, 0);
+            var maskedBmp = new WriteableBitmap(hiW, hiH, 96, 96, PixelFormats.Bgra32, null);
+            maskedBmp.WritePixels(new Int32Rect(0, 0, hiW, hiH), aiPixels, hiW * 4, 0);
 
             // Render into the destination layer's WriteableBitmap
             var drawingVisual = new DrawingVisual();
             RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
             using (var drawingContext = drawingVisual.RenderOpen())
             {
-                // Draw the transparent background (clear the layer)
+                // Draw transparent background (clear the layer)
                 drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, childLayer.Width, childLayer.Height));
-                // Draw the masked processed AI cropped region at the exact original position
+                // Draw masked processed AI cropped region at exact original position
                 drawingContext.DrawImage(maskedBmp, new Rect(posX, posY, finalW, finalH));
             }
 
