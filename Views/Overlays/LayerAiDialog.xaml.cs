@@ -2498,7 +2498,13 @@ namespace FlowMy.Views.Overlays
         {
             try
             {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+
                 BitmapSource? droppedBitmap = await GetImageFromDragEventArgsAsync(e);
+
+                // Reset WebView2 drag state in web pages to clear any stuck UI overlays
+                await ResetWebView2DragStateAsync();
 
                 if (droppedBitmap == null) return;
 
@@ -2510,6 +2516,28 @@ namespace FlowMy.Views.Overlays
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error on drop: {ex.Message}");
+            }
+        }
+
+        private async System.Threading.Tasks.Task ResetWebView2DragStateAsync()
+        {
+            try
+            {
+                var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
+                var activeWv = cacheState.WebBrowser;
+                if (activeWv != null && activeWv.CoreWebView2 != null)
+                {
+                    await activeWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();");
+                }
+                var dynamicWv = cacheState.DynamicWebView;
+                if (dynamicWv != null && dynamicWv.CoreWebView2 != null)
+                {
+                    await dynamicWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to reset drag state: {ex.Message}");
             }
         }
 
@@ -3174,6 +3202,46 @@ namespace FlowMy.Views.Overlays
                 // Inject the JS script to run on every page load
                 string script = @"
                     (function() {
+                        window._isMouseDownOnImage = false;
+                        
+                        window.resetDragState = function() {
+                            window._isMouseDownOnImage = false;
+                            const lastEl = document.activeElement || document.body;
+                            const eventOptions = { bubbles: true, cancelable: true, view: window };
+                            
+                            const mouseUpEv = new MouseEvent('mouseup', eventOptions);
+                            const pointerUpEv = new PointerEvent('pointerup', eventOptions);
+                            const dragEndEv = new DragEvent('dragend', eventOptions);
+                            const dragLeaveEv = new DragEvent('dragleave', eventOptions);
+                            
+                            if (lastEl) {
+                                lastEl.dispatchEvent(mouseUpEv);
+                                lastEl.dispatchEvent(pointerUpEv);
+                                lastEl.dispatchEvent(dragLeaveEv);
+                                lastEl.dispatchEvent(dragEndEv);
+                            }
+                            
+                            document.dispatchEvent(mouseUpEv);
+                            document.dispatchEvent(pointerUpEv);
+                            document.dispatchEvent(dragLeaveEv);
+                            document.dispatchEvent(dragEndEv);
+                            
+                            window.dispatchEvent(mouseUpEv);
+                            window.dispatchEvent(pointerUpEv);
+                            
+                            const escDown = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
+                            const escUp = new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
+                            
+                            if (lastEl) {
+                                lastEl.dispatchEvent(escDown);
+                                lastEl.dispatchEvent(escUp);
+                            }
+                            document.dispatchEvent(escDown);
+                            document.dispatchEvent(escUp);
+                            window.dispatchEvent(escDown);
+                            window.dispatchEvent(escUp);
+                        };
+
                         // 1. Force draggable=true when user starts to drag or click-down on images and links
                         document.addEventListener('mousedown', function(e) {
                             let target = e.target;
@@ -3181,6 +3249,7 @@ namespace FlowMy.Views.Overlays
                                 target = target.parentNode;
                             }
                             if (target) {
+                                window._isMouseDownOnImage = true;
                                 if (target.tagName === 'IMG' && target.getAttribute('draggable') !== 'true') {
                                     target.setAttribute('draggable', 'true');
                                 } else if (target.tagName === 'A') {
@@ -3195,6 +3264,23 @@ namespace FlowMy.Views.Overlays
                             }
                         }, true);
 
+                        // Reset flag on mouseup / pointerup / dragend
+                        const resetFlag = function() {
+                            window._isMouseDownOnImage = false;
+                        };
+                        document.addEventListener('mouseup', resetFlag, true);
+                        document.addEventListener('pointerup', resetFlag, true);
+                        document.addEventListener('dragend', resetFlag, true);
+
+                        // Block mouse/pointer move events if mouse is down on image to prevent JS drag libraries from launching custom dragging previews
+                        const blockMoveEvents = function(e) {
+                            if (window._isMouseDownOnImage) {
+                                e.stopImmediatePropagation();
+                            }
+                        };
+                        document.addEventListener('mousemove', blockMoveEvents, true);
+                        document.addEventListener('pointermove', blockMoveEvents, true);
+
                         // 2. Intercept dragstart in capture phase to bypass target-level blockages
                         document.addEventListener('dragstart', function(e) {
                             let target = e.target;
@@ -3202,6 +3288,9 @@ namespace FlowMy.Views.Overlays
                                 target = target.parentNode;
                             }
                             if (target) {
+                                // Stop event propagation immediately to prevent SPA/React DnD libraries from running their custom drag overlays
+                                e.stopImmediatePropagation();
+                                
                                 let imageUrl = '';
                                 if (target.tagName === 'IMG') {
                                     imageUrl = target.src;
@@ -3227,6 +3316,17 @@ namespace FlowMy.Views.Overlays
                                         console.error('Failed to resolve URL on dragstart:', err);
                                     }
                                 }
+                            }
+                        }, true);
+
+                        // 3. Intercept drag event to prevent page scripts from updating drag positions
+                        document.addEventListener('drag', function(e) {
+                            let target = e.target;
+                            while (target && target.tagName !== 'IMG' && target.tagName !== 'A') {
+                                target = target.parentNode;
+                            }
+                            if (target) {
+                                e.stopImmediatePropagation();
                             }
                         }, true);
                     })();
