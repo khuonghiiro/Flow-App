@@ -60,6 +60,8 @@ namespace FlowMy.Views.Overlays
         private double _originalHeight;
         private FrameworkElement? _hoveredImageContainer = null;
         private bool _isMouseDownOnImage = false;
+        private bool _isAiLoading = false;
+        private bool _sendModeOn = true;
 
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
@@ -984,10 +986,28 @@ namespace FlowMy.Views.Overlays
 
                 if (_secondaryImages[idx].HasImage)
                 {
-                    // Toggle selection
-                    _secondaryImages[idx].IsSelected = !_secondaryImages[idx].IsSelected;
-                    RefreshSlotUI(idx);
-                    UpdateSecondaryInfo();
+                    if (_sendModeOn)
+                    {
+                        // ON mode: toggle selection, allow multi-select
+                        _secondaryImages[idx].IsSelected = !_secondaryImages[idx].IsSelected;
+                        RefreshSlotUI(idx);
+                        UpdateSecondaryInfo();
+                        UpdatePreviewImage();
+                    }
+                    else
+                    {
+                        // OFF mode: toggle selection, enforce single-select
+                        bool wasSelected = _secondaryImages[idx].IsSelected;
+                        for (int i = 0; i < 4; i++)
+                        {
+                            _secondaryImages[i].IsSelected = false;
+                        }
+                        _secondaryImages[idx].IsSelected = !wasSelected;
+                        
+                        RefreshAllSlotsUI();
+                        UpdateSecondaryInfo();
+                        UpdatePreviewImage();
+                    }
                 }
                 else
                 {
@@ -1011,12 +1031,29 @@ namespace FlowMy.Views.Overlays
                             bmp.EndInit();
                             bmp.Freeze();
 
-                            _secondaryImages[idx].Bitmap = bmp;
-                            _secondaryImages[idx].FilePath = dlg.FileName;
-                            _secondaryImages[idx].IsSelected = true;
+                            if (_sendModeOn)
+                            {
+                                // ON mode: just add and select it
+                                _secondaryImages[idx].Bitmap = bmp;
+                                _secondaryImages[idx].FilePath = dlg.FileName;
+                                _secondaryImages[idx].IsSelected = true;
+                            }
+                            else
+                            {
+                                // OFF mode: deselect all others, select this one
+                                for (int i = 0; i < 4; i++)
+                                {
+                                    _secondaryImages[i].IsSelected = false;
+                                }
+                                _secondaryImages[idx].Bitmap = bmp;
+                                _secondaryImages[idx].FilePath = dlg.FileName;
+                                _secondaryImages[idx].IsSelected = true;
+                            }
                         }
                         catch { }
                         RefreshAllSlotsUI();
+                        UpdateSecondaryInfo();
+                        UpdatePreviewImage();
                     }
                 }
 
@@ -1034,6 +1071,8 @@ namespace FlowMy.Views.Overlays
                     _secondaryImages[idx].FilePath = null;
                     _secondaryImages[idx].IsSelected = false;
                     RefreshAllSlotsUI();
+                    UpdateSecondaryInfo();
+                    UpdatePreviewImage();
                 }
                 e.Handled = true;
             }
@@ -1417,27 +1456,99 @@ namespace FlowMy.Views.Overlays
             UpdatePreviewImage();
         }
 
+        private int GetSelectedSlotIndex()
+        {
+            if (_secondaryImages == null) return -1;
+            for (int i = 0; i < 4; i++)
+            {
+                if (_secondaryImages[i] != null && _secondaryImages[i].HasImage && _secondaryImages[i].IsSelected)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private BitmapSource MaskAndCropSecondaryImage(BitmapSource secondary, BitmapSource croppedOriginal)
+        {
+            try
+            {
+                int finalW = croppedOriginal.PixelWidth;
+                int finalH = croppedOriginal.PixelHeight;
+
+                // 1. Resize secondary image to match final bounds
+                BitmapSource resizedSecondary = ResizeBitmapHighQuality(secondary, finalW, finalH, uniformToFill: true);
+                if (resizedSecondary.Format != PixelFormats.Bgra32)
+                {
+                    resizedSecondary = new FormatConvertedBitmap(resizedSecondary, PixelFormats.Bgra32, null, 0);
+                }
+
+                // 2. Convert croppedOriginal to Bgra32 if needed to extract alpha safely
+                BitmapSource bgraOriginal = croppedOriginal;
+                if (croppedOriginal.Format != PixelFormats.Bgra32)
+                {
+                    bgraOriginal = new FormatConvertedBitmap(croppedOriginal, PixelFormats.Bgra32, null, 0);
+                }
+
+                // 3. Copy pixels
+                var secondaryPixels = new byte[finalW * 4 * finalH];
+                resizedSecondary.CopyPixels(secondaryPixels, finalW * 4, 0);
+
+                var originalPixels = new byte[finalW * 4 * finalH];
+                bgraOriginal.CopyPixels(originalPixels, finalW * 4, 0);
+
+                // 4. Copy alpha channel from original to secondary
+                for (int i = 0; i < secondaryPixels.Length; i += 4)
+                {
+                    secondaryPixels[i + 3] = originalPixels[i + 3];
+                }
+
+                var maskedBmp = new WriteableBitmap(finalW, finalH, 96, 96, PixelFormats.Bgra32, null);
+                maskedBmp.WritePixels(new Int32Rect(0, 0, finalW, finalH), secondaryPixels, finalW * 4, 0);
+
+                return maskedBmp;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to mask secondary image: {ex.Message}");
+                return secondary;
+            }
+        }
+
         private void UpdatePreviewImage()
         {
             if (ImgPreview == null || _activeLayer == null) return;
 
             try
             {
-                BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
-
-                // Luôn tính bounds trực tiếp từ sourceImg (tránh mismatch giữa ContentBounds cache và OriginalTransformBitmap)
-                var bounds = GetLayerContentBounds(sourceImg);
+                // 1. Get the cropped original image first (as the base and alpha template)
+                BitmapSource baseImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+                var bounds = GetLayerContentBounds(baseImg);
                 if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
                 {
-                    int x = Math.Clamp((int)bounds.X, 0, sourceImg.PixelWidth - 1);
-                    int y = Math.Clamp((int)bounds.Y, 0, sourceImg.PixelHeight - 1);
-                    int w = Math.Clamp((int)Math.Ceiling(bounds.Width), 1, sourceImg.PixelWidth - x);
-                    int h = Math.Clamp((int)Math.Ceiling(bounds.Height), 1, sourceImg.PixelHeight - y);
-                    if (w > 0 && h > 0 && (x > 0 || y > 0 || w < sourceImg.PixelWidth || h < sourceImg.PixelHeight))
+                    int x = Math.Clamp((int)bounds.X, 0, baseImg.PixelWidth - 1);
+                    int y = Math.Clamp((int)bounds.Y, 0, baseImg.PixelHeight - 1);
+                    int w = Math.Clamp((int)Math.Ceiling(bounds.Width), 1, baseImg.PixelWidth - x);
+                    int h = Math.Clamp((int)Math.Ceiling(bounds.Height), 1, baseImg.PixelHeight - y);
+                    if (w > 0 && h > 0 && (x > 0 || y > 0 || w < baseImg.PixelWidth || h < baseImg.PixelHeight))
                     {
-                        sourceImg = new CroppedBitmap(sourceImg, new Int32Rect(x, y, w, h));
+                        baseImg = new CroppedBitmap(baseImg, new Int32Rect(x, y, w, h));
                     }
                 }
+
+                BitmapSource sourceImg;
+                
+                // 2. In OFF mode, check if a slot is selected. If so, override preview source with masked secondary image.
+                int selectedSlotIdx = GetSelectedSlotIndex();
+                if (!_sendModeOn && selectedSlotIdx >= 0 && _secondaryImages[selectedSlotIdx].HasImage)
+                {
+                    sourceImg = MaskAndCropSecondaryImage(_secondaryImages[selectedSlotIdx].Bitmap, baseImg);
+                }
+                else
+                {
+                    sourceImg = baseImg;
+                }
+
                 BitmapSource processedImg;
 
                 int selectedIndex = CmbAspectRatio.SelectedIndex;
@@ -1859,12 +1970,14 @@ namespace FlowMy.Views.Overlays
 
         private void SetButtonsLoading(bool isLoading)
         {
+            _isAiLoading = isLoading;
             if (isLoading)
             {
                 BtnSend.IsEnabled = false;
                 if (BtnSendWv != null) BtnSendWv.IsEnabled = false;
                 if (BtnSendWeb != null) BtnSendWeb.IsEnabled = false;
                 BtnCancel.IsEnabled = false;
+                if (BtnApply != null) BtnApply.IsEnabled = false;
 
                 BtnSend.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
                 if (BtnSendWv != null) BtnSendWv.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -1872,10 +1985,9 @@ namespace FlowMy.Views.Overlays
             }
             else
             {
-                BtnSend.IsEnabled = true;
-                if (BtnSendWv != null) BtnSendWv.IsEnabled = true;
-                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = true;
                 BtnCancel.IsEnabled = true;
+                if (BtnApply != null) BtnApply.IsEnabled = true;
+                UpdateSendButtonsState();
 
                 BtnSend.Content = CreatePlayIconPath();
                 if (BtnSendWv != null) BtnSendWv.Content = CreatePlayIconPath();
@@ -1895,6 +2007,173 @@ namespace FlowMy.Views.Overlays
                 Margin = new Thickness(2, 0, 0, 0)
             };
             return path;
+        }
+
+        private void TxtPrompt_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                string text = textBox.Text;
+                if (TxtPrompt != null && TxtPrompt.Text != text) TxtPrompt.Text = text;
+                if (TxtPromptWv != null && TxtPromptWv.Text != text) TxtPromptWv.Text = text;
+                if (TxtPromptWeb != null && TxtPromptWeb.Text != text) TxtPromptWeb.Text = text;
+            }
+            UpdateSendButtonsState();
+        }
+
+        private void UpdateSendButtonsState()
+        {
+            if (_isAiLoading) return;
+
+            bool hasText = TxtPrompt != null && !string.IsNullOrWhiteSpace(TxtPrompt.Text);
+
+            if (_sendModeOn)
+            {
+                BtnSend.IsEnabled = hasText;
+                if (BtnSendWv != null) BtnSendWv.IsEnabled = hasText;
+                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = hasText;
+            }
+            else
+            {
+                BtnSend.IsEnabled = false;
+                if (BtnSendWv != null) BtnSendWv.IsEnabled = false;
+                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = false;
+            }
+        }
+
+        private void BtnToggleSendMode_Click(object sender, RoutedEventArgs e)
+        {
+            _sendModeOn = !_sendModeOn;
+            if (_sendModeOn)
+            {
+                BtnToggleSendMode.Content = "Gửi AI: ON";
+                BtnToggleSendMode.Style = FindResource("SuccessButton") as Style;
+
+                BtnSend.Visibility = Visibility.Visible;
+                if (BtnSendWv != null) BtnSendWv.Visibility = Visibility.Visible;
+                if (BtnSendWeb != null) BtnSendWeb.Visibility = Visibility.Visible;
+
+                if (BtnApply != null) BtnApply.Visibility = Visibility.Collapsed;
+                if (BtnCancel != null) BtnCancel.Margin = new Thickness(0);
+            }
+            else
+            {
+                BtnToggleSendMode.Content = "Gửi AI: OFF";
+                BtnToggleSendMode.Style = FindResource("DangerButton") as Style;
+
+                BtnSend.Visibility = Visibility.Collapsed;
+                if (BtnSendWv != null) BtnSendWv.Visibility = Visibility.Collapsed;
+                if (BtnSendWeb != null) BtnSendWeb.Visibility = Visibility.Collapsed;
+
+                if (BtnApply != null) BtnApply.Visibility = Visibility.Visible;
+                if (BtnCancel != null) BtnCancel.Margin = new Thickness(0, 0, 8, 0);
+
+                // Enforce single select for slots in OFF mode: deselect all but the first selected slot
+                int firstSelectedIdx = -1;
+                for (int i = 0; i < 4; i++)
+                {
+                    if (_secondaryImages[i] != null && _secondaryImages[i].HasImage && _secondaryImages[i].IsSelected)
+                    {
+                        if (firstSelectedIdx == -1)
+                        {
+                            firstSelectedIdx = i;
+                        }
+                        else
+                        {
+                            _secondaryImages[i].IsSelected = false;
+                        }
+                    }
+                }
+                RefreshAllSlotsUI();
+                UpdateSecondaryInfo();
+            }
+            UpdateSendButtonsState();
+            UpdatePreviewImage();
+        }
+
+        private void BtnApply_Click(object sender, RoutedEventArgs e)
+        {
+            var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
+            BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
+            var bounds = GetLayerContentBounds(sourceImg);
+            if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+            {
+                bounds = new Rect(0, 0, sourceImg.PixelWidth, sourceImg.PixelHeight);
+            }
+
+            double? targetRatio = null;
+            int? customW = null;
+            int? customH = null;
+
+            int selectedIndex = CmbAspectRatio.SelectedIndex;
+            if (selectedIndex == 6)
+            {
+                customW = int.TryParse(TxtCustomWidth.Text, out var w) ? w : 512;
+                customH = int.TryParse(TxtCustomHeight.Text, out var h) ? h : 512;
+            }
+            else if (selectedIndex > 0)
+            {
+                targetRatio = selectedIndex switch
+                {
+                    1 => 16.0 / 9.0,
+                    2 => 4.0 / 3.0,
+                    3 => 1.0,
+                    4 => 3.0 / 4.0,
+                    5 => 9.0 / 16.0,
+                    _ => 1.0
+                };
+            }
+
+            EditorLayer? activeChild = null;
+            int countAdded = 0;
+
+            for (int i = 0; i < 4; i++)
+            {
+                var slot = _secondaryImages[i];
+                if (slot.HasImage)
+                {
+                    var childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
+                    childLayer.ParentLayer = destinationParent;
+                    destinationParent.ChildLayers.Add(childLayer);
+
+                    ProcessAndApplyAiImage(childLayer, slot.Bitmap, _activeLayer, bounds, targetRatio, customW, customH);
+                    countAdded++;
+
+                    if (slot.IsSelected)
+                    {
+                        activeChild = childLayer;
+                    }
+                }
+            }
+
+            if (countAdded > 0)
+            {
+                destinationParent.ActiveChildLayer = activeChild ?? destinationParent.ChildLayers.Last();
+                _doc.ActiveLayer = destinationParent.ActiveChildLayer;
+
+                foreach (var child in destinationParent.ChildLayers)
+                {
+                    child.IsActive = (child == destinationParent.ActiveChildLayer);
+                    child.IsSelected = (child == destinationParent.ActiveChildLayer);
+                }
+                destinationParent.IsActive = false;
+                destinationParent.IsSelected = false;
+            }
+
+            // Notify parent HasChildren
+            destinationParent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
+
+            // Refresh panel
+            var ownerRef = this.Owner;
+            if (ownerRef != null)
+            {
+                var panel = FindVisualChild<ImageEditorPanel>(ownerRef);
+                panel?.RefreshLayersList();
+                panel?.OnDocumentModified();
+            }
+
+            DialogResult = true;
+            Close();
         }
 
         private static BitmapSource DrawPreviewImage(BitmapSource src, double? targetRatio, int? customW, int? customH, bool drawCheckerboard)
@@ -2134,6 +2413,7 @@ namespace FlowMy.Views.Overlays
             // Force SwitchToTab to run fully by setting _activeTab to a different state first
             _activeTab = (savedTab == ActiveTab.Prompt) ? ActiveTab.WebBrowser : ActiveTab.Prompt;
             SwitchToTab(savedTab);
+            UpdateSendButtonsState();
         }
 
         private void RefreshRelatedNodeDialogs()
@@ -2524,6 +2804,8 @@ namespace FlowMy.Views.Overlays
                         _secondaryImages[idx].FilePath = null;
                         _secondaryImages[idx].IsSelected = false;
                         RefreshAllSlotsUI();
+                        UpdateSecondaryInfo();
+                        UpdatePreviewImage();
                     }
                     e.Handled = true;
                 }

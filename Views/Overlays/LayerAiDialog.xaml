@@ -330,9 +330,18 @@
                                 </Border>
                             </Grid>
 
-                            <!-- Add image button -->
-                            <Button x:Name="BtnAddSecondary" Grid.Row="2" Content="＋ Thêm ảnh phụ" Height="28" Margin="0,6,0,0"
-                                    Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
+                            <!-- Add image button and send mode toggle -->
+                            <Grid Grid.Row="2" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="BtnAddSecondary" Grid.Column="0" Content="＋ Thêm ảnh phụ" Height="28" Margin="0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
+                                <Button x:Name="BtnToggleSendMode" Grid.Column="2" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
+                                        Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>
+                            </Grid>
                         </Grid>
                     </Grid>
 
@@ -471,8 +480,8 @@
                                 <Grid>
                                     <TextBox x:Name="TxtPrompt" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                              Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
-                                    <Button x:Name="BtnSend" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click">
+                                             VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
+                                    <Button x:Name="BtnSend" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="False">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Background" Value="#4fffb0"/>
@@ -535,8 +544,8 @@
                                     <Grid>
                                         <TextBox x:Name="TxtPromptWv" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                                  Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
-                                        <Button x:Name="BtnSendWv" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click">
+                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
+                                        <Button x:Name="BtnSendWv" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="False">
                                             <Button.Style>
                                                 <Style TargetType="Button">
                                                     <Setter Property="Background" Value="#4fffb0"/>
@@ -631,8 +640,8 @@
                                     <Grid>
                                         <TextBox x:Name="TxtPromptWeb" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                                  Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}"/>
-                                        <Button x:Name="BtnSendWeb" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click">
+                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
+                                        <Button x:Name="BtnSendWeb" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="False">
                                             <Button.Style>
                                                 <Style TargetType="Button">
                                                     <Setter Property="Background" Value="#4fffb0"/>
@@ -726,7 +735,8 @@
 
                     <!-- Buttons (Right) -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                        <Button x:Name="BtnCancel" Content="Huỷ" Style="{DynamicResource DangerButton}" Width="80" Height="30" Margin="0,0,0,0" Cursor="Hand" Click="BtnCancel_Click"/>
+                        <Button x:Name="BtnCancel" Content="Huỷ" Style="{DynamicResource DangerButton}" Width="80" Height="30" Margin="0" Cursor="Hand" Click="BtnCancel_Click"/>
+                        <Button x:Name="BtnApply" Content="Áp dụng" Style="{DynamicResource SuccessButton}" Width="90" Height="30" Margin="0" Cursor="Hand" Click="BtnApply_Click" Visibility="Collapsed"/>
                     </StackPanel>
                 </Grid>
             </Border>
