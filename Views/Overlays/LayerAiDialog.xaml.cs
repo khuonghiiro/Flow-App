@@ -1480,9 +1480,7 @@ namespace FlowMy.Views.Overlays
 
         private async void BtnSend_Click(object sender, RoutedEventArgs e)
         {
-            BtnSend.IsEnabled = false;
-            BtnCancel.IsEnabled = false;
-            BtnSend.Content = "Đang xử lý...";
+            SetButtonsLoading(true);
 
             var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
             var placeholders = new List<EditorLayer>();
@@ -1856,9 +1854,47 @@ namespace FlowMy.Views.Overlays
 
         private void ResetButtons()
         {
-            BtnSend.IsEnabled = true;
-            BtnCancel.IsEnabled = true;
-            BtnSend.Content = "✨ Gửi AI";
+            SetButtonsLoading(false);
+        }
+
+        private void SetButtonsLoading(bool isLoading)
+        {
+            if (isLoading)
+            {
+                BtnSend.IsEnabled = false;
+                if (BtnSendWv != null) BtnSendWv.IsEnabled = false;
+                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = false;
+                BtnCancel.IsEnabled = false;
+
+                BtnSend.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                if (BtnSendWv != null) BtnSendWv.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                if (BtnSendWeb != null) BtnSendWeb.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            }
+            else
+            {
+                BtnSend.IsEnabled = true;
+                if (BtnSendWv != null) BtnSendWv.IsEnabled = true;
+                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = true;
+                BtnCancel.IsEnabled = true;
+
+                BtnSend.Content = CreatePlayIconPath();
+                if (BtnSendWv != null) BtnSendWv.Content = CreatePlayIconPath();
+                if (BtnSendWeb != null) BtnSendWeb.Content = CreatePlayIconPath();
+            }
+        }
+
+        private System.Windows.Shapes.Path CreatePlayIconPath()
+        {
+            var path = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 3 2 L 13 8 L 3 14 Z"),
+                Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#111318")),
+                Width = 10,
+                Height = 10,
+                Stretch = Stretch.Uniform,
+                Margin = new Thickness(2, 0, 0, 0)
+            };
+            return path;
         }
 
         private static BitmapSource DrawPreviewImage(BitmapSource src, double? targetRatio, int? customW, int? customH, bool drawCheckerboard)
