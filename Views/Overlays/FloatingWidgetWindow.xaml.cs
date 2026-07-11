@@ -608,6 +608,15 @@ public partial class FloatingWidgetWindow : Window
     {
         if (!_isExpanded) return;
 
+        // Đóng các dialog LayerAiDialog đang mở thuộc sở hữu của widget này
+        foreach (Window? win in this.OwnedWindows)
+        {
+            if (win is LayerAiDialog dialog)
+            {
+                try { dialog.Close(); } catch { }
+            }
+        }
+
         // Ghi nhớ trạng thái maximize trước khi thu nhỏ
         _wasMaximizedBeforeHide = _isWidgetMaximized;
 
@@ -981,6 +990,11 @@ public partial class FloatingWidgetWindow : Window
     //  IDLE DETECTION & TIMERS
     // ═══════════════════════════════════════════
 
+    public void ResetIdleTimer()
+    {
+        MarkActivity();
+    }
+
     private void MarkActivity()
     {
         _lastActivityUtc = DateTime.UtcNow;
@@ -1010,6 +1024,10 @@ public partial class FloatingWidgetWindow : Window
         {
             if (win != null && win.IsActive)
             {
+                // Bỏ qua LayerAiDialog khỏi điều kiện IsActive. Chúng ta sẽ bắt tương tác chuột/bàn phím thực tế
+                // trên dialog đó để reset idle timer, thay vì chỉ dựa vào việc dialog đang mở/focus.
+                if (win is LayerAiDialog) continue;
+
                 isAnyChildActive = true;
                 break;
             }

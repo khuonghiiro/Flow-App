@@ -135,6 +135,26 @@ namespace FlowMy.Views.Overlays
 
             // Listen to Ctrl+V paste event when hovering over images/slots
             this.PreviewKeyDown += LayerAiDialog_PreviewKeyDown;
+
+            // Hook activity events to reset the owner FloatingWidgetWindow's idle timer upon interaction
+            HookActivityEvents(this);
+        }
+
+        private void HookActivityEvents(UIElement element)
+        {
+            if (element == null) return;
+            element.PreviewMouseMove += (s, e) => MarkOwnerActivity();
+            element.PreviewMouseDown += (s, e) => MarkOwnerActivity();
+            element.PreviewKeyDown += (s, e) => MarkOwnerActivity();
+            element.PreviewMouseWheel += (s, e) => MarkOwnerActivity();
+        }
+
+        private void MarkOwnerActivity()
+        {
+            if (_ownerWindow is FloatingWidgetWindow widget)
+            {
+                widget.ResetIdleTimer();
+            }
         }
 
         #region Header & Window Actions
@@ -401,6 +421,7 @@ namespace FlowMy.Views.Overlays
                 }
 
                 _dynamicWebView = cacheState.DynamicWebView;
+                HookActivityEvents(_dynamicWebView);
                 RenderDynamicUi();
             }
             catch (Exception ex)
@@ -539,6 +560,7 @@ namespace FlowMy.Views.Overlays
                 }
 
                 _webBrowser = cacheState.WebBrowser;
+                HookActivityEvents(_webBrowser);
 
                 // Setup Google Suggest popup
                 SetupSuggestPopup();
@@ -588,9 +610,8 @@ namespace FlowMy.Views.Overlays
                         var oldUrl = _webBrowser.CoreWebView2?.Source ?? "https://google.com";
                         WebBrowserContainer.Children.Clear();
                         _webBrowser.Dispose();
-                        _webBrowser = null;
-
                         _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
+                        HookActivityEvents(_webBrowser);
 
                         // Add WebView2 to container FIRST so it's in the visual tree!
                         WebBrowserContainer.Children.Clear();
