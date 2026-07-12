@@ -2400,8 +2400,12 @@ namespace FlowMy.Views.Overlays
                     "3:4" => 4,
                     "9:16" => 5,
                     "Free" => 6,
-                    _ => 0
+                    _ => 3
                 };
+            }
+            else
+            {
+                CmbAspectRatio.SelectedIndex = 3;
             }
 
             // Load custom width and height

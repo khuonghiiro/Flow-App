@@ -1024,10 +1024,6 @@ public partial class FloatingWidgetWindow : Window
         {
             if (win != null && win.IsActive)
             {
-                // Bỏ qua LayerAiDialog khỏi điều kiện IsActive. Chúng ta sẽ bắt tương tác chuột/bàn phím thực tế
-                // trên dialog đó để reset idle timer, thay vì chỉ dựa vào việc dialog đang mở/focus.
-                if (win is LayerAiDialog) continue;
-
                 isAnyChildActive = true;
                 break;
             }

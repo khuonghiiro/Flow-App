@@ -1255,25 +1255,27 @@ namespace FlowMy.Views.NodeControls
                 PopupBtnAI.Visibility = Visibility.Collapsed;
                 PopupBtnMerge.Visibility = Visibility.Collapsed;
                 PopupBtnDuplicate.Visibility = Visibility.Collapsed;
-                PopupBtnDeleteChild.Visibility = Visibility.Collapsed;
+                PopupBtnDelete.Visibility = Visibility.Collapsed;
 
                 if (layer.IsChildLayer)
                 {
                     // Child/variant layer: only show Duplicate + Delete (no AI)
                     PopupBtnDuplicate.Visibility = Visibility.Visible;
-                    PopupBtnDeleteChild.Visibility = Visibility.Visible;
-                }
-                else if (selectedCount == 1)
-                {
-                    PopupBtnAI.Visibility = Visibility.Visible;
-                }
-                else if (selectedCount > 1)
-                {
-                    PopupBtnMerge.Visibility = Visibility.Visible;
+                    PopupBtnDelete.Visibility = Visibility.Visible;
                 }
                 else
                 {
-                    return;
+                    // Standard layer(s)
+                    PopupBtnDelete.Visibility = Visibility.Visible;
+
+                    if (selectedCount == 1)
+                    {
+                        PopupBtnAI.Visibility = Visibility.Visible;
+                    }
+                    else if (selectedCount > 1)
+                    {
+                        PopupBtnMerge.Visibility = Visibility.Visible;
+                    }
                 }
 
                 LayerActionPopup.PlacementTarget = fe;
@@ -1315,35 +1317,42 @@ namespace FlowMy.Views.NodeControls
             e.Handled = true;
         }
 
-        private void PopupBtnDeleteChild_Click(object sender, MouseButtonEventArgs e)
+        private void PopupBtnDelete_Click(object sender, MouseButtonEventArgs e)
         {
             LayerActionPopup.IsOpen = false;
             if (_doc == null) return;
 
             var active = _doc.ActiveLayer;
-            if (active == null || active.ParentLayer == null) return;
+            if (active == null) return;
 
-            var parent = active.ParentLayer;
-            parent.ChildLayers.Remove(active);
-
-            // Notify HasChildren changed
-            parent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
-
-            // Select parent or another child
-            if (parent.ChildLayers.Count > 0)
+            if (active.ParentLayer != null) // Child layer
             {
-                parent.ActiveChildLayer = parent.ChildLayers.Last();
-                _doc.ActiveLayer = parent.ActiveChildLayer;
-            }
-            else
-            {
-                parent.ActiveChildLayer = null;
-                _doc.ActiveLayer = parent;
-            }
-            _lastActiveLayer = _doc.ActiveLayer;
+                var parent = active.ParentLayer;
+                parent.ChildLayers.Remove(active);
 
-            RefreshLayersList();
-            OnDocumentModified();
+                // Notify HasChildren changed
+                parent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
+
+                // Select parent or another child
+                if (parent.ChildLayers.Count > 0)
+                {
+                    parent.ActiveChildLayer = parent.ChildLayers.Last();
+                    _doc.ActiveLayer = parent.ActiveChildLayer;
+                }
+                else
+                {
+                    parent.ActiveChildLayer = null;
+                    _doc.ActiveLayer = parent;
+                }
+                _lastActiveLayer = _doc.ActiveLayer;
+
+                RefreshLayersList();
+                OnDocumentModified();
+            }
+            else // Standard layer(s)
+            {
+                DeleteSelectedLayers();
+            }
             e.Handled = true;
         }
 

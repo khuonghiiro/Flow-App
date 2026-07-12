@@ -1189,11 +1189,11 @@
 
             <!-- Layer popup menu (like Selection active toolbox popup style) -->
             <Popup x:Name="LayerActionPopup" StaysOpen="False" AllowsTransparency="True"
-                   Placement="MousePoint" PopupAnimation="Fade">
+                   Placement="MousePoint" PopupAnimation="None">
                 <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
                         CornerRadius="6" Padding="6,4" SnapsToDevicePixels="True" MinWidth="230">
                     <Border.Effect>
-                        <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000"/>
+                        <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000" RenderingBias="Performance"/>
                     </Border.Effect>
                     <StackPanel>
                         <!-- AI button (shown when 1 layer is selected) -->
@@ -1250,11 +1250,11 @@
                                 </StackPanel>
                             </DockPanel>
                         </Border>
-                        <!-- Delete child layer button -->
-                        <Border x:Name="PopupBtnDeleteChild" Background="Transparent" CornerRadius="4" 
+                        <!-- Delete layer button -->
+                        <Border x:Name="PopupBtnDelete" Background="Transparent" CornerRadius="4" 
                                 Padding="8,6" Cursor="Hand" Margin="0,1" Visibility="Collapsed"
                                 BorderBrush="Transparent" BorderThickness="0.5"
-                                MouseLeftButtonDown="PopupBtnDeleteChild_Click">
+                                MouseLeftButtonDown="PopupBtnDelete_Click">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Style.Triggers>
@@ -1273,7 +1273,7 @@
                                                       HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                                 <StackPanel VerticalAlignment="Center" IsHitTestVisible="False">
                                     <TextBlock Text="Xoá" Foreground="#ff6b6b" FontSize="10" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Xoá layer này" Foreground="#788296" FontSize="8" Margin="0,1,0,0"/>
+                                    <TextBlock Text="Xoá layer (Shift+Del)" Foreground="#788296" FontSize="8" Margin="0,1,0,0"/>
                                 </StackPanel>
                             </DockPanel>
                         </Border>

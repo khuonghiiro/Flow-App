@@ -716,7 +716,7 @@
                         <!-- Aspect ratio -->
                         <StackPanel Margin="0,0,16,0">
                             <TextBlock Text="Tỉ lệ khung hình" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="CmbAspectRatio" Width="130" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="0" SelectionChanged="CmbAspectRatio_SelectionChanged">
+                            <ComboBox x:Name="CmbAspectRatio" Width="130" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="3" SelectionChanged="CmbAspectRatio_SelectionChanged">
                                 <ComboBoxItem Content="Tỉ lệ mặc định"/>
                                 <ComboBoxItem Content="16:9"/>
                                 <ComboBoxItem Content="4:3"/>

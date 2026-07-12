@@ -1520,7 +1520,7 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 // Delete: Delete Layer(s)
-                if (e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.None)
+                if (e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.Shift)
                 {
                     EditorPanel.DeleteSelectedLayers();
                     e.Handled = true;
@@ -3685,7 +3685,7 @@ namespace FlowMy.Views.NodeControls
                 return true;
             if (e.Key == Key.X && modifiers == ModifierKeys.Control)
                 return true;
-            if (e.Key == Key.Delete && modifiers == ModifierKeys.None)
+            if (e.Key == Key.Delete && (modifiers == ModifierKeys.None || modifiers == ModifierKeys.Shift))
                 return true;
             if (e.Key == Key.E && modifiers == ModifierKeys.Control)
                 return true;

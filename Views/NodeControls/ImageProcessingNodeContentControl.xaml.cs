@@ -1050,6 +1050,27 @@ namespace FlowMy.Views.NodeControls
             public EditorDocument? EditorDoc { get; set; }
             public BitmapSource? CachedMainImage { get; set; }
             public Border? TabBorder { get; set; }
+
+            // Layout & size states
+            public double ImageWidth { get; set; } = double.NaN;
+            public double ImageHeight { get; set; } = double.NaN;
+            public double ZoomScaleX { get; set; } = 1.0;
+            public double ZoomScaleY { get; set; } = 1.0;
+            public double ScrollHorizontalOffset { get; set; } = 0.0;
+            public double ScrollVerticalOffset { get; set; } = 0.0;
+
+            // Selection state
+            public Geometry? ActiveSelectionGeometry { get; set; }
+            public bool IsSelecting { get; set; }
+            public Point SelectionStartPoint { get; set; }
+            public Rect? SelectionRect { get; set; }
+            public System.Collections.Generic.List<Point> SelectionPoints { get; set; } = new();
+            public bool[,]? CachedSelectionMask { get; set; }
+            public int CachedSelectionStartX { get; set; }
+            public int CachedSelectionStartY { get; set; }
+            public int CachedSelectionEndX { get; set; }
+            public int CachedSelectionEndY { get; set; }
+            public bool HasCachedSelectionMask { get; set; }
         }
 
         private readonly List<ImageTabData> _tabs = new();
@@ -1091,6 +1112,10 @@ namespace FlowMy.Views.NodeControls
 
             // Chưa có tab nào → tạo tab mới
             var tabData = new ImageTabData { Title = title };
+            
+            // Clear selection so the new tab starts fresh
+            ClearSelection();
+
             SaveStateToTabData(tabData);
             var tabBorder = BuildTabItem(tabData);
             tabData.TabBorder = tabBorder;
@@ -1113,6 +1138,25 @@ namespace FlowMy.Views.NodeControls
             data.ImageBase64 = _node.ImageBase64 ?? "";
             data.EditorDoc = _node.EditorDoc;
             data.CachedMainImage = MainImage.Source as BitmapSource;
+            data.ImageWidth = MainImage.Width;
+            data.ImageHeight = MainImage.Height;
+            data.ZoomScaleX = ImageZoomScale.ScaleX;
+            data.ZoomScaleY = ImageZoomScale.ScaleY;
+            data.ScrollHorizontalOffset = MainScrollViewer.HorizontalOffset;
+            data.ScrollVerticalOffset = MainScrollViewer.VerticalOffset;
+
+            // Selection state
+            data.ActiveSelectionGeometry = _activeSelectionGeometry;
+            data.IsSelecting = _isSelecting;
+            data.SelectionStartPoint = _selectionStartPoint;
+            data.SelectionRect = _selectionRect;
+            data.SelectionPoints = _selectionPoints.ToList();
+            data.CachedSelectionMask = _cachedSelectionMask;
+            data.CachedSelectionStartX = _cachedSelectionStartX;
+            data.CachedSelectionStartY = _cachedSelectionStartY;
+            data.CachedSelectionEndX = _cachedSelectionEndX;
+            data.CachedSelectionEndY = _cachedSelectionEndY;
+            data.HasCachedSelectionMask = _hasCachedSelectionMask;
         }
 
         private void LoadTabState(ImageTabData data)
@@ -1133,6 +1177,12 @@ namespace FlowMy.Views.NodeControls
                     PlaceholderTextBlock.Visibility = Visibility.Collapsed;
                 }
 
+                // Restore image dimensions and layout scale
+                MainImage.Width = data.ImageWidth;
+                MainImage.Height = data.ImageHeight;
+                ImageZoomScale.ScaleX = data.ZoomScaleX;
+                ImageZoomScale.ScaleY = data.ZoomScaleY;
+
                 // Sync editor panel
                 if (_node.EditorDoc != null)
                 {
@@ -1142,7 +1192,32 @@ namespace FlowMy.Views.NodeControls
                 // Cập nhật title
                 ImageTitleTextBlock.Text = data.Title;
 
+                // Khôi phục selection state
+                _activeSelectionGeometry = data.ActiveSelectionGeometry;
+                _isSelecting = data.IsSelecting;
+                _selectionStartPoint = data.SelectionStartPoint;
+                _selectionRect = data.SelectionRect;
+                _selectionPoints.Clear();
+                if (data.SelectionPoints != null)
+                {
+                    _selectionPoints.AddRange(data.SelectionPoints);
+                }
+                _cachedSelectionMask = data.CachedSelectionMask;
+                _cachedSelectionStartX = data.CachedSelectionStartX;
+                _cachedSelectionStartY = data.CachedSelectionStartY;
+                _cachedSelectionEndX = data.CachedSelectionEndX;
+                _cachedSelectionEndY = data.CachedSelectionEndY;
+                _hasCachedSelectionMask = data.HasCachedSelectionMask;
+
                 _activeTabData = data;
+
+                // Redraw selection for this tab
+                UpdatePolygonDisplay();
+
+                // Restore scroll positions after layout updates
+                MainScrollViewer.UpdateLayout();
+                MainScrollViewer.ScrollToHorizontalOffset(data.ScrollHorizontalOffset);
+                MainScrollViewer.ScrollToVerticalOffset(data.ScrollVerticalOffset);
             }
             finally
             {
