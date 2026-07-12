@@ -74,6 +74,7 @@ public partial class FloatingWidgetWindow : Window
     // ── Timers ──
     private DispatcherTimer? _idleTimer;
     private DispatcherTimer? _titleBarHideTimer;
+    private DispatcherTimer? _activeMoveTimer;
 
     // ── WebView2 ──
     private WebView2? _webView;
@@ -238,8 +239,38 @@ public partial class FloatingWidgetWindow : Window
 
     private Rect GetTargetWorkArea()
     {
-        // Multi-monitor support using SystemParameters
-        // TODO: When MonitorIndex >= 0 or ShowOnAllMonitors, use per-monitor bounds
+        try
+        {
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var hwnd = helper.Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                if (monitor != IntPtr.Zero)
+                {
+                    var info = new MONITORINFO();
+                    info.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+                    if (GetMonitorInfo(monitor, ref info))
+                    {
+                        double sx = 1, sy = 1;
+                        if (PresentationSource.FromVisual(this) is HwndSource hs && hs.CompositionTarget != null)
+                        {
+                            var m = hs.CompositionTarget.TransformToDevice;
+                            sx = m.M11;
+                            sy = m.M22;
+                        }
+                        
+                        return new Rect(
+                            info.rcWork.Left / sx,
+                            info.rcWork.Top / sy,
+                            (info.rcWork.Right - info.rcWork.Left) / sx,
+                            (info.rcWork.Bottom - info.rcWork.Top) / sy
+                        );
+                    }
+                }
+            }
+        }
+        catch { }
         return SystemParameters.WorkArea;
     }
 
@@ -487,6 +518,7 @@ public partial class FloatingWidgetWindow : Window
     public void ExpandWidget()
     {
         if (_isExpanded) return;
+        StopActiveMoveTimer();
 
         // Ghi nhớ edge dock trước khi xóa state slide (RestoreFromSlide sẽ reset _dockedEdge).
         var dockEdge = _isSlideHidden ? _dockedEdge : WidgetSnapEdge.None;
@@ -528,8 +560,19 @@ public partial class FloatingWidgetWindow : Window
 
         // Size (px hoặc tỉ lệ theo work area)
         var (w, h) = ResolveExpandedSize();
-        Width = w;
-        Height = h;
+        if (_wasMaximizedBeforeHide)
+        {
+            var area = GetTargetWorkArea();
+            var margin = Math.Max(0, Config.SnapMargin);
+            _restoreExpandedBounds = new Rect(Left, Top, w, h);
+            Width = Math.Max(220, area.Width - (margin * 2));
+            Height = Math.Max(160, area.Height - (margin * 2));
+        }
+        else
+        {
+            Width = w;
+            Height = h;
+        }
 
         IdleContainer.Visibility = Visibility.Collapsed;
         ExpandedContainer.Visibility = Visibility.Visible;
@@ -578,8 +621,15 @@ public partial class FloatingWidgetWindow : Window
             }
         }
 
-        // Đặt lại vị trí theo cạnh dock (expanded body không bị khuất ra ngoài màn).
-        if (wasDockedAsSquare && dockEdge != WidgetSnapEdge.None)
+        // Đặt lại vị trí theo cạnh dock hoặc áp dụng maximize trực tiếp
+        if (_wasMaximizedBeforeHide)
+        {
+            var area = GetTargetWorkArea();
+            var margin = Math.Max(0, Config.SnapMargin);
+            Left = area.Left + margin;
+            Top = area.Top + margin;
+        }
+        else if (wasDockedAsSquare && dockEdge != WidgetSnapEdge.None)
         {
             var area = GetTargetWorkArea();
             var margin = Math.Max(0, Config.SnapMargin);
@@ -600,13 +650,15 @@ public partial class FloatingWidgetWindow : Window
         if (_wasMaximizedBeforeHide)
         {
             _wasMaximizedBeforeHide = false;
-            ToggleExpandedMaximizeRestore();
+            _isWidgetMaximized = true;
+            _imageNodeContent?.SyncWidgetExpandedFullscreen(true);
         }
     }
 
     private void CollapseWidget()
     {
         if (!_isExpanded) return;
+        StopActiveMoveTimer();
 
         // Đóng các dialog LayerAiDialog đang mở thuộc sở hữu của widget này
         foreach (Window? win in this.OwnedWindows)
@@ -671,6 +723,7 @@ public partial class FloatingWidgetWindow : Window
     {
         _pendingInteraction = true;
         _isDragging = false;
+        StopActiveMoveTimer();
         _dragStartPoint = PointToScreen(e.GetPosition(this));
         _dragStartLeft = Left;
         _dragStartTop = Top;
@@ -4153,6 +4206,7 @@ window.hostAsync.values = window.hostAsync.values || {};
     {
         try
         {
+            StopActiveMoveTimer();
             var duration = TimeSpan.FromMilliseconds(durationMs);
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
@@ -4161,8 +4215,8 @@ window.hostAsync.values = window.hostAsync.values || {};
             var startTop = Top;
             var startTime = DateTime.UtcNow;
 
-            var moveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) }; // ~60fps
-            moveTimer.Tick += (s, e) =>
+            _activeMoveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) }; // ~60fps
+            _activeMoveTimer.Tick += (s, e) =>
             {
                 var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 var progress = Math.Min(1.0, elapsed / durationMs);
@@ -4175,14 +4229,23 @@ window.hostAsync.values = window.hostAsync.values || {};
 
                 if (progress >= 1.0)
                 {
-                    moveTimer.Stop();
+                    StopActiveMoveTimer();
                     Left = targetLeft;
                     Top = targetTop;
                 }
             };
-            moveTimer.Start();
+            _activeMoveTimer.Start();
         }
         catch { }
+    }
+
+    private void StopActiveMoveTimer()
+    {
+        if (_activeMoveTimer != null)
+        {
+            _activeMoveTimer.Stop();
+            _activeMoveTimer = null;
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -4696,12 +4759,26 @@ window.hostAsync.values = window.hostAsync.values || {};
             if (msg == WM_SYSCOMMAND)
             {
                 int command = wParam.ToInt32() & 0xFFF0;
-                // Taskbar click có thể đi qua SC_MINIMIZE hoặc SC_RESTORE tùy trạng thái cửa sổ.
-                // Funnel cả 2 vào cùng một toggle path + debounce để tránh miss click.
                 if (command == SC_MINIMIZE || command == SC_RESTORE)
                 {
-                    RequestTaskbarToggle();
-                    handled = true;
+                    if (!IsActive)
+                    {
+                        if (!_isExpanded)
+                        {
+                            RequestTaskbarToggle();
+                        }
+                        else
+                        {
+                            Activate();
+                            Focus();
+                        }
+                        handled = true;
+                    }
+                    else
+                    {
+                        RequestTaskbarToggle();
+                        handled = true;
+                    }
                 }
             }
         }
@@ -4738,7 +4815,17 @@ window.hostAsync.values = window.hostAsync.values || {};
         {
             if (_isExpanded)
             {
-                CollapseWidget();
+                // Nếu widget đang hiển thị rộng nhưng không phải cửa sổ active hiện tại
+                // thì mang nó lên trước (Activate) chứ không collapse.
+                if (!IsActive)
+                {
+                    Activate();
+                    Focus();
+                }
+                else
+                {
+                    CollapseWidget();
+                }
             }
             else
             {
@@ -4748,10 +4835,9 @@ window.hostAsync.values = window.hostAsync.values || {};
                     RevealDockedWidgetFully(restoreOriginalShape: false);
                 }
                 ExpandWidget();
+                Activate();
+                Focus();
             }
-
-            Activate();
-            Focus();
         }
         catch { }
     }
@@ -4882,4 +4968,30 @@ window.hostAsync.values = window.hostAsync.values || {};
         void SetValue(ref PROPERTYKEY key, ref PROPVARIANT pv);
         void Commit();
     }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 }

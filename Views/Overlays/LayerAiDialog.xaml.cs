@@ -65,6 +65,7 @@ namespace FlowMy.Views.Overlays
 
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
             InitializeComponent();
             _ownerWindow = owner;
             Owner = owner;
@@ -104,11 +105,6 @@ namespace FlowMy.Views.Overlays
 
             _originalWidth = Width;
             _originalHeight = Height;
-
-            if (owner == null)
-            {
-                WindowStartupLocation = WindowStartupLocation.CenterScreen;
-            }
 
             // Initialize slot references
             _slotBorders = new[] { SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3 };
