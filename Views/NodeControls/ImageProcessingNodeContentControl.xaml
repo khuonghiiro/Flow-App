@@ -1223,6 +1223,10 @@
                         <Image x:Name="MainImage" Stretch="Uniform"
                                HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
+                        <Image x:Name="ActiveLayerDrawingOverlay" Stretch="Uniform"
+                               HorizontalAlignment="Left" VerticalAlignment="Top"
+                               Visibility="Collapsed" IsHitTestVisible="False"/>
+
                         <!-- Brush cursor preview (Photoshop style) -->
                         <Canvas x:Name="BrushCursorCanvas" IsHitTestVisible="False" Panel.ZIndex="150"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">

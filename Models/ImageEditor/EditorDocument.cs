@@ -18,6 +18,10 @@ namespace FlowMy.Models.ImageEditor
         private Color _foregroundColor = Colors.Black;
         private Color _backgroundColor = Colors.White;
         private int _nextLayerNumber = 1;
+        private RenderTargetBitmap? _cachedRenderTarget;
+        private WriteableBitmap? _cachedCpuRenderTarget;
+        private byte[]? _cachedCpuResultPixels;
+        private byte[]? _cachedCpuLayerPixels;
 
         public EditorDocument(int width, int height)
         {
@@ -251,17 +255,35 @@ namespace FlowMy.Models.ImageEditor
                 }
 
                 // Render bằng GPU thông qua RenderTargetBitmap
-                var renderTarget = new RenderTargetBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32);
-                renderTarget.Render(drawingVisual);
-                return renderTarget;
+                if (_cachedRenderTarget == null ||
+                    _cachedRenderTarget.PixelWidth != Width ||
+                    _cachedRenderTarget.PixelHeight != Height)
+                {
+                    _cachedRenderTarget = new RenderTargetBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32);
+                }
+                _cachedRenderTarget.Render(drawingVisual);
+                return _cachedRenderTarget;
             }
             else
             {
                 // Fallback về CPU rendering (chậm hơn) cho các blend mode như Multiply, Screen, Overlay...
-                var result = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
                 var stride = Width * 4;
-                var resultPixels = new byte[stride * Height];
+                int totalBytes = stride * Height;
 
+                if (_cachedCpuRenderTarget == null ||
+                    _cachedCpuRenderTarget.PixelWidth != Width ||
+                    _cachedCpuRenderTarget.PixelHeight != Height)
+                {
+                    _cachedCpuRenderTarget = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
+                    _cachedCpuResultPixels = new byte[totalBytes];
+                }
+
+                if (_cachedCpuLayerPixels == null || _cachedCpuLayerPixels.Length != totalBytes)
+                {
+                    _cachedCpuLayerPixels = new byte[totalBytes];
+                }
+
+                var resultPixels = _cachedCpuResultPixels!;
                 Array.Clear(resultPixels, 0, resultPixels.Length);
 
                 foreach (var layer in Layers)
@@ -269,15 +291,14 @@ namespace FlowMy.Models.ImageEditor
                     if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
 
                     var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
-                    var layerPixels = new byte[stride * Height];
-                    activeBmp.CopyPixels(layerPixels, stride, 0);
+                    activeBmp.CopyPixels(_cachedCpuLayerPixels, stride, 0);
 
                     double layerOpacity = layer.Opacity;
-                    BlendLayerPixels(resultPixels, layerPixels, layerOpacity, layer.BlendMode);
+                    BlendLayerPixels(resultPixels, _cachedCpuLayerPixels, layerOpacity, layer.BlendMode);
                 }
 
-                result.WritePixels(new Int32Rect(0, 0, Width, Height), resultPixels, stride, 0);
-                return result;
+                _cachedCpuRenderTarget.WritePixels(new Int32Rect(0, 0, Width, Height), resultPixels, stride, 0);
+                return _cachedCpuRenderTarget;
             }
         }
 

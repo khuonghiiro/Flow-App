@@ -1819,6 +1819,8 @@ namespace FlowMy.Views.NodeControls
                 {
                     var composite = _node.EditorDoc.Composite();
                     MainImage.Source = composite;
+                    MainImage.Width = _node.EditorDoc.Width;
+                    MainImage.Height = _node.EditorDoc.Height;
                 }
                 catch (Exception ex)
                 {
@@ -1827,6 +1829,12 @@ namespace FlowMy.Views.NodeControls
                         System.IO.File.WriteAllText(@"d:\_DuAn\App_Desktop\workflows\Flow-My\composite_error.txt", "Composite error:\n" + ex.ToString());
                     }
                     catch { }
+                }
+                finally
+                {
+                    // Hide active layer drawing overlay seamlessly after composite rendering has completed
+                    ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+                    ActiveLayerDrawingOverlay.Source = null;
                 }
 
                 try
