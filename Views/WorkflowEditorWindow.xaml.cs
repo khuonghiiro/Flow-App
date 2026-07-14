@@ -1859,6 +1859,13 @@ namespace FlowMy.Views
 
         private void WorkflowEditorWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Do not intercept keystrokes if focused inside a TextBox or ComboBox to avoid breaking typing!
+            if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox || 
+                Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+            {
+                return;
+            }
+
             var imageEditor = GetActiveImageEditorNode();
             if (imageEditor != null && imageEditor.CanHandleKey(e))
             {

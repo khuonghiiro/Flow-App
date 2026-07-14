@@ -471,6 +471,19 @@ namespace FlowMy.Views.NodeControls
 
         private void MainScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                var parent = dep;
+                while (parent != null)
+                {
+                    if (parent == TextMoveContainer)
+                    {
+                        return; // Let child elements inside text box overlay handle mouse down natively
+                    }
+                    parent = VisualTreeHelper.GetParent(parent);
+                }
+            }
+
             MainScrollViewer.Focus();
 
             if (EditorPanel != null)

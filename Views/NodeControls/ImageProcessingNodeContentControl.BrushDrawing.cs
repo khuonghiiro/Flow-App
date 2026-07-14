@@ -3995,7 +3995,8 @@ namespace FlowMy.Views.NodeControls
                 return false;
 
             // Do not handle if focused on input fields
-            if (e.OriginalSource is TextBox || e.OriginalSource is ComboBox)
+            if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox || 
+                Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
                 return false;
 
             var modifiers = Keyboard.Modifiers;
