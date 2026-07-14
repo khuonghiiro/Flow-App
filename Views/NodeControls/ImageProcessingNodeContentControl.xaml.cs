@@ -639,7 +639,7 @@ namespace FlowMy.Views.NodeControls
                             MainImage.Cursor = Cursors.None;
                         }
 
-                        double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
+                        double scaleX = 1.0; // Avoid double-scaling as parent element is already scaled by ImageZoomScale
                         double radius = (EditorPanel.BrushSize * scaleX) / 2.0;
                         double diameter = radius * 2;
 

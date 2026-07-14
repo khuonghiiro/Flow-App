@@ -523,7 +523,7 @@
                     <TextBlock Text="Size:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <TextBox x:Name="OptBrushSizeInput" Width="36" Height="18" FontSize="9" 
                              Style="{StaticResource IpTextBoxStyle}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                             Text="10" LostFocus="OptBrushSizeInput_LostFocus" KeyDown="OptBrushSizeInput_KeyDown"/>
+                             Text="50" LostFocus="OptBrushSizeInput_LostFocus" KeyDown="OptBrushSizeInput_KeyDown"/>
                     <TextBlock Text="px" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="2,0,12,0"/>
 
                     <!-- Brush Preview Button/Border that opens Popup -->
@@ -598,9 +598,9 @@
                                         <DockPanel Margin="0,0,0,6">
                                             <TextBlock DockPanel.Dock="Left" Text="Size" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
                                             <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="TxtPopupBrushSize" Text="10" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                                <TextBlock x:Name="TxtPopupBrushSize" Text="50" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
                                             </Border>
-                                            <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="200" Value="10" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
+                                            <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="200" Value="50" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
                                         </DockPanel>
 
                                         <!-- Hardness Slider -->

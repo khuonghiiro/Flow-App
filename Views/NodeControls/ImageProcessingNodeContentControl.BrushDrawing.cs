@@ -139,9 +139,10 @@ namespace FlowMy.Views.NodeControls
         /// <summary>Đánh dấu cần composite lại — timer sẽ xử lý ở tick tiếp theo (~30fps).</summary>
         private void MarkCompositeDirty()
         {
-            if (_isDrawingPixels)
+            if (_isDrawingPixels && EditorPanel?.ActiveToolName != "Eraser")
             {
                 // Bỏ qua hoàn toàn timer khi đang vẽ để cập nhật màn hình qua GPU Overlay cực mượt
+                // Đối với Eraser, vì sửa trực tiếp trên bitmap của layer nên vẫn cần Composite để hiển thị phần bị xoá.
                 return;
             }
 
@@ -389,7 +390,7 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "QuickSelection")
             {
-                double radius = EditorPanel.BrushSize;
+                double radius = EditorPanel.BrushSize / 2.0;
                 StartQuickSelection(px, py, radius);
                 MainScrollViewer.CaptureMouse();
                 return;
@@ -549,7 +550,7 @@ namespace FlowMy.Views.NodeControls
                 _strokePoints.Clear();
                 _strokePoints.Add(new Point(px, py));
 
-                double radius = EditorPanel.BrushSize;
+                double radius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;
                 double flow = EditorPanel.BrushFlow;
                 Color color = _node.EditorDoc.ForegroundColor;
@@ -582,6 +583,7 @@ namespace FlowMy.Views.NodeControls
 
                 _currentStrokePath = new SkiaSharp.SKPath();
                 _currentStrokePath.MoveTo((float)px, (float)py);
+                _currentStrokePath.LineTo((float)px + 0.01f, (float)py);
 
                 double extendedRadius = radius + 2.0;
                 _strokeMinX = Math.Min(_strokeMinX, Math.Clamp((int)(px - extendedRadius), 0, w - 1));
@@ -627,7 +629,7 @@ namespace FlowMy.Views.NodeControls
                 _strokePoints.Clear();
                 _strokePoints.Add(new Point(px, py));
 
-                double radius = EditorPanel.BrushSize;
+                double radius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;
                 double flow = EditorPanel.BrushFlow;
 
@@ -767,7 +769,7 @@ namespace FlowMy.Views.NodeControls
                 }
                 else if (tool == "QuickSelection")
                 {
-                    double qSelRadius = EditorPanel.BrushSize;
+                    double qSelRadius = EditorPanel.BrushSize / 2.0;
                     GrowQuickSelection(px, py, qSelRadius);
                 }
                 return;
@@ -805,10 +807,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (!_isDrawingPixels || _oldPixelsForUndo == null) return;
-
-            bool isEraser = (tool == "Eraser");
-            double radius = EditorPanel.BrushSize;
+                double radius = EditorPanel.BrushSize / 2.0;
             double hardness = EditorPanel.BrushHardness;
             double flow = EditorPanel.BrushFlow;
             Color color = _node.EditorDoc.ForegroundColor;
@@ -853,79 +852,51 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
-                if (dirtyW > 0 && dirtyH > 0)
+                activeLayer.Bitmap.Lock();
+                try
                 {
-                    activeLayer.Bitmap.Lock();
-                    try
+                    var surfaceInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                    using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
                     {
-                        var surfaceInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
-                        using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                        var canvas = surface.Canvas;
+
+                        using (var paint = new SkiaSharp.SKPaint())
                         {
-                            var canvas = surface.Canvas;
+                            paint.Style = SkiaSharp.SKPaintStyle.Stroke;
+                            paint.StrokeWidth = (float)(radius * 2);
+                            paint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
+                            paint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
+                            paint.IsAntialias = true;
+                            paint.BlendMode = SkiaSharp.SKBlendMode.Clear;
+                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, 255);
 
-                            // Clip to the dirty region
-                            canvas.Save();
-                            var dirtyRect = new SkiaSharp.SKRect(dirtyMinX, dirtyMinY, dirtyMaxX + 1, dirtyMaxY + 1);
-                            canvas.ClipRect(dirtyRect);
-
-                            // 1. Restore original pixels from _oldPixelsForUndo in the dirty region
-                            var srcInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
-                            unsafe
+                            if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
                             {
-                                fixed (byte* pSrc = _oldPixelsForUndo)
+                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
+                            }
+                            else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                            {
+                                float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                                if (blurSigma > 0.1f)
                                 {
-                                    using (var srcBitmap = new SkiaSharp.SKBitmap())
-                                    {
-                                        srcBitmap.InstallPixels(srcInfo, (IntPtr)pSrc, activeW * 4);
-                                        canvas.DrawBitmap(srcBitmap, dirtyRect, dirtyRect);
-                                    }
+                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
                                 }
                             }
 
-                            // 2. Draw path using SkiaSharp C++ path drawing
-                            using (var paint = new SkiaSharp.SKPaint())
-                            {
-                                paint.Style = SkiaSharp.SKPaintStyle.Stroke;
-                                paint.StrokeWidth = (float)(radius * 2);
-                                paint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
-                                paint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
-                                paint.IsAntialias = true;
-                                paint.BlendMode = SkiaSharp.SKBlendMode.Clear;
-                                paint.Color = new SkiaSharp.SKColor(0, 0, 0, 255);
-
-                                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
-                                {
-                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
-                                }
-                                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
-                                {
-                                    float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
-                                    if (blurSigma > 0.1f)
-                                    {
-                                        paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
-                                    }
-                                }
-
-                                using (var path = new SkiaSharp.SKPath())
-                                {
-                                    path.MoveTo((float)_strokePoints[0].X, (float)_strokePoints[0].Y);
-                                    for (int i = 1; i < _strokePoints.Count; i++)
-                                    {
-                                        path.LineTo((float)_strokePoints[i].X, (float)_strokePoints[i].Y);
-                                    }
-                                    canvas.DrawPath(path, paint);
-                                }
-                            }
-
-                            canvas.Restore();
+                            canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, paint);
                         }
+                    }
 
-                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(dirtyMinX, dirtyMinY, dirtyW, dirtyH));
-                    }
-                    finally
+                    int dirtyW2 = segmentMaxX - segmentMinX + 1;
+                    int dirtyH2 = segmentMaxY - segmentMinY + 1;
+                    if (dirtyW2 > 0 && dirtyH2 > 0)
                     {
-                        activeLayer.Bitmap.Unlock();
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(segmentMinX, segmentMinY, dirtyW2, dirtyH2));
                     }
+                }
+                finally
+                {
+                    activeLayer.Bitmap.Unlock();
                 }
             }
 
