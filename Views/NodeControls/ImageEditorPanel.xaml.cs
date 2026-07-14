@@ -390,6 +390,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             _lastActiveLayer = _doc.ActiveLayer;
+            OnDocumentModified();
         }
 
         private void HandleLayerClick(EditorLayer clickedLayer, bool ctrl, bool shift)
@@ -465,6 +466,8 @@ namespace FlowMy.Views.NodeControls
             {
                 _isSyncingUI = false;
             }
+
+            OnDocumentModified();
         }
 
         private void SelectSingleLayer(EditorLayer clickedLayer)
