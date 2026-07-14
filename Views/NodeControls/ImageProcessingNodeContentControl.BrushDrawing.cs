@@ -543,7 +543,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     CommitBrushDrawingSession();
 
-                    _brushOverlayBitmap = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+                    _brushOverlayBitmap = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
                     _brushSessionLayer = activeLayer;
                     
                     _oldPixelsForUndo = new byte[pixelSize];

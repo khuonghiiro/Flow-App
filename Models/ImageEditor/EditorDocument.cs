@@ -324,7 +324,7 @@ namespace FlowMy.Models.ImageEditor
                     _cachedCpuRenderTarget.PixelWidth != Width ||
                     _cachedCpuRenderTarget.PixelHeight != Height)
                 {
-                    _cachedCpuRenderTarget = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
+                    _cachedCpuRenderTarget = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32, null);
                 }
 
                 _cachedCpuRenderTarget.Lock();

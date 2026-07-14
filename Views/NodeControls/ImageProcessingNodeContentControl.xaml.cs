@@ -1843,6 +1843,11 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node.EditorDoc == null) return;
 
+            // Always ensure PropertyChanged handler is registered on the active document and swatches are synced
+            _node.EditorDoc.PropertyChanged -= EditorDoc_PropertyChanged;
+            _node.EditorDoc.PropertyChanged += EditorDoc_PropertyChanged;
+            SyncToolboxColors();
+
             // Coalesce: nếu đã có schedule thì không cần thêm
             if (_compositeScheduled) return;
             _compositeScheduled = true;
