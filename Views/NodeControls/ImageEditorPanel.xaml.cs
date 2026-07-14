@@ -287,6 +287,7 @@ namespace FlowMy.Views.NodeControls
             if (_doc == null || _isSyncingSelection) return;
 
             _isSyncingSelection = true;
+            _isSyncingUI = true;
             try
             {
                 var selectedLayers = LayersList.SelectedItems.Cast<EditorLayer>().ToList();
@@ -322,21 +323,10 @@ namespace FlowMy.Views.NodeControls
             finally
             {
                 _isSyncingSelection = false;
+                _isSyncingUI = false;
             }
 
             _lastActiveLayer = _doc.ActiveLayer;
-
-            _isSyncingUI = true;
-            try
-            {
-                SyncActiveLayerHighlight();
-                SyncActiveLayerOpacity();
-                SyncBlendModeCombo();
-            }
-            finally
-            {
-                _isSyncingUI = false;
-            }
         }
 
         private void HandleLayerClick(EditorLayer clickedLayer, bool ctrl, bool shift)
@@ -344,6 +334,7 @@ namespace FlowMy.Views.NodeControls
             if (_doc == null) return;
 
             _isSyncingSelection = true;
+            _isSyncingUI = true;
             try
             {
                 if (shift)
@@ -394,22 +385,32 @@ namespace FlowMy.Views.NodeControls
             finally
             {
                 _isSyncingSelection = false;
+                _isSyncingUI = false;
             }
 
             // Sync _lastActiveLayer trước khi SyncActiveLayerHighlight chạy
             _lastActiveLayer = _doc.ActiveLayer;
 
-            SyncActiveLayerHighlight();
-            SyncActiveLayerOpacity();
-            SyncBlendModeCombo();
-            OnDocumentModified();
+            _isSyncingUI = true;
+            try
+            {
+                SyncActiveLayerHighlight();
+                SyncActiveLayerOpacity();
+                SyncBlendModeCombo();
+            }
+            finally
+            {
+                _isSyncingUI = false;
+            }
         }
 
         private void SelectSingleLayer(EditorLayer clickedLayer)
         {
             if (_doc == null) return;
             bool wasSyncing = _isSyncingSelection;
+            bool wasSyncingUI = _isSyncingUI;
             _isSyncingSelection = true;
+            _isSyncingUI = true;
             try
             {
                 foreach (var l in _doc.Layers)
@@ -440,6 +441,7 @@ namespace FlowMy.Views.NodeControls
             finally
             {
                 _isSyncingSelection = wasSyncing;
+                _isSyncingUI = wasSyncingUI;
             }
         }
 
@@ -999,6 +1001,8 @@ namespace FlowMy.Views.NodeControls
         private void ExecuteHistoryAction(Action action)
         {
             if (_doc == null) return;
+            bool wasSyncingUI = _isSyncingUI;
+            _isSyncingUI = true;
             _doc.Layers.CollectionChanged -= OnLayersCollectionChanged;
             try
             {
@@ -1007,6 +1011,7 @@ namespace FlowMy.Views.NodeControls
             finally
             {
                 _doc.Layers.CollectionChanged += OnLayersCollectionChanged;
+                _isSyncingUI = wasSyncingUI;
             }
         }
 
