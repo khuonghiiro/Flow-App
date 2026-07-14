@@ -1,4 +1,5 @@
 using FlowMy.Models.ImageEditor;
+using SkiaSharp;
 using FlowMy.Models.ImageEditor.Commands;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -1690,9 +1691,9 @@ namespace FlowMy.Views.NodeControls
             ApplyColorAdjustToLayer();
         }
 
-        private async void ApplyColorAdjustToLayer()
+        private void ApplyColorAdjustToLayer()
         {
-            if (_colorAdjOriginalPixels == null || _colorAdjActiveLayer == null || _colorAdjIsProcessing) return;
+            if (_colorAdjOriginalPixels == null || _colorAdjActiveLayer == null) return;
             if (!IsActiveLayerEditable()) return;
 
             var layer = _colorAdjActiveLayer;
@@ -1706,53 +1707,111 @@ namespace FlowMy.Views.NodeControls
                 layer.InvalidateThumbnail(); OnDocumentModified(); return;
             }
 
-            var original = _colorAdjOriginalPixels;
-            _colorAdjIsProcessing = true;
-            byte[]? result = null;
+            var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+            layer.Bitmap.Lock();
             try
             {
-                result = await Task.Run(() =>
+                using (var surface = SKSurface.Create(info, layer.Bitmap.BackBuffer, layer.Bitmap.BackBufferStride))
                 {
-                    var output = new byte[original.Length];
-                    double contrastFactor = 1.0;
-                    if (contrast != 0) { double c = contrast * 2.55; contrastFactor = (259.0 * (c + 255.0)) / (255.0 * (259.0 - c)); }
-                    double satFactor = saturation >= 0 ? 1.0 + saturation / 50.0 : 1.0 + saturation / 100.0;
-                    double hueShift = hue / 360.0;
-                    bool needHueSat = saturation != 0 || hue != 0;
-
-                    Parallel.For(0, h, y =>
+                    if (surface != null)
                     {
-                        int rowOff = y * stride;
-                        for (int x = 0; x < w; x++)
+                        var canvas = surface.Canvas;
+                        using (var srcBmp = new SKBitmap())
                         {
-                            int i = rowOff + x * 4;
-                            byte a = original[i + 3];
-                            if (a == 0) { output[i] = 0; output[i + 1] = 0; output[i + 2] = 0; output[i + 3] = 0; continue; }
-                            double bv = original[i], gv = original[i + 1], rv = original[i + 2];
-                            if (bright != 0) { double bVal = bright * 2.55; rv += bVal; gv += bVal; bv += bVal; }
-                            if (contrast != 0) { rv = contrastFactor * (rv - 128.0) + 128.0; gv = contrastFactor * (gv - 128.0) + 128.0; bv = contrastFactor * (bv - 128.0) + 128.0; }
-                            if (needHueSat)
+                            unsafe
                             {
-                                double rn = Clamp01(rv / 255.0), gn = Clamp01(gv / 255.0), bn = Clamp01(bv / 255.0);
-                                RgbToHsl(rn, gn, bn, out double hh, out double ss, out double ll);
-                                if (hue != 0) { hh += hueShift; if (hh > 1) hh -= 1; if (hh < 0) hh += 1; }
-                                if (saturation != 0) { ss *= satFactor; if (ss > 1) ss = 1; if (ss < 0) ss = 0; }
-                                HslToRgb(hh, ss, ll, out rn, out gn, out bn);
-                                rv = rn * 255.0; gv = gn * 255.0; bv = bn * 255.0;
-                            }
-                            output[i] = ClampByte(bv); output[i + 1] = ClampByte(gv); output[i + 2] = ClampByte(rv); output[i + 3] = a;
-                        }
-                    });
-                    return output;
-                });
-            }
-            finally { _colorAdjIsProcessing = false; }
+                                fixed (byte* pPixels = _colorAdjOriginalPixels)
+                                {
+                                    srcBmp.InstallPixels(info, (IntPtr)pPixels, stride);
+                                    using (var paint = new SKPaint())
+                                    {
+                                        paint.IsAntialias = true;
 
-            if (result != null && _colorAdjActiveLayer == layer)
-            {
-                layer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), result, stride, 0);
-                layer.InvalidateThumbnail(); OnDocumentModified();
+                                        SKColorFilter? filter = null;
+
+                                        // 1. Brightness
+                                        if (bright != 0)
+                                        {
+                                            float offset = (bright * 2.55f) / 255.0f;
+                                            float[] mat = new float[] {
+                                                1, 0, 0, 0, offset,
+                                                0, 1, 0, 0, offset,
+                                                0, 0, 1, 0, offset,
+                                                0, 0, 0, 1, 0
+                                            };
+                                            filter = SKColorFilter.CreateColorMatrix(mat);
+                                        }
+
+                                        // 2. Contrast
+                                        if (contrast != 0)
+                                        {
+                                            double c = contrast * 2.55;
+                                            float factor = (float)((259.0 * (c + 255.0)) / (255.0 * (259.0 - c)));
+                                            float offset = 0.5f * (1f - factor);
+                                            float[] mat = new float[] {
+                                                factor, 0, 0, 0, offset,
+                                                0, factor, 0, 0, offset,
+                                                0, 0, factor, 0, offset,
+                                                0, 0, 0, 1, 0
+                                            };
+                                            var f = SKColorFilter.CreateColorMatrix(mat);
+                                            filter = filter != null ? SKColorFilter.CreateCompose(f, filter) : f;
+                                        }
+
+                                        // 3. Saturation
+                                        if (saturation != 0)
+                                        {
+                                            float satFactor = (float)(saturation >= 0 ? 1.0 + saturation / 50.0 : 1.0 + saturation / 100.0);
+                                            float s = satFactor;
+                                            float[] mat = new float[] {
+                                                (1-s)*0.2126f+s,  (1-s)*0.7152f,    (1-s)*0.0722f,   0, 0,
+                                                (1-s)*0.2126f,    (1-s)*0.7152f+s,  (1-s)*0.0722f,   0, 0,
+                                                (1-s)*0.2126f,    (1-s)*0.7152f,    (1-s)*0.0722f+s, 0, 0,
+                                                0,               0,               0,         1, 0
+                                            };
+                                            var f = SKColorFilter.CreateColorMatrix(mat);
+                                            filter = filter != null ? SKColorFilter.CreateCompose(f, filter) : f;
+                                        }
+
+                                        // 4. Hue Shift
+                                        if (hue != 0)
+                                        {
+                                            double angle = (hue * Math.PI) / 180.0;
+                                            float cosA = (float)Math.Cos(angle);
+                                            float sinA = (float)Math.Sin(angle);
+                                            float[] mat = new float[] {
+                                                0.213f + cosA*0.787f - sinA*0.213f,  0.715f - cosA*0.715f - sinA*0.715f,  0.072f - cosA*0.072f + sinA*0.928f,  0, 0,
+                                                0.213f - cosA*0.213f + sinA*0.143f,  0.715f + cosA*0.285f + sinA*0.140f,  0.072f - cosA*0.072f - sinA*0.283f,  0, 0,
+                                                0.213f - cosA*0.213f - sinA*0.787f,  0.715f - cosA*0.715f + sinA*0.715f,  0.072f + cosA*0.928f + sinA*0.072f,  0, 0,
+                                                0,                                0,                                0,                                1, 0
+                                            };
+                                            var f = SKColorFilter.CreateColorMatrix(mat);
+                                            filter = filter != null ? SKColorFilter.CreateCompose(f, filter) : f;
+                                        }
+
+                                        paint.ColorFilter = filter;
+                                        canvas.Clear(SKColors.Transparent);
+                                        canvas.DrawBitmap(srcBmp, 0, 0, paint);
+
+                                        if (filter != null)
+                                        {
+                                            filter.Dispose();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                layer.Bitmap.AddDirtyRect(new Int32Rect(0, 0, w, h));
             }
+            finally
+            {
+                layer.Bitmap.Unlock();
+            }
+
+            layer.InvalidateThumbnail();
+            OnDocumentModified();
         }
 
         private void BtnApplyColorAdjust_Click(object sender, RoutedEventArgs e)
@@ -2128,132 +2187,93 @@ namespace FlowMy.Views.NodeControls
                 if (lutG[i] != i) gC = true;
                 if (lutB[i] != i) bC = true;
             }
-            if (!rgbC && !rC && !gC && !bC) return;
-
-            var output = new byte[original.Length];
-            Parallel.For(0, h, y =>
+            
+            if (!rgbC && !rC && !gC && !bC)
             {
-                int rowOff = y * stride;
-                for (int x = 0; x < w; x++)
+                layer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), original, stride, 0);
+                layer.InvalidateThumbnail();
+                return;
+            }
+
+            var tableR = new byte[256];
+            var tableG = new byte[256];
+            var tableB = new byte[256];
+
+            for (int i = 0; i < 256; i++)
+            {
+                byte rVal = (byte)i;
+                byte gVal = (byte)i;
+                byte bVal = (byte)i;
+
+                if (rgbC)
                 {
-                    int i = rowOff + x * 4;
-                    byte a = original[i + 3];
-                    if (a == 0) { output[i] = 0; output[i + 1] = 0; output[i + 2] = 0; output[i + 3] = 0; continue; }
-                    byte bVal = original[i], gVal = original[i + 1], rVal = original[i + 2];
-                    if (rgbC) { rVal = lutRgb[rVal]; gVal = lutRgb[gVal]; bVal = lutRgb[bVal]; }
-                    if (rC) rVal = lutR[rVal];
-                    if (gC) gVal = lutG[gVal];
-                    if (bC) bVal = lutB[bVal];
-                    output[i] = bVal; output[i + 1] = gVal; output[i + 2] = rVal; output[i + 3] = a;
+                    rVal = lutRgb[rVal];
+                    gVal = lutRgb[gVal];
+                    bVal = lutRgb[bVal];
                 }
-            });
-            layer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), output, stride, 0);
+                if (rC) rVal = lutR[rVal];
+                if (gC) gVal = lutG[gVal];
+                if (bC) bVal = lutB[bVal];
+
+                tableR[i] = rVal;
+                tableG[i] = gVal;
+                tableB[i] = bVal;
+            }
+
+            var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+            layer.Bitmap.Lock();
+            try
+            {
+                using (var surface = SKSurface.Create(info, layer.Bitmap.BackBuffer, layer.Bitmap.BackBufferStride))
+                {
+                    if (surface != null)
+                    {
+                        var canvas = surface.Canvas;
+                        using (var srcBmp = new SKBitmap())
+                        {
+                            unsafe
+                            {
+                                fixed (byte* pPixels = original)
+                                {
+                                    srcBmp.InstallPixels(info, (IntPtr)pPixels, stride);
+                                    using (var paint = new SKPaint())
+                                    {
+                                        paint.IsAntialias = true;
+                                        using (var filter = SKColorFilter.CreateTable(null, tableR, tableG, tableB))
+                                        {
+                                            paint.ColorFilter = filter;
+                                            canvas.Clear(SKColors.Transparent);
+                                            canvas.DrawBitmap(srcBmp, 0, 0, paint);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                layer.Bitmap.AddDirtyRect(new Int32Rect(0, 0, w, h));
+            }
+            finally
+            {
+                layer.Bitmap.Unlock();
+            }
+
             layer.InvalidateThumbnail();
         }
 
         /// <summary>Async curve apply for realtime preview while dragging.</summary>
-        private async void ApplyCurveToLayerAsync()
+        private void ApplyCurveToLayerAsync()
         {
-            if (_colorAdjOriginalPixels == null || _colorAdjActiveLayer == null || _colorAdjIsProcessing) return;
+            if (_colorAdjOriginalPixels == null || _colorAdjActiveLayer == null) return;
             if (!IsActiveLayerEditable()) return;
 
-            var layer = _colorAdjActiveLayer;
-            var state = GetOrCreateState(layer);
-            int w = layer.Width, h = layer.Height, stride = w * 4;
-            var original = _colorAdjOriginalPixels;
-
-            var lutRgb = BuildCurveLUT(state.CurvePoints[0]);
-            var lutR = BuildCurveLUT(state.CurvePoints[1]);
-            var lutG = BuildCurveLUT(state.CurvePoints[2]);
-            var lutB = BuildCurveLUT(state.CurvePoints[3]);
-
-            bool rgbC = false, rC = false, gC = false, bC = false;
-            for (int i = 0; i < 256; i++)
-            {
-                if (lutRgb[i] != i) rgbC = true;
-                if (lutR[i] != i) rC = true;
-                if (lutG[i] != i) gC = true;
-                if (lutB[i] != i) bC = true;
-            }
-
-            if (!rgbC && !rC && !gC && !bC)
-            {
-                layer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), original, stride, 0);
-                layer.InvalidateThumbnail(); OnDocumentModified(); return;
-            }
-
-            _colorAdjIsProcessing = true;
-            byte[]? result = null;
-            try
-            {
-                result = await Task.Run(() =>
-                {
-                    var output = new byte[original.Length];
-                    Parallel.For(0, h, y =>
-                    {
-                        int rowOff = y * stride;
-                        for (int x = 0; x < w; x++)
-                        {
-                            int i = rowOff + x * 4;
-                            byte a = original[i + 3];
-                            if (a == 0) { output[i] = 0; output[i + 1] = 0; output[i + 2] = 0; output[i + 3] = 0; continue; }
-                            byte bVal = original[i], gVal = original[i + 1], rVal = original[i + 2];
-                            if (rgbC) { rVal = lutRgb[rVal]; gVal = lutRgb[gVal]; bVal = lutRgb[bVal]; }
-                            if (rC) rVal = lutR[rVal];
-                            if (gC) gVal = lutG[gVal];
-                            if (bC) bVal = lutB[bVal];
-                            output[i] = bVal; output[i + 1] = gVal; output[i + 2] = rVal; output[i + 3] = a;
-                        }
-                    });
-                    return output;
-                });
-            }
-            finally { _colorAdjIsProcessing = false; }
-
-            if (result != null && _colorAdjActiveLayer == layer)
-            {
-                layer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), result, stride, 0);
-                layer.InvalidateThumbnail(); OnDocumentModified();
-            }
+            ApplyCurveToLayerSync(_colorAdjActiveLayer, _colorAdjOriginalPixels);
+            OnDocumentModified();
         }
 
-        // ═══ Color Math Helpers ═══
+
 
         private static byte ClampByte(double v) => v <= 0 ? (byte)0 : v >= 255 ? (byte)255 : (byte)(v + 0.5);
-        private static double Clamp01(double v) => v <= 0 ? 0 : v >= 1 ? 1 : v;
-
-        private static void RgbToHsl(double r, double g, double b, out double h, out double s, out double l)
-        {
-            double max = r > g ? (r > b ? r : b) : (g > b ? g : b);
-            double min = r < g ? (r < b ? r : b) : (g < b ? g : b);
-            double delta = max - min;
-            l = (max + min) / 2.0;
-            if (delta < 1e-10) { h = 0; s = 0; return; }
-            s = l < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
-            if (max == r) h = (g - b) / delta + (g < b ? 6.0 : 0.0);
-            else if (max == g) h = (b - r) / delta + 2.0;
-            else h = (r - g) / delta + 4.0;
-            h /= 6.0;
-        }
-
-        private static void HslToRgb(double h, double s, double l, out double r, out double g, out double b)
-        {
-            if (s < 1e-10) { r = g = b = l; return; }
-            double q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
-            double p = 2.0 * l - q;
-            r = HueToRgb(p, q, h + 1.0 / 3.0);
-            g = HueToRgb(p, q, h);
-            b = HueToRgb(p, q, h - 1.0 / 3.0);
-        }
-
-        private static double HueToRgb(double p, double q, double t)
-        {
-            if (t < 0) t += 1.0; if (t > 1) t -= 1.0;
-            if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
-            if (t < 1.0 / 2.0) return q;
-            if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
-            return p;
-        }
 
         private ImageProcessingNodeContentControl? FindParentControl()
         {
