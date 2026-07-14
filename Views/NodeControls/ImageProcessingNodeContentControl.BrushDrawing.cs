@@ -661,7 +661,7 @@ namespace FlowMy.Views.NodeControls
                      MainImage.Source = activeLayer.Bitmap;
                  }
 
-                RedrawBrushOverlay();
+                DrawActiveStrokeMouseDownToOverlay(px, py, rawRadius, hardness, flow, color, isComplexPreset);
                 MarkCompositeDirty();
                 MainScrollViewer.CaptureMouse();
             }
@@ -943,20 +943,7 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Brush")
             {
-                if (_currentStrokeInfo != null)
-                {
-                    _currentStrokeInfo.Points.Add(currentPoint);
-                }
-
-                if (!isComplexPreset)
-                {
-                    if (_currentStrokePath != null)
-                    {
-                        _currentStrokePath.LineTo((float)px, (float)py);
-                    }
-                }
-
-                RedrawBrushOverlay();
+                DrawActiveStrokeSegmentToOverlay(prevPoint, currentPoint);
             }
             else if (tool == "Eraser")
             {
@@ -1194,31 +1181,88 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Brush")
             {
-                bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
-                                       _currentBrushPreset != BrushPreset.RoundSoft &&
-                                       _currentBrushPreset != BrushPreset.Airbrush &&
-                                       _currentBrushPreset != BrushPreset.Pencil;
-
-                if (_currentStrokeInfo != null)
+                if (_brushOverlayBitmap != null)
                 {
-                    _sessionStrokes.Add(_currentStrokeInfo);
-                    _strokeIsComplexHistory.Add(true);
-                    _currentStrokeInfo = null;
-                }
+                    int w = activeLayer.Width;
+                    int h = activeLayer.Height;
+                    int stride = w * 4;
+                    int pixelSize = stride * h;
 
-                if (!isComplexPreset)
-                {
-                    if (_currentStrokePath != null && _currentStrokePaint != null)
+                    activeLayer.Bitmap.Lock();
+                    try
                     {
-                        _sessionPaths.Add(_currentStrokePath);
-                        _sessionPaints.Add(_currentStrokePaint);
-                        _strokeIsComplexHistory.Add(false);
-                        _currentStrokePath = null;
+                        var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                        using (var surface = SkiaSharp.SKSurface.Create(info, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                        {
+                            _brushOverlayBitmap.Lock();
+                            try
+                            {
+                                using (var overlaySKBitmap = new SkiaSharp.SKBitmap())
+                                {
+                                    overlaySKBitmap.InstallPixels(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride);
+                                    using (var paint = new SkiaSharp.SKPaint())
+                                    {
+                                        paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
+                                        surface.Canvas.DrawBitmap(overlaySKBitmap, 0, 0, paint);
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                _brushOverlayBitmap.Unlock();
+                            }
+                        }
+
+                        int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                        int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                        if (dirtyW > 0 && dirtyH > 0)
+                        {
+                            activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                        }
+                    }
+                    finally
+                    {
+                        activeLayer.Bitmap.Unlock();
+                    }
+
+                    var finalOldPixels = new byte[pixelSize];
+                    if (_oldPixelsForUndo != null)
+                    {
+                        Array.Copy(_oldPixelsForUndo, finalOldPixels, pixelSize);
+                    }
+
+                    var finalNewPixels = new byte[pixelSize];
+                    activeLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
+
+                    var cmd = new PixelEditCommand(activeLayer, finalOldPixels, finalNewPixels);
+                    _node.EditorDoc.History.Execute(cmd);
+
+                    _oldPixelsForUndo = null;
+                    _brushOverlayBitmap = null;
+                    _brushSessionLayer = null;
+                    ActiveLayerDrawingOverlay.Source = null;
+                    ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+
+                    if (_currentStrokePaint != null)
+                    {
+                        _currentStrokePaint.Dispose();
                         _currentStrokePaint = null;
                     }
-                }
+                    if (_currentStrokePath != null)
+                    {
+                        _currentStrokePath.Dispose();
+                        _currentStrokePath = null;
+                    }
+                    _currentStrokeInfo = null;
 
-                RedrawBrushOverlay();
+                    if (_cachedBrushTip != null)
+                    {
+                        _cachedBrushTip.Dispose();
+                        _cachedBrushTip = null;
+                    }
+
+                    FlushCompositeAndSync();
+                }
             }
             else if (tool == "Eraser")
             {
@@ -4195,7 +4239,7 @@ namespace FlowMy.Views.NodeControls
 
         public void CommitBrushDrawingSession()
         {
-            if (_oldPixelsForUndo == null || _brushOverlayBitmap == null || (_sessionPaths.Count == 0 && _sessionStrokes.Count == 0))
+            if (_oldPixelsForUndo == null || _brushOverlayBitmap == null)
             {
                 return;
             }
@@ -4315,6 +4359,130 @@ namespace FlowMy.Views.NodeControls
             if (EyedropperPreviewContainer != null)
             {
                 EyedropperPreviewContainer.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void DrawActiveStrokeMouseDownToOverlay(double px, double py, double rawRadius, double hardness, double flow, Color color, bool isComplexPreset)
+        {
+            if (_brushOverlayBitmap == null) return;
+
+            int w = _brushOverlayBitmap.PixelWidth;
+            int h = _brushOverlayBitmap.PixelHeight;
+
+            _brushOverlayBitmap.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
+                {
+                    var canvas = surface.Canvas;
+                    canvas.Clear(SkiaSharp.SKColors.Transparent);
+
+                    if (isComplexPreset)
+                    {
+                        if (_cachedBrushTip != null)
+                        {
+                            DrawCachedBrushTipStamp(canvas, px, py, false, color);
+                        }
+                        else
+                        {
+                            DrawSkiaBrushStamp(canvas, px, py, rawRadius, hardness, flow, color, _currentBrushPreset, false);
+                        }
+                    }
+                    else
+                    {
+                        if (_currentStrokePaint != null)
+                        {
+                            canvas.DrawPoint((float)px, (float)py, _currentStrokePaint);
+                        }
+                    }
+                }
+
+                int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                if (dirtyW > 0 && dirtyH > 0)
+                {
+                    _brushOverlayBitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                }
+            }
+            finally
+            {
+                _brushOverlayBitmap.Unlock();
+            }
+        }
+
+        private void DrawActiveStrokeSegmentToOverlay(Point p1, Point p2)
+        {
+            if (_brushOverlayBitmap == null) return;
+
+            int w = _brushOverlayBitmap.PixelWidth;
+            int h = _brushOverlayBitmap.PixelHeight;
+
+            _brushOverlayBitmap.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
+                {
+                    var canvas = surface.Canvas;
+
+                    bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
+                                           _currentBrushPreset != BrushPreset.RoundSoft &&
+                                           _currentBrushPreset != BrushPreset.Airbrush &&
+                                           _currentBrushPreset != BrushPreset.Pencil;
+
+                    double radius = EditorPanel.BrushSize / 2.0;
+                    double hardness = EditorPanel.BrushHardness;
+                    double flow = EditorPanel.BrushFlow;
+                    Color color = _node.EditorDoc.ForegroundColor;
+
+                    if (isComplexPreset)
+                    {
+                        double dx = p2.X - p1.X;
+                        double dy = p2.Y - p1.Y;
+                        double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                        double step = GetBrushStep(_currentBrushPreset, radius);
+                        double d = _brushDistanceAccumulator;
+
+                        while (d <= distance)
+                        {
+                            double t = distance > 0.0001 ? d / distance : 0.0;
+                            double cx = p1.X + dx * t;
+                            double cy = p1.Y + dy * t;
+
+                            if (_cachedBrushTip != null)
+                            {
+                                DrawCachedBrushTipStamp(canvas, cx, cy, false, color);
+                            }
+                            else
+                            {
+                                DrawSkiaBrushStamp(canvas, cx, cy, radius, hardness, flow, color, _currentBrushPreset, false);
+                            }
+
+                            d += step;
+                        }
+                        _brushDistanceAccumulator = d - distance;
+                    }
+                    else
+                    {
+                        if (_currentStrokePaint != null)
+                        {
+                            canvas.DrawLine((float)p1.X, (float)p1.Y, (float)p2.X, (float)p2.Y, _currentStrokePaint);
+                        }
+                    }
+                }
+
+                int dirtyW = _prevSegmentMaxX - _prevSegmentMinX + 1;
+                int dirtyH = _prevSegmentMaxY - _prevSegmentMinY + 1;
+                if (dirtyW > 0 && dirtyH > 0)
+                {
+                    _brushOverlayBitmap.AddDirtyRect(new Int32Rect(_prevSegmentMinX, _prevSegmentMinY, dirtyW, dirtyH));
+                }
+            }
+            finally
+            {
+                _brushOverlayBitmap.Unlock();
             }
         }
 
