@@ -1143,6 +1143,7 @@ namespace FlowMy.Views.NodeControls
         private void SaveCurrentTabState()
         {
             if (_activeTabData == null) return;
+            ForceClearDrawingOverlay();
             SaveStateToTabData(_activeTabData);
         }
 
@@ -1356,6 +1357,13 @@ namespace FlowMy.Views.NodeControls
         /// <summary>UpdatePreviewAsync rồi sync tab title + tạo EditorDoc nếu cần.</summary>
         private async System.Threading.Tasks.Task UpdatePreviewAndSyncTab()
         {
+            if (!_isSwitchingTab)
+            {
+                ForceClearDrawingOverlay();
+                _node.EditorDoc = null;
+                _activeTabData = null;
+            }
+
             await ImageProcessingNodeControl.UpdatePreviewAsync(
                 _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
                 ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
@@ -1681,6 +1689,21 @@ namespace FlowMy.Views.NodeControls
         {
             ApplyResponsiveScale();
             SyncIpToggleIcon();
+
+            // Warm up SkiaSharp on a background thread to prevent first-draw lag
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var info = new SkiaSharp.SKImageInfo(10, 10, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                    using (var surface = SkiaSharp.SKSurface.Create(info))
+                    {
+                        var canvas = surface.Canvas;
+                        canvas.Clear(SkiaSharp.SKColors.Transparent);
+                    }
+                }
+                catch { }
+            });
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
             {

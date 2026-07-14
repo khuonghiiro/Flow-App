@@ -4150,6 +4150,30 @@ namespace FlowMy.Views.NodeControls
             FlushCompositeAndSync();
         }
 
+        public void ForceClearDrawingOverlay()
+        {
+            CommitBrushDrawingSession();
+
+            if (_sessionPaths != null)
+            {
+                foreach (var path in _sessionPaths)
+                {
+                    path.Dispose();
+                }
+                _sessionPaths.Clear();
+            }
+            _sessionPaints?.Clear();
+            _oldPixelsForUndo = null;
+            _brushOverlayBitmap = null;
+            _brushSessionLayer = null;
+
+            if (ActiveLayerDrawingOverlay != null)
+            {
+                ActiveLayerDrawingOverlay.Source = null;
+                ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+            }
+        }
+
         private void RedrawBrushOverlay()
         {
             if (_brushOverlayBitmap == null) return;
