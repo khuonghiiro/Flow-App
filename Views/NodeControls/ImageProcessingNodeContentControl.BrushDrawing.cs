@@ -564,10 +564,22 @@ namespace FlowMy.Views.NodeControls
                 _strokePoints.Clear();
                 _strokePoints.Add(new Point(px, py));
 
-                double radius = EditorPanel.BrushSize / 2.0;
+                double rawRadius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;
                 double flow = EditorPanel.BrushFlow;
                 Color color = _node.EditorDoc.ForegroundColor;
+
+                float blurSigma = 0;
+                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                {
+                    blurSigma = (float)(rawRadius * 0.4);
+                }
+                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                {
+                    blurSigma = (float)(rawRadius * (1.0 - hardness / 100.0) * 0.5);
+                }
+
+                double radius = Math.Max(0.1, rawRadius - blurSigma);
 
                 _currentStrokePaint = new SkiaSharp.SKPaint
                 {
@@ -582,24 +594,16 @@ namespace FlowMy.Views.NodeControls
                 byte alpha = (byte)Math.Clamp(color.A * (flow / 100.0), 0, 255);
                 _currentStrokePaint.Color = new SkiaSharp.SKColor(color.R, color.G, color.B, alpha);
 
-                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                if (blurSigma > 0.1f)
                 {
-                    _currentStrokePaint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
-                }
-                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
-                {
-                    float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
-                    if (blurSigma > 0.1f)
-                    {
-                        _currentStrokePaint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
-                    }
+                    _currentStrokePaint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
                 }
 
                 _currentStrokePath = new SkiaSharp.SKPath();
                 _currentStrokePath.MoveTo((float)px, (float)py);
                 _currentStrokePath.LineTo((float)px + 0.01f, (float)py);
 
-                double extendedRadius = radius + 2.0;
+                double extendedRadius = rawRadius + 2.0;
                 _strokeMinX = Math.Min(_strokeMinX, Math.Clamp((int)(px - extendedRadius), 0, w - 1));
                 _strokeMaxX = Math.Max(_strokeMaxX, Math.Clamp((int)(px + extendedRadius), 0, w - 1));
                 _strokeMinY = Math.Min(_strokeMinY, Math.Clamp((int)(py - extendedRadius), 0, h - 1));
@@ -651,11 +655,23 @@ namespace FlowMy.Views.NodeControls
                     MainImage.Source = activeLayer.Bitmap;
                 }
 
-                double radius = EditorPanel.BrushSize / 2.0;
+                double rawRadius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;
                 double flow = EditorPanel.BrushFlow;
 
-                double extendedRadius = radius + 2.0;
+                float blurSigma = 0;
+                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                {
+                    blurSigma = (float)(rawRadius * 0.4);
+                }
+                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                {
+                    blurSigma = (float)(rawRadius * (1.0 - hardness / 100.0) * 0.5);
+                }
+
+                double radius = Math.Max(0.1, rawRadius - blurSigma);
+
+                double extendedRadius = rawRadius + 2.0;
                 _strokeMinX = Math.Clamp((int)(px - extendedRadius), 0, w - 1);
                 _strokeMaxX = Math.Clamp((int)(px + extendedRadius), 0, w - 1);
                 _strokeMinY = Math.Clamp((int)(py - extendedRadius), 0, h - 1);
@@ -678,20 +694,13 @@ namespace FlowMy.Views.NodeControls
                         {
                             paint.Style = SkiaSharp.SKPaintStyle.Fill;
                             paint.IsAntialias = true;
-                            paint.BlendMode = SkiaSharp.SKBlendMode.Clear;
-                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, 255);
+                            paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                            byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
 
-                            if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                            if (blurSigma > 0.1f)
                             {
-                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
-                            }
-                            else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
-                            {
-                                float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
-                                if (blurSigma > 0.1f)
-                                {
-                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
-                                }
+                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
                             }
 
                             canvas.DrawCircle((float)px, (float)py, (float)radius, paint);
@@ -885,24 +894,30 @@ namespace FlowMy.Views.NodeControls
                         using (var paint = new SkiaSharp.SKPaint())
                         {
                             paint.Style = SkiaSharp.SKPaintStyle.Stroke;
-                            paint.StrokeWidth = (float)(radius * 2);
-                            paint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
-                            paint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
-                            paint.IsAntialias = true;
-                            paint.BlendMode = SkiaSharp.SKBlendMode.Clear;
-                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, 255);
-
+                            
+                            float blurSigma = 0;
                             if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
                             {
-                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
+                                blurSigma = (float)(radius * 0.4);
                             }
                             else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
                             {
-                                float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
-                                if (blurSigma > 0.1f)
-                                {
-                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
-                                }
+                                blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                            }
+
+                            double drawRadius = Math.Max(0.1, radius - blurSigma);
+
+                            paint.StrokeWidth = (float)(drawRadius * 2);
+                            paint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
+                            paint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
+                            paint.IsAntialias = true;
+                            paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                            byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
+
+                            if (blurSigma > 0.1f)
+                            {
+                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
                             }
 
                             canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, paint);
@@ -3140,8 +3155,8 @@ namespace FlowMy.Views.NodeControls
             double radius = diameter / 2.0;
 
             // Normalize hardness and flow since they are in 0-100 and 1-100 ranges
-            double f = flow > 1.0 ? flow / 100.0 : flow;
-            double h = hardness > 1.0 ? hardness / 100.0 : hardness;
+            double f = flow / 100.0;
+            double h = hardness / 100.0;
 
             var grid = new Grid { Width = width, Height = height };
 
