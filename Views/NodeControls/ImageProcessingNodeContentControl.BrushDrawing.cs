@@ -4153,6 +4153,12 @@ namespace FlowMy.Views.NodeControls
         public void ForceClearDrawingOverlay()
         {
             CommitBrushDrawingSession();
+            
+            try
+            {
+                CommitActiveText();
+            }
+            catch { }
 
             if (_sessionPaths != null)
             {
@@ -4171,6 +4177,11 @@ namespace FlowMy.Views.NodeControls
             {
                 ActiveLayerDrawingOverlay.Source = null;
                 ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+            }
+
+            if (EyedropperPreviewContainer != null)
+            {
+                EyedropperPreviewContainer.Visibility = Visibility.Collapsed;
             }
         }
 
