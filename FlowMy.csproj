@@ -167,11 +167,7 @@
 		</ItemGroup>
 
 
-	  <ItemGroup>
-	    <Reference Include="Aspose.Cells">
-	      <HintPath>..\Library\Aspose.Cells.dll</HintPath>
-	    </Reference>
-	  </ItemGroup>
+
 
   
 	<ItemGroup>

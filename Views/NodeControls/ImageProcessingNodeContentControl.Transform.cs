@@ -208,18 +208,36 @@ namespace FlowMy.Views.NodeControls
 
         private void RotateActiveLayerImmediate(double angle)
         {
-            var activeLayer = _node.EditorDoc?.ActiveLayer;
-            if (activeLayer == null || activeLayer.IsLocked) return;
+            if (_node.EditorDoc == null) return;
 
-            if (_transformSessionActive)
+            // If it is 90, -90, 180, or 270, perform Canvas Rotation (like Photoshop)
+            if (angle == 90 || angle == -90 || angle == 180 || angle == 270)
             {
-                _sessionAngle += angle;
-                UpdateVisualTransforms();
+                // If there's an active transform session, commit it first
+                if (_transformSessionActive)
+                {
+                    CommitTransformSession();
+                }
+
+                _node.EditorDoc.RotateCanvas(angle);
+                OnEditorDocumentModified();
+                UpdateTransformOverlayDisplay();
             }
             else
             {
-                var transform = new RotateTransform(angle, activeLayer.Width / 2.0, activeLayer.Height / 2.0);
-                ApplyLayerTransform(activeLayer, transform);
+                var activeLayer = _node.EditorDoc.ActiveLayer;
+                if (activeLayer == null || activeLayer.IsLocked) return;
+
+                if (_transformSessionActive)
+                {
+                    _sessionAngle += angle;
+                    UpdateVisualTransforms();
+                }
+                else
+                {
+                    var transform = new RotateTransform(angle, activeLayer.Width / 2.0, activeLayer.Height / 2.0);
+                    ApplyLayerTransform(activeLayer, transform);
+                }
             }
         }
 

@@ -151,6 +151,21 @@ namespace FlowMy.Models.ImageEditor
             Layers.Move(fromIndex, toIndex);
         }
 
+        /// <summary>Xoay toàn bộ canvas và tất cả layer trong tài liệu.</summary>
+        public void RotateCanvas(double angle)
+        {
+            if (angle != 90 && angle != -90 && angle != 270 && angle != 180)
+                return;
+
+            int oldW = Width;
+            int oldH = Height;
+            int newW = (angle == 180) ? oldW : oldH;
+            int newH = (angle == 180) ? oldH : oldW;
+
+            var cmd = new Commands.RotateCanvasCommand(this, angle, oldW, oldH, newW, newH);
+            History.Execute(cmd);
+        }
+
         /// <summary>
         /// Composite tất cả visible layers → 1 BitmapSource.
         /// Sử dụng GPU Rendering (RenderTargetBitmap) cho Normal blend mode,

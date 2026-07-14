@@ -139,11 +139,25 @@ namespace FlowMy.Views.NodeControls
         /// <summary>Đánh dấu cần composite lại — timer sẽ xử lý ở tick tiếp theo (~30fps).</summary>
         private void MarkCompositeDirty()
         {
-            if (_isDrawingPixels && EditorPanel?.ActiveToolName != "Eraser")
+            bool useDirectSource = (_node?.EditorDoc != null && 
+                                    _node.EditorDoc.Layers.Count == 1 &&
+                                    _node.EditorDoc.ActiveLayer != null &&
+                                    _node.EditorDoc.ActiveLayer.Opacity >= 0.99 &&
+                                    _node.EditorDoc.ActiveLayer.BlendMode == BlendMode.Normal);
+
+            if (_isDrawingPixels)
             {
-                // Bỏ qua hoàn toàn timer khi đang vẽ để cập nhật màn hình qua GPU Overlay cực mượt
-                // Đối với Eraser, vì sửa trực tiếp trên bitmap của layer nên vẫn cần Composite để hiển thị phần bị xoá.
-                return;
+                if (useDirectSource)
+                {
+                    // Nếu dùng DirectSource, WPF tự cập nhật qua AddDirtyRect cực mượt, không cần composite chậm chạp
+                    return;
+                }
+
+                if (EditorPanel?.ActiveToolName != "Eraser")
+                {
+                    // Brush thông thường cập nhật qua GPU Overlay
+                    return;
+                }
             }
 
             _compositeDirty = true;
@@ -628,6 +642,14 @@ namespace FlowMy.Views.NodeControls
                 activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
                 _strokePoints.Clear();
                 _strokePoints.Add(new Point(px, py));
+
+                bool useDirectSource = (_node.EditorDoc.Layers.Count == 1 &&
+                                         activeLayer.Opacity >= 0.99 &&
+                                         activeLayer.BlendMode == BlendMode.Normal);
+                if (useDirectSource)
+                {
+                    MainImage.Source = activeLayer.Bitmap;
+                }
 
                 double radius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;

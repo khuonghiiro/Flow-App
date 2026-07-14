@@ -2389,6 +2389,30 @@ namespace FlowMy.Views.NodeControls
 
             e.Handled = true;
 
+            // Intercept rotation and flip preset effects to perform canvas rotation and layer flips directly
+            if (effectName == "Rotate90" || effectName == "Rotate180" || effectName == "Rotate270")
+            {
+                double angle = effectName switch
+                {
+                    "Rotate90" => 90,
+                    "Rotate180" => 180,
+                    "Rotate270" => 270,
+                    _ => 0
+                };
+                if (angle != 0)
+                {
+                    _node.EditorDoc.RotateCanvas(angle);
+                    OnEditorDocumentModified();
+                    UpdateTransformOverlayDisplay();
+                    return;
+                }
+            }
+            else if (effectName == "Flop" || effectName == "Flip")
+            {
+                FlipActiveLayerImmediate(horizontal: effectName == "Flop");
+                return;
+            }
+
             // Show parameter dialog if effect has configurable params
             Dictionary<string, double>? fxParams = null;
             if (_fxParamMap.TryGetValue(effectName, out var paramDefs))
@@ -2436,7 +2460,23 @@ namespace FlowMy.Views.NodeControls
                     token.ThrowIfCancellationRequested();
 
                     // Apply effect
-                    bool useTiles = ImageProcessingOptimization.ShouldUseTileProcessing((int)img.Width, (int)img.Height);
+                    bool isTransformOrWarp = effectName.StartsWith("Rotate") || 
+                                             effectName == "Flop" || 
+                                             effectName == "Flip" || 
+                                             effectName == "Deskew" || 
+                                             effectName == "Trim" || 
+                                             effectName == "AutoOrient" || 
+                                             effectName == "Shear" || 
+                                             effectName == "Roll" || 
+                                             effectName == "Shave" || 
+                                             effectName == "Magnify" || 
+                                             effectName == "Swirl" || 
+                                             effectName == "Wave" || 
+                                             effectName == "Implode" || 
+                                             effectName == "Explode" || 
+                                             effectName == "Polaroid";
+
+                    bool useTiles = !isTransformOrWarp && ImageProcessingOptimization.ShouldUseTileProcessing((int)img.Width, (int)img.Height);
                     ImageMagick.MagickImage resultImg;
                     if (useTiles)
                     {
