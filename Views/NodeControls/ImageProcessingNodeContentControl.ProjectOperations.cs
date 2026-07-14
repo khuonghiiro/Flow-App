@@ -134,6 +134,7 @@ namespace FlowMy.Views.NodeControls
 
         private void QuickExportAsPng()
         {
+            CommitBrushDrawingSession();
             if (_node.EditorDoc == null)
             {
                 MessageBox.Show("Chưa có tài liệu để xuất ảnh.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -170,6 +171,7 @@ namespace FlowMy.Views.NodeControls
 
         private void ExportImageAs()
         {
+            CommitBrushDrawingSession();
             if (_node.EditorDoc == null)
             {
                 MessageBox.Show("Chưa có tài liệu để xuất ảnh.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -222,6 +224,7 @@ namespace FlowMy.Views.NodeControls
 
         private void ExportProjectZip()
         {
+            CommitBrushDrawingSession();
             if (_node.EditorDoc == null)
             {
                 MessageBox.Show("Chưa có dự án để xuất.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);

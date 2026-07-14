@@ -96,7 +96,7 @@ namespace FlowMy.Views.NodeControls
             InitializeComponent();
             EditorPanel.SetNodeAndHost(_node, _host);
             this.Loaded += (s, e) => InitializeFxDots();
-            this.Unloaded += (s, e) => CommitPendingMoveTranslation();
+            this.Unloaded += (s, e) => { CommitPendingMoveTranslation(); CommitBrushDrawingSession(); };
             MainImage.SizeChanged += (s, e) =>
             {
                 if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
@@ -2328,6 +2328,7 @@ namespace FlowMy.Views.NodeControls
         private async void MagickEffect_Click(object sender, MouseButtonEventArgs e)
         {
             if (_node.EditorDoc == null || _isFxRunning) return;
+            CommitBrushDrawingSession();
             var layer = _node.EditorDoc.ActiveLayer;
             if (layer == null || layer.IsLocked || !layer.IsVisible) return;
 
@@ -2383,31 +2384,49 @@ namespace FlowMy.Views.NodeControls
                     token.ThrowIfCancellationRequested();
 
                     // Apply effect
-                    ApplyMagickEffectToImage(img, effectName, fxParams);
+                    bool useTiles = ImageProcessingOptimization.ShouldUseTileProcessing((int)img.Width, (int)img.Height);
+                    ImageMagick.MagickImage resultImg;
+                    if (useTiles)
+                    {
+                        resultImg = ImageProcessingOptimization.ProcessLargeImageInTiles(img, (tile) => {
+                            ApplyMagickEffectToImage(tile, effectName, fxParams);
+                        }, progress: null, cancellationToken: token).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        ApplyMagickEffectToImage(img, effectName, fxParams);
+                        resultImg = img;
+                    }
 
                     token.ThrowIfCancellationRequested();
 
                     // Convert back to raw BGRA
-                    img.Alpha(ImageMagick.AlphaOption.Set);
-                    int rw = (int)img.Width, rh = (int)img.Height;
+                    resultImg.Alpha(ImageMagick.AlphaOption.Set);
+                    int rw = (int)resultImg.Width, rh = (int)resultImg.Height;
 
+                    byte[]? finalBytes = null;
                     // Fast path: sizes match → return raw bytes directly
                     if (rw == w && rh == h)
                     {
-                        return img.ToByteArray(ImageMagick.MagickFormat.Bgra);
+                        finalBytes = resultImg.ToByteArray(ImageMagick.MagickFormat.Bgra);
+                    }
+                    else
+                    {
+                        // Sizes differ: copy into output matching layer size
+                        var resultBytes = resultImg.ToByteArray(ImageMagick.MagickFormat.Bgra);
+                        var output = new byte[stride * h];
+                        int copyW = Math.Min(w, rw);
+                        int copyH = Math.Min(h, rh);
+                        int rStride = rw * 4;
+                        for (int y = 0; y < copyH; y++)
+                        {
+                            Buffer.BlockCopy(resultBytes, y * rStride, output, y * stride, copyW * 4);
+                        }
+                        finalBytes = output;
                     }
 
-                    // Sizes differ: copy into output matching layer size
-                    var resultBytes = img.ToByteArray(ImageMagick.MagickFormat.Bgra);
-                    var output = new byte[stride * h];
-                    int copyW = Math.Min(w, rw);
-                    int copyH = Math.Min(h, rh);
-                    int rStride = rw * 4;
-                    for (int y = 0; y < copyH; y++)
-                    {
-                        Buffer.BlockCopy(resultBytes, y * rStride, output, y * stride, copyW * 4);
-                    }
-                    return output;
+                    if (useTiles) resultImg.Dispose();
+                    return finalBytes;
                 }, token);
             }
             catch (OperationCanceledException)
@@ -3030,6 +3049,7 @@ namespace FlowMy.Views.NodeControls
         private void EditorPanel_ActiveLayerChanged(object? sender, EventArgs e)
         {
             CommitPendingMoveTranslation();
+            CommitBrushDrawingSession();
             
             // Auto commit transform session on active layer change!
             if (_transformSessionActive)

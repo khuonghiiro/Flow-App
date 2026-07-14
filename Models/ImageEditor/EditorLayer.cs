@@ -403,8 +403,8 @@ namespace FlowMy.Models.ImageEditor
             copy.ContentBounds = ContentBounds;
             if (OriginalTransformBitmap != null)
             {
-                // Gán trực tiếp field để bỏ qua setter (setter gọi CalculateContentBounds quét O(W×H) pixel)
-                copy._originalTransformBitmap = new WriteableBitmap(OriginalTransformBitmap);
+                // Gán trực tiếp field để bỏ qua setter (chia sẻ chung bitmap để không tốn thêm 16MB)
+                copy._originalTransformBitmap = OriginalTransformBitmap;
             }
             copy.LayerScaleX = LayerScaleX;
             copy.LayerScaleY = LayerScaleY;
@@ -417,15 +417,24 @@ namespace FlowMy.Models.ImageEditor
             }
 
             var stride = Width * 4;
+            Bitmap.Lock();
             copy.Bitmap.Lock();
             try
             {
-                Bitmap.CopyPixels(new Int32Rect(0, 0, Width, Height), copy.Bitmap.BackBuffer, stride * Height, stride);
+                unsafe
+                {
+                    System.Buffer.MemoryCopy(
+                        (void*)Bitmap.BackBuffer,
+                        (void*)copy.Bitmap.BackBuffer,
+                        stride * Height,
+                        stride * Height);
+                }
                 copy.Bitmap.AddDirtyRect(new Int32Rect(0, 0, Width, Height));
             }
             finally
             {
                 copy.Bitmap.Unlock();
+                Bitmap.Unlock();
             }
             // Chỉ xoá cache, không gọi InvalidateThumbnail (tránh trigger PropertyChanged đồng bộ)
             copy._cachedThumbnail = null;

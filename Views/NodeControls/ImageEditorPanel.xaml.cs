@@ -281,6 +281,7 @@ namespace FlowMy.Views.NodeControls
         }
 
         private bool _isSyncingSelection = false;
+        private bool _isSyncingUI = false;
         private void LayersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_doc == null || _isSyncingSelection) return;
@@ -325,10 +326,17 @@ namespace FlowMy.Views.NodeControls
 
             _lastActiveLayer = _doc.ActiveLayer;
 
-            SyncActiveLayerHighlight();
-            SyncActiveLayerOpacity();
-            SyncBlendModeCombo();
-            OnDocumentModified();
+            _isSyncingUI = true;
+            try
+            {
+                SyncActiveLayerHighlight();
+                SyncActiveLayerOpacity();
+                SyncBlendModeCombo();
+            }
+            finally
+            {
+                _isSyncingUI = false;
+            }
         }
 
         private void HandleLayerClick(EditorLayer clickedLayer, bool ctrl, bool shift)
@@ -619,6 +627,7 @@ namespace FlowMy.Views.NodeControls
         private void BtnCopyLayer_Click(object sender, MouseButtonEventArgs e)
         {
             if (_doc == null) return;
+            CommitParentBrushSession();
             if (sender is FrameworkElement fe && fe.DataContext is EditorLayer sourceLayer)
             {
                 int insertIndex = _doc.Layers.IndexOf(sourceLayer);
@@ -643,6 +652,7 @@ namespace FlowMy.Views.NodeControls
         private void BtnPromoteLayer_Click(object sender, MouseButtonEventArgs e)
         {
             if (_doc == null) return;
+            CommitParentBrushSession();
             if (sender is FrameworkElement fe && fe.DataContext is EditorLayer childLayer && childLayer.ParentLayer != null)
             {
                 var parent = childLayer.ParentLayer;
@@ -670,6 +680,7 @@ namespace FlowMy.Views.NodeControls
 
         private void AddNewLayerFromActive()
         {
+            CommitParentBrushSession();
             int insertIndex = _doc.Layers.Count;
             if (_doc.ActiveLayer != null)
             {
@@ -812,6 +823,7 @@ namespace FlowMy.Views.NodeControls
 
         private void SliderLayerOpacity_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isSyncingUI) return;
             if (_doc?.ActiveLayer == null) return;
             var val = (int)SliderLayerOpacity.Value;
             _doc.ActiveLayer.Opacity = val / 100.0;
@@ -821,6 +833,7 @@ namespace FlowMy.Views.NodeControls
 
         private void CmbBlendMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isSyncingUI) return;
             if (_doc?.ActiveLayer == null || CmbBlendMode.SelectedIndex < 0) return;
             _doc.ActiveLayer.BlendMode = (BlendMode)CmbBlendMode.SelectedIndex;
             OnDocumentModified();
@@ -830,7 +843,14 @@ namespace FlowMy.Views.NodeControls
 
         private void SelectTool(string toolName)
         {
-            _activeTool = toolName;
+            if (_activeTool != toolName)
+            {
+                if (_activeTool == "Brush")
+                {
+                    CommitParentBrushSession();
+                }
+                _activeTool = toolName;
+            }
         }
 
         /// <summary>Public accessor để parent control có thể set tool từ toolbox bên ngoài.</summary>
@@ -1078,6 +1098,7 @@ namespace FlowMy.Views.NodeControls
         public void DuplicateSelectedLayers()
         {
             if (_doc == null) return;
+            CommitParentBrushSession();
             var selected = SelectedLayers;
             if (selected.Count == 0) return;
 
@@ -1106,6 +1127,7 @@ namespace FlowMy.Views.NodeControls
         public void DeleteSelectedLayers()
         {
             if (_doc == null || _doc.Layers.Count <= 1) return;
+            CommitParentBrushSession();
             var selected = SelectedLayers;
             if (selected.Count == 0) return;
 
@@ -1128,6 +1150,7 @@ namespace FlowMy.Views.NodeControls
         public void MergeSelectedLayers()
         {
             if (_doc == null) return;
+            CommitParentBrushSession();
 
             var selected = SelectedLayers;
             List<EditorLayer> mergeSet;
@@ -1157,6 +1180,7 @@ namespace FlowMy.Views.NodeControls
         public void UndoAction()
         {
             if (_doc == null) return;
+            CommitParentBrushSession();
             ExecuteHistoryAction(() => _doc.History.Undo());
             RefreshLayersList();
             OnDocumentModified();
@@ -1165,6 +1189,7 @@ namespace FlowMy.Views.NodeControls
         public void RedoAction()
         {
             if (_doc == null) return;
+            CommitParentBrushSession();
             ExecuteHistoryAction(() => _doc.History.Redo());
             RefreshLayersList();
             OnDocumentModified();
@@ -1298,6 +1323,7 @@ namespace FlowMy.Views.NodeControls
         {
             LayerActionPopup.IsOpen = false;
             if (_doc == null) return;
+            CommitParentBrushSession();
 
             var active = _doc.ActiveLayer;
             if (active == null) return;
@@ -1506,6 +1532,7 @@ namespace FlowMy.Views.NodeControls
 
         private void BeginEditingLayer(EditorLayer? layer)
         {
+            CommitParentBrushSession();
             _colorAdjActiveLayer = layer;
             if (layer == null)
             {
@@ -2221,6 +2248,21 @@ namespace FlowMy.Views.NodeControls
             if (t < 1.0 / 2.0) return q;
             if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
             return p;
+        }
+
+        private ImageProcessingNodeContentControl? FindParentControl()
+        {
+            DependencyObject parent = VisualTreeHelper.GetParent(this);
+            while (parent != null && parent is not ImageProcessingNodeContentControl)
+            {
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            return parent as ImageProcessingNodeContentControl;
+        }
+
+        private void CommitParentBrushSession()
+        {
+            FindParentControl()?.CommitBrushDrawingSession();
         }
     }
 }

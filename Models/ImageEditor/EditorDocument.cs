@@ -266,7 +266,7 @@ namespace FlowMy.Models.ImageEditor
             }
             else
             {
-                // Fallback về CPU rendering (chậm hơn) cho các blend mode như Multiply, Screen, Overlay...
+                // Fallback về CPU rendering được tối ưu hóa với unsafe pointers (tránh copy array)
                 var stride = Width * 4;
                 int totalBytes = stride * Height;
 
@@ -275,29 +275,42 @@ namespace FlowMy.Models.ImageEditor
                     _cachedCpuRenderTarget.PixelHeight != Height)
                 {
                     _cachedCpuRenderTarget = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
-                    _cachedCpuResultPixels = new byte[totalBytes];
                 }
 
-                if (_cachedCpuLayerPixels == null || _cachedCpuLayerPixels.Length != totalBytes)
+                _cachedCpuRenderTarget.Lock();
+                try
                 {
-                    _cachedCpuLayerPixels = new byte[totalBytes];
+                    unsafe
+                    {
+                        byte* dstPtr = (byte*)_cachedCpuRenderTarget.BackBuffer;
+                        new Span<byte>(dstPtr, totalBytes).Clear(); // Fast zero memory
+
+                        foreach (var layer in Layers)
+                        {
+                            if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
+
+                            var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
+                            double layerOpacity = layer.Opacity;
+                            
+                            activeBmp.Lock();
+                            try
+                            {
+                                byte* srcPtr = (byte*)activeBmp.BackBuffer;
+                                BlendLayerPixelsUnsafe(dstPtr, srcPtr, totalBytes, layerOpacity, layer.BlendMode);
+                            }
+                            finally
+                            {
+                                activeBmp.Unlock();
+                            }
+                        }
+                    }
+                    _cachedCpuRenderTarget.AddDirtyRect(new Int32Rect(0, 0, Width, Height));
                 }
-
-                var resultPixels = _cachedCpuResultPixels!;
-                Array.Clear(resultPixels, 0, resultPixels.Length);
-
-                foreach (var layer in Layers)
+                finally
                 {
-                    if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
-
-                    var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
-                    activeBmp.CopyPixels(_cachedCpuLayerPixels, stride, 0);
-
-                    double layerOpacity = layer.Opacity;
-                    BlendLayerPixels(resultPixels, _cachedCpuLayerPixels, layerOpacity, layer.BlendMode);
+                    _cachedCpuRenderTarget.Unlock();
                 }
 
-                _cachedCpuRenderTarget.WritePixels(new Int32Rect(0, 0, Width, Height), resultPixels, stride, 0);
                 return _cachedCpuRenderTarget;
             }
         }
@@ -313,12 +326,9 @@ namespace FlowMy.Models.ImageEditor
             return result;
         }
 
-        private static void BlendLayerPixels(byte[] dst, byte[] src, double opacity, BlendMode mode)
+        private static unsafe void BlendLayerPixelsUnsafe(byte* dst, byte* src, int len, double opacity, BlendMode mode)
         {
-            // Hot path — pixel loop (optimized cho Normal mode)
-            int len = dst.Length;
-            if (len != src.Length) return;
-
+            // Hot path — pixel loop (optimized cho Normal mode với unsafe pointers)
             for (int i = 0; i < len; i += 4)
             {
                 byte sB = src[i], sG = src[i + 1], sR = src[i + 2], sA = src[i + 3];

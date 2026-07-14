@@ -29,17 +29,10 @@ namespace FlowMy.Views.NodeControls
         #region MOUSE DRAWING ENGINE FOR IMAGE EDITOR MODE
 
         private bool _isDrawingPixels;
-        private byte[]? _tempDrawingPixels;
-        private float[]? _strokeAlphaMaskF;
-        private float[]? _tempAlphaMaskF;
-        private float[]? _cachedStrokeAlphaMaskF;
-        private float[]? _cachedTempAlphaMaskF;
-        private byte[]? _cachedTempDrawingPixels;
         private int _prevSegmentMinX;
         private int _prevSegmentMinY;
         private int _prevSegmentMaxX;
         private int _prevSegmentMaxY;
-        private double _strokeDistanceAccumulator;
         private readonly List<Point> _strokePoints = new();
         private Point _lastDrawingPixelPoint;
         private byte[]? _oldPixelsForUndo;
@@ -50,6 +43,13 @@ namespace FlowMy.Views.NodeControls
         private int _strokeMinY;
         private int _strokeMaxX;
         private int _strokeMaxY;
+
+        private WriteableBitmap? _brushOverlayBitmap;
+        private readonly List<SkiaSharp.SKPath> _sessionPaths = new();
+        private readonly List<SkiaSharp.SKPaint> _sessionPaints = new();
+        private SkiaSharp.SKPath? _currentStrokePath;
+        private SkiaSharp.SKPaint? _currentStrokePaint;
+        private EditorLayer? _brushSessionLayer;
 
         private static readonly (double x, double y, double size)[] ChalkPresetOffsets = new (double x, double y, double size)[]
         {
@@ -482,7 +482,6 @@ namespace FlowMy.Views.NodeControls
 
                 activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), tempPixels, stride, 0);
                 activeLayer.InvalidateThumbnail();
-
                 var newPixels = new byte[stride * activeLayer.Height];
                 activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
 
@@ -492,75 +491,125 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (tool == "Brush" || tool == "Eraser")
+            if (tool == "Brush")
             {
                 _isDrawingPixels = true;
                 _lastDrawingPixelPoint = new Point(px, py);
-
-                // Show active layer drawing overlay for hardware accelerated rendering
-                ActiveLayerDrawingOverlay.Source = activeLayer.Bitmap;
-                ActiveLayerDrawingOverlay.Opacity = activeLayer.Opacity;
-                ActiveLayerDrawingOverlay.Width = MainImage.Width;
-                ActiveLayerDrawingOverlay.Height = MainImage.Height;
-                ActiveLayerDrawingOverlay.Visibility = Visibility.Visible;
 
                 int w = activeLayer.Width;
                 int h = activeLayer.Height;
                 int stride = w * 4;
                 int pixelSize = stride * h;
 
-                // Reuse cached array to eliminate large GC allocations during MouseDown
+                // 1. Initialize session if not already active
+                if (_brushOverlayBitmap == null || _brushOverlayBitmap.PixelWidth != w || _brushOverlayBitmap.PixelHeight != h)
+                {
+                    CommitBrushDrawingSession();
+
+                    _brushOverlayBitmap = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+                    _brushSessionLayer = activeLayer;
+                    
+                    _oldPixelsForUndo = new byte[pixelSize];
+                    activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
+
+                    _strokeMinX = w - 1;
+                    _strokeMaxX = 0;
+                    _strokeMinY = h - 1;
+                    _strokeMaxY = 0;
+                }
+
+                ActiveLayerDrawingOverlay.Source = _brushOverlayBitmap;
+                ActiveLayerDrawingOverlay.Opacity = activeLayer.Opacity;
+                ActiveLayerDrawingOverlay.Width = MainImage.Width;
+                ActiveLayerDrawingOverlay.Height = MainImage.Height;
+                ActiveLayerDrawingOverlay.Visibility = Visibility.Visible;
+
+                _strokePoints.Clear();
+                _strokePoints.Add(new Point(px, py));
+
+                double radius = EditorPanel.BrushSize;
+                double hardness = EditorPanel.BrushHardness;
+                double flow = EditorPanel.BrushFlow;
+                Color color = _node.EditorDoc.ForegroundColor;
+
+                _currentStrokePaint = new SkiaSharp.SKPaint
+                {
+                    Style = SkiaSharp.SKPaintStyle.Stroke,
+                    StrokeWidth = (float)(radius * 2),
+                    StrokeCap = SkiaSharp.SKStrokeCap.Round,
+                    StrokeJoin = SkiaSharp.SKStrokeJoin.Round,
+                    IsAntialias = true,
+                    BlendMode = SkiaSharp.SKBlendMode.SrcOver
+                };
+
+                byte alpha = (byte)Math.Clamp(color.A * (flow / 100.0), 0, 255);
+                _currentStrokePaint.Color = new SkiaSharp.SKColor(color.R, color.G, color.B, alpha);
+
+                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                {
+                    _currentStrokePaint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
+                }
+                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                {
+                    float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                    if (blurSigma > 0.1f)
+                    {
+                        _currentStrokePaint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
+                    }
+                }
+
+                _currentStrokePath = new SkiaSharp.SKPath();
+                _currentStrokePath.MoveTo((float)px, (float)py);
+
+                double extendedRadius = radius + 2.0;
+                _strokeMinX = Math.Min(_strokeMinX, Math.Clamp((int)(px - extendedRadius), 0, w - 1));
+                _strokeMaxX = Math.Max(_strokeMaxX, Math.Clamp((int)(px + extendedRadius), 0, w - 1));
+                _strokeMinY = Math.Min(_strokeMinY, Math.Clamp((int)(py - extendedRadius), 0, h - 1));
+                _strokeMaxY = Math.Max(_strokeMaxY, Math.Clamp((int)(py + extendedRadius), 0, h - 1));
+
+                _prevSegmentMinX = _strokeMinX;
+                _prevSegmentMaxX = _strokeMaxX;
+                _prevSegmentMinY = _strokeMinY;
+                _prevSegmentMaxY = _strokeMaxY;
+
+                bool useDirectSource = (_node.EditorDoc.Layers.Count == 1 &&
+                                         activeLayer.Opacity >= 0.99 &&
+                                         activeLayer.BlendMode == BlendMode.Normal);
+                 if (useDirectSource)
+                 {
+                     MainImage.Source = activeLayer.Bitmap;
+                 }
+
+                RedrawBrushOverlay();
+                MarkCompositeDirty();
+                MainScrollViewer.CaptureMouse();
+            }
+            else if (tool == "Eraser")
+            {
+                CommitBrushDrawingSession();
+
+                _isDrawingPixels = true;
+                _lastDrawingPixelPoint = new Point(px, py);
+
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int stride = w * 4;
+                int pixelSize = stride * h;
+
                 if (_cachedOldPixelsForUndo == null || _cachedOldPixelsForUndo.Length < pixelSize)
                 {
                     _cachedOldPixelsForUndo = new byte[pixelSize];
                 }
                 _oldPixelsForUndo = _cachedOldPixelsForUndo;
                 activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
-
-                if (_cachedTempDrawingPixels == null || _cachedTempDrawingPixels.Length < pixelSize)
-                {
-                    _cachedTempDrawingPixels = new byte[pixelSize];
-                }
-                _tempDrawingPixels = _cachedTempDrawingPixels;
-                Array.Copy(_oldPixelsForUndo, _tempDrawingPixels, _oldPixelsForUndo.Length);
-
-                int maskSize = w * h;
-                if (_cachedStrokeAlphaMaskF == null || _cachedStrokeAlphaMaskF.Length < maskSize)
-                {
-                    _cachedStrokeAlphaMaskF = new float[maskSize];
-                }
-                else
-                {
-                    Array.Clear(_cachedStrokeAlphaMaskF, 0, _cachedStrokeAlphaMaskF.Length);
-                }
-                _strokeAlphaMaskF = _cachedStrokeAlphaMaskF;
-
-                if (_cachedTempAlphaMaskF == null || _cachedTempAlphaMaskF.Length < maskSize)
-                {
-                    _cachedTempAlphaMaskF = new float[maskSize];
-                }
-                else
-                {
-                    Array.Clear(_cachedTempAlphaMaskF, 0, _cachedTempAlphaMaskF.Length);
-                }
-                _tempAlphaMaskF = _cachedTempAlphaMaskF;
                 _strokePoints.Clear();
                 _strokePoints.Add(new Point(px, py));
-                _strokeDistanceAccumulator = 0.0;
 
-                bool isEraser = (tool == "Eraser");
                 double radius = EditorPanel.BrushSize;
                 double hardness = EditorPanel.BrushHardness;
                 double flow = EditorPanel.BrushFlow;
-                Color color = _node.EditorDoc.ForegroundColor;
 
                 double extendedRadius = radius + 2.0;
-                if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter ||
-                    _currentBrushPreset == BrushPreset.Splatter || _currentBrushPreset == BrushPreset.Charcoal || _currentBrushPreset == BrushPreset.OilBrush)
-                {
-                    extendedRadius = radius * 3.5 + 5.0;
-                }
-
                 _strokeMinX = Math.Clamp((int)(px - extendedRadius), 0, w - 1);
                 _strokeMaxX = Math.Clamp((int)(px + extendedRadius), 0, w - 1);
                 _strokeMinY = Math.Clamp((int)(py - extendedRadius), 0, h - 1);
@@ -571,26 +620,51 @@ namespace FlowMy.Views.NodeControls
                 _prevSegmentMinY = _strokeMinY;
                 _prevSegmentMaxY = _strokeMaxY;
 
-                bool useDirectSource = (_node.EditorDoc.Layers.Count == 1 &&
-                                        activeLayer.Opacity >= 0.99 &&
-                                        activeLayer.BlendMode == BlendMode.Normal);
-                if (useDirectSource)
+                activeLayer.Bitmap.Lock();
+                try
                 {
-                    MainImage.Source = activeLayer.Bitmap;
+                    var surfaceInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                    using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                    {
+                        var canvas = surface.Canvas;
+                        
+                        using (var paint = new SkiaSharp.SKPaint())
+                        {
+                            paint.Style = SkiaSharp.SKPaintStyle.Fill;
+                            paint.IsAntialias = true;
+                            paint.BlendMode = SkiaSharp.SKBlendMode.Clear;
+                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, 255);
+
+                            if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                            {
+                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
+                            }
+                            else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                            {
+                                float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                                if (blurSigma > 0.1f)
+                                {
+                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
+                                }
+                            }
+
+                            canvas.DrawCircle((float)px, (float)py, (float)radius, paint);
+                        }
+                    }
+
+                    int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                    int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                    if (dirtyW > 0 && dirtyH > 0)
+                    {
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                    }
+                }
+                finally
+                {
+                    activeLayer.Bitmap.Unlock();
                 }
 
-                DrawBrushCircle(_strokeAlphaMaskF, w, h, px, py, radius, hardness, flow, _currentBrushPreset);
-                ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMaskF, w, h, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
-
-                int dirtyW = _strokeMaxX - _strokeMinX + 1;
-                int dirtyH = _strokeMaxY - _strokeMinY + 1;
-                if (dirtyW > 0 && dirtyH > 0)
-                {
-                    activeLayer.Bitmap.WritePixels(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, _strokeMinX, _strokeMinY);
-                }
-                // Defer composite — chỉ đánh dấu dirty, timer sẽ composite ở ~30fps
                 MarkCompositeDirty();
-
                 MainScrollViewer.CaptureMouse();
             }
         }
@@ -709,7 +783,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (!_isDrawingPixels || _tempDrawingPixels == null || _strokeAlphaMaskF == null || _tempAlphaMaskF == null) return;
+            if (!_isDrawingPixels || _oldPixelsForUndo == null) return;
 
             bool isEraser = (tool == "Eraser");
             double radius = EditorPanel.BrushSize;
@@ -724,30 +798,10 @@ namespace FlowMy.Views.NodeControls
             _strokePoints.Add(currentPoint);
             _lastDrawingPixelPoint = currentPoint;
 
-            int n = _strokePoints.Count - 1;
             int activeW = activeLayer.Width;
             int activeH = activeLayer.Height;
 
-            if (n == 1)
-            {
-                DrawBrushLine(_strokeAlphaMaskF, activeW, activeH, _strokePoints[0], _strokePoints[1], radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
-            }
-            else if (n == 2)
-            {
-                Point pExtrapolated = new Point(2 * _strokePoints[0].X - _strokePoints[1].X, 2 * _strokePoints[0].Y - _strokePoints[1].Y);
-                DrawBrushSplineSegment(_strokeAlphaMaskF, activeW, activeH, pExtrapolated, _strokePoints[0], _strokePoints[1], _strokePoints[2], radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
-            }
-            else if (n >= 3)
-            {
-                DrawBrushSplineSegment(_strokeAlphaMaskF, activeW, activeH, _strokePoints[n-3], _strokePoints[n-2], _strokePoints[n-1], _strokePoints[n], radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
-            }
-
             double extendedRadius = radius + 2.0;
-            if (_currentBrushPreset == BrushPreset.Chalk || _currentBrushPreset == BrushPreset.Spray || _currentBrushPreset == BrushPreset.Scatter ||
-                _currentBrushPreset == BrushPreset.Splatter || _currentBrushPreset == BrushPreset.Charcoal || _currentBrushPreset == BrushPreset.OilBrush)
-            {
-                extendedRadius = radius * 3.5 + 5.0;
-            }
 
             int segmentMinX = Math.Clamp((int)(Math.Min(prevPoint.X, currentPoint.X) - extendedRadius), 0, activeW - 1);
             int segmentMaxX = Math.Clamp((int)(Math.Max(prevPoint.X, currentPoint.X) + extendedRadius), 0, activeW - 1);
@@ -759,38 +813,6 @@ namespace FlowMy.Views.NodeControls
             _strokeMinY = Math.Min(_strokeMinY, segmentMinY);
             _strokeMaxY = Math.Max(_strokeMaxY, segmentMaxY);
 
-            // Copy only the active segments (previous segment and new segment) row-by-row instead of the entire stroke bounding box!
-            int prevRowLength = _prevSegmentMaxX - _prevSegmentMinX + 1;
-            if (prevRowLength > 0)
-            {
-                for (int y = _prevSegmentMinY; y <= _prevSegmentMaxY; y++)
-                {
-                    int offset = y * activeW + _prevSegmentMinX;
-                    Array.Copy(_strokeAlphaMaskF, offset, _tempAlphaMaskF, offset, prevRowLength);
-                }
-            }
-
-            int newRowLength = segmentMaxX - segmentMinX + 1;
-            if (newRowLength > 0)
-            {
-                for (int y = segmentMinY; y <= segmentMaxY; y++)
-                {
-                    int offset = y * activeW + segmentMinX;
-                    Array.Copy(_strokeAlphaMaskF, offset, _tempAlphaMaskF, offset, newRowLength);
-                }
-            }
-
-            double tempDistanceAccumulator = _strokeDistanceAccumulator;
-            DrawBrushLine(_tempAlphaMaskF, activeW, activeH, _strokePoints[n-1], _strokePoints[n], radius, hardness, flow, _currentBrushPreset, ref tempDistanceAccumulator);
-
-            // 1. Restore previous temporary segment pixels in _tempDrawingPixels to committed state
-            ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMaskF, activeW, activeH, color, isEraser, _prevSegmentMinX, _prevSegmentMinY, _prevSegmentMaxX, _prevSegmentMaxY);
-
-            // 2. Blend the new temporary segment pixels
-            ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _tempAlphaMaskF, activeW, activeH, color, isEraser, segmentMinX, segmentMinY, segmentMaxX, segmentMaxY);
-
-            // 3. Write only the union of the two segment bounding boxes (the dirty area) to WriteableBitmap
-            int stride = activeW * 4;
             int dirtyMinX = Math.Min(segmentMinX, _prevSegmentMinX);
             int dirtyMaxX = Math.Max(segmentMaxX, _prevSegmentMaxX);
             int dirtyMinY = Math.Min(segmentMinY, _prevSegmentMinY);
@@ -798,9 +820,91 @@ namespace FlowMy.Views.NodeControls
 
             int dirtyW = dirtyMaxX - dirtyMinX + 1;
             int dirtyH = dirtyMaxY - dirtyMinY + 1;
-            if (dirtyW > 0 && dirtyH > 0)
+
+            if (tool == "Brush")
             {
-                activeLayer.Bitmap.WritePixels(new Int32Rect(dirtyMinX, dirtyMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, dirtyMinX, dirtyMinY);
+                if (_currentStrokePath != null)
+                {
+                    _currentStrokePath.LineTo((float)px, (float)py);
+                    RedrawBrushOverlay();
+                }
+            }
+            else if (tool == "Eraser")
+            {
+                if (dirtyW > 0 && dirtyH > 0)
+                {
+                    activeLayer.Bitmap.Lock();
+                    try
+                    {
+                        var surfaceInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                        using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                        {
+                            var canvas = surface.Canvas;
+
+                            // Clip to the dirty region
+                            canvas.Save();
+                            var dirtyRect = new SkiaSharp.SKRect(dirtyMinX, dirtyMinY, dirtyMaxX + 1, dirtyMaxY + 1);
+                            canvas.ClipRect(dirtyRect);
+
+                            // 1. Restore original pixels from _oldPixelsForUndo in the dirty region
+                            var srcInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                            unsafe
+                            {
+                                fixed (byte* pSrc = _oldPixelsForUndo)
+                                {
+                                    using (var srcBitmap = new SkiaSharp.SKBitmap())
+                                    {
+                                        srcBitmap.InstallPixels(srcInfo, (IntPtr)pSrc, activeW * 4);
+                                        canvas.DrawBitmap(srcBitmap, dirtyRect, dirtyRect);
+                                    }
+                                }
+                            }
+
+                            // 2. Draw path using SkiaSharp C++ path drawing
+                            using (var paint = new SkiaSharp.SKPaint())
+                            {
+                                paint.Style = SkiaSharp.SKPaintStyle.Stroke;
+                                paint.StrokeWidth = (float)(radius * 2);
+                                paint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
+                                paint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
+                                paint.IsAntialias = true;
+                                paint.BlendMode = SkiaSharp.SKBlendMode.Clear;
+                                paint.Color = new SkiaSharp.SKColor(0, 0, 0, 255);
+
+                                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                                {
+                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, (float)(radius * 0.4));
+                                }
+                                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                                {
+                                    float blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                                    if (blurSigma > 0.1f)
+                                    {
+                                        paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
+                                    }
+                                }
+
+                                using (var path = new SkiaSharp.SKPath())
+                                {
+                                    path.MoveTo((float)_strokePoints[0].X, (float)_strokePoints[0].Y);
+                                    for (int i = 1; i < _strokePoints.Count; i++)
+                                    {
+                                        path.LineTo((float)_strokePoints[i].X, (float)_strokePoints[i].Y);
+                                    }
+                                    canvas.DrawPath(path, paint);
+                                }
+                            }
+
+                            canvas.Restore();
+                        }
+
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(dirtyMinX, dirtyMinY, dirtyW, dirtyH));
+                    }
+                    finally
+                    {
+                        activeLayer.Bitmap.Unlock();
+                    }
+                }
             }
 
             // 4. Remember the current segment box as the previous one for the next frame
@@ -816,6 +920,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
+            string tool = EditorPanel.ActiveToolName;
 
             if (_isMovingLayer)
             {
@@ -850,7 +955,6 @@ namespace FlowMy.Views.NodeControls
 
             if (_isSelecting)
             {
-                string tool = EditorPanel.ActiveToolName;
                 if (tool == "Selection" || tool == "ObjectSelection")
                 {
                     _isSelecting = false;
@@ -962,61 +1066,39 @@ namespace FlowMy.Views.NodeControls
 
             if (activeLayer == null || _oldPixelsForUndo == null) return;
 
-            if (_strokePoints.Count >= 2 && _strokeAlphaMaskF != null)
+            if (tool == "Brush")
             {
-                int n = _strokePoints.Count - 1;
-                int w = activeLayer.Width;
-                int h = activeLayer.Height;
-                double radius = EditorPanel.BrushSize;
-                double hardness = EditorPanel.BrushHardness;
-                double flow = EditorPanel.BrushFlow;
-                Color color = _node.EditorDoc.ForegroundColor;
-                string tool = EditorPanel.ActiveToolName;
-                bool isEraser = (tool == "Eraser");
-
-                if (n > 1)
+                if (_currentStrokePath != null && _currentStrokePaint != null)
                 {
-                    Point pExtrapolated = new Point(2 * _strokePoints[n].X - _strokePoints[n-1].X, 2 * _strokePoints[n].Y - _strokePoints[n-1].Y);
-                    DrawBrushSplineSegment(_strokeAlphaMaskF, w, h, _strokePoints[n-2], _strokePoints[n-1], _strokePoints[n], pExtrapolated, radius, hardness, flow, _currentBrushPreset, ref _strokeDistanceAccumulator);
+                    _sessionPaths.Add(_currentStrokePath);
+                    _sessionPaints.Add(_currentStrokePaint);
+                    _currentStrokePath = null;
+                    _currentStrokePaint = null;
                 }
 
-                if (_tempDrawingPixels != null)
-                {
-                    ApplyStrokeToPixels(_tempDrawingPixels, _oldPixelsForUndo, _strokeAlphaMaskF, w, h, color, isEraser, _strokeMinX, _strokeMinY, _strokeMaxX, _strokeMaxY);
-
-                    int stride = w * 4;
-                    int dirtyW = _strokeMaxX - _strokeMinX + 1;
-                    int dirtyH = _strokeMaxY - _strokeMinY + 1;
-                    if (dirtyW > 0 && dirtyH > 0)
-                    {
-                        activeLayer.Bitmap.WritePixels(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH), _tempDrawingPixels, stride, _strokeMinX, _strokeMinY);
-                    }
-                }
+                RedrawBrushOverlay();
             }
-
-            int strideFinal = activeLayer.Width * 4;
-            int pixelSize = strideFinal * activeLayer.Height;
-
-            // Defer memory allocations for history tracking to MouseUp to ensure MouseDown is instant!
-            var finalOldPixels = new byte[pixelSize];
-            if (_oldPixelsForUndo != null)
+            else if (tool == "Eraser")
             {
-                Array.Copy(_oldPixelsForUndo, finalOldPixels, pixelSize);
+                int strideFinal = activeLayer.Width * 4;
+                int pixelSize = strideFinal * activeLayer.Height;
+
+                var finalOldPixels = new byte[pixelSize];
+                if (_oldPixelsForUndo != null)
+                {
+                    Array.Copy(_oldPixelsForUndo, finalOldPixels, pixelSize);
+                }
+
+                var finalNewPixels = new byte[pixelSize];
+                activeLayer.Bitmap.CopyPixels(finalNewPixels, strideFinal, 0);
+
+                var cmd = new PixelEditCommand(activeLayer, finalOldPixels, finalNewPixels);
+                _node.EditorDoc.History.Execute(cmd);
+                _oldPixelsForUndo = null;
+                _strokePoints.Clear();
+
+                FlushCompositeAndSync();
             }
-
-            var finalNewPixels = new byte[pixelSize];
-            activeLayer.Bitmap.CopyPixels(finalNewPixels, strideFinal, 0);
-
-            var cmd = new PixelEditCommand(activeLayer, finalOldPixels, finalNewPixels);
-            _node.EditorDoc.History.Execute(cmd);
-
-            _tempDrawingPixels = null;
-            _oldPixelsForUndo = null;
-            _strokeAlphaMaskF = null;
-            _tempAlphaMaskF = null;
-            _strokePoints.Clear();
-
-            FlushCompositeAndSync();
         }
 
         private void ClearSelection()
@@ -1646,7 +1728,15 @@ namespace FlowMy.Views.NodeControls
                 // Ctrl+Z: Undo in manual editor
                 if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
                 {
-                    EditorPanel.UndoAction();
+                    if (_sessionPaths.Count > 0)
+                    {
+                        UndoLastBrushStroke();
+                    }
+                    else
+                    {
+                        CommitBrushDrawingSession();
+                        EditorPanel.UndoAction();
+                    }
                     e.Handled = true;
                     return;
                 }
@@ -1928,27 +2018,66 @@ namespace FlowMy.Views.NodeControls
                 lut[i] = (float)(edgeOpacity * flowMul);
             }
 
-            for (int y = startY; y <= endY; y++)
+            bool hasSelection = (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null);
+
+            if (hasSelection)
             {
-                int rowOffset = y * width;
-                double dy = y - cy;
-                double dy2 = dy * dy;
-
-                for (int x = startX; x <= endX; x++)
+                for (int y = startY; y <= endY; y++)
                 {
-                    double dx = x - cx;
-                    double dist2 = dx * dx + dy2;
+                    int rowOffset = y * width;
+                    double dy = y - cy;
+                    double dy2 = dy * dy;
+                    int maskY = y - _cachedSelectionStartY;
+                    bool checkY = (y >= _cachedSelectionStartY && y <= _cachedSelectionEndY);
 
-                    if (dist2 <= r2)
+                    for (int x = startX; x <= endX; x++)
                     {
-                        if (!IsInsideSelection(x, y)) continue;
+                        double dx = x - cx;
+                        double dist2 = dx * dx + dy2;
 
-                        int lutIdx = (int)(dist2 / r2 * 1023.0);
-                        float stampOpacity = lut[lutIdx];
-                        if (stampOpacity <= 0f) continue;
+                        if (dist2 <= r2)
+                        {
+                            if (checkY && x >= _cachedSelectionStartX && x <= _cachedSelectionEndX)
+                            {
+                                if (!_cachedSelectionMask[x - _cachedSelectionStartX, maskY]) continue;
+                            }
+                            else
+                            {
+                                continue;
+                            }
 
-                        int maskOffset = rowOffset + x;
-                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
+                            int lutIdx = (int)(dist2 / r2 * 1023.0);
+                            float stampOpacity = lut[lutIdx];
+                            if (stampOpacity <= 0f) continue;
+
+                            int maskOffset = rowOffset + x;
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * width;
+                    double dy = y - cy;
+                    double dy2 = dy * dy;
+
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        double dx = x - cx;
+                        double dist2 = dx * dx + dy2;
+
+                        if (dist2 <= r2)
+                        {
+                            int lutIdx = (int)(dist2 / r2 * 1023.0);
+                            float stampOpacity = lut[lutIdx];
+                            if (stampOpacity <= 0f) continue;
+
+                            int maskOffset = rowOffset + x;
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
+                        }
                     }
                 }
             }
@@ -1998,27 +2127,66 @@ namespace FlowMy.Views.NodeControls
                 lut[i] = (float)(gaussianOpacity * edgeOpacity * flowMul);
             }
 
-            for (int y = startY; y <= endY; y++)
+            bool hasSelection = (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null);
+
+            if (hasSelection)
             {
-                int rowOffset = y * width;
-                double dy = y - cy;
-                double dy2 = dy * dy;
-
-                for (int x = startX; x <= endX; x++)
+                for (int y = startY; y <= endY; y++)
                 {
-                    double dx = x - cx;
-                    double dist2 = dx * dx + dy2;
+                    int rowOffset = y * width;
+                    double dy = y - cy;
+                    double dy2 = dy * dy;
+                    int maskY = y - _cachedSelectionStartY;
+                    bool checkY = (y >= _cachedSelectionStartY && y <= _cachedSelectionEndY);
 
-                    if (dist2 <= r2)
+                    for (int x = startX; x <= endX; x++)
                     {
-                        if (!IsInsideSelection(x, y)) continue;
+                        double dx = x - cx;
+                        double dist2 = dx * dx + dy2;
 
-                        int lutIdx = (int)(dist2 / r2 * 1023.0);
-                        float stampOpacity = lut[lutIdx];
-                        if (stampOpacity <= 0f) continue;
+                        if (dist2 <= r2)
+                        {
+                            if (checkY && x >= _cachedSelectionStartX && x <= _cachedSelectionEndX)
+                            {
+                                if (!_cachedSelectionMask[x - _cachedSelectionStartX, maskY]) continue;
+                            }
+                            else
+                            {
+                                continue;
+                            }
 
-                        int maskOffset = rowOffset + x;
-                        alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
+                            int lutIdx = (int)(dist2 / r2 * 1023.0);
+                            float stampOpacity = lut[lutIdx];
+                            if (stampOpacity <= 0f) continue;
+
+                            int maskOffset = rowOffset + x;
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    int rowOffset = y * width;
+                    double dy = y - cy;
+                    double dy2 = dy * dy;
+
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        double dx = x - cx;
+                        double dist2 = dx * dx + dy2;
+
+                        if (dist2 <= r2)
+                        {
+                            int lutIdx = (int)(dist2 / r2 * 1023.0);
+                            float stampOpacity = lut[lutIdx];
+                            if (stampOpacity <= 0f) continue;
+
+                            int maskOffset = rowOffset + x;
+                            alphaMask[maskOffset] = MathF.Max(alphaMask[maskOffset], stampOpacity);
+                        }
                     }
                 }
             }
@@ -2720,98 +2888,96 @@ namespace FlowMy.Views.NodeControls
             minY = Math.Clamp(minY, 0, height - 1);
             maxY = Math.Clamp(maxY, 0, height - 1);
 
+            if (_selectionRect.HasValue)
+            {
+                minX = Math.Max(minX, (int)_selectionRect.Value.Left);
+                maxX = Math.Min(maxX, (int)_selectionRect.Value.Right);
+                minY = Math.Max(minY, (int)_selectionRect.Value.Top);
+                maxY = Math.Min(maxY, (int)_selectionRect.Value.Bottom);
+            }
+
+            if (minX > maxX || minY > maxY) return;
+
             int colorA = color.A;
             int colorR = color.R;
             int colorG = color.G;
             int colorB = color.B;
 
-            for (int y = minY; y <= maxY; y++)
+            unsafe
             {
-                int rowOffset = y * width;
-                int pixelRowOffset = rowOffset * 4;
-                for (int x = minX; x <= maxX; x++)
+                fixed (byte* pDest = destPixels, pSrc = srcPixels)
                 {
-                    if (_selectionRect.HasValue)
+                    fixed (float* pAlpha = alphaMask)
                     {
-                        if (x < _selectionRect.Value.Left || x > _selectionRect.Value.Right ||
-                            y < _selectionRect.Value.Top || y > _selectionRect.Value.Bottom)
+                        for (int y = minY; y <= maxY; y++)
                         {
-                            int pixelOffset = pixelRowOffset + x * 4;
-                            destPixels[pixelOffset] = srcPixels[pixelOffset];
-                            destPixels[pixelOffset + 1] = srcPixels[pixelOffset + 1];
-                            destPixels[pixelOffset + 2] = srcPixels[pixelOffset + 2];
-                            destPixels[pixelOffset + 3] = srcPixels[pixelOffset + 3];
-                            continue;
-                        }
-                    }
+                            int rowOffset = y * width;
+                            int pixelRowOffset = rowOffset * 4;
+                            for (int x = minX; x <= maxX; x++)
+                            {
+                                int maskOffset = rowOffset + x;
+                                float maskAlpha = pAlpha[maskOffset];
+                                int pOffset = pixelRowOffset + x * 4;
 
-                    int maskOffset = rowOffset + x;
-                    float maskAlpha = alphaMask[maskOffset];
-                    if (maskAlpha <= 0.0001f)
-                    {
-                        int pixelOffset = pixelRowOffset + x * 4;
-                        destPixels[pixelOffset] = srcPixels[pixelOffset];
-                        destPixels[pixelOffset + 1] = srcPixels[pixelOffset + 1];
-                        destPixels[pixelOffset + 2] = srcPixels[pixelOffset + 2];
-                        destPixels[pixelOffset + 3] = srcPixels[pixelOffset + 3];
-                        continue;
-                    }
+                                if (maskAlpha <= 0.0001f)
+                                {
+                                    *(int*)(pDest + pOffset) = *(int*)(pSrc + pOffset);
+                                    continue;
+                                }
 
-                    int pOffset = pixelRowOffset + x * 4;
+                                if (isEraser)
+                                {
+                                    byte srcA = pSrc[pOffset + 3];
+                                    pDest[pOffset] = pSrc[pOffset];
+                                    pDest[pOffset + 1] = pSrc[pOffset + 1];
+                                    pDest[pOffset + 2] = pSrc[pOffset + 2];
+                                    pDest[pOffset + 3] = (byte)Math.Clamp(srcA * (1.0f - maskAlpha), 0f, 255f);
+                                }
+                                else
+                                {
+                                    int bB = pSrc[pOffset];
+                                    int bG = pSrc[pOffset + 1];
+                                    int bR = pSrc[pOffset + 2];
+                                    int bA = pSrc[pOffset + 3];
 
-                    if (isEraser)
-                    {
-                        byte srcA = srcPixels[pOffset + 3];
-                        destPixels[pOffset] = srcPixels[pOffset];
-                        destPixels[pOffset + 1] = srcPixels[pOffset + 1];
-                        destPixels[pOffset + 2] = srcPixels[pOffset + 2];
-                        destPixels[pOffset + 3] = (byte)Math.Clamp(srcA * (1.0f - maskAlpha), 0f, 255f);
-                    }
-                    else
-                    {
-                        int bB = srcPixels[pOffset];
-                        int bG = srcPixels[pOffset + 1];
-                        int bR = srcPixels[pOffset + 2];
-                        int bA = srcPixels[pOffset + 3];
+                                    float srcAlphaF = (colorA / 255.0f) * maskAlpha;
+                                    if (srcAlphaF <= 0.0001f)
+                                    {
+                                        *(int*)(pDest + pOffset) = *(int*)(pSrc + pOffset);
+                                        continue;
+                                    }
+                                    if (srcAlphaF >= 0.999f)
+                                    {
+                                        pDest[pOffset] = (byte)colorB;
+                                        pDest[pOffset + 1] = (byte)colorG;
+                                        pDest[pOffset + 2] = (byte)colorR;
+                                        pDest[pOffset + 3] = 255;
+                                        continue;
+                                    }
 
-                        float srcAlphaF = (colorA / 255.0f) * maskAlpha;
-                        if (srcAlphaF <= 0.0001f)
-                        {
-                            destPixels[pOffset] = (byte)bB;
-                            destPixels[pOffset + 1] = (byte)bG;
-                            destPixels[pOffset + 2] = (byte)bR;
-                            destPixels[pOffset + 3] = (byte)bA;
-                            continue;
-                        }
-                        if (srcAlphaF >= 0.999f)
-                        {
-                            destPixels[pOffset] = (byte)colorB;
-                            destPixels[pOffset + 1] = (byte)colorG;
-                            destPixels[pOffset + 2] = (byte)colorR;
-                            destPixels[pOffset + 3] = 255;
-                            continue;
-                        }
+                                    float dstAlphaF = bA / 255.0f;
+                                    float outAlphaF = srcAlphaF + dstAlphaF * (1.0f - srcAlphaF);
 
-                        float dstAlphaF = bA / 255.0f;
-                        float outAlphaF = srcAlphaF + dstAlphaF * (1.0f - srcAlphaF);
+                                    if (outAlphaF > 0f)
+                                    {
+                                        float invOutAlphaF = 1.0f / outAlphaF;
+                                        float srcFactor = srcAlphaF * invOutAlphaF;
+                                        float dstFactor = dstAlphaF * (1.0f - srcAlphaF) * invOutAlphaF;
 
-                        if (outAlphaF > 0f)
-                        {
-                            float invOutAlphaF = 1.0f / outAlphaF;
-                            float srcFactor = srcAlphaF * invOutAlphaF;
-                            float dstFactor = dstAlphaF * (1.0f - srcAlphaF) * invOutAlphaF;
-
-                            destPixels[pOffset] = (byte)Math.Clamp(colorB * srcFactor + bB * dstFactor, 0f, 255f);
-                            destPixels[pOffset + 1] = (byte)Math.Clamp(colorG * srcFactor + bG * dstFactor, 0f, 255f);
-                            destPixels[pOffset + 2] = (byte)Math.Clamp(colorR * srcFactor + bR * dstFactor, 0f, 255f);
-                            destPixels[pOffset + 3] = (byte)(outAlphaF * 255.0f + 0.5f);
-                        }
-                        else
-                        {
-                            destPixels[pOffset] = 0;
-                            destPixels[pOffset + 1] = 0;
-                            destPixels[pOffset + 2] = 0;
-                            destPixels[pOffset + 3] = 0;
+                                        pDest[pOffset] = (byte)Math.Clamp(colorB * srcFactor + bB * dstFactor, 0f, 255f);
+                                        pDest[pOffset + 1] = (byte)Math.Clamp(colorG * srcFactor + bG * dstFactor, 0f, 255f);
+                                        pDest[pOffset + 2] = (byte)Math.Clamp(colorR * srcFactor + bR * dstFactor, 0f, 255f);
+                                        pDest[pOffset + 3] = (byte)(outAlphaF * 255.0f + 0.5f);
+                                    }
+                                    else
+                                    {
+                                        pDest[pOffset] = 0;
+                                        pDest[pOffset + 1] = 0;
+                                        pDest[pOffset + 2] = 0;
+                                        pDest[pOffset + 3] = 0;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -3861,6 +4027,144 @@ namespace FlowMy.Views.NodeControls
         public void HandleShortcutKey(KeyEventArgs e)
         {
             ImageProcessingNodeContentControl_PreviewKeyDown(this, e);
+        }
+
+        public void CommitBrushDrawingSession()
+        {
+            if (_oldPixelsForUndo == null || _brushOverlayBitmap == null || _sessionPaths.Count == 0)
+            {
+                return;
+            }
+
+            var targetLayer = _brushSessionLayer ?? _node.EditorDoc?.ActiveLayer;
+            if (targetLayer == null) return;
+
+            int w = targetLayer.Width;
+            int h = targetLayer.Height;
+            
+            targetLayer.Bitmap.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, targetLayer.Bitmap.BackBuffer, targetLayer.Bitmap.BackBufferStride))
+                {
+                    var canvas = surface.Canvas;
+                    
+                    _brushOverlayBitmap.Lock();
+                    try
+                    {
+                        using (var overlaySKBitmap = new SkiaSharp.SKBitmap())
+                        {
+                            overlaySKBitmap.InstallPixels(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride);
+                            
+                            using (var paint = new SkiaSharp.SKPaint())
+                            {
+                                paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
+                                canvas.DrawBitmap(overlaySKBitmap, 0, 0, paint);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        _brushOverlayBitmap.Unlock();
+                    }
+                }
+                
+                int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                if (dirtyW > 0 && dirtyH > 0)
+                {
+                    targetLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                }
+            }
+            finally
+            {
+                targetLayer.Bitmap.Unlock();
+            }
+
+            int stride = w * 4;
+            int pixelSize = stride * h;
+            var finalNewPixels = new byte[pixelSize];
+            targetLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
+
+            var cmd = new PixelEditCommand(targetLayer, _oldPixelsForUndo, finalNewPixels);
+            _node.EditorDoc.History.Execute(cmd);
+
+            foreach (var path in _sessionPaths)
+            {
+                path.Dispose();
+            }
+            _sessionPaths.Clear();
+            _sessionPaints.Clear();
+            _oldPixelsForUndo = null;
+            _brushOverlayBitmap = null;
+            _brushSessionLayer = null;
+            ActiveLayerDrawingOverlay.Source = null;
+            ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+
+            FlushCompositeAndSync();
+        }
+
+        private void RedrawBrushOverlay()
+        {
+            if (_brushOverlayBitmap == null) return;
+
+            int w = _brushOverlayBitmap.PixelWidth;
+            int h = _brushOverlayBitmap.PixelHeight;
+
+            _brushOverlayBitmap.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
+                {
+                    var canvas = surface.Canvas;
+                    canvas.Clear(SkiaSharp.SKColors.Transparent);
+
+                    for (int i = 0; i < _sessionPaths.Count; i++)
+                    {
+                        canvas.DrawPath(_sessionPaths[i], _sessionPaints[i]);
+                    }
+
+                    if (_currentStrokePath != null && _currentStrokePaint != null)
+                    {
+                        canvas.DrawPath(_currentStrokePath, _currentStrokePaint);
+                    }
+                }
+
+                int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                if (dirtyW > 0 && dirtyH > 0)
+                {
+                    _brushOverlayBitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                }
+            }
+            finally
+            {
+                _brushOverlayBitmap.Unlock();
+            }
+        }
+
+        private void UndoLastBrushStroke()
+        {
+            if (_sessionPaths.Count == 0 || _brushOverlayBitmap == null) return;
+
+            int lastIdx = _sessionPaths.Count - 1;
+            _sessionPaths[lastIdx].Dispose();
+            _sessionPaths.RemoveAt(lastIdx);
+            _sessionPaints.RemoveAt(lastIdx);
+
+            RedrawBrushOverlay();
+
+            if (_sessionPaths.Count == 0)
+            {
+                _oldPixelsForUndo = null;
+                _brushOverlayBitmap = null;
+                ActiveLayerDrawingOverlay.Source = null;
+                ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+            }
+
+            MarkCompositeDirty();
         }
 
         #endregion
