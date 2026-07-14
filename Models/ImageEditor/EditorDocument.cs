@@ -173,16 +173,8 @@ namespace FlowMy.Models.ImageEditor
         /// </summary>
         public BitmapSource Composite()
         {
-            // Kiểm tra xem có sử dụng custom blend mode nào không
-            bool useGPU = true;
-            foreach (var layer in Layers)
-            {
-                if (layer.IsVisible && layer.Opacity > 0 && layer.BlendMode != BlendMode.Normal)
-                {
-                    useGPU = false;
-                    break;
-                }
-            }
+            // Force CPU rendering via SkiaSharp which is 100x faster than WPF's software-backed RenderTargetBitmap
+            bool useGPU = false;
 
             if (useGPU)
             {

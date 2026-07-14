@@ -165,7 +165,7 @@ namespace FlowMy.Views.NodeControls
             {
                 _compositeTimer = new DispatcherTimer(DispatcherPriority.Render)
                 {
-                    Interval = TimeSpan.FromMilliseconds(66) // 15 FPS cho nhiều layer để không nghẹt UI Thread
+                    Interval = TimeSpan.FromMilliseconds(16) // 60 FPS for silky-smooth drawing/erasing preview
                 };
                 _compositeTimer.Tick += CompositeTimer_Tick;
             }
@@ -669,7 +669,7 @@ namespace FlowMy.Views.NodeControls
                 activeLayer.Bitmap.Lock();
                 try
                 {
-                    var surfaceInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                    var surfaceInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
                     using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
                     {
                         var canvas = surface.Canvas;
@@ -877,7 +877,7 @@ namespace FlowMy.Views.NodeControls
                 activeLayer.Bitmap.Lock();
                 try
                 {
-                    var surfaceInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                    var surfaceInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
                     using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
                     {
                         var canvas = surface.Canvas;
@@ -4083,7 +4083,7 @@ namespace FlowMy.Views.NodeControls
             targetLayer.Bitmap.Lock();
             try
             {
-                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Unpremul);
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
                 using (var surface = SkiaSharp.SKSurface.Create(info, targetLayer.Bitmap.BackBuffer, targetLayer.Bitmap.BackBufferStride))
                 {
                     var canvas = surface.Canvas;
