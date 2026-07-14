@@ -6,6 +6,7 @@
 // to keep the codebase modular, maintainable, and easy to refactor.
 // ========================================================================================
 using FlowMy.Controls;
+using SkiaSharp;
 using FlowMy.Converters;
 using FlowMy.Helpers;
 using FlowMy.Models;
@@ -41,6 +42,7 @@ namespace FlowMy.Views.NodeControls
         private const double ChromeScaleMax = 1.32;
         private const int MagSize = 120;
         private const int MagZoom = 4;
+        private EditorLayer? _editingTextLayer;
 
         private readonly ImageProcessingNode _node;
         private readonly IWorkflowEditorHost _host;
@@ -1902,9 +1904,23 @@ namespace FlowMy.Views.NodeControls
             if (sender is Border border && border.Tag is string toolName)
             {
                 CommitKeyMoveSession();
+
+                // If switching away from Text tool, commit active text editing!
+                if (toolName != "Text" && _editingTextLayer != null)
+                {
+                    CommitActiveText();
+                }
+
                 // Delegate to EditorPanel's tool selection (keeps both in sync)
                 EditorPanel.SelectToolByName(toolName);
                 SyncToolboxHighlight();
+
+                // If switching to Text tool, and the active layer is a text layer, enter editing mode!
+                if (toolName == "Text" && _node.EditorDoc != null && _node.EditorDoc.ActiveLayer != null && _node.EditorDoc.ActiveLayer.IsTextLayer)
+                {
+                    EnterTextEditingMode(_node.EditorDoc.ActiveLayer);
+                }
+
                 e.Handled = true;
             }
         }
@@ -2926,7 +2942,7 @@ namespace FlowMy.Views.NodeControls
                     if (OptTextColorSwatch != null)
                         OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
                     if (OptBtnTextColor != null)
-                        OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
+                        OptBtnTextColor.Text = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
                 }
             }
             else
@@ -2943,6 +2959,85 @@ namespace FlowMy.Views.NodeControls
 
         // [Moved to ImageProcessingNodeContentControl.BrushDrawing.cs]
         // Brush setting event handlers and preview methods reside in the separate partial class file.
+
+        private void OptTextSizeInput_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ApplyDirectTextSize();
+        }
+
+        private void OptTextSizeInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ApplyDirectTextSize();
+                e.Handled = true;
+            }
+        }
+
+        private void ApplyDirectTextSize()
+        {
+            if (OptTextSizeInput == null || EditorPanel == null || EditorPanel.SliderTextFontSize == null) return;
+            if (double.TryParse(OptTextSizeInput.Text, out double size))
+            {
+                size = Math.Clamp(size, 6, 200);
+                if (EditorPanel.SliderTextFontSize.Value != size)
+                {
+                    EditorPanel.SliderTextFontSize.Value = size;
+                }
+            }
+            OptTextSizeInput.Text = $"{(int)EditorPanel.TextFontSize}";
+        }
+
+        private void TextAlign_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string align)
+            {
+                if (EditorPanel != null)
+                {
+                    EditorPanel.TextAlignment = align;
+                }
+            }
+            e.Handled = true;
+        }
+
+        private void SyncTopTextAlignButtons()
+        {
+            if (BtnTextAlignLeft == null || BtnTextAlignCenter == null || BtnTextAlignRight == null || EditorPanel == null) return;
+            
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x00, 0xcf, 0xff));
+            var activeBorder = new SolidColorBrush(Color.FromRgb(0x00, 0xcf, 0xff));
+            var normalBorder = new SolidColorBrush(Color.FromRgb(0x35, 0x39, 0x45));
+
+            BtnTextAlignLeft.Background = Brushes.Transparent;
+            BtnTextAlignLeft.BorderBrush = normalBorder;
+            BtnTextAlignCenter.Background = Brushes.Transparent;
+            BtnTextAlignCenter.BorderBrush = normalBorder;
+            BtnTextAlignRight.Background = Brushes.Transparent;
+            BtnTextAlignRight.BorderBrush = normalBorder;
+
+            string align = EditorPanel.TextAlignment;
+            if (align == "Left")
+            {
+                BtnTextAlignLeft.Background = activeBg;
+                BtnTextAlignLeft.BorderBrush = activeBorder;
+            }
+            else if (align == "Center")
+            {
+                BtnTextAlignCenter.Background = activeBg;
+                BtnTextAlignCenter.BorderBrush = activeBorder;
+            }
+            else if (align == "Right")
+            {
+                BtnTextAlignRight.Background = activeBg;
+                BtnTextAlignRight.BorderBrush = activeBorder;
+            }
+        }
+
+        private void OptTextColorSwatch_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            OptBtnTextColor_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
 
         private void OptTextSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
@@ -2986,7 +3081,7 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private void OptBtnTextColor_Click(object sender, RoutedEventArgs e)
+        private void OptBtnTextColor_Click(object sender, EventArgs e)
         {
             if (EditorPanel != null && EditorPanel.BtnTextColor != null)
                 EditorPanel.BtnTextColor.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -3010,15 +3105,19 @@ namespace FlowMy.Views.NodeControls
                     TextEditorBox.FontFamily = new FontFamily(EditorPanel.TextFontFamily);
                     TextEditorBox.FontWeight = EditorPanel.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
                     TextEditorBox.FontStyle = EditorPanel.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+                    TextEditorBox.TextAlignment = EditorPanel.TextAlignment == "Center" ? TextAlignment.Center : 
+                                                 EditorPanel.TextAlignment == "Right" ? TextAlignment.Right : TextAlignment.Left;
                 }
             }
 
             if (OptTextSize != null && OptTextSize.Value != EditorPanel.TextFontSize)
                 OptTextSize.Value = EditorPanel.TextFontSize;
+            if (OptTextSizeInput != null && OptTextSizeInput.Text != $"{(int)EditorPanel.TextFontSize}")
+                OptTextSizeInput.Text = $"{(int)EditorPanel.TextFontSize}";
             if (OptTextColorSwatch != null)
                 OptTextColorSwatch.Background = new SolidColorBrush(EditorPanel.TextColor);
             if (OptBtnTextColor != null)
-                OptBtnTextColor.Content = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
+                OptBtnTextColor.Text = $"#{EditorPanel.TextColor.R:X2}{EditorPanel.TextColor.G:X2}{EditorPanel.TextColor.B:X2}";
 
             if (OptFontFamily != null)
             {
@@ -3044,6 +3143,7 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
             }
+            SyncTopTextAlignButtons();
         }
 
         private void EditorPanel_ActiveLayerChanged(object? sender, EventArgs e)
@@ -3060,53 +3160,79 @@ namespace FlowMy.Views.NodeControls
             if (_node.EditorDoc == null) return;
             var activeLayer = _node.EditorDoc.ActiveLayer;
 
-            if (activeLayer != null && activeLayer.IsTextLayer)
+            // Commit the previously editing text layer if switching away from it!
+            if (_editingTextLayer != null && _editingTextLayer != activeLayer)
             {
-                // Sync side panel inputs to match this text layer
-                EditorPanel.SetTextProperties(
-                    activeLayer.TextFontSize,
-                    activeLayer.TextColor,
-                    activeLayer.TextFontFamily,
-                    activeLayer.TextFontStyle
-                );
+                CommitActiveText();
+            }
 
-                // Initialize overlay bounding box
-                TextMoveContainer.Margin = new Thickness(activeLayer.TextX, activeLayer.TextY, 0, 0);
-                TextBoundingBorder.Width = activeLayer.TextWidth;
-                TextBoundingBorder.Height = activeLayer.TextHeight;
-                TextEditorBox.Text = activeLayer.TextContent;
-
-                // Sync overlay look
-                TextEditorBox.FontSize = activeLayer.TextFontSize;
-                TextEditorBox.Foreground = new SolidColorBrush(activeLayer.TextColor);
-                TextEditorBox.CaretBrush = TextEditorBox.Foreground;
-                TextEditorBox.FontFamily = new FontFamily(activeLayer.TextFontFamily);
-                TextEditorBox.FontWeight = activeLayer.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
-                TextEditorBox.FontStyle = activeLayer.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
-
-                // Hide the rendered text on the bitmap while editing so it doesn't double-render
-                activeLayer.Clear();
-                OnEditorDocumentModified();
-
-                TextMoveContainer.Visibility = Visibility.Visible;
-                TextEditorBox.Focus();
-                TextEditorBox.SelectAll();
+            if (activeLayer != null && activeLayer.IsTextLayer && EditorPanel.ActiveToolName == "Text")
+            {
+                EnterTextEditingMode(activeLayer);
             }
             else
             {
-                // Selected a regular layer, hide overlay (commit first if it was open)
-                if (TextMoveContainer.Visibility == Visibility.Visible)
-                {
-                    CommitActiveText();
-                }
                 TextMoveContainer.Visibility = Visibility.Collapsed;
             }
 
             UpdateTransformOverlayDisplay();
         }
 
+        private void EnterTextEditingMode(EditorLayer activeLayer)
+        {
+            if (activeLayer == null || !activeLayer.IsTextLayer) return;
+
+            _editingTextLayer = activeLayer;
+
+            // Sync side panel inputs to match this text layer
+            EditorPanel.SetTextProperties(
+                activeLayer.TextFontSize,
+                activeLayer.TextColor,
+                activeLayer.TextFontFamily,
+                activeLayer.TextFontStyle,
+                activeLayer.TextAlignment
+            );
+
+            // Initialize overlay bounding box
+            TextMoveContainer.Margin = new Thickness(activeLayer.TextX, activeLayer.TextY, 0, 0);
+            TextBoundingBorder.Width = activeLayer.TextWidth;
+            TextBoundingBorder.Height = activeLayer.TextHeight;
+            TextEditorBox.Text = activeLayer.TextContent;
+
+            // Sync overlay look
+            TextEditorBox.FontSize = activeLayer.TextFontSize;
+            TextEditorBox.Foreground = new SolidColorBrush(activeLayer.TextColor);
+            TextEditorBox.CaretBrush = TextEditorBox.Foreground;
+            TextEditorBox.FontFamily = new FontFamily(activeLayer.TextFontFamily);
+            TextEditorBox.FontWeight = activeLayer.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
+            TextEditorBox.FontStyle = activeLayer.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+            TextEditorBox.TextAlignment = activeLayer.TextAlignment == "Center" ? TextAlignment.Center : 
+                                          activeLayer.TextAlignment == "Right" ? TextAlignment.Right : TextAlignment.Left;
+
+            // Hide the text layer during editing so it doesn't double-render
+            activeLayer.IsTempHidden = true;
+            OnEditorDocumentModified();
+
+            TextMoveContainer.Visibility = Visibility.Visible;
+            TextEditorBox.Focus();
+            TextEditorBox.SelectAll();
+        }
+
         private void TextToolbar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                var parent = dep;
+                while (parent != null)
+                {
+                    if (parent == TextEditorBox)
+                    {
+                        return; // Let the TextBox handle the click (placing caret, selecting text)
+                    }
+                    parent = VisualTreeHelper.GetParent(parent);
+                }
+            }
+
             var element = sender as FrameworkElement;
             if (element == null) return;
 
@@ -3191,52 +3317,14 @@ namespace FlowMy.Views.NodeControls
         private void RedrawTextLayer(EditorLayer layer)
         {
             if (layer == null || !layer.IsTextLayer) return;
-
-            double scaleX = layer.Width / MainImage.ActualWidth;
-            double scaleY = layer.Height / MainImage.ActualHeight;
-
-            // Compute relative position based on saved coordinates
-            int px = (int)(layer.TextX * scaleX);
-            int py = (int)(layer.TextY * scaleY);
-            double renderWidth = layer.TextWidth * scaleX;
-            double renderHeight = layer.TextHeight * scaleY;
-
+            // Clear bitmap so it stays transparent (drawing is done dynamically in Composite)
             layer.Clear();
-            using (var bmp = Utils.ImageAdjustments.WriteableBitmapToBitmap(layer.Bitmap))
-            {
-                using (var g = System.Drawing.Graphics.FromImage(bmp))
-                {
-                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-
-                    float fontSize = (float)(layer.TextFontSize * scaleY);
-                    fontSize = Math.Clamp(fontSize, 4, 1000);
-
-                    var fontStyle = System.Drawing.FontStyle.Regular;
-                    if (layer.TextFontStyle == "Bold") fontStyle = System.Drawing.FontStyle.Bold;
-                    else if (layer.TextFontStyle == "Italic") fontStyle = System.Drawing.FontStyle.Italic;
-
-                    using (var font = new System.Drawing.Font(layer.TextFontFamily, fontSize, fontStyle))
-                    using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(
-                        layer.TextColor.A,
-                        layer.TextColor.R,
-                        layer.TextColor.G,
-                        layer.TextColor.B)))
-                    {
-                        var rect = new System.Drawing.RectangleF((float)px, (float)py, (float)renderWidth, (float)renderHeight);
-                        g.DrawString(layer.TextContent, font, brush, rect);
-                    }
-                }
-                Utils.ImageAdjustments.BitmapToWriteableBitmap(bmp, layer.Bitmap);
-            }
-            layer.InvalidateThumbnail();
-            OnEditorDocumentModified();
         }
 
         private void CommitActiveText()
         {
-            if (_node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
-            if (activeLayer == null || !activeLayer.IsTextLayer || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+            var textLayer = _editingTextLayer;
+            if (textLayer == null || !textLayer.IsTextLayer) return;
 
             string text = TextEditorBox.Text;
             if (string.IsNullOrEmpty(text) || text == "Nhập chữ...")
@@ -3245,57 +3333,70 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            int stride = activeLayer.Width * 4;
-            var oldPixels = new byte[stride * activeLayer.Height];
-
-            // Render old text temporarily to snapshot old pixels for Undo
-            string newText = text;
-            activeLayer.TextContent = activeLayer.TextContent; // keep old text first
-            RedrawTextLayer(activeLayer);
-            activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+            // Snapshot old metadata
+            string oldText = textLayer.TextContent;
+            double oldX = textLayer.TextX;
+            double oldY = textLayer.TextY;
+            double oldW = textLayer.TextWidth;
+            double oldH = textLayer.TextHeight;
+            double oldSize = textLayer.TextFontSize;
+            Color oldColor = textLayer.TextColor;
+            string oldFamily = textLayer.TextFontFamily;
+            string oldStyle = textLayer.TextFontStyle;
+            string oldAlign = textLayer.TextAlignment;
 
             // Save new metadata
-            activeLayer.TextContent = newText;
-            activeLayer.TextX = TextMoveContainer.Margin.Left;
-            activeLayer.TextY = TextMoveContainer.Margin.Top;
-            activeLayer.TextWidth = TextBoundingBorder.ActualWidth;
-            activeLayer.TextHeight = TextBoundingBorder.ActualHeight;
-            activeLayer.TextFontSize = EditorPanel.TextFontSize;
-            activeLayer.TextColor = EditorPanel.TextColor;
-            activeLayer.TextFontFamily = EditorPanel.TextFontFamily;
-            activeLayer.TextFontStyle = EditorPanel.TextFontStyle;
+            string newText = text;
+            double newX = TextMoveContainer.Margin.Left;
+            double newY = TextMoveContainer.Margin.Top;
+            double newW = TextBoundingBorder.Width;
+            double newH = TextBoundingBorder.Height;
+            double newSize = EditorPanel.TextFontSize;
+            Color newColor = EditorPanel.TextColor;
+            string newFamily = EditorPanel.TextFontFamily;
+            string newStyle = EditorPanel.TextFontStyle;
+            string newAlign = EditorPanel.TextAlignment;
 
-            // Render new text
-            RedrawTextLayer(activeLayer);
-
-            var newPixels = new byte[stride * activeLayer.Height];
-            activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
-
-            // Execute pixel edit command
-            var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
-            _node.EditorDoc.History.Execute(cmd);
+            // Execute TextEditCommand
+            if (_node.EditorDoc != null)
+            {
+                var cmd = new TextEditCommand(
+                    textLayer,
+                    RedrawTextLayer,
+                    oldText, oldX, oldY, oldW, oldH, oldSize, oldColor, oldFamily, oldStyle, oldAlign,
+                    newText, newX, newY, newW, newH, newSize, newColor, newFamily, newStyle, newAlign
+                );
+                _node.EditorDoc.History.Execute(cmd);
+            }
 
             TextMoveContainer.Visibility = Visibility.Collapsed;
-            activeLayer.InvalidateThumbnail();
+            textLayer.IsTempHidden = false; // Restore visibility
+            textLayer.InvalidateThumbnail();
+            _editingTextLayer = null;
             OnEditorDocumentModified();
         }
 
         private void CancelActiveText()
         {
             TextMoveContainer.Visibility = Visibility.Collapsed;
-            if (_node.EditorDoc != null && _node.EditorDoc.ActiveLayer != null && _node.EditorDoc.ActiveLayer.IsTextLayer)
+            var layer = _editingTextLayer;
+            if (layer != null && layer.IsTextLayer)
             {
-                var layer = _node.EditorDoc.ActiveLayer;
+                layer.IsTempHidden = false; // Restore visibility
                 if (layer.TextContent == "Nhập chữ..." || string.IsNullOrEmpty(layer.TextContent))
                 {
-                    _node.EditorDoc.Layers.Remove(layer);
-                    EditorPanel.RefreshLayersList();
+                    if (_node.EditorDoc != null)
+                    {
+                        _node.EditorDoc.Layers.Remove(layer);
+                        EditorPanel.RefreshLayersList();
+                    }
                 }
                 else
                 {
                     RedrawTextLayer(layer);
                 }
             }
+            _editingTextLayer = null;
         }
 
         #endregion

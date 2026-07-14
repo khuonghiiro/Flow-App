@@ -271,12 +271,23 @@ namespace FlowMy.Views.NodeControls
                     // Or if clicked on a non-transparent pixel of the active layer
                     if (!canGrab)
                     {
-                        int stride = activeLayer.Width * 4;
-                        byte[] singlePixel = new byte[4];
-                        activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
-                        if (singlePixel[3] > 0) // Alpha > 0
+                        if (activeLayer.IsTextLayer)
                         {
-                            canGrab = true;
+                            if (px >= activeLayer.TextX && px <= activeLayer.TextX + activeLayer.TextWidth &&
+                                py >= activeLayer.TextY && py <= activeLayer.TextY + activeLayer.TextHeight)
+                            {
+                                canGrab = true;
+                            }
+                        }
+                        else
+                        {
+                            int stride = activeLayer.Width * 4;
+                            byte[] singlePixel = new byte[4];
+                            activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
+                            if (singlePixel[3] > 0) // Alpha > 0
+                            {
+                                canGrab = true;
+                            }
                         }
                     }
                 }
@@ -430,6 +441,8 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Text")
             {
+                var doc = _node.EditorDoc;
+
                 if (TextMoveContainer.Visibility == Visibility.Visible)
                 {
                     var clickPosInBBox = e.GetPosition(TextMoveContainer);
@@ -445,9 +458,17 @@ namespace FlowMy.Views.NodeControls
                         return;
                     }
                 }
+                else if (doc != null && activeLayer != null && activeLayer.IsTextLayer)
+                {
+                    if (px >= activeLayer.TextX && px <= activeLayer.TextX + activeLayer.TextWidth &&
+                        py >= activeLayer.TextY && py <= activeLayer.TextY + activeLayer.TextHeight)
+                    {
+                        EnterTextEditingMode(activeLayer);
+                        return;
+                    }
+                }
 
                 // Create a new text layer (Photoshop style)
-                var doc = _node.EditorDoc;
                 if (doc != null)
                 {
                     var textLayer = new EditorLayer(doc.Width, doc.Height, "Text " + doc.GetNextLayerName());
@@ -461,6 +482,7 @@ namespace FlowMy.Views.NodeControls
                     textLayer.TextColor = EditorPanel.TextColor;
                     textLayer.TextFontFamily = EditorPanel.TextFontFamily;
                     textLayer.TextFontStyle = EditorPanel.TextFontStyle;
+                    textLayer.TextAlignment = EditorPanel.TextAlignment;
 
                     doc.Layers.Add(textLayer);
                     doc.ActiveLayer = textLayer;
@@ -3928,6 +3950,28 @@ namespace FlowMy.Views.NodeControls
 
             targetLayer.TempMoveDx = 0;
             targetLayer.TempMoveDy = 0;
+
+            if (targetLayer.IsTextLayer)
+            {
+                double oldX = targetLayer.TextX;
+                double oldY = targetLayer.TextY;
+                double newX = oldX + dxLayer;
+                double newY = oldY + dyLayer;
+
+                var cmd = new TextEditCommand(
+                    targetLayer,
+                    RedrawTextLayer,
+                    targetLayer.TextContent, oldX, oldY, targetLayer.TextWidth, targetLayer.TextHeight, targetLayer.TextFontSize, targetLayer.TextColor, targetLayer.TextFontFamily, targetLayer.TextFontStyle, targetLayer.TextAlignment,
+                    targetLayer.TextContent, newX, newY, targetLayer.TextWidth, targetLayer.TextHeight, targetLayer.TextFontSize, targetLayer.TextColor, targetLayer.TextFontFamily, targetLayer.TextFontStyle, targetLayer.TextAlignment
+                );
+                _node.EditorDoc?.History.Execute(cmd);
+
+                _moveInitialFullPixels = null;
+                _movingLayer = null;
+                targetLayer.InvalidateThumbnail();
+                OnEditorDocumentModified();
+                return;
+            }
 
             // Apply shift once
             ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);

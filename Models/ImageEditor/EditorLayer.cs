@@ -1,4 +1,5 @@
 using System;
+using SkiaSharp;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -277,9 +278,23 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Xoá toàn bộ pixel (fill transparent).</summary>
         public void Clear()
         {
-            var stride = Width * 4;
-            var pixels = new byte[stride * Height];
-            Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixels, stride, 0);
+            var info = new SKImageInfo(Width, Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            Bitmap.Lock();
+            try
+            {
+                using (var surface = SKSurface.Create(info, Bitmap.BackBuffer, Bitmap.BackBufferStride))
+                {
+                    if (surface != null)
+                    {
+                        surface.Canvas.Clear(SKColors.Transparent);
+                    }
+                }
+                Bitmap.AddDirtyRect(new Int32Rect(0, 0, Width, Height));
+            }
+            finally
+            {
+                Bitmap.Unlock();
+            }
             InvalidateThumbnail();
         }
 
@@ -399,6 +414,7 @@ namespace FlowMy.Models.ImageEditor
             copy.TextColor = TextColor;
             copy.TextFontFamily = TextFontFamily;
             copy.TextFontStyle = TextFontStyle;
+            copy.TextAlignment = TextAlignment;
             copy.IsSelected = IsSelected;
             copy.ContentBounds = ContentBounds;
             if (OriginalTransformBitmap != null)
@@ -507,11 +523,41 @@ namespace FlowMy.Models.ImageEditor
             RenderOptions.SetBitmapScalingMode(dv, BitmapScalingMode.LowQuality);
             using (var dc = dv.RenderOpen())
             {
-                dc.DrawImage(Bitmap, new Rect(
-                    -bx * (double)thumbW / bw,
-                    -by * (double)thumbH / bh,
-                    Width * (double)thumbW / bw,
-                    Height * (double)thumbH / bh));
+                if (IsTextLayer)
+                {
+                    double scale = (double)thumbH / Height;
+                    var fontStyle = TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+                    var fontWeight = TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
+                    var typeface = new Typeface(new FontFamily(TextFontFamily), fontStyle, fontWeight, FontStretches.Normal);
+                    
+                    var formattedText = new FormattedText(
+                        TextContent ?? "",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        FlowDirection.LeftToRight,
+                        typeface,
+                        Math.Max(1, TextFontSize * scale),
+                        new SolidColorBrush(TextColor),
+                        1.0
+                    );
+
+                    formattedText.MaxTextWidth = Math.Max(1, TextWidth * scale);
+                    formattedText.MaxTextHeight = Math.Max(1, TextHeight * scale);
+                    formattedText.TextAlignment = TextAlignment == "Center" ? System.Windows.TextAlignment.Center :
+                                                  TextAlignment == "Right" ? System.Windows.TextAlignment.Right : System.Windows.TextAlignment.Left;
+
+                    dc.DrawText(formattedText, new Point(
+                        (TextX - bx) * (double)thumbW / bw,
+                        (TextY - by) * (double)thumbH / bh
+                    ));
+                }
+                else
+                {
+                    dc.DrawImage(Bitmap, new Rect(
+                        -bx * (double)thumbW / bw,
+                        -by * (double)thumbH / bh,
+                        Width * (double)thumbW / bw,
+                        Height * (double)thumbH / bh));
+                }
             }
             var rtb = new RenderTargetBitmap(thumbW, thumbH, 96, 96, PixelFormats.Pbgra32);
             rtb.Render(dv);
@@ -574,6 +620,7 @@ namespace FlowMy.Models.ImageEditor
         private Color _textColor = Colors.White;
         private string _textFontFamily = "Arial";
         private string _textFontStyle = "Bold";
+        private string _textAlignment = "Left";
         private bool _isEditingName;
         private bool _isSelected;
 
@@ -593,6 +640,7 @@ namespace FlowMy.Models.ImageEditor
         public Color TextColor { get => _textColor; set => SetField(ref _textColor, value); }
         public string TextFontFamily { get => _textFontFamily; set => SetField(ref _textFontFamily, value ?? "Arial"); }
         public string TextFontStyle { get => _textFontStyle; set => SetField(ref _textFontStyle, value ?? "Bold"); }
+        public string TextAlignment { get => _textAlignment; set => SetField(ref _textAlignment, value ?? "Left"); }
 
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler? PropertyChanged;

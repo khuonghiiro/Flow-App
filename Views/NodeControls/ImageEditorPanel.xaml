@@ -792,7 +792,7 @@
                                 </DockPanel>
 
                                 <!-- Font Style -->
-                                <DockPanel>
+                                <DockPanel Margin="0,0,0,6">
                                     <TextBlock DockPanel.Dock="Left" Text="Style"
                                                Foreground="{StaticResource ipMuted}"
                                                FontSize="9" Width="36" VerticalAlignment="Center"/>
@@ -802,6 +802,24 @@
                                         <ComboBoxItem Content="Regular"/>
                                         <ComboBoxItem Content="Italic"/>
                                     </ComboBox>
+                                </DockPanel>
+
+                                <!-- Text Alignment -->
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Text="Align"
+                                               Foreground="{StaticResource ipMuted}"
+                                               FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border x:Name="BtnAlignLeft" Width="20" Height="20" CornerRadius="2" BorderThickness="1" BorderBrush="#00cfff" Background="#3000cfff" Cursor="Hand" ToolTip="Align Left" MouseLeftButtonDown="BtnAlign_Click" Tag="Left" Margin="0,0,3,0">
+                                            <TextBlock Text="▤" FontSize="10" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <Border x:Name="BtnAlignCenter" Width="20" Height="20" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource ipBorder}" Background="Transparent" Cursor="Hand" ToolTip="Align Center" MouseLeftButtonDown="BtnAlign_Click" Tag="Center" Margin="0,0,3,0">
+                                            <TextBlock Text="▧" FontSize="10" Foreground="#dde3ef" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <Border x:Name="BtnAlignRight" Width="20" Height="20" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource ipBorder}" Background="Transparent" Cursor="Hand" ToolTip="Align Right" MouseLeftButtonDown="BtnAlign_Click" Tag="Right">
+                                            <TextBlock Text="▥" FontSize="10" Foreground="#dde3ef" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </StackPanel>
                                 </DockPanel>
                             </StackPanel>
                         </Border>

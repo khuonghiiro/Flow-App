@@ -54,15 +54,35 @@ namespace FlowMy.Views.NodeControls
         public string TextFontFamily => CmbFontFamily != null && CmbFontFamily.SelectedItem is ComboBoxItem item ? item.Content.ToString() : "Arial";
         public string TextFontStyle => CmbFontStyle != null && CmbFontStyle.SelectedItem is ComboBoxItem item ? item.Content.ToString() : "Bold";
 
+        private string _textAlignment = "Left";
+        public string TextAlignment
+        {
+            get => _textAlignment;
+            set
+            {
+                if (_textAlignment != value)
+                {
+                    _textAlignment = value;
+                    SyncTextAlignButtons();
+                    TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+
         public void UpdatePanelVisibilities(string activeTool)
         {
             if (BrushPropertiesPanel != null)
                 BrushPropertiesPanel.Visibility = Visibility.Collapsed;
             if (TextPropertiesPanel != null)
-                TextPropertiesPanel.Visibility = (activeTool == "Text") ? Visibility.Visible : Visibility.Collapsed;
+                TextPropertiesPanel.Visibility = Visibility.Collapsed;
         }
 
         public void SetTextProperties(double size, Color color, string family, string style)
+        {
+            SetTextProperties(size, color, family, style, "Left");
+        }
+
+        public void SetTextProperties(double size, Color color, string family, string style, string alignment)
         {
             if (SliderTextFontSize != null) SliderTextFontSize.Value = size;
             if (BorderTextColorSwatch != null) BorderTextColorSwatch.Background = new SolidColorBrush(color);
@@ -90,6 +110,8 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
             }
+            _textAlignment = alignment;
+            SyncTextAlignButtons();
         }
 
         private void SliderTextFontSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -118,6 +140,46 @@ namespace FlowMy.Views.NodeControls
         private void CmbFontStyle_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             TextPropertiesChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BtnAlign_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string align)
+            {
+                TextAlignment = align;
+            }
+        }
+
+        private void SyncTextAlignButtons()
+        {
+            if (BtnAlignLeft == null || BtnAlignCenter == null || BtnAlignRight == null) return;
+            
+            var activeBg = new SolidColorBrush(Color.FromArgb(0x30, 0x00, 0xcf, 0xff));
+            var activeBorder = new SolidColorBrush(Color.FromRgb(0x00, 0xcf, 0xff));
+            var normalBorder = (SolidColorBrush)FindResource("ipBorder");
+
+            BtnAlignLeft.Background = Brushes.Transparent;
+            BtnAlignLeft.BorderBrush = normalBorder;
+            BtnAlignCenter.Background = Brushes.Transparent;
+            BtnAlignCenter.BorderBrush = normalBorder;
+            BtnAlignRight.Background = Brushes.Transparent;
+            BtnAlignRight.BorderBrush = normalBorder;
+
+            if (_textAlignment == "Left")
+            {
+                BtnAlignLeft.Background = activeBg;
+                BtnAlignLeft.BorderBrush = activeBorder;
+            }
+            else if (_textAlignment == "Center")
+            {
+                BtnAlignCenter.Background = activeBg;
+                BtnAlignCenter.BorderBrush = activeBorder;
+            }
+            else if (_textAlignment == "Right")
+            {
+                BtnAlignRight.Background = activeBg;
+                BtnAlignRight.BorderBrush = activeBorder;
+            }
         }
 
         private ImageProcessingNode? _node;
@@ -354,7 +416,7 @@ namespace FlowMy.Views.NodeControls
                             int min = Math.Min(idx1, idx2);
                             int max = Math.Max(idx1, idx2);
 
-                            foreach (var l in _doc.Layers)
+                            foreach (var l in _doc.Layers.ToList())
                             {
                                 int idx = _doc.Layers.IndexOf(l);
                                 l.IsSelected = (idx >= min && idx <= max);
@@ -414,12 +476,12 @@ namespace FlowMy.Views.NodeControls
             _isSyncingUI = true;
             try
             {
-                foreach (var l in _doc.Layers)
+                foreach (var l in _doc.Layers.ToList())
                 {
                     l.IsSelected = (l == clickedLayer);
                     if (l.ChildLayers != null)
                     {
-                        foreach (var child in l.ChildLayers)
+                        foreach (var child in l.ChildLayers.ToList())
                         {
                             child.IsSelected = (child == clickedLayer);
                         }

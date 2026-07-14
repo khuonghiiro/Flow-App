@@ -715,11 +715,26 @@
 
                     <TextBlock Text="Size:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="12,0,4,0"/>
                     <Slider x:Name="OptTextSize" Minimum="6" Maximum="200" Value="24" Width="80" VerticalAlignment="Center" ValueChanged="OptTextSize_ValueChanged"/>
-                    <TextBlock Text="{Binding Value, ElementName=OptTextSize, StringFormat={}{0:F0}pt}" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" VerticalAlignment="Center" Width="32" Margin="4,0,12,0"/>
+                    <TextBox x:Name="OptTextSizeInput" Width="26" Height="18" FontSize="9" 
+                             Style="{StaticResource IpTextBoxStyle}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                             Text="24" LostFocus="OptTextSizeInput_LostFocus" KeyDown="OptTextSizeInput_KeyDown" Margin="4,0,12,0"/>
+
+                    <TextBlock Text="Align:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Border x:Name="BtnTextAlignLeft" Width="18" Height="18" CornerRadius="2" BorderThickness="1" BorderBrush="#00cfff" Background="#3000cfff" Cursor="Hand" ToolTip="Align Left" MouseLeftButtonDown="TextAlign_Click" Tag="Left" Margin="0,0,2,0">
+                            <TextBlock Text="▤" FontSize="10" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="BtnTextAlignCenter" Width="18" Height="18" CornerRadius="2" BorderThickness="1" BorderBrush="#353945" Background="Transparent" Cursor="Hand" ToolTip="Align Center" MouseLeftButtonDown="TextAlign_Click" Tag="Center" Margin="0,0,2,0">
+                            <TextBlock Text="▧" FontSize="10" Foreground="#dde3ef" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="BtnTextAlignRight" Width="18" Height="18" CornerRadius="2" BorderThickness="1" BorderBrush="#353945" Background="Transparent" Cursor="Hand" ToolTip="Align Right" MouseLeftButtonDown="TextAlign_Click" Tag="Right">
+                            <TextBlock Text="▥" FontSize="10" Foreground="#dde3ef" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
 
                     <TextBlock Text="Color:" FontSize="9" Foreground="#5a6072" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <Border x:Name="OptTextColorSwatch" Background="White" BorderBrush="#252932" BorderThickness="1" CornerRadius="2" Height="12" Width="12" VerticalAlignment="Center"/>
-                    <Button x:Name="OptBtnTextColor" Content="#FFFFFF" FontSize="8.5" Background="Transparent" Foreground="White" BorderThickness="0" Margin="4,0,0,0" VerticalAlignment="Center" Click="OptBtnTextColor_Click" Cursor="Hand"/>
+                    <Border x:Name="OptTextColorSwatch" Background="White" BorderBrush="#252932" BorderThickness="1" CornerRadius="2" Height="12" Width="12" VerticalAlignment="Center" MouseLeftButtonDown="OptTextColorSwatch_MouseLeftButtonDown" Cursor="Hand"/>
+                    <TextBlock x:Name="OptBtnTextColor" Text="#FFFFFF" FontSize="9" Foreground="White" Margin="4,0,0,0" VerticalAlignment="Center" Cursor="Hand" MouseLeftButtonDown="OptBtnTextColor_Click"/>
                 </StackPanel>
 
                 <!-- ═══ SELECTION OPTIONS ═══ -->

@@ -181,6 +181,49 @@ namespace FlowMy.Models.ImageEditor
 
                         drawingContext.PushOpacity(layer.Opacity);
 
+                        if (layer.IsTextLayer)
+                        {
+                            // Support layer transformations for text layers!
+                            double centerX = layer.TextX + layer.TextWidth / 2.0;
+                            double centerY = layer.TextY + layer.TextHeight / 2.0;
+
+                            var transformGroup = new TransformGroup();
+                            transformGroup.Children.Add(new TranslateTransform(-centerX, -centerY));
+                            transformGroup.Children.Add(new ScaleTransform(layer.LayerScaleX, layer.LayerScaleY));
+                            transformGroup.Children.Add(new RotateTransform(layer.LayerAngle));
+
+                            double totalDx = layer.LayerTranslateX + layer.TempMoveDx;
+                            double totalDy = layer.LayerTranslateY + layer.TempMoveDy;
+                            transformGroup.Children.Add(new TranslateTransform(centerX + totalDx, centerY + totalDy));
+
+                            drawingContext.PushTransform(transformGroup);
+
+                            var fontStyle = layer.TextFontStyle == "Italic" ? FontStyles.Italic : FontStyles.Normal;
+                            var fontWeight = layer.TextFontStyle == "Bold" ? FontWeights.Bold : FontWeights.Normal;
+                            var typeface = new Typeface(new FontFamily(layer.TextFontFamily), fontStyle, fontWeight, FontStretches.Normal);
+                            
+                            var formattedText = new FormattedText(
+                                layer.TextContent ?? "",
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                FlowDirection.LeftToRight,
+                                typeface,
+                                layer.TextFontSize,
+                                new SolidColorBrush(layer.TextColor),
+                                1.0
+                            );
+
+                            formattedText.MaxTextWidth = Math.Max(1, layer.TextWidth);
+                            formattedText.MaxTextHeight = Math.Max(1, layer.TextHeight);
+                            formattedText.TextAlignment = layer.TextAlignment == "Center" ? TextAlignment.Center :
+                                                          layer.TextAlignment == "Right" ? TextAlignment.Right : TextAlignment.Left;
+
+                            drawingContext.DrawText(formattedText, new Point(layer.TextX, layer.TextY));
+                            
+                            drawingContext.Pop(); // Pop Transform
+                            drawingContext.Pop(); // Pop Opacity
+                            continue;
+                        }
+
                         var activeBmp = layer.Bitmap;
                         var activeOrig = layer.OriginalTransformBitmap;
                         var activeContentBounds = layer.ContentBounds;
@@ -291,6 +334,70 @@ namespace FlowMy.Models.ImageEditor
                             foreach (var layer in Layers)
                             {
                                 if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
+
+                                if (layer.IsTextLayer)
+                                {
+                                    using (var paint = new SkiaSharp.SKPaint())
+                                    {
+                                        paint.IsAntialias = true;
+                                        paint.TextSize = (float)layer.TextFontSize;
+                                        paint.Color = new SkiaSharp.SKColor(
+                                            layer.TextColor.R,
+                                            layer.TextColor.G,
+                                            layer.TextColor.B,
+                                            (byte)Math.Clamp(layer.TextColor.A * layer.Opacity, 0, 255)
+                                        );
+
+                                        var slant = layer.TextFontStyle == "Italic" ? SkiaSharp.SKFontStyleSlant.Italic : SkiaSharp.SKFontStyleSlant.Upright;
+                                        var weight = layer.TextFontStyle == "Bold" ? SkiaSharp.SKFontStyleWeight.Bold : SkiaSharp.SKFontStyleWeight.Normal;
+                                        paint.Typeface = SkiaSharp.SKTypeface.FromFamilyName(layer.TextFontFamily, weight, SkiaSharp.SKFontStyleWidth.Normal, slant);
+
+                                        paint.TextAlign = SkiaSharp.SKTextAlign.Left;
+                                        float textX = (float)layer.TextX;
+                                        if (layer.TextAlignment == "Center")
+                                        {
+                                            paint.TextAlign = SkiaSharp.SKTextAlign.Center;
+                                            textX = (float)(layer.TextX + layer.TextWidth / 2.0);
+                                        }
+                                        else if (layer.TextAlignment == "Right")
+                                        {
+                                            paint.TextAlign = SkiaSharp.SKTextAlign.Right;
+                                            textX = (float)(layer.TextX + layer.TextWidth);
+                                        }
+
+                                        string[] lines = (layer.TextContent ?? "").Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+                                        
+                                        SkiaSharp.SKFontMetrics metrics;
+                                        paint.GetFontMetrics(out metrics);
+                                        float lineHeight = metrics.Descent - metrics.Ascent + metrics.Leading;
+                                        if (lineHeight <= 0) lineHeight = (float)layer.TextFontSize * 1.2f;
+
+                                        float currentY = (float)(layer.TextY - metrics.Ascent);
+
+                                        canvas.Save();
+                                        // Apply transformations to canvas
+                                        float centerX = (float)(layer.TextX + layer.TextWidth / 2.0);
+                                        float centerY = (float)(layer.TextY + layer.TextHeight / 2.0);
+                                        
+                                        float totalDx = (float)(layer.LayerTranslateX + layer.TempMoveDx);
+                                        float totalDy = (float)(layer.LayerTranslateY + layer.TempMoveDy);
+                                        
+                                        canvas.Translate(centerX + totalDx, centerY + totalDy);
+                                        canvas.RotateDegrees((float)layer.LayerAngle);
+                                        canvas.Scale((float)layer.LayerScaleX, (float)layer.LayerScaleY);
+                                        canvas.Translate(-centerX, -centerY);
+
+                                        foreach (var line in lines)
+                                        {
+                                            if (currentY - layer.TextY > layer.TextHeight) break;
+                                            canvas.DrawText(line, textX, currentY, paint);
+                                            currentY += lineHeight;
+                                        }
+                                        
+                                        canvas.Restore();
+                                    }
+                                    continue;
+                                }
 
                                 var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
 
