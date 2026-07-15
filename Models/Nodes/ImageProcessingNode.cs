@@ -252,6 +252,23 @@ namespace FlowMy.Models.Nodes
             set { if (_layerAiCacheProfileName != value) { _layerAiCacheProfileName = value ?? "Shared"; OnPropertyChanged(); } }
         }
 
+        private string _layerAiWebTabsJson = string.Empty;
+        private string _layerAiWebSplitMode = "Single";
+
+        /// <summary>JSON lưu cấu hình các tab con (danh sách URL, profile, title...).</summary>
+        public string LayerAiWebTabsJson
+        {
+            get => _layerAiWebTabsJson;
+            set { if (_layerAiWebTabsJson != value) { _layerAiWebTabsJson = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Chế độ chia màn hình của tab Web: Single, Vertical, Horizontal, Grid.</summary>
+        public string LayerAiWebSplitMode
+        {
+            get => _layerAiWebSplitMode;
+            set { if (_layerAiWebSplitMode != value) { _layerAiWebSplitMode = value ?? "Single"; OnPropertyChanged(); } }
+        }
+
         private string _layerAiActiveTab = "Prompt";
 
         /// <summary>Tab đang mở trong LayerAiDialog (Prompt, WebView, WebBrowser).</summary>

@@ -183,7 +183,25 @@ namespace FlowMy.Views.Overlays
         private ActiveTab _activeTab = ActiveTab.Prompt;
 
         // WebView2 browser (lazy init)
-        private Microsoft.Web.WebView2.Wpf.WebView2? _webBrowser;
+        public class WebTabItem
+        {
+            public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; set; }
+            public string Url { get; set; } = "https://google.com";
+            public string Title { get; set; } = "New Tab";
+            public string ProfileName { get; set; } = "Shared";
+            public bool IsLoading { get; set; } = false;
+        }
+
+        public class SerializedWebTab
+        {
+            public string Url { get; set; } = "https://google.com";
+            public string ProfileName { get; set; } = "Shared";
+            public string Title { get; set; } = "New Tab";
+        }
+
+        private readonly List<WebTabItem> _webTabs = new();
+        private int _activeTabIdx = -1;
+        private string _splitMode = "Single";
         private bool _webBrowserInitialized = false;
         private Microsoft.Web.WebView2.Wpf.WebView2? _dynamicWebView;
         private System.Windows.Controls.Primitives.Popup? _suggestPopup;
@@ -463,7 +481,7 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private async void InitWebBrowserAsync()
+        private void InitWebBrowserAsync()
         {
             _webBrowserInitialized = true;
 
@@ -472,147 +490,144 @@ namespace FlowMy.Views.Overlays
                 // Load profile combo
                 LoadWebProfiles();
 
-                var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
-                if (cacheState.WebBrowser == null)
-                {
-                    var webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
-
-                    // Add WebView2 to container FIRST so it's in the visual tree!
-                    WebBrowserContainer.Children.Clear();
-                    WebBrowserContainer.Children.Add(webBrowser);
-
-                    var profileName = _node.LayerAiCacheProfileName ?? "Shared";
-                    Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
-
-                    if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
-                    {
-                        try
-                        {
-                            env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                        }
-                        catch (Exception exShared)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Shared env failed, falling back: {exShared.Message}");
-                            var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
-                            Directory.CreateDirectory(cachePath);
-                            var options = GetBrowserEnvironmentOptions();
-                            env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                        }
-                    }
-                    else
-                    {
-                        var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                        Directory.CreateDirectory(cachePath);
-                        var options = GetBrowserEnvironmentOptions();
-                        env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                    }
-
-                    await webBrowser.EnsureCoreWebView2Async(env);
-                    await InjectDragDropInterceptorScriptAsync(webBrowser);
-                    cacheState.WebBrowser = webBrowser;
-
-                    // Navigate to saved URL
-                    var url = _node.LayerAiWebUrl;
-                    if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
-                    TxtWebUrl.Text = url;
-                    webBrowser.CoreWebView2.Navigate(url);
-
-                    // Track navigation
-                    webBrowser.CoreWebView2.NavigationCompleted += (s, args) =>
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            try
-                            {
-                                var currentUrl = webBrowser.CoreWebView2?.Source;
-                                if (!string.IsNullOrEmpty(currentUrl))
-                                {
-                                    TxtWebUrl.Text = currentUrl;
-                                    _node.LayerAiWebUrl = currentUrl;
-                                }
-                            }
-                            catch { }
-                        });
-                    };
-                }
-                else
-                {
-                    var webBrowser = cacheState.WebBrowser;
-                    if (webBrowser.Parent is Panel parentPanel)
-                    {
-                        parentPanel.Children.Remove(webBrowser);
-                    }
-                    WebBrowserContainer.Children.Clear();
-                    WebBrowserContainer.Children.Add(webBrowser);
-
-                    try { webBrowser.CoreWebView2?.Resume(); } catch { }
-
-                    var currentUrl = webBrowser.CoreWebView2?.Source;
-                    if (!string.IsNullOrEmpty(currentUrl))
-                    {
-                        TxtWebUrl.Text = currentUrl;
-                        _node.LayerAiWebUrl = currentUrl;
-                    }
-                }
-
-                _webBrowser = cacheState.WebBrowser;
-                HookActivityEvents(_webBrowser);
-
-                // Setup Google Suggest popup
+                // Setup suggestion popup
                 SetupSuggestPopup();
+
+                // Load saved tabs
+                LoadSavedWebTabs();
+
+                // Render tab strip UI
+                RefreshWebTabStrip();
+
+                // Build initial split layout
+                UpdateWebBrowserLayout();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LayerAI WebBrowser init failed: {ex.Message}");
-                MessageBox.Show($"Lỗi khởi tạo trình duyệt Web: {ex.Message}\n\nChi tiết: {ex.InnerException?.Message}\n\nStack: {ex.StackTrace}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Lỗi khởi tạo trình duyệt Web: {ex.Message}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void LoadWebProfiles()
+        private void LoadSavedWebTabs()
         {
-            CmbWebProfile.Items.Clear();
-            var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
-            foreach (var p in profiles)
-            {
-                CmbWebProfile.Items.Add(new ComboBoxItem { Content = p, Tag = p });
-            }
+            _webTabs.Clear();
+            _splitMode = _node.LayerAiWebSplitMode ?? "Single";
 
-            // Select current profile
-            var current = _node.LayerAiCacheProfileName ?? "Shared";
-            for (int i = 0; i < CmbWebProfile.Items.Count; i++)
+            UpdateSplitButtonsHighlight();
+
+            var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
+            if (cacheState.WebBrowsers != null && cacheState.WebBrowsers.Count > 0)
             {
-                if (CmbWebProfile.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase))
+                _splitMode = cacheState.SplitMode;
+                _activeTabIdx = cacheState.ActiveTabIdx;
+                foreach (var cachedTab in cacheState.WebBrowsers)
                 {
-                    CmbWebProfile.SelectedIndex = i;
-                    break;
+                    var tab = new WebTabItem
+                    {
+                        WebView = cachedTab.WebView,
+                        Url = cachedTab.Url,
+                        Title = cachedTab.Title,
+                        ProfileName = cachedTab.ProfileName
+                    };
+                    if (tab.WebView != null)
+                    {
+                        BindWebViewEvents(tab, tab.WebView);
+                    }
+                    _webTabs.Add(tab);
                 }
             }
-            if (CmbWebProfile.SelectedIndex < 0 && CmbWebProfile.Items.Count > 0)
-                CmbWebProfile.SelectedIndex = 0;
+            else
+            {
+                try
+                {
+                    var json = _node.LayerAiWebTabsJson;
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var list = System.Text.Json.JsonSerializer.Deserialize<List<SerializedWebTab>>(json);
+                        if (list != null && list.Count > 0)
+                        {
+                            foreach (var sTab in list)
+                            {
+                                _webTabs.Add(new WebTabItem
+                                {
+                                    Url = sTab.Url,
+                                    ProfileName = sTab.ProfileName,
+                                    Title = sTab.Title
+                                });
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                if (_webTabs.Count == 0)
+                {
+                    var defaultUrl = _node.LayerAiWebUrl;
+                    if (string.IsNullOrWhiteSpace(defaultUrl)) defaultUrl = "https://google.com";
+                    _webTabs.Add(new WebTabItem
+                    {
+                        Url = defaultUrl,
+                        ProfileName = _node.LayerAiCacheProfileName ?? "Shared",
+                        Title = "New Tab"
+                    });
+                }
+                _activeTabIdx = 0;
+            }
+
+            if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count)
+            {
+                _activeTabIdx = 0;
+            }
         }
 
-        private async void CmbWebProfile_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void SaveWebTabsState()
         {
-            if (CmbWebProfile.SelectedItem is ComboBoxItem item && item.Tag is string profileName)
-            {
-                if (_node.LayerAiCacheProfileName == profileName) return;
-                _node.LayerAiCacheProfileName = profileName;
+            if (_node == null) return;
 
-                // Recreate WebView2 with new profile
-                if (_webBrowser != null && _webBrowserInitialized)
+            _node.LayerAiWebSplitMode = _splitMode;
+            
+            var list = new List<SerializedWebTab>();
+            foreach (var tab in _webTabs)
+            {
+                list.Add(new SerializedWebTab
+                {
+                    Url = tab.Url,
+                    ProfileName = tab.ProfileName,
+                    Title = tab.Title
+                });
+            }
+            try
+            {
+                _node.LayerAiWebTabsJson = System.Text.Json.JsonSerializer.Serialize(list);
+            }
+            catch { }
+
+            var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
+            cacheState.SplitMode = _splitMode;
+            cacheState.ActiveTabIdx = _activeTabIdx;
+            cacheState.WebBrowsers.Clear();
+            foreach (var tab in _webTabs)
+            {
+                cacheState.WebBrowsers.Add(new LayerAiWebViewCache.CachedTabState
+                {
+                    WebView = tab.WebView,
+                    Url = tab.Url,
+                    Title = tab.Title,
+                    ProfileName = tab.ProfileName
+                });
+            }
+        }
+
+        private void InitializeWebViewAfterLoading(WebTabItem tab, Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Dispatcher.InvokeAsync(async () =>
                 {
                     try
                     {
-                        var oldUrl = _webBrowser.CoreWebView2?.Source ?? "https://google.com";
-                        WebBrowserContainer.Children.Clear();
-                        _webBrowser.Dispose();
-                        _webBrowser = new Microsoft.Web.WebView2.Wpf.WebView2();
-                        HookActivityEvents(_webBrowser);
-
-                        // Add WebView2 to container FIRST so it's in the visual tree!
-                        WebBrowserContainer.Children.Clear();
-                        WebBrowserContainer.Children.Add(_webBrowser);
-
+                        var profileName = tab.ProfileName;
                         Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
 
                         if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
@@ -623,7 +638,7 @@ namespace FlowMy.Views.Overlays
                             }
                             catch (Exception exShared)
                             {
-                                System.Diagnostics.Debug.WriteLine($"Shared env failed, falling back: {exShared.Message}");
+                                System.Diagnostics.Debug.WriteLine($"Shared env failed fallback: {exShared.Message}");
                                 var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
                                 Directory.CreateDirectory(cachePath);
                                 var options = GetBrowserEnvironmentOptions();
@@ -638,35 +653,652 @@ namespace FlowMy.Views.Overlays
                             env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
                         }
 
-                        await _webBrowser.EnsureCoreWebView2Async(env);
-                        await InjectDragDropInterceptorScriptAsync(_webBrowser);
- 
-                        // Update cache
-                        var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
-                        cacheState.WebBrowser = _webBrowser;
+                        await webView.EnsureCoreWebView2Async(env);
+                        await InjectDragDropInterceptorScriptAsync(webView);
 
-                        _webBrowser.CoreWebView2.Navigate(oldUrl);
-                        _webBrowser.CoreWebView2.NavigationCompleted += (s2, args) =>
+                        var url = tab.Url;
+                        if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
+                        webView.CoreWebView2.Navigate(url);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Deferred WebView2 initialization failed: {ex.Message}");
+                    }
+                });
+            });
+        }
+
+        private void BindWebViewEvents(WebTabItem tab, Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        {
+            webView.NavigationStarting += (s, e) =>
+            {
+                tab.IsLoading = true;
+                Dispatcher.Invoke(() => {
+                    RefreshWebTabStrip();
+                    if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
+                    {
+                        UrlLoadingIndicator.Visibility = Visibility.Visible;
+                    }
+                });
+            };
+
+            webView.NavigationCompleted += (s, e) =>
+            {
+                tab.IsLoading = false;
+                Dispatcher.Invoke(() => {
+                    try
+                    {
+                        if (webView.CoreWebView2 != null)
                         {
-                            Dispatcher.Invoke(() =>
-                            {
-                                try
-                                {
-                                    var currentUrl = _webBrowser.CoreWebView2?.Source;
-                                    if (!string.IsNullOrEmpty(currentUrl))
-                                    {
-                                        TxtWebUrl.Text = currentUrl;
-                                        _node.LayerAiWebUrl = currentUrl;
-                                    }
-                                }
-                                catch { }
-                            });
-                        };
+                            tab.Url = webView.CoreWebView2.Source;
+                            tab.Title = webView.CoreWebView2.DocumentTitle;
+                            if (string.IsNullOrWhiteSpace(tab.Title)) tab.Title = "New Tab";
+                        }
+                    }
+                    catch { }
+                    RefreshWebTabStrip();
+                    UpdateNavigationButtons();
+                    if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
+                    {
+                        UrlLoadingIndicator.Visibility = Visibility.Collapsed;
+                        TxtWebUrl.Text = tab.Url;
+                    }
+                });
+            };
+
+            webView.SourceChanged += (s, e) =>
+            {
+                Dispatcher.Invoke(() => {
+                    try
+                    {
+                        tab.Url = webView.Source?.ToString() ?? tab.Url;
+                        if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
+                        {
+                            TxtWebUrl.Text = tab.Url;
+                            _node.LayerAiWebUrl = tab.Url;
+                        }
+                    }
+                    catch { }
+                    SaveWebTabsState();
+                });
+            };
+
+            webView.MouseEnter += (s, e) =>
+            {
+                Dispatcher.Invoke(() => {
+                    int idx = _webTabs.IndexOf(tab);
+                    if (idx >= 0 && idx < _webTabs.Count)
+                    {
+                        FocusWebTab(idx);
+                    }
+                });
+            };
+
+            webView.GotFocus += (s, e) =>
+            {
+                Dispatcher.Invoke(() => {
+                    int idx = _webTabs.IndexOf(tab);
+                    if (idx >= 0 && idx < _webTabs.Count)
+                    {
+                        FocusWebTab(idx);
+                    }
+                });
+            };
+        }
+
+        private void UpdateWebBrowserLayout()
+        {
+            WebBrowserContainer.Children.Clear();
+            WebBrowserContainer.RowDefinitions.Clear();
+            WebBrowserContainer.ColumnDefinitions.Clear();
+
+            int visibleSlots = _splitMode switch
+            {
+                "Vertical" => 2,
+                "Horizontal" => 2,
+                "Grid" => 4,
+                _ => 1
+            };
+
+            if (_splitMode == "Vertical")
+            {
+                WebBrowserContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                WebBrowserContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
+            else if (_splitMode == "Horizontal")
+            {
+                WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            }
+            else if (_splitMode == "Grid")
+            {
+                WebBrowserContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                WebBrowserContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            }
+
+            for (int i = 0; i < visibleSlots; i++)
+            {
+                int tabIdx = (_splitMode == "Single") ? _activeTabIdx : i;
+                UIElement content;
+                bool isThisSlotActive = false;
+
+                if (tabIdx >= 0 && tabIdx < _webTabs.Count)
+                {
+                    var tab = _webTabs[tabIdx];
+                    bool needsInitialization = (tab.WebView == null);
+
+                    if (needsInitialization)
+                    {
+                        var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+                        tab.WebView = webView;
+                        
+                        HookActivityEvents(webView);
+                        BindWebViewEvents(tab, webView);
+                    }
+
+                    if (tab.WebView!.Parent is Panel parentPanel)
+                    {
+                        parentPanel.Children.Remove(tab.WebView);
+                    }
+                    else if (tab.WebView.Parent is Decorator parentDecorator)
+                    {
+                        parentDecorator.Child = null;
+                    }
+                    else if (tab.WebView.Parent is ContentControl cc)
+                    {
+                        cc.Content = null;
+                    }
+
+                    content = tab.WebView;
+                    isThisSlotActive = (tabIdx == _activeTabIdx);
+
+                    if (needsInitialization)
+                    {
+                        InitializeWebViewAfterLoading(tab, tab.WebView);
+                    }
+                }
+                else
+                {
+                    content = CreatePlaceholderSlot();
+                }
+
+                var border = new Border
+                {
+                    BorderBrush = isThisSlotActive ? (FindResource("AccentColor") as Brush ?? Brushes.Lime) : (FindResource("BorderColor") as Brush ?? Brushes.DimGray),
+                    BorderThickness = new Thickness(isThisSlotActive ? 2 : 1),
+                    CornerRadius = new CornerRadius(6),
+                    Margin = new Thickness(3),
+                    Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#15171e")),
+                    Child = content
+                };
+
+                int targetTabIdx = tabIdx;
+                border.PreviewMouseDown += (s, e) =>
+                {
+                    if (targetTabIdx >= 0 && targetTabIdx < _webTabs.Count)
+                    {
+                        FocusWebTab(targetTabIdx);
+                    }
+                };
+
+                if (_splitMode == "Vertical")
+                {
+                    Grid.SetColumn(border, i);
+                }
+                else if (_splitMode == "Horizontal")
+                {
+                    Grid.SetRow(border, i);
+                }
+                else if (_splitMode == "Grid")
+                {
+                    Grid.SetRow(border, i / 2);
+                    Grid.SetColumn(border, i % 2);
+                }
+
+                WebBrowserContainer.Children.Add(border);
+            }
+
+            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
+            {
+                var activeTab = _webTabs[_activeTabIdx];
+                TxtWebUrl.Text = activeTab.Url;
+                UrlLoadingIndicator.Visibility = activeTab.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+                UpdateNavigationButtons();
+                SelectProfileInCombo(activeTab.ProfileName);
+            }
+
+            SaveWebTabsState();
+        }
+
+        private UIElement CreatePlaceholderSlot()
+        {
+            var grid = new Grid { Cursor = Cursors.Hand, Background = Brushes.Transparent };
+            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            
+            var plusText = new TextBlock
+            {
+                Text = "＋",
+                FontSize = 24,
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3a3f52")),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                FontWeight = FontWeights.Bold
+            };
+            
+            var promptText = new TextBlock
+            {
+                Text = "Mở tab mới tại đây",
+                Foreground = FindResource("TextMuted") as Brush ?? Brushes.Gray,
+                FontSize = 10,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+
+            stack.Children.Add(plusText);
+            stack.Children.Add(promptText);
+            grid.Children.Add(stack);
+
+            grid.MouseLeftButtonDown += (s, e) =>
+            {
+                CreateNewWebTab();
+            };
+
+            return grid;
+        }
+
+        private void SelectProfileInCombo(string profileName)
+        {
+            if (CmbWebProfile == null) return;
+            for (int i = 0; i < CmbWebProfile.Items.Count; i++)
+            {
+                if (CmbWebProfile.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, profileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    CmbWebProfile.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
+        private void CreateNewWebTab(string url = "https://google.com")
+        {
+            var profile = _node.LayerAiCacheProfileName ?? "Shared";
+            var newTab = new WebTabItem
+            {
+                Url = url,
+                ProfileName = profile,
+                Title = "New Tab"
+            };
+            _webTabs.Add(newTab);
+            _activeTabIdx = _webTabs.Count - 1;
+            
+            RefreshWebTabStrip();
+            UpdateWebBrowserLayout();
+        }
+
+        private void CloseWebTab(int idx)
+        {
+            if (idx < 0 || idx >= _webTabs.Count) return;
+
+            var tab = _webTabs[idx];
+            try
+            {
+                tab.WebView?.Dispose();
+            }
+            catch { }
+
+            _webTabs.RemoveAt(idx);
+
+            if (_webTabs.Count == 0)
+            {
+                CreateNewWebTab();
+                return;
+            }
+
+            if (_activeTabIdx >= _webTabs.Count)
+            {
+                _activeTabIdx = _webTabs.Count - 1;
+            }
+            else if (_activeTabIdx == idx)
+            {
+                _activeTabIdx = Math.Max(0, idx - 1);
+            }
+            else if (_activeTabIdx > idx)
+            {
+                _activeTabIdx--;
+            }
+
+            RefreshWebTabStrip();
+            UpdateWebBrowserLayout();
+        }
+
+        private void FocusWebTab(int idx)
+        {
+            if (idx < 0 || idx >= _webTabs.Count || _activeTabIdx == idx) return;
+
+            _activeTabIdx = idx;
+
+            if (_splitMode == "Single")
+            {
+                RefreshWebTabStrip();
+                UpdateWebBrowserLayout();
+            }
+            else
+            {
+                UpdateActiveTabHighlightOnly();
+            }
+        }
+
+        private void UpdateActiveTabHighlightOnly()
+        {
+            if (_webTabs == null || _activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) return;
+
+            var activeTab = _webTabs[_activeTabIdx];
+            if (TxtWebUrl != null) TxtWebUrl.Text = activeTab.Url;
+            if (UrlLoadingIndicator != null) UrlLoadingIndicator.Visibility = activeTab.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+            UpdateNavigationButtons();
+            SelectProfileInCombo(activeTab.ProfileName);
+
+            RefreshWebTabStrip();
+
+            var activeBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+            var normalBrush = FindResource("BorderColor") as Brush ?? Brushes.DimGray;
+
+            for (int i = 0; i < WebBrowserContainer.Children.Count; i++)
+            {
+                if (WebBrowserContainer.Children[i] is Border border)
+                {
+                    int tabIdx = (_splitMode == "Single") ? _activeTabIdx : i;
+                    bool isThisSlotActive = (tabIdx == _activeTabIdx);
+
+                    border.BorderBrush = isThisSlotActive ? activeBrush : normalBrush;
+                    border.BorderThickness = new Thickness(isThisSlotActive ? 2 : 1);
+                }
+            }
+
+            SaveWebTabsState();
+        }
+
+        private void RefreshWebTabStrip()
+        {
+            if (WebTabStripStackPanel == null) return;
+            WebTabStripStackPanel.Children.Clear();
+
+            for (int i = 0; i < _webTabs.Count; i++)
+            {
+                var tab = _webTabs[i];
+                var isActive = (i == _activeTabIdx);
+                var tabUi = CreateTabUi(tab, i, isActive);
+                WebTabStripStackPanel.Children.Add(tabUi);
+            }
+
+            var newTabBtn = new Border
+            {
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#15171e")),
+                BorderBrush = FindResource("BorderColor") as Brush ?? Brushes.DimGray,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Width = 24,
+                Height = 22,
+                Margin = new Thickness(4, 2, 0, 0),
+                Cursor = Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                ToolTip = "Mở tab mới"
+            };
+            var newTabTxt = new TextBlock
+            {
+                Text = "＋",
+                Foreground = FindResource("TextMain") as Brush ?? Brushes.White,
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            newTabBtn.Child = newTabTxt;
+            newTabBtn.MouseLeftButtonDown += (s, e) =>
+            {
+                CreateNewWebTab();
+            };
+            newTabBtn.MouseEnter += (s, e) => { newTabBtn.BorderBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime; };
+            newTabBtn.MouseLeave += (s, e) => { newTabBtn.BorderBrush = FindResource("BorderColor") as Brush ?? Brushes.DimGray; };
+            
+            WebTabStripStackPanel.Children.Add(newTabBtn);
+        }
+
+        private Border CreateTabUi(WebTabItem tab, int idx, bool isActive)
+        {
+            var border = new Border
+            {
+                Background = isActive ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1a1c23")) : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#15171e")),
+                BorderBrush = isActive ? (FindResource("AccentColor") as Brush ?? Brushes.Lime) : (FindResource("BorderColor") as Brush ?? Brushes.DimGray),
+                BorderThickness = isActive ? new Thickness(1, 1, 1, 0) : new Thickness(1, 1, 1, 1),
+                CornerRadius = new CornerRadius(6, 6, 0, 0),
+                Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(0, 2, 4, 0),
+                Height = 28,
+                MinWidth = 100,
+                MaxWidth = 180,
+                Cursor = Cursors.Hand,
+                ToolTip = tab.Url
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var titleStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            
+            // Tab-specific Spinner
+            var spinner = new Border
+            {
+                Width = 10,
+                Height = 10,
+                Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Visibility = tab.IsLoading ? Visibility.Visible : Visibility.Collapsed
+            };
+            var ellipse = new System.Windows.Shapes.Ellipse
+            {
+                Stroke = FindResource("AccentColor") as Brush ?? Brushes.Lime,
+                StrokeThickness = 1.5,
+                StrokeDashArray = new DoubleCollection { 2, 1 }
+            };
+            var rotate = new RotateTransform();
+            ellipse.RenderTransform = rotate;
+            ellipse.RenderTransformOrigin = new Point(0.5, 0.5);
+            
+            var sb = new System.Windows.Media.Animation.Storyboard();
+            var da = new System.Windows.Media.Animation.DoubleAnimation { From = 0, To = 360, Duration = TimeSpan.FromSeconds(1), RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever };
+            System.Windows.Media.Animation.Storyboard.SetTarget(da, rotate);
+            System.Windows.Media.Animation.Storyboard.SetTargetProperty(da, new PropertyPath("Angle"));
+            sb.Children.Add(da);
+            spinner.Child = ellipse;
+            spinner.Loaded += (s, e) => sb.Begin();
+            titleStack.Children.Add(spinner);
+
+            var iconTxt = new TextBlock
+            {
+                Text = "🌐 ",
+                Foreground = isActive ? (FindResource("AccentColor") as Brush ?? Brushes.Lime) : (FindResource("TextMuted") as Brush ?? Brushes.Gray),
+                FontSize = 10,
+                VerticalAlignment = VerticalAlignment.Center,
+                Visibility = tab.IsLoading ? Visibility.Collapsed : Visibility.Visible
+            };
+            titleStack.Children.Add(iconTxt);
+
+            var titleTxt = new TextBlock
+            {
+                Text = string.IsNullOrEmpty(tab.Title) ? "New Tab" : tab.Title,
+                Foreground = isActive ? (FindResource("TextMain") as Brush ?? Brushes.White) : (FindResource("TextMuted") as Brush ?? Brushes.Gray),
+                FontSize = 10,
+                FontWeight = isActive ? FontWeights.Bold : FontWeights.Normal,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 100
+            };
+            titleStack.Children.Add(titleTxt);
+            Grid.SetColumn(titleStack, 0);
+            grid.Children.Add(titleStack);
+
+            var closeBtn = new Button
+            {
+                Content = "✕",
+                Width = 14,
+                Height = 14,
+                Padding = new Thickness(0),
+                FontSize = 8,
+                FontWeight = FontWeights.Bold,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = FindResource("TextMuted") as Brush ?? Brushes.Gray,
+                Cursor = Cursors.Hand,
+                Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            closeBtn.Style = null;
+            closeBtn.MouseEnter += (s, e) => { closeBtn.Foreground = Brushes.Red; };
+            closeBtn.MouseLeave += (s, e) => { closeBtn.Foreground = FindResource("TextMuted") as Brush ?? Brushes.Gray; };
+            closeBtn.Click += (s, e) =>
+            {
+                e.Handled = true;
+                CloseWebTab(idx);
+            };
+            Grid.SetColumn(closeBtn, 1);
+            grid.Children.Add(closeBtn);
+
+            border.Child = grid;
+            border.MouseLeftButtonDown += (s, e) =>
+            {
+                FocusWebTab(idx);
+            };
+
+            return border;
+        }
+
+        private void BtnWebBack_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
+            {
+                var tab = _webTabs[_activeTabIdx];
+                if (tab.WebView?.CoreWebView2 != null && tab.WebView.CanGoBack)
+                {
+                    tab.WebView.GoBack();
+                }
+            }
+        }
+
+        private void BtnWebForward_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
+            {
+                var tab = _webTabs[_activeTabIdx];
+                if (tab.WebView?.CoreWebView2 != null && tab.WebView.CanGoForward)
+                {
+                    tab.WebView.GoForward();
+                }
+            }
+        }
+
+        private void BtnWebRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
+            {
+                var tab = _webTabs[_activeTabIdx];
+                if (tab.WebView?.CoreWebView2 != null)
+                {
+                    tab.WebView.Reload();
+                }
+            }
+        }
+
+        private void UpdateNavigationButtons()
+        {
+            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
+            {
+                var tab = _webTabs[_activeTabIdx];
+                BtnWebBack.IsEnabled = tab.WebView != null && tab.WebView.CanGoBack;
+                BtnWebForward.IsEnabled = tab.WebView != null && tab.WebView.CanGoForward;
+            }
+            else
+            {
+                BtnWebBack.IsEnabled = false;
+                BtnWebForward.IsEnabled = false;
+            }
+        }
+
+        private void UpdateSplitButtonsHighlight()
+        {
+            if (BtnSplitSingle == null) return;
+
+            var activeBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+            var normalBrush = FindResource("TextMuted") as Brush ?? Brushes.Gray;
+
+            BtnSplitSingle.BorderBrush = (_splitMode == "Single") ? activeBrush : normalBrush;
+            BtnSplitVertical.BorderBrush = (_splitMode == "Vertical") ? activeBrush : normalBrush;
+            BtnSplitHorizontal.BorderBrush = (_splitMode == "Horizontal") ? activeBrush : normalBrush;
+            BtnSplitGrid.BorderBrush = (_splitMode == "Grid") ? activeBrush : normalBrush;
+        }
+
+        private void SetSplitMode(string mode)
+        {
+            if (_splitMode == mode) return;
+            _splitMode = mode;
+            UpdateSplitButtonsHighlight();
+            UpdateWebBrowserLayout();
+        }
+
+        private void BtnSplitSingle_Click(object sender, RoutedEventArgs e) => SetSplitMode("Single");
+        private void BtnSplitVertical_Click(object sender, RoutedEventArgs e) => SetSplitMode("Vertical");
+        private void BtnSplitHorizontal_Click(object sender, RoutedEventArgs e) => SetSplitMode("Horizontal");
+        private void BtnSplitGrid_Click(object sender, RoutedEventArgs e) => SetSplitMode("Grid");
+
+        private void LoadWebProfiles()
+        {
+            CmbWebProfile.Items.Clear();
+            var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+            foreach (var p in profiles)
+            {
+                CmbWebProfile.Items.Add(new ComboBoxItem { Content = p, Tag = p });
+            }
+
+            var current = _node.LayerAiCacheProfileName ?? "Shared";
+            for (int i = 0; i < CmbWebProfile.Items.Count; i++)
+            {
+                if (CmbWebProfile.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase))
+                {
+                    CmbWebProfile.SelectedIndex = i;
+                    break;
+                }
+            }
+            if (CmbWebProfile.SelectedIndex < 0 && CmbWebProfile.Items.Count > 0)
+                CmbWebProfile.SelectedIndex = 0;
+        }
+
+        private void CmbWebProfile_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CmbWebProfile.SelectedItem is ComboBoxItem item && item.Tag is string profileName)
+            {
+                if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) return;
+                var tab = _webTabs[_activeTabIdx];
+
+                if (tab.ProfileName == profileName) return;
+                tab.ProfileName = profileName;
+
+                if (tab.WebView != null)
+                {
+                    try
+                    {
+                        var oldUrl = tab.WebView.CoreWebView2?.Source ?? tab.Url;
+                        tab.WebView.Dispose();
+                        tab.WebView = null;
+
+                        tab.Url = oldUrl;
+                        UpdateWebBrowserLayout();
                     }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Profile switch failed: {ex.Message}");
-                        MessageBox.Show($"Lỗi chuyển đổi Profile trình duyệt: {ex.Message}\n\nStack: {ex.StackTrace}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show($"Lỗi chuyển đổi Profile trình duyệt: {ex.Message}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -674,7 +1306,6 @@ namespace FlowMy.Views.Overlays
 
         private void BtnNewProfile_Click(object sender, RoutedEventArgs e)
         {
-            // Simple inline input dialog
             var dialog = new Window
             {
                 Title = "Tạo Profile mới",
@@ -713,11 +1344,9 @@ namespace FlowMy.Views.Overlays
                 var name = txt.Text?.Trim();
                 if (!string.IsNullOrWhiteSpace(name) && !System.Text.RegularExpressions.Regex.IsMatch(name, @"[\\/:*?""<>|]"))
                 {
-                    // Create directory
                     var path = WebNodeCacheHelper.GetProfileCachePath(name);
                     Directory.CreateDirectory(path);
 
-                    // Refresh combo and select new
                     LoadWebProfiles();
                     for (int i = 0; i < CmbWebProfile.Items.Count; i++)
                     {
@@ -733,7 +1362,10 @@ namespace FlowMy.Views.Overlays
 
         private void NavigateWebBrowser(string input)
         {
-            if (_webBrowser?.CoreWebView2 == null) return;
+            if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) return;
+            var tab = _webTabs[_activeTabIdx];
+            if (tab.WebView?.CoreWebView2 == null) return;
+
             var trimmed = input?.Trim() ?? "";
             if (string.IsNullOrEmpty(trimmed)) return;
 
@@ -752,7 +1384,7 @@ namespace FlowMy.Views.Overlays
             }
 
             TxtWebUrl.Text = url;
-            _webBrowser.CoreWebView2.Navigate(url);
+            tab.WebView.CoreWebView2.Navigate(url);
         }
 
         private void BtnWebGo_Click(object sender, RoutedEventArgs e) => NavigateWebBrowser(TxtWebUrl.Text);
@@ -761,7 +1393,6 @@ namespace FlowMy.Views.Overlays
         {
             if (e.Key == Key.Enter)
             {
-                // If suggest popup is open and item selected, use that
                 if (_suggestPopup?.IsOpen == true && _suggestListBox?.SelectedItem is string selectedSuggest)
                 {
                     TxtWebUrl.Text = selectedSuggest;
@@ -1352,7 +1983,7 @@ namespace FlowMy.Views.Overlays
                         if (string.IsNullOrWhiteSpace(pageUrl))
                         {
                             Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
-                            if (_activeTab == ActiveTab.WebBrowser) activeWv = _webBrowser;
+                            if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                             else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
                             if (activeWv?.Source != null)
                             {
@@ -3021,10 +3652,13 @@ namespace FlowMy.Views.Overlays
             try
             {
                 var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
-                var activeWv = cacheState.WebBrowser;
-                if (activeWv != null && activeWv.CoreWebView2 != null)
+                foreach (var cachedTab in cacheState.WebBrowsers)
                 {
-                    await activeWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();");
+                    var activeWv = cachedTab.WebView;
+                    if (activeWv != null && activeWv.CoreWebView2 != null)
+                    {
+                        try { await activeWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();"); } catch { }
+                    }
                 }
                 var dynamicWv = cacheState.DynamicWebView;
                 if (dynamicWv != null && dynamicWv.CoreWebView2 != null)
@@ -3217,7 +3851,7 @@ namespace FlowMy.Views.Overlays
                     if (string.IsNullOrWhiteSpace(pageUrl))
                     {
                         Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
-                        if (_activeTab == ActiveTab.WebBrowser) activeWv = _webBrowser;
+                        if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                         else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
                         if (activeWv?.Source != null)
                         {
@@ -3520,7 +4154,7 @@ namespace FlowMy.Views.Overlays
             {
                 // Find the active WebView2 instance to extract session cookies
                 Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
-                if (_activeTab == ActiveTab.WebBrowser) activeWv = _webBrowser;
+                if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                 else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
 
                 using (var client = new System.Net.Http.HttpClient())
@@ -3845,10 +4479,20 @@ namespace FlowMy.Views.Overlays
     {
         private static readonly System.Collections.Generic.Dictionary<string, CachedWebViewState> _cache = new();
 
+        public class CachedTabState
+        {
+            public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; set; }
+            public string Url { get; set; } = "https://google.com";
+            public string Title { get; set; } = "New Tab";
+            public string ProfileName { get; set; } = "Shared";
+        }
+
         public class CachedWebViewState
         {
             public Microsoft.Web.WebView2.Wpf.WebView2? DynamicWebView { get; set; }
-            public Microsoft.Web.WebView2.Wpf.WebView2? WebBrowser { get; set; }
+            public System.Collections.Generic.List<CachedTabState> WebBrowsers { get; set; } = new();
+            public string SplitMode { get; set; } = "Single";
+            public int ActiveTabIdx { get; set; } = 0;
             public DateTime LastUsed { get; set; } = DateTime.Now;
             public System.Timers.Timer? SleepTimer { get; set; }
         }
@@ -3914,10 +4558,13 @@ namespace FlowMy.Views.Overlays
                                 await state.DynamicWebView.CoreWebView2.TrySuspendAsync();
                                 System.Diagnostics.Debug.WriteLine($"WebView2 Dynamic UI suspended for node {nodeId}");
                             }
-                            if (state.WebBrowser?.CoreWebView2 != null)
+                            foreach (var tabState in state.WebBrowsers)
                             {
-                                await state.WebBrowser.CoreWebView2.TrySuspendAsync();
-                                System.Diagnostics.Debug.WriteLine($"WebView2 WebBrowser suspended for node {nodeId}");
+                                if (tabState.WebView?.CoreWebView2 != null)
+                                {
+                                    await tabState.WebView.CoreWebView2.TrySuspendAsync();
+                                    System.Diagnostics.Debug.WriteLine($"WebView2 WebBrowser (profile: {tabState.ProfileName}) suspended for node {nodeId}");
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -3943,7 +4590,10 @@ namespace FlowMy.Views.Overlays
                         try
                         {
                             state.DynamicWebView?.Dispose();
-                            state.WebBrowser?.Dispose();
+                            foreach (var tabState in state.WebBrowsers)
+                            {
+                                tabState.WebView?.Dispose();
+                            }
                         }
                         catch { }
                     });
