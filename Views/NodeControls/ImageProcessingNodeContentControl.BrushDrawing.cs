@@ -1832,17 +1832,10 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                // Ctrl+S: Save FX Config
+                // Ctrl+S: Save Project
                 if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
-                    if (BtnSaveFxQuick != null)
-                    {
-                        SaveFxConfig(BtnSaveFxQuick);
-                    }
-                    else
-                    {
-                        FlowMy.Utils.FxConfigCache.SaveToFile();
-                    }
+                    SaveProjectZip(BtnSaveProjectQuick);
                     e.Handled = true;
                     return;
                 }

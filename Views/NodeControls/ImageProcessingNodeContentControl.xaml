@@ -407,17 +407,44 @@
                                                 Fill="{DynamicResource WhiteBrush}"/>
                     </Button>
 
-                    <!-- Save FX Config button (Editor mode only - kept here for code-behind references or sync logic) -->
-                    <Button x:Name="BtnSaveFxConfig" DockPanel.Dock="Right"
-                            ToolTip="Lưu cấu hình FX (Ctrl+S)"
-                            Width="28" Height="22" Padding="0" Margin="0,0,4,0"
-                            Cursor="Hand" VerticalAlignment="Center"
-                            Style="{DynamicResource PrimaryButton}"
-                            Visibility="Collapsed"
-                            Click="BtnSaveFxConfig_Click">
-                        <TextBlock Text="💾" FontSize="12"
-                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    </Button>
+                    <!-- Right Aligned Project Buttons -->
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <!-- Import Project Button -->
+                        <Button x:Name="BtnImportProjectQuick" Width="24" Height="22" Margin="0,0,6,0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Import dự án (.iep)" Click="BtnImportProjectQuick_Click">
+                            <controls:SvgViewboxEx Width="13" Height="13"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-import duotone-light'}"
+                                Fill="{DynamicResource WhiteBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        </Button>
+
+                        <!-- Export Project Button -->
+                        <Button x:Name="BtnExportProjectQuick" Width="24" Height="22" Margin="0,0,6,0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Export dự án (.iep)" Click="BtnExportProjectQuick_Click">
+                            <controls:SvgViewboxEx Width="13" Height="13"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-export duotone-light'}"
+                                Fill="{DynamicResource WhiteBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        </Button>
+
+                        <!-- Save Project Button -->
+                        <Button x:Name="BtnSaveProjectQuick" Width="24" Height="22" Margin="0,0,6,0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Lưu dự án (Save project)" Click="BtnSaveProjectQuick_Click">
+                            <controls:SvgViewboxEx Width="13" Height="13"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='floppy-disk duotone-light'}"
+                                Fill="{DynamicResource WhiteBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        </Button>
+                    </StackPanel>
 
                     <!-- Left Aligned Menu and Icons -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
@@ -464,14 +491,16 @@
                                             <Setter Property="Margin" Value="0,4,0,4"/>
                                         </Style>
                                     </ContextMenu.Resources>
-                                    <MenuItem Header="📁 Mở ảnh (Open)..." Click="MenuItemOpen_Click"/>
-                                    <MenuItem Header="📂 Mở dự án (.iep)..." Click="MenuItemOpenProject_Click"/>
-                                    <MenuItem Header="💾 Lưu cấu hình FX (Save)" Click="MenuItemSave_Click"/>
+                                    <MenuItem Header="📁 Mở ảnh hoặc Dự án..." Click="MenuItemOpen_Click"/>
+                                    <MenuItem Header="💾 Lưu dự án (Save)" Click="MenuItemSaveProject_Click"/>
                                     <Separator/>
                                     <MenuItem Header="📥 Import ảnh vào Layer..." Click="MenuItemImport_Click"/>
-                                    <MenuItem Header="⚡ Xuất ảnh nhanh PNG..." Click="MenuItemQuickExport_Click"/>
-                                    <MenuItem Header="🖼️ Xuất ảnh (Export As)..." Click="MenuItemExportAs_Click"/>
-                                    <MenuItem Header="📦 Xuất dự án (.iep)..." Click="MenuItemExportProject_Click"/>
+                                    <MenuItem Header="⚡ Xuất ảnh PNG..." Click="MenuItemQuickExportPng_Click"/>
+                                    <MenuItem Header="🖼️ Xuất ảnh JPG..." Click="MenuItemQuickExportJpg_Click"/>
+                                    <MenuItem Header="🖼️ Xuất ảnh dạng khác (Export As)..." Click="MenuItemExportAs_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="📂 Import dự án (.iep)..." Click="MenuItemOpenProject_Click"/>
+                                    <MenuItem Header="📦 Export dự án (.iep)..." Click="MenuItemExportProject_Click"/>
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
@@ -479,25 +508,40 @@
                         <!-- Separator line -->
                         <Rectangle Width="1" Height="14" Fill="#3Fffffff" Margin="4,0,8,0" VerticalAlignment="Center"/>
 
-                        <!-- Open Image button -->
+                        <!-- Open Image or Project button -->
                         <Button x:Name="BtnOpenImageQuick" Width="24" Height="22" Margin="0,0,6,0"
                                 Background="Transparent" BorderThickness="0" Cursor="Hand"
                                 Style="{StaticResource IpMiniBtn}"
-                                ToolTip="Mở ảnh (Open Image)" Click="BtnOpenImageQuick_Click">
+                                ToolTip="Mở ảnh hoặc Dự án (Open Image/Project)" Click="BtnOpenImageQuick_Click">
                             <controls:SvgViewboxEx Width="13" Height="13"
-                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open sharp-duotone-regular'}"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone-light'}"
                                 Fill="{DynamicResource WhiteBrush}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
                                 IsHitTestVisible="False"/>
                         </Button>
 
-                        <!-- Save FX button -->
-                        <Button x:Name="BtnSaveFxQuick" Width="24" Height="22"
+                        <!-- Save PNG button -->
+                        <Button x:Name="BtnSavePngQuick" Width="24" Height="22" Margin="0,0,6,0"
                                 Background="Transparent" BorderThickness="0" Cursor="Hand"
                                 Style="{StaticResource IpMiniBtn}"
-                                ToolTip="Lưu cấu hình FX (Ctrl+S)" Click="BtnSaveFxQuick_Click">
-                            <TextBlock Text="💾" FontSize="12" Foreground="White"
-                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                ToolTip="Xuất ảnh PNG (Save PNG)" Click="BtnSavePngQuick_Click">
+                            <controls:SvgViewboxEx Width="13" Height="13"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-png duotone-light'}"
+                                Fill="{DynamicResource WhiteBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
+                        </Button>
+
+                        <!-- Save JPG button -->
+                        <Button x:Name="BtnSaveJpgQuick" Width="24" Height="22" Margin="0,0,6,0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Style="{StaticResource IpMiniBtn}"
+                                ToolTip="Xuất ảnh JPG (Save JPG)" Click="BtnSaveJpgQuick_Click">
+                            <controls:SvgViewboxEx Width="13" Height="13"
+                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-jpg duotone-light'}"
+                                Fill="{DynamicResource WhiteBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False"/>
                         </Button>
                     </StackPanel>
 

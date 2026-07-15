@@ -38,6 +38,9 @@ namespace FlowMy.Models.ImageEditor
         public int Width { get; internal set; }
         public int Height { get; internal set; }
 
+        /// <summary>Đường dẫn tệp dự án (.iep) đã lưu hoặc nạp.</summary>
+        public string? ProjectPath { get; set; }
+
         /// <summary>Stack các layer (index 0 = bottom, last = top).</summary>
         public ObservableCollection<EditorLayer> Layers { get; }
 

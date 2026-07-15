@@ -448,3 +448,8 @@ arrows-left-right duotone
 arrows-up-down duotone
 copy sharp-duotone-light
 image-circle-plus light
+file-png duotone-light
+file-jpg duotone-light
+file-import duotone-light
+file-export duotone-light
+floppy-disk duotone-light

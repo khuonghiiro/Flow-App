@@ -995,26 +995,6 @@ namespace FlowMy.Views.NodeControls
             e.Handled = true;
         }
 
-        private void BtnSaveFxConfig_Click(object sender, RoutedEventArgs e)
-        {
-            e.Handled = true;
-            FlowMy.Utils.FxConfigCache.SaveToFile();
-
-            // Visual feedback: brief flash
-            var btn = (Button)sender;
-            var origContent = btn.Content;
-            btn.Content = new TextBlock { Text = "✅", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            btn.IsEnabled = false;
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
-            timer.Tick += (_, _) =>
-            {
-                btn.Content = origContent;
-                btn.IsEnabled = true;
-                timer.Stop();
-            };
-            timer.Start();
-        }
-
         private void CommonButton_StopBubbling_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => e.Handled = true;
 
         private void BtnOpenImage_Click(object sender, RoutedEventArgs e)
@@ -1912,9 +1892,6 @@ namespace FlowMy.Views.NodeControls
 
             // AI mode có IP toggle, Editor mode ẩn nó
             IpToggleButton.Visibility = isAI ? Visibility.Visible : Visibility.Collapsed;
-
-            // Save FX Config button chỉ hiện ở Editor mode
-            BtnSaveFxConfig.Visibility = isAI ? Visibility.Collapsed : Visibility.Visible;
         }
         #region EDITOR TOOLBOX (Left vertical strip)
 
