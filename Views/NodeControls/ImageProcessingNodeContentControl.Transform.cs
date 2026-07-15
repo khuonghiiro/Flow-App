@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FlowMy.Models.ImageEditor;
 using FlowMy.Models.ImageEditor.Commands;
+using SkiaSharp;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -270,28 +271,75 @@ namespace FlowMy.Views.NodeControls
             byte[] oldPixels = new byte[stride * layer.Height];
             layer.Bitmap.CopyPixels(oldPixels, stride, 0);
 
-            var drawingVisual = new DrawingVisual();
-            RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
-            using (var drawingContext = drawingVisual.RenderOpen())
-            {
-                drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, layer.Width, layer.Height));
-                drawingContext.PushTransform(transform);
-                var sourceBitmap = (keepOriginalTransform ? layer.OriginalTransformBitmap : null) ?? layer.Bitmap;
-                var destRect = (keepOriginalTransform && layer.OriginalTransformBitmap != null) ? layer.ContentBounds : new Rect(0, 0, layer.Width, layer.Height);
-                if (destRect.IsEmpty || destRect.Width <= 0 || destRect.Height <= 0)
-                {
-                    destRect = new Rect(0, 0, layer.Width, layer.Height);
-                }
-                drawingContext.DrawImage(sourceBitmap, destRect);
-                drawingContext.Pop();
-            }
-
-            var rtb = new RenderTargetBitmap(layer.Width, layer.Height, 96, 96, PixelFormats.Pbgra32);
-            rtb.Render(drawingVisual);
-
-            var converted = new FormatConvertedBitmap(rtb, PixelFormats.Bgra32, null, 0);
             byte[] newPixels = new byte[stride * layer.Height];
-            converted.CopyPixels(newPixels, stride, 0);
+            var sourceBitmap = (keepOriginalTransform ? layer.OriginalTransformBitmap : null) ?? layer.Bitmap;
+            if (sourceBitmap != null)
+            {
+                int srcW = sourceBitmap.PixelWidth;
+                int srcH = sourceBitmap.PixelHeight;
+                int srcStride = sourceBitmap.BackBufferStride;
+
+                sourceBitmap.Lock();
+                try
+                {
+                    var srcInfo = new SKImageInfo(srcW, srcH, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    using (var skBmp = new SKBitmap())
+                    {
+                        skBmp.InstallPixels(srcInfo, sourceBitmap.BackBuffer, srcStride);
+
+                        var destInfo = new SKImageInfo(layer.Width, layer.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                        unsafe
+                        {
+                            fixed (byte* pDest = newPixels)
+                            {
+                                using (var surface = SKSurface.Create(destInfo, (IntPtr)pDest, stride))
+                                {
+                                    if (surface != null)
+                                    {
+                                        var canvas = surface.Canvas;
+                                        canvas.Clear(SKColors.Transparent);
+
+                                        var wpfMatrix = transform.Value;
+                                        var skMatrix = new SKMatrix
+                                        {
+                                            ScaleX = (float)wpfMatrix.M11,
+                                            SkewX = (float)wpfMatrix.M21,
+                                            TransX = (float)wpfMatrix.OffsetX,
+                                            SkewY = (float)wpfMatrix.M12,
+                                            ScaleY = (float)wpfMatrix.M22,
+                                            TransY = (float)wpfMatrix.OffsetY,
+                                            Persp0 = 0,
+                                            Persp1 = 0,
+                                            Persp2 = 1
+                                        };
+
+                                        canvas.SetMatrix(skMatrix);
+
+                                        using (var paint = new SKPaint())
+                                        {
+                                            paint.IsAntialias = true;
+                                            paint.FilterQuality = SKFilterQuality.High;
+
+                                            var destRect = (keepOriginalTransform && layer.OriginalTransformBitmap != null) ? layer.ContentBounds : new Rect(0, 0, layer.Width, layer.Height);
+                                            if (destRect.IsEmpty || destRect.Width <= 0 || destRect.Height <= 0)
+                                            {
+                                                destRect = new Rect(0, 0, layer.Width, layer.Height);
+                                            }
+
+                                            var skDestRect = SKRect.Create((float)destRect.X, (float)destRect.Y, (float)destRect.Width, (float)destRect.Height);
+                                            canvas.DrawBitmap(skBmp, skDestRect, paint);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    sourceBitmap.Unlock();
+                }
+            }
 
             PixelEditCommand cmd;
             if (keepOriginalTransform)
