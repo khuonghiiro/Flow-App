@@ -706,7 +706,7 @@
                                     <Grid>
                                         <TextBox x:Name="TxtWebUrl" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                                  Padding="8,4,30,4" FontSize="11" VerticalContentAlignment="Center" CaretBrush="{StaticResource AccentColor}"
-                                                 SelectionBrush="#404fffb0" Text="https://google.com" KeyDown="TxtWebUrl_KeyDown" GotFocus="TxtWebUrl_GotFocus"/>
+                                                 SelectionBrush="#804fffb0" Text="https://google.com" KeyDown="TxtWebUrl_KeyDown" GotFocus="TxtWebUrl_GotFocus"/>
                                         
                                         <!-- Inline Loading Indicator in URL bar -->
                                         <Border x:Name="UrlLoadingIndicator" Width="14" Height="14" HorizontalAlignment="Right" Margin="0,0,8,0" Visibility="Collapsed" VerticalAlignment="Center">
@@ -831,12 +831,12 @@
                             <StackPanel Margin="0,0,8,0">
                                 <TextBlock Text="Rộng (px)" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
                                 <TextBox x:Name="TxtCustomWidth" Width="60" Height="28" Padding="6,0" VerticalContentAlignment="Center" Text="512" TextChanged="TxtCustomSize_TextChanged"
-                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#404fffb0"/>
+                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#804fffb0"/>
                             </StackPanel>
                             <StackPanel>
                                 <TextBlock Text="Cao (px)" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
                                 <TextBox x:Name="TxtCustomHeight" Width="60" Height="28" Padding="6,0" VerticalContentAlignment="Center" Text="512" TextChanged="TxtCustomSize_TextChanged"
-                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#404fffb0"/>
+                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#804fffb0"/>
                             </StackPanel>
                         </StackPanel>
 

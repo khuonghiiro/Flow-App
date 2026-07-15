@@ -1502,7 +1502,7 @@ namespace FlowMy.Views.Overlays
 
             TxtWebUrl.TextChanged += (s, e) =>
             {
-                if (TxtWebUrl.IsFocused && !string.IsNullOrWhiteSpace(TxtWebUrl.Text))
+                if (TxtWebUrl.IsKeyboardFocused && !string.IsNullOrWhiteSpace(TxtWebUrl.Text))
                 {
                     _suggestDebounceTimer?.Stop();
                     _suggestDebounceTimer?.Start();
@@ -1544,7 +1544,7 @@ namespace FlowMy.Views.Overlays
                 Dispatcher.Invoke(() =>
                 {
                     _suggestListBox.Items.Clear();
-                    if (suggestions.Count > 0 && TxtWebUrl.IsFocused)
+                    if (suggestions.Count > 0 && TxtWebUrl.IsKeyboardFocused)
                     {
                         foreach (var s in suggestions) _suggestListBox.Items.Add(s);
                         _suggestPopup.IsOpen = true;
