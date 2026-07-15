@@ -1295,6 +1295,16 @@
                                     <DropShadowEffect BlurRadius="1" ShadowDepth="0" Color="Black" Opacity="0.8"/>
                                 </Ellipse.Effect>
                             </Ellipse>
+                            <Canvas x:Name="BrushCrosshairCursor" Visibility="Collapsed" IsHitTestVisible="False">
+                                <Canvas.RenderTransform>
+                                    <ScaleTransform x:Name="CrosshairScale" ScaleX="1" ScaleY="1"/>
+                                </Canvas.RenderTransform>
+                                
+                                <Line X1="-8" Y1="0" X2="8" Y2="0" Stroke="White" StrokeThickness="3"/>
+                                <Line X1="-8" Y1="0" X2="8" Y2="0" Stroke="Black" StrokeThickness="1"/>
+                                <Line X1="0" Y1="-8" X2="0" Y2="8" Stroke="White" StrokeThickness="3"/>
+                                <Line X1="0" Y1="-8" X2="0" Y2="8" Stroke="Black" StrokeThickness="1"/>
+                            </Canvas>
                         </Canvas>
 
                         <!-- Eyedropper cursor preview (split square & hex text) -->

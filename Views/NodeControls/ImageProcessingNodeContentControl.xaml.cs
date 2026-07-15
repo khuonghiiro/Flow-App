@@ -616,7 +616,7 @@ namespace FlowMy.Views.NodeControls
             {
                 for (int i = BrushCursorCanvas.Children.Count - 1; i >= 0; i--)
                 {
-                    if (BrushCursorCanvas.Children[i] != BrushPreviewCursor)
+                    if (BrushCursorCanvas.Children[i] != BrushPreviewCursor && BrushCursorCanvas.Children[i] != BrushCrosshairCursor)
                     {
                         BrushCursorCanvas.Children.RemoveAt(i);
                     }
@@ -644,6 +644,30 @@ namespace FlowMy.Views.NodeControls
                         double diameter = radius * 2;
 
                         var containerPos = Mouse.GetPosition(ImageContainer);
+
+                        // Check if cursor visual size on screen is small (threshold: visual diameter <= 10 pixels)
+                        bool showCrosshair = (EditorPanel.BrushSize * ImageZoomScale.ScaleX) <= 10.0;
+                        if (BrushCrosshairCursor != null)
+                        {
+                            if (showCrosshair)
+                            {
+                                Canvas.SetLeft(BrushCrosshairCursor, containerPos.X);
+                                Canvas.SetTop(BrushCrosshairCursor, containerPos.Y);
+
+                                if (CrosshairScale != null)
+                                {
+                                    double invScale = 1.0 / ImageZoomScale.ScaleX;
+                                    CrosshairScale.ScaleX = invScale;
+                                    CrosshairScale.ScaleY = invScale;
+                                }
+
+                                BrushCrosshairCursor.Visibility = Visibility.Visible;
+                            }
+                            else
+                            {
+                                BrushCrosshairCursor.Visibility = Visibility.Collapsed;
+                            }
+                        }
 
                         double hardness = EditorPanel.BrushHardness / 100.0;
                         double flow = EditorPanel.BrushFlow / 100.0;
@@ -876,6 +900,10 @@ namespace FlowMy.Views.NodeControls
                 MainImage.Cursor = null; // Restore default cursor
             }
             BrushPreviewCursor.Visibility = Visibility.Collapsed;
+            if (BrushCrosshairCursor != null)
+            {
+                BrushCrosshairCursor.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void UpdateEyedropperCursorPosition(MouseEventArgs e)
@@ -953,6 +981,8 @@ namespace FlowMy.Views.NodeControls
                 MainScrollViewer.Cursor = Cursors.Arrow;
             if (BrushPreviewCursor != null)
                 BrushPreviewCursor.Visibility = Visibility.Collapsed;
+            if (BrushCrosshairCursor != null)
+                BrushCrosshairCursor.Visibility = Visibility.Collapsed;
             if (EyedropperPreviewContainer != null)
                 EyedropperPreviewContainer.Visibility = Visibility.Collapsed;
         }
