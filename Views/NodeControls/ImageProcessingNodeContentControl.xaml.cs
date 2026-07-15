@@ -2234,9 +2234,28 @@ namespace FlowMy.Views.NodeControls
             ["SkiaBlendMode"] = new[] { new FxParamDef("BlendModeIndex", 0, 0, 14), new FxParamDef("OverlayR", 128, 0, 255), new FxParamDef("OverlayG", 128, 0, 255), new FxParamDef("OverlayB", 128, 0, 255), new FxParamDef("OverlayA", 100, 0, 100) },
         };
 
-        /// <summary>Show dark-themed parameter dialog. Returns null if cancelled.</summary>
+        /// <summary>Show dark-themed parameter dialog. For SkiaSharp effects, applies real-time preview on slider release.</summary>
         private Dictionary<string, double>? ShowFxParamDialog(string effectName, FxParamDef[] paramDefs)
         {
+            bool isRealtime = IsSkiaSharpEffect(effectName);
+
+            // For real-time preview, capture the current layer pixels before dialog opens
+            byte[]? realtimeOriginal = null;
+            Models.ImageEditor.EditorLayer? realtimeLayer = null;
+            int rtW = 0, rtH = 0, rtStride = 0;
+            if (isRealtime && _node.EditorDoc != null)
+            {
+                realtimeLayer = _node.EditorDoc.ActiveLayer;
+                if (realtimeLayer != null)
+                {
+                    rtW = realtimeLayer.Width;
+                    rtH = realtimeLayer.Height;
+                    rtStride = rtW * 4;
+                    realtimeOriginal = new byte[rtStride * rtH];
+                    realtimeLayer.Bitmap.CopyPixels(realtimeOriginal, rtStride, 0);
+                }
+            }
+
             var win = new Window
             {
                 Title = effectName,
@@ -2253,21 +2272,62 @@ namespace FlowMy.Views.NodeControls
 
             var stack = new StackPanel { Margin = new Thickness(14) };
 
-            // Title
-            stack.Children.Add(new TextBlock
+            // Title with realtime indicator
+            var titlePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            titlePanel.Children.Add(new TextBlock
             {
                 Text = effectName,
                 FontSize = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(0x4f, 0xff, 0xb0)),
-                Margin = new Thickness(0, 0, 0, 10)
             });
+            if (isRealtime)
+            {
+                titlePanel.Children.Add(new TextBlock
+                {
+                    Text = " ⚡ Live",
+                    FontSize = 9,
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x4f, 0xff, 0xb0)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(6, 0, 0, 0),
+                    Opacity = 0.7
+                });
+            }
+            stack.Children.Add(titlePanel);
 
             // Load cached values (last-used) nếu có
             var cachedParams = FlowMy.Utils.FxConfigCache.Get(effectName);
 
             var sliders = new Dictionary<string, Slider>();
+
+            // Debounce helper for real-time preview
+            CancellationTokenSource? previewCts = null;
+            async void ApplyRealtimePreview()
+            {
+                if (!isRealtime || realtimeOriginal == null || realtimeLayer == null) return;
+                previewCts?.Cancel();
+                previewCts = new CancellationTokenSource();
+                var token = previewCts.Token;
+                var currentParams = new Dictionary<string, double>();
+                foreach (var kv in sliders)
+                    currentParams[kv.Key] = kv.Value.Value;
+
+                try
+                {
+                    var preview = await Task.Run(() => ApplySkiaSharpEffect(
+                        realtimeOriginal, rtW, rtH, effectName, currentParams, token), token);
+                    if (token.IsCancellationRequested) return;
+                    realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), preview, rtStride, 0);
+                    OnEditorDocumentModified();
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Realtime preview error: {ex.Message}");
+                }
+            }
 
             foreach (var p in paramDefs)
             {
@@ -2328,6 +2388,18 @@ namespace FlowMy.Views.NodeControls
                 {
                     valText.Text = args.NewValue.ToString(capturedP.Step < 1 ? "F2" : "F0");
                 };
+                // Real-time preview: trigger on slider mouse up (release)
+                if (isRealtime)
+                {
+                    slider.PreviewMouseLeftButtonUp += (_, __) => ApplyRealtimePreview();
+                    // Also on keyboard arrow key release for accessibility
+                    slider.PreviewKeyUp += (_, kargs) =>
+                    {
+                        if (kargs.Key == Key.Left || kargs.Key == Key.Right ||
+                            kargs.Key == Key.Up || kargs.Key == Key.Down)
+                            ApplyRealtimePreview();
+                    };
+                }
                 dp.Children.Add(slider);
                 sliders[p.Name] = slider;
 
@@ -2366,10 +2438,18 @@ namespace FlowMy.Views.NodeControls
                 // Lưu vào cache để lần sau mở lên sẽ dùng value này
                 FlowMy.Utils.FxConfigCache.Set(effectName, result);
 
+                // For real-time: restore original pixels (caller will re-apply with final params)
+                if (isRealtime && realtimeOriginal != null && realtimeLayer != null)
+                {
+                    realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), realtimeOriginal, rtStride, 0);
+                    OnEditorDocumentModified();
+                }
+
                 win.DialogResult = true;
                 win.Close();
             };
 
+            // Cancel button with proper dark-on-hover styling
             var btnCancel = new Button
             {
                 Content = "Cancel",
@@ -2378,16 +2458,56 @@ namespace FlowMy.Views.NodeControls
                 Cursor = Cursors.Hand,
                 Background = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(0x25, 0x29, 0x32)),
-                Foreground = System.Windows.Media.Brushes.White,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xbb, 0xbb, 0xcc)),
                 BorderBrush = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(0x3a, 0x3e, 0x4a)),
                 BorderThickness = new Thickness(1),
             };
-            btnCancel.Click += (_, __) => { win.DialogResult = false; win.Close(); };
+            // Fix hover: dark background → lighter gray bg, keep visible text
+            btnCancel.MouseEnter += (_, __) =>
+            {
+                btnCancel.Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x3a, 0x3e, 0x4a));
+                btnCancel.Foreground = System.Windows.Media.Brushes.White;
+                btnCancel.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x55, 0x5a, 0x6a));
+            };
+            btnCancel.MouseLeave += (_, __) =>
+            {
+                btnCancel.Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x25, 0x29, 0x32));
+                btnCancel.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xbb, 0xbb, 0xcc));
+                btnCancel.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x3a, 0x3e, 0x4a));
+            };
+            btnCancel.Click += (_, __) =>
+            {
+                // Restore original pixels if real-time preview was active
+                if (isRealtime && realtimeOriginal != null && realtimeLayer != null)
+                {
+                    realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), realtimeOriginal, rtStride, 0);
+                    OnEditorDocumentModified();
+                }
+                win.DialogResult = false;
+                win.Close();
+            };
 
             btnPanel.Children.Add(btnCancel);
             btnPanel.Children.Add(btnApply);
             stack.Children.Add(btnPanel);
+
+            // Also restore on window close via X button
+            win.Closing += (_, cargs) =>
+            {
+                previewCts?.Cancel();
+                if (win.DialogResult != true && isRealtime && realtimeOriginal != null && realtimeLayer != null)
+                {
+                    realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), realtimeOriginal, rtStride, 0);
+                    OnEditorDocumentModified();
+                }
+            };
 
             win.Content = stack;
             win.ShowDialog();
@@ -2691,11 +2811,14 @@ namespace FlowMy.Views.NodeControls
             public string Description { get; set; } = string.Empty;
             public string IconKey { get; set; } = string.Empty;
             public string TextIcon { get; set; } = string.Empty;
+            /// <summary>True if this effect uses SkiaSharp (real-time capable).</summary>
+            public bool IsSkia { get; set; }
 
-            public string ToolTipText => $"{DisplayName} ({Description})";
+            public string ToolTipText => IsSkia ? $"⚡ {DisplayName} ({Description}) [SkiaSharp]" : $"{DisplayName} ({Description})";
 
             public System.Windows.Visibility SvgVisibility => string.IsNullOrEmpty(TextIcon) ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
             public System.Windows.Visibility TextVisibility => string.IsNullOrEmpty(TextIcon) ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+            public System.Windows.Visibility SkiaBadgeVisibility => IsSkia ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
         }
 
         private Border? _activeGroupBorder;
@@ -2758,13 +2881,13 @@ namespace FlowMy.Views.NodeControls
             switch (borderName)
             {
                 case "TbxBlurActive":
-                    items.Add(new FxToolItem { Name = "GaussianBlur", DisplayName = "Gaussian Blur", Description = "Làm mịn ảnh, giảm nhiễu hạt độ chi tiết cao", IconKey = "droplet duotone" });
-                    items.Add(new FxToolItem { Name = "Blur", DisplayName = "Standard Blur", Description = "Làm mờ ảnh cơ bản nhanh chóng", IconKey = "water duotone" });
+                    items.Add(new FxToolItem { Name = "GaussianBlur", DisplayName = "Gaussian Blur", Description = "Làm mịn ảnh, giảm nhiễu hạt độ chi tiết cao", IconKey = "droplet duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "Blur", DisplayName = "Standard Blur", Description = "Làm mờ ảnh cơ bản nhanh chóng", IconKey = "water duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "MotionBlur", DisplayName = "Motion Blur", Description = "Làm mờ chuyển động theo một góc nhất định", IconKey = "wind duotone" });
                     items.Add(new FxToolItem { Name = "RadialBlur", DisplayName = "Radial Blur", Description = "Làm mờ xoay quanh tâm ảnh", IconKey = "arrows-spin duotone" });
                     items.Add(new FxToolItem { Name = "AdaptiveBlur", DisplayName = "Adaptive Blur", Description = "Làm mờ bảo toàn các đường biên sắc nét", IconKey = "cloud duotone" });
-                    items.Add(new FxToolItem { Name = "Sharpen", DisplayName = "Sharpen", Description = "Tăng cường độ sắc nét cho ảnh", IconKey = "diamond duotone" });
-                    items.Add(new FxToolItem { Name = "UnsharpMask", DisplayName = "Unsharp Mask", Description = "Lọc sắc nét nâng cao có kiểm soát", IconKey = "gem duotone" });
+                    items.Add(new FxToolItem { Name = "Sharpen", DisplayName = "Sharpen", Description = "Tăng cường độ sắc nét cho ảnh", IconKey = "diamond duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "UnsharpMask", DisplayName = "Unsharp Mask", Description = "Lọc sắc nét nâng cao có kiểm soát", IconKey = "gem duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "AdaptiveSharpen", DisplayName = "Adaptive Sharpen", Description = "Tăng sắc nét bảo toàn chi tiết phẳng", IconKey = "bolt duotone" });
                     items.Add(new FxToolItem { Name = "Kuwahara", DisplayName = "Kuwahara Filter", Description = "Lọc nghệ thuật Kuwahara làm mịn ảnh giữ cạnh", IconKey = "arrows-to-circle duotone" });
                     break;
@@ -2780,20 +2903,20 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "Spread", DisplayName = "Spread", Description = "Phân tán ngẫu nhiên các điểm ảnh xung quanh", IconKey = "sparkles duotone" });
                     items.Add(new FxToolItem { Name = "Implode", DisplayName = "Implode", Description = "Hút các điểm ảnh vào trung tâm", IconKey = "compress duotone" });
                     items.Add(new FxToolItem { Name = "Shade", DisplayName = "Shade", Description = "Hiệu ứng đổ bóng chiếu sáng 3D", IconKey = "mountain duotone" });
-                    items.Add(new FxToolItem { Name = "Pixelate", DisplayName = "Pixelate", Description = "Chia nhỏ ảnh thành các ô pixel vuông", IconKey = "grid duotone" });
+                    items.Add(new FxToolItem { Name = "Pixelate", DisplayName = "Pixelate", Description = "Chia nhỏ ảnh thành các ô pixel vuông", IconKey = "grid duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "Polaroid", DisplayName = "Polaroid Frame", Description = "Hiệu ứng khung ảnh Polaroid nghệ thuật cổ điển", IconKey = "pen-to-square duotone" });
                     items.Add(new FxToolItem { Name = "Frame", DisplayName = "3D Frame Border", Description = "Khung viền nổi 3D trang trí xung quanh ảnh", IconKey = "clone-plus duotone" });
                     items.Add(new FxToolItem { Name = "Explode", DisplayName = "Explode Zoom", Description = "Hiệu ứng phồng nở phóng to từ tâm ảnh", IconKey = "burst duotone" });
                     items.Add(new FxToolItem { Name = "Raise", DisplayName = "Raise Bevel", Description = "Tạo gờ viền nổi 3D xung quanh ảnh", IconKey = "cube duotone" });
                     // ── SkiaSharp-only artistic effects ──
-                    items.Add(new FxToolItem { Name = "SkiaDropShadow", DisplayName = "⚡ Drop Shadow", Description = "Tạo bóng đổ siêu nhanh cho ảnh (SkiaSharp)", IconKey = "clone-plus duotone" });
-                    items.Add(new FxToolItem { Name = "SkiaLighting", DisplayName = "⚡ Specular Lighting", Description = "Hiệu ứng chiếu sáng specular 3D (SkiaSharp)", IconKey = "sun duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaDropShadow", DisplayName = "⚡ Drop Shadow", Description = "Tạo bóng đổ siêu nhanh cho ảnh (SkiaSharp)", IconKey = "clone-plus duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "SkiaLighting", DisplayName = "⚡ Specular Lighting", Description = "Hiệu ứng chiếu sáng specular 3D (SkiaSharp)", IconKey = "sun duotone", IsSkia = true });
                     break;
 
                 case "TbxEdgeActive":
                     items.Add(new FxToolItem { Name = "EdgeDetect", DisplayName = "Edge Detect", Description = "Phát hiện biên ảnh cơ bản", IconKey = "object-group duotone" });
                     items.Add(new FxToolItem { Name = "CannyEdge", DisplayName = "Canny Edge", Description = "Bộ lọc biên Canny cao cấp độ chính xác cao", IconKey = "bullseye duotone" });
-                    items.Add(new FxToolItem { Name = "Threshold", DisplayName = "Threshold (Binarize)", Description = "Chuyển ảnh nhị phân theo ngưỡng cố định 50%", IconKey = "table-cells-lock duotone" });
+                    items.Add(new FxToolItem { Name = "Threshold", DisplayName = "Threshold (Binarize)", Description = "Chuyển ảnh nhị phân theo ngưỡng cố định 50%", IconKey = "table-cells-lock duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "AdaptiveThreshold", DisplayName = "Adaptive Threshold", Description = "Ngưỡng thích nghi bảo toàn chi tiết nét chữ", IconKey = "table-cells-header-unlock duotone" });
                     items.Add(new FxToolItem { Name = "OrderedDither", DisplayName = "Halftone Dither", Description = "Hiệu ứng nghệ thuật Halftone hạt chấm báo", IconKey = "chart-tree-map duotone" });
                     break;
@@ -2803,27 +2926,27 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "AutoGamma", DisplayName = "Auto Gamma", Description = "Tự động sửa lỗi gamma của ảnh", IconKey = "sun duotone" });
                     items.Add(new FxToolItem { Name = "Equalize", DisplayName = "Equalize Histogram", Description = "San phẳng phân bố độ sáng", IconKey = "bars duotone" });
                     items.Add(new FxToolItem { Name = "Normalize", DisplayName = "Normalize Color", Description = "Tối ưu hóa độ tương phản toàn phần", IconKey = "chart-bar duotone" });
-                    items.Add(new FxToolItem { Name = "Negate", DisplayName = "Invert (Negate)", Description = "Đảo ngược màu sắc (màu âm bản)", IconKey = "circle-half-stroke duotone" });
-                    items.Add(new FxToolItem { Name = "Posterize", DisplayName = "Posterize", Description = "Giảm số lượng màu tạo hiệu ứng poster", IconKey = "swatchbook duotone" });
+                    items.Add(new FxToolItem { Name = "Negate", DisplayName = "Invert (Negate)", Description = "Đảo ngược màu sắc (màu âm bản)", IconKey = "circle-half-stroke duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "Posterize", DisplayName = "Posterize", Description = "Giảm số lượng màu tạo hiệu ứng poster", IconKey = "swatchbook duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "Solarize", DisplayName = "Solarize", Description = "Đảo ngược các vùng sáng quá ngưỡng", IconKey = "explosion duotone" });
-                    items.Add(new FxToolItem { Name = "SepiaTone", DisplayName = "Sepia Tone", Description = "Màu ảnh hoài cổ úa vàng", IconKey = "image duotone" });
-                    items.Add(new FxToolItem { Name = "Grayscale", DisplayName = "Grayscale", Description = "Chuyển đổi thành ảnh đen trắng", IconKey = "moon duotone" });
-                    items.Add(new FxToolItem { Name = "BrightnessUp", DisplayName = "Brightness +", Description = "Tăng độ sáng ảnh (+15%)", IconKey = "brightness duotone" });
-                    items.Add(new FxToolItem { Name = "BrightnessDown", DisplayName = "Brightness -", Description = "Giảm độ sáng ảnh (-15%)", IconKey = "eclipse duotone" });
-                    items.Add(new FxToolItem { Name = "GammaCorrect", DisplayName = "Gamma Correct", Description = "Điều chỉnh độ tương phản trung gian", IconKey = "circle-half-stroke duotone" });
-                    items.Add(new FxToolItem { Name = "SaturationUp", DisplayName = "Saturation +", Description = "Tăng rực rỡ màu sắc (+40%)", IconKey = "rainbow duotone" });
-                    items.Add(new FxToolItem { Name = "SaturationDown", DisplayName = "Saturation -", Description = "Giảm độ rực màu sắc (-40%)", IconKey = "filter duotone" });
+                    items.Add(new FxToolItem { Name = "SepiaTone", DisplayName = "Sepia Tone", Description = "Màu ảnh hoài cổ úa vàng", IconKey = "image duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "Grayscale", DisplayName = "Grayscale", Description = "Chuyển đổi thành ảnh đen trắng", IconKey = "moon duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "BrightnessUp", DisplayName = "Brightness +", Description = "Tăng độ sáng ảnh (+15%)", IconKey = "brightness duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "BrightnessDown", DisplayName = "Brightness -", Description = "Giảm độ sáng ảnh (-15%)", IconKey = "eclipse duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "GammaCorrect", DisplayName = "Gamma Correct", Description = "Điều chỉnh độ tương phản trung gian", IconKey = "circle-half-stroke duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "SaturationUp", DisplayName = "Saturation +", Description = "Tăng rực rỡ màu sắc (+40%)", IconKey = "rainbow duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "SaturationDown", DisplayName = "Saturation -", Description = "Giảm độ rực màu sắc (-40%)", IconKey = "filter duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "Tint", DisplayName = "Tint (Colorize)", Description = "Áp sắc màu ấm cho bức ảnh", IconKey = "feather duotone" });
-                    items.Add(new FxToolItem { Name = "ContrastUp", DisplayName = "Contrast +", Description = "Tăng tương phản giữa sáng và tối", IconKey = "circle-half duotone" });
-                    items.Add(new FxToolItem { Name = "ContrastDown", DisplayName = "Contrast -", Description = "Giảm tương phản giữa sáng và tối", IconKey = "circle duotone" });
+                    items.Add(new FxToolItem { Name = "ContrastUp", DisplayName = "Contrast +", Description = "Tăng tương phản giữa sáng và tối", IconKey = "circle-half duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "ContrastDown", DisplayName = "Contrast -", Description = "Giảm tương phản giữa sáng và tối", IconKey = "circle duotone", IsSkia = true });
                     items.Add(new FxToolItem { Name = "BlueShift", DisplayName = "Blue Shift", Description = "Chuyển tông màu đêm sang ánh sáng xanh", IconKey = "circle-moon duotone" });
                     items.Add(new FxToolItem { Name = "LinearStretch", DisplayName = "Linear Contrast Stretch", Description = "Kéo dãn tương phản tuyến tính tự động", IconKey = "arrows-up-down duotone" });
                     items.Add(new FxToolItem { Name = "QuantizeColors", DisplayName = "Quantize Retro (16c)", Description = "Giảm số lượng màu tối đa còn 16 màu", IconKey = "swatchbook duotone" });
                     items.Add(new FxToolItem { Name = "SigmoidalContrastUp", DisplayName = "Sigmoid Contrast +", Description = "Tăng độ tương phản mịn màng hình chữ S", IconKey = "sliders duotone" });
                     // ── SkiaSharp-only color effects ──
-                    items.Add(new FxToolItem { Name = "SkiaHueRotate", DisplayName = "⚡ Hue Rotate", Description = "Xoay tông màu HSL siêu nhanh (SkiaSharp)", IconKey = "palette duotone" });
-                    items.Add(new FxToolItem { Name = "SkiaColorMatrix", DisplayName = "⚡ Color Matrix", Description = "Bộ lọc màu tùy chỉnh 5x4 matrix (SkiaSharp)", IconKey = "table-cells-lock duotone" });
-                    items.Add(new FxToolItem { Name = "SkiaBlendMode", DisplayName = "⚡ Blend Mode", Description = "Overlay màu với chế độ hoà trộn chuyên nghiệp (SkiaSharp)", IconKey = "layer-group duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaHueRotate", DisplayName = "⚡ Hue Rotate", Description = "Xoay tông màu HSL siêu nhanh (SkiaSharp)", IconKey = "palette duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "SkiaColorMatrix", DisplayName = "⚡ Color Matrix", Description = "Bộ lọc màu tùy chỉnh 5x4 matrix (SkiaSharp)", IconKey = "table-cells-lock duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "SkiaBlendMode", DisplayName = "⚡ Blend Mode", Description = "Overlay màu với chế độ hoà trộn chuyên nghiệp (SkiaSharp)", IconKey = "layer-group duotone", IsSkia = true });
                     break;
 
                 case "TbxNoiseActive":
@@ -2845,8 +2968,8 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "TopHat", DisplayName = "Top Hat", Description = "Chiết xuất các chi tiết sáng nhỏ trên nền tối", IconKey = "sparkles duotone" });
                     items.Add(new FxToolItem { Name = "BottomHat", DisplayName = "Bottom Hat", Description = "Chiết xuất các lỗ/chi tiết tối trên nền sáng", IconKey = "circle duotone" });
                     // ── SkiaSharp fast morphology ──
-                    items.Add(new FxToolItem { Name = "SkiaDilate", DisplayName = "⚡ Dilate (SkiaSharp)", Description = "Giãn nở siêu nhanh bằng SkiaSharp", IconKey = "expand duotone" });
-                    items.Add(new FxToolItem { Name = "SkiaErode", DisplayName = "⚡ Erode (SkiaSharp)", Description = "Co rút siêu nhanh bằng SkiaSharp", IconKey = "compress duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaDilate", DisplayName = "⚡ Dilate (SkiaSharp)", Description = "Giãn nở siêu nhanh bằng SkiaSharp", IconKey = "expand duotone", IsSkia = true });
+                    items.Add(new FxToolItem { Name = "SkiaErode", DisplayName = "⚡ Erode (SkiaSharp)", Description = "Co rút siêu nhanh bằng SkiaSharp", IconKey = "compress duotone", IsSkia = true });
                     break;
 
                 case "TbxXFormActive":

@@ -1634,6 +1634,11 @@
                                     <TextBlock Text="{Binding TextIcon}" Foreground="#dde3ef" FontSize="9.5" FontWeight="Bold"
                                                Visibility="{Binding TextVisibility}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                    <!-- SkiaSharp badge: chấm xanh nhỏ góc dưới-phải -->
+                                    <Ellipse Width="5" Height="5" Fill="#4fffb0"
+                                             HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                             Margin="0,0,1,1" IsHitTestVisible="False"
+                                             Visibility="{Binding SkiaBadgeVisibility}"/>
                                 </Grid>
                             </Border>
                             <DataTemplate.Triggers>
