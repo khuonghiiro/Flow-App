@@ -623,7 +623,7 @@
                                     
                                     <!-- Single Layout Button -->
                                     <Button x:Name="BtnSplitSingle" Width="26" Height="22" Margin="1,0" Padding="0" ToolTip="Trang đơn" Style="{DynamicResource SecondaryButton}" Click="BtnSplitSingle_Click">
-                                        <Border BorderBrush="{StaticResource TextMuted}" BorderThickness="1.5" Width="12" Height="10" CornerRadius="1"/>
+                                        <Border BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="1.5" Width="12" Height="10" CornerRadius="1"/>
                                     </Button>
                                     
                                     <!-- Vertical Split Button -->
@@ -634,13 +634,13 @@
                                                 <ColumnDefinition Width="1"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" BorderBrush="{StaticResource TextMuted}" BorderThickness="1.5,1.5,0.7,1.5"/>
-                                            <Border Grid.Column="2" BorderBrush="{StaticResource TextMuted}" BorderThickness="0.7,1.5,1.5,1.5"/>
+                                            <Border Grid.Column="0" BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="1.5,1.5,0.7,1.5"/>
+                                            <Border Grid.Column="2" BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="0.7,1.5,1.5,1.5"/>
                                         </Grid>
                                     </Button>
                                     
                                     <!-- Horizontal Split Button -->
-                                    <Button x:Name="BtnSplitHorizontal" Width="26" Height="22" Margin="1,0" Padding="0" ToolTip="Chia 2 hàng ngang" Style="{DynamicResource SecondaryButton}" Click="BtnSplitHorizontal_Click">
+                                    <Button x:Name="BtnSplitHorizontal" Visibility="Collapsed" Width="26" Height="22" Margin="1,0" Padding="0" ToolTip="Chia 2 hàng ngang" Style="{DynamicResource SecondaryButton}" Click="BtnSplitHorizontal_Click">
                                         <Grid Width="12" Height="10">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*"/>
@@ -663,10 +663,10 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource TextMuted}" BorderThickness="1.5,1.5,0.7,0.7"/>
-                                            <Border Grid.Row="0" Grid.Column="1" BorderBrush="{StaticResource TextMuted}" BorderThickness="0.7,1.5,1.5,0.7"/>
-                                            <Border Grid.Row="1" Grid.Column="0" BorderBrush="{StaticResource TextMuted}" BorderThickness="1.5,0.7,0.7,1.5"/>
-                                            <Border Grid.Row="1" Grid.Column="1" BorderBrush="{StaticResource TextMuted}" BorderThickness="0.7,0.7,1.5,1.5"/>
+                                            <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="1.5,1.5,0.7,0.7"/>
+                                            <Border Grid.Row="0" Grid.Column="1" BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="0.7,1.5,1.5,0.7"/>
+                                            <Border Grid.Row="1" Grid.Column="0" BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="1.5,0.7,0.7,1.5"/>
+                                            <Border Grid.Row="1" Grid.Column="1" BorderBrush="{StaticResource TextOnSecondaryBrush}" BorderThickness="0.7,0.7,1.5,1.5"/>
                                         </Grid>
                                     </Button>
                                 </StackPanel>

@@ -3631,7 +3631,7 @@ namespace FlowMy.Views.NodeControls
                 if (current == popupChild || current == PopupBrushPreset)
                     return true;
 
-                if (current is ComboBox || current is ComboBoxItem)
+                if (current is ComboBox || current is ComboBoxItem || current is ListBox || current is ListBoxItem)
                     return true;
 
                 if (current is System.Windows.Controls.Primitives.Popup p)
