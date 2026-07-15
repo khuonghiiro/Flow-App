@@ -3241,6 +3241,38 @@ namespace FlowMy.Views.NodeControls
 
         private bool _isSyncingBrushProperties = false;
 
+        private void InitializeBrushPresetListBoxItems()
+        {
+            if (PopupBrushPreset == null || PopupBrushPreset.Items.Count > 0) return;
+            PopupBrushPreset.Items.Clear();
+
+            var presets = new[]
+            {
+                (BrushPreset.RoundHard, "Round Hard (Cọ tròn cứng)"),
+                (BrushPreset.RoundSoft, "Round Soft (Cọ tròn mềm)"),
+                (BrushPreset.Flat, "Flat (Cọ dẹp)"),
+                (BrushPreset.Chalk, "Chalk (Cọ phấn)"),
+                (BrushPreset.Spray, "Spray (Bình xịt)"),
+                (BrushPreset.Scatter, "Scatter (Điểm rải rác)"),
+                (BrushPreset.Pencil, "Pencil (Bút chì)"),
+                (BrushPreset.Airbrush, "Airbrush (Bút phun khí)"),
+                (BrushPreset.Splatter, "Splatter (Vết mực bắn)"),
+                (BrushPreset.Charcoal, "Charcoal (Than củi)"),
+                (BrushPreset.OilBrush, "Oil Brush (Sơn dầu)")
+            };
+
+            foreach (var presetInfo in presets)
+            {
+                var previewElement = CreateBrushPreviewElement(24, 24, presetInfo.Item1, 50, 100, 100, Colors.White);
+                var listBoxItem = new ListBoxItem
+                {
+                    Content = previewElement,
+                    ToolTip = presetInfo.Item2
+                };
+                PopupBrushPreset.Items.Add(listBoxItem);
+            }
+        }
+
         private void SyncFromEditorPanelBrushProperties()
         {
             if (EditorPanel == null || _isSyncingBrushProperties) return;
