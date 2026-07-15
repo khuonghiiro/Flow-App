@@ -244,7 +244,15 @@ namespace FlowMy.Views.NodeControls
                 var composite = _node.EditorDoc.Composite();
                 MainImage.Source = composite;
             }
-            catch { /* ignore */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("=== DoLightweightComposite EXCEPTION ===\n" + ex);
+                try
+                {
+                    System.IO.File.AppendAllText("d:\\UngDung_PC\\Flow-App\\error.log", "=== DoLightweightComposite EXCEPTION ===\n" + ex.ToString() + "\n\n");
+                }
+                catch { }
+            }
         }
 
         /// <summary>Fast 2-layer composite: cached bg plate + active layer. Avoids full N-layer composite.</summary>
@@ -409,7 +417,6 @@ namespace FlowMy.Views.NodeControls
         private EditorLayer? _movingLayer;
         private double _accumulatedMoveDx = 0;
         private double _accumulatedMoveDy = 0;
-
         private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
         {
             if (_node.EditorDoc == null) return;
@@ -418,6 +425,15 @@ namespace FlowMy.Views.NodeControls
 
             string tool = EditorPanel.ActiveToolName;
             var clickPos = e.GetPosition(MainImage);
+
+            if (tool != "Move" && tool != "Transform")
+            {
+                if (activeLayer.OriginalTransformBitmap != null)
+                {
+                    activeLayer.OriginalTransformBitmap = null;
+                    activeLayer.ContentBounds = Rect.Empty;
+                }
+            }
 
             if (tool != "Text" && TextMoveContainer != null && TextMoveContainer.Visibility == Visibility.Visible)
             {
@@ -469,12 +485,35 @@ namespace FlowMy.Views.NodeControls
                         }
                         else
                         {
-                            int stride = activeLayer.Width * 4;
-                            byte[] singlePixel = new byte[4];
-                            activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
-                            if (singlePixel[3] > 0) // Alpha > 0
+                            if (activeLayer.OriginalTransformBitmap != null && !activeLayer.ContentBounds.IsEmpty)
                             {
-                                canGrab = true;
+                                var bounds = activeLayer.ContentBounds;
+                                if (px >= bounds.Left && px <= bounds.Right &&
+                                    py >= bounds.Top && py <= bounds.Bottom)
+                                {
+                                    int localX = (int)(px - bounds.Left);
+                                    int localY = (int)(py - bounds.Top);
+                                    if (localX >= 0 && localX < activeLayer.OriginalTransformBitmap.PixelWidth &&
+                                        localY >= 0 && localY < activeLayer.OriginalTransformBitmap.PixelHeight)
+                                    {
+                                        byte[] singlePixel = new byte[4];
+                                        activeLayer.OriginalTransformBitmap.CopyPixels(new Int32Rect(localX, localY, 1, 1), singlePixel, 4, 0);
+                                        if (singlePixel[3] > 0)
+                                        {
+                                            canGrab = true;
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                int stride = activeLayer.Width * 4;
+                                byte[] singlePixel = new byte[4];
+                                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
+                                if (singlePixel[3] > 0) // Alpha > 0
+                                {
+                                    canGrab = true;
+                                }
                             }
                         }
                     }
@@ -485,6 +524,7 @@ namespace FlowMy.Views.NodeControls
                 _isMovingLayer = true;
                 _movingLayer = activeLayer;
                 _moveStartMousePos = clickPos;
+                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MouseDown MOVE start, layer={activeLayer.Name}, hasOrigTransform={activeLayer.OriginalTransformBitmap != null}\n"); } catch { }
 
                 int w = activeLayer.Width;
                 int h = activeLayer.Height;
@@ -519,8 +559,42 @@ namespace FlowMy.Views.NodeControls
                 {
                     _moveInitialGeometry = null;
                     activeLayer.TempSelectionGeometry = null;
+                    try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step1: checking OriginalTransformBitmap\n"); } catch { }
+                    if (activeLayer.OriginalTransformBitmap == null)
+                    {
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step2: GetLayerContentBounds start\n"); } catch { }
+                        var bounds = GetLayerContentBounds(activeLayer.Bitmap);
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step3: bounds={bounds}\n"); } catch { }
+                        if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+                        {
+                            bounds = new Rect(0, 0, w, h);
+                        }
+
+                        int startX = (int)bounds.Left;
+                        int startY = (int)bounds.Top;
+                        int bw = (int)bounds.Width;
+                        int bh = (int)bounds.Height;
+
+                        int tightStride = bw * 4;
+                        byte[] tightPixels = new byte[tightStride * bh];
+
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step4: CopyPixels bw={bw} bh={bh}\n"); } catch { }
+                        // CopyPixels là read-only — KHÔNG cần Lock/Unlock (Lock gây deadlock với WPF render thread)
+                        activeLayer.Bitmap.CopyPixels(new Int32Rect(startX, startY, bw, bh), tightPixels, tightStride, 0);
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step5: creating origBmp + WritePixels\n"); } catch { }
+
+                        var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
+                        origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
+
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step6: setting OriginalTransformBitmap\n"); } catch { }
+                        activeLayer.OriginalTransformBitmap = origBmp;
+                        activeLayer.ContentBounds = bounds;
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step7: OriginalTransformBitmap SET OK\n"); } catch { }
+                    }
+
                     if (_moveInitialFullPixels == null)
                     {
+                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step8: CopyPixels for undo\n"); } catch { }
                         _moveInitialFullPixels = new byte[strideValue * h];
                         activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
                         _accumulatedMoveDx = 0;
@@ -530,9 +604,11 @@ namespace FlowMy.Views.NodeControls
                     activeLayer.TempMoveDy = _accumulatedMoveDy;
                 }
 
+                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step9: UpdatePolygonDisplay + CaptureMouse\n"); } catch { }
                 UpdatePolygonDisplay();
 
                 MainScrollViewer.CaptureMouse();
+                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step10: MouseDown COMPLETE\n"); } catch { }
                 return;
             }
 
@@ -1077,6 +1153,7 @@ namespace FlowMy.Views.NodeControls
                     UpdatePolygonDisplay();
                 }
 
+                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MouseMove MOVE dx={activeLayer.TempMoveDx:F0} dy={activeLayer.TempMoveDy:F0}\n"); } catch { }
                 MarkCompositeDirty();
                 return;
             }
@@ -1245,6 +1322,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         _accumulatedMoveDx = targetLayer.TempMoveDx;
                         _accumulatedMoveDy = targetLayer.TempMoveDy;
+                        CommitPendingMoveTranslation();
                     }
                 }
                 return;
@@ -4327,6 +4405,53 @@ namespace FlowMy.Views.NodeControls
             MarkCompositeDirty();
         }
 
+        private void DrawBitmapAt(WriteableBitmap dest, WriteableBitmap src, Rect destRect)
+        {
+            int dw = dest.PixelWidth;
+            int dh = dest.PixelHeight;
+            int sw = src.PixelWidth;
+            int sh = src.PixelHeight;
+
+            int destStride = dw * 4;
+            int srcStride = sw * 4;
+
+            byte[] destPixels = new byte[destStride * dh];
+            byte[] srcPixels = new byte[srcStride * sh];
+
+            dest.CopyPixels(destPixels, destStride, 0);
+            src.CopyPixels(srcPixels, srcStride, 0);
+
+            var destInfo = new SkiaSharp.SKImageInfo(dw, dh, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+            var srcInfo = new SkiaSharp.SKImageInfo(sw, sh, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+
+            var gcDest = System.Runtime.InteropServices.GCHandle.Alloc(destPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+            var gcSrc = System.Runtime.InteropServices.GCHandle.Alloc(srcPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+
+            try
+            {
+                using (var destBmp = new SkiaSharp.SKBitmap())
+                using (var srcBmp = new SkiaSharp.SKBitmap())
+                {
+                    destBmp.InstallPixels(destInfo, gcDest.AddrOfPinnedObject(), destStride);
+                    srcBmp.InstallPixels(srcInfo, gcSrc.AddrOfPinnedObject(), srcStride);
+
+                    using (var canvas = new SkiaSharp.SKCanvas(destBmp))
+                    {
+                        canvas.Clear(SkiaSharp.SKColors.Transparent);
+                        var skDestRect = new SkiaSharp.SKRect((float)destRect.Left, (float)destRect.Top, (float)destRect.Right, (float)destRect.Bottom);
+                        canvas.DrawBitmap(srcBmp, skDestRect);
+                    }
+                }
+            }
+            finally
+            {
+                gcDest.Free();
+                gcSrc.Free();
+            }
+
+            dest.WritePixels(new Int32Rect(0, 0, dw, dh), destPixels, destStride, 0);
+        }
+
         private void ShiftBitmapPixels(EditorLayer activeLayer, byte[] sourceFullPixels, int dx, int dy)
         {
             int w = activeLayer.Width;
@@ -4504,10 +4629,15 @@ namespace FlowMy.Views.NodeControls
                     oldBounds = targetLayer.ContentBounds;
                     newBounds = new Rect(oldBounds.Left + dxLayer, oldBounds.Top + dyLayer, oldBounds.Width, oldBounds.Height);
                     targetLayer.ContentBounds = newBounds;
-                }
 
-                // Apply shift once
-                ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
+                    // Regenerate Bitmap from OriginalTransformBitmap at newBounds
+                    DrawBitmapAt(targetLayer.Bitmap, targetLayer.OriginalTransformBitmap, newBounds);
+                }
+                else
+                {
+                    // Apply shift once
+                    ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
+                }
 
                 int moveStride = targetLayer.Width * 4;
                 var finalPixels = new byte[moveStride * targetLayer.Height];

@@ -180,6 +180,9 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Tạm ẩn layer trong quá trình biến đổi.</summary>
         public bool IsTempHidden { get; set; }
 
+        private SkiaSharp.SKBitmap? _cachedOriginalSKBitmap;
+        public SkiaSharp.SKBitmap? CachedOriginalSKBitmap => _cachedOriginalSKBitmap;
+
         private WriteableBitmap? _originalTransformBitmap;
         public WriteableBitmap? OriginalTransformBitmap
         {
@@ -187,6 +190,10 @@ namespace FlowMy.Models.ImageEditor
             set
             {
                 _originalTransformBitmap = value;
+                
+                _cachedOriginalSKBitmap?.Dispose();
+                _cachedOriginalSKBitmap = null;
+                
                 if (value == null)
                 {
                     LayerScaleX = 1.0;
@@ -198,9 +205,31 @@ namespace FlowMy.Models.ImageEditor
                 }
                 else
                 {
+                    int w = value.PixelWidth;
+                    int h = value.PixelHeight;
+                    var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                    _cachedOriginalSKBitmap = new SkiaSharp.SKBitmap();
+                    _cachedOriginalSKBitmap.TryAllocPixels(info);
+                    
+                    int stride = w * 4;
+                    byte[] pixels = new byte[stride * h];
+                    // CopyPixels là read-only — KHÔNG cần Lock/Unlock
+                    value.CopyPixels(pixels, stride, 0);
+                    
+                    var dstPtr = _cachedOriginalSKBitmap.GetPixels();
+                    if (dstPtr != IntPtr.Zero)
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(pixels, 0, dstPtr, pixels.Length);
+                    }
+
                     ContentBounds = CalculateContentBounds(value);
                 }
             }
+        }
+
+        ~EditorLayer()
+        {
+            _cachedOriginalSKBitmap?.Dispose();
         }
 
         public Rect ContentBounds { get; set; } = Rect.Empty;
@@ -419,8 +448,7 @@ namespace FlowMy.Models.ImageEditor
             copy.ContentBounds = ContentBounds;
             if (OriginalTransformBitmap != null)
             {
-                // Gán trực tiếp field để bỏ qua setter (chia sẻ chung bitmap để không tốn thêm 16MB)
-                copy._originalTransformBitmap = OriginalTransformBitmap;
+                copy.OriginalTransformBitmap = OriginalTransformBitmap;
             }
             copy.LayerScaleX = LayerScaleX;
             copy.LayerScaleY = LayerScaleY;
@@ -433,25 +461,10 @@ namespace FlowMy.Models.ImageEditor
             }
 
             var stride = Width * 4;
-            Bitmap.Lock();
-            copy.Bitmap.Lock();
-            try
-            {
-                unsafe
-                {
-                    System.Buffer.MemoryCopy(
-                        (void*)Bitmap.BackBuffer,
-                        (void*)copy.Bitmap.BackBuffer,
-                        stride * Height,
-                        stride * Height);
-                }
-                copy.Bitmap.AddDirtyRect(new Int32Rect(0, 0, Width, Height));
-            }
-            finally
-            {
-                copy.Bitmap.Unlock();
-                Bitmap.Unlock();
-            }
+            // CopyPixels là read-only KHÔNG cần Lock — tránh deadlock với WPF render thread
+            byte[] pixelData = new byte[stride * Height];
+            Bitmap.CopyPixels(pixelData, stride, 0);
+            copy.Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixelData, stride, 0);
             // Chỉ xoá cache, không gọi InvalidateThumbnail (tránh trigger PropertyChanged đồng bộ)
             copy._cachedThumbnail = null;
             return copy;

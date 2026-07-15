@@ -2533,6 +2533,9 @@ namespace FlowMy.Views.NodeControls
             var layer = _node.EditorDoc.ActiveLayer;
             if (layer == null || layer.IsLocked || !layer.IsVisible) return;
 
+            layer.OriginalTransformBitmap = null;
+            layer.ContentBounds = Rect.Empty;
+
             if (sender is not Border border || border.Tag is not string effectName)
                 return;
 
