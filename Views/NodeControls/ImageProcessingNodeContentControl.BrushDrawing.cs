@@ -3323,7 +3323,7 @@ namespace FlowMy.Views.NodeControls
             }
             if (BrushPopupPreviewContainer != null)
             {
-                BrushPopupPreviewContainer.Content = CreateBrushPreviewElement(68, 68, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
+                BrushPopupPreviewContainer.Content = CreateBrushPreviewElement(38, 38, _currentBrushPreset, EditorPanel.BrushSize, EditorPanel.BrushHardness, EditorPanel.BrushFlow, Colors.White);
             }
         }
 

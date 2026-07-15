@@ -606,111 +606,27 @@
                     <!-- Popup for Brush Settings (Photoshop style) -->
                     <Popup x:Name="BrushSettingsPopup" PlacementTarget="{Binding ElementName=BtnBrushPreviewDropdown}" 
                            Placement="Bottom" StaysOpen="True" PopupAnimation="Fade" Closed="BrushSettingsPopup_Closed">
-                        <Border Background="#111318" BorderBrush="#353945" BorderThickness="1" CornerRadius="5" Padding="12" Width="360">
+                        <Border Background="#111318" BorderBrush="#353945" BorderThickness="1" CornerRadius="6" Padding="10" Width="260">
                             <StackPanel>
-                                <TextBlock Text="Brush Settings" FontSize="10" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
-                                
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Left Column: Controls -->
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <!-- Preset Selector -->
-                                        <TextBlock Text="Presets" Foreground="#5a6072" FontSize="9" Margin="0,0,0,4"/>
-                                        <ListBox x:Name="PopupBrushPreset" Margin="0,0,0,8" SelectionChanged="PopupBrushPreset_SelectionChanged"
-                                                 Background="Transparent" BorderThickness="0" Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                            <ListBox.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Horizontal"/>
-                                                </ItemsPanelTemplate>
-                                            </ListBox.ItemsPanel>
-                                            <ListBox.ItemContainerStyle>
-                                                <Style TargetType="ListBoxItem">
-                                                    <Setter Property="Background" Value="Transparent"/>
-                                                    <Setter Property="BorderBrush" Value="Transparent"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                    <Setter Property="Padding" Value="2"/>
-                                                    <Setter Property="Margin" Value="2"/>
-                                                    <Setter Property="Width" Value="38"/>
-                                                    <Setter Property="Height" Value="38"/>
-                                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                                                    <Setter Property="Cursor" Value="Hand"/>
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="ListBoxItem">
-                                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" 
-                                                                        BorderBrush="{TemplateBinding BorderBrush}" 
-                                                                        BorderThickness="{TemplateBinding BorderThickness}" 
-                                                                        CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                </Border>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter TargetName="Bd" Property="Background" Value="#252932"/>
-                                                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#353945"/>
-                                                                    </Trigger>
-                                                                    <Trigger Property="IsSelected" Value="True">
-                                                                        <Setter TargetName="Bd" Property="Background" Value="#152e3c"/>
-                                                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#00cfff"/>
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Style>
-                                            </ListBox.ItemContainerStyle>
-                                        </ListBox>
-
-                                        <!-- Size Slider -->
-                                        <DockPanel Margin="0,0,0,6">
-                                            <TextBlock DockPanel.Dock="Left" Text="Size" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
-                                            <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="TxtPopupBrushSize" Text="50" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
-                                            </Border>
-                                            <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="200" Value="50" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
-                                        </DockPanel>
-
-                                        <!-- Hardness Slider -->
-                                        <DockPanel x:Name="PopupHardnessPanel" Margin="0,0,0,6">
-                                            <TextBlock DockPanel.Dock="Left" Text="Hard" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
-                                            <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="TxtPopupBrushHardness" Text="100%" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
-                                            </Border>
-                                            <Slider x:Name="PopupBrushHardness" Minimum="0" Maximum="100" Value="100" VerticalAlignment="Center" ValueChanged="PopupBrushHardness_ValueChanged"/>
-                                        </DockPanel>
-
-                                        <!-- Flow Slider -->
-                                        <DockPanel Margin="0,0,0,2">
-                                            <TextBlock DockPanel.Dock="Left" Text="Flow" Foreground="#5a6072" FontSize="9" Width="48" VerticalAlignment="Center"/>
-                                            <Border DockPanel.Dock="Right" Background="{StaticResource ipSurface}" CornerRadius="2" Padding="3,1" MinWidth="26" Margin="4,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock x:Name="TxtPopupBrushFlow" Text="100%" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
-                                            </Border>
-                                            <Slider x:Name="PopupBrushFlow" Minimum="1" Maximum="100" Value="100" VerticalAlignment="Center" ValueChanged="PopupBrushFlow_ValueChanged"/>
-                                        </DockPanel>
-                                    </StackPanel>
-
-                                    <!-- Right Column: Photoshop-style brush tip preview with checkerboard pattern -->
-                                    <Border Grid.Column="1" Width="72" Height="72" Margin="12,0,0,0"
+                                <!-- Header row: title + preview -->
+                                <DockPanel Margin="0,0,0,6">
+                                    <TextBlock Text="Brush Settings" FontSize="10" FontWeight="SemiBold" Foreground="#b0b8c8" VerticalAlignment="Center"/>
+                                    <!-- Preview box inline with title -->
+                                    <Border DockPanel.Dock="Right" Width="42" Height="42"
                                             Background="#0a0c10" BorderBrush="#252932" BorderThickness="1"
-                                            CornerRadius="4" VerticalAlignment="Center"
-                                            ToolTip="Xem trước đầu cọ (Brush Preview)">
+                                            CornerRadius="4" ToolTip="Brush Preview">
                                         <Grid ClipToBounds="True">
-                                            <!-- Checkerboard background -->
                                             <Grid.Background>
-                                                <VisualBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+                                                <VisualBrush TileMode="Tile" Viewport="0,0,6,6" ViewportUnits="Absolute">
                                                     <VisualBrush.Visual>
-                                                        <Grid Width="8" Height="8">
+                                                        <Grid Width="6" Height="6">
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="4"/>
-                                                                <ColumnDefinition Width="4"/>
+                                                                <ColumnDefinition Width="3"/>
+                                                                <ColumnDefinition Width="3"/>
                                                             </Grid.ColumnDefinitions>
                                                             <Grid.RowDefinitions>
-                                                                <RowDefinition Height="4"/>
-                                                                <RowDefinition Height="4"/>
+                                                                <RowDefinition Height="3"/>
+                                                                <RowDefinition Height="3"/>
                                                             </Grid.RowDefinitions>
                                                             <Rectangle Grid.Row="0" Grid.Column="0" Fill="#151821"/>
                                                             <Rectangle Grid.Row="0" Grid.Column="1" Fill="#0c0e14"/>
@@ -720,20 +636,99 @@
                                                     </VisualBrush.Visual>
                                                 </VisualBrush>
                                             </Grid.Background>
-                                            
-                                            <!-- ContentControl where C# will inject the preview element -->
                                             <ContentControl x:Name="BrushPopupPreviewContainer" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                                            <!-- Target crosshair (Photoshop style) -->
-                                            <Path Data="M0,8 L16,8 M8,0 L8,16" 
-                                                  Stroke="#25FFFFFF" 
-                                                  StrokeThickness="1" 
-                                                  Width="16" Height="16"
+                                            <Path Data="M0,6 L12,6 M6,0 L6,12" 
+                                                  Stroke="#20FFFFFF" StrokeThickness="0.5" 
+                                                  Width="12" Height="12"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                                   IsHitTestVisible="False"/>
                                         </Grid>
                                     </Border>
-                                </Grid>
+                                </DockPanel>
+
+                                <!-- Separator -->
+                                <Rectangle Height="1" Fill="#1e222c" Margin="0,0,0,6"/>
+
+                                <!-- Preset Grid -->
+                                <TextBlock Text="PRESETS" Foreground="#454b5a" FontSize="8" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <ListBox x:Name="PopupBrushPreset" Margin="0,0,0,8" SelectionChanged="PopupBrushPreset_SelectionChanged"
+                                         Background="Transparent" BorderThickness="0" Padding="0" 
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Setter Property="Padding" Value="1"/>
+                                            <Setter Property="Margin" Value="1"/>
+                                            <Setter Property="Width" Value="32"/>
+                                            <Setter Property="Height" Value="32"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                            <Setter Property="Cursor" Value="Hand"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="Bd" Background="{TemplateBinding Background}" 
+                                                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="#1c2028"/>
+                                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2a3040"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="#12283a"/>
+                                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#00b8e6"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                </ListBox>
+
+                                <!-- Separator -->
+                                <Rectangle Height="1" Fill="#1e222c" Margin="0,0,0,6"/>
+
+                                <!-- Sliders Section -->
+                                <TextBlock Text="PROPERTIES" Foreground="#454b5a" FontSize="8" FontWeight="SemiBold" Margin="0,0,0,5"/>
+
+                                <!-- Size -->
+                                <DockPanel Margin="0,0,0,5">
+                                    <TextBlock DockPanel.Dock="Left" Text="Size" Foreground="#6a7080" FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <Border DockPanel.Dock="Right" Background="#181c24" CornerRadius="2" Padding="3,1" MinWidth="28" Margin="4,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtPopupBrushSize" Text="50" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                    </Border>
+                                    <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="200" Value="50" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
+                                </DockPanel>
+
+                                <!-- Hardness -->
+                                <DockPanel x:Name="PopupHardnessPanel" Margin="0,0,0,5">
+                                    <TextBlock DockPanel.Dock="Left" Text="Hard" Foreground="#6a7080" FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <Border DockPanel.Dock="Right" Background="#181c24" CornerRadius="2" Padding="3,1" MinWidth="28" Margin="4,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtPopupBrushHardness" Text="100%" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                    </Border>
+                                    <Slider x:Name="PopupBrushHardness" Minimum="0" Maximum="100" Value="100" VerticalAlignment="Center" ValueChanged="PopupBrushHardness_ValueChanged"/>
+                                </DockPanel>
+
+                                <!-- Flow -->
+                                <DockPanel Margin="0,0,0,2">
+                                    <TextBlock DockPanel.Dock="Left" Text="Flow" Foreground="#6a7080" FontSize="9" Width="36" VerticalAlignment="Center"/>
+                                    <Border DockPanel.Dock="Right" Background="#181c24" CornerRadius="2" Padding="3,1" MinWidth="28" Margin="4,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtPopupBrushFlow" Text="100%" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
+                                    </Border>
+                                    <Slider x:Name="PopupBrushFlow" Minimum="1" Maximum="100" Value="100" VerticalAlignment="Center" ValueChanged="PopupBrushFlow_ValueChanged"/>
+                                </DockPanel>
                             </StackPanel>
                         </Border>
                     </Popup>
