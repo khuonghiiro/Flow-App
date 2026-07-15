@@ -627,6 +627,7 @@ namespace FlowMy.Models.ImageEditor
         public double TempMoveDx { get; set; }
         public double TempMoveDy { get; set; }
         public Geometry? TempSelectionGeometry { get; set; }
+        public SkiaSharp.SKPath? TempSelectionPath { get; set; }
 
         public bool IsSelected { get => _isSelected; set => SetField(ref _isSelected, value); }
         public bool IsEditingName { get => _isEditingName; set => SetField(ref _isEditingName, value); }

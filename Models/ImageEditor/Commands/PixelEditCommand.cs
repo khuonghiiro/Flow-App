@@ -20,6 +20,14 @@ namespace FlowMy.Models.ImageEditor.Commands
         private readonly WriteableBitmap? _oldOriginalTransformBitmap;
         private WriteableBitmap? _newOriginalTransformBitmap;
 
+        private readonly Rect _oldContentBounds;
+        private Rect _newContentBounds;
+
+        public Rect OldContentBounds { get => _oldContentBounds; set => _newContentBounds = value; } // backward-compat or helper
+        public Rect CustomOldContentBounds { get; set; }
+        public Rect CustomNewContentBounds { get; set; }
+        public bool HasCustomBounds { get; set; } = false;
+
         public PixelEditCommand(EditorLayer layer, byte[] oldPixels, byte[] newPixels)
         {
             _layer = layer ?? throw new ArgumentNullException(nameof(layer));
@@ -34,6 +42,8 @@ namespace FlowMy.Models.ImageEditor.Commands
             _oldTranslateX = _layer.LayerTranslateX;
             _oldTranslateY = _layer.LayerTranslateY;
             _oldOriginalTransformBitmap = _layer.OriginalTransformBitmap;
+            _oldContentBounds = _layer.ContentBounds;
+            _newContentBounds = _layer.ContentBounds;
         }
 
         public PixelEditCommand(EditorLayer layer, byte[] oldPixels, byte[] newPixels,
@@ -57,6 +67,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             _newTranslateX = _layer.LayerTranslateX;
             _newTranslateY = _layer.LayerTranslateY;
             _newOriginalTransformBitmap = _layer.OriginalTransformBitmap;
+            _newContentBounds = _layer.ContentBounds;
         }
 
         public string Description => "Paint/Erase/Transform";
@@ -73,6 +84,7 @@ namespace FlowMy.Models.ImageEditor.Commands
                 _layer.LayerTranslateX = _newTranslateX;
                 _layer.LayerTranslateY = _newTranslateY;
                 _layer.OriginalTransformBitmap = _newOriginalTransformBitmap;
+                _layer.ContentBounds = HasCustomBounds ? CustomNewContentBounds : _newContentBounds;
             }
             else
             {
@@ -93,6 +105,7 @@ namespace FlowMy.Models.ImageEditor.Commands
                 _layer.LayerTranslateX = _oldTranslateX;
                 _layer.LayerTranslateY = _oldTranslateY;
                 _layer.OriginalTransformBitmap = _oldOriginalTransformBitmap;
+                _layer.ContentBounds = HasCustomBounds ? CustomOldContentBounds : _oldContentBounds;
             }
             else
             {

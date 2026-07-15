@@ -50,6 +50,8 @@ namespace FlowMy.Views.NodeControls
         private SkiaSharp.SKPath? _currentStrokePath;
         private SkiaSharp.SKPaint? _currentStrokePaint;
         private EditorLayer? _brushSessionLayer;
+        private SkiaSharp.SKPath? _activeSelectionPathSK;
+        private bool _isCommitingMove;
 
         private class BrushStrokeInfo
         {
@@ -494,6 +496,20 @@ namespace FlowMy.Views.NodeControls
                     activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
                     _moveInitialGeometry = _activeSelectionGeometry.Clone();
                     activeLayer.TempSelectionGeometry = _activeSelectionGeometry.Clone();
+                    
+                    // Convert _moveInitialGeometry to SKPath once
+                    try
+                    {
+                        var flatGeom = PathGeometry.CreateFromGeometry(_moveInitialGeometry);
+                        var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
+                        {
+                            svgData = svgData.Substring(2).Trim();
+                        }
+                        activeLayer.TempSelectionPath = SkiaSharp.SKPath.ParseSvgPathData(svgData);
+                    }
+                    catch { }
+
                     activeLayer.TempMoveDx = 0;
                     activeLayer.TempMoveDy = 0;
                     _accumulatedMoveDx = 0;
@@ -1505,86 +1521,176 @@ namespace FlowMy.Views.NodeControls
                 SelectionPreviewPolygonBg.Visibility = Visibility.Collapsed;
                 SelectionPreviewPolygonBg.Data = null;
             }
+
+            var activeLayer = _node?.EditorDoc?.ActiveLayer;
+            if (activeLayer != null)
+            {
+                activeLayer.TempSelectionGeometry = null;
+                if (activeLayer.TempSelectionPath != null)
+                {
+                    activeLayer.TempSelectionPath.Dispose();
+                    activeLayer.TempSelectionPath = null;
+                }
+            }
+
+            _activeSelectionPathSK?.Dispose();
+            _activeSelectionPathSK = null;
         }
 
         private void CommitSelectionMove(EditorLayer originalLayer, byte[] sourceFullPixels, int dx, int dy)
         {
-            if (_node.EditorDoc == null || _moveInitialGeometry == null || !_hasCachedSelectionMask || _cachedSelectionMask == null)
+            if (_node.EditorDoc == null || _moveInitialGeometry == null)
                 return;
 
             int w = originalLayer.Width;
             int h = originalLayer.Height;
             int stride = w * 4;
 
-            // 1. Cut the selection from originalLayer (basePixels will have the transparent hole)
+            // 1. Convert WPF _moveInitialGeometry to Skia SKPath
+            SkiaSharp.SKPath origSelectionPath = null;
+            try
+            {
+                var flatGeom = PathGeometry.CreateFromGeometry(_moveInitialGeometry);
+                var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
+                {
+                    svgData = svgData.Substring(2).Trim();
+                }
+                origSelectionPath = SkiaSharp.SKPath.ParseSvgPathData(svgData);
+            }
+            catch { }
+
+            if (origSelectionPath == null)
+                return;
+
+            // 2. Prepare Skia bitmaps and perform clipping using blend modes (safe from StackOverflowException)
+            var srcInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+            
             byte[] basePixels = new byte[stride * h];
             byte[] newLayerPixels = new byte[stride * h];
-            Array.Copy(sourceFullPixels, basePixels, sourceFullPixels.Length);
 
-            // Separate selection pixels (using clamped loop)
-            int startY = Math.Max(0, _cachedSelectionStartY);
-            int endY = Math.Min(h - 1, _cachedSelectionEndY);
-            int startX = Math.Max(0, _cachedSelectionStartX);
-            int endX = Math.Min(w - 1, _cachedSelectionEndX);
+            var gcSource = System.Runtime.InteropServices.GCHandle.Alloc(sourceFullPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+            var gcBase = System.Runtime.InteropServices.GCHandle.Alloc(basePixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+            var gcNew = System.Runtime.InteropServices.GCHandle.Alloc(newLayerPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
 
-            for (int y = startY; y <= endY; y++)
+            try
             {
-                int rowOffset = y * stride;
-                for (int x = startX; x <= endX; x++)
+                using (var srcBmp = new SkiaSharp.SKBitmap())
+                using (var baseBmp = new SkiaSharp.SKBitmap())
+                using (var newBmp = new SkiaSharp.SKBitmap())
                 {
-                    if (IsInsideSelection(x, y))
+                    srcBmp.InstallPixels(srcInfo, gcSource.AddrOfPinnedObject(), stride);
+                    baseBmp.InstallPixels(srcInfo, gcBase.AddrOfPinnedObject(), stride);
+                    newBmp.InstallPixels(srcInfo, gcNew.AddrOfPinnedObject(), stride);
+
+                    // Draw base layer (subtract selection area)
+                    using (var canvasBase = new SkiaSharp.SKCanvas(baseBmp))
                     {
-                        int idx = rowOffset + x * 4;
-                        // Put into newLayerPixels at the SHIFTED position!
-                        int destX = x + dx;
-                        int destY = y + dy;
-                        if (destX >= 0 && destX < w && destY >= 0 && destY < h)
+                        canvasBase.Clear(SkiaSharp.SKColors.Transparent);
+                        canvasBase.DrawBitmap(srcBmp, 0, 0);
+
+                        using (var paint = new SkiaSharp.SKPaint())
                         {
-                            int destIdx = (destY * w + destX) * 4;
-                            newLayerPixels[destIdx] = sourceFullPixels[idx];
-                            newLayerPixels[destIdx + 1] = sourceFullPixels[idx + 1];
-                            newLayerPixels[destIdx + 2] = sourceFullPixels[idx + 2];
-                            newLayerPixels[destIdx + 3] = sourceFullPixels[idx + 3];
+                            paint.IsAntialias = true;
+                            paint.Style = SkiaSharp.SKPaintStyle.Fill;
+                            paint.Color = SkiaSharp.SKColors.Black;
+                            paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                            canvasBase.DrawPath(origSelectionPath, paint);
+                        }
+                    }
+
+                    // Draw new layer (shifted selection area)
+                    using (var canvasNew = new SkiaSharp.SKCanvas(newBmp))
+                    {
+                        canvasNew.Clear(SkiaSharp.SKColors.Transparent);
+                        canvasNew.Save();
+                        canvasNew.Translate(dx, dy);
+
+                        using (var paintMask = new SkiaSharp.SKPaint())
+                        {
+                            paintMask.IsAntialias = true;
+                            paintMask.Style = SkiaSharp.SKPaintStyle.Fill;
+                            paintMask.Color = SkiaSharp.SKColors.Black;
+                            canvasNew.DrawPath(origSelectionPath, paintMask);
                         }
 
-                        // Clear from original layer
-                        basePixels[idx] = 0;
-                        basePixels[idx + 1] = 0;
-                        basePixels[idx + 2] = 0;
-                        basePixels[idx + 3] = 0;
+                        using (var paintSrc = new SkiaSharp.SKPaint())
+                        {
+                            paintSrc.BlendMode = SkiaSharp.SKBlendMode.SrcIn;
+                            canvasNew.DrawBitmap(srcBmp, 0, 0, paintSrc);
+                        }
+
+                        canvasNew.Restore();
                     }
                 }
             }
+            finally
+            {
+                gcSource.Free();
+                gcBase.Free();
+                gcNew.Free();
+            }
 
-            // 2. Create the new layer containing newLayerPixels
+            // Create the new layer containing the moved selection
             string newLayerName = $"{originalLayer.Name} Selection";
             var newLayer = new EditorLayer(w, h, newLayerName);
             newLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), newLayerPixels, stride, 0);
 
-            // Create a tight WriteableBitmap of size bw x bh for OriginalTransformBitmap
+            // Setup the tight bounding box and original transform bitmap for the new layer using blend modes
+            var bounds = _moveInitialGeometry.Bounds;
+            int startX = Math.Max(0, (int)Math.Floor(bounds.Left));
+            int startY = Math.Max(0, (int)Math.Floor(bounds.Top));
+            int endX = Math.Min(w - 1, (int)Math.Ceiling(bounds.Right));
+            int endY = Math.Min(h - 1, (int)Math.Ceiling(bounds.Bottom));
             int bw = endX - startX + 1;
             int bh = endY - startY + 1;
+
             if (bw > 0 && bh > 0)
             {
                 int tightStride = bw * 4;
-                byte[] tightPixels = new byte[tightStride * bh];
-                for (int y = startY; y <= endY; y++)
+                var tightPixels = new byte[tightStride * bh];
+                
+                var gcTight = System.Runtime.InteropServices.GCHandle.Alloc(tightPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                var gcSourceForTight = System.Runtime.InteropServices.GCHandle.Alloc(sourceFullPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try
                 {
-                    int rowOffset = y * stride;
-                    int tightRowOffset = (y - startY) * tightStride;
-                    for (int x = startX; x <= endX; x++)
+                    var tightInfo = new SkiaSharp.SKImageInfo(bw, bh, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                    using (var srcBmp = new SkiaSharp.SKBitmap())
+                    using (var tightBmp = new SkiaSharp.SKBitmap())
                     {
-                        if (IsInsideSelection(x, y))
+                        srcBmp.InstallPixels(srcInfo, gcSourceForTight.AddrOfPinnedObject(), stride);
+                        tightBmp.InstallPixels(tightInfo, gcTight.AddrOfPinnedObject(), tightStride);
+
+                        using (var canvasTight = new SkiaSharp.SKCanvas(tightBmp))
                         {
-                            int idx = rowOffset + x * 4;
-                            int tightIdx = tightRowOffset + (x - startX) * 4;
-                            tightPixels[tightIdx] = sourceFullPixels[idx];
-                            tightPixels[tightIdx + 1] = sourceFullPixels[idx + 1];
-                            tightPixels[tightIdx + 2] = sourceFullPixels[idx + 2];
-                            tightPixels[tightIdx + 3] = sourceFullPixels[idx + 3];
+                            canvasTight.Clear(SkiaSharp.SKColors.Transparent);
+                            canvasTight.Save();
+                            canvasTight.Translate(-startX, -startY);
+
+                            using (var paintMask = new SkiaSharp.SKPaint())
+                            {
+                                paintMask.IsAntialias = true;
+                                paintMask.Style = SkiaSharp.SKPaintStyle.Fill;
+                                paintMask.Color = SkiaSharp.SKColors.Black;
+                                canvasTight.DrawPath(origSelectionPath, paintMask);
+                            }
+
+                            using (var paintSrc = new SkiaSharp.SKPaint())
+                            {
+                                paintSrc.BlendMode = SkiaSharp.SKBlendMode.SrcIn;
+                                canvasTight.DrawBitmap(srcBmp, 0, 0, paintSrc);
+                            }
+
+                            canvasTight.Restore();
                         }
                     }
                 }
+                finally
+                {
+                    gcTight.Free();
+                    gcSourceForTight.Free();
+                }
+
                 var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
                 origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
                 newLayer.OriginalTransformBitmap = origBmp;
@@ -1593,12 +1699,7 @@ namespace FlowMy.Views.NodeControls
 
             if (_activeSelectionGeometry != null)
             {
-                var copyGeom = _activeSelectionGeometry.Clone();
-                if (dx != 0 || dy != 0)
-                {
-                    copyGeom.Transform = new TranslateTransform(dx, dy);
-                }
-                newLayer.ContentGeometry = copyGeom.GetOutlinedPathGeometry();
+                newLayer.ContentGeometry = _activeSelectionGeometry.Clone();
             }
 
             newLayer.InvalidateThumbnail();
@@ -1607,39 +1708,82 @@ namespace FlowMy.Views.NodeControls
             int activeIndex = _node.EditorDoc.Layers.IndexOf(originalLayer);
             int insertIndex = activeIndex >= 0 ? activeIndex + 1 : _node.EditorDoc.Layers.Count;
 
-            // 3. Create the CutToNewLayerCommand (which does originalLayer pixel update & newLayer addition)
+            // Create the CutToNewLayerCommand (which does originalLayer pixel update & newLayer addition)
             var cutCmd = new CutToNewLayerCommand(
-                _node.EditorDoc, 
-                originalLayer, 
-                sourceFullPixels, // old pixels of original layer (contains selection)
-                basePixels,       // new pixels of original layer (contains transparent hole)
-                newLayer, 
+                _node.EditorDoc,
+                originalLayer,
+                sourceFullPixels,
+                basePixels,
+                newLayer,
                 insertIndex
             );
 
-            // Execute command
             _node.EditorDoc.History.Execute(cutCmd);
 
-            // Clear selection preview
             ClearSelection();
-
-            // Refresh UI
+            EditorPanel.RefreshLayersList();
             OnEditorDocumentModified();
+            origSelectionPath.Dispose();
         }
 
         private void ApplyNewGeometry(Geometry newGeometry)
         {
-            if (_activeSelectionGeometry == null || _currentSelectionMode == SelectionMode.New)
+            if (newGeometry == null || newGeometry.IsEmpty())
+                return;
+
+            // 1. Convert newGeometry to SKPath
+            SkiaSharp.SKPath newPath = null;
+            try
             {
-                _activeSelectionGeometry = newGeometry;
+                var svg = newGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (svg.StartsWith("F0") || svg.StartsWith("F1"))
+                {
+                    svg = svg.Substring(2).Trim();
+                }
+                newPath = SkiaSharp.SKPath.ParseSvgPathData(svg);
             }
-            else if (_currentSelectionMode == SelectionMode.Add)
+            catch { }
+
+            if (newPath != null)
             {
-                _activeSelectionGeometry = Geometry.Combine(_activeSelectionGeometry, newGeometry, GeometryCombineMode.Union, null);
+                if (_activeSelectionPathSK == null || _currentSelectionMode == SelectionMode.New)
+                {
+                    _activeSelectionPathSK?.Dispose();
+                    _activeSelectionPathSK = new SkiaSharp.SKPath(newPath);
+                }
+                else
+                {
+                    var combined = new SkiaSharp.SKPath();
+                    if (_currentSelectionMode == SelectionMode.Add)
+                    {
+                        _activeSelectionPathSK.Op(newPath, SkiaSharp.SKPathOp.Union, combined);
+                    }
+                    else if (_currentSelectionMode == SelectionMode.Subtract)
+                    {
+                        _activeSelectionPathSK.Op(newPath, SkiaSharp.SKPathOp.Difference, combined);
+                    }
+                    _activeSelectionPathSK.Dispose();
+                    _activeSelectionPathSK = combined;
+                }
+                newPath.Dispose();
             }
-            else if (_currentSelectionMode == SelectionMode.Subtract)
+
+            // 2. Generate flat, clean _activeSelectionGeometry from _activeSelectionPathSK
+            if (_activeSelectionPathSK != null && !_activeSelectionPathSK.IsEmpty)
             {
-                _activeSelectionGeometry = Geometry.Combine(_activeSelectionGeometry, newGeometry, GeometryCombineMode.Exclude, null);
+                try
+                {
+                    string svgData = _activeSelectionPathSK.ToSvgPathData();
+                    _activeSelectionGeometry = Geometry.Parse(svgData);
+                }
+                catch
+                {
+                    _activeSelectionGeometry = null;
+                }
+            }
+            else
+            {
+                _activeSelectionGeometry = null;
             }
 
             if (_activeSelectionGeometry != null)
@@ -1718,21 +1862,19 @@ namespace FlowMy.Views.NodeControls
                 var scaledGeometry = _activeSelectionGeometry.Clone();
                 scaledGeometry.Transform = new ScaleTransform(scaleX, scaleY);
 
-                var outlined = scaledGeometry.GetOutlinedPathGeometry();
-
                 // Scale stroke thickness inversely with zoom — ~1px on screen
                 double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
                 if (zoom <= 0) zoom = 1.0;
                 double strokeW = 1.0 / zoom;
 
-                SelectionPolygon.Data = outlined;
+                SelectionPolygon.Data = scaledGeometry;
                 SelectionPolygon.StrokeThickness = strokeW;
                 SelectionPolygon.StrokeDashArray = new DoubleCollection { 2.0, 2.0 };
                 SelectionPolygon.Visibility = Visibility.Visible;
 
                 if (SelectionPolygonBg != null)
                 {
-                    SelectionPolygonBg.Data = outlined;
+                    SelectionPolygonBg.Data = scaledGeometry;
                     SelectionPolygonBg.StrokeThickness = strokeW;
                     SelectionPolygonBg.Visibility = Visibility.Visible;
                 }
@@ -4021,8 +4163,7 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            var outlinedGeom = _activeSelectionGeometry.GetOutlinedPathGeometry();
-            var bounds = outlinedGeom.Bounds;
+            var bounds = _activeSelectionGeometry.Bounds;
 
             _cachedSelectionStartX = Math.Max(0, (int)Math.Floor(bounds.Left));
             _cachedSelectionEndX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(bounds.Right));
@@ -4041,7 +4182,7 @@ namespace FlowMy.Views.NodeControls
                 using (var dc = drawingVisual.RenderOpen())
                 {
                     dc.PushTransform(new TranslateTransform(-_cachedSelectionStartX, -_cachedSelectionStartY));
-                    dc.DrawGeometry(Brushes.White, null, outlinedGeom);
+                    dc.DrawGeometry(Brushes.White, null, _activeSelectionGeometry);
                     dc.Pop();
                 }
 
@@ -4193,87 +4334,93 @@ namespace FlowMy.Views.NodeControls
             int stride = w * 4;
             byte[] tempPixels = new byte[stride * h];
 
-            if (_moveInitialGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
+            var srcInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+            var gcSource = System.Runtime.InteropServices.GCHandle.Alloc(sourceFullPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+            var gcDest = System.Runtime.InteropServices.GCHandle.Alloc(tempPixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+
+            try
             {
-                // Start by copying sourceFullPixels
-                Array.Copy(sourceFullPixels, tempPixels, tempPixels.Length);
-
-                // Clear the source selection area in tempPixels
-                for (int y = _cachedSelectionStartY; y <= _cachedSelectionEndY; y++)
+                using (var srcBmp = new SkiaSharp.SKBitmap())
+                using (var destBmp = new SkiaSharp.SKBitmap())
                 {
-                    int rowOffset = y * stride;
-                    for (int x = _cachedSelectionStartX; x <= _cachedSelectionEndX; x++)
+                    srcBmp.InstallPixels(srcInfo, gcSource.AddrOfPinnedObject(), stride);
+                    destBmp.InstallPixels(srcInfo, gcDest.AddrOfPinnedObject(), stride);
+
+                    using (var canvas = new SkiaSharp.SKCanvas(destBmp))
                     {
-                        if (IsInsideSelection(x, y))
+                        canvas.Clear(SkiaSharp.SKColors.Transparent);
+                        if (_moveInitialGeometry != null)
                         {
-                            int idx = rowOffset + x * 4;
-                            tempPixels[idx] = 0;
-                            tempPixels[idx + 1] = 0;
-                            tempPixels[idx + 2] = 0;
-                            tempPixels[idx + 3] = 0;
+                            SkiaSharp.SKPath origSelectionPath = null;
+                            try
+                            {
+                                var flatGeom = PathGeometry.CreateFromGeometry(_moveInitialGeometry);
+                                var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
+                                {
+                                    svgData = svgData.Substring(2).Trim();
+                                }
+                                origSelectionPath = SkiaSharp.SKPath.ParseSvgPathData(svgData);
+                            }
+                            catch { }
+
+                            if (origSelectionPath != null)
+                            {
+                                // 1. Draw background outside selection (DstOut)
+                                canvas.DrawBitmap(srcBmp, 0, 0);
+
+                                using (var paintErase = new SkiaSharp.SKPaint())
+                                {
+                                    paintErase.IsAntialias = true;
+                                    paintErase.Style = SkiaSharp.SKPaintStyle.Fill;
+                                    paintErase.Color = SkiaSharp.SKColors.Black;
+                                    paintErase.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                                    canvas.DrawPath(origSelectionPath, paintErase);
+                                }
+
+                                // 2. Draw selection shifted using a temporary bitmap (SrcIn)
+                                using (var tempSelBmp = new SkiaSharp.SKBitmap(w, h))
+                                {
+                                    using (var tempCanvas = new SkiaSharp.SKCanvas(tempSelBmp))
+                                    {
+                                        tempCanvas.Clear(SkiaSharp.SKColors.Transparent);
+                                        
+                                        using (var paintMask = new SkiaSharp.SKPaint())
+                                        {
+                                            paintMask.IsAntialias = true;
+                                            paintMask.Style = SkiaSharp.SKPaintStyle.Fill;
+                                            paintMask.Color = SkiaSharp.SKColors.Black;
+                                            tempCanvas.DrawPath(origSelectionPath, paintMask);
+                                        }
+
+                                        using (var paintSrc = new SkiaSharp.SKPaint())
+                                        {
+                                            paintSrc.BlendMode = SkiaSharp.SKBlendMode.SrcIn;
+                                            tempCanvas.DrawBitmap(srcBmp, 0, 0, paintSrc);
+                                        }
+                                    }
+
+                                    canvas.DrawBitmap(tempSelBmp, dx, dy);
+                                }
+
+                                origSelectionPath.Dispose();
+                            }
+                            else
+                            {
+                                canvas.DrawBitmap(srcBmp, dx, dy);
+                            }
                         }
-                    }
-                }
-
-                // Draw the shifted selection area into tempPixels
-                for (int y = _cachedSelectionStartY; y <= _cachedSelectionEndY; y++)
-                {
-                    int destY = y + dy;
-                    if (destY < 0 || destY >= h) continue;
-
-                    int rowOffset = y * stride;
-                    for (int x = _cachedSelectionStartX; x <= _cachedSelectionEndX; x++)
-                    {
-                        int destX = x + dx;
-                        if (destX < 0 || destX >= w) continue;
-
-                        if (IsInsideSelection(x, y))
+                        else
                         {
-                            int srcIdx = rowOffset + x * 4;
-                            int destIdx = (destY * w + destX) * 4;
-                            tempPixels[destIdx] = sourceFullPixels[srcIdx];
-                            tempPixels[destIdx + 1] = sourceFullPixels[srcIdx + 1];
-                            tempPixels[destIdx + 2] = sourceFullPixels[srcIdx + 2];
-                            tempPixels[destIdx + 3] = sourceFullPixels[srcIdx + 3];
+                            canvas.DrawBitmap(srcBmp, dx, dy);
                         }
                     }
                 }
             }
-            else
+            finally
             {
-                // Fast row copy for full layer move
-                int pixelSize = 4;
-                int rowBytes = w * pixelSize;
-
-                for (int y = 0; y < h; y++)
-                {
-                    int srcY = y - dy;
-                    int destRowOffset = y * stride;
-
-                    if (srcY >= 0 && srcY < h)
-                    {
-                        int srcRowOffset = srcY * stride;
-                        if (dx > 0)
-                        {
-                            Array.Clear(tempPixels, destRowOffset, dx * pixelSize);
-                            Buffer.BlockCopy(sourceFullPixels, srcRowOffset, tempPixels, destRowOffset + dx * pixelSize, (w - dx) * pixelSize);
-                        }
-                        else if (dx < 0)
-                        {
-                            int copyWidth = w + dx;
-                            Buffer.BlockCopy(sourceFullPixels, srcRowOffset - dx * pixelSize, tempPixels, destRowOffset, copyWidth * pixelSize);
-                            Array.Clear(tempPixels, destRowOffset + copyWidth * pixelSize, (-dx) * pixelSize);
-                        }
-                        else
-                        {
-                            Buffer.BlockCopy(sourceFullPixels, srcRowOffset, tempPixels, destRowOffset, rowBytes);
-                        }
-                    }
-                    else
-                    {
-                        Array.Clear(tempPixels, destRowOffset, rowBytes);
-                    }
-                }
+                gcSource.Free();
+                gcDest.Free();
             }
 
             activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), tempPixels, stride, 0);
@@ -4281,82 +4428,119 @@ namespace FlowMy.Views.NodeControls
 
         private void CommitPendingMoveTranslation()
         {
-            var targetLayer = _movingLayer ?? _node.EditorDoc?.ActiveLayer;
-            if (targetLayer == null || _moveInitialFullPixels == null)
+            if (_isCommitingMove) return;
+            _isCommitingMove = true;
+            try
             {
-                _moveInitialFullPixels = null;
-                _movingLayer = null;
-                return;
-            }
+                var targetLayer = _movingLayer ?? _node.EditorDoc?.ActiveLayer;
+                if (targetLayer == null || _moveInitialFullPixels == null)
+                {
+                    _moveInitialFullPixels = null;
+                    _movingLayer = null;
+                    return;
+                }
 
-            if (_moveInitialGeometry != null)
-            {
-                int dx = (int)Math.Round(targetLayer.TempMoveDx);
-                int dy = (int)Math.Round(targetLayer.TempMoveDy);
+                if (_moveInitialGeometry != null)
+                {
+                    int dx = (int)Math.Round(targetLayer.TempMoveDx);
+                    int dy = (int)Math.Round(targetLayer.TempMoveDy);
+
+                    targetLayer.TempMoveDx = 0;
+                    targetLayer.TempMoveDy = 0;
+                    targetLayer.TempSelectionGeometry = null;
+
+                    var initPixels = _moveInitialFullPixels;
+                    _moveInitialFullPixels = null;
+                    _moveInitialGeometry = null;
+                    _movingLayer = null;
+
+                    CommitSelectionMove(targetLayer, initPixels, dx, dy);
+                    return;
+                }
+
+                if (_accumulatedMoveDx == 0 && _accumulatedMoveDy == 0)
+                {
+                    _moveInitialFullPixels = null;
+                    _movingLayer = null;
+                    return;
+                }
+
+                int dxLayer = (int)Math.Round(_accumulatedMoveDx);
+                int dyLayer = (int)Math.Round(_accumulatedMoveDy);
+
+                _accumulatedMoveDx = 0;
+                _accumulatedMoveDy = 0;
 
                 targetLayer.TempMoveDx = 0;
                 targetLayer.TempMoveDy = 0;
-                targetLayer.TempSelectionGeometry = null;
 
-                CommitSelectionMove(targetLayer, _moveInitialFullPixels, dx, dy);
-                _moveInitialFullPixels = null;
-                _moveInitialGeometry = null;
-                _movingLayer = null;
-                return;
-            }
+                if (targetLayer.IsTextLayer)
+                {
+                    double oldX = targetLayer.TextX;
+                    double oldY = targetLayer.TextY;
+                    double newX = oldX + dxLayer;
+                    double newY = oldY + dyLayer;
 
-            if (_accumulatedMoveDx == 0 && _accumulatedMoveDy == 0)
-            {
-                _moveInitialFullPixels = null;
-                _movingLayer = null;
-                return;
-            }
+                    var cmd = new TextEditCommand(
+                        targetLayer,
+                        RedrawTextLayer,
+                        targetLayer.TextContent, oldX, oldY, targetLayer.TextWidth, targetLayer.TextHeight, targetLayer.TextFontSize, targetLayer.TextColor, targetLayer.TextFontFamily, targetLayer.TextFontStyle, targetLayer.TextAlignment,
+                        targetLayer.TextContent, newX, newY, targetLayer.TextWidth, targetLayer.TextHeight, targetLayer.TextFontSize, targetLayer.TextColor, targetLayer.TextFontFamily, targetLayer.TextFontStyle, targetLayer.TextAlignment
+                    );
+                    _node.EditorDoc?.History.Execute(cmd);
 
-            int dxLayer = (int)Math.Round(_accumulatedMoveDx);
-            int dyLayer = (int)Math.Round(_accumulatedMoveDy);
+                    _moveInitialFullPixels = null;
+                    _movingLayer = null;
+                    targetLayer.InvalidateThumbnail();
+                    OnEditorDocumentModified();
+                    return;
+                }
 
-            _accumulatedMoveDx = 0;
-            _accumulatedMoveDy = 0;
+                Rect oldBounds = Rect.Empty;
+                Rect newBounds = Rect.Empty;
+                bool isSelectionLayer = targetLayer.OriginalTransformBitmap != null && !targetLayer.ContentBounds.IsEmpty;
+                if (isSelectionLayer)
+                {
+                    oldBounds = targetLayer.ContentBounds;
+                    newBounds = new Rect(oldBounds.Left + dxLayer, oldBounds.Top + dyLayer, oldBounds.Width, oldBounds.Height);
+                    targetLayer.ContentBounds = newBounds;
+                }
 
-            targetLayer.TempMoveDx = 0;
-            targetLayer.TempMoveDy = 0;
+                // Apply shift once
+                ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
 
-            if (targetLayer.IsTextLayer)
-            {
-                double oldX = targetLayer.TextX;
-                double oldY = targetLayer.TextY;
-                double newX = oldX + dxLayer;
-                double newY = oldY + dyLayer;
+                int moveStride = targetLayer.Width * 4;
+                var finalPixels = new byte[moveStride * targetLayer.Height];
+                targetLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
 
-                var cmd = new TextEditCommand(
-                    targetLayer,
-                    RedrawTextLayer,
-                    targetLayer.TextContent, oldX, oldY, targetLayer.TextWidth, targetLayer.TextHeight, targetLayer.TextFontSize, targetLayer.TextColor, targetLayer.TextFontFamily, targetLayer.TextFontStyle, targetLayer.TextAlignment,
-                    targetLayer.TextContent, newX, newY, targetLayer.TextWidth, targetLayer.TextHeight, targetLayer.TextFontSize, targetLayer.TextColor, targetLayer.TextFontFamily, targetLayer.TextFontStyle, targetLayer.TextAlignment
-                );
-                _node.EditorDoc?.History.Execute(cmd);
+                PixelEditCommand moveCmd;
+                if (isSelectionLayer)
+                {
+                    moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, finalPixels,
+                        targetLayer.LayerScaleX, targetLayer.LayerScaleY, targetLayer.LayerAngle,
+                        targetLayer.LayerTranslateX, targetLayer.LayerTranslateY, targetLayer.OriginalTransformBitmap);
+                    moveCmd.KeepOriginalTransformBitmap = true;
+                    moveCmd.HasCustomBounds = true;
+                    moveCmd.CustomOldContentBounds = oldBounds;
+                    moveCmd.CustomNewContentBounds = newBounds;
+                    moveCmd.CaptureNewTransformState();
+                }
+                else
+                {
+                    moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, finalPixels);
+                }
+
+                _node.EditorDoc?.History.Execute(moveCmd);
 
                 _moveInitialFullPixels = null;
                 _movingLayer = null;
                 targetLayer.InvalidateThumbnail();
                 OnEditorDocumentModified();
-                return;
             }
-
-            // Apply shift once
-            ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
-
-            int moveStride = targetLayer.Width * 4;
-            var finalPixels = new byte[moveStride * targetLayer.Height];
-            targetLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
-
-            var moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, finalPixels);
-            _node.EditorDoc?.History.Execute(moveCmd);
-
-            _moveInitialFullPixels = null;
-            _movingLayer = null;
-            targetLayer.InvalidateThumbnail();
-            OnEditorDocumentModified();
+            finally
+            {
+                _isCommitingMove = false;
+            }
         }
 
         public bool CanHandleKey(KeyEventArgs e)

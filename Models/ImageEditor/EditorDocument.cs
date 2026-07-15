@@ -481,37 +481,20 @@ namespace FlowMy.Models.ImageEditor
                                              }
                                              else if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
                                              {
-                                                 if (layer.TempSelectionGeometry != null)
+                                                 if (layer.TempSelectionPath != null)
                                                  {
-                                                     SkiaSharp.SKPath? clipPath = null;
-                                                     try
-                                                     {
-                                                         var svgData = layer.TempSelectionGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                                                         clipPath = SkiaSharp.SKPath.ParseSvgPathData(svgData);
-                                                     }
-                                                     catch { }
+                                                     // 1. Draw background outside selection
+                                                     canvas.Save();
+                                                     canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Difference, true);
+                                                     canvas.DrawBitmap(skBmp, 0, 0, paint);
+                                                     canvas.Restore();
 
-                                                     if (clipPath != null)
-                                                     {
-                                                         // 1. Draw background outside selection
-                                                         canvas.Save();
-                                                         canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Difference, true);
-                                                         canvas.DrawBitmap(skBmp, 0, 0, paint);
-                                                         canvas.Restore();
-
-                                                         // 2. Draw selection shifted
-                                                         canvas.Save();
-                                                         canvas.Translate((float)layer.TempMoveDx, (float)layer.TempMoveDy);
-                                                         canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
-                                                         canvas.DrawBitmap(skBmp, 0, 0, paint);
-                                                         canvas.Restore();
-
-                                                         clipPath.Dispose();
-                                                     }
-                                                     else
-                                                     {
-                                                         canvas.DrawBitmap(skBmp, (float)layer.TempMoveDx, (float)layer.TempMoveDy, paint);
-                                                     }
+                                                     // 2. Draw selection shifted
+                                                     canvas.Save();
+                                                     canvas.Translate((float)layer.TempMoveDx, (float)layer.TempMoveDy);
+                                                     canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Intersect, true);
+                                                     canvas.DrawBitmap(skBmp, 0, 0, paint);
+                                                     canvas.Restore();
                                                  }
                                                  else
                                                  {

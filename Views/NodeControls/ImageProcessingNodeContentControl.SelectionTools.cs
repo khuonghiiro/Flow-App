@@ -220,9 +220,8 @@ namespace FlowMy.Views.NodeControls
                 _selectionClipboardIsFullLayer = false;
                 _selectionClipboardLayerSource = null;
 
-                // Intersect selection geometry with the tight rect geometry
                 var tightRectGeom = new RectangleGeometry(new Rect(minX, minY, bw, bh));
-                _selectionClipboardGeometry = Geometry.Combine(_activeSelectionGeometry.Clone(), tightRectGeom, GeometryCombineMode.Intersect, null).GetOutlinedPathGeometry();
+                _selectionClipboardGeometry = Geometry.Combine(_activeSelectionGeometry.Clone(), tightRectGeom, GeometryCombineMode.Intersect, null);
             }
             else
             {
@@ -640,7 +639,7 @@ namespace FlowMy.Views.NodeControls
 
             if (SelectionPreviewPolygon != null)
             {
-                var outlinedPreview = scaledGeom.GetOutlinedPathGeometry();
+                var outlinedPreview = scaledGeom;
                 double zoom = ImageZoomScale != null ? ImageZoomScale.ScaleX : 1.0;
                 if (zoom <= 0) zoom = 1.0;
                 double strokeW = 1.0 / zoom;
