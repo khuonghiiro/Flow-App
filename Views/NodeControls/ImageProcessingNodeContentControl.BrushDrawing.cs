@@ -67,6 +67,14 @@ namespace FlowMy.Views.NodeControls
         private readonly List<bool> _strokeIsComplexHistory = new();
         private double _brushDistanceAccumulator = 0;
         private SkiaSharp.SKBitmap? _cachedBrushTip;
+        private SkiaSharp.SKPaint? _cachedEraserPaint;
+        private float _cachedEraserBlurSigma = -1;
+
+        // ── SkiaSharp cached surfaces for eraser performance ──
+        // Pre-composited background (all non-active layers) cached at mouse-down.
+        // During eraser moves, we composite only: bg plate + active layer = 2-layer op instead of N-layer.
+        private WriteableBitmap? _eraserBgPlate;
+        private SkiaSharp.SKBitmap? _eraserBgPlateSK;
 
         private static readonly (double x, double y, double size)[] ChalkPresetOffsets = new (double x, double y, double size)[]
         {
@@ -175,6 +183,23 @@ namespace FlowMy.Views.NodeControls
                     // Brush thông thường cập nhật qua GPU Overlay
                     return;
                 }
+
+                // For multi-layer eraser: use fast 2-layer composite with cached background plate
+                if (EditorPanel?.ActiveToolName == "Eraser" && _eraserBgPlateSK != null)
+                {
+                    _compositeDirty = true;
+                    if (_compositeTimer == null)
+                    {
+                        _compositeTimer = new DispatcherTimer(DispatcherPriority.Render)
+                        {
+                            Interval = TimeSpan.FromMilliseconds(16)
+                        };
+                        _compositeTimer.Tick += CompositeTimer_Tick;
+                    }
+                    if (!_compositeTimer.IsEnabled)
+                        _compositeTimer.Start();
+                    return;
+                }
             }
 
             _compositeDirty = true;
@@ -207,10 +232,139 @@ namespace FlowMy.Views.NodeControls
             if (_node?.EditorDoc == null) return;
             try
             {
+                // Fast path: if eraser with cached background plate, do 2-layer composite
+                if (_isDrawingPixels && _eraserBgPlateSK != null && _node.EditorDoc.ActiveLayer != null)
+                {
+                    DoFastEraserComposite();
+                    return;
+                }
+
                 var composite = _node.EditorDoc.Composite();
                 MainImage.Source = composite;
             }
             catch { /* ignore */ }
+        }
+
+        /// <summary>Fast 2-layer composite: cached bg plate + active layer. Avoids full N-layer composite.</summary>
+        private void DoFastEraserComposite()
+        {
+            var activeLayer = _node.EditorDoc!.ActiveLayer!;
+            int w = _node.EditorDoc.Width;
+            int h = _node.EditorDoc.Height;
+
+            if (_eraserBgPlate == null || _eraserBgPlate.PixelWidth != w || _eraserBgPlate.PixelHeight != h)
+                return;
+
+            // We'll render into the existing cached CPU render target
+            var target = _node.EditorDoc.GetCachedCpuRenderTarget();
+            if (target == null) return;
+
+            target.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, target.BackBuffer, target.BackBufferStride))
+                {
+                    if (surface == null) return;
+                    var canvas = surface.Canvas;
+
+                    // 1. Draw cached background plate (all non-active layers)
+                    canvas.DrawBitmap(_eraserBgPlateSK!, 0, 0);
+
+                    // 2. Draw active layer on top
+                    activeLayer.Bitmap.Lock();
+                    try
+                    {
+                        using (var activeSK = new SkiaSharp.SKBitmap())
+                        {
+                            activeSK.InstallPixels(info, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride);
+                            using (var paint = new SkiaSharp.SKPaint())
+                            {
+                                paint.Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Clamp(activeLayer.Opacity * 255, 0, 255));
+                                paint.BlendMode = activeLayer.BlendMode switch
+                                {
+                                    BlendMode.Multiply => SkiaSharp.SKBlendMode.Multiply,
+                                    BlendMode.Screen => SkiaSharp.SKBlendMode.Screen,
+                                    BlendMode.Overlay => SkiaSharp.SKBlendMode.Overlay,
+                                    BlendMode.Darken => SkiaSharp.SKBlendMode.Darken,
+                                    BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
+                                    _ => SkiaSharp.SKBlendMode.SrcOver
+                                };
+                                canvas.DrawBitmap(activeSK, 0, 0, paint);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        activeLayer.Bitmap.Unlock();
+                    }
+                }
+
+                target.AddDirtyRect(new Int32Rect(0, 0, w, h));
+            }
+            finally
+            {
+                target.Unlock();
+            }
+
+            MainImage.Source = target;
+        }
+
+        /// <summary>Pre-composite all layers except activeLayer into a cached SKBitmap for fast eraser preview.</summary>
+        private void BuildEraserBackgroundPlate(EditorLayer activeLayer)
+        {
+            if (_node?.EditorDoc == null) return;
+            int w = _node.EditorDoc.Width;
+            int h = _node.EditorDoc.Height;
+
+            // Dispose previous
+            _eraserBgPlateSK?.Dispose();
+            _eraserBgPlateSK = null;
+
+            var bgBitmap = new SkiaSharp.SKBitmap(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+            using (var bgCanvas = new SkiaSharp.SKCanvas(bgBitmap))
+            {
+                bgCanvas.Clear(SkiaSharp.SKColors.Transparent);
+
+                foreach (var layer in _node.EditorDoc.Layers)
+                {
+                    if (layer == activeLayer) continue; // skip active layer
+                    if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
+
+                    var srcBmp = layer.Bitmap;
+                    srcBmp.Lock();
+                    try
+                    {
+                        var srcInfo = new SkiaSharp.SKImageInfo(srcBmp.PixelWidth, srcBmp.PixelHeight, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                        using (var skBmp = new SkiaSharp.SKBitmap())
+                        {
+                            skBmp.InstallPixels(srcInfo, srcBmp.BackBuffer, srcBmp.BackBufferStride);
+                            using (var paint = new SkiaSharp.SKPaint())
+                            {
+                                paint.Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Clamp(layer.Opacity * 255, 0, 255));
+                                paint.BlendMode = layer.BlendMode switch
+                                {
+                                    BlendMode.Multiply => SkiaSharp.SKBlendMode.Multiply,
+                                    BlendMode.Screen => SkiaSharp.SKBlendMode.Screen,
+                                    BlendMode.Overlay => SkiaSharp.SKBlendMode.Overlay,
+                                    BlendMode.Darken => SkiaSharp.SKBlendMode.Darken,
+                                    BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
+                                    _ => SkiaSharp.SKBlendMode.SrcOver
+                                };
+                                bgCanvas.DrawBitmap(skBmp, 0, 0, paint);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        srcBmp.Unlock();
+                    }
+                }
+            }
+
+            _eraserBgPlateSK = bgBitmap;
+            // Keep a WPF reference for size checking
+            _eraserBgPlate = new WriteableBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32, null);
         }
 
         /// <summary>Dừng timer, flush composite cuối cùng + sync thumbnail + fire event.</summary>
@@ -692,6 +846,16 @@ namespace FlowMy.Views.NodeControls
                 if (useDirectSource)
                 {
                     MainImage.Source = activeLayer.Bitmap;
+                    // No bg plate needed for single layer
+                    _eraserBgPlate = null;
+                    _eraserBgPlateSK?.Dispose();
+                    _eraserBgPlateSK = null;
+                }
+                else
+                {
+                    // Multi-layer: pre-composite all non-active layers into a background plate
+                    // so during eraser moves we only need 2-layer composite (bg + active)
+                    BuildEraserBackgroundPlate(activeLayer);
                 }
 
                 double rawRadius = EditorPanel.BrushSize / 2.0;
@@ -973,45 +1137,49 @@ namespace FlowMy.Views.NodeControls
                         }
                         else
                         {
-                            using (var paint = new SkiaSharp.SKPaint())
+                            // Reuse cached eraser paint to avoid repeated allocation + MaskFilter creation
+                            if (_cachedEraserPaint == null)
                             {
-                                paint.Style = SkiaSharp.SKPaintStyle.Stroke;
-                                
-                                float blurSigma = 0;
-                                if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
-                                {
-                                    blurSigma = (float)(radius * 0.4);
-                                }
-                                else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
-                                {
-                                    blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
-                                }
-
-                                double drawRadius = Math.Max(0.1, radius - blurSigma);
-
-                                paint.StrokeWidth = (float)(drawRadius * 2);
-                                paint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
-                                paint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
-                                paint.IsAntialias = true;
-                                paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
-                                byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
-                                paint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
-
-                                if (blurSigma > 0.1f)
-                                {
-                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
-                                }
-
-                                canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, paint);
+                                _cachedEraserPaint = new SkiaSharp.SKPaint();
+                                _cachedEraserPaint.Style = SkiaSharp.SKPaintStyle.Stroke;
+                                _cachedEraserPaint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
+                                _cachedEraserPaint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
+                                _cachedEraserPaint.IsAntialias = true;
+                                _cachedEraserPaint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
                             }
+
+                            float blurSigma = 0;
+                            if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                            {
+                                blurSigma = (float)(radius * 0.4);
+                            }
+                            else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                            {
+                                blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                            }
+
+                            double drawRadius = Math.Max(0.1, radius - blurSigma);
+                            _cachedEraserPaint.StrokeWidth = (float)(drawRadius * 2);
+                            byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                            _cachedEraserPaint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
+
+                            // Only update MaskFilter if sigma changed
+                            float newSigma = blurSigma > 0.1f ? blurSigma : 0;
+                            if (newSigma != _cachedEraserBlurSigma)
+                            {
+                                _cachedEraserPaint.MaskFilter?.Dispose();
+                                _cachedEraserPaint.MaskFilter = newSigma > 0 ? SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, newSigma) : null;
+                                _cachedEraserBlurSigma = newSigma;
+                            }
+
+                            canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, _cachedEraserPaint);
                         }
                     }
 
-                    int dirtyW2 = segmentMaxX - segmentMinX + 1;
-                    int dirtyH2 = segmentMaxY - segmentMinY + 1;
-                    if (dirtyW2 > 0 && dirtyH2 > 0)
+                    // Use tight dirty rect (segment only, not entire stroke)
+                    if (segmentMaxX >= segmentMinX && segmentMaxY >= segmentMinY)
                     {
-                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(segmentMinX, segmentMinY, dirtyW2, dirtyH2));
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(segmentMinX, segmentMinY, segmentMaxX - segmentMinX + 1, segmentMaxY - segmentMinY + 1));
                     }
                 }
                 finally
@@ -1240,8 +1408,9 @@ namespace FlowMy.Views.NodeControls
                     _oldPixelsForUndo = null;
                     _brushOverlayBitmap = null;
                     _brushSessionLayer = null;
-                    ActiveLayerDrawingOverlay.Source = null;
-                    ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+                    // NOTE: Don't hide ActiveLayerDrawingOverlay here — OnEditorDocumentModified() will
+                    // hide it atomically AFTER the composite renders, preventing the 1-frame flicker
+                    // that occurred when the overlay disappeared before the merged layer was rendered.
 
                     if (_currentStrokePaint != null)
                     {
@@ -1282,6 +1451,19 @@ namespace FlowMy.Views.NodeControls
                 _node.EditorDoc.History.Execute(cmd);
                 _oldPixelsForUndo = null;
                 _strokePoints.Clear();
+
+                // Dispose cached eraser paint after stroke ends
+                if (_cachedEraserPaint != null)
+                {
+                    _cachedEraserPaint.Dispose();
+                    _cachedEraserPaint = null;
+                    _cachedEraserBlurSigma = -1;
+                }
+
+                // Dispose cached background plate
+                _eraserBgPlateSK?.Dispose();
+                _eraserBgPlateSK = null;
+                _eraserBgPlate = null;
 
                 FlushCompositeAndSync();
             }
@@ -4339,8 +4521,8 @@ namespace FlowMy.Views.NodeControls
             _oldPixelsForUndo = null;
             _brushOverlayBitmap = null;
             _brushSessionLayer = null;
-            ActiveLayerDrawingOverlay.Source = null;
-            ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+            // NOTE: Don't hide overlay here — let OnEditorDocumentModified() hide it after composite renders
+            // to avoid 1-frame flicker.
 
             FlushCompositeAndSync();
         }

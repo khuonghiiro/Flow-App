@@ -20,6 +20,18 @@ namespace FlowMy.Models.ImageEditor
         private int _nextLayerNumber = 1;
         private RenderTargetBitmap? _cachedRenderTarget;
         private WriteableBitmap? _cachedCpuRenderTarget;
+
+        /// <summary>Get or create the cached CPU render target for fast compositing.</summary>
+        public WriteableBitmap? GetCachedCpuRenderTarget()
+        {
+            if (_cachedCpuRenderTarget == null ||
+                _cachedCpuRenderTarget.PixelWidth != Width ||
+                _cachedCpuRenderTarget.PixelHeight != Height)
+            {
+                _cachedCpuRenderTarget = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32, null);
+            }
+            return _cachedCpuRenderTarget;
+        }
         private byte[]? _cachedCpuResultPixels;
         private byte[]? _cachedCpuLayerPixels;
 
