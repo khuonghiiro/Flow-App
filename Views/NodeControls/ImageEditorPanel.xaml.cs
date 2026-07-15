@@ -730,6 +730,15 @@ namespace FlowMy.Views.NodeControls
                 newLayer.ParentLayer = null; // detach from parent
                 newLayer.Name = GenerateCopyName(childLayer.Name);
 
+                // Reset transform properties — bitmap đã chứa đủ pixel data ở đúng vị trí
+                newLayer.OriginalTransformBitmap = null;
+                newLayer.ContentBounds = Rect.Empty;
+                newLayer.LayerTranslateX = 0;
+                newLayer.LayerTranslateY = 0;
+                newLayer.LayerScaleX = 1;
+                newLayer.LayerScaleY = 1;
+                newLayer.LayerAngle = 0;
+
                 // Insert after the parent in the main layers list
                 int parentIndex = _doc.Layers.IndexOf(parent);
                 int insertIndex = parentIndex >= 0 ? parentIndex + 1 : _doc.Layers.Count;
@@ -1404,6 +1413,17 @@ namespace FlowMy.Views.NodeControls
             var promoted = active.Duplicate();
             promoted.ParentLayer = null;
             promoted.Name = _doc.GetNextLayerName();
+
+            // Reset transform properties — bitmap đã chứa đủ pixel data ở đúng vị trí
+            // Giữ transform offsets sẽ khiến layer nhảy sai vị trí
+            promoted.OriginalTransformBitmap = null;
+            promoted.ContentBounds = Rect.Empty;
+            promoted.LayerTranslateX = 0;
+            promoted.LayerTranslateY = 0;
+            promoted.LayerScaleX = 1;
+            promoted.LayerScaleY = 1;
+            promoted.LayerAngle = 0;
+
             int idx = _doc.Layers.IndexOf(parent);
             _doc.Layers.Insert(idx + 1, promoted);
             _doc.ActiveLayer = promoted;
