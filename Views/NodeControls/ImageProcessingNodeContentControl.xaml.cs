@@ -2225,6 +2225,13 @@ namespace FlowMy.Views.NodeControls
             ["Shear"] = new[] { new FxParamDef("X", 15, -45, 45), new FxParamDef("Y", 0, -45, 45) },
             ["Roll"] = new[] { new FxParamDef("X", 50, -200, 200), new FxParamDef("Y", 50, -200, 200) },
             ["Shave"] = new[] { new FxParamDef("Pixels", 10, 1, 100) },
+            // SkiaSharp-only effects
+            ["SkiaDropShadow"] = new[] { new FxParamDef("OffsetX", 5, -30, 30), new FxParamDef("OffsetY", 5, -30, 30), new FxParamDef("SigmaX", 4, 0.5, 20, 0.5), new FxParamDef("SigmaY", 4, 0.5, 20, 0.5), new FxParamDef("ShadowAlpha", 128, 0, 255) },
+            ["SkiaHueRotate"] = new[] { new FxParamDef("Degrees", 90, -180, 180) },
+            ["SkiaDilate"] = new[] { new FxParamDef("RadiusX", 2, 1, 20), new FxParamDef("RadiusY", 2, 1, 20) },
+            ["SkiaErode"] = new[] { new FxParamDef("RadiusX", 2, 1, 20), new FxParamDef("RadiusY", 2, 1, 20) },
+            ["SkiaLighting"] = new[] { new FxParamDef("Azimuth", 225, 0, 360), new FxParamDef("Elevation", 45, 0, 90), new FxParamDef("SpecularExponent", 8, 1, 30), new FxParamDef("SpecularConstant", 0.7, 0.1, 2, 0.1) },
+            ["SkiaBlendMode"] = new[] { new FxParamDef("BlendModeIndex", 0, 0, 14), new FxParamDef("OverlayR", 128, 0, 255), new FxParamDef("OverlayG", 128, 0, 255), new FxParamDef("OverlayB", 128, 0, 255), new FxParamDef("OverlayA", 100, 0, 100) },
         };
 
         /// <summary>Show dark-themed parameter dialog. Returns null if cancelled.</summary>
@@ -2454,6 +2461,13 @@ namespace FlowMy.Views.NodeControls
             {
                 var token = _fxCts.Token;
 
+                // SkiaSharp fast path: use SkiaSharp engine for supported effects
+                if (IsSkiaSharpEffect(effectName))
+                {
+                    newPixels = await Task.Run(() => ApplySkiaSharpEffect(oldPixels, w, h, effectName, fxParams, token), token);
+                }
+                else
+                {
                 // Run Magick effect on background thread
                 // oldPixels is used as source directly (no extra copy needed)
                 newPixels = await Task.Run(() =>
@@ -2532,6 +2546,7 @@ namespace FlowMy.Views.NodeControls
                     if (useTiles) resultImg.Dispose();
                     return finalBytes;
                 }, token);
+                } // end else (Magick path)
             }
             catch (OperationCanceledException)
             {
@@ -2770,6 +2785,9 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "Frame", DisplayName = "3D Frame Border", Description = "Khung viền nổi 3D trang trí xung quanh ảnh", IconKey = "clone-plus duotone" });
                     items.Add(new FxToolItem { Name = "Explode", DisplayName = "Explode Zoom", Description = "Hiệu ứng phồng nở phóng to từ tâm ảnh", IconKey = "burst duotone" });
                     items.Add(new FxToolItem { Name = "Raise", DisplayName = "Raise Bevel", Description = "Tạo gờ viền nổi 3D xung quanh ảnh", IconKey = "cube duotone" });
+                    // ── SkiaSharp-only artistic effects ──
+                    items.Add(new FxToolItem { Name = "SkiaDropShadow", DisplayName = "⚡ Drop Shadow", Description = "Tạo bóng đổ siêu nhanh cho ảnh (SkiaSharp)", IconKey = "clone-plus duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaLighting", DisplayName = "⚡ Specular Lighting", Description = "Hiệu ứng chiếu sáng specular 3D (SkiaSharp)", IconKey = "sun duotone" });
                     break;
 
                 case "TbxEdgeActive":
@@ -2802,6 +2820,10 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "LinearStretch", DisplayName = "Linear Contrast Stretch", Description = "Kéo dãn tương phản tuyến tính tự động", IconKey = "arrows-up-down duotone" });
                     items.Add(new FxToolItem { Name = "QuantizeColors", DisplayName = "Quantize Retro (16c)", Description = "Giảm số lượng màu tối đa còn 16 màu", IconKey = "swatchbook duotone" });
                     items.Add(new FxToolItem { Name = "SigmoidalContrastUp", DisplayName = "Sigmoid Contrast +", Description = "Tăng độ tương phản mịn màng hình chữ S", IconKey = "sliders duotone" });
+                    // ── SkiaSharp-only color effects ──
+                    items.Add(new FxToolItem { Name = "SkiaHueRotate", DisplayName = "⚡ Hue Rotate", Description = "Xoay tông màu HSL siêu nhanh (SkiaSharp)", IconKey = "palette duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaColorMatrix", DisplayName = "⚡ Color Matrix", Description = "Bộ lọc màu tùy chỉnh 5x4 matrix (SkiaSharp)", IconKey = "table-cells-lock duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaBlendMode", DisplayName = "⚡ Blend Mode", Description = "Overlay màu với chế độ hoà trộn chuyên nghiệp (SkiaSharp)", IconKey = "layer-group duotone" });
                     break;
 
                 case "TbxNoiseActive":
@@ -2822,6 +2844,9 @@ namespace FlowMy.Views.NodeControls
                     items.Add(new FxToolItem { Name = "EdgeOut", DisplayName = "Edge Out", Description = "Phát hiện biên ngoài vùng đối tượng", IconKey = "expand duotone" });
                     items.Add(new FxToolItem { Name = "TopHat", DisplayName = "Top Hat", Description = "Chiết xuất các chi tiết sáng nhỏ trên nền tối", IconKey = "sparkles duotone" });
                     items.Add(new FxToolItem { Name = "BottomHat", DisplayName = "Bottom Hat", Description = "Chiết xuất các lỗ/chi tiết tối trên nền sáng", IconKey = "circle duotone" });
+                    // ── SkiaSharp fast morphology ──
+                    items.Add(new FxToolItem { Name = "SkiaDilate", DisplayName = "⚡ Dilate (SkiaSharp)", Description = "Giãn nở siêu nhanh bằng SkiaSharp", IconKey = "expand duotone" });
+                    items.Add(new FxToolItem { Name = "SkiaErode", DisplayName = "⚡ Erode (SkiaSharp)", Description = "Co rút siêu nhanh bằng SkiaSharp", IconKey = "compress duotone" });
                     break;
 
                 case "TbxXFormActive":
