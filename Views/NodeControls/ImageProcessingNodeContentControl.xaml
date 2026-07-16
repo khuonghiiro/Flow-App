@@ -1287,18 +1287,19 @@ into smaller partial class files to maintain readability and ease of maintenance
                 </ScrollViewer>
             </Border>
 
-            <!-- Image viewer -->
-            <ScrollViewer x:Name="MainScrollViewer" Grid.Row="1"
-                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                          Padding="0" Focusable="True">
-            <Grid x:Name="ScrollContentGrid"
-                  MinWidth="{Binding ElementName=MainScrollViewer, Path=ViewportWidth}"
-                  MinHeight="{Binding ElementName=MainScrollViewer, Path=ViewportHeight}">
-                <Grid x:Name="ImageAreaGrid"
-                      HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Grid.LayoutTransform>
+            <!-- Image viewer: infinite canvas with RenderTransform pan/zoom -->
+            <Border x:Name="MainScrollViewer" Grid.Row="1" ClipToBounds="True"
+                    Focusable="True" Background="#0a0c10">
+            <Canvas x:Name="InfiniteCanvas" Width="10000" Height="10000" Background="Transparent"
+                    ClipToBounds="False">
+                <Canvas.RenderTransform>
+                    <TransformGroup>
                         <ScaleTransform x:Name="ImageZoomScale" ScaleX="1" ScaleY="1"/>
-                    </Grid.LayoutTransform>
+                        <TranslateTransform x:Name="CanvasTranslate" X="0" Y="0"/>
+                    </TransformGroup>
+                </Canvas.RenderTransform>
+                <Grid x:Name="ImageAreaGrid"
+                      HorizontalAlignment="Left" VerticalAlignment="Top">
                     
                     <!-- Image container with checkered transparency pattern and selection overlay -->
                     <Grid x:Name="ImageContainer" HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -1525,8 +1526,8 @@ into smaller partial class files to maintain readability and ease of maintenance
                                Margin="10" VerticalAlignment="Center" HorizontalAlignment="Center"
                                Opacity="0.85"/>
                 </Grid>
-            </Grid>
-        </ScrollViewer>
+            </Canvas>
+        </Border>
         </Grid> <!-- end center tab+image Grid -->
 
         <!-- Right panel: AI mode (crops + renders) (Đã được thay đổi sang LayerAiDialog, comment lại không sử dụng) -->

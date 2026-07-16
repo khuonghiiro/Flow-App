@@ -37,6 +37,10 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class ImageProcessingNodeContentControl
     {
+        // ═══ Canvas constants ═══
+        private const double CanvasSize = 10000.0;
+        private const double CanvasHalf = CanvasSize / 2.0; // 5000
+
         private void WireScrollPanZoomMagnifier()
         {
             MainScrollViewer.PreviewMouseWheel += MainScrollViewer_PreviewMouseWheel;
@@ -47,13 +51,17 @@ namespace FlowMy.Views.NodeControls
             MainScrollViewer.PreviewKeyDown += MainScrollViewer_PreviewKeyDown;
         }
 
+        // ═══ ZOOM (Ctrl+Wheel) ═══
+        // Zoom vào vị trí chuột bằng cách điều chỉnh ScaleTransform + TranslateTransform
         private void MainScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
                 return;
 
             e.Handled = true;
-            var position = e.GetPosition(MainScrollViewer);
+
+            // Lấy vị trí chuột relative to viewport (Border)
+            var mousePos = e.GetPosition(MainScrollViewer);
             var oldScale = ImageZoomScale.ScaleX;
             double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
             double newScale = oldScale * zoomFactor;
@@ -61,39 +69,36 @@ namespace FlowMy.Views.NodeControls
             if (newScale > 100.0) newScale = 100.0;
             if (Math.Abs(newScale - oldScale) < 0.0001) return;
 
-            double extentWidth = MainScrollViewer.ExtentWidth;
-            double extentHeight = MainScrollViewer.ExtentHeight;
-            double relativeX = 0.5, relativeY = 0.5;
-            if (extentWidth > 0 && extentHeight > 0)
-            {
-                relativeX = (MainScrollViewer.HorizontalOffset + position.X) / extentWidth;
-                relativeY = (MainScrollViewer.VerticalOffset + position.Y) / extentHeight;
-            }
+            // Tính tọa độ chuột trên canvas TRƯỚC khi zoom
+            // mousePos = canvasPoint * oldScale + translate
+            // => canvasPoint = (mousePos - translate) / oldScale
+            double canvasX = (mousePos.X - CanvasTranslate.X) / oldScale;
+            double canvasY = (mousePos.Y - CanvasTranslate.Y) / oldScale;
 
+            // Cập nhật scale
             ImageZoomScale.ScaleX = newScale;
             ImageZoomScale.ScaleY = newScale;
+
+            // Sau khi zoom, giữ cùng canvas point dưới chuột:
+            // mousePos = canvasPoint * newScale + newTranslate
+            // => newTranslate = mousePos - canvasPoint * newScale
+            CanvasTranslate.X = mousePos.X - canvasX * newScale;
+            CanvasTranslate.Y = mousePos.Y - canvasY * newScale;
+
+            // Bitmap scaling mode
             if (MainImage != null)
             {
                 RenderOptions.SetBitmapScalingMode(MainImage, newScale > 1.001 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
             }
-            MainScrollViewer.UpdateLayout();
 
+            // Update crop overlay if visible
             if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
             {
                 UpdateCropOverlayDisplay();
             }
-
-            extentWidth = MainScrollViewer.ExtentWidth;
-            extentHeight = MainScrollViewer.ExtentHeight;
-            if (extentWidth > 0 && extentHeight > 0)
-            {
-                var targetX = relativeX * extentWidth - position.X;
-                var targetY = relativeY * extentHeight - position.Y;
-                MainScrollViewer.ScrollToHorizontalOffset(Math.Max(0, Math.Min(targetX, extentWidth)));
-                MainScrollViewer.ScrollToVerticalOffset(Math.Max(0, Math.Min(targetY, extentHeight)));
-            }
         }
 
+        // ═══ PAN (drag) ═══
         private void MainScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is DependencyObject dep)
@@ -123,8 +128,8 @@ namespace FlowMy.Views.NodeControls
                 {
                     _isPanning = true;
                     _panStart = e.GetPosition(MainScrollViewer);
-                    _panOriginX = MainScrollViewer.HorizontalOffset;
-                    _panOriginY = MainScrollViewer.VerticalOffset;
+                    _panOriginX = CanvasTranslate.X;
+                    _panOriginY = CanvasTranslate.Y;
                     MainScrollViewer.Cursor = Cursors.SizeAll;
                     MainScrollViewer.CaptureMouse();
                     e.Handled = true;
@@ -152,14 +157,11 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                if (MainScrollViewer.ExtentWidth <= MainScrollViewer.ViewportWidth &&
-                    MainScrollViewer.ExtentHeight <= MainScrollViewer.ViewportHeight)
-                    return;
-
+                // Luôn cho phép pan trong AI mode (không cần check extent)
                 _isPanning = true;
                 _panStart = e.GetPosition(MainScrollViewer);
-                _panOriginX = MainScrollViewer.HorizontalOffset;
-                _panOriginY = MainScrollViewer.VerticalOffset;
+                _panOriginX = CanvasTranslate.X;
+                _panOriginY = CanvasTranslate.Y;
                 MainScrollViewer.Cursor = Cursors.SizeAll;
                 MainScrollViewer.CaptureMouse();
                 e.Handled = true;
@@ -211,8 +213,9 @@ namespace FlowMy.Views.NodeControls
                 var pos = e.GetPosition(MainScrollViewer);
                 var dx = pos.X - _panStart.X;
                 var dy = pos.Y - _panStart.Y;
-                MainScrollViewer.ScrollToHorizontalOffset(_panOriginX - dx);
-                MainScrollViewer.ScrollToVerticalOffset(_panOriginY - dy);
+                // Di chuyển canvas translate trực tiếp (rất mượt)
+                CanvasTranslate.X = _panOriginX + dx;
+                CanvasTranslate.Y = _panOriginY + dy;
                 e.Handled = true;
                 return;
             }
@@ -229,6 +232,51 @@ namespace FlowMy.Views.NodeControls
                     MagOverlayPanel.Visibility = Visibility.Collapsed;
                 if (MainScrollViewer.Cursor == Cursors.Cross)
                      MainScrollViewer.Cursor = Cursors.Arrow;
+            }
+        }
+
+        /// <summary>
+        /// Đặt ảnh vào tâm canvas (tọa độ 5000,5000) và fit viewport.
+        /// Gọi sau khi ảnh được load hoặc tab được switch.
+        /// </summary>
+        internal void CenterImageOnCanvas(double imageWidth, double imageHeight)
+        {
+            if (imageWidth <= 0 || imageHeight <= 0) return;
+
+            // Đặt ImageAreaGrid vào tâm canvas (center of 10000x10000)
+            double canvasLeft = CanvasHalf - imageWidth / 2.0;
+            double canvasTop = CanvasHalf - imageHeight / 2.0;
+            Canvas.SetLeft(ImageAreaGrid, canvasLeft);
+            Canvas.SetTop(ImageAreaGrid, canvasTop);
+
+            // Tính viewport size
+            double vpW = MainScrollViewer.ActualWidth;
+            double vpH = MainScrollViewer.ActualHeight;
+            if (vpW <= 0) vpW = 800;
+            if (vpH <= 0) vpH = 600;
+
+            // Tính zoom level sao cho ảnh fit viewport (với padding)
+            double padFactor = 0.92; // 8% padding
+            double sX = (vpW * padFactor) / imageWidth;
+            double sY = (vpH * padFactor) / imageHeight;
+            double fitScale = Math.Min(sX, sY);
+            if (fitScale < 0.01) fitScale = 0.01;
+            if (fitScale > 1.0) fitScale = 1.0;
+
+            ImageZoomScale.ScaleX = fitScale;
+            ImageZoomScale.ScaleY = fitScale;
+
+            // Tính translate để tâm ảnh (trên canvas) nằm giữa viewport
+            // Tâm ảnh trên canvas = (canvasLeft + imgW/2, canvasTop + imgH/2) = (5000, 5000)
+            // Sau scale, tọa độ pixel = canvasPoint * scale + translate
+            // Muốn tâm viewport (vpW/2, vpH/2) = (5000 * scale + translateX, 5000 * scale + translateY)
+            CanvasTranslate.X = vpW / 2.0 - CanvasHalf * fitScale;
+            CanvasTranslate.Y = vpH / 2.0 - CanvasHalf * fitScale;
+
+            // Bitmap scaling mode
+            if (MainImage != null)
+            {
+                RenderOptions.SetBitmapScalingMode(MainImage, fitScale > 1.001 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
             }
         }
 

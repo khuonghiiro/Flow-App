@@ -324,7 +324,7 @@ namespace FlowMy.Views.NodeControls
             TextBlock placeholder,
             ScaleTransform scale,
             Grid? imageGrid = null,
-            ScrollViewer? scrollViewer = null,
+            Action<double, double>? centerImageCallback = null,
             TextBlock? imageTitleTextBlock = null,
             Action<ImageCropRegion>? onCropClickForIp = null)
         {
@@ -448,33 +448,14 @@ namespace FlowMy.Views.NodeControls
                     double imageHeight = loadedBitmap.PixelHeight;
                     if (imageWidth <= 0 || imageHeight <= 0) return;
 
-                    // Tính scale từ kích thước node (pattern giống MediaGallery)
-                    var borderW = Math.Max(node.Width, node.Border?.MinWidth ?? ImageNodeMinWidthPx);
-                    var borderH = Math.Max(node.Height, node.Border?.MinHeight ?? ImageNodeMinHeightPx);
-                    double availW = borderW - 56 - 190;
-                    double availH = borderH - 30;
-
-                    double sX = availW / imageWidth;
-                    double sY = availH / imageHeight;
-                    double initialScale = Math.Min(sX, sY);
-                    if (initialScale < 0.1) initialScale = 0.1;
-                    if (initialScale > 1.0) initialScale = 1.0;
-
-                    // Set Width/Height/Scale cùng lúc trong BeginInvoke (giống MediaGallery)
+                    // Set Width/Height cùng lúc trong BeginInvoke, centering do callback xử lý
                     image.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         image.Width = imageWidth;
                         image.Height = imageHeight;
-                        scale.ScaleX = initialScale;
-                        scale.ScaleY = initialScale;
 
-                        if (scrollViewer == null) return;
-                        scrollViewer.UpdateLayout();
-
-                        if (scrollViewer.ExtentWidth > scrollViewer.ViewportWidth)
-                            scrollViewer.ScrollToHorizontalOffset((scrollViewer.ExtentWidth - scrollViewer.ViewportWidth) / 2);
-                        if (scrollViewer.ExtentHeight > scrollViewer.ViewportHeight)
-                            scrollViewer.ScrollToVerticalOffset((scrollViewer.ExtentHeight - scrollViewer.ViewportHeight) / 2);
+                        // Gọi callback để center ảnh trên canvas
+                        centerImageCallback?.Invoke(imageWidth, imageHeight);
 
                         // Regenerate thumbnails sau khi image đã có kích thước thực tế
                         if (imageGrid != null)

@@ -511,28 +511,36 @@ namespace FlowMy.Views.NodeControls
             var targetLayer = _brushSessionLayer ?? _node.EditorDoc?.ActiveLayer;
             if (targetLayer == null) return;
 
-            int w = targetLayer.Width;
-            int h = targetLayer.Height;
+            int layerW = targetLayer.Width;
+            int layerH = targetLayer.Height;
+            int overlayW = _brushOverlayBitmap.PixelWidth;
+            int overlayH = _brushOverlayBitmap.PixelHeight;
+
+            // Tính offset: overlay có thể nhỏ hơn layer nếu có clip bounds
+            int clipOffsetX = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Left : 0;
+            int clipOffsetY = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Top : 0;
             
             targetLayer.Bitmap.Lock();
             try
             {
-                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
-                using (var surface = SkiaSharp.SKSurface.Create(info, targetLayer.Bitmap.BackBuffer, targetLayer.Bitmap.BackBufferStride))
+                var layerInfo = new SkiaSharp.SKImageInfo(layerW, layerH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(layerInfo, targetLayer.Bitmap.BackBuffer, targetLayer.Bitmap.BackBufferStride))
                 {
                     var canvas = surface.Canvas;
                     
                     _brushOverlayBitmap.Lock();
                     try
                     {
+                        var overlayInfo = new SkiaSharp.SKImageInfo(overlayW, overlayH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
                         using (var overlaySKBitmap = new SkiaSharp.SKBitmap())
                         {
-                            overlaySKBitmap.InstallPixels(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride);
+                            overlaySKBitmap.InstallPixels(overlayInfo, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride);
                             
                             using (var paint = new SkiaSharp.SKPaint())
                             {
                                 paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
-                                canvas.DrawBitmap(overlaySKBitmap, 0, 0, paint);
+                                // Vẽ overlay tại vị trí offset trên layer canvas
+                                canvas.DrawBitmap(overlaySKBitmap, clipOffsetX, clipOffsetY, paint);
                             }
                         }
                     }
@@ -542,11 +550,20 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
                 
+                // Dirty rect: chuyển từ overlay coords về layer coords
+                int dirtyX = _strokeMinX + clipOffsetX;
+                int dirtyY = _strokeMinY + clipOffsetY;
                 int dirtyW = _strokeMaxX - _strokeMinX + 1;
                 int dirtyH = _strokeMaxY - _strokeMinY + 1;
                 if (dirtyW > 0 && dirtyH > 0)
                 {
-                    targetLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                    // Clamp dirty rect to layer bounds
+                    dirtyX = Math.Max(0, Math.Min(dirtyX, layerW - 1));
+                    dirtyY = Math.Max(0, Math.Min(dirtyY, layerH - 1));
+                    dirtyW = Math.Min(dirtyW, layerW - dirtyX);
+                    dirtyH = Math.Min(dirtyH, layerH - dirtyY);
+                    if (dirtyW > 0 && dirtyH > 0)
+                        targetLayer.Bitmap.AddDirtyRect(new Int32Rect(dirtyX, dirtyY, dirtyW, dirtyH));
                 }
             }
             finally
@@ -554,8 +571,8 @@ namespace FlowMy.Views.NodeControls
                 targetLayer.Bitmap.Unlock();
             }
 
-            int stride = w * 4;
-            int pixelSize = stride * h;
+            int stride = layerW * 4;
+            int pixelSize = stride * layerH;
             var finalNewPixels = new byte[pixelSize];
             targetLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
 

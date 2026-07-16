@@ -90,8 +90,8 @@ namespace FlowMy.Views.NodeControls
             public double ImageHeight { get; set; } = double.NaN;
             public double ZoomScaleX { get; set; } = 1.0;
             public double ZoomScaleY { get; set; } = 1.0;
-            public double ScrollHorizontalOffset { get; set; } = 0.0;
-            public double ScrollVerticalOffset { get; set; } = 0.0;
+            public double CanvasTranslateX { get; set; } = 0.0;
+            public double CanvasTranslateY { get; set; } = 0.0;
 
             // Selection state
             public Geometry? ActiveSelectionGeometry { get; set; }
@@ -177,8 +177,8 @@ namespace FlowMy.Views.NodeControls
             data.ImageHeight = MainImage.Height;
             data.ZoomScaleX = ImageZoomScale.ScaleX;
             data.ZoomScaleY = ImageZoomScale.ScaleY;
-            data.ScrollHorizontalOffset = MainScrollViewer.HorizontalOffset;
-            data.ScrollVerticalOffset = MainScrollViewer.VerticalOffset;
+            data.CanvasTranslateX = CanvasTranslate.X;
+            data.CanvasTranslateY = CanvasTranslate.Y;
 
             // Selection state
             data.ActiveSelectionGeometry = _activeSelectionGeometry;
@@ -218,6 +218,14 @@ namespace FlowMy.Views.NodeControls
                 ImageZoomScale.ScaleX = data.ZoomScaleX;
                 ImageZoomScale.ScaleY = data.ZoomScaleY;
 
+                // Reposition ImageAreaGrid on canvas based on image size
+                if (!double.IsNaN(data.ImageWidth) && !double.IsNaN(data.ImageHeight) &&
+                    data.ImageWidth > 0 && data.ImageHeight > 0)
+                {
+                    Canvas.SetLeft(ImageAreaGrid, CanvasHalf - data.ImageWidth / 2.0);
+                    Canvas.SetTop(ImageAreaGrid, CanvasHalf - data.ImageHeight / 2.0);
+                }
+
                 // Sync editor panel
                 if (_node.EditorDoc != null)
                 {
@@ -249,10 +257,9 @@ namespace FlowMy.Views.NodeControls
                 // Redraw selection for this tab
                 UpdatePolygonDisplay();
 
-                // Restore scroll positions after layout updates
-                MainScrollViewer.UpdateLayout();
-                MainScrollViewer.ScrollToHorizontalOffset(data.ScrollHorizontalOffset);
-                MainScrollViewer.ScrollToVerticalOffset(data.ScrollVerticalOffset);
+                // Restore canvas translate positions
+                CanvasTranslate.X = data.CanvasTranslateX;
+                CanvasTranslate.Y = data.CanvasTranslateY;
             }
             finally
             {
@@ -385,7 +392,7 @@ namespace FlowMy.Views.NodeControls
 
             await ImageProcessingNodeControl.UpdatePreviewAsync(
                 _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
-                ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
+                ImageAreaGrid, CenterImageOnCanvas, ImageTitleTextBlock,
                 _onCropClickForIp);
 
             // Tạo EditorDoc cho ảnh mới nếu chưa có (quan trọng cho new tabs)
