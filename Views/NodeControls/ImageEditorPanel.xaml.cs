@@ -305,6 +305,9 @@ namespace FlowMy.Views.NodeControls
             if (_doc == null) return;
             var activeLayer = _doc.ActiveLayer;
 
+            // If the active layer is already selected, we don't want to reset the selection of other layers
+            bool preserveMultiSelection = activeLayer != null && activeLayer.IsSelected;
+
             // Loop all layers — chỉ set property khi thay đổi (avoid unnecessary PropertyChanged)
             foreach (var layer in _doc.Layers)
             {
@@ -313,8 +316,11 @@ namespace FlowMy.Views.NodeControls
 
                 if (!_isSyncingSelection)
                 {
-                    bool shouldBeSelected = (layer == activeLayer);
-                    if (layer.IsSelected != shouldBeSelected) layer.IsSelected = shouldBeSelected;
+                    if (!preserveMultiSelection)
+                    {
+                        bool shouldBeSelected = (layer == activeLayer);
+                        if (layer.IsSelected != shouldBeSelected) layer.IsSelected = shouldBeSelected;
+                    }
                 }
                 else
                 {
@@ -330,8 +336,11 @@ namespace FlowMy.Views.NodeControls
 
                         if (!_isSyncingSelection)
                         {
-                            bool childSelected = (child == activeLayer);
-                            if (child.IsSelected != childSelected) child.IsSelected = childSelected;
+                            if (!preserveMultiSelection)
+                            {
+                                bool childSelected = (child == activeLayer);
+                                if (child.IsSelected != childSelected) child.IsSelected = childSelected;
+                            }
                         }
                         else
                         {
@@ -410,20 +419,27 @@ namespace FlowMy.Views.NodeControls
                     }
                     else
                     {
-                        int idx1 = _doc.Layers.IndexOf(active);
-                        int idx2 = _doc.Layers.IndexOf(clickedLayer);
+                        var itemsSource = LayersList.ItemsSource as System.Collections.ObjectModel.ObservableCollection<EditorLayer>
+                                          ?? new System.Collections.ObjectModel.ObservableCollection<EditorLayer>();
+                        
+                        int idx1 = itemsSource.IndexOf(active);
+                        int idx2 = itemsSource.IndexOf(clickedLayer);
                         if (idx1 >= 0 && idx2 >= 0)
                         {
                             int min = Math.Min(idx1, idx2);
                             int max = Math.Max(idx1, idx2);
 
-                            foreach (var l in _doc.Layers.ToList())
+                            for (int i = 0; i < itemsSource.Count; i++)
                             {
-                                int idx = _doc.Layers.IndexOf(l);
-                                l.IsSelected = (idx >= min && idx <= max);
+                                var l = itemsSource[i];
+                                l.IsSelected = (i >= min && i <= max);
                             }
                             
                             _doc.ActiveLayer = clickedLayer;
+                        }
+                        else
+                        {
+                            SelectSingleLayer(clickedLayer);
                         }
                     }
                 }
@@ -1372,12 +1388,15 @@ namespace FlowMy.Views.NodeControls
                 {
                     // Standard layer(s)
                     PopupBtnDelete.Visibility = Visibility.Visible;
+                    PopupBtnDuplicate.Visibility = Visibility.Visible;
 
-                    if (selectedCount == 1)
+                    bool hasChildSelected = SelectedLayers.Any(l => l.IsChildLayer);
+                    if (!hasChildSelected && selectedCount >= 1)
                     {
                         PopupBtnAI.Visibility = Visibility.Visible;
                     }
-                    else if (selectedCount > 1)
+
+                    if (selectedCount > 1)
                     {
                         PopupBtnMerge.Visibility = Visibility.Visible;
                     }
@@ -1497,8 +1516,14 @@ namespace FlowMy.Views.NodeControls
             var active = _doc.ActiveLayer;
             if (active == null) return;
 
+            var selected = SelectedLayers;
+            if (selected.Count == 0)
+            {
+                selected = new List<EditorLayer> { active };
+            }
+
             var ownerWindow = Window.GetWindow(this);
-            var dialog = new Views.Overlays.LayerAiDialog(active, _node, _host, _doc, ownerWindow);
+            var dialog = new Views.Overlays.LayerAiDialog(selected, active, _node, _host, _doc, ownerWindow);
             if (dialog.ShowDialog() == true)
             {
                 RefreshLayersList();

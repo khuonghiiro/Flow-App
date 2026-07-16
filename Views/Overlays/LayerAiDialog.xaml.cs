@@ -21,7 +21,11 @@ namespace FlowMy.Views.Overlays
     {
         public static readonly ConcurrentQueue<string> PendingExecutionIds = new ConcurrentQueue<string>();
 
-        private readonly EditorLayer _activeLayer;
+        private EditorLayer _activeLayer;
+        private readonly System.Collections.Generic.List<EditorLayer> _selectedLayers;
+        private readonly System.Collections.Generic.Dictionary<EditorLayer, LayerAiState> _layerStates = new();
+        private bool _isSyncingUI = false;
+
         private readonly ImageProcessingNode _node;
         private readonly IWorkflowEditorHost _host;
         private readonly EditorDocument _doc;
@@ -34,6 +38,22 @@ namespace FlowMy.Views.Overlays
             public string? FilePath { get; set; }
             public bool IsSelected { get; set; } = true;
             public bool HasImage => Bitmap != null;
+        }
+
+        private class LayerAiState
+        {
+            public string Prompt { get; set; } = string.Empty;
+            public int BatchSizeIndex { get; set; } = 2; // Default size index (usually 3)
+            public int AspectRatioIndex { get; set; } = 3; // Default ratio (1:1)
+            public string CustomWidth { get; set; } = string.Empty;
+            public string CustomHeight { get; set; } = string.Empty;
+            public SecondaryImageItem[] SecondaryImages { get; } = new SecondaryImageItem[4]
+            {
+                new SecondaryImageItem(),
+                new SecondaryImageItem(),
+                new SecondaryImageItem(),
+                new SecondaryImageItem()
+            };
         }
 
         private readonly SecondaryImageItem[] _secondaryImages = new SecondaryImageItem[4]
@@ -63,16 +83,14 @@ namespace FlowMy.Views.Overlays
         private bool _isAiLoading = false;
         private bool _sendModeOn = true;
 
-        public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
+        public LayerAiDialog(System.Collections.Generic.List<EditorLayer> selectedLayers, EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             InitializeComponent();
             _ownerWindow = owner;
             Owner = owner;
 
-            // Handle Activated and Deactivated to dynamically control Topmost,
-            // preventing this dialog from permanently overlapping other applications (like Chrome)
-            // while ensuring it stays on top of the topmost FloatingWidgetWindow when active.
+            // Handle Activated and Deactivated to dynamically control Topmost
             this.Activated += (s, e) =>
             {
                 if (Owner != null) Owner.Topmost = true;
@@ -98,10 +116,12 @@ namespace FlowMy.Views.Overlays
                 catch { }
             };
 
-            _activeLayer = activeLayer ?? throw new ArgumentNullException(nameof(activeLayer));
             _node = node ?? throw new ArgumentNullException(nameof(node));
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _doc = doc ?? throw new ArgumentNullException(nameof(doc));
+
+            _selectedLayers = selectedLayers ?? new System.Collections.Generic.List<EditorLayer> { activeLayer };
+            _activeLayer = activeLayer ?? _selectedLayers[0];
 
             _originalWidth = Width;
             _originalHeight = Height;
@@ -117,14 +137,17 @@ namespace FlowMy.Views.Overlays
             _slotPlaceholdersWv = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
             _slotRemovesWv = new[] { SlotRemoveWv0, SlotRemoveWv1, SlotRemoveWv2, SlotRemoveWv3 };
 
-            // Load saved settings
+            // Pre-create and initialize AI state cache for all selected layers
+            foreach (var layer in _selectedLayers)
+            {
+                _layerStates[layer] = CreateStateForLayer(layer);
+            }
+
+            // Load saved settings for active layer
             LoadSavedSettings();
 
-            // Load preview image
-            UpdatePreviewImage();
-
-            // Refresh all slots UI
-            RefreshAllSlotsUI();
+            // Sync prompt from node to prompt boxes
+            LoadActiveLayerState();
 
             // Setup two-way drag and drop between WPF and WebView2
             SetupDragAndDrop();
@@ -134,6 +157,256 @@ namespace FlowMy.Views.Overlays
 
             // Hook activity events to reset the owner FloatingWidgetWindow's idle timer upon interaction
             HookActivityEvents(this);
+
+            // Populate horizontal and vertical lists of selected layers
+            UpdateSelectedLayersLists();
+        }
+
+        public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
+            : this(new System.Collections.Generic.List<EditorLayer> { activeLayer }, activeLayer, node, host, doc, owner)
+        {
+        }
+
+        private LayerAiState CreateStateForLayer(EditorLayer layer)
+        {
+            var state = new LayerAiState();
+            // Default prompt
+            var savedPrompt = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            state.Prompt = !string.IsNullOrEmpty(savedPrompt) ? savedPrompt : (_node.ProcessorPrompt ?? string.Empty);
+
+            // Default batch size
+            var savedSize = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "promptSize", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedSize) && int.TryParse(savedSize, out var bSize))
+            {
+                state.BatchSizeIndex = Math.Clamp(bSize - 1, 0, 3);
+            }
+            else
+            {
+                state.BatchSizeIndex = Math.Clamp(_node.PromptSize - 1, 0, 3);
+            }
+
+            // Default aspect ratio
+            var savedAspect = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            if (!string.IsNullOrEmpty(savedAspect))
+            {
+                state.AspectRatioIndex = savedAspect switch
+                {
+                    "16:9" => 1,
+                    "4:3" => 2,
+                    "1:1" => 3,
+                    "3:4" => 4,
+                    "9:16" => 5,
+                    "Free" => 6,
+                    _ => 3
+                };
+            }
+            else
+            {
+                state.AspectRatioIndex = 3; // 1:1
+            }
+
+            // Default custom width/height
+            BitmapSource sourceImg = layer.OriginalTransformBitmap ?? layer.Bitmap;
+            var bounds = GetLayerContentBounds(sourceImg);
+
+            var savedWidth = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropWidth", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            state.CustomWidth = !string.IsNullOrEmpty(savedWidth) ? savedWidth : (!bounds.IsEmpty && bounds.Width > 0 ? ((int)bounds.Width).ToString() : "512");
+
+            var savedHeight = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropHeight", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
+            state.CustomHeight = !string.IsNullOrEmpty(savedHeight) ? savedHeight : (!bounds.IsEmpty && bounds.Height > 0 ? ((int)bounds.Height).ToString() : "512");
+
+            return state;
+        }
+
+        private void SaveActiveLayerState()
+        {
+            if (_activeLayer == null || !_layerStates.TryGetValue(_activeLayer, out var state)) return;
+
+            state.Prompt = TxtPrompt.Text;
+            state.BatchSizeIndex = CmbBatchSize.SelectedIndex;
+            state.AspectRatioIndex = CmbAspectRatio.SelectedIndex;
+            state.CustomWidth = TxtCustomWidth.Text;
+            state.CustomHeight = TxtCustomHeight.Text;
+
+            for (int i = 0; i < 4; i++)
+            {
+                state.SecondaryImages[i].Bitmap = _secondaryImages[i].Bitmap;
+                state.SecondaryImages[i].FilePath = _secondaryImages[i].FilePath;
+                state.SecondaryImages[i].IsSelected = _secondaryImages[i].IsSelected;
+            }
+        }
+
+        private void LoadActiveLayerState()
+        {
+            if (_activeLayer == null || !_layerStates.TryGetValue(_activeLayer, out var state)) return;
+
+            _isSyncingUI = true;
+            try
+            {
+                TxtPrompt.Text = state.Prompt;
+                if (TxtPromptWv != null) TxtPromptWv.Text = state.Prompt;
+                if (TxtPromptWeb != null) TxtPromptWeb.Text = state.Prompt;
+
+                CmbBatchSize.SelectedIndex = state.BatchSizeIndex;
+                CmbAspectRatio.SelectedIndex = state.AspectRatioIndex;
+                if (PanelCustomSize != null)
+                {
+                    PanelCustomSize.Visibility = (state.AspectRatioIndex == 6) ? Visibility.Visible : Visibility.Collapsed;
+                }
+                TxtCustomWidth.Text = state.CustomWidth;
+                TxtCustomHeight.Text = state.CustomHeight;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    _secondaryImages[i].Bitmap = state.SecondaryImages[i].Bitmap;
+                    _secondaryImages[i].FilePath = state.SecondaryImages[i].FilePath;
+                    _secondaryImages[i].IsSelected = state.SecondaryImages[i].IsSelected;
+                }
+
+                UpdatePreviewImage();
+                RefreshAllSlotsUI();
+                UpdateSelectedLayersListsHighlight();
+            }
+            finally
+            {
+                _isSyncingUI = false;
+            }
+        }
+
+        private void UpdateSelectedLayersLists()
+        {
+            if (SelectedImagesHorizontalList == null || SelectedImagesVerticalList == null) return;
+
+            SelectedImagesHorizontalList.Children.Clear();
+            SelectedImagesVerticalList.Children.Clear();
+
+            var visibility = _selectedLayers.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+            BottomSelectedLayersPanel.Visibility = visibility;
+            RightSelectedLayersPanel.Visibility = visibility;
+
+            if (_selectedLayers.Count <= 1) return;
+
+            for (int i = 0; i < _selectedLayers.Count; i++)
+            {
+                var layer = _selectedLayers[i];
+                int index = i + 1;
+
+                var itemH = CreateLayerListItem(layer, index, isVertical: false);
+                SelectedImagesHorizontalList.Children.Add(itemH);
+
+                var itemV = CreateLayerListItem(layer, index, isVertical: true);
+                SelectedImagesVerticalList.Children.Add(itemV);
+            }
+
+            UpdateSelectedLayersListsHighlight();
+        }
+
+        private FrameworkElement CreateLayerListItem(EditorLayer layer, int index, bool isVertical)
+        {
+            var border = new Border
+            {
+                Width = 40,
+                Height = 40,
+                CornerRadius = new CornerRadius(4),
+                BorderThickness = new Thickness(1.5),
+                Background = new SolidColorBrush(Color.FromRgb(21, 23, 30)),
+                Cursor = Cursors.Hand,
+                Margin = isVertical ? new Thickness(0, 3, 0, 3) : new Thickness(3, 0, 3, 0),
+                Tag = layer
+            };
+
+            border.ToolTip = $"Ảnh {index}: {layer.Name}";
+
+            var grid = new Grid();
+            var rect = new System.Windows.Shapes.Rectangle
+            {
+                Fill = TryFindResource("PsDarkCheckeredBrush") as Brush ?? Brushes.Black,
+                SnapsToDevicePixels = true
+            };
+            grid.Children.Add(rect);
+
+            var img = new Image
+            {
+                Stretch = Stretch.Uniform,
+                Margin = new Thickness(1.5),
+                Source = layer.Bitmap
+            };
+            grid.Children.Add(img);
+
+            var badgeBorder = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Background = new SolidColorBrush(Color.FromArgb(170, 17, 19, 24)),
+                CornerRadius = new CornerRadius(0, 0, 4, 0),
+                Padding = new Thickness(3, 1, 3, 1)
+            };
+            var badgeText = new TextBlock
+            {
+                Text = index.ToString(),
+                Foreground = new SolidColorBrush(Color.FromRgb(221, 227, 239)),
+                FontSize = 8,
+                FontWeight = FontWeights.Bold
+            };
+            badgeBorder.Child = badgeText;
+            grid.Children.Add(badgeBorder);
+
+            border.Child = grid;
+
+            border.MouseLeftButtonDown += (s, e) =>
+            {
+                if (s is Border b && b.Tag is EditorLayer clickedLayer)
+                {
+                    if (clickedLayer != _activeLayer)
+                    {
+                        SaveActiveLayerState();
+                        _activeLayer = clickedLayer;
+                        LoadActiveLayerState();
+                    }
+                }
+                e.Handled = true;
+            };
+
+            return border;
+        }
+
+        private void UpdateSelectedLayersListsHighlight()
+        {
+            int activeIndex = _selectedLayers.IndexOf(_activeLayer);
+            if (activeIndex < 0) return;
+
+            string countText = $"Ảnh {activeIndex + 1}/{_selectedLayers.Count}";
+            string countTextWv = $"{activeIndex + 1}/{_selectedLayers.Count}";
+
+            if (TxtSelectedCount != null) TxtSelectedCount.Text = countText;
+            if (TxtSelectedCountWv != null) TxtSelectedCountWv.Text = countTextWv;
+
+            var accentColor = TryFindResource("AccentColor") as Brush ?? new SolidColorBrush(Color.FromRgb(79, 255, 176));
+            var borderColor = TryFindResource("BorderColor") as Brush ?? new SolidColorBrush(Color.FromRgb(42, 46, 61));
+
+            if (SelectedImagesHorizontalList != null)
+            {
+                foreach (FrameworkElement item in SelectedImagesHorizontalList.Children)
+                {
+                    if (item is Border b && b.Tag is EditorLayer layer)
+                    {
+                        b.BorderBrush = (layer == _activeLayer) ? accentColor : borderColor;
+                        b.BorderThickness = (layer == _activeLayer) ? new Thickness(2.0) : new Thickness(1.5);
+                    }
+                }
+            }
+
+            if (SelectedImagesVerticalList != null)
+            {
+                foreach (FrameworkElement item in SelectedImagesVerticalList.Children)
+                {
+                    if (item is Border b && b.Tag is EditorLayer layer)
+                    {
+                        b.BorderBrush = (layer == _activeLayer) ? accentColor : borderColor;
+                        b.BorderThickness = (layer == _activeLayer) ? new Thickness(2.0) : new Thickness(1.5);
+                    }
+                }
+            }
         }
 
         private void HookActivityEvents(UIElement element)
@@ -2094,6 +2367,7 @@ namespace FlowMy.Views.Overlays
 
         private void CmbAspectRatio_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isSyncingUI) return;
             if (PanelCustomSize == null) return;
             PanelCustomSize.Visibility = (CmbAspectRatio.SelectedIndex == 6) ? Visibility.Visible : Visibility.Collapsed;
             UpdatePreviewImage();
@@ -2101,6 +2375,7 @@ namespace FlowMy.Views.Overlays
 
         private void TxtCustomSize_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_isSyncingUI) return;
             UpdatePreviewImage();
         }
 
@@ -2701,14 +2976,23 @@ namespace FlowMy.Views.Overlays
 
         private void TxtPrompt_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (sender is TextBox textBox)
+            if (_isSyncingUI) return;
+            _isSyncingUI = true;
+            try
             {
-                string text = textBox.Text;
-                if (TxtPrompt != null && TxtPrompt.Text != text) TxtPrompt.Text = text;
-                if (TxtPromptWv != null && TxtPromptWv.Text != text) TxtPromptWv.Text = text;
-                if (TxtPromptWeb != null && TxtPromptWeb.Text != text) TxtPromptWeb.Text = text;
+                if (sender is TextBox textBox)
+                {
+                    string text = textBox.Text;
+                    if (TxtPrompt != null && TxtPrompt.Text != text) TxtPrompt.Text = text;
+                    if (TxtPromptWv != null && TxtPromptWv.Text != text) TxtPromptWv.Text = text;
+                    if (TxtPromptWeb != null && TxtPromptWeb.Text != text) TxtPromptWeb.Text = text;
+                }
+                UpdateSendButtonsState();
             }
-            UpdateSendButtonsState();
+            finally
+            {
+                _isSyncingUI = false;
+            }
         }
 
         private void UpdateSendButtonsState()
