@@ -278,6 +278,35 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
+                // Fast path: dirty region composite khi đang di chuyển layer (Move tool)
+                if (_isMovingLayer && activeLayer != null)
+                {
+                    int margin = 8;
+                    int w = _node.EditorDoc.Width;
+                    int h = _node.EditorDoc.Height;
+
+                    int x1 = activeLayer.OffsetX;
+                    int y1 = activeLayer.OffsetY;
+                    int x2 = x1 + activeLayer.Width;
+                    int y2 = y1 + activeLayer.Height;
+
+                    int dx = (int)Math.Round(activeLayer.TempMoveDx);
+                    int dy = (int)Math.Round(activeLayer.TempMoveDy);
+
+                    int rx = Math.Max(0, Math.Min(x1, x1 + dx) - margin);
+                    int ry = Math.Max(0, Math.Min(y1, y1 + dy) - margin);
+                    int rr = Math.Min(w, Math.Max(x2, x2 + dx) + margin);
+                    int rb = Math.Min(h, Math.Max(y2, y2 + dy) + margin);
+
+                    if (rr > rx && rb > ry)
+                    {
+                        var dirtyRect = new Int32Rect(rx, ry, rr - rx, rb - ry);
+                        var composite = _node.EditorDoc.CompositeRegion(dirtyRect);
+                        MainImage.Source = composite;
+                        return;
+                    }
+                }
+
                 var fullComposite = _node.EditorDoc.Composite();
                 MainImage.Source = fullComposite;
             }
