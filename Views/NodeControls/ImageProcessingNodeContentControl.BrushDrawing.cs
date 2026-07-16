@@ -80,6 +80,9 @@ namespace FlowMy.Views.NodeControls
         private SkiaSharp.SKPaint? _cachedEraserPaint;
         private float _cachedEraserBlurSigma = -1;
         private SkiaSharp.SKPath? _localSelectionClipPath;
+        private SkiaSharp.SKBitmap? _moveBgPlateSK;
+        private SkiaSharp.SKBitmap? _moveFgPlateSK;
+        private SkiaSharp.SKBitmap? _moveActiveLayerSK;
 
         // ── SkiaSharp cached surfaces for eraser performance ──
         // Pre-composited background (all non-active layers) cached at mouse-down.
@@ -247,15 +250,23 @@ namespace FlowMy.Views.NodeControls
             if (_node?.EditorDoc == null) return;
             try
             {
+                var activeLayer = _node.EditorDoc.ActiveLayer;
+
                 // Fast path: if eraser with cached background plate, do 2-layer composite
-                if (_isDrawingPixels && _eraserBgPlateSK != null && _node.EditorDoc.ActiveLayer != null)
+                if (_isDrawingPixels && _eraserBgPlateSK != null && activeLayer != null)
                 {
                     DoFastEraserComposite();
                     return;
                 }
 
+                // Fast path: if moving a layer, do fast Move composite using pre-composited plates
+                if (_isMovingLayer && activeLayer != null)
+                {
+                    DoFastMoveComposite(activeLayer);
+                    return;
+                }
+
                 // Fast path: dirty region composite khi đang vẽ (brush/eraser/move)
-                var activeLayer = _node.EditorDoc.ActiveLayer;
                 if (_isDrawingPixels && activeLayer != null && _strokeMaxX >= _strokeMinX && _strokeMaxY >= _strokeMinY)
                 {
                     int margin = 4; // padding nhỏ để tránh artifact ở cạnh
@@ -451,5 +462,108 @@ namespace FlowMy.Views.NodeControls
         private EditorLayer? _movingLayer;
         private double _accumulatedMoveDx = 0;
         private double _accumulatedMoveDy = 0;
+
+        private void DoFastMoveComposite(EditorLayer activeLayer)
+        {
+            if (_node?.EditorDoc == null) return;
+            int w = _node.EditorDoc.Width;
+            int h = _node.EditorDoc.Height;
+
+            var target = _node.EditorDoc.GetCachedCpuRenderTarget();
+            if (target == null) return;
+
+            target.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, target.BackBuffer, target.BackBufferStride))
+                {
+                    if (surface != null)
+                    {
+                        var canvas = surface.Canvas;
+                        canvas.Clear(SkiaSharp.SKColors.Transparent);
+
+                        // 1. Draw cached background plate (all layers below active layer)
+                        if (_moveBgPlateSK != null)
+                        {
+                            canvas.DrawBitmap(_moveBgPlateSK, 0, 0);
+                        }
+
+                        // 2. Draw active layer on top
+                        if (activeLayer.IsVisible && activeLayer.Opacity > 0 && !activeLayer.IsTempHidden)
+                        {
+                            if (activeLayer.IsTextLayer)
+                            {
+                                _node.EditorDoc.DrawTextLayerToCanvas(canvas, activeLayer);
+                            }
+                            else if (_moveActiveLayerSK != null)
+                            {
+                                using (var paint = new SkiaSharp.SKPaint())
+                                {
+                                    paint.IsAntialias = true;
+                                    paint.Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Clamp(activeLayer.Opacity * 255, 0, 255));
+                                    paint.BlendMode = activeLayer.BlendMode switch
+                                    {
+                                        BlendMode.Multiply => SkiaSharp.SKBlendMode.Multiply,
+                                        BlendMode.Screen => SkiaSharp.SKBlendMode.Screen,
+                                        BlendMode.Overlay => SkiaSharp.SKBlendMode.Overlay,
+                                        BlendMode.Darken => SkiaSharp.SKBlendMode.Darken,
+                                        BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
+                                        _ => SkiaSharp.SKBlendMode.SrcOver
+                                    };
+
+                                    canvas.Save();
+
+                                    // Handle selection clipping for move preview if selection layer
+                                    if (activeLayer.TempSelectionGeometry != null && activeLayer.TempSelectionPath != null)
+                                    {
+                                        // Standard selection layer move clipping
+                                        // Draw unshifted layer outside selection first
+                                        using (var clipPath = ConvertGeometryToSKPath(activeLayer.TempSelectionGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                                        {
+                                            if (clipPath != null)
+                                            {
+                                                canvas.Save();
+                                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Difference, true);
+                                                canvas.DrawBitmap(_moveActiveLayerSK, activeLayer.OffsetX, activeLayer.OffsetY, paint);
+                                                canvas.Restore();
+                                            }
+                                        }
+
+                                        // Draw shifted layer inside selection
+                                        canvas.ClipPath(activeLayer.TempSelectionPath, SkiaSharp.SKClipOperation.Intersect, true);
+                                        double totalDx = activeLayer.OffsetX + activeLayer.TempMoveDx;
+                                        double totalDy = activeLayer.OffsetY + activeLayer.TempMoveDy;
+                                        canvas.DrawBitmap(_moveActiveLayerSK, (float)totalDx, (float)totalDy, paint);
+                                    }
+                                    else
+                                    {
+                                        double totalDx = activeLayer.OffsetX + activeLayer.TempMoveDx;
+                                        double totalDy = activeLayer.OffsetY + activeLayer.TempMoveDy;
+                                        canvas.DrawBitmap(_moveActiveLayerSK, (float)totalDx, (float)totalDy, paint);
+                                    }
+
+                                    canvas.Restore();
+                                }
+                            }
+                        }
+
+                        // 3. Draw cached foreground plate (all layers above active layer)
+                        if (_moveFgPlateSK != null)
+                        {
+                            canvas.DrawBitmap(_moveFgPlateSK, 0, 0);
+                        }
+                    }
+                }
+
+                target.AddDirtyRect(new Int32Rect(0, 0, w, h));
+            }
+            finally
+            {
+                target.Unlock();
+            }
+
+            MainImage.Source = target;
+        }
     }
 }

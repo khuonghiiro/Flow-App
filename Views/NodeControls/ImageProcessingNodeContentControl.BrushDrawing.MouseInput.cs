@@ -82,6 +82,42 @@ namespace FlowMy.Views.NodeControls
             {
                 CommitKeyMoveSession();
 
+                // Build background and foreground plates once at mouse down
+                _moveBgPlateSK?.Dispose();
+                _moveBgPlateSK = null;
+                _moveFgPlateSK?.Dispose();
+                _moveFgPlateSK = null;
+                _node.EditorDoc.BuildMovePlates(activeLayer, out _moveBgPlateSK, out _moveFgPlateSK);
+
+                // Cache active layer bitmap once at mouse down
+                _moveActiveLayerSK?.Dispose();
+                _moveActiveLayerSK = null;
+                if (!activeLayer.IsTextLayer)
+                {
+                    var activeBmp = activeLayer.ActiveChildLayer != null ? activeLayer.ActiveChildLayer.Bitmap : activeLayer.Bitmap;
+                    activeBmp.Lock();
+                    try
+                    {
+                        var info = new SkiaSharp.SKImageInfo(activeBmp.PixelWidth, activeBmp.PixelHeight, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                        using (var tempSK = new SkiaSharp.SKBitmap())
+                        {
+                            tempSK.InstallPixels(info, activeBmp.BackBuffer, activeBmp.BackBufferStride);
+                            
+                            var copy = new SkiaSharp.SKBitmap(activeBmp.PixelWidth, activeBmp.PixelHeight);
+                            using (var canvas = new SkiaSharp.SKCanvas(copy))
+                            {
+                                canvas.Clear(SkiaSharp.SKColors.Transparent);
+                                canvas.DrawBitmap(tempSK, 0, 0);
+                            }
+                            _moveActiveLayerSK = copy;
+                        }
+                    }
+                    finally
+                    {
+                        activeBmp.Unlock();
+                    }
+                }
+
                 _isMovingLayer = true;
                 _movingLayer = activeLayer;
                 _moveStartMousePos = clickPos;
@@ -830,6 +866,13 @@ namespace FlowMy.Views.NodeControls
             {
                 _isMovingLayer = false;
                 MainScrollViewer.ReleaseMouseCapture();
+
+                _moveBgPlateSK?.Dispose();
+                _moveBgPlateSK = null;
+                _moveFgPlateSK?.Dispose();
+                _moveFgPlateSK = null;
+                _moveActiveLayerSK?.Dispose();
+                _moveActiveLayerSK = null;
 
                 var targetLayer = _movingLayer ?? activeLayer;
                 if (targetLayer != null)

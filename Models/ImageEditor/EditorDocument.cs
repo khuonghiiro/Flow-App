@@ -391,6 +391,69 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>
+        /// Tạo cached background/foreground plates để di chuyển layer với hiệu năng cao.
+        /// </summary>
+        public void BuildMovePlates(EditorLayer activeLayer, out SkiaSharp.SKBitmap? bgPlate, out SkiaSharp.SKBitmap? fgPlate)
+        {
+            bgPlate = null;
+            fgPlate = null;
+            
+            var entries = CollectLayerEntries();
+            int activeIndex = Layers.IndexOf(activeLayer);
+            if (activeIndex == -1) return;
+
+            var bgEntries = new System.Collections.Generic.List<(
+                EditorLayer layer,
+                byte[]? pixelData,
+                int bmpW, int bmpH, int bmpStride,
+                SkiaSharp.SKBitmap? cachedSK,
+                Rect contentBounds
+            )>();
+            
+            var fgEntries = new System.Collections.Generic.List<(
+                EditorLayer layer,
+                byte[]? pixelData,
+                int bmpW, int bmpH, int bmpStride,
+                SkiaSharp.SKBitmap? cachedSK,
+                Rect contentBounds
+            )>();
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                int layerIndex = Layers.IndexOf(entry.layer);
+                if (layerIndex < activeIndex)
+                {
+                    bgEntries.Add(entry);
+                }
+                else if (layerIndex > activeIndex)
+                {
+                    fgEntries.Add(entry);
+                }
+            }
+
+            if (bgEntries.Count > 0)
+            {
+                bgPlate = new SkiaSharp.SKBitmap(Width, Height);
+                using (var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(Width, Height), bgPlate.GetPixels()))
+                {
+                    surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                    RenderEntriesToCanvas(surface.Canvas, bgEntries);
+                }
+            }
+
+            if (fgEntries.Count > 0)
+            {
+                fgPlate = new SkiaSharp.SKBitmap(Width, Height);
+                using (var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(Width, Height), fgPlate.GetPixels()))
+                {
+                    surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                    RenderEntriesToCanvas(surface.Canvas, fgEntries);
+                }
+            }
+        }
+
+        /// <summary>
         /// Composite chỉ vùng dirty rect — dùng khi vẽ brush/eraser để tránh composite toàn bộ ảnh.
         /// Yêu cầu: _cachedCpuRenderTarget đã được tạo bởi Composite() trước đó.
         /// Nếu chưa có render target, fallback về Composite() toàn ảnh.
@@ -549,7 +612,7 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>Vẽ text layer lên canvas — tái sử dụng cho cả Composite() và CompositeRegion().</summary>
-        private void DrawTextLayerToCanvas(SkiaSharp.SKCanvas canvas, EditorLayer layer)
+        public void DrawTextLayerToCanvas(SkiaSharp.SKCanvas canvas, EditorLayer layer)
         {
             using (var paint = new SkiaSharp.SKPaint())
             {
