@@ -169,6 +169,37 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private string GetDefaultExportFileName(string fallbackPrefix = "flow_image")
+        {
+            if (_node != null && !string.IsNullOrWhiteSpace(_node.ImageUrl))
+            {
+                try
+                {
+                    string filename = System.IO.Path.GetFileNameWithoutExtension(_node.ImageUrl);
+                    if (!string.IsNullOrWhiteSpace(filename) && !filename.Contains(":/") && !filename.Contains("\\"))
+                    {
+                        return filename;
+                    }
+                }
+                catch { }
+            }
+
+            if (_node?.EditorDoc != null && !string.IsNullOrWhiteSpace(_node.EditorDoc.ProjectPath))
+            {
+                try
+                {
+                    string filename = System.IO.Path.GetFileNameWithoutExtension(_node.EditorDoc.ProjectPath);
+                    if (!string.IsNullOrWhiteSpace(filename))
+                    {
+                        return filename;
+                    }
+                }
+                catch { }
+            }
+
+            return $"{fallbackPrefix}_{DateTime.Now:ddMMyyyy_HHmmss}";
+        }
+
         private void QuickExportAsPngDirect()
         {
             CommitBrushDrawingSession();
@@ -182,7 +213,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Filter = "PNG Image (*.png)|*.png",
                 DefaultExt = ".png",
-                FileName = (_node.Title ?? "export") + ".png"
+                FileName = GetDefaultExportFileName() + ".png"
             };
 
             if (saveFileDialog.ShowDialog() == true)
@@ -219,7 +250,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Filter = "JPEG Image (*.jpg)|*.jpg",
                 DefaultExt = ".jpg",
-                FileName = (_node.Title ?? "export") + ".jpg"
+                FileName = GetDefaultExportFileName() + ".jpg"
             };
 
             if (saveFileDialog.ShowDialog() == true)
@@ -262,7 +293,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Filter = "PNG Image (*.png)|*.png|JPEG Image (*.jpg;*.jpeg)|*.jpg;*.jpeg|BMP Image (*.bmp)|*.bmp|GIF Image (*.gif)|*.gif",
                 DefaultExt = ".png",
-                FileName = _node.Title ?? "export"
+                FileName = GetDefaultExportFileName()
             };
 
             if (saveFileDialog.ShowDialog() == true)
@@ -321,7 +352,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     Filter = "Image Editor Project (*.iep)|*.iep|Zip Archive (*.zip)|*.zip",
                     DefaultExt = ".iep",
-                    FileName = _node.Title ?? "project"
+                    FileName = GetDefaultExportFileName("flow_project")
                 };
 
                 if (saveFileDialog.ShowDialog() == true)
@@ -436,7 +467,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Filter = "Image Editor Project (*.iep)|*.iep|Zip Archive (*.zip)|*.zip",
                 DefaultExt = ".iep",
-                FileName = _node.Title ?? "project"
+                FileName = GetDefaultExportFileName("flow_project")
             };
 
             if (saveFileDialog.ShowDialog() == true)
