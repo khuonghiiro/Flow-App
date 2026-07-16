@@ -516,9 +516,9 @@ namespace FlowMy.Views.NodeControls
             int overlayW = _brushOverlayBitmap.PixelWidth;
             int overlayH = _brushOverlayBitmap.PixelHeight;
 
-            // Tính offset: overlay có thể nhỏ hơn layer nếu có clip bounds
-            int clipOffsetX = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Left : 0;
-            int clipOffsetY = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Top : 0;
+            // Offset là 0 vì overlay và targetLayer cùng kích thước và hệ toạ độ local
+            int clipOffsetX = 0;
+            int clipOffsetY = 0;
             
             targetLayer.Bitmap.Lock();
             try
@@ -539,7 +539,7 @@ namespace FlowMy.Views.NodeControls
                             using (var paint = new SkiaSharp.SKPaint())
                             {
                                 paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
-                                // Vẽ overlay tại vị trí offset trên layer canvas
+                                // Vẽ overlay tại (0,0) trên layer canvas
                                 canvas.DrawBitmap(overlaySKBitmap, clipOffsetX, clipOffsetY, paint);
                             }
                         }
@@ -550,9 +550,9 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
                 
-                // Dirty rect: chuyển từ overlay coords về layer coords
-                int dirtyX = _strokeMinX + clipOffsetX;
-                int dirtyY = _strokeMinY + clipOffsetY;
+                // Dirty rect: dùng directly local coords
+                int dirtyX = _strokeMinX;
+                int dirtyY = _strokeMinY;
                 int dirtyW = _strokeMaxX - _strokeMinX + 1;
                 int dirtyH = _strokeMaxY - _strokeMinY + 1;
                 if (dirtyW > 0 && dirtyH > 0)

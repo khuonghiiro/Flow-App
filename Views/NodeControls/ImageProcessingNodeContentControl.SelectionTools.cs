@@ -256,21 +256,23 @@ namespace FlowMy.Views.NodeControls
                 int docW = _node.EditorDoc.Width;
                 int docH = _node.EditorDoc.Height;
 
-                newLayer = new EditorLayer(docW, docH, _node.EditorDoc.GetNextLayerName());
-                newLayer.Clear();
-
                 int startX = (int)_selectionClipboardRect.Value.Left;
                 int startY = (int)_selectionClipboardRect.Value.Top;
                 int w = (int)_selectionClipboardRect.Value.Width;
                 int h = (int)_selectionClipboardRect.Value.Height;
 
+                newLayer = new EditorLayer(w, h, _node.EditorDoc.GetNextLayerName());
+                newLayer.OffsetX = startX;
+                newLayer.OffsetY = startY;
+
                 int stride = w * 4;
-                newLayer.Bitmap.WritePixels(new Int32Rect(startX, startY, w, h), _selectionClipboardPixels, stride, 0);
+                newLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), _selectionClipboardPixels, stride, 0);
                 
                 var origBmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
                 origBmp.WritePixels(new Int32Rect(0, 0, w, h), _selectionClipboardPixels, stride, 0);
                 newLayer.OriginalTransformBitmap = origBmp;
                 newLayer.ContentBounds = new Rect(startX, startY, w, h);
+                newLayer.ImageContentBounds = newLayer.ContentBounds;
                 
                 if (_selectionClipboardGeometry != null)
                 {

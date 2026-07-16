@@ -55,19 +55,13 @@ namespace FlowMy.Views.NodeControls
             {
                 if (activeLayer.OriginalTransformBitmap != null)
                 {
-                    // Lưu ContentBounds trước khi xóa, để clip brush/eraser vào vùng content thực
-                    _brushClipRect = activeLayer.ContentBounds;
-                    _brushClipLayer = activeLayer;
                     activeLayer.OriginalTransformBitmap = null;
                     activeLayer.ContentBounds = Rect.Empty;
                 }
-                else if (_brushClipLayer != activeLayer)
-                {
-                    // Đổi layer khác → xóa clip rect (layer mới không có content bounds)
-                    _brushClipRect = Rect.Empty;
-                    _brushClipLayer = null;
-                }
-                // Nếu cùng layer và đã có _brushClipRect → giữ nguyên
+
+                // Luôn dùng ImageContentBounds (persistent, không bị clear bởi commands)
+                _brushClipRect = activeLayer.ImageContentBounds;
+                _brushClipLayer = activeLayer;
             }
 
             if (tool != "Text" && TextMoveContainer != null && TextMoveContainer.Visibility == Visibility.Visible)
@@ -79,8 +73,8 @@ namespace FlowMy.Views.NodeControls
                 clickPos.Y < 0 || clickPos.Y > MainImage.ActualHeight)
                 return;
 
-            double scaleX = activeLayer.Width / MainImage.ActualWidth;
-            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            double scaleX = _node.EditorDoc.Width / MainImage.ActualWidth;
+            double scaleY = _node.EditorDoc.Height / MainImage.ActualHeight;
             int px = (int)(clickPos.X * scaleX);
             int py = (int)(clickPos.Y * scaleY);
 
@@ -428,33 +422,18 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Brush")
             {
-                // Nếu có clip bounds, kiểm tra click có nằm trong vùng content không
-                if (!_brushClipRect.IsEmpty)
-                {
-                    if (px < (int)_brushClipRect.Left || px >= (int)(_brushClipRect.Left + _brushClipRect.Width) ||
-                        py < (int)_brushClipRect.Top || py >= (int)(_brushClipRect.Top + _brushClipRect.Height))
-                        return; // Click ngoài vùng content → bỏ qua
-                }
+                // Kiểm tra click có nằm trong layer bounds không
+                if (px < activeLayer.OffsetX || px >= activeLayer.OffsetX + activeLayer.Width ||
+                    py < activeLayer.OffsetY || py >= activeLayer.OffsetY + activeLayer.Height)
+                    return; // Click ngoài layer → bỏ qua
 
                 _isDrawingPixels = true;
-                _lastDrawingPixelPoint = new Point(px, py);
 
                 // Xác định kích thước overlay và offset
-                int overlayW, overlayH;
-                int clipOffsetX = 0, clipOffsetY = 0;
-                if (!_brushClipRect.IsEmpty)
-                {
-                    // Tạo overlay chỉ bằng kích thước content bounds → performance tốt hơn
-                    overlayW = (int)_brushClipRect.Width;
-                    overlayH = (int)_brushClipRect.Height;
-                    clipOffsetX = (int)_brushClipRect.Left;
-                    clipOffsetY = (int)_brushClipRect.Top;
-                }
-                else
-                {
-                    overlayW = activeLayer.Width;
-                    overlayH = activeLayer.Height;
-                }
+                int overlayW = activeLayer.Width;
+                int overlayH = activeLayer.Height;
+                int clipOffsetX = activeLayer.OffsetX;
+                int clipOffsetY = activeLayer.OffsetY;
 
                 int stride = overlayW * 4;
                 int pixelSize = stride * overlayH;
@@ -467,10 +446,9 @@ namespace FlowMy.Views.NodeControls
                     _brushOverlayBitmap = new WriteableBitmap(overlayW, overlayH, 96, 96, PixelFormats.Pbgra32, null);
                     _brushSessionLayer = activeLayer;
                     
-                    // Lưu undo pixels cho toàn bộ layer (cần full size cho undo)
-                    int fullStride = activeLayer.Width * 4;
-                    _oldPixelsForUndo = new byte[fullStride * activeLayer.Height];
-                    activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, fullStride, 0);
+                    // Lưu undo pixels cho toàn bộ layer (cần kích thước của layer cho undo)
+                    _oldPixelsForUndo = new byte[pixelSize];
+                    activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
 
                     _strokeMinX = overlayW - 1;
                     _strokeMaxX = 0;
@@ -482,7 +460,7 @@ namespace FlowMy.Views.NodeControls
                 ActiveLayerDrawingOverlay.Opacity = activeLayer.Opacity;
                 ActiveLayerDrawingOverlay.Width = overlayW;
                 ActiveLayerDrawingOverlay.Height = overlayH;
-                // Đặt vị trí overlay đúng vị trí content bounds trong ImageContainer
+                // Đặt vị trí overlay đúng vị trí layer offset trong ImageContainer
                 ActiveLayerDrawingOverlay.Margin = new Thickness(clipOffsetX, clipOffsetY, 0, 0);
                 ActiveLayerDrawingOverlay.Visibility = Visibility.Visible;
 
@@ -490,6 +468,7 @@ namespace FlowMy.Views.NodeControls
                 int localPx = px - clipOffsetX;
                 int localPy = py - clipOffsetY;
 
+                _lastDrawingPixelPoint = new Point(localPx, localPy);
                 _strokePoints.Clear();
                 _strokePoints.Add(new Point(localPx, localPy));
                 _brushDistanceAccumulator = 0;
@@ -579,23 +558,24 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
-                // Nếu có clip bounds, kiểm tra click có nằm trong vùng content không
-                if (!_brushClipRect.IsEmpty)
-                {
-                    if (px < (int)_brushClipRect.Left || px >= (int)(_brushClipRect.Left + _brushClipRect.Width) ||
-                        py < (int)_brushClipRect.Top || py >= (int)(_brushClipRect.Top + _brushClipRect.Height))
-                        return; // Click ngoài vùng content → bỏ qua
-                }
+                // Kiểm tra click có nằm trong layer bounds không
+                if (px < activeLayer.OffsetX || px >= activeLayer.OffsetX + activeLayer.Width ||
+                    py < activeLayer.OffsetY || py >= activeLayer.OffsetY + activeLayer.Height)
+                    return; // Click ngoài layer → bỏ qua
 
                 CommitBrushDrawingSession();
 
                 _isDrawingPixels = true;
-                _lastDrawingPixelPoint = new Point(px, py);
 
                 int w = activeLayer.Width;
                 int h = activeLayer.Height;
                 int stride = w * 4;
                 int pixelSize = stride * h;
+
+                // Chuyển sang toạ độ local của layer
+                int localPx = px - activeLayer.OffsetX;
+                int localPy = py - activeLayer.OffsetY;
+                _lastDrawingPixelPoint = new Point(localPx, localPy);
 
                 if (_cachedOldPixelsForUndo == null || _cachedOldPixelsForUndo.Length < pixelSize)
                 {
@@ -604,7 +584,7 @@ namespace FlowMy.Views.NodeControls
                 _oldPixelsForUndo = _cachedOldPixelsForUndo;
                 activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
                 _strokePoints.Clear();
-                _strokePoints.Add(new Point(px, py));
+                _strokePoints.Add(new Point(localPx, localPy));
 
                 bool useDirectSource = (_node.EditorDoc.Layers.Count == 1 &&
                                          activeLayer.Opacity >= 0.99 &&
@@ -652,10 +632,10 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 double extendedRadius = isComplexPreset ? (rawRadius * 5.0 + 5.0) : (rawRadius + 2.0);
-                _strokeMinX = Math.Clamp((int)(px - extendedRadius), 0, w - 1);
-                _strokeMaxX = Math.Clamp((int)(px + extendedRadius), 0, w - 1);
-                _strokeMinY = Math.Clamp((int)(py - extendedRadius), 0, h - 1);
-                _strokeMaxY = Math.Clamp((int)(py + extendedRadius), 0, h - 1);
+                _strokeMinX = Math.Clamp((int)(localPx - extendedRadius), 0, w - 1);
+                _strokeMaxX = Math.Clamp((int)(localPx + extendedRadius), 0, w - 1);
+                _strokeMinY = Math.Clamp((int)(localPy - extendedRadius), 0, h - 1);
+                _strokeMaxY = Math.Clamp((int)(localPy + extendedRadius), 0, h - 1);
 
                 _prevSegmentMinX = _strokeMinX;
                 _prevSegmentMaxX = _strokeMaxX;
@@ -671,23 +651,15 @@ namespace FlowMy.Views.NodeControls
                 {
                     var canvas = _eraserLockedSurface.Canvas;
 
-                    // Clip to content bounds if layer has specific content area
-                    if (!_brushClipRect.IsEmpty)
-                    {
-                        canvas.ClipRect(new SkiaSharp.SKRect(
-                            (float)_brushClipRect.Left, (float)_brushClipRect.Top,
-                            (float)(_brushClipRect.Left + _brushClipRect.Width),
-                            (float)(_brushClipRect.Top + _brushClipRect.Height)));
-                    }
                     if (isComplexPreset)
                     {
                         if (_cachedBrushTip != null)
                         {
-                            DrawCachedBrushTipStamp(canvas, px, py, true, Colors.Black);
+                            DrawCachedBrushTipStamp(canvas, localPx, localPy, true, Colors.Black);
                         }
                         else
                         {
-                            DrawSkiaBrushStamp(canvas, px, py, rawRadius, hardness, flow, Colors.Black, _currentBrushPreset, true);
+                            DrawSkiaBrushStamp(canvas, localPx, localPy, rawRadius, hardness, flow, Colors.Black, _currentBrushPreset, true);
                         }
                     }
                     else
@@ -705,7 +677,7 @@ namespace FlowMy.Views.NodeControls
                                 paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
                             }
 
-                            canvas.DrawCircle((float)px, (float)py, (float)radius, paint);
+                            canvas.DrawCircle((float)localPx, (float)localPy, (float)radius, paint);
                         }
                     }
 
@@ -732,10 +704,12 @@ namespace FlowMy.Views.NodeControls
             string tool = EditorPanel.ActiveToolName;
             var mousePos = e.GetPosition(MainImage);
 
-            double scaleX = activeLayer.Width / MainImage.ActualWidth;
-            double scaleY = activeLayer.Height / MainImage.ActualHeight;
-            int px = Math.Clamp((int)(mousePos.X * scaleX), 0, activeLayer.Width - 1);
-            int py = Math.Clamp((int)(mousePos.Y * scaleY), 0, activeLayer.Height - 1);
+            double docW = _node.EditorDoc.Width;
+            double docH = _node.EditorDoc.Height;
+            double scaleX = docW / MainImage.ActualWidth;
+            double scaleY = docH / MainImage.ActualHeight;
+            int px = Math.Clamp((int)(mousePos.X * scaleX), 0, (int)docW - 1);
+            int py = Math.Clamp((int)(mousePos.Y * scaleY), 0, (int)docH - 1);
 
             if (_isSelecting)
             {
@@ -843,19 +817,18 @@ namespace FlowMy.Views.NodeControls
             double flow = EditorPanel.BrushFlow;
             Color color = _node.EditorDoc.ForegroundColor;
 
-            // Offset px/py sang toạ độ local của overlay nếu có clip bounds
-            int clipOffX = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Left : 0;
-            int clipOffY = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Top : 0;
-            var currentPoint = new Point(px - clipOffX, py - clipOffY);
-            var prevPoint = _lastDrawingPixelPoint;
+            // Cả Brush và Eraser đều dùng coordinates local của layer
+            int clipOffX = activeLayer.OffsetX;
+            int clipOffY = activeLayer.OffsetY;
+
+            Point currentPoint = new Point(px - clipOffX, py - clipOffY);
+            Point prevPoint = _lastDrawingPixelPoint;
+            int activeW = activeLayer.Width;
+            int activeH = activeLayer.Height;
 
             if (_strokePoints.Count > 0 && _strokePoints[^1] == currentPoint) return;
             _strokePoints.Add(currentPoint);
             _lastDrawingPixelPoint = currentPoint;
-
-            // Dùng kích thước overlay (có thể nhỏ hơn layer nếu có clip bounds)
-            int activeW = _brushOverlayBitmap?.PixelWidth ?? activeLayer.Width;
-            int activeH = _brushOverlayBitmap?.PixelHeight ?? activeLayer.Height;
 
             bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
                                    _currentBrushPreset != BrushPreset.RoundSoft &&
@@ -1127,8 +1100,8 @@ namespace FlowMy.Views.NodeControls
 
                     int overlayW = _brushOverlayBitmap.PixelWidth;
                     int overlayH = _brushOverlayBitmap.PixelHeight;
-                    int clipOffsetX = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Left : 0;
-                    int clipOffsetY = !_brushClipRect.IsEmpty ? (int)_brushClipRect.Top : 0;
+                    int clipOffsetX = 0;
+                    int clipOffsetY = 0;
 
                     activeLayer.Bitmap.Lock();
                     try
@@ -1156,9 +1129,9 @@ namespace FlowMy.Views.NodeControls
                             }
                         }
 
-                        // Dirty rect: chuyển từ overlay coords về layer coords
-                        int dirtyX = _strokeMinX + clipOffsetX;
-                        int dirtyY = _strokeMinY + clipOffsetY;
+                        // Dirty rect: local coordinates of activeLayer bitmap
+                        int dirtyX = _strokeMinX;
+                        int dirtyY = _strokeMinY;
                         int dirtyW = _strokeMaxX - _strokeMinX + 1;
                         int dirtyH = _strokeMaxY - _strokeMinY + 1;
                         if (dirtyW > 0 && dirtyH > 0)
@@ -1176,11 +1149,11 @@ namespace FlowMy.Views.NodeControls
                         activeLayer.Bitmap.Unlock();
                     }
 
-                    // Region-based undo: chỉ lưu dirty region thay vì toàn bộ bitmap
+                    // Region-based undo: local layer coords
                     int strokeDirtyW = _strokeMaxX - _strokeMinX + 1;
                     int strokeDirtyH = _strokeMaxY - _strokeMinY + 1;
-                    int hintX = Math.Max(0, _strokeMinX + clipOffsetX);
-                    int hintY = Math.Max(0, _strokeMinY + clipOffsetY);
+                    int hintX = Math.Max(0, _strokeMinX);
+                    int hintY = Math.Max(0, _strokeMinY);
                     var strokeHint = new Int32Rect(hintX, hintY, Math.Max(1, strokeDirtyW), Math.Max(1, strokeDirtyH));
 
                     var finalNewPixels = new byte[pixelSize];

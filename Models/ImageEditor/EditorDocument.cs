@@ -615,7 +615,6 @@ namespace FlowMy.Models.ImageEditor
             canvas.Restore();
         }
 
-        /// <summary>Vẽ layer từ pixel data snapshot lên canvas.</summary>
         private void DrawPixelDataLayer(SkiaSharp.SKCanvas canvas, SkiaSharp.SKPaint paint, EditorLayer layer, byte[] pixelData, int bmpW, int bmpH, int bmpStride)
         {
             var gcPin = System.Runtime.InteropServices.GCHandle.Alloc(pixelData, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -627,29 +626,32 @@ namespace FlowMy.Models.ImageEditor
                     skBmp.InstallPixels(srcInfo, gcPin.AddrOfPinnedObject(), bmpStride);
                     canvas.Save();
 
+                    float ox = layer.OffsetX;
+                    float oy = layer.OffsetY;
+
                     if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
                     {
                         if (layer.TempSelectionPath != null)
                         {
                             canvas.Save();
                             canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Difference, true);
-                            canvas.DrawBitmap(skBmp, 0, 0, paint);
+                            canvas.DrawBitmap(skBmp, ox, oy, paint);
                             canvas.Restore();
 
                             canvas.Save();
                             canvas.Translate((float)layer.TempMoveDx, (float)layer.TempMoveDy);
                             canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Intersect, true);
-                            canvas.DrawBitmap(skBmp, 0, 0, paint);
+                            canvas.DrawBitmap(skBmp, ox, oy, paint);
                             canvas.Restore();
                         }
                         else
                         {
-                            canvas.DrawBitmap(skBmp, (float)layer.TempMoveDx, (float)layer.TempMoveDy, paint);
+                            canvas.DrawBitmap(skBmp, ox + (float)layer.TempMoveDx, oy + (float)layer.TempMoveDy, paint);
                         }
                     }
                     else
                     {
-                        canvas.DrawBitmap(skBmp, 0, 0, paint);
+                        canvas.DrawBitmap(skBmp, ox, oy, paint);
                     }
                     canvas.Restore();
                 }

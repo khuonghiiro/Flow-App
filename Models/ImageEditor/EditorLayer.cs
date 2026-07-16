@@ -149,11 +149,15 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>ID duy nhất của layer.</summary>
         public string Id { get; internal set; }
 
-        /// <summary>Kích thước layer (luôn bằng document).</summary>
+        /// <summary>Kích thước layer (có thể khác document — layer ảnh dùng kích thước ảnh gốc).</summary>
         public int Width { get; internal set; }
         public int Height { get; internal set; }
 
-        /// <summary>Bitmap pixel data (BGRA32, cùng kích thước document).</summary>
+        /// <summary>Vị trí layer trên canvas document (top-left offset).</summary>
+        public int OffsetX { get; set; }
+        public int OffsetY { get; set; }
+
+        /// <summary>Bitmap pixel data (BGRA32, kích thước = Width×Height).</summary>
         public WriteableBitmap Bitmap { get; internal set; }
 
         /// <summary>Tên hiển thị.</summary>
@@ -233,6 +237,9 @@ namespace FlowMy.Models.ImageEditor
         }
 
         public Rect ContentBounds { get; set; } = Rect.Empty;
+        /// <summary>Vùng ảnh gốc khi load vào layer (không bị clear bởi commands/tools).
+        /// Dùng cho brush/eraser clipping. Chỉ set khi load ảnh vào layer.</summary>
+        public Rect ImageContentBounds { get; set; } = Rect.Empty;
         public Geometry? ContentGeometry { get; set; }
 
         public static Rect CalculateContentBounds(WriteableBitmap bitmap)
@@ -431,39 +438,32 @@ namespace FlowMy.Models.ImageEditor
                 converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
             }
 
-            double srcW = converted.PixelWidth;
-            double srcH = converted.PixelHeight;
+            int srcW = converted.PixelWidth;
+            int srcH = converted.PixelHeight;
 
-            // Tính vị trí căn giữa trên Canvas
+            // Tính vị trí căn giữa dựa trên kích thước cũ của layer (thường là kích thước document)
             double x = (Width - srcW) / 2.0;
             double y = (Height - srcH) / 2.0;
+            OffsetX = (int)x;
+            OffsetY = (int)y;
 
-            // Render ảnh gốc vào layer's Bitmap (kích thước Document, sẽ bị clip phần thừa ngoài canvas)
-            var drawingVisual = new DrawingVisual();
-            RenderOptions.SetBitmapScalingMode(drawingVisual, BitmapScalingMode.HighQuality);
-            using (var drawingContext = drawingVisual.RenderOpen())
-            {
-                // Vẽ ảnh nguồn ở đúng kích thước gốc và căn giữa
-                drawingContext.DrawImage(converted, new Rect(x, y, srcW, srcH));
-            }
+            // Resize layer to match original image size
+            Width = srcW;
+            Height = srcH;
+            Bitmap = new WriteableBitmap(srcW, srcH, 96, 96, PixelFormats.Bgra32, null);
 
-            // Render ra RenderTargetBitmap
-            var rtb = new RenderTargetBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32);
-            rtb.Render(drawingVisual);
+            var stride = srcW * 4;
+            var pixels = new byte[stride * srcH];
+            converted.CopyPixels(pixels, stride, 0);
 
-            // Chuyển sang format Bgra32 để ghi vào layer's Bitmap
-            var finalBmp = new FormatConvertedBitmap(rtb, PixelFormats.Bgra32, null, 0);
-
-            var stride = Width * 4;
-            var pixels = new byte[stride * Height];
-            finalBmp.CopyPixels(pixels, stride, 0);
-
-            Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixels, stride, 0);
+            Bitmap.WritePixels(new Int32Rect(0, 0, srcW, srcH), pixels, stride, 0);
             
-            // Đặt OriginalTransformBitmap là ảnh gốc chất lượng cao và kích thước nguyên bản (không bị scale hay clip!)
+            // Đặt OriginalTransformBitmap là ảnh gốc chất lượng cao
             OriginalTransformBitmap = new WriteableBitmap(converted);
-            // Đặt ContentBounds bằng kích thước gốc căn giữa
+            // Đặt ContentBounds cục bộ (0, 0, srcW, srcH)
             ContentBounds = new Rect(x, y, srcW, srcH);
+            // ImageContentBounds persistent - không bị clear bởi commands/tools
+            ImageContentBounds = ContentBounds;
 
             InvalidateThumbnail();
         }
@@ -472,6 +472,8 @@ namespace FlowMy.Models.ImageEditor
         public EditorLayer Duplicate()
         {
             var copy = new EditorLayer(Width, Height, _name + " copy");
+            copy.OffsetX = OffsetX;
+            copy.OffsetY = OffsetY;
             copy.Opacity = _opacity;
             copy.IsVisible = _isVisible;
             copy.BlendMode = _blendMode;
@@ -490,6 +492,7 @@ namespace FlowMy.Models.ImageEditor
             copy.TextAlignment = TextAlignment;
             copy.IsSelected = IsSelected;
             copy.ContentBounds = ContentBounds;
+            copy.ImageContentBounds = ImageContentBounds;
             if (OriginalTransformBitmap != null)
             {
                 copy.OriginalTransformBitmap = OriginalTransformBitmap;

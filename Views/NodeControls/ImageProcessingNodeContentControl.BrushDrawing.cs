@@ -254,15 +254,21 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 // Fast path: dirty region composite khi đang vẽ (brush/eraser/move)
-                if (_isDrawingPixels && _strokeMaxX >= _strokeMinX && _strokeMaxY >= _strokeMinY)
+                var activeLayer = _node.EditorDoc.ActiveLayer;
+                if (_isDrawingPixels && activeLayer != null && _strokeMaxX >= _strokeMinX && _strokeMaxY >= _strokeMinY)
                 {
                     int margin = 4; // padding nhỏ để tránh artifact ở cạnh
                     int w = _node.EditorDoc.Width;
                     int h = _node.EditorDoc.Height;
-                    int rx = Math.Max(0, _prevSegmentMinX - margin);
-                    int ry = Math.Max(0, _prevSegmentMinY - margin);
-                    int rr = Math.Min(w, _prevSegmentMaxX + margin + 1);
-                    int rb = Math.Min(h, _prevSegmentMaxY + margin + 1);
+
+                    // Offset dirty region từ local layer coords về document coords
+                    int clipOffX = activeLayer.OffsetX;
+                    int clipOffY = activeLayer.OffsetY;
+
+                    int rx = Math.Max(0, _prevSegmentMinX + clipOffX - margin);
+                    int ry = Math.Max(0, _prevSegmentMinY + clipOffY - margin);
+                    int rr = Math.Min(w, _prevSegmentMaxX + clipOffX + margin + 1);
+                    int rb = Math.Min(h, _prevSegmentMaxY + clipOffY + margin + 1);
                     if (rr > rx && rb > ry)
                     {
                         var dirtyRect = new Int32Rect(rx, ry, rr - rx, rb - ry);
@@ -311,9 +317,10 @@ namespace FlowMy.Views.NodeControls
                     activeLayer.Bitmap.Lock();
                     try
                     {
+                        var activeInfo = new SkiaSharp.SKImageInfo(activeLayer.Width, activeLayer.Height, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
                         using (var activeSK = new SkiaSharp.SKBitmap())
                         {
-                            activeSK.InstallPixels(info, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride);
+                            activeSK.InstallPixels(activeInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride);
                             using (var paint = new SkiaSharp.SKPaint())
                             {
                                 paint.Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Clamp(activeLayer.Opacity * 255, 0, 255));
@@ -326,7 +333,7 @@ namespace FlowMy.Views.NodeControls
                                     BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
                                     _ => SkiaSharp.SKBlendMode.SrcOver
                                 };
-                                canvas.DrawBitmap(activeSK, 0, 0, paint);
+                                canvas.DrawBitmap(activeSK, activeLayer.OffsetX, activeLayer.OffsetY, paint);
                             }
                         }
                     }
@@ -387,7 +394,7 @@ namespace FlowMy.Views.NodeControls
                                     BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
                                     _ => SkiaSharp.SKBlendMode.SrcOver
                                 };
-                                bgCanvas.DrawBitmap(skBmp, 0, 0, paint);
+                                bgCanvas.DrawBitmap(skBmp, layer.OffsetX, layer.OffsetY, paint);
                             }
                         }
                     }

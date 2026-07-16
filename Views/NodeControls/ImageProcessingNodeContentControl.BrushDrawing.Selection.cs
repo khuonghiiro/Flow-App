@@ -182,11 +182,6 @@ namespace FlowMy.Views.NodeControls
                 gcNew.Free();
             }
 
-            // Create the new layer containing the moved selection
-            string newLayerName = $"{originalLayer.Name} Selection";
-            var newLayer = new EditorLayer(w, h, newLayerName);
-            newLayer.Bitmap.WritePixels(new Int32Rect(0, 0, w, h), newLayerPixels, stride, 0);
-
             // Setup the tight bounding box and original transform bitmap for the new layer using blend modes
             var bounds = _moveInitialGeometry.Bounds;
             int startX = Math.Max(0, (int)Math.Floor(bounds.Left));
@@ -196,8 +191,15 @@ namespace FlowMy.Views.NodeControls
             int bw = endX - startX + 1;
             int bh = endY - startY + 1;
 
+            string newLayerName = $"{originalLayer.Name} Selection";
+            EditorLayer newLayer;
+
             if (bw > 0 && bh > 0)
             {
+                newLayer = new EditorLayer(bw, bh, newLayerName);
+                newLayer.OffsetX = startX + (int)dx;
+                newLayer.OffsetY = startY + (int)dy;
+
                 int tightStride = bw * 4;
                 var tightPixels = new byte[tightStride * bh];
                 
@@ -242,10 +244,17 @@ namespace FlowMy.Views.NodeControls
                     gcSourceForTight.Free();
                 }
 
+                newLayer.Bitmap.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
+
                 var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
                 origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
                 newLayer.OriginalTransformBitmap = origBmp;
                 newLayer.ContentBounds = new Rect(startX + dx, startY + dy, bw, bh);
+                newLayer.ImageContentBounds = newLayer.ContentBounds;
+            }
+            else
+            {
+                newLayer = new EditorLayer(1, 1, newLayerName);
             }
 
             if (_activeSelectionGeometry != null)
