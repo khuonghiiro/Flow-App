@@ -82,74 +82,6 @@ namespace FlowMy.Views.NodeControls
             {
                 CommitKeyMoveSession();
 
-                int visibleLayersCount = _node.EditorDoc.Layers.Count(l => l.IsVisible);
-                bool canGrab = false;
-
-                if (visibleLayersCount >= 2)
-                {
-                    canGrab = true;
-                }
-                else
-                {
-                    // Check if clicked inside selection
-                    if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
-                    {
-                        if (px >= _cachedSelectionStartX && px <= _cachedSelectionEndX &&
-                            py >= _cachedSelectionStartY && py <= _cachedSelectionEndY)
-                        {
-                            canGrab = _cachedSelectionMask[px - _cachedSelectionStartX, py - _cachedSelectionStartY];
-                        }
-                    }
-
-                    // Or if clicked on a non-transparent pixel of the active layer
-                    if (!canGrab)
-                    {
-                        if (activeLayer.IsTextLayer)
-                        {
-                            if (px >= activeLayer.TextX && px <= activeLayer.TextX + activeLayer.TextWidth &&
-                                py >= activeLayer.TextY && py <= activeLayer.TextY + activeLayer.TextHeight)
-                            {
-                                canGrab = true;
-                            }
-                        }
-                        else
-                        {
-                            if (activeLayer.OriginalTransformBitmap != null && !activeLayer.ContentBounds.IsEmpty)
-                            {
-                                var bounds = activeLayer.ContentBounds;
-                                if (px >= bounds.Left && px <= bounds.Right &&
-                                    py >= bounds.Top && py <= bounds.Bottom)
-                                {
-                                    int localX = (int)(px - bounds.Left);
-                                    int localY = (int)(py - bounds.Top);
-                                    if (localX >= 0 && localX < activeLayer.OriginalTransformBitmap.PixelWidth &&
-                                        localY >= 0 && localY < activeLayer.OriginalTransformBitmap.PixelHeight)
-                                    {
-                                        byte[] singlePixel = new byte[4];
-                                        activeLayer.OriginalTransformBitmap.CopyPixels(new Int32Rect(localX, localY, 1, 1), singlePixel, 4, 0);
-                                        if (singlePixel[3] > 0)
-                                        {
-                                            canGrab = true;
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                int stride = activeLayer.Width * 4;
-                                byte[] singlePixel = new byte[4];
-                                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
-                                if (singlePixel[3] > 0) // Alpha > 0
-                                {
-                                    canGrab = true;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!canGrab) return; // ignore click
-
                 _isMovingLayer = true;
                 _movingLayer = activeLayer;
                 _moveStartMousePos = clickPos;
@@ -456,6 +388,17 @@ namespace FlowMy.Views.NodeControls
                     _strokeMaxY = 0;
                 }
 
+                _localSelectionClipPath?.Dispose();
+                _localSelectionClipPath = null;
+                if (activeLayer.ContentGeometry != null)
+                {
+                    _localSelectionClipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY);
+                }
+                else if (_activeSelectionGeometry != null)
+                {
+                    _localSelectionClipPath = ConvertGeometryToSKPath(_activeSelectionGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY);
+                }
+
                 ActiveLayerDrawingOverlay.Source = _brushOverlayBitmap;
                 ActiveLayerDrawingOverlay.Opacity = activeLayer.Opacity;
                 ActiveLayerDrawingOverlay.Width = overlayW;
@@ -592,6 +535,17 @@ namespace FlowMy.Views.NodeControls
                     _strokeMaxY = 0;
                 }
 
+                _localSelectionClipPath?.Dispose();
+                _localSelectionClipPath = null;
+                if (activeLayer.ContentGeometry != null)
+                {
+                    _localSelectionClipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY);
+                }
+                else if (_activeSelectionGeometry != null)
+                {
+                    _localSelectionClipPath = ConvertGeometryToSKPath(_activeSelectionGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY);
+                }
+
                 ActiveLayerDrawingOverlay.Source = _brushOverlayBitmap;
                 ActiveLayerDrawingOverlay.Opacity = 0.20;
                 ActiveLayerDrawingOverlay.Width = overlayW;
@@ -611,7 +565,7 @@ namespace FlowMy.Views.NodeControls
                 double rawRadius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;
                 double guideFlow = 100.0;
-                Color guideColor = Colors.White;
+                Color guideColor = _node.EditorDoc.ForegroundColor;
 
                 PreRenderBrushTip();
 
@@ -656,7 +610,7 @@ namespace FlowMy.Views.NodeControls
                     };
 
                     byte alpha = (byte)Math.Clamp(255 * (guideFlow / 100.0), 0, 255);
-                    _currentStrokePaint.Color = new SkiaSharp.SKColor(255, 255, 255, alpha);
+                    _currentStrokePaint.Color = new SkiaSharp.SKColor(guideColor.R, guideColor.G, guideColor.B, alpha);
 
                     if (blurSigma > 0.1f)
                     {
@@ -878,9 +832,9 @@ namespace FlowMy.Views.NodeControls
                 MainScrollViewer.ReleaseMouseCapture();
 
                 var targetLayer = _movingLayer ?? activeLayer;
-                if (targetLayer != null && _moveInitialFullPixels != null)
+                if (targetLayer != null)
                 {
-                    if (_moveInitialGeometry != null)
+                    if (_moveInitialFullPixels != null && _moveInitialGeometry != null)
                     {
                         int dx = (int)Math.Round(targetLayer.TempMoveDx);
                         int dy = (int)Math.Round(targetLayer.TempMoveDy);
@@ -1093,6 +1047,8 @@ namespace FlowMy.Views.NodeControls
                     _oldPixelsForUndo = null;
                     _brushOverlayBitmap = null;
                     _brushSessionLayer = null;
+                    _localSelectionClipPath?.Dispose();
+                    _localSelectionClipPath = null;
                     // NOTE: Don't hide ActiveLayerDrawingOverlay here — OnEditorDocumentModified() will
                     // hide it atomically AFTER the composite renders, preventing the 1-frame flicker
                     // that occurred when the overlay disappeared before the merged layer was rendered.
@@ -1126,6 +1082,8 @@ namespace FlowMy.Views.NodeControls
                 ActiveLayerDrawingOverlay.Source = null;
                 ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
                 _brushOverlayBitmap = null;
+                _localSelectionClipPath?.Dispose();
+                _localSelectionClipPath = null;
 
                 _eraserLockedSurface?.Dispose();
                 _eraserLockedSurface = null;

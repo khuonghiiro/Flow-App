@@ -79,6 +79,7 @@ namespace FlowMy.Views.NodeControls
         private SkiaSharp.SKBitmap? _cachedBrushTip;
         private SkiaSharp.SKPaint? _cachedEraserPaint;
         private float _cachedEraserBlurSigma = -1;
+        private SkiaSharp.SKPath? _localSelectionClipPath;
 
         // ── SkiaSharp cached surfaces for eraser performance ──
         // Pre-composited background (all non-active layers) cached at mouse-down.

@@ -51,6 +51,10 @@ namespace FlowMy.Views.NodeControls
                 {
                     var canvas = surface.Canvas;
                     canvas.Clear(SkiaSharp.SKColors.Transparent);
+                    if (_localSelectionClipPath != null)
+                    {
+                        canvas.ClipPath(_localSelectionClipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                    }
 
                     if (isComplexPreset)
                     {
@@ -99,6 +103,10 @@ namespace FlowMy.Views.NodeControls
                 using (var surface = SkiaSharp.SKSurface.Create(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
                 {
                     var canvas = surface.Canvas;
+                    if (_localSelectionClipPath != null)
+                    {
+                        canvas.ClipPath(_localSelectionClipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                    }
 
                     bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
                                            _currentBrushPreset != BrushPreset.RoundSoft &&
@@ -749,13 +757,9 @@ namespace FlowMy.Views.NodeControls
                     if (surface != null)
                     {
                         var canvas = surface.Canvas;
-                        if (activeLayer.ContentGeometry != null)
+                        if (_localSelectionClipPath != null)
                         {
-                            using (var clipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
-                            {
-                                if (clipPath != null)
-                                    canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
-                            }
+                            canvas.ClipPath(_localSelectionClipPath, SkiaSharp.SKClipOperation.Intersect, true);
                         }
 
                         using (var paint = new SkiaSharp.SKPaint())
