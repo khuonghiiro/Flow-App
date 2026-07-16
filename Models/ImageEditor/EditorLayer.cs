@@ -482,8 +482,8 @@ namespace FlowMy.Models.ImageEditor
         public EditorLayer Duplicate()
         {
             var copy = new EditorLayer(Width, Height, _name + " copy");
-            copy.OffsetX = OffsetX;
-            copy.OffsetY = OffsetY;
+            copy.OffsetX = ParentLayer != null ? ParentLayer.OffsetX : OffsetX;
+            copy.OffsetY = ParentLayer != null ? ParentLayer.OffsetY : OffsetY;
             copy.Opacity = _opacity;
             copy.IsVisible = _isVisible;
             copy.BlendMode = _blendMode;
@@ -512,7 +512,12 @@ namespace FlowMy.Models.ImageEditor
             copy.LayerAngle = LayerAngle;
             copy.LayerTranslateX = LayerTranslateX;
             copy.LayerTranslateY = LayerTranslateY;
-            if (ContentGeometry != null)
+            
+            if (ParentLayer != null && ParentLayer.ContentGeometry != null)
+            {
+                copy.ContentGeometry = ParentLayer.ContentGeometry.Clone();
+            }
+            else if (ContentGeometry != null)
             {
                 copy.ContentGeometry = ContentGeometry.Clone();
             }
@@ -524,6 +529,20 @@ namespace FlowMy.Models.ImageEditor
             copy.Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), pixelData, stride, 0);
             // Chỉ xoá cache, không gọi InvalidateThumbnail (tránh trigger PropertyChanged đồng bộ)
             copy._cachedThumbnail = null;
+
+            // Nhân bản cả ChildLayers (các biến thể AI/radio items)
+            foreach (var child in ChildLayers)
+            {
+                var childCopy = child.Duplicate();
+                childCopy.ParentLayer = copy;
+                copy.ChildLayers.Add(childCopy);
+
+                if (ActiveChildLayer == child)
+                {
+                    copy.ActiveChildLayer = childCopy;
+                }
+            }
+
             return copy;
         }
 
