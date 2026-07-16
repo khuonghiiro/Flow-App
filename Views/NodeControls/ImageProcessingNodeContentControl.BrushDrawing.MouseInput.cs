@@ -593,7 +593,7 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 ActiveLayerDrawingOverlay.Source = _brushOverlayBitmap;
-                ActiveLayerDrawingOverlay.Opacity = 1.0;
+                ActiveLayerDrawingOverlay.Opacity = 0.20;
                 ActiveLayerDrawingOverlay.Width = overlayW;
                 ActiveLayerDrawingOverlay.Height = overlayH;
                 ActiveLayerDrawingOverlay.Margin = new Thickness(clipOffsetX, clipOffsetY, 0, 0);
@@ -610,7 +610,7 @@ namespace FlowMy.Views.NodeControls
 
                 double rawRadius = EditorPanel.BrushSize / 2.0;
                 double hardness = EditorPanel.BrushHardness;
-                double guideFlow = 20.0;
+                double guideFlow = 100.0;
                 Color guideColor = Colors.White;
 
                 PreRenderBrushTip();
