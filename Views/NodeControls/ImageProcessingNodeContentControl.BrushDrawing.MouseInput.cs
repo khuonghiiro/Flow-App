@@ -116,12 +116,16 @@ namespace FlowMy.Views.NodeControls
                         {
                             if (activeLayer.OriginalTransformBitmap != null && !activeLayer.ContentBounds.IsEmpty)
                             {
-                                var bounds = activeLayer.ContentBounds;
-                                if (px >= bounds.Left && px <= bounds.Right &&
-                                    py >= bounds.Top && py <= bounds.Bottom)
+                                var left = activeLayer.OffsetX;
+                                var top = activeLayer.OffsetY;
+                                var right = activeLayer.OffsetX + activeLayer.Width;
+                                var bottom = activeLayer.OffsetY + activeLayer.Height;
+
+                                if (px >= left && px <= right &&
+                                    py >= top && py <= bottom)
                                 {
-                                    int localX = (int)(px - bounds.Left);
-                                    int localY = (int)(py - bounds.Top);
+                                    int localX = px - left;
+                                    int localY = py - top;
                                     if (localX >= 0 && localX < activeLayer.OriginalTransformBitmap.PixelWidth &&
                                         localY >= 0 && localY < activeLayer.OriginalTransformBitmap.PixelHeight)
                                     {
@@ -136,12 +140,18 @@ namespace FlowMy.Views.NodeControls
                             }
                             else
                             {
-                                int stride = activeLayer.Width * 4;
-                                byte[] singlePixel = new byte[4];
-                                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
-                                if (singlePixel[3] > 0) // Alpha > 0
+                                int localX = px - activeLayer.OffsetX;
+                                int localY = py - activeLayer.OffsetY;
+                                if (localX >= 0 && localX < activeLayer.Width &&
+                                    localY >= 0 && localY < activeLayer.Height)
                                 {
-                                    canGrab = true;
+                                    int stride = activeLayer.Width * 4;
+                                    byte[] singlePixel = new byte[4];
+                                    activeLayer.Bitmap.CopyPixels(new Int32Rect(localX, localY, 1, 1), singlePixel, 4, 0);
+                                    if (singlePixel[3] > 0) // Alpha > 0
+                                    {
+                                        canGrab = true;
+                                    }
                                 }
                             }
                         }
@@ -290,15 +300,25 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "MagicWand")
             {
-                RunMagicWandSelection(px, py);
+                int localPx = px - activeLayer.OffsetX;
+                int localPy = py - activeLayer.OffsetY;
+                if (localPx >= 0 && localPx < activeLayer.Width && localPy >= 0 && localPy < activeLayer.Height)
+                {
+                    RunMagicWandSelection(localPx, localPy);
+                }
                 return;
             }
 
             if (tool == "QuickSelection")
             {
-                double radius = EditorPanel.BrushSize / 2.0;
-                StartQuickSelection(px, py, radius);
-                MainScrollViewer.CaptureMouse();
+                int localPx = px - activeLayer.OffsetX;
+                int localPy = py - activeLayer.OffsetY;
+                if (localPx >= 0 && localPx < activeLayer.Width && localPy >= 0 && localPy < activeLayer.Height)
+                {
+                    double radius = EditorPanel.BrushSize / 2.0;
+                    StartQuickSelection(localPx, localPy, radius);
+                    MainScrollViewer.CaptureMouse();
+                }
                 return;
             }
 
@@ -400,23 +420,28 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Fill")
             {
-                int stride = activeLayer.Width * 4;
-                var oldPixels = new byte[stride * activeLayer.Height];
-                activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+                int localPx = px - activeLayer.OffsetX;
+                int localPy = py - activeLayer.OffsetY;
+                if (localPx >= 0 && localPx < activeLayer.Width && localPy >= 0 && localPy < activeLayer.Height)
+                {
+                    int stride = activeLayer.Width * 4;
+                    var oldPixels = new byte[stride * activeLayer.Height];
+                    activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
 
-                var tempPixels = new byte[stride * activeLayer.Height];
-                Array.Copy(oldPixels, tempPixels, oldPixels.Length);
+                    var tempPixels = new byte[stride * activeLayer.Height];
+                    Array.Copy(oldPixels, tempPixels, oldPixels.Length);
 
-                FloodFill(tempPixels, activeLayer.Width, activeLayer.Height, px, py, _node.EditorDoc.ForegroundColor);
+                    FloodFill(tempPixels, activeLayer.Width, activeLayer.Height, localPx, localPy, _node.EditorDoc.ForegroundColor);
 
-                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), tempPixels, stride, 0);
-                activeLayer.InvalidateThumbnail();
-                var newPixels = new byte[stride * activeLayer.Height];
-                activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+                    activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), tempPixels, stride, 0);
+                    activeLayer.InvalidateThumbnail();
+                    var newPixels = new byte[stride * activeLayer.Height];
+                    activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
 
-                var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
-                _node.EditorDoc.History.Execute(cmd);
-                OnEditorDocumentModified();
+                    var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+                    _node.EditorDoc.History.Execute(cmd);
+                    OnEditorDocumentModified();
+                }
                 return;
             }
 
@@ -650,6 +675,16 @@ namespace FlowMy.Views.NodeControls
                 if (_eraserLockedSurface != null)
                 {
                     var canvas = _eraserLockedSurface.Canvas;
+                    if (activeLayer.ContentGeometry != null)
+                    {
+                        using (var clipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                        {
+                            if (clipPath != null)
+                            {
+                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            }
+                        }
+                    }
 
                     if (isComplexPreset)
                     {
@@ -773,8 +808,13 @@ namespace FlowMy.Views.NodeControls
                 }
                 else if (tool == "QuickSelection")
                 {
-                    double qSelRadius = EditorPanel.BrushSize / 2.0;
-                    GrowQuickSelection(px, py, qSelRadius);
+                    int localPx = px - activeLayer.OffsetX;
+                    int localPy = py - activeLayer.OffsetY;
+                    if (localPx >= 0 && localPx < activeLayer.Width && localPy >= 0 && localPy < activeLayer.Height)
+                    {
+                        double qSelRadius = EditorPanel.BrushSize / 2.0;
+                        GrowQuickSelection(localPx, localPy, qSelRadius);
+                    }
                 }
                 return;
             }

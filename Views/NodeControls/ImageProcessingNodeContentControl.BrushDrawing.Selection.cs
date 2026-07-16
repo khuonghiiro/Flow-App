@@ -97,11 +97,13 @@ namespace FlowMy.Views.NodeControls
             int h = originalLayer.Height;
             int stride = w * 4;
 
-            // 1. Convert WPF _moveInitialGeometry to Skia SKPath
+            // 1. Convert WPF _moveInitialGeometry to Skia SKPath (shifted to originalLayer's local space)
             SkiaSharp.SKPath origSelectionPath = null;
             try
             {
-                var flatGeom = PathGeometry.CreateFromGeometry(_moveInitialGeometry);
+                var localGeom = _moveInitialGeometry.Clone();
+                localGeom.Transform = new TranslateTransform(-originalLayer.OffsetX, -originalLayer.OffsetY);
+                var flatGeom = PathGeometry.CreateFromGeometry(localGeom);
                 var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
                 {
@@ -183,7 +185,9 @@ namespace FlowMy.Views.NodeControls
             }
 
             // Setup the tight bounding box and original transform bitmap for the new layer using blend modes
-            var bounds = _moveInitialGeometry.Bounds;
+            var localGeomForBounds = _moveInitialGeometry.Clone();
+            localGeomForBounds.Transform = new TranslateTransform(-originalLayer.OffsetX, -originalLayer.OffsetY);
+            var bounds = localGeomForBounds.Bounds;
             int startX = Math.Max(0, (int)Math.Floor(bounds.Left));
             int startY = Math.Max(0, (int)Math.Floor(bounds.Top));
             int endX = Math.Min(w - 1, (int)Math.Ceiling(bounds.Right));
@@ -197,8 +201,8 @@ namespace FlowMy.Views.NodeControls
             if (bw > 0 && bh > 0)
             {
                 newLayer = new EditorLayer(bw, bh, newLayerName);
-                newLayer.OffsetX = startX + (int)dx;
-                newLayer.OffsetY = startY + (int)dy;
+                newLayer.OffsetX = originalLayer.OffsetX + startX + (int)dx;
+                newLayer.OffsetY = originalLayer.OffsetY + startY + (int)dy;
 
                 int tightStride = bw * 4;
                 var tightPixels = new byte[tightStride * bh];
@@ -249,7 +253,7 @@ namespace FlowMy.Views.NodeControls
                 var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
                 origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
                 newLayer.OriginalTransformBitmap = origBmp;
-                newLayer.ContentBounds = new Rect(startX + dx, startY + dy, bw, bh);
+                newLayer.ContentBounds = new Rect(0, 0, bw, bh);
                 newLayer.ImageContentBounds = newLayer.ContentBounds;
             }
             else
@@ -416,8 +420,8 @@ namespace FlowMy.Views.NodeControls
 
             if (_activeSelectionGeometry != null)
             {
-                double scaleX = MainImage.ActualWidth / activeLayer.Width;
-                double scaleY = MainImage.ActualHeight / activeLayer.Height;
+                double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
+                double scaleY = MainImage.ActualHeight / _node.EditorDoc.Height;
 
                 var scaledGeometry = _activeSelectionGeometry.Clone();
                 scaledGeometry.Transform = new ScaleTransform(scaleX, scaleY);
@@ -513,8 +517,8 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            double scaleX = MainImage.ActualWidth / activeLayer.Width;
-            double scaleY = MainImage.ActualHeight / activeLayer.Height;
+            double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
+            double scaleY = MainImage.ActualHeight / _node.EditorDoc.Height;
 
             var pathGeometry = new PathGeometry();
             var pathFigure = new PathFigure();
@@ -539,8 +543,8 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            double scaleX = MainImage.ActualWidth / activeLayer.Width;
-            double scaleY = MainImage.ActualHeight / activeLayer.Height;
+            double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
+            double scaleY = MainImage.ActualHeight / _node.EditorDoc.Height;
 
             var pathGeometry = new PathGeometry();
             var pathFigure = new PathFigure();
@@ -985,9 +989,13 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private bool IsInsideSelection(int x, int y)
+        private bool IsInsideSelection(int localX, int localY)
         {
             if (_activeSelectionGeometry == null) return true;
+            if (_node?.EditorDoc?.ActiveLayer == null) return true;
+
+            int docX = localX + _node.EditorDoc.ActiveLayer.OffsetX;
+            int docY = localY + _node.EditorDoc.ActiveLayer.OffsetY;
 
             if (!_hasCachedSelectionMask || _cachedSelectionMask == null)
             {
@@ -996,10 +1004,10 @@ namespace FlowMy.Views.NodeControls
 
             if (_hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                if (x >= _cachedSelectionStartX && x <= _cachedSelectionEndX &&
-                    y >= _cachedSelectionStartY && y <= _cachedSelectionEndY)
+                if (docX >= _cachedSelectionStartX && docX <= _cachedSelectionEndX &&
+                    docY >= _cachedSelectionStartY && docY <= _cachedSelectionEndY)
                 {
-                    return _cachedSelectionMask[x - _cachedSelectionStartX, y - _cachedSelectionStartY];
+                    return _cachedSelectionMask[docX - _cachedSelectionStartX, docY - _cachedSelectionStartY];
                 }
                 return false;
             }
@@ -1016,21 +1024,14 @@ namespace FlowMy.Views.NodeControls
             }
 
             if (_node.EditorDoc == null) return;
-            var activeLayer = _node.EditorDoc.ActiveLayer;
-            if (activeLayer == null) return;
 
-            double scaleX = activeLayer.Width / MainImage.ActualWidth;
-            double scaleY = activeLayer.Height / MainImage.ActualHeight;
-            var scaledGeom = _activeSelectionGeometry.Clone();
-            scaledGeom.Transform = new ScaleTransform(scaleX, scaleY);
-
-            var outlinedGeom = scaledGeom.GetOutlinedPathGeometry();
+            var outlinedGeom = _activeSelectionGeometry.GetOutlinedPathGeometry();
             var bounds = outlinedGeom.Bounds;
 
             _cachedSelectionStartX = Math.Max(0, (int)Math.Floor(bounds.Left));
-            _cachedSelectionEndX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(bounds.Right));
+            _cachedSelectionEndX = Math.Min(_node.EditorDoc.Width - 1, (int)Math.Ceiling(bounds.Right));
             _cachedSelectionStartY = Math.Max(0, (int)Math.Floor(bounds.Top));
-            _cachedSelectionEndY = Math.Min(activeLayer.Height - 1, (int)Math.Ceiling(bounds.Bottom));
+            _cachedSelectionEndY = Math.Min(_node.EditorDoc.Height - 1, (int)Math.Ceiling(bounds.Bottom));
 
             int w = _cachedSelectionEndX - _cachedSelectionStartX + 1;
             int h = _cachedSelectionEndY - _cachedSelectionStartY + 1;

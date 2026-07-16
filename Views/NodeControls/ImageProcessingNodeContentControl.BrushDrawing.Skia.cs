@@ -52,6 +52,18 @@ namespace FlowMy.Views.NodeControls
                     var canvas = surface.Canvas;
                     canvas.Clear(SkiaSharp.SKColors.Transparent);
 
+                    var activeLayer = _node.EditorDoc?.ActiveLayer;
+                    if (activeLayer?.ContentGeometry != null)
+                    {
+                        using (var clipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                        {
+                            if (clipPath != null)
+                            {
+                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            }
+                        }
+                    }
+
                     if (isComplexPreset)
                     {
                         if (_cachedBrushTip != null)
@@ -99,6 +111,18 @@ namespace FlowMy.Views.NodeControls
                 using (var surface = SkiaSharp.SKSurface.Create(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
                 {
                     var canvas = surface.Canvas;
+
+                    var activeLayer = _node.EditorDoc?.ActiveLayer;
+                    if (activeLayer?.ContentGeometry != null)
+                    {
+                        using (var clipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                        {
+                            if (clipPath != null)
+                            {
+                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            }
+                        }
+                    }
 
                     bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
                                            _currentBrushPreset != BrushPreset.RoundSoft &&
@@ -175,6 +199,18 @@ namespace FlowMy.Views.NodeControls
                 {
                     var canvas = surface.Canvas;
                     canvas.Clear(SkiaSharp.SKColors.Transparent);
+
+                    var activeLayer = _node.EditorDoc?.ActiveLayer;
+                    if (activeLayer?.ContentGeometry != null)
+                    {
+                        using (var clipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                        {
+                            if (clipPath != null)
+                            {
+                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            }
+                        }
+                    }
 
                     // 1. Draw all completed stamp strokes
                     foreach (var stroke in _sessionStrokes)
@@ -626,6 +662,33 @@ namespace FlowMy.Views.NodeControls
             }
 
             MarkCompositeDirty();
+        }
+
+        private SkiaSharp.SKPath? ConvertGeometryToSKPath(Geometry? geometry, double translateX = 0, double translateY = 0)
+        {
+            if (geometry == null) return null;
+            try
+            {
+                Geometry bakedGeom = geometry;
+                if (translateX != 0 || translateY != 0 || (geometry.Transform != null && !geometry.Transform.Value.IsIdentity))
+                {
+                    TransformGroup tg = new TransformGroup();
+                    if (geometry.Transform != null) tg.Children.Add(geometry.Transform);
+                    if (translateX != 0 || translateY != 0) tg.Children.Add(new TranslateTransform(translateX, translateY));
+                    bakedGeom = Geometry.Combine(geometry, Geometry.Empty, GeometryCombineMode.Union, tg);
+                }
+                var flatGeom = PathGeometry.CreateFromGeometry(bakedGeom);
+                var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
+                {
+                    svgData = svgData.Substring(2).Trim();
+                }
+                return SkiaSharp.SKPath.ParseSvgPathData(svgData);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

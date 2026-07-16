@@ -296,11 +296,14 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            if (px >= 0 && px < activeLayer.Width && py >= 0 && py < activeLayer.Height)
+            int localX = px - activeLayer.OffsetX;
+            int localY = py - activeLayer.OffsetY;
+
+            if (localX >= 0 && localX < activeLayer.Width && localY >= 0 && localY < activeLayer.Height)
             {
                 var stride = 4;
                 var singlePixel = new byte[4];
-                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, stride, 0);
+                activeLayer.Bitmap.CopyPixels(new Int32Rect(localX, localY, 1, 1), singlePixel, stride, 0);
 
                 Color picked = Color.FromArgb(singlePixel[3], singlePixel[2], singlePixel[1], singlePixel[0]);
                 _node.EditorDoc.ForegroundColor = picked;

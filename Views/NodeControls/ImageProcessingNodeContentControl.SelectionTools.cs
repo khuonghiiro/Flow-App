@@ -154,13 +154,18 @@ namespace FlowMy.Views.NodeControls
 
             if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                int startX = _cachedSelectionStartX;
-                int endX = _cachedSelectionEndX;
-                int startY = _cachedSelectionStartY;
-                int endY = _cachedSelectionEndY;
+                int startDocX = Math.Max(activeLayer.OffsetX, _cachedSelectionStartX);
+                int endDocX = Math.Min(activeLayer.OffsetX + activeLayer.Width - 1, _cachedSelectionEndX);
+                int startDocY = Math.Max(activeLayer.OffsetY, _cachedSelectionStartY);
+                int endDocY = Math.Min(activeLayer.OffsetY + activeLayer.Height - 1, _cachedSelectionEndY);
 
-                int w = endX - startX + 1;
-                int h = endY - startY + 1;
+                int startLocalX = startDocX - activeLayer.OffsetX;
+                int endLocalX = endDocX - activeLayer.OffsetX;
+                int startLocalY = startDocY - activeLayer.OffsetY;
+                int endLocalY = endDocY - activeLayer.OffsetY;
+
+                int w = endDocX - startDocX + 1;
+                int h = endDocY - startDocY + 1;
                 if (w <= 0 || h <= 0) return;
 
                 int stride = activeLayer.Width * 4;
@@ -168,31 +173,31 @@ namespace FlowMy.Views.NodeControls
                 activeLayer.Bitmap.CopyPixels(tempFullPixels, stride, 0);
 
                 // Scan for tight bounds of non-transparent pixels inside selection
-                int minX = int.MaxValue;
-                int maxX = int.MinValue;
-                int minY = int.MaxValue;
-                int maxY = int.MinValue;
+                int minLocalX = int.MaxValue;
+                int maxLocalX = int.MinValue;
+                int minLocalY = int.MaxValue;
+                int maxLocalY = int.MinValue;
 
-                for (int y = startY; y <= endY; y++)
+                for (int localY = startLocalY; localY <= endLocalY; localY++)
                 {
-                    int rowOffset = y * stride;
-                    for (int x = startX; x <= endX; x++)
+                    int rowOffset = localY * stride;
+                    for (int localX = startLocalX; localX <= endLocalX; localX++)
                     {
-                        if (IsInsideSelection(x, y))
+                        if (IsInsideSelection(localX, localY))
                         {
-                            int idx = rowOffset + x * 4;
+                            int idx = rowOffset + localX * 4;
                             if (tempFullPixels[idx + 3] > 0)
                             {
-                                if (x < minX) minX = x;
-                                if (x > maxX) maxX = x;
-                                if (y < minY) minY = y;
-                                if (y > maxY) maxY = y;
+                                if (localX < minLocalX) minLocalX = localX;
+                                if (localX > maxLocalX) maxLocalX = localX;
+                                if (localY < minLocalY) minLocalY = localY;
+                                if (localY > maxLocalY) maxLocalY = localY;
                             }
                         }
                     }
                 }
 
-                if (minX > maxX || minY > maxY)
+                if (minLocalX > maxLocalX || minLocalY > maxLocalY)
                 {
                     // No non-transparent pixels inside selection!
                     _selectionClipboardPixels = null;
@@ -201,21 +206,21 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                int bw = maxX - minX + 1;
-                int bh = maxY - minY + 1;
+                int bw = maxLocalX - minLocalX + 1;
+                int bh = maxLocalY - minLocalY + 1;
                 int tightStride = bw * 4;
                 _selectionClipboardPixels = new byte[tightStride * bh];
 
-                for (int y = minY; y <= maxY; y++)
+                for (int localY = minLocalY; localY <= maxLocalY; localY++)
                 {
-                    int rowOffset = y * stride;
-                    int tightRowOffset = (y - minY) * tightStride;
-                    for (int x = minX; x <= maxX; x++)
+                    int rowOffset = localY * stride;
+                    int tightRowOffset = (localY - minLocalY) * tightStride;
+                    for (int localX = minLocalX; localX <= maxLocalX; localX++)
                     {
-                        if (IsInsideSelection(x, y))
+                        if (IsInsideSelection(localX, localY))
                         {
-                            int idx = rowOffset + x * 4;
-                            int tightIdx = tightRowOffset + (x - minX) * 4;
+                            int idx = rowOffset + localX * 4;
+                            int tightIdx = tightRowOffset + (localX - minLocalX) * 4;
                             _selectionClipboardPixels[tightIdx] = tempFullPixels[idx];
                             _selectionClipboardPixels[tightIdx + 1] = tempFullPixels[idx + 1];
                             _selectionClipboardPixels[tightIdx + 2] = tempFullPixels[idx + 2];
@@ -224,11 +229,11 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                _selectionClipboardRect = new Rect(minX, minY, bw, bh);
+                _selectionClipboardRect = new Rect(activeLayer.OffsetX + minLocalX, activeLayer.OffsetY + minLocalY, bw, bh);
                 _selectionClipboardIsFullLayer = false;
                 _selectionClipboardLayerSource = null;
 
-                var tightRectGeom = new RectangleGeometry(new Rect(minX, minY, bw, bh));
+                var tightRectGeom = new RectangleGeometry(new Rect(activeLayer.OffsetX + minLocalX, activeLayer.OffsetY + minLocalY, bw, bh));
                 _selectionClipboardGeometry = Geometry.Combine(_activeSelectionGeometry.Clone(), tightRectGeom, GeometryCombineMode.Intersect, null);
             }
             else
@@ -271,7 +276,7 @@ namespace FlowMy.Views.NodeControls
                 var origBmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
                 origBmp.WritePixels(new Int32Rect(0, 0, w, h), _selectionClipboardPixels, stride, 0);
                 newLayer.OriginalTransformBitmap = origBmp;
-                newLayer.ContentBounds = new Rect(startX, startY, w, h);
+                newLayer.ContentBounds = new Rect(0, 0, w, h);
                 newLayer.ImageContentBounds = newLayer.ContentBounds;
                 
                 if (_selectionClipboardGeometry != null)
@@ -319,11 +324,6 @@ namespace FlowMy.Views.NodeControls
 
             if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
             {
-                int startX = _cachedSelectionStartX;
-                int endX = _cachedSelectionEndX;
-                int startY = _cachedSelectionStartY;
-                int endY = _cachedSelectionEndY;
-
                 int stride = activeLayer.Width * 4;
                 var oldPixels = new byte[stride * activeLayer.Height];
                 activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
@@ -331,14 +331,24 @@ namespace FlowMy.Views.NodeControls
                 var newPixels = new byte[stride * activeLayer.Height];
                 Array.Copy(oldPixels, newPixels, oldPixels.Length);
 
-                for (int y = startY; y <= endY; y++)
+                int startDocX = Math.Max(activeLayer.OffsetX, _cachedSelectionStartX);
+                int endDocX = Math.Min(activeLayer.OffsetX + activeLayer.Width - 1, _cachedSelectionEndX);
+                int startDocY = Math.Max(activeLayer.OffsetY, _cachedSelectionStartY);
+                int endDocY = Math.Min(activeLayer.OffsetY + activeLayer.Height - 1, _cachedSelectionEndY);
+
+                int startLocalX = startDocX - activeLayer.OffsetX;
+                int endLocalX = endDocX - activeLayer.OffsetX;
+                int startLocalY = startDocY - activeLayer.OffsetY;
+                int endLocalY = endDocY - activeLayer.OffsetY;
+
+                for (int localY = startLocalY; localY <= endLocalY; localY++)
                 {
-                    int rowOffset = y * activeLayer.Width * 4;
-                    for (int x = startX; x <= endX; x++)
+                    int rowOffset = localY * stride;
+                    for (int localX = startLocalX; localX <= endLocalX; localX++)
                     {
-                        if (_cachedSelectionMask[x - startX, y - startY])
+                        if (IsInsideSelection(localX, localY))
                         {
-                            newPixels[rowOffset + x * 4 + 3] = 0;
+                            newPixels[rowOffset + localX * 4 + 3] = 0;
                         }
                     }
                 }

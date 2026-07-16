@@ -20,6 +20,8 @@ namespace FlowMy.Models.ImageEditor
         private bool _isVisible = true;
         private bool _isLocked;
         private BlendMode _blendMode = BlendMode.Normal;
+        private int _offsetX;
+        private int _offsetY;
         private WriteableBitmap? _thumbnailCache;
 
         // Parent/Child/Variant hierarchy for AI edits
@@ -154,8 +156,16 @@ namespace FlowMy.Models.ImageEditor
         public int Height { get; internal set; }
 
         /// <summary>Vị trí layer trên canvas document (top-left offset).</summary>
-        public int OffsetX { get; set; }
-        public int OffsetY { get; set; }
+        public int OffsetX
+        {
+            get => _offsetX;
+            set => SetField(ref _offsetX, value);
+        }
+        public int OffsetY
+        {
+            get => _offsetY;
+            set => SetField(ref _offsetY, value);
+        }
 
         /// <summary>Bitmap pixel data (BGRA32, kích thước = Width×Height).</summary>
         public WriteableBitmap Bitmap { get; internal set; }

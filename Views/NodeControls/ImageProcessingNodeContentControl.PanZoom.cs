@@ -69,21 +69,22 @@ namespace FlowMy.Views.NodeControls
             if (newScale > 100.0) newScale = 100.0;
             if (Math.Abs(newScale - oldScale) < 0.0001) return;
 
+            _hasUserCentered = true;
+
+            double ox = (MainScrollViewer.ActualWidth - 10000) / 2.0;
+            double oy = (MainScrollViewer.ActualHeight - 10000) / 2.0;
+
             // Tính tọa độ chuột trên canvas TRƯỚC khi zoom
-            // mousePos = canvasPoint * oldScale + translate
-            // => canvasPoint = (mousePos - translate) / oldScale
-            double canvasX = (mousePos.X - CanvasTranslate.X) / oldScale;
-            double canvasY = (mousePos.Y - CanvasTranslate.Y) / oldScale;
+            double canvasX = (mousePos.X - ox - CanvasTranslate.X) / oldScale;
+            double canvasY = (mousePos.Y - oy - CanvasTranslate.Y) / oldScale;
 
             // Cập nhật scale
             ImageZoomScale.ScaleX = newScale;
             ImageZoomScale.ScaleY = newScale;
 
             // Sau khi zoom, giữ cùng canvas point dưới chuột:
-            // mousePos = canvasPoint * newScale + newTranslate
-            // => newTranslate = mousePos - canvasPoint * newScale
-            CanvasTranslate.X = mousePos.X - canvasX * newScale;
-            CanvasTranslate.Y = mousePos.Y - canvasY * newScale;
+            CanvasTranslate.X = mousePos.X - ox - canvasX * newScale;
+            CanvasTranslate.Y = mousePos.Y - oy - canvasY * newScale;
 
             // Bitmap scaling mode
             if (MainImage != null)
@@ -127,6 +128,7 @@ namespace FlowMy.Views.NodeControls
                 if (_isSpacePressed)
                 {
                     _isPanning = true;
+                    _hasUserCentered = true;
                     _panStart = e.GetPosition(MainScrollViewer);
                     _panOriginX = CanvasTranslate.X;
                     _panOriginY = CanvasTranslate.Y;
@@ -159,6 +161,7 @@ namespace FlowMy.Views.NodeControls
 
                 // Luôn cho phép pan trong AI mode (không cần check extent)
                 _isPanning = true;
+                _hasUserCentered = true;
                 _panStart = e.GetPosition(MainScrollViewer);
                 _panOriginX = CanvasTranslate.X;
                 _panOriginY = CanvasTranslate.Y;
@@ -242,6 +245,12 @@ namespace FlowMy.Views.NodeControls
         internal void CenterImageOnCanvas(double imageWidth, double imageHeight)
         {
             if (imageWidth <= 0 || imageHeight <= 0) return;
+            if (Math.Abs(_lastCenterImageWidth - imageWidth) > 0.1 || Math.Abs(_lastCenterImageHeight - imageHeight) > 0.1)
+            {
+                _hasUserCentered = false;
+            }
+            _lastCenterImageWidth = imageWidth;
+            _lastCenterImageHeight = imageHeight;
 
             // Đặt ImageAreaGrid vào tâm canvas (center of 10000x10000)
             double canvasLeft = CanvasHalf - imageWidth / 2.0;
@@ -267,11 +276,8 @@ namespace FlowMy.Views.NodeControls
             ImageZoomScale.ScaleY = fitScale;
 
             // Tính translate để tâm ảnh (trên canvas) nằm giữa viewport
-            // Tâm ảnh trên canvas = (canvasLeft + imgW/2, canvasTop + imgH/2) = (5000, 5000)
-            // Sau scale, tọa độ pixel = canvasPoint * scale + translate
-            // Muốn tâm viewport (vpW/2, vpH/2) = (5000 * scale + translateX, 5000 * scale + translateY)
-            CanvasTranslate.X = vpW / 2.0 - CanvasHalf * fitScale;
-            CanvasTranslate.Y = vpH / 2.0 - CanvasHalf * fitScale;
+            CanvasTranslate.X = CanvasHalf * (1.0 - fitScale);
+            CanvasTranslate.Y = CanvasHalf * (1.0 - fitScale);
 
             // Bitmap scaling mode
             if (MainImage != null)
@@ -597,16 +603,22 @@ namespace FlowMy.Views.NodeControls
                         var activeLayer = _node.EditorDoc.ActiveLayer;
                         if (activeLayer != null)
                         {
-                            double scaleX = activeLayer.Width / MainImage.ActualWidth;
-                            double scaleY = activeLayer.Height / MainImage.ActualHeight;
-                            int px = Math.Clamp((int)(imgPos.X * scaleX), 0, activeLayer.Width - 1);
-                            int py = Math.Clamp((int)(imgPos.Y * scaleY), 0, activeLayer.Height - 1);
+                            double docScaleX = _node.EditorDoc.Width / MainImage.ActualWidth;
+                            double docScaleY = _node.EditorDoc.Height / MainImage.ActualHeight;
+                            int docX = (int)Math.Round(imgPos.X * docScaleX);
+                            int docY = (int)Math.Round(imgPos.Y * docScaleY);
+
+                            int localX = docX - activeLayer.OffsetX;
+                            int localY = docY - activeLayer.OffsetY;
 
                             try
                             {
                                 var stride = 4;
                                 var singlePixel = new byte[4];
-                                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, stride, 0);
+                                if (localX >= 0 && localX < activeLayer.Width && localY >= 0 && localY < activeLayer.Height)
+                                {
+                                    activeLayer.Bitmap.CopyPixels(new Int32Rect(localX, localY, 1, 1), singlePixel, stride, 0);
+                                }
                                 Color sampledColor = Color.FromArgb(singlePixel[3], singlePixel[2], singlePixel[1], singlePixel[0]);
 
                                 // Set background colors of the split ring preview

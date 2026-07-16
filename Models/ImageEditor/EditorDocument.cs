@@ -290,7 +290,7 @@ namespace FlowMy.Models.ImageEditor
 
                             double totalDx = layer.LayerTranslateX + layer.TempMoveDx;
                             double totalDy = layer.LayerTranslateY + layer.TempMoveDy;
-                            transformGroup.Children.Add(new TranslateTransform(centerX + totalDx, centerY + totalDy));
+                            transformGroup.Children.Add(new TranslateTransform(centerX + totalDx + layer.OffsetX, centerY + totalDy + layer.OffsetY));
 
                             drawingContext.PushTransform(transformGroup);
                             var destRect = activeContentBounds;
@@ -309,25 +309,25 @@ namespace FlowMy.Models.ImageEditor
                                 var boundsGeom = new RectangleGeometry(new Rect(0, 0, Width, Height));
                                 var bgGeom = Geometry.Combine(boundsGeom, layer.TempSelectionGeometry, GeometryCombineMode.Exclude, null);
                                 drawingContext.PushClip(bgGeom);
-                                drawingContext.DrawImage(activeBmp, new Rect(0, 0, Width, Height));
+                                drawingContext.DrawImage(activeBmp, new Rect(layer.OffsetX, layer.OffsetY, layer.Width, layer.Height));
                                 drawingContext.Pop();
 
                                 // Draw shifted selection
                                 var transform = new TranslateTransform(layer.TempMoveDx, layer.TempMoveDy);
                                 var fgGeom = Geometry.Combine(layer.TempSelectionGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
                                 drawingContext.PushClip(fgGeom);
-                                drawingContext.DrawImage(activeBmp, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
+                                drawingContext.DrawImage(activeBmp, new Rect(layer.OffsetX + layer.TempMoveDx, layer.OffsetY + layer.TempMoveDy, layer.Width, layer.Height));
                                 drawingContext.Pop();
                             }
                             else
                             {
                                 // Shift entire layer
-                                drawingContext.DrawImage(activeBmp, new Rect(layer.TempMoveDx, layer.TempMoveDy, Width, Height));
+                                drawingContext.DrawImage(activeBmp, new Rect(layer.OffsetX + layer.TempMoveDx, layer.OffsetY + layer.TempMoveDy, layer.Width, layer.Height));
                             }
                         }
                         else
                         {
-                            drawingContext.DrawImage(activeBmp, new Rect(0, 0, Width, Height));
+                            drawingContext.DrawImage(activeBmp, new Rect(layer.OffsetX, layer.OffsetY, layer.Width, layer.Height));
                         }
 
                         drawingContext.Pop();
@@ -599,6 +599,7 @@ namespace FlowMy.Models.ImageEditor
         private void DrawCachedSKLayer(SkiaSharp.SKCanvas canvas, SkiaSharp.SKPaint paint, EditorLayer layer, SkiaSharp.SKBitmap cachedSK, Rect contentBounds)
         {
             canvas.Save();
+            canvas.Translate(layer.OffsetX, layer.OffsetY);
             var cb = contentBounds;
             if (cb.IsEmpty || cb.Width <= 0 || cb.Height <= 0) cb = new Rect(0, 0, Width, Height);
             double centerX = cb.Left + cb.Width / 2.0;

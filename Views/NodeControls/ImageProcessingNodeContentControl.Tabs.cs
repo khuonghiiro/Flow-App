@@ -260,6 +260,7 @@ namespace FlowMy.Views.NodeControls
                 // Restore canvas translate positions
                 CanvasTranslate.X = data.CanvasTranslateX;
                 CanvasTranslate.Y = data.CanvasTranslateY;
+                _hasUserCentered = true;
             }
             finally
             {

@@ -1291,6 +1291,7 @@ into smaller partial class files to maintain readability and ease of maintenance
             <Border x:Name="MainScrollViewer" Grid.Row="1" ClipToBounds="True"
                     Focusable="True" Background="#0a0c10">
             <Canvas x:Name="InfiniteCanvas" Width="10000" Height="10000" Background="Transparent"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
                     ClipToBounds="False">
                 <Canvas.RenderTransform>
                     <TransformGroup>

@@ -153,7 +153,9 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            ApplyNewGeometry(group);
+            var transform = new TranslateTransform(activeLayer.OffsetX, activeLayer.OffsetY);
+            var bakedGroup = Geometry.Combine(group, Geometry.Empty, GeometryCombineMode.Union, transform);
+            ApplyNewGeometry(bakedGroup);
         }
 
         private void StartQuickSelection(int px, int py, double radius)
@@ -274,22 +276,25 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            var transform = new TranslateTransform(activeLayer.OffsetX, activeLayer.OffsetY);
+            var groupDoc = Geometry.Combine(group, Geometry.Empty, GeometryCombineMode.Union, transform);
+
             Geometry combined;
             if (_activeSelectionGeometry == null || _currentSelectionMode == SelectionMode.New)
             {
-                combined = group;
+                combined = groupDoc;
             }
             else if (_currentSelectionMode == SelectionMode.Add)
             {
-                combined = Geometry.Combine(_activeSelectionGeometry, group, GeometryCombineMode.Union, null);
+                combined = Geometry.Combine(_activeSelectionGeometry, groupDoc, GeometryCombineMode.Union, null);
             }
             else
             {
-                combined = Geometry.Combine(_activeSelectionGeometry, group, GeometryCombineMode.Exclude, null);
+                combined = Geometry.Combine(_activeSelectionGeometry, groupDoc, GeometryCombineMode.Exclude, null);
             }
 
-            double scaleX = MainImage.ActualWidth / w;
-            double scaleY = MainImage.ActualHeight / h;
+            double scaleX = MainImage.ActualWidth / _node.EditorDoc.Width;
+            double scaleY = MainImage.ActualHeight / _node.EditorDoc.Height;
             var scaledGeom = combined.Clone();
             scaledGeom.Transform = new ScaleTransform(scaleX, scaleY);
 
@@ -317,6 +322,9 @@ namespace FlowMy.Views.NodeControls
         private void CommitQuickSelection()
         {
             if (_quickSelectionVisited == null) return;
+            var activeLayer = _node?.EditorDoc?.ActiveLayer;
+            if (activeLayer == null) return;
+
             int w = _quickSelectionVisited.GetLength(0);
             int h = _quickSelectionVisited.GetLength(1);
 
@@ -342,7 +350,9 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            ApplyNewGeometry(group);
+            var transform = new TranslateTransform(activeLayer.OffsetX, activeLayer.OffsetY);
+            var bakedGroup = Geometry.Combine(group, Geometry.Empty, GeometryCombineMode.Union, transform);
+            ApplyNewGeometry(bakedGroup);
             _quickSelectionVisited = null;
             _quickSelectionPixels = null;
         }
@@ -492,7 +502,9 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                ApplyNewGeometry(group);
+                var transform = new TranslateTransform(activeLayer.OffsetX, activeLayer.OffsetY);
+                var bakedGroup = Geometry.Combine(group, Geometry.Empty, GeometryCombineMode.Union, transform);
+                ApplyNewGeometry(bakedGroup);
             }
         }
 

@@ -20,6 +20,9 @@ namespace FlowMy.Models.ImageEditor.Commands
         private readonly WriteableBitmap? _oldOriginalTransformBitmap;
         private WriteableBitmap? _newOriginalTransformBitmap;
 
+        private readonly int _oldOffsetX, _oldOffsetY;
+        private int _newOffsetX, _newOffsetY;
+
         private readonly Rect _oldContentBounds;
         private Rect _newContentBounds;
 
@@ -44,6 +47,11 @@ namespace FlowMy.Models.ImageEditor.Commands
             _oldOriginalTransformBitmap = _layer.OriginalTransformBitmap;
             _oldContentBounds = _layer.ContentBounds;
             _newContentBounds = _layer.ContentBounds;
+
+            _oldOffsetX = _layer.OffsetX;
+            _oldOffsetY = _layer.OffsetY;
+            _newOffsetX = _layer.OffsetX;
+            _newOffsetY = _layer.OffsetY;
         }
 
         public PixelEditCommand(EditorLayer layer, byte[] oldPixels, byte[] newPixels,
@@ -68,6 +76,9 @@ namespace FlowMy.Models.ImageEditor.Commands
             _newTranslateY = _layer.LayerTranslateY;
             _newOriginalTransformBitmap = _layer.OriginalTransformBitmap;
             _newContentBounds = _layer.ContentBounds;
+
+            _newOffsetX = _layer.OffsetX;
+            _newOffsetY = _layer.OffsetY;
         }
 
         public string Description => "Paint/Erase/Transform";
@@ -90,6 +101,10 @@ namespace FlowMy.Models.ImageEditor.Commands
             {
                 _layer.OriginalTransformBitmap = null;
             }
+
+            _layer.OffsetX = _newOffsetX;
+            _layer.OffsetY = _newOffsetY;
+
             _layer.InvalidateThumbnail();
         }
 
@@ -111,6 +126,10 @@ namespace FlowMy.Models.ImageEditor.Commands
             {
                 _layer.OriginalTransformBitmap = null;
             }
+
+            _layer.OffsetX = _oldOffsetX;
+            _layer.OffsetY = _oldOffsetY;
+
             _layer.InvalidateThumbnail();
         }
     }

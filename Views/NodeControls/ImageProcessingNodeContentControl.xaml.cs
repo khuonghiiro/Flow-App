@@ -74,6 +74,9 @@ namespace FlowMy.Views.NodeControls
         private System.Threading.CancellationTokenSource? _fxCts;
         private bool _isFxRunning;
         private bool _isSpacePressed;
+        private double _lastCenterImageWidth = 0;
+        private double _lastCenterImageHeight = 0;
+        private bool _hasUserCentered = false;
 
         private FrameworkElement WidthSyncTarget => (FrameworkElement?)_chromeBorder ?? this;
 
@@ -418,6 +421,13 @@ namespace FlowMy.Views.NodeControls
             {
                 e.Handled = true;
                 ImageProcessingNodeControl.CompleteActiveCrop(_node, null);
+            };
+            MainScrollViewer.SizeChanged += (s, e) =>
+            {
+                if (!_hasUserCentered && e.NewSize.Width > 0 && _lastCenterImageWidth > 0)
+                {
+                    CenterImageOnCanvas(_lastCenterImageWidth, _lastCenterImageHeight);
+                }
             };
 
             if (_chromeBorder != null)

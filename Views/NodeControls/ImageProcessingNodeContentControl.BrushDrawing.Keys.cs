@@ -222,7 +222,9 @@ namespace FlowMy.Views.NodeControls
                             SkiaSharp.SKPath origSelectionPath = null;
                             try
                             {
-                                var flatGeom = PathGeometry.CreateFromGeometry(_moveInitialGeometry);
+                                var localGeom = _moveInitialGeometry.Clone();
+                                localGeom.Transform = new TranslateTransform(-activeLayer.OffsetX, -activeLayer.OffsetY);
+                                var flatGeom = PathGeometry.CreateFromGeometry(localGeom);
                                 var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
                                 if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
                                 {
@@ -367,31 +369,27 @@ namespace FlowMy.Views.NodeControls
                 Rect oldBounds = Rect.Empty;
                 Rect newBounds = Rect.Empty;
                 bool isSelectionLayer = targetLayer.OriginalTransformBitmap != null && !targetLayer.ContentBounds.IsEmpty;
-                if (isSelectionLayer)
-                {
-                    oldBounds = targetLayer.ContentBounds;
-                    newBounds = new Rect(oldBounds.Left + dxLayer, oldBounds.Top + dyLayer, oldBounds.Width, oldBounds.Height);
-                    targetLayer.ContentBounds = newBounds;
-
-                    // Regenerate Bitmap from OriginalTransformBitmap at newBounds
-                    DrawBitmapAt(targetLayer.Bitmap, targetLayer.OriginalTransformBitmap, newBounds);
-                }
-                else
-                {
-                    // Apply shift once
-                    ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
-                }
-
-                int moveStride = targetLayer.Width * 4;
-                var finalPixels = new byte[moveStride * targetLayer.Height];
-                targetLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
-
                 PixelEditCommand moveCmd;
+
                 if (isSelectionLayer)
                 {
-                    moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, finalPixels,
+                    moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, _moveInitialFullPixels,
                         targetLayer.LayerScaleX, targetLayer.LayerScaleY, targetLayer.LayerAngle,
                         targetLayer.LayerTranslateX, targetLayer.LayerTranslateY, targetLayer.OriginalTransformBitmap);
+
+                    oldBounds = targetLayer.ContentBounds;
+                    targetLayer.OffsetX += dxLayer;
+                    targetLayer.OffsetY += dyLayer;
+                    newBounds = new Rect(0, 0, targetLayer.Width, targetLayer.Height);
+                    targetLayer.ContentBounds = newBounds;
+                    targetLayer.ImageContentBounds = newBounds;
+
+                    if (targetLayer.ContentGeometry != null)
+                    {
+                        var transform = new TranslateTransform(dxLayer, dyLayer);
+                        targetLayer.ContentGeometry = Geometry.Combine(targetLayer.ContentGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
+                    }
+
                     moveCmd.KeepOriginalTransformBitmap = true;
                     moveCmd.HasCustomBounds = true;
                     moveCmd.CustomOldContentBounds = oldBounds;
@@ -400,6 +398,13 @@ namespace FlowMy.Views.NodeControls
                 }
                 else
                 {
+                    // Apply shift once
+                    ShiftBitmapPixels(targetLayer, _moveInitialFullPixels, dxLayer, dyLayer);
+
+                    int moveStride = targetLayer.Width * 4;
+                    var finalPixels = new byte[moveStride * targetLayer.Height];
+                    targetLayer.Bitmap.CopyPixels(finalPixels, moveStride, 0);
+
                     moveCmd = new PixelEditCommand(targetLayer, _moveInitialFullPixels, finalPixels);
                 }
 
@@ -527,6 +532,16 @@ namespace FlowMy.Views.NodeControls
                 using (var surface = SkiaSharp.SKSurface.Create(layerInfo, targetLayer.Bitmap.BackBuffer, targetLayer.Bitmap.BackBufferStride))
                 {
                     var canvas = surface.Canvas;
+                    if (targetLayer.ContentGeometry != null)
+                    {
+                        using (var clipPath = ConvertGeometryToSKPath(targetLayer.ContentGeometry, -targetLayer.OffsetX, -targetLayer.OffsetY))
+                        {
+                            if (clipPath != null)
+                            {
+                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            }
+                        }
+                    }
                     
                     _brushOverlayBitmap.Lock();
                     try
