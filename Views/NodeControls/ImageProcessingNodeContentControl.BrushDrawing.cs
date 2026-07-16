@@ -1,3 +1,18 @@
+// ========================================================================================
+// IMPORTANT FOR AI CODING ASSISTANTS:
+// This is a partial class file for ImageProcessingNodeContentControl handling brush/eraser
+// drawing, selection tools, and layer move operations.
+// 
+// KEY ARCHITECTURE:
+// - Brush: draws to an overlay bitmap (_brushOverlayBitmap), merged into layer on MouseUp
+// - Eraser: draws directly to layer bitmap using batched Lock (locked at MouseDown,
+//   kept locked during stroke, unlocked at MouseUp to avoid Lock/Unlock per frame)
+// - Composite: uses dirty region (CompositeRegion) during drawing for performance
+// - Undo: uses PixelRegionEditCommand (only stores dirty region, not full bitmap)
+//
+// DO NOT add more logic directly here — this file is already large (~5000 lines).
+// Create new partial class files for new features.
+// ========================================================================================
 using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Helpers;
@@ -77,6 +92,10 @@ namespace FlowMy.Views.NodeControls
         // During eraser moves, we composite only: bg plate + active layer = 2-layer op instead of N-layer.
         private WriteableBitmap? _eraserBgPlate;
         private SkiaSharp.SKBitmap? _eraserBgPlateSK;
+
+        // ── Batched Lock/Unlock: lock bitmap once at MouseDown, keep locked, unlock at MouseUp ──
+        private bool _eraserBitmapLocked;
+        private SkiaSharp.SKSurface? _eraserLockedSurface;
 
         private static readonly (double x, double y, double size)[] ChalkPresetOffsets = new (double x, double y, double size)[]
         {
@@ -241,17 +260,31 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                var composite = _node.EditorDoc.Composite();
-                MainImage.Source = composite;
+                // Fast path: dirty region composite khi đang vẽ (brush/eraser/move)
+                if (_isDrawingPixels && _strokeMaxX >= _strokeMinX && _strokeMaxY >= _strokeMinY)
+                {
+                    int margin = 4; // padding nhỏ để tránh artifact ở cạnh
+                    int w = _node.EditorDoc.Width;
+                    int h = _node.EditorDoc.Height;
+                    int rx = Math.Max(0, _prevSegmentMinX - margin);
+                    int ry = Math.Max(0, _prevSegmentMinY - margin);
+                    int rr = Math.Min(w, _prevSegmentMaxX + margin + 1);
+                    int rb = Math.Min(h, _prevSegmentMaxY + margin + 1);
+                    if (rr > rx && rb > ry)
+                    {
+                        var dirtyRect = new Int32Rect(rx, ry, rr - rx, rb - ry);
+                        var composite = _node.EditorDoc.CompositeRegion(dirtyRect);
+                        MainImage.Source = composite;
+                        return;
+                    }
+                }
+
+                var fullComposite = _node.EditorDoc.Composite();
+                MainImage.Source = fullComposite;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("=== DoLightweightComposite EXCEPTION ===\n" + ex);
-                try
-                {
-                    System.IO.File.AppendAllText("d:\\UngDung_PC\\Flow-App\\error.log", "=== DoLightweightComposite EXCEPTION ===\n" + ex.ToString() + "\n\n");
-                }
-                catch { }
             }
         }
 
@@ -524,7 +557,7 @@ namespace FlowMy.Views.NodeControls
                 _isMovingLayer = true;
                 _movingLayer = activeLayer;
                 _moveStartMousePos = clickPos;
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MouseDown MOVE start, layer={activeLayer.Name}, hasOrigTransform={activeLayer.OriginalTransformBitmap != null}\n"); } catch { }
+
 
                 int w = activeLayer.Width;
                 int h = activeLayer.Height;
@@ -559,12 +592,12 @@ namespace FlowMy.Views.NodeControls
                 {
                     _moveInitialGeometry = null;
                     activeLayer.TempSelectionGeometry = null;
-                    try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step1: checking OriginalTransformBitmap\n"); } catch { }
+
                     if (activeLayer.OriginalTransformBitmap == null)
                     {
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step2: GetLayerContentBounds start\n"); } catch { }
+
                         var bounds = GetLayerContentBounds(activeLayer.Bitmap);
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step3: bounds={bounds}\n"); } catch { }
+
                         if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
                         {
                             bounds = new Rect(0, 0, w, h);
@@ -578,23 +611,23 @@ namespace FlowMy.Views.NodeControls
                         int tightStride = bw * 4;
                         byte[] tightPixels = new byte[tightStride * bh];
 
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step4: CopyPixels bw={bw} bh={bh}\n"); } catch { }
+
                         // CopyPixels là read-only — KHÔNG cần Lock/Unlock (Lock gây deadlock với WPF render thread)
                         activeLayer.Bitmap.CopyPixels(new Int32Rect(startX, startY, bw, bh), tightPixels, tightStride, 0);
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step5: creating origBmp + WritePixels\n"); } catch { }
+
 
                         var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
                         origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
 
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step6: setting OriginalTransformBitmap\n"); } catch { }
+
                         activeLayer.OriginalTransformBitmap = origBmp;
                         activeLayer.ContentBounds = bounds;
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step7: OriginalTransformBitmap SET OK\n"); } catch { }
+
                     }
 
                     if (_moveInitialFullPixels == null)
                     {
-                        try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step8: CopyPixels for undo\n"); } catch { }
+
                         _moveInitialFullPixels = new byte[strideValue * h];
                         activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
                         _accumulatedMoveDx = 0;
@@ -604,11 +637,11 @@ namespace FlowMy.Views.NodeControls
                     activeLayer.TempMoveDy = _accumulatedMoveDy;
                 }
 
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step9: UpdatePolygonDisplay + CaptureMouse\n"); } catch { }
+
                 UpdatePolygonDisplay();
 
                 MainScrollViewer.CaptureMouse();
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MOVE step10: MouseDown COMPLETE\n"); } catch { }
+
                 return;
             }
 
@@ -989,40 +1022,40 @@ namespace FlowMy.Views.NodeControls
                 _prevSegmentMaxY = _strokeMaxY;
 
                 activeLayer.Bitmap.Lock();
-                try
+                _eraserBitmapLocked = true;
+                var surfaceInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                _eraserLockedSurface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride);
+
+                if (_eraserLockedSurface != null)
                 {
-                    var surfaceInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
-                    using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                    var canvas = _eraserLockedSurface.Canvas;
+                    if (isComplexPreset)
                     {
-                        var canvas = surface.Canvas;
-                        if (isComplexPreset)
+                        if (_cachedBrushTip != null)
                         {
-                            if (_cachedBrushTip != null)
-                            {
-                                DrawCachedBrushTipStamp(canvas, px, py, true, Colors.Black);
-                            }
-                            else
-                            {
-                                DrawSkiaBrushStamp(canvas, px, py, rawRadius, hardness, flow, Colors.Black, _currentBrushPreset, true);
-                            }
+                            DrawCachedBrushTipStamp(canvas, px, py, true, Colors.Black);
                         }
                         else
                         {
-                            using (var paint = new SkiaSharp.SKPaint())
+                            DrawSkiaBrushStamp(canvas, px, py, rawRadius, hardness, flow, Colors.Black, _currentBrushPreset, true);
+                        }
+                    }
+                    else
+                    {
+                        using (var paint = new SkiaSharp.SKPaint())
+                        {
+                            paint.Style = SkiaSharp.SKPaintStyle.Fill;
+                            paint.IsAntialias = true;
+                            paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                            byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
+
+                            if (blurSigma > 0.1f)
                             {
-                                paint.Style = SkiaSharp.SKPaintStyle.Fill;
-                                paint.IsAntialias = true;
-                                paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
-                                byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
-                                paint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
-
-                                if (blurSigma > 0.1f)
-                                {
-                                    paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
-                                }
-
-                                canvas.DrawCircle((float)px, (float)py, (float)radius, paint);
+                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
                             }
+
+                            canvas.DrawCircle((float)px, (float)py, (float)radius, paint);
                         }
                     }
 
@@ -1033,10 +1066,7 @@ namespace FlowMy.Views.NodeControls
                         activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
                     }
                 }
-                finally
-                {
-                    activeLayer.Bitmap.Unlock();
-                }
+                // NOTE: Bitmap stays LOCKED — will be unlocked at MouseUp
 
                 MarkCompositeDirty();
                 MainScrollViewer.CaptureMouse();
@@ -1153,7 +1183,7 @@ namespace FlowMy.Views.NodeControls
                     UpdatePolygonDisplay();
                 }
 
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] MouseMove MOVE dx={activeLayer.TempMoveDx:F0} dy={activeLayer.TempMoveDy:F0}\n"); } catch { }
+
                 MarkCompositeDirty();
                 return;
             }
@@ -1204,69 +1234,64 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
-
-                activeLayer.Bitmap.Lock();
-                try
+                // Sử dụng batched locked surface — không Lock/Unlock mỗi MouseMove
+                if (_eraserLockedSurface != null)
                 {
-                    var surfaceInfo = new SkiaSharp.SKImageInfo(activeW, activeH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
-                    using (var surface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                    var canvas = _eraserLockedSurface.Canvas;
+
+                    if (isComplexPreset)
                     {
-                        var canvas = surface.Canvas;
-
-                        if (isComplexPreset)
+                        Action<double, double> drawStamp = (cx, cy) =>
                         {
-                            Action<double, double> drawStamp = (cx, cy) =>
+                            if (_cachedBrushTip != null)
                             {
-                                if (_cachedBrushTip != null)
-                                {
-                                    DrawCachedBrushTipStamp(canvas, cx, cy, true, Colors.Black);
-                                }
-                                else
-                                {
-                                    DrawSkiaBrushStamp(canvas, cx, cy, radius, hardness, flow, Colors.Black, _currentBrushPreset, true);
-                                }
-                            };
-                            DrawStrokeSegmentToCanvasHelper(canvas, prevPoint, currentPoint, _currentBrushPreset, radius, hardness, flow, Colors.Black, true, ref _brushDistanceAccumulator, drawStamp);
-                        }
-                        else
+                                DrawCachedBrushTipStamp(canvas, cx, cy, true, Colors.Black);
+                            }
+                            else
+                            {
+                                DrawSkiaBrushStamp(canvas, cx, cy, radius, hardness, flow, Colors.Black, _currentBrushPreset, true);
+                            }
+                        };
+                        DrawStrokeSegmentToCanvasHelper(canvas, prevPoint, currentPoint, _currentBrushPreset, radius, hardness, flow, Colors.Black, true, ref _brushDistanceAccumulator, drawStamp);
+                    }
+                    else
+                    {
+                        // Reuse cached eraser paint to avoid repeated allocation + MaskFilter creation
+                        if (_cachedEraserPaint == null)
                         {
-                            // Reuse cached eraser paint to avoid repeated allocation + MaskFilter creation
-                            if (_cachedEraserPaint == null)
-                            {
-                                _cachedEraserPaint = new SkiaSharp.SKPaint();
-                                _cachedEraserPaint.Style = SkiaSharp.SKPaintStyle.Stroke;
-                                _cachedEraserPaint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
-                                _cachedEraserPaint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
-                                _cachedEraserPaint.IsAntialias = true;
-                                _cachedEraserPaint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
-                            }
-
-                            float blurSigma = 0;
-                            if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
-                            {
-                                blurSigma = (float)(radius * 0.4);
-                            }
-                            else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
-                            {
-                                blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
-                            }
-
-                            double drawRadius = Math.Max(0.1, radius - blurSigma);
-                            _cachedEraserPaint.StrokeWidth = (float)(drawRadius * 2);
-                            byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
-                            _cachedEraserPaint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
-
-                            // Only update MaskFilter if sigma changed
-                            float newSigma = blurSigma > 0.1f ? blurSigma : 0;
-                            if (newSigma != _cachedEraserBlurSigma)
-                            {
-                                _cachedEraserPaint.MaskFilter?.Dispose();
-                                _cachedEraserPaint.MaskFilter = newSigma > 0 ? SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, newSigma) : null;
-                                _cachedEraserBlurSigma = newSigma;
-                            }
-
-                            canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, _cachedEraserPaint);
+                            _cachedEraserPaint = new SkiaSharp.SKPaint();
+                            _cachedEraserPaint.Style = SkiaSharp.SKPaintStyle.Stroke;
+                            _cachedEraserPaint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
+                            _cachedEraserPaint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
+                            _cachedEraserPaint.IsAntialias = true;
+                            _cachedEraserPaint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
                         }
+
+                        float blurSigma = 0;
+                        if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                        {
+                            blurSigma = (float)(radius * 0.4);
+                        }
+                        else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                        {
+                            blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                        }
+
+                        double drawRadius = Math.Max(0.1, radius - blurSigma);
+                        _cachedEraserPaint.StrokeWidth = (float)(drawRadius * 2);
+                        byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                        _cachedEraserPaint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
+
+                        // Only update MaskFilter if sigma changed
+                        float newSigma = blurSigma > 0.1f ? blurSigma : 0;
+                        if (newSigma != _cachedEraserBlurSigma)
+                        {
+                            _cachedEraserPaint.MaskFilter?.Dispose();
+                            _cachedEraserPaint.MaskFilter = newSigma > 0 ? SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, newSigma) : null;
+                            _cachedEraserBlurSigma = newSigma;
+                        }
+
+                        canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, _cachedEraserPaint);
                     }
 
                     // Use tight dirty rect (segment only, not entire stroke)
@@ -1274,10 +1299,6 @@ namespace FlowMy.Views.NodeControls
                     {
                         activeLayer.Bitmap.AddDirtyRect(new Int32Rect(segmentMinX, segmentMinY, segmentMaxX - segmentMinX + 1, segmentMaxY - segmentMinY + 1));
                     }
-                }
-                finally
-                {
-                    activeLayer.Bitmap.Unlock();
                 }
             }
 
@@ -1487,16 +1508,15 @@ namespace FlowMy.Views.NodeControls
                         activeLayer.Bitmap.Unlock();
                     }
 
-                    var finalOldPixels = new byte[pixelSize];
-                    if (_oldPixelsForUndo != null)
-                    {
-                        Array.Copy(_oldPixelsForUndo, finalOldPixels, pixelSize);
-                    }
+                    // Region-based undo: chỉ lưu dirty region thay vì toàn bộ bitmap
+                    int strokeDirtyW = _strokeMaxX - _strokeMinX + 1;
+                    int strokeDirtyH = _strokeMaxY - _strokeMinY + 1;
+                    var strokeHint = new Int32Rect(_strokeMinX, _strokeMinY, Math.Max(1, strokeDirtyW), Math.Max(1, strokeDirtyH));
 
                     var finalNewPixels = new byte[pixelSize];
                     activeLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
 
-                    var cmd = new PixelEditCommand(activeLayer, finalOldPixels, finalNewPixels);
+                    var cmd = PixelRegionEditCommand.FromFullPixels(activeLayer, _oldPixelsForUndo, finalNewPixels, strokeHint);
                     _node.EditorDoc.History.Execute(cmd);
 
                     _oldPixelsForUndo = null;
@@ -1529,19 +1549,33 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
+                // Unlock the batched eraser surface before reading pixels
+                _eraserLockedSurface?.Dispose();
+                _eraserLockedSurface = null;
+                if (_eraserBitmapLocked)
+                {
+                    int dirtyW2 = _strokeMaxX - _strokeMinX + 1;
+                    int dirtyH2 = _strokeMaxY - _strokeMinY + 1;
+                    if (dirtyW2 > 0 && dirtyH2 > 0)
+                    {
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW2, dirtyH2));
+                    }
+                    activeLayer.Bitmap.Unlock();
+                    _eraserBitmapLocked = false;
+                }
+
                 int strideFinal = activeLayer.Width * 4;
                 int pixelSize = strideFinal * activeLayer.Height;
 
-                var finalOldPixels = new byte[pixelSize];
-                if (_oldPixelsForUndo != null)
-                {
-                    Array.Copy(_oldPixelsForUndo, finalOldPixels, pixelSize);
-                }
+                // Region-based undo: chỉ lưu dirty region
+                int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                var strokeHint = new Int32Rect(_strokeMinX, _strokeMinY, Math.Max(1, dirtyW), Math.Max(1, dirtyH));
 
                 var finalNewPixels = new byte[pixelSize];
                 activeLayer.Bitmap.CopyPixels(finalNewPixels, strideFinal, 0);
 
-                var cmd = new PixelEditCommand(activeLayer, finalOldPixels, finalNewPixels);
+                var cmd = PixelRegionEditCommand.FromFullPixels(activeLayer, _oldPixelsForUndo, finalNewPixels, strokeHint);
                 _node.EditorDoc.History.Execute(cmd);
                 _oldPixelsForUndo = null;
                 _strokePoints.Clear();

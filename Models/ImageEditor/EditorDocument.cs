@@ -1,3 +1,18 @@
+// ========================================================================================
+// IMPORTANT FOR AI CODING ASSISTANTS:
+// This file contains the core EditorDocument class that manages the layer stack and
+// compositing engine for the image editor.
+//
+// KEY ARCHITECTURE:
+// - Composite(): Full-image composite using SkiaSharp (3-phase lock management)
+// - CompositeRegion(dirtyRect): Partial composite for performance during brush strokes
+// - Helper methods (CollectLayerEntries, RenderEntriesToCanvas, DrawTextLayerToCanvas,
+//   DrawCachedSKLayer, DrawPixelDataLayer) are shared between Composite/CompositeRegion
+// - Flatten(): Freeze composite for export
+//
+// DO NOT add unrelated logic here. Keep this file focused on layer management
+// and compositing. Target max ~800 lines.
+// ========================================================================================
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -336,7 +351,7 @@ namespace FlowMy.Models.ImageEditor
                 // Phase 2: Lock render target, vẽ từ BackBuffer pointers (zero-copy), unlock render target
                 // Phase 3: Unlock tất cả layer bitmaps
                 // → Không nested lock, không GC pressure, không deadlock
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] Composite START, Layers={Layers.Count}\n"); } catch { }
+
 
                 if (_cachedCpuRenderTarget == null ||
                     _cachedCpuRenderTarget.PixelWidth != Width ||
@@ -345,55 +360,11 @@ namespace FlowMy.Models.ImageEditor
                     _cachedCpuRenderTarget = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32, null);
                 }
 
-                // ====== PHASE 1: Thu thập pixel data KHÔNG Lock bất kỳ WPF bitmap nào ======
-                var entries = new System.Collections.Generic.List<(
-                    EditorLayer layer,
-                    byte[]? pixelData,                 // pixel data snapshot (pinned cho Skia)
-                    int bmpW, int bmpH, int bmpStride,
-                    SkiaSharp.SKBitmap? cachedSK,      // cached SKBitmap gốc (nếu có)
-                    Rect contentBounds
-                )>();
-
-                foreach (var layer in Layers)
-                {
-                    if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
-
-                    if (layer.IsTextLayer)
-                    {
-                        entries.Add((layer, null, 0, 0, 0, null, Rect.Empty));
-                        continue;
-                    }
-
-                    var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
-                    var activeOrigSK = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.CachedOriginalSKBitmap : layer.CachedOriginalSKBitmap;
-                    var activeContentBounds = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.ContentBounds : layer.ContentBounds;
-
-                    if (activeOrigSK != null && layer.TempSelectionGeometry == null)
-                    {
-                        // Có cached SKBitmap gốc → không cần copy pixel
-                        entries.Add((layer, null, 0, 0, 0, activeOrigSK, activeContentBounds));
-                    }
-                    else
-                    {
-                        // CopyPixels KHÔNG cần Lock — read-only, an toàn
-                        try
-                        {
-                            int bmpW = activeBmp.PixelWidth;
-                            int bmpH = activeBmp.PixelHeight;
-                            int bmpStride = bmpW * 4;
-                            byte[] px = new byte[bmpStride * bmpH];
-                            activeBmp.CopyPixels(px, bmpStride, 0);
-                            entries.Add((layer, px, bmpW, bmpH, bmpStride, null, activeContentBounds));
-                        }
-                        catch
-                        {
-                            // Skip layer nếu đọc thất bại
-                        }
-                    }
-                }
+                // ====== PHASE 1: Thu thập pixel data (dùng helper chung) ======
+                var entries = CollectLayerEntries();
 
                 // ====== PHASE 2: Lock render target, vẽ tất cả, unlock render target ======
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] Phase1 DONE, entries={entries.Count}, locking render target...\n"); } catch { }
+
                 _cachedCpuRenderTarget.Lock();
                 try
                 {
@@ -404,137 +375,7 @@ namespace FlowMy.Models.ImageEditor
                         {
                             var canvas = surface.Canvas;
                             canvas.Clear(SkiaSharp.SKColors.Transparent);
-
-                            foreach (var entry in entries)
-                            {
-                                var layer = entry.layer;
-
-                                if (layer.IsTextLayer)
-                                {
-                                    using (var paint = new SkiaSharp.SKPaint())
-                                    {
-                                        paint.IsAntialias = true;
-                                        paint.TextSize = (float)layer.TextFontSize;
-                                        paint.Color = new SkiaSharp.SKColor(
-                                            layer.TextColor.R, layer.TextColor.G, layer.TextColor.B,
-                                            (byte)Math.Clamp(layer.TextColor.A * layer.Opacity, 0, 255));
-
-                                        var slant = layer.TextFontStyle == "Italic" ? SkiaSharp.SKFontStyleSlant.Italic : SkiaSharp.SKFontStyleSlant.Upright;
-                                        var weight = layer.TextFontStyle == "Bold" ? SkiaSharp.SKFontStyleWeight.Bold : SkiaSharp.SKFontStyleWeight.Normal;
-                                        paint.Typeface = SkiaSharp.SKTypeface.FromFamilyName(layer.TextFontFamily, weight, SkiaSharp.SKFontStyleWidth.Normal, slant);
-
-                                        paint.TextAlign = SkiaSharp.SKTextAlign.Left;
-                                        float textX = (float)layer.TextX;
-                                        if (layer.TextAlignment == "Center") { paint.TextAlign = SkiaSharp.SKTextAlign.Center; textX = (float)(layer.TextX + layer.TextWidth / 2.0); }
-                                        else if (layer.TextAlignment == "Right") { paint.TextAlign = SkiaSharp.SKTextAlign.Right; textX = (float)(layer.TextX + layer.TextWidth); }
-
-                                        string[] lines = (layer.TextContent ?? "").Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-                                        SkiaSharp.SKFontMetrics metrics;
-                                        paint.GetFontMetrics(out metrics);
-                                        float lineHeight = metrics.Descent - metrics.Ascent + metrics.Leading;
-                                        if (lineHeight <= 0) lineHeight = (float)layer.TextFontSize * 1.2f;
-                                        float currentY = (float)(layer.TextY - metrics.Ascent);
-
-                                        canvas.Save();
-                                        float cX = (float)(layer.TextX + layer.TextWidth / 2.0);
-                                        float cY = (float)(layer.TextY + layer.TextHeight / 2.0);
-                                        float tDx = (float)(layer.LayerTranslateX + layer.TempMoveDx);
-                                        float tDy = (float)(layer.LayerTranslateY + layer.TempMoveDy);
-                                        canvas.Translate(cX + tDx, cY + tDy);
-                                        canvas.RotateDegrees((float)layer.LayerAngle);
-                                        canvas.Scale((float)layer.LayerScaleX, (float)layer.LayerScaleY);
-                                        canvas.Translate(-cX, -cY);
-
-                                        foreach (var line in lines)
-                                        {
-                                            if (currentY - layer.TextY > layer.TextHeight) break;
-                                            canvas.DrawText(line, textX, currentY, paint);
-                                            currentY += lineHeight;
-                                        }
-                                        canvas.Restore();
-                                    }
-                                    continue;
-                                }
-
-                                using (var paint = new SkiaSharp.SKPaint())
-                                {
-                                    paint.IsAntialias = true;
-                                    paint.Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Clamp(layer.Opacity * 255, 0, 255));
-                                    paint.BlendMode = layer.BlendMode switch
-                                    {
-                                        BlendMode.Multiply => SkiaSharp.SKBlendMode.Multiply,
-                                        BlendMode.Screen => SkiaSharp.SKBlendMode.Screen,
-                                        BlendMode.Overlay => SkiaSharp.SKBlendMode.Overlay,
-                                        BlendMode.Darken => SkiaSharp.SKBlendMode.Darken,
-                                        BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
-                                        _ => SkiaSharp.SKBlendMode.SrcOver
-                                    };
-
-                                    if (entry.cachedSK != null)
-                                    {
-                                        // Vẽ từ cached SKBitmap gốc với transform
-                                        canvas.Save();
-                                        var cb = entry.contentBounds;
-                                        if (cb.IsEmpty || cb.Width <= 0 || cb.Height <= 0) cb = new Rect(0, 0, Width, Height);
-                                        double centerX = cb.Left + cb.Width / 2.0;
-                                        double centerY = cb.Top + cb.Height / 2.0;
-                                        double tdx = layer.LayerTranslateX + layer.TempMoveDx;
-                                        double tdy = layer.LayerTranslateY + layer.TempMoveDy;
-                                        canvas.Translate((float)(centerX + tdx), (float)(centerY + tdy));
-                                        canvas.RotateDegrees((float)layer.LayerAngle);
-                                        canvas.Scale((float)layer.LayerScaleX, (float)layer.LayerScaleY);
-                                        canvas.Translate((float)-centerX, (float)-centerY);
-                                        var dr = entry.contentBounds;
-                                        if (dr.IsEmpty || dr.Width <= 0 || dr.Height <= 0) dr = new Rect(0, 0, Width, Height);
-                                        canvas.DrawBitmap(entry.cachedSK, new SkiaSharp.SKRect((float)dr.Left, (float)dr.Top, (float)dr.Right, (float)dr.Bottom), paint);
-                                        canvas.Restore();
-                                    }
-                                    else if (entry.pixelData != null)
-                                    {
-                                        // Vẽ từ pixel data snapshot — pin byte array cho Skia
-                                        var gcPin = System.Runtime.InteropServices.GCHandle.Alloc(entry.pixelData, System.Runtime.InteropServices.GCHandleType.Pinned);
-                                        try
-                                        {
-                                            var srcInfo = new SkiaSharp.SKImageInfo(entry.bmpW, entry.bmpH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
-                                            using (var skBmp = new SkiaSharp.SKBitmap())
-                                            {
-                                                skBmp.InstallPixels(srcInfo, gcPin.AddrOfPinnedObject(), entry.bmpStride);
-                                                canvas.Save();
-
-                                                if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
-                                                {
-                                                    if (layer.TempSelectionPath != null)
-                                                    {
-                                                        canvas.Save();
-                                                        canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Difference, true);
-                                                        canvas.DrawBitmap(skBmp, 0, 0, paint);
-                                                        canvas.Restore();
-
-                                                        canvas.Save();
-                                                        canvas.Translate((float)layer.TempMoveDx, (float)layer.TempMoveDy);
-                                                        canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Intersect, true);
-                                                        canvas.DrawBitmap(skBmp, 0, 0, paint);
-                                                        canvas.Restore();
-                                                    }
-                                                    else
-                                                    {
-                                                        canvas.DrawBitmap(skBmp, (float)layer.TempMoveDx, (float)layer.TempMoveDy, paint);
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    canvas.DrawBitmap(skBmp, 0, 0, paint);
-                                                }
-                                                canvas.Restore();
-                                            }
-                                        }
-                                        finally
-                                        {
-                                            gcPin.Free();
-                                        }
-                                    }
-                                }
-                            }
+                            RenderEntriesToCanvas(canvas, entries);
                         }
                     }
                     _cachedCpuRenderTarget.AddDirtyRect(new Int32Rect(0, 0, Width, Height));
@@ -543,13 +384,283 @@ namespace FlowMy.Models.ImageEditor
                 {
                     _cachedCpuRenderTarget.Unlock();
                 }
-                try { System.IO.File.AppendAllText(@"d:\UngDung_PC\Flow-App\error.log", $"[{DateTime.Now:HH:mm:ss.fff}] Composite DONE\n"); } catch { }
+
 
                 return _cachedCpuRenderTarget;
             }
         }
 
-        /// <summary>Flatten tất cả layers → 1 frozen BitmapSource.</summary>
+        /// <summary>
+        /// Composite chỉ vùng dirty rect — dùng khi vẽ brush/eraser để tránh composite toàn bộ ảnh.
+        /// Yêu cầu: _cachedCpuRenderTarget đã được tạo bởi Composite() trước đó.
+        /// Nếu chưa có render target, fallback về Composite() toàn ảnh.
+        /// </summary>
+        public BitmapSource CompositeRegion(Int32Rect dirtyRect)
+        {
+            if (_cachedCpuRenderTarget == null ||
+                _cachedCpuRenderTarget.PixelWidth != Width ||
+                _cachedCpuRenderTarget.PixelHeight != Height)
+            {
+                return Composite(); // Fallback nếu chưa có render target
+            }
+
+            // Clip dirty rect vào bounds hợp lệ
+            int clippedX = Math.Max(0, dirtyRect.X);
+            int clippedY = Math.Max(0, dirtyRect.Y);
+            int clippedRight = Math.Min(Width, dirtyRect.X + dirtyRect.Width);
+            int clippedBottom = Math.Min(Height, dirtyRect.Y + dirtyRect.Height);
+            if (clippedRight <= clippedX || clippedBottom <= clippedY)
+                return _cachedCpuRenderTarget;
+
+            dirtyRect = new Int32Rect(clippedX, clippedY, clippedRight - clippedX, clippedBottom - clippedY);
+
+            // PHASE 1: Thu thập pixel data (giống Composite)
+            var entries = CollectLayerEntries();
+
+            // PHASE 2: Lock render target, vẽ clipped
+            _cachedCpuRenderTarget.Lock();
+            try
+            {
+                var info = new SkiaSharp.SKImageInfo(Width, Height, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var surface = SkiaSharp.SKSurface.Create(info, _cachedCpuRenderTarget.BackBuffer, _cachedCpuRenderTarget.BackBufferStride))
+                {
+                    if (surface != null)
+                    {
+                        var canvas = surface.Canvas;
+                        canvas.Save();
+                        canvas.ClipRect(new SkiaSharp.SKRect(dirtyRect.X, dirtyRect.Y, dirtyRect.X + dirtyRect.Width, dirtyRect.Y + dirtyRect.Height));
+                        canvas.Clear(SkiaSharp.SKColors.Transparent);
+                        RenderEntriesToCanvas(canvas, entries);
+                        canvas.Restore();
+                    }
+                }
+                _cachedCpuRenderTarget.AddDirtyRect(dirtyRect);
+            }
+            finally
+            {
+                _cachedCpuRenderTarget.Unlock();
+            }
+
+            return _cachedCpuRenderTarget;
+        }
+
+        /// <summary>Thu thập pixel data từ tất cả visible layers — dùng chung cho Composite() và CompositeRegion().</summary>
+        private System.Collections.Generic.List<(
+            EditorLayer layer,
+            byte[]? pixelData,
+            int bmpW, int bmpH, int bmpStride,
+            SkiaSharp.SKBitmap? cachedSK,
+            Rect contentBounds
+        )> CollectLayerEntries()
+        {
+            var entries = new System.Collections.Generic.List<(
+                EditorLayer layer,
+                byte[]? pixelData,
+                int bmpW, int bmpH, int bmpStride,
+                SkiaSharp.SKBitmap? cachedSK,
+                Rect contentBounds
+            )>();
+
+            foreach (var layer in Layers)
+            {
+                if (!layer.IsVisible || layer.Opacity <= 0 || layer.IsTempHidden) continue;
+
+                if (layer.IsTextLayer)
+                {
+                    entries.Add((layer, null, 0, 0, 0, null, Rect.Empty));
+                    continue;
+                }
+
+                var activeBmp = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.Bitmap : layer.Bitmap;
+                var activeOrigSK = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.CachedOriginalSKBitmap : layer.CachedOriginalSKBitmap;
+                var activeContentBounds = layer.ActiveChildLayer != null ? layer.ActiveChildLayer.ContentBounds : layer.ContentBounds;
+
+                if (activeOrigSK != null && layer.TempSelectionGeometry == null)
+                {
+                    entries.Add((layer, null, 0, 0, 0, activeOrigSK, activeContentBounds));
+                }
+                else
+                {
+                    try
+                    {
+                        int bmpW = activeBmp.PixelWidth;
+                        int bmpH = activeBmp.PixelHeight;
+                        int bmpStride = bmpW * 4;
+                        byte[] px = new byte[bmpStride * bmpH];
+                        activeBmp.CopyPixels(px, bmpStride, 0);
+                        entries.Add((layer, px, bmpW, bmpH, bmpStride, null, activeContentBounds));
+                    }
+                    catch { }
+                }
+            }
+
+            return entries;
+        }
+
+        /// <summary>Render tất cả entries lên canvas — dùng chung cho Composite() và CompositeRegion().</summary>
+        private void RenderEntriesToCanvas(SkiaSharp.SKCanvas canvas, System.Collections.Generic.List<(
+            EditorLayer layer,
+            byte[]? pixelData,
+            int bmpW, int bmpH, int bmpStride,
+            SkiaSharp.SKBitmap? cachedSK,
+            Rect contentBounds
+        )> entries)
+        {
+            foreach (var entry in entries)
+            {
+                var layer = entry.layer;
+
+                if (layer.IsTextLayer)
+                {
+                    DrawTextLayerToCanvas(canvas, layer);
+                    continue;
+                }
+
+                using (var paint = new SkiaSharp.SKPaint())
+                {
+                    paint.IsAntialias = true;
+                    paint.Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Clamp(layer.Opacity * 255, 0, 255));
+                    paint.BlendMode = GetSkiaBlendMode(layer.BlendMode);
+
+                    if (entry.cachedSK != null)
+                    {
+                        DrawCachedSKLayer(canvas, paint, layer, entry.cachedSK, entry.contentBounds);
+                    }
+                    else if (entry.pixelData != null)
+                    {
+                        DrawPixelDataLayer(canvas, paint, layer, entry.pixelData, entry.bmpW, entry.bmpH, entry.bmpStride);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Map BlendMode enum → SkiaSharp SKBlendMode.</summary>
+        private static SkiaSharp.SKBlendMode GetSkiaBlendMode(BlendMode mode)
+        {
+            return mode switch
+            {
+                BlendMode.Multiply => SkiaSharp.SKBlendMode.Multiply,
+                BlendMode.Screen => SkiaSharp.SKBlendMode.Screen,
+                BlendMode.Overlay => SkiaSharp.SKBlendMode.Overlay,
+                BlendMode.Darken => SkiaSharp.SKBlendMode.Darken,
+                BlendMode.Lighten => SkiaSharp.SKBlendMode.Lighten,
+                _ => SkiaSharp.SKBlendMode.SrcOver
+            };
+        }
+
+        /// <summary>Vẽ text layer lên canvas — tái sử dụng cho cả Composite() và CompositeRegion().</summary>
+        private void DrawTextLayerToCanvas(SkiaSharp.SKCanvas canvas, EditorLayer layer)
+        {
+            using (var paint = new SkiaSharp.SKPaint())
+            {
+                paint.IsAntialias = true;
+                paint.TextSize = (float)layer.TextFontSize;
+                paint.Color = new SkiaSharp.SKColor(
+                    layer.TextColor.R, layer.TextColor.G, layer.TextColor.B,
+                    (byte)Math.Clamp(layer.TextColor.A * layer.Opacity, 0, 255));
+
+                var slant = layer.TextFontStyle == "Italic" ? SkiaSharp.SKFontStyleSlant.Italic : SkiaSharp.SKFontStyleSlant.Upright;
+                var weight = layer.TextFontStyle == "Bold" ? SkiaSharp.SKFontStyleWeight.Bold : SkiaSharp.SKFontStyleWeight.Normal;
+                paint.Typeface = SkiaSharp.SKTypeface.FromFamilyName(layer.TextFontFamily, weight, SkiaSharp.SKFontStyleWidth.Normal, slant);
+
+                paint.TextAlign = SkiaSharp.SKTextAlign.Left;
+                float textX = (float)layer.TextX;
+                if (layer.TextAlignment == "Center") { paint.TextAlign = SkiaSharp.SKTextAlign.Center; textX = (float)(layer.TextX + layer.TextWidth / 2.0); }
+                else if (layer.TextAlignment == "Right") { paint.TextAlign = SkiaSharp.SKTextAlign.Right; textX = (float)(layer.TextX + layer.TextWidth); }
+
+                string[] lines = (layer.TextContent ?? "").Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+                SkiaSharp.SKFontMetrics metrics;
+                paint.GetFontMetrics(out metrics);
+                float lineHeight = metrics.Descent - metrics.Ascent + metrics.Leading;
+                if (lineHeight <= 0) lineHeight = (float)layer.TextFontSize * 1.2f;
+                float currentY = (float)(layer.TextY - metrics.Ascent);
+
+                canvas.Save();
+                float cX = (float)(layer.TextX + layer.TextWidth / 2.0);
+                float cY = (float)(layer.TextY + layer.TextHeight / 2.0);
+                float tDx = (float)(layer.LayerTranslateX + layer.TempMoveDx);
+                float tDy = (float)(layer.LayerTranslateY + layer.TempMoveDy);
+                canvas.Translate(cX + tDx, cY + tDy);
+                canvas.RotateDegrees((float)layer.LayerAngle);
+                canvas.Scale((float)layer.LayerScaleX, (float)layer.LayerScaleY);
+                canvas.Translate(-cX, -cY);
+
+                foreach (var line in lines)
+                {
+                    if (currentY - layer.TextY > layer.TextHeight) break;
+                    canvas.DrawText(line, textX, currentY, paint);
+                    currentY += lineHeight;
+                }
+                canvas.Restore();
+            }
+        }
+
+        /// <summary>Vẽ layer có cached SKBitmap lên canvas.</summary>
+        private void DrawCachedSKLayer(SkiaSharp.SKCanvas canvas, SkiaSharp.SKPaint paint, EditorLayer layer, SkiaSharp.SKBitmap cachedSK, Rect contentBounds)
+        {
+            canvas.Save();
+            var cb = contentBounds;
+            if (cb.IsEmpty || cb.Width <= 0 || cb.Height <= 0) cb = new Rect(0, 0, Width, Height);
+            double centerX = cb.Left + cb.Width / 2.0;
+            double centerY = cb.Top + cb.Height / 2.0;
+            double tdx = layer.LayerTranslateX + layer.TempMoveDx;
+            double tdy = layer.LayerTranslateY + layer.TempMoveDy;
+            canvas.Translate((float)(centerX + tdx), (float)(centerY + tdy));
+            canvas.RotateDegrees((float)layer.LayerAngle);
+            canvas.Scale((float)layer.LayerScaleX, (float)layer.LayerScaleY);
+            canvas.Translate((float)-centerX, (float)-centerY);
+            var dr = contentBounds;
+            if (dr.IsEmpty || dr.Width <= 0 || dr.Height <= 0) dr = new Rect(0, 0, Width, Height);
+            canvas.DrawBitmap(cachedSK, new SkiaSharp.SKRect((float)dr.Left, (float)dr.Top, (float)dr.Right, (float)dr.Bottom), paint);
+            canvas.Restore();
+        }
+
+        /// <summary>Vẽ layer từ pixel data snapshot lên canvas.</summary>
+        private void DrawPixelDataLayer(SkiaSharp.SKCanvas canvas, SkiaSharp.SKPaint paint, EditorLayer layer, byte[] pixelData, int bmpW, int bmpH, int bmpStride)
+        {
+            var gcPin = System.Runtime.InteropServices.GCHandle.Alloc(pixelData, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                var srcInfo = new SkiaSharp.SKImageInfo(bmpW, bmpH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                using (var skBmp = new SkiaSharp.SKBitmap())
+                {
+                    skBmp.InstallPixels(srcInfo, gcPin.AddrOfPinnedObject(), bmpStride);
+                    canvas.Save();
+
+                    if (layer.TempMoveDx != 0 || layer.TempMoveDy != 0)
+                    {
+                        if (layer.TempSelectionPath != null)
+                        {
+                            canvas.Save();
+                            canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Difference, true);
+                            canvas.DrawBitmap(skBmp, 0, 0, paint);
+                            canvas.Restore();
+
+                            canvas.Save();
+                            canvas.Translate((float)layer.TempMoveDx, (float)layer.TempMoveDy);
+                            canvas.ClipPath(layer.TempSelectionPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            canvas.DrawBitmap(skBmp, 0, 0, paint);
+                            canvas.Restore();
+                        }
+                        else
+                        {
+                            canvas.DrawBitmap(skBmp, (float)layer.TempMoveDx, (float)layer.TempMoveDy, paint);
+                        }
+                    }
+                    else
+                    {
+                        canvas.DrawBitmap(skBmp, 0, 0, paint);
+                    }
+                    canvas.Restore();
+                }
+            }
+            finally
+            {
+                gcPin.Free();
+            }
+        }
+
+        /// <summary>Flatten tất cả visible layers → 1 frozen BitmapSource.</summary>
         public BitmapSource Flatten()
         {
             var result = Composite();
