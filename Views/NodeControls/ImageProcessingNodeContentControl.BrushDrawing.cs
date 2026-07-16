@@ -3578,6 +3578,10 @@ namespace FlowMy.Views.NodeControls
             byte fillR = fillColor.R;
             byte fillA = fillColor.A;
 
+            // If selection exists and start point is outside the selection, do nothing.
+            if (_activeSelectionGeometry != null && !IsInsideSelection(startX, startY))
+                return;
+
             if (targetB == fillB && targetG == fillG && targetR == fillR && targetA == fillA)
                 return;
 
@@ -3591,6 +3595,8 @@ namespace FlowMy.Views.NodeControls
                 int y = (int)p.Y;
 
                 if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                if (!IsInsideSelection(x, y)) continue;
 
                 if (_selectionRect.HasValue)
                 {
@@ -4216,6 +4222,11 @@ namespace FlowMy.Views.NodeControls
         {
             if (_activeSelectionGeometry == null) return true;
 
+            if (!_hasCachedSelectionMask || _cachedSelectionMask == null)
+            {
+                BuildSelectionMask();
+            }
+
             if (_hasCachedSelectionMask && _cachedSelectionMask != null)
             {
                 if (x >= _cachedSelectionStartX && x <= _cachedSelectionEndX &&
@@ -4225,7 +4236,7 @@ namespace FlowMy.Views.NodeControls
                 }
                 return false;
             }
-            return true;
+            return false;
         }
 
         private void BuildSelectionMask()
@@ -4241,7 +4252,13 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null) return;
 
-            var bounds = _activeSelectionGeometry.Bounds;
+            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            var scaledGeom = _activeSelectionGeometry.Clone();
+            scaledGeom.Transform = new ScaleTransform(scaleX, scaleY);
+
+            var outlinedGeom = scaledGeom.GetOutlinedPathGeometry();
+            var bounds = outlinedGeom.Bounds;
 
             _cachedSelectionStartX = Math.Max(0, (int)Math.Floor(bounds.Left));
             _cachedSelectionEndX = Math.Min(activeLayer.Width - 1, (int)Math.Ceiling(bounds.Right));
@@ -4260,7 +4277,7 @@ namespace FlowMy.Views.NodeControls
                 using (var dc = drawingVisual.RenderOpen())
                 {
                     dc.PushTransform(new TranslateTransform(-_cachedSelectionStartX, -_cachedSelectionStartY));
-                    dc.DrawGeometry(Brushes.White, null, _activeSelectionGeometry);
+                    dc.DrawGeometry(Brushes.White, null, outlinedGeom);
                     dc.Pop();
                 }
 
