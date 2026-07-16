@@ -3072,85 +3072,152 @@ namespace FlowMy.Views.Overlays
             UpdatePreviewImage();
         }
 
+        private bool _promptHidden = false;
+
+        private void BtnTogglePrompt_Click(object sender, RoutedEventArgs e)
+        {
+            _promptHidden = !_promptHidden;
+            BtnTogglePrompt.Content = _promptHidden ? "Hiện Prompt" : "Ẩn Prompt";
+
+            // Update WebView Prompt Layout
+            if (RowWvBrowser != null && RowWvGap != null && RowWvPrompt != null && GridPromptWvContainer != null)
+            {
+                if (_promptHidden)
+                {
+                    RowWvBrowser.Height = new GridLength(1, GridUnitType.Star);
+                    RowWvGap.Height = new GridLength(0);
+                    RowWvPrompt.Height = new GridLength(0);
+                    GridPromptWvContainer.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    RowWvBrowser.Height = new GridLength(4, GridUnitType.Star);
+                    RowWvGap.Height = new GridLength(8);
+                    RowWvPrompt.Height = new GridLength(1, GridUnitType.Star);
+                    GridPromptWvContainer.Visibility = Visibility.Visible;
+                }
+            }
+
+            // Update WebBrowser Prompt Layout
+            if (RowWebBrowser != null && RowWebGap != null && RowWebPrompt != null && GridPromptWebContainer != null)
+            {
+                if (_promptHidden)
+                {
+                    RowWebBrowser.Height = new GridLength(1, GridUnitType.Star);
+                    RowWebGap.Height = new GridLength(0);
+                    RowWebPrompt.Height = new GridLength(0);
+                    GridPromptWebContainer.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    RowWebBrowser.Height = new GridLength(4, GridUnitType.Star);
+                    RowWebGap.Height = new GridLength(8);
+                    RowWebPrompt.Height = new GridLength(1, GridUnitType.Star);
+                    GridPromptWebContainer.Visibility = Visibility.Visible;
+                }
+            }
+        }
+
         private void BtnApply_Click(object sender, RoutedEventArgs e)
         {
-            var destinationParent = _activeLayer.ParentLayer ?? _activeLayer;
-            BitmapSource sourceImg = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
-            var bounds = GetLayerContentBounds(sourceImg);
-            if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
-            {
-                bounds = new Rect(0, 0, sourceImg.PixelWidth, sourceImg.PixelHeight);
-            }
+            // First, make sure the current active layer's state is saved from UI
+            SaveActiveLayerState();
 
-            double? targetRatio = null;
-            int? customW = null;
-            int? customH = null;
+            bool atLeastOneApplied = false;
 
-            int selectedIndex = CmbAspectRatio.SelectedIndex;
-            if (selectedIndex == 6)
+            foreach (var layer in _selectedLayers)
             {
-                customW = int.TryParse(TxtCustomWidth.Text, out var w) ? w : 512;
-                customH = int.TryParse(TxtCustomHeight.Text, out var h) ? h : 512;
-            }
-            else if (selectedIndex > 0)
-            {
-                targetRatio = selectedIndex switch
+                if (!_layerStates.TryGetValue(layer, out var state)) continue;
+
+                // Check if this layer has any secondary images in its state
+                int countSlotsWithImages = state.SecondaryImages.Count(s => s.HasImage);
+                if (countSlotsWithImages == 0) continue;
+
+                var destinationParent = layer.ParentLayer ?? layer;
+                BitmapSource sourceImg = layer.OriginalTransformBitmap ?? layer.Bitmap;
+                var bounds = GetLayerContentBounds(sourceImg);
+                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
                 {
-                    1 => 16.0 / 9.0,
-                    2 => 4.0 / 3.0,
-                    3 => 1.0,
-                    4 => 3.0 / 4.0,
-                    5 => 9.0 / 16.0,
-                    _ => 1.0
-                };
-            }
+                    bounds = new Rect(0, 0, sourceImg.PixelWidth, sourceImg.PixelHeight);
+                }
 
-            EditorLayer? activeChild = null;
-            int countAdded = 0;
+                double? targetRatio = null;
+                int? customW = null;
+                int? customH = null;
 
-            for (int i = 0; i < 4; i++)
-            {
-                var slot = _secondaryImages[i];
-                if (slot.HasImage)
+                int selectedIndex = state.AspectRatioIndex;
+                if (selectedIndex == 6)
                 {
-                    var childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
-                    childLayer.ParentLayer = destinationParent;
-                    destinationParent.ChildLayers.Add(childLayer);
-
-                    ProcessAndApplyAiImage(childLayer, slot.Bitmap, _activeLayer, bounds, targetRatio, customW, customH);
-                    countAdded++;
-
-                    if (slot.IsSelected)
+                    customW = int.TryParse(state.CustomWidth, out var w) ? w : 512;
+                    customH = int.TryParse(state.CustomHeight, out var h) ? h : 512;
+                }
+                else if (selectedIndex > 0)
+                {
+                    targetRatio = selectedIndex switch
                     {
-                        activeChild = childLayer;
+                        1 => 16.0 / 9.0,
+                        2 => 4.0 / 3.0,
+                        3 => 1.0,
+                        4 => 3.0 / 4.0,
+                        5 => 9.0 / 16.0,
+                        _ => 1.0
+                    };
+                }
+
+                EditorLayer? activeChild = null;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    var slot = state.SecondaryImages[i];
+                    if (slot.HasImage)
+                    {
+                        var childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
+                        childLayer.ParentLayer = destinationParent;
+                        destinationParent.ChildLayers.Add(childLayer);
+
+                        ProcessAndApplyAiImage(childLayer, slot.Bitmap, layer, bounds, targetRatio, customW, customH);
+
+                        if (slot.IsSelected)
+                        {
+                            activeChild = childLayer;
+                        }
                     }
                 }
-            }
 
-            if (countAdded > 0)
-            {
-                destinationParent.ActiveChildLayer = activeChild ?? destinationParent.ChildLayers.Last();
-                _doc.ActiveLayer = destinationParent.ActiveChildLayer;
-
-                foreach (var child in destinationParent.ChildLayers)
+                if (destinationParent.ChildLayers.Count > 0)
                 {
-                    child.IsActive = (child == destinationParent.ActiveChildLayer);
-                    child.IsSelected = (child == destinationParent.ActiveChildLayer);
+                    destinationParent.ActiveChildLayer = activeChild ?? destinationParent.ChildLayers.Last();
+                    
+                    // Set radio indicators
+                    foreach (var child in destinationParent.ChildLayers)
+                    {
+                        child.IsActive = (child == destinationParent.ActiveChildLayer);
+                        child.IsSelected = (child == destinationParent.ActiveChildLayer);
+                    }
+                    destinationParent.IsActive = false;
+                    destinationParent.IsSelected = false;
+                    
+                    // Update active document focus to the new active child
+                    if (layer == _activeLayer)
+                    {
+                        _doc.ActiveLayer = destinationParent.ActiveChildLayer;
+                    }
+                    
+                    destinationParent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
+                    atLeastOneApplied = true;
                 }
-                destinationParent.IsActive = false;
-                destinationParent.IsSelected = false;
             }
 
-            // Notify parent HasChildren
-            destinationParent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
-
-            // Refresh panel
-            var ownerRef = this.Owner;
-            if (ownerRef != null)
+            if (atLeastOneApplied)
             {
-                var panel = FindVisualChild<ImageEditorPanel>(ownerRef);
-                panel?.RefreshLayersList();
-                panel?.OnDocumentModified();
+                // Refresh panel
+                var ownerRef = this.Owner;
+                if (ownerRef != null)
+                {
+                    var panel = FindVisualChild<ImageEditorPanel>(ownerRef);
+                    panel?.RefreshLayersList();
+                    panel?.OnDocumentModified();
+                }
             }
 
             DialogResult = true;

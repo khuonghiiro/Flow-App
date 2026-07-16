@@ -507,12 +507,16 @@
                         <Grid Grid.Row="3" Margin="0,6,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="6"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Button x:Name="BtnAddSecondaryExpanded" Grid.Column="0" Content="＋ Thêm ảnh phụ" Height="28" Margin="0"
                                     Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
-                            <Button x:Name="BtnToggleSendModeExpanded" Grid.Column="2" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
+                            <Button x:Name="BtnTogglePrompt" Grid.Column="2" Content="Ẩn Prompt" Width="80" Height="28" Margin="0"
+                                    Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnTogglePrompt_Click"/>
+                            <Button x:Name="BtnToggleSendModeExpanded" Grid.Column="4" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
                                     Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>
                         </Grid>
                     </Grid>
@@ -586,9 +590,9 @@
                         <!-- Tab 2 content: WebView2 (UI động layout) -->
                         <Grid x:Name="TabContentWebView" Visibility="Collapsed">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="4*"/>
-                                <RowDefinition Height="8"/>
-                                <RowDefinition Height="1*"/>
+                                <RowDefinition x:Name="RowWvBrowser" Height="4*"/>
+                                <RowDefinition x:Name="RowWvGap" Height="8"/>
+                                <RowDefinition x:Name="RowWvPrompt" Height="1*"/>
                             </Grid.RowDefinitions>
 
                             <Border Grid.Row="0" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
@@ -603,7 +607,7 @@
                                 </Grid>
                             </Border>
 
-                            <Grid Grid.Row="2">
+                            <Grid Grid.Row="2" x:Name="GridPromptWvContainer">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
@@ -653,9 +657,9 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/> <!-- Row 0: Web Tab Bar (Chrome style) -->
                                 <RowDefinition Height="Auto"/> <!-- Row 1: Address/Navigation Bar -->
-                                <RowDefinition Height="4*"/>   <!-- Row 2: WebView2 Container (Single or splits) -->
-                                <RowDefinition Height="8"/>    <!-- Row 3: Gap -->
-                                <RowDefinition Height="1*"/>   <!-- Row 4: Compact Prompt -->
+                                <RowDefinition x:Name="RowWebBrowser" Height="4*"/>   <!-- Row 2: WebView2 Container (Single or splits) -->
+                                <RowDefinition x:Name="RowWebGap" Height="8"/>    <!-- Row 3: Gap -->
+                                <RowDefinition x:Name="RowWebPrompt" Height="1*"/>   <!-- Row 4: Compact Prompt -->
                             </Grid.RowDefinitions>
 
                             <!-- Row 0: Web Tab Bar (Chrome Style) -->
@@ -798,7 +802,7 @@
                             </Border>
 
                             <!-- Compact Prompt -->
-                            <Grid Grid.Row="4">
+                            <Grid Grid.Row="4" x:Name="GridPromptWebContainer">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
