@@ -43,8 +43,6 @@ namespace FlowMy.Views.NodeControls
         private int _prevSegmentMaxY;
         private readonly List<Point> _strokePoints = new();
         private Point _lastDrawingPixelPoint;
-        private byte[]? _oldPixelsForUndo;
-        private byte[]? _cachedOldPixelsForUndo;
         private BrushPreset _currentBrushPreset = BrushPreset.RoundHard;
         private readonly Random _brushRng = new();
         private int _strokeMinX;

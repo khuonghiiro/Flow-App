@@ -414,9 +414,11 @@ namespace FlowMy.Views.NodeControls
                     _brushOverlayBitmap = new WriteableBitmap(overlayW, overlayH, 96, 96, PixelFormats.Pbgra32, null);
                     _brushSessionLayer = activeLayer;
                     
-                    // Lưu undo pixels cho toàn bộ layer (cần kích thước của layer cho undo)
-                    _oldPixelsForUndo = new byte[pixelSize];
-                    activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
+                    // Build and cache plates for fast CPU composite
+                    _node.EditorDoc.BuildMovePlates(activeLayer, out var bgPlate, out var fgPlate);
+                    _node.EditorDoc.CachedBgPlate = bgPlate;
+                    _node.EditorDoc.CachedFgPlate = fgPlate;
+                    _node.EditorDoc.IsDrawingSessionActive = true;
 
                     _strokeMinX = overlayW - 1;
                     _strokeMaxX = 0;
@@ -561,9 +563,11 @@ namespace FlowMy.Views.NodeControls
                     _brushOverlayBitmap = new WriteableBitmap(overlayW, overlayH, 96, 96, PixelFormats.Pbgra32, null);
                     _brushSessionLayer = activeLayer;
                     
-                    // Lưu undo pixels cho toàn bộ layer (cần kích thước của layer cho undo)
-                    _oldPixelsForUndo = new byte[pixelSize];
-                    activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
+                    // Build and cache plates for fast CPU composite
+                    _node.EditorDoc.BuildMovePlates(activeLayer, out var bgPlate, out var fgPlate);
+                    _node.EditorDoc.CachedBgPlate = bgPlate;
+                    _node.EditorDoc.CachedFgPlate = fgPlate;
+                    _node.EditorDoc.IsDrawingSessionActive = true;
 
                     _strokeMinX = overlayW - 1;
                     _strokeMaxX = 0;
@@ -1012,7 +1016,7 @@ namespace FlowMy.Views.NodeControls
             _isDrawingPixels = false;
             MainScrollViewer.ReleaseMouseCapture();
 
-            if (activeLayer == null || _oldPixelsForUndo == null) return;
+            if (activeLayer == null) return;
 
             if (tool == "Brush")
             {
@@ -1020,20 +1024,75 @@ namespace FlowMy.Views.NodeControls
                 {
                     int layerW = activeLayer.Width;
                     int layerH = activeLayer.Height;
-                    int stride = layerW * 4;
-                    int pixelSize = stride * layerH;
-
                     int overlayW = _brushOverlayBitmap.PixelWidth;
                     int overlayH = _brushOverlayBitmap.PixelHeight;
                     int clipOffsetX = 0;
                     int clipOffsetY = 0;
 
+                    // 1. Calculate dirty rect region with absolute safety against exception throwing from Math.Clamp
+                    int minX = Math.Clamp(_strokeMinX, 0, layerW - 1);
+                    int maxX = Math.Clamp(_strokeMaxX, 0, layerW - 1);
+                    int minY = Math.Clamp(_strokeMinY, 0, layerH - 1);
+                    int maxY = Math.Clamp(_strokeMaxY, 0, layerH - 1);
+
+                    if (maxX < minX)
+                    {
+                        var temp = minX;
+                        minX = maxX;
+                        maxX = temp;
+                    }
+                    if (maxY < minY)
+                    {
+                        var temp = minY;
+                        minY = maxY;
+                        maxY = temp;
+                    }
+
+                    int dirtyX = minX;
+                    int dirtyY = minY;
+                    int dirtyW = maxX - minX + 1;
+                    int dirtyH = maxY - minY + 1;
+
+                    dirtyW = Math.Max(1, Math.Min(dirtyW, layerW - dirtyX));
+                    dirtyH = Math.Max(1, Math.Min(dirtyH, layerH - dirtyY));
+                    var dirtyRect = new Int32Rect(dirtyX, dirtyY, dirtyW, dirtyH);
+
+                    int regionStride = dirtyW * 4;
+                    byte[] oldRegionPixels = new byte[regionStride * dirtyH];
+                    byte[] newRegionPixels = new byte[regionStride * dirtyH];
+
+                    // 2. Copy old pixels (WITHOUT lock to prevent deadlocking CopyPixels on UI thread)
+                    activeLayer.Bitmap.CopyPixels(dirtyRect, oldRegionPixels, regionStride, 0);
+
+                    // 3. Draw overlay onto active layer with geometry clipping (WITH lock only during drawing)
                     activeLayer.Bitmap.Lock();
                     try
                     {
                         var layerInfo = new SkiaSharp.SKImageInfo(layerW, layerH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
                         using (var surface = SkiaSharp.SKSurface.Create(layerInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
                         {
+                            var canvas = surface.Canvas;
+                            if (activeLayer.ContentGeometry != null)
+                            {
+                                using (var clipPath = ConvertGeometryToSKPath(activeLayer.ContentGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                                {
+                                    if (clipPath != null)
+                                    {
+                                        canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                                    }
+                                }
+                            }
+                            else if (_activeSelectionGeometry != null)
+                            {
+                                using (var clipPath = ConvertGeometryToSKPath(_activeSelectionGeometry, -activeLayer.OffsetX, -activeLayer.OffsetY))
+                                {
+                                    if (clipPath != null)
+                                    {
+                                        canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                                    }
+                                }
+                            }
+
                             _brushOverlayBitmap.Lock();
                             try
                             {
@@ -1044,7 +1103,7 @@ namespace FlowMy.Views.NodeControls
                                     using (var paint = new SkiaSharp.SKPaint())
                                     {
                                         paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
-                                        surface.Canvas.DrawBitmap(overlaySKBitmap, clipOffsetX, clipOffsetY, paint);
+                                        canvas.DrawBitmap(overlaySKBitmap, clipOffsetX, clipOffsetY, paint);
                                     }
                                 }
                             }
@@ -1054,47 +1113,25 @@ namespace FlowMy.Views.NodeControls
                             }
                         }
 
-                        // Dirty rect: local coordinates of activeLayer bitmap
-                        int dirtyX = _strokeMinX;
-                        int dirtyY = _strokeMinY;
-                        int dirtyW = _strokeMaxX - _strokeMinX + 1;
-                        int dirtyH = _strokeMaxY - _strokeMinY + 1;
-                        if (dirtyW > 0 && dirtyH > 0)
-                        {
-                            dirtyX = Math.Max(0, Math.Min(dirtyX, layerW - 1));
-                            dirtyY = Math.Max(0, Math.Min(dirtyY, layerH - 1));
-                            dirtyW = Math.Min(dirtyW, layerW - dirtyX);
-                            dirtyH = Math.Min(dirtyH, layerH - dirtyY);
-                            if (dirtyW > 0 && dirtyH > 0)
-                                activeLayer.Bitmap.AddDirtyRect(new Int32Rect(dirtyX, dirtyY, dirtyW, dirtyH));
-                        }
+                        // 4. Mark dirty rect
+                        activeLayer.Bitmap.AddDirtyRect(dirtyRect);
                     }
                     finally
                     {
                         activeLayer.Bitmap.Unlock();
                     }
 
-                    // Region-based undo: local layer coords
-                    int strokeDirtyW = _strokeMaxX - _strokeMinX + 1;
-                    int strokeDirtyH = _strokeMaxY - _strokeMinY + 1;
-                    int hintX = Math.Max(0, _strokeMinX);
-                    int hintY = Math.Max(0, _strokeMinY);
-                    var strokeHint = new Int32Rect(hintX, hintY, Math.Max(1, strokeDirtyW), Math.Max(1, strokeDirtyH));
+                    // 5. Copy new pixels (WITHOUT lock)
+                    activeLayer.Bitmap.CopyPixels(dirtyRect, newRegionPixels, regionStride, 0);
 
-                    var finalNewPixels = new byte[pixelSize];
-                    activeLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
-
-                    var cmd = PixelRegionEditCommand.FromFullPixels(activeLayer, _oldPixelsForUndo, finalNewPixels, strokeHint);
+                    // 6. Create region-based undo command
+                    var cmd = new PixelRegionEditCommand(activeLayer, dirtyRect, oldRegionPixels, newRegionPixels);
                     _node.EditorDoc.History.Execute(cmd);
 
-                    _oldPixelsForUndo = null;
                     _brushOverlayBitmap = null;
                     _brushSessionLayer = null;
                     _localSelectionClipPath?.Dispose();
                     _localSelectionClipPath = null;
-                    // NOTE: Don't hide ActiveLayerDrawingOverlay here — OnEditorDocumentModified() will
-                    // hide it atomically AFTER the composite renders, preventing the 1-frame flicker
-                    // that occurred when the overlay disappeared before the merged layer was rendered.
 
                     if (_currentStrokePaint != null)
                     {
@@ -1119,7 +1156,49 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
+                int layerW = activeLayer.Width;
+                int layerH = activeLayer.Height;
+
+                // Calculate dirty rect region with absolute safety against exception throwing from Math.Clamp
+                int minX = Math.Clamp(_strokeMinX, 0, layerW - 1);
+                int maxX = Math.Clamp(_strokeMaxX, 0, layerW - 1);
+                int minY = Math.Clamp(_strokeMinY, 0, layerH - 1);
+                int maxY = Math.Clamp(_strokeMaxY, 0, layerH - 1);
+
+                if (maxX < minX)
+                {
+                    var temp = minX;
+                    minX = maxX;
+                    maxX = temp;
+                }
+                if (maxY < minY)
+                {
+                    var temp = minY;
+                    minY = maxY;
+                    maxY = temp;
+                }
+
+                int dirtyX = minX;
+                int dirtyY = minY;
+                int dirtyW = maxX - minX + 1;
+                int dirtyH = maxY - minY + 1;
+
+                dirtyW = Math.Max(1, Math.Min(dirtyW, layerW - dirtyX));
+                dirtyH = Math.Max(1, Math.Min(dirtyH, layerH - dirtyY));
+                var dirtyRect = new Int32Rect(dirtyX, dirtyY, dirtyW, dirtyH);
+
+                int regionStride = dirtyW * 4;
+                byte[] oldRegionPixels = new byte[regionStride * dirtyH];
+                byte[] newRegionPixels = new byte[regionStride * dirtyH];
+
+                // 1. Copy old pixels (WITHOUT lock to prevent deadlocking CopyPixels on UI thread)
+                activeLayer.Bitmap.CopyPixels(dirtyRect, oldRegionPixels, regionStride, 0);
+
+                // 2. Perform Eraser rendering onto layer
                 RenderEraserStrokeToLayer(activeLayer);
+
+                // 3. Copy new pixels (WITHOUT lock)
+                activeLayer.Bitmap.CopyPixels(dirtyRect, newRegionPixels, regionStride, 0);
 
                 ClearBrushOverlay();
                 ActiveLayerDrawingOverlay.Source = null;
@@ -1132,20 +1211,9 @@ namespace FlowMy.Views.NodeControls
                 _eraserLockedSurface = null;
                 _eraserBitmapLocked = false;
 
-                int strideFinal = activeLayer.Width * 4;
-                int pixelSize = strideFinal * activeLayer.Height;
-
-                // Region-based undo: chỉ lưu dirty region
-                int dirtyW = _strokeMaxX - _strokeMinX + 1;
-                int dirtyH = _strokeMaxY - _strokeMinY + 1;
-                var strokeHint = new Int32Rect(_strokeMinX, _strokeMinY, Math.Max(1, dirtyW), Math.Max(1, dirtyH));
-
-                var finalNewPixels = new byte[pixelSize];
-                activeLayer.Bitmap.CopyPixels(finalNewPixels, strideFinal, 0);
-
-                var cmd = PixelRegionEditCommand.FromFullPixels(activeLayer, _oldPixelsForUndo, finalNewPixels, strokeHint);
+                // 4. Create and execute command
+                var cmd = new PixelRegionEditCommand(activeLayer, dirtyRect, oldRegionPixels, newRegionPixels);
                 _node.EditorDoc.History.Execute(cmd);
-                _oldPixelsForUndo = null;
                 _strokePoints.Clear();
 
                 // Dispose cached eraser paint after stroke ends

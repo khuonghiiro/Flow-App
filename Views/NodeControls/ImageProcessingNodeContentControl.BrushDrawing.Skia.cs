@@ -629,7 +629,6 @@ namespace FlowMy.Views.NodeControls
 
             if (_sessionPaths.Count == 0 && _sessionStrokes.Count == 0)
             {
-                _oldPixelsForUndo = null;
                 _brushOverlayBitmap = null;
                 ActiveLayerDrawingOverlay.Source = null;
                 ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
@@ -858,9 +857,12 @@ namespace FlowMy.Views.NodeControls
                     TransformGroup tg = new TransformGroup();
                     if (geometry.Transform != null) tg.Children.Add(geometry.Transform);
                     if (translateX != 0 || translateY != 0) tg.Children.Add(new TranslateTransform(translateX, translateY));
-                    bakedGeom = Geometry.Combine(geometry, Geometry.Empty, GeometryCombineMode.Union, tg);
+                    
+                    var cloned = geometry.Clone();
+                    cloned.Transform = tg;
+                    bakedGeom = cloned.GetFlattenedPathGeometry();
                 }
-                var flatGeom = PathGeometry.CreateFromGeometry(bakedGeom);
+                var flatGeom = bakedGeom as PathGeometry ?? PathGeometry.CreateFromGeometry(bakedGeom);
                 var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
                 {

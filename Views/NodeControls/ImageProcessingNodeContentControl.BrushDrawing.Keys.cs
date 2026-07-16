@@ -508,7 +508,7 @@ namespace FlowMy.Views.NodeControls
 
         public void CommitBrushDrawingSession()
         {
-            if (_oldPixelsForUndo == null || _brushOverlayBitmap == null)
+            if (_brushOverlayBitmap == null)
             {
                 return;
             }
@@ -521,10 +521,45 @@ namespace FlowMy.Views.NodeControls
             int overlayW = _brushOverlayBitmap.PixelWidth;
             int overlayH = _brushOverlayBitmap.PixelHeight;
 
-            // Offset là 0 vì overlay và targetLayer cùng kích thước và hệ toạ độ local
             int clipOffsetX = 0;
             int clipOffsetY = 0;
             
+            // 1. Calculate dirty rect region with absolute safety against exception throwing from Math.Clamp
+            int minX = Math.Clamp(_strokeMinX, 0, layerW - 1);
+            int maxX = Math.Clamp(_strokeMaxX, 0, layerW - 1);
+            int minY = Math.Clamp(_strokeMinY, 0, layerH - 1);
+            int maxY = Math.Clamp(_strokeMaxY, 0, layerH - 1);
+
+            if (maxX < minX)
+            {
+                var temp = minX;
+                minX = maxX;
+                maxX = temp;
+            }
+            if (maxY < minY)
+            {
+                var temp = minY;
+                minY = maxY;
+                maxY = temp;
+            }
+
+            int dirtyX = minX;
+            int dirtyY = minY;
+            int dirtyW = maxX - minX + 1;
+            int dirtyH = maxY - minY + 1;
+
+            dirtyW = Math.Max(1, Math.Min(dirtyW, layerW - dirtyX));
+            dirtyH = Math.Max(1, Math.Min(dirtyH, layerH - dirtyY));
+            var dirtyRect = new Int32Rect(dirtyX, dirtyY, dirtyW, dirtyH);
+
+            int regionStride = dirtyW * 4;
+            byte[] oldRegionPixels = new byte[regionStride * dirtyH];
+            byte[] newRegionPixels = new byte[regionStride * dirtyH];
+
+            // 2. Copy old pixels (WITHOUT lock to prevent deadlocking CopyPixels on UI thread)
+            targetLayer.Bitmap.CopyPixels(dirtyRect, oldRegionPixels, regionStride, 0);
+
+            // 3. Draw overlay onto layer (WITH lock only during drawing)
             targetLayer.Bitmap.Lock();
             try
             {
@@ -535,6 +570,16 @@ namespace FlowMy.Views.NodeControls
                     if (targetLayer.ContentGeometry != null)
                     {
                         using (var clipPath = ConvertGeometryToSKPath(targetLayer.ContentGeometry, -targetLayer.OffsetX, -targetLayer.OffsetY))
+                        {
+                            if (clipPath != null)
+                            {
+                                canvas.ClipPath(clipPath, SkiaSharp.SKClipOperation.Intersect, true);
+                            }
+                        }
+                    }
+                    else if (_activeSelectionGeometry != null)
+                    {
+                        using (var clipPath = ConvertGeometryToSKPath(_activeSelectionGeometry, -targetLayer.OffsetX, -targetLayer.OffsetY))
                         {
                             if (clipPath != null)
                             {
@@ -554,7 +599,6 @@ namespace FlowMy.Views.NodeControls
                             using (var paint = new SkiaSharp.SKPaint())
                             {
                                 paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
-                                // Vẽ overlay tại (0,0) trên layer canvas
                                 canvas.DrawBitmap(overlaySKBitmap, clipOffsetX, clipOffsetY, paint);
                             }
                         }
@@ -565,33 +609,19 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
                 
-                // Dirty rect: dùng directly local coords
-                int dirtyX = _strokeMinX;
-                int dirtyY = _strokeMinY;
-                int dirtyW = _strokeMaxX - _strokeMinX + 1;
-                int dirtyH = _strokeMaxY - _strokeMinY + 1;
-                if (dirtyW > 0 && dirtyH > 0)
-                {
-                    // Clamp dirty rect to layer bounds
-                    dirtyX = Math.Max(0, Math.Min(dirtyX, layerW - 1));
-                    dirtyY = Math.Max(0, Math.Min(dirtyY, layerH - 1));
-                    dirtyW = Math.Min(dirtyW, layerW - dirtyX);
-                    dirtyH = Math.Min(dirtyH, layerH - dirtyY);
-                    if (dirtyW > 0 && dirtyH > 0)
-                        targetLayer.Bitmap.AddDirtyRect(new Int32Rect(dirtyX, dirtyY, dirtyW, dirtyH));
-                }
+                // 4. Mark dirty
+                targetLayer.Bitmap.AddDirtyRect(dirtyRect);
             }
             finally
             {
                 targetLayer.Bitmap.Unlock();
             }
 
-            int stride = layerW * 4;
-            int pixelSize = stride * layerH;
-            var finalNewPixels = new byte[pixelSize];
-            targetLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
+            // 5. Copy new pixels (WITHOUT lock)
+            targetLayer.Bitmap.CopyPixels(dirtyRect, newRegionPixels, regionStride, 0);
 
-            var cmd = new PixelEditCommand(targetLayer, _oldPixelsForUndo, finalNewPixels);
+            // 6. Execute region command
+            var cmd = new PixelRegionEditCommand(targetLayer, dirtyRect, oldRegionPixels, newRegionPixels);
             _node.EditorDoc.History.Execute(cmd);
 
             foreach (var path in _sessionPaths)
@@ -607,11 +637,8 @@ namespace FlowMy.Views.NodeControls
                 _cachedBrushTip.Dispose();
                 _cachedBrushTip = null;
             }
-            _oldPixelsForUndo = null;
             _brushOverlayBitmap = null;
             _brushSessionLayer = null;
-            // NOTE: Don't hide overlay here — let OnEditorDocumentModified() hide it after composite renders
-            // to avoid 1-frame flicker.
 
             FlushCompositeAndSync();
         }
@@ -642,7 +669,6 @@ namespace FlowMy.Views.NodeControls
                 _cachedBrushTip.Dispose();
                 _cachedBrushTip = null;
             }
-            _oldPixelsForUndo = null;
             _brushOverlayBitmap = null;
             _brushSessionLayer = null;
 

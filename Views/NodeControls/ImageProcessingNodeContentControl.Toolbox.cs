@@ -145,6 +145,13 @@ namespace FlowMy.Views.NodeControls
                     // Hide active layer drawing overlay seamlessly after composite rendering has completed
                     ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
                     ActiveLayerDrawingOverlay.Source = null;
+
+                    // Clean up and dispose cached plates for brush/eraser drawing session
+                    _node.EditorDoc.IsDrawingSessionActive = false;
+                    _node.EditorDoc.CachedBgPlate?.Dispose();
+                    _node.EditorDoc.CachedBgPlate = null;
+                    _node.EditorDoc.CachedFgPlate?.Dispose();
+                    _node.EditorDoc.CachedFgPlate = null;
                 }
 
                 try
