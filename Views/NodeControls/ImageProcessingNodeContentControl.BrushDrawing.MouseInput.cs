@@ -1,0 +1,1187 @@
+// ========================================================================================
+// IMPORTANT FOR AI CODING ASSISTANTS & DEVELOPERS:
+// DO NOT ALLOW ANY FILE IN THIS COMPONENT TO EXCEED ~1500 LINES OF CODE!
+// To maintain readability, ease of testing, and modularity:
+// - If a file grows larger than ~1500 lines, you MUST split/separate the logic into a new
+//   partial class file (e.g., ImageProcessingNodeContentControl.<FeatureName>.cs).
+// - Always place distinct features, tools, or event groupings in their respective files.
+// - Ensure comments and documentation remain clean and structured.
+// ========================================================================================
+using FlowMy.Controls;
+using FlowMy.Converters;
+using FlowMy.Helpers;
+using FlowMy.Models;
+using FlowMy.Models.Nodes;
+using FlowMy.Services.Interaction;
+using FlowMy.Models.ImageEditor;
+using FlowMy.Models.ImageEditor.Commands;
+using FlowMy.Services.Rendering;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Shapes;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using System.IO;
+using System;
+using System.Linq;
+using System.Collections.Generic;
+
+namespace FlowMy.Views.NodeControls
+{
+    public partial class ImageProcessingNodeContentControl : UserControl
+    {
+        private void HandleManualEditorMouseDown(MouseButtonEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
+
+            string tool = EditorPanel.ActiveToolName;
+            var clickPos = e.GetPosition(MainImage);
+
+            if (tool != "Move" && tool != "Transform")
+            {
+                if (activeLayer.OriginalTransformBitmap != null)
+                {
+                    activeLayer.OriginalTransformBitmap = null;
+                    activeLayer.ContentBounds = Rect.Empty;
+                }
+            }
+
+            if (tool != "Text" && TextMoveContainer != null && TextMoveContainer.Visibility == Visibility.Visible)
+            {
+                CommitActiveText();
+            }
+
+            if (clickPos.X < 0 || clickPos.X > MainImage.ActualWidth ||
+                clickPos.Y < 0 || clickPos.Y > MainImage.ActualHeight)
+                return;
+
+            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            int px = (int)(clickPos.X * scaleX);
+            int py = (int)(clickPos.Y * scaleY);
+
+            if (tool == "Move")
+            {
+                CommitKeyMoveSession();
+
+                int visibleLayersCount = _node.EditorDoc.Layers.Count(l => l.IsVisible);
+                bool canGrab = false;
+
+                if (visibleLayersCount >= 2)
+                {
+                    canGrab = true;
+                }
+                else
+                {
+                    // Check if clicked inside selection
+                    if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
+                    {
+                        if (px >= _cachedSelectionStartX && px <= _cachedSelectionEndX &&
+                            py >= _cachedSelectionStartY && py <= _cachedSelectionEndY)
+                        {
+                            canGrab = _cachedSelectionMask[px - _cachedSelectionStartX, py - _cachedSelectionStartY];
+                        }
+                    }
+
+                    // Or if clicked on a non-transparent pixel of the active layer
+                    if (!canGrab)
+                    {
+                        if (activeLayer.IsTextLayer)
+                        {
+                            if (px >= activeLayer.TextX && px <= activeLayer.TextX + activeLayer.TextWidth &&
+                                py >= activeLayer.TextY && py <= activeLayer.TextY + activeLayer.TextHeight)
+                            {
+                                canGrab = true;
+                            }
+                        }
+                        else
+                        {
+                            if (activeLayer.OriginalTransformBitmap != null && !activeLayer.ContentBounds.IsEmpty)
+                            {
+                                var bounds = activeLayer.ContentBounds;
+                                if (px >= bounds.Left && px <= bounds.Right &&
+                                    py >= bounds.Top && py <= bounds.Bottom)
+                                {
+                                    int localX = (int)(px - bounds.Left);
+                                    int localY = (int)(py - bounds.Top);
+                                    if (localX >= 0 && localX < activeLayer.OriginalTransformBitmap.PixelWidth &&
+                                        localY >= 0 && localY < activeLayer.OriginalTransformBitmap.PixelHeight)
+                                    {
+                                        byte[] singlePixel = new byte[4];
+                                        activeLayer.OriginalTransformBitmap.CopyPixels(new Int32Rect(localX, localY, 1, 1), singlePixel, 4, 0);
+                                        if (singlePixel[3] > 0)
+                                        {
+                                            canGrab = true;
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                int stride = activeLayer.Width * 4;
+                                byte[] singlePixel = new byte[4];
+                                activeLayer.Bitmap.CopyPixels(new Int32Rect(px, py, 1, 1), singlePixel, 4, 0);
+                                if (singlePixel[3] > 0) // Alpha > 0
+                                {
+                                    canGrab = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!canGrab) return; // ignore click
+
+                _isMovingLayer = true;
+                _movingLayer = activeLayer;
+                _moveStartMousePos = clickPos;
+
+
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int strideValue = w * 4;
+
+                if (_activeSelectionGeometry != null && _hasCachedSelectionMask && _cachedSelectionMask != null)
+                {
+                    _moveInitialFullPixels = new byte[strideValue * h];
+                    activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
+                    _moveInitialGeometry = _activeSelectionGeometry.Clone();
+                    activeLayer.TempSelectionGeometry = _activeSelectionGeometry.Clone();
+                    
+                    // Convert _moveInitialGeometry to SKPath once
+                    try
+                    {
+                        var flatGeom = PathGeometry.CreateFromGeometry(_moveInitialGeometry);
+                        var svgData = flatGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        if (svgData.StartsWith("F0") || svgData.StartsWith("F1"))
+                        {
+                            svgData = svgData.Substring(2).Trim();
+                        }
+                        activeLayer.TempSelectionPath = SkiaSharp.SKPath.ParseSvgPathData(svgData);
+                    }
+                    catch { }
+
+                    activeLayer.TempMoveDx = 0;
+                    activeLayer.TempMoveDy = 0;
+                    _accumulatedMoveDx = 0;
+                    _accumulatedMoveDy = 0;
+                }
+                else
+                {
+                    _moveInitialGeometry = null;
+                    activeLayer.TempSelectionGeometry = null;
+
+                    if (activeLayer.OriginalTransformBitmap == null)
+                    {
+
+                        var bounds = GetLayerContentBounds(activeLayer.Bitmap);
+
+                        if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+                        {
+                            bounds = new Rect(0, 0, w, h);
+                        }
+
+                        int startX = (int)bounds.Left;
+                        int startY = (int)bounds.Top;
+                        int bw = (int)bounds.Width;
+                        int bh = (int)bounds.Height;
+
+                        int tightStride = bw * 4;
+                        byte[] tightPixels = new byte[tightStride * bh];
+
+
+                        // CopyPixels là read-only — KHÔNG cần Lock/Unlock (Lock gây deadlock với WPF render thread)
+                        activeLayer.Bitmap.CopyPixels(new Int32Rect(startX, startY, bw, bh), tightPixels, tightStride, 0);
+
+
+                        var origBmp = new WriteableBitmap(bw, bh, 96, 96, PixelFormats.Bgra32, null);
+                        origBmp.WritePixels(new Int32Rect(0, 0, bw, bh), tightPixels, tightStride, 0);
+
+
+                        activeLayer.OriginalTransformBitmap = origBmp;
+                        activeLayer.ContentBounds = bounds;
+
+                    }
+
+                    if (_moveInitialFullPixels == null)
+                    {
+
+                        _moveInitialFullPixels = new byte[strideValue * h];
+                        activeLayer.Bitmap.CopyPixels(_moveInitialFullPixels, strideValue, 0);
+                        _accumulatedMoveDx = 0;
+                        _accumulatedMoveDy = 0;
+                    }
+                    activeLayer.TempMoveDx = _accumulatedMoveDx;
+                    activeLayer.TempMoveDy = _accumulatedMoveDy;
+                }
+
+
+                UpdatePolygonDisplay();
+
+                MainScrollViewer.CaptureMouse();
+
+                return;
+            }
+
+            if (tool == "Eyedropper")
+            {
+                PickColorWithEyedropper(px, py);
+                return;
+            }
+
+
+
+            if (tool == "Slice")
+            {
+                _isSelecting = true;
+                _selectionStartPoint = clickPos;
+                SelectionBoxRect.Visibility = Visibility.Visible;
+                SelectionBoxRect.Width = 0;
+                SelectionBoxRect.Height = 0;
+                SelectionBoxRect.Margin = new Thickness(clickPos.X, clickPos.Y, 0, 0);
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "SliceSelect")
+            {
+                HandleSliceSelectMouseDown(clickPos, px, py);
+                return;
+            }
+
+            if (tool == "Selection" || tool == "ObjectSelection")
+            {
+                if (_currentSelectionMode == SelectionMode.New)
+                {
+                    ClearSelection();
+                }
+                else
+                {
+                    _selectionPoints.Clear();
+                }
+                _isSelecting = true;
+                _selectionStartPoint = clickPos;
+                _selectionRect = null;
+                SelectionBoxRect.Visibility = Visibility.Visible;
+                SelectionBoxRect.Width = 0;
+                SelectionBoxRect.Height = 0;
+                SelectionBoxRect.Margin = new Thickness(clickPos.X, clickPos.Y, 0, 0);
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "MagicWand")
+            {
+                RunMagicWandSelection(px, py);
+                return;
+            }
+
+            if (tool == "QuickSelection")
+            {
+                double radius = EditorPanel.BrushSize / 2.0;
+                StartQuickSelection(px, py, radius);
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "Lasso")
+            {
+                if (_currentSelectionMode == SelectionMode.New)
+                {
+                    ClearSelection();
+                }
+                else
+                {
+                    _selectionPoints.Clear();
+                }
+                _isSelecting = true;
+                _selectionRect = null;
+                _selectionPoints.Add(new Point(px, py));
+                SelectionBoxRect.Visibility = Visibility.Collapsed;
+                if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
+                UpdateLassoPreview();
+                MainScrollViewer.CaptureMouse();
+                return;
+            }
+
+            if (tool == "PolyLasso")
+            {
+                if (_selectionPoints.Count == 0)
+                {
+                    if (_currentSelectionMode == SelectionMode.New)
+                    {
+                        ClearSelection();
+                    }
+                    _isSelecting = true;
+                    _selectionRect = null;
+                    SelectionBoxRect.Visibility = Visibility.Collapsed;
+                    if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
+                    _selectionPoints.Add(new Point(px, py));
+                    UpdatePolyLassoPreview(clickPos);
+                    MainScrollViewer.CaptureMouse();
+                }
+                else
+                {
+                    _selectionPoints.Add(new Point(px, py));
+                    UpdatePolyLassoPreview(clickPos);
+                }
+                return;
+            }
+
+            if (tool == "Text")
+            {
+                var doc = _node.EditorDoc;
+
+                if (TextMoveContainer.Visibility == Visibility.Visible)
+                {
+                    var clickPosInBBox = e.GetPosition(TextMoveContainer);
+                    bool clickedInsideBBox = clickPosInBBox.X >= 0 && clickPosInBBox.X <= TextMoveContainer.ActualWidth &&
+                                            clickPosInBBox.Y >= 0 && clickPosInBBox.Y <= TextMoveContainer.ActualHeight;
+
+                    if (!clickedInsideBBox)
+                    {
+                        CommitActiveText();
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+                else if (doc != null && activeLayer != null && activeLayer.IsTextLayer)
+                {
+                    if (px >= activeLayer.TextX && px <= activeLayer.TextX + activeLayer.TextWidth &&
+                        py >= activeLayer.TextY && py <= activeLayer.TextY + activeLayer.TextHeight)
+                    {
+                        EnterTextEditingMode(activeLayer);
+                        return;
+                    }
+                }
+
+                // Create a new text layer (Photoshop style)
+                if (doc != null)
+                {
+                    var textLayer = new EditorLayer(doc.Width, doc.Height, "Text " + doc.GetNextLayerName());
+                    textLayer.IsTextLayer = true;
+                    textLayer.TextContent = "Nhập chữ...";
+                    textLayer.TextX = clickPos.X;
+                    textLayer.TextY = clickPos.Y;
+                    textLayer.TextWidth = 150;
+                    textLayer.TextHeight = 60;
+                    textLayer.TextFontSize = EditorPanel.TextFontSize;
+                    textLayer.TextColor = EditorPanel.TextColor;
+                    textLayer.TextFontFamily = EditorPanel.TextFontFamily;
+                    textLayer.TextFontStyle = EditorPanel.TextFontStyle;
+                    textLayer.TextAlignment = EditorPanel.TextAlignment;
+
+                    doc.Layers.Add(textLayer);
+                    doc.ActiveLayer = textLayer;
+                    EditorPanel.RefreshLayersList();
+                }
+                return;
+            }
+
+            if (tool == "Fill")
+            {
+                int stride = activeLayer.Width * 4;
+                var oldPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
+
+                var tempPixels = new byte[stride * activeLayer.Height];
+                Array.Copy(oldPixels, tempPixels, oldPixels.Length);
+
+                FloodFill(tempPixels, activeLayer.Width, activeLayer.Height, px, py, _node.EditorDoc.ForegroundColor);
+
+                activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), tempPixels, stride, 0);
+                activeLayer.InvalidateThumbnail();
+                var newPixels = new byte[stride * activeLayer.Height];
+                activeLayer.Bitmap.CopyPixels(newPixels, stride, 0);
+
+                var cmd = new PixelEditCommand(activeLayer, oldPixels, newPixels);
+                _node.EditorDoc.History.Execute(cmd);
+                OnEditorDocumentModified();
+                return;
+            }
+
+            if (tool == "Brush")
+            {
+                _isDrawingPixels = true;
+                _lastDrawingPixelPoint = new Point(px, py);
+
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int stride = w * 4;
+                int pixelSize = stride * h;
+
+                // 1. Initialize session if not already active
+                if (_brushOverlayBitmap == null || _brushOverlayBitmap.PixelWidth != w || _brushOverlayBitmap.PixelHeight != h)
+                {
+                    CommitBrushDrawingSession();
+
+                    _brushOverlayBitmap = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
+                    _brushSessionLayer = activeLayer;
+                    
+                    _oldPixelsForUndo = new byte[pixelSize];
+                    activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
+
+                    _strokeMinX = w - 1;
+                    _strokeMaxX = 0;
+                    _strokeMinY = h - 1;
+                    _strokeMaxY = 0;
+                }
+
+                ActiveLayerDrawingOverlay.Source = _brushOverlayBitmap;
+                ActiveLayerDrawingOverlay.Opacity = activeLayer.Opacity;
+                ActiveLayerDrawingOverlay.Width = MainImage.Width;
+                ActiveLayerDrawingOverlay.Height = MainImage.Height;
+                ActiveLayerDrawingOverlay.Visibility = Visibility.Visible;
+
+                _strokePoints.Clear();
+                _strokePoints.Add(new Point(px, py));
+                _brushDistanceAccumulator = 0;
+
+                double rawRadius = EditorPanel.BrushSize / 2.0;
+                double hardness = EditorPanel.BrushHardness;
+                double flow = EditorPanel.BrushFlow;
+                Color color = _node.EditorDoc.ForegroundColor;
+
+                PreRenderBrushTip();
+
+                bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
+                                       _currentBrushPreset != BrushPreset.RoundSoft &&
+                                       _currentBrushPreset != BrushPreset.Airbrush &&
+                                       _currentBrushPreset != BrushPreset.Pencil;
+
+                _currentStrokeInfo = new BrushStrokeInfo
+                {
+                    Preset = _currentBrushPreset,
+                    Radius = rawRadius,
+                    Hardness = hardness,
+                    Flow = flow,
+                    Color = color,
+                    IsEraser = false
+                };
+                _currentStrokeInfo.Points.Add(new Point(px, py));
+
+                if (!isComplexPreset)
+                {
+                    float blurSigma = 0;
+                    if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                    {
+                        blurSigma = (float)(rawRadius * 0.4);
+                    }
+                    else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                    {
+                        blurSigma = (float)(rawRadius * (1.0 - hardness / 100.0) * 0.5);
+                    }
+
+                    double radius = Math.Max(0.1, rawRadius - blurSigma);
+
+                    _currentStrokePaint = new SkiaSharp.SKPaint
+                    {
+                        Style = SkiaSharp.SKPaintStyle.Stroke,
+                        StrokeWidth = (float)(radius * 2),
+                        StrokeCap = SkiaSharp.SKStrokeCap.Round,
+                        StrokeJoin = SkiaSharp.SKStrokeJoin.Round,
+                        IsAntialias = true,
+                        BlendMode = SkiaSharp.SKBlendMode.SrcOver
+                    };
+
+                    byte alpha = (byte)Math.Clamp(color.A * (flow / 100.0), 0, 255);
+                    _currentStrokePaint.Color = new SkiaSharp.SKColor(color.R, color.G, color.B, alpha);
+
+                    if (blurSigma > 0.1f)
+                    {
+                        _currentStrokePaint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
+                    }
+
+                    _currentStrokePath = new SkiaSharp.SKPath();
+                    _currentStrokePath.MoveTo((float)px, (float)py);
+                    _currentStrokePath.LineTo((float)px + 0.01f, (float)py);
+                }
+
+                double extendedRadius = isComplexPreset ? (rawRadius * 5.0 + 5.0) : (rawRadius + 2.0);
+                _strokeMinX = Math.Min(_strokeMinX, Math.Clamp((int)(px - extendedRadius), 0, w - 1));
+                _strokeMaxX = Math.Max(_strokeMaxX, Math.Clamp((int)(px + extendedRadius), 0, w - 1));
+                _strokeMinY = Math.Min(_strokeMinY, Math.Clamp((int)(py - extendedRadius), 0, h - 1));
+                _strokeMaxY = Math.Max(_strokeMaxY, Math.Clamp((int)(py + extendedRadius), 0, h - 1));
+
+                _prevSegmentMinX = _strokeMinX;
+                _prevSegmentMaxX = _strokeMaxX;
+                _prevSegmentMinY = _strokeMinY;
+                _prevSegmentMaxY = _strokeMaxY;
+
+                bool useDirectSource = (_node.EditorDoc.Layers.Count == 1 &&
+                                         activeLayer.Opacity >= 0.99 &&
+                                         activeLayer.BlendMode == BlendMode.Normal);
+                 if (useDirectSource)
+                 {
+                     MainImage.Source = activeLayer.Bitmap;
+                 }
+
+                DrawActiveStrokeMouseDownToOverlay(px, py, rawRadius, hardness, flow, color, isComplexPreset);
+                MarkCompositeDirty();
+                MainScrollViewer.CaptureMouse();
+            }
+            else if (tool == "Eraser")
+            {
+                CommitBrushDrawingSession();
+
+                _isDrawingPixels = true;
+                _lastDrawingPixelPoint = new Point(px, py);
+
+                int w = activeLayer.Width;
+                int h = activeLayer.Height;
+                int stride = w * 4;
+                int pixelSize = stride * h;
+
+                if (_cachedOldPixelsForUndo == null || _cachedOldPixelsForUndo.Length < pixelSize)
+                {
+                    _cachedOldPixelsForUndo = new byte[pixelSize];
+                }
+                _oldPixelsForUndo = _cachedOldPixelsForUndo;
+                activeLayer.Bitmap.CopyPixels(_oldPixelsForUndo, stride, 0);
+                _strokePoints.Clear();
+                _strokePoints.Add(new Point(px, py));
+
+                bool useDirectSource = (_node.EditorDoc.Layers.Count == 1 &&
+                                         activeLayer.Opacity >= 0.99 &&
+                                         activeLayer.BlendMode == BlendMode.Normal);
+                if (useDirectSource)
+                {
+                    MainImage.Source = activeLayer.Bitmap;
+                    // No bg plate needed for single layer
+                    _eraserBgPlate = null;
+                    _eraserBgPlateSK?.Dispose();
+                    _eraserBgPlateSK = null;
+                }
+                else
+                {
+                    // Multi-layer: pre-composite all non-active layers into a background plate
+                    // so during eraser moves we only need 2-layer composite (bg + active)
+                    BuildEraserBackgroundPlate(activeLayer);
+                }
+
+                double rawRadius = EditorPanel.BrushSize / 2.0;
+                double hardness = EditorPanel.BrushHardness;
+                double flow = EditorPanel.BrushFlow;
+                _brushDistanceAccumulator = 0;
+
+                PreRenderBrushTip();
+
+                bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
+                                       _currentBrushPreset != BrushPreset.RoundSoft &&
+                                       _currentBrushPreset != BrushPreset.Airbrush &&
+                                       _currentBrushPreset != BrushPreset.Pencil;
+
+                double radius = rawRadius;
+                float blurSigma = 0;
+                if (!isComplexPreset)
+                {
+                    if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                    {
+                        blurSigma = (float)(rawRadius * 0.4);
+                    }
+                    else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                    {
+                        blurSigma = (float)(rawRadius * (1.0 - hardness / 100.0) * 0.5);
+                    }
+                    radius = Math.Max(0.1, rawRadius - blurSigma);
+                }
+
+                double extendedRadius = isComplexPreset ? (rawRadius * 5.0 + 5.0) : (rawRadius + 2.0);
+                _strokeMinX = Math.Clamp((int)(px - extendedRadius), 0, w - 1);
+                _strokeMaxX = Math.Clamp((int)(px + extendedRadius), 0, w - 1);
+                _strokeMinY = Math.Clamp((int)(py - extendedRadius), 0, h - 1);
+                _strokeMaxY = Math.Clamp((int)(py + extendedRadius), 0, h - 1);
+
+                _prevSegmentMinX = _strokeMinX;
+                _prevSegmentMaxX = _strokeMaxX;
+                _prevSegmentMinY = _strokeMinY;
+                _prevSegmentMaxY = _strokeMaxY;
+
+                activeLayer.Bitmap.Lock();
+                _eraserBitmapLocked = true;
+                var surfaceInfo = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                _eraserLockedSurface = SkiaSharp.SKSurface.Create(surfaceInfo, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride);
+
+                if (_eraserLockedSurface != null)
+                {
+                    var canvas = _eraserLockedSurface.Canvas;
+                    if (isComplexPreset)
+                    {
+                        if (_cachedBrushTip != null)
+                        {
+                            DrawCachedBrushTipStamp(canvas, px, py, true, Colors.Black);
+                        }
+                        else
+                        {
+                            DrawSkiaBrushStamp(canvas, px, py, rawRadius, hardness, flow, Colors.Black, _currentBrushPreset, true);
+                        }
+                    }
+                    else
+                    {
+                        using (var paint = new SkiaSharp.SKPaint())
+                        {
+                            paint.Style = SkiaSharp.SKPaintStyle.Fill;
+                            paint.IsAntialias = true;
+                            paint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                            byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                            paint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
+
+                            if (blurSigma > 0.1f)
+                            {
+                                paint.MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, blurSigma);
+                            }
+
+                            canvas.DrawCircle((float)px, (float)py, (float)radius, paint);
+                        }
+                    }
+
+                    int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                    int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                    if (dirtyW > 0 && dirtyH > 0)
+                    {
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                    }
+                }
+                // NOTE: Bitmap stays LOCKED — will be unlocked at MouseUp
+
+                MarkCompositeDirty();
+                MainScrollViewer.CaptureMouse();
+            }
+        }
+
+        private void HandleManualEditorMouseMove(MouseEventArgs e)
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            if (activeLayer == null) return;
+
+            string tool = EditorPanel.ActiveToolName;
+            var mousePos = e.GetPosition(MainImage);
+
+            double scaleX = activeLayer.Width / MainImage.ActualWidth;
+            double scaleY = activeLayer.Height / MainImage.ActualHeight;
+            int px = Math.Clamp((int)(mousePos.X * scaleX), 0, activeLayer.Width - 1);
+            int py = Math.Clamp((int)(mousePos.Y * scaleY), 0, activeLayer.Height - 1);
+
+            if (_isSelecting)
+            {
+                if (tool == "Selection" || tool == "ObjectSelection")
+                {
+                    double x = Math.Min(_selectionStartPoint.X, mousePos.X);
+                    double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
+                    double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
+                    double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
+
+                    x = Math.Clamp(x, 0, MainImage.ActualWidth);
+                    y = Math.Clamp(y, 0, MainImage.ActualHeight);
+                    w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
+                    h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+
+                    SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
+                    SelectionBoxRect.Width = w;
+                    SelectionBoxRect.Height = h;
+                    // Sync black background rect
+                    if (SelectionBoxRectBg != null)
+                    {
+                        SelectionBoxRectBg.Margin = SelectionBoxRect.Margin;
+                        SelectionBoxRectBg.Width = w;
+                        SelectionBoxRectBg.Height = h;
+                        SelectionBoxRectBg.Visibility = Visibility.Visible;
+                    }
+                    ApplyPreviewStrokeStyle();
+                }
+                else if (tool == "Slice")
+                {
+                    double x = Math.Min(_selectionStartPoint.X, mousePos.X);
+                    double y = Math.Min(_selectionStartPoint.Y, mousePos.Y);
+                    double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
+                    double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
+
+                    x = Math.Clamp(x, 0, MainImage.ActualWidth);
+                    y = Math.Clamp(y, 0, MainImage.ActualHeight);
+                    w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
+                    h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+
+                    SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
+                    SelectionBoxRect.Width = w;
+                    SelectionBoxRect.Height = h;
+                }
+                else if (tool == "SliceSelect")
+                {
+                    HandleSliceSelectMouseMove(mousePos, px, py);
+                }
+                else if (tool == "Lasso")
+                {
+                    var newPt = new Point(px, py);
+                    if (_selectionPoints.Count == 0 || _selectionPoints[_selectionPoints.Count - 1] != newPt)
+                    {
+                        _selectionPoints.Add(newPt);
+                        UpdateLassoPreview();
+                    }
+                }
+                else if (tool == "PolyLasso" && _selectionPoints.Count > 0)
+                {
+                    UpdatePolyLassoPreview(mousePos);
+                }
+                else if (tool == "QuickSelection")
+                {
+                    double qSelRadius = EditorPanel.BrushSize / 2.0;
+                    GrowQuickSelection(px, py, qSelRadius);
+                }
+                return;
+            }
+
+            if (tool == "Move" && _isMovingLayer)
+            {
+                double docDeltaX = (mousePos.X - _moveStartMousePos.X) * scaleX;
+                double docDeltaY = (mousePos.Y - _moveStartMousePos.Y) * scaleY;
+
+                int dx = (int)Math.Round(docDeltaX);
+                int dy = (int)Math.Round(docDeltaY);
+
+                if (_moveInitialGeometry != null)
+                {
+                    activeLayer.TempMoveDx = dx;
+                    activeLayer.TempMoveDy = dy;
+                }
+                else
+                {
+                    activeLayer.TempMoveDx = _accumulatedMoveDx + dx;
+                    activeLayer.TempMoveDy = _accumulatedMoveDy + dy;
+                }
+
+
+
+                if (_moveInitialGeometry != null)
+                {
+                    var transform = new TranslateTransform(dx, dy);
+                    _activeSelectionGeometry = Geometry.Combine(_moveInitialGeometry, Geometry.Empty, GeometryCombineMode.Union, transform);
+                    UpdatePolygonDisplay();
+                }
+
+
+                MarkCompositeDirty();
+                return;
+            }
+
+            double radius = EditorPanel.BrushSize / 2.0;
+            double hardness = EditorPanel.BrushHardness;
+            double flow = EditorPanel.BrushFlow;
+            Color color = _node.EditorDoc.ForegroundColor;
+
+            var currentPoint = new Point(px, py);
+            var prevPoint = _lastDrawingPixelPoint;
+
+            if (_strokePoints.Count > 0 && _strokePoints[^1] == currentPoint) return;
+            _strokePoints.Add(currentPoint);
+            _lastDrawingPixelPoint = currentPoint;
+
+            int activeW = activeLayer.Width;
+            int activeH = activeLayer.Height;
+
+            bool isComplexPreset = _currentBrushPreset != BrushPreset.RoundHard &&
+                                   _currentBrushPreset != BrushPreset.RoundSoft &&
+                                   _currentBrushPreset != BrushPreset.Airbrush &&
+                                   _currentBrushPreset != BrushPreset.Pencil;
+
+            double extendedRadius = isComplexPreset ? (radius * 5.0 + 5.0) : (radius + 2.0);
+
+            int segmentMinX = Math.Clamp((int)(Math.Min(prevPoint.X, currentPoint.X) - extendedRadius), 0, activeW - 1);
+            int segmentMaxX = Math.Clamp((int)(Math.Max(prevPoint.X, currentPoint.X) + extendedRadius), 0, activeW - 1);
+            int segmentMinY = Math.Clamp((int)(Math.Min(prevPoint.Y, currentPoint.Y) - extendedRadius), 0, activeH - 1);
+            int segmentMaxY = Math.Clamp((int)(Math.Max(prevPoint.Y, currentPoint.Y) + extendedRadius), 0, activeH - 1);
+
+            _strokeMinX = Math.Min(_strokeMinX, segmentMinX);
+            _strokeMaxX = Math.Max(_strokeMaxX, segmentMaxX);
+            _strokeMinY = Math.Min(_strokeMinY, segmentMinY);
+            _strokeMaxY = Math.Max(_strokeMaxY, segmentMaxY);
+
+            int dirtyMinX = Math.Min(segmentMinX, _prevSegmentMinX);
+            int dirtyMaxX = Math.Max(segmentMaxX, _prevSegmentMaxX);
+            int dirtyMinY = Math.Min(segmentMinY, _prevSegmentMinY);
+            int dirtyMaxY = Math.Max(segmentMaxY, _prevSegmentMaxY);
+
+            int dirtyW = dirtyMaxX - dirtyMinX + 1;
+            int dirtyH = dirtyMaxY - dirtyMinY + 1;
+
+            if (tool == "Brush")
+            {
+                DrawActiveStrokeSegmentToOverlay(prevPoint, currentPoint);
+            }
+            else if (tool == "Eraser")
+            {
+                // Sử dụng batched locked surface — không Lock/Unlock mỗi MouseMove
+                if (_eraserLockedSurface != null)
+                {
+                    var canvas = _eraserLockedSurface.Canvas;
+
+                    if (isComplexPreset)
+                    {
+                        Action<double, double> drawStamp = (cx, cy) =>
+                        {
+                            if (_cachedBrushTip != null)
+                            {
+                                DrawCachedBrushTipStamp(canvas, cx, cy, true, Colors.Black);
+                            }
+                            else
+                            {
+                                DrawSkiaBrushStamp(canvas, cx, cy, radius, hardness, flow, Colors.Black, _currentBrushPreset, true);
+                            }
+                        };
+                        DrawStrokeSegmentToCanvasHelper(canvas, prevPoint, currentPoint, _currentBrushPreset, radius, hardness, flow, Colors.Black, true, ref _brushDistanceAccumulator, drawStamp);
+                    }
+                    else
+                    {
+                        // Reuse cached eraser paint to avoid repeated allocation + MaskFilter creation
+                        if (_cachedEraserPaint == null)
+                        {
+                            _cachedEraserPaint = new SkiaSharp.SKPaint();
+                            _cachedEraserPaint.Style = SkiaSharp.SKPaintStyle.Stroke;
+                            _cachedEraserPaint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
+                            _cachedEraserPaint.StrokeJoin = SkiaSharp.SKStrokeJoin.Round;
+                            _cachedEraserPaint.IsAntialias = true;
+                            _cachedEraserPaint.BlendMode = SkiaSharp.SKBlendMode.DstOut;
+                        }
+
+                        float blurSigma = 0;
+                        if (_currentBrushPreset == BrushPreset.RoundSoft || _currentBrushPreset == BrushPreset.Airbrush)
+                        {
+                            blurSigma = (float)(radius * 0.4);
+                        }
+                        else if (_currentBrushPreset == BrushPreset.RoundHard && hardness < 100)
+                        {
+                            blurSigma = (float)(radius * (1.0 - hardness / 100.0) * 0.5);
+                        }
+
+                        double drawRadius = Math.Max(0.1, radius - blurSigma);
+                        _cachedEraserPaint.StrokeWidth = (float)(drawRadius * 2);
+                        byte alpha = (byte)Math.Clamp(255 * (flow / 100.0), 0, 255);
+                        _cachedEraserPaint.Color = new SkiaSharp.SKColor(0, 0, 0, alpha);
+
+                        // Only update MaskFilter if sigma changed
+                        float newSigma = blurSigma > 0.1f ? blurSigma : 0;
+                        if (newSigma != _cachedEraserBlurSigma)
+                        {
+                            _cachedEraserPaint.MaskFilter?.Dispose();
+                            _cachedEraserPaint.MaskFilter = newSigma > 0 ? SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, newSigma) : null;
+                            _cachedEraserBlurSigma = newSigma;
+                        }
+
+                        canvas.DrawLine((float)prevPoint.X, (float)prevPoint.Y, (float)currentPoint.X, (float)currentPoint.Y, _cachedEraserPaint);
+                    }
+
+                    // Use tight dirty rect (segment only, not entire stroke)
+                    if (segmentMaxX >= segmentMinX && segmentMaxY >= segmentMinY)
+                    {
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(segmentMinX, segmentMinY, segmentMaxX - segmentMinX + 1, segmentMaxY - segmentMinY + 1));
+                    }
+                }
+            }
+
+            // 4. Remember the current segment box as the previous one for the next frame
+            _prevSegmentMinX = segmentMinX;
+            _prevSegmentMaxX = segmentMaxX;
+            _prevSegmentMinY = segmentMinY;
+            _prevSegmentMaxY = segmentMaxY;
+
+            MarkCompositeDirty();
+        }
+
+        private void HandleManualEditorMouseUp()
+        {
+            if (_node.EditorDoc == null) return;
+            var activeLayer = _node.EditorDoc.ActiveLayer;
+            string tool = EditorPanel.ActiveToolName;
+
+            if (_isMovingLayer)
+            {
+                _isMovingLayer = false;
+                MainScrollViewer.ReleaseMouseCapture();
+
+                var targetLayer = _movingLayer ?? activeLayer;
+                if (targetLayer != null && _moveInitialFullPixels != null)
+                {
+                    if (_moveInitialGeometry != null)
+                    {
+                        int dx = (int)Math.Round(targetLayer.TempMoveDx);
+                        int dy = (int)Math.Round(targetLayer.TempMoveDy);
+
+                        targetLayer.TempMoveDx = 0;
+                        targetLayer.TempMoveDy = 0;
+                        targetLayer.TempSelectionGeometry = null;
+
+                        CommitSelectionMove(targetLayer, _moveInitialFullPixels, dx, dy);
+                        _moveInitialFullPixels = null;
+                        _moveInitialGeometry = null;
+                        _movingLayer = null;
+                    }
+                    else
+                    {
+                        _accumulatedMoveDx = targetLayer.TempMoveDx;
+                        _accumulatedMoveDy = targetLayer.TempMoveDy;
+                        CommitPendingMoveTranslation();
+                    }
+                }
+                return;
+            }
+
+            if (_isSelecting)
+            {
+                if (tool == "Selection" || tool == "ObjectSelection")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+
+                    if (activeLayer != null)
+                    {
+                        double scaleX = activeLayer.Width / MainImage.ActualWidth;
+                        double scaleY = activeLayer.Height / MainImage.ActualHeight;
+
+                        double lx = SelectionBoxRect.Margin.Left * scaleX;
+                        double ly = SelectionBoxRect.Margin.Top * scaleY;
+                        double lw = SelectionBoxRect.Width * scaleX;
+                        double lh = SelectionBoxRect.Height * scaleY;
+
+                        if (lw > 2 && lh > 2)
+                        {
+                            if (tool == "ObjectSelection")
+                            {
+                                int rx1 = (int)Math.Clamp(lx, 0, activeLayer.Width - 1);
+                                int ry1 = (int)Math.Clamp(ly, 0, activeLayer.Height - 1);
+                                int rx2 = (int)Math.Clamp(lx + lw, 0, activeLayer.Width - 1);
+                                int ry2 = (int)Math.Clamp(ly + lh, 0, activeLayer.Height - 1);
+
+                                RunObjectSelection(rx1, ry1, rx2, ry2);
+                            }
+                            else
+                            {
+                                var rectGeom = new RectangleGeometry(new Rect(lx, ly, lw, lh));
+                                ApplyNewGeometry(rectGeom);
+                            }
+                        }
+                        else
+                        {
+                            ClearSelection();
+                        }
+                    }
+                }
+                else if (tool == "QuickSelection")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+                    CommitQuickSelection();
+                }
+                else if (tool == "Slice")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+                    if (SelectionBoxRect.Width > 4 && SelectionBoxRect.Height > 4)
+                    {
+                        double scaleX = activeLayer.Width / MainImage.ActualWidth;
+                        double scaleY = activeLayer.Height / MainImage.ActualHeight;
+
+                        double lx = SelectionBoxRect.Margin.Left * scaleX;
+                        double ly = SelectionBoxRect.Margin.Top * scaleY;
+                        double lw = SelectionBoxRect.Width * scaleX;
+                        double lh = SelectionBoxRect.Height * scaleY;
+
+                        _slices.Add(new Rect(lx, ly, lw, lh));
+                        _selectedSliceIndex = _slices.Count - 1;
+                        UpdateSlicesDisplay();
+                    }
+                    SelectionBoxRect.Visibility = Visibility.Collapsed;
+                    if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
+                }
+                else if (tool == "SliceSelect")
+                {
+                    _isSelecting = false;
+                    _sliceResizeHandle = "";
+                    MainScrollViewer.ReleaseMouseCapture();
+                    UpdateSlicesDisplay();
+                }
+                else if (tool == "Lasso")
+                {
+                    _isSelecting = false;
+                    MainScrollViewer.ReleaseMouseCapture();
+
+                    if (_selectionPoints.Count >= 3)
+                    {
+                        // Auto-connect start and end points
+                        _selectionPoints.Add(_selectionPoints[0]);
+                        var pathGeometry = new PathGeometry();
+                        var pathFigure = new PathFigure { StartPoint = _selectionPoints[0], IsClosed = true };
+                        for (int i = 1; i < _selectionPoints.Count; i++)
+                        {
+                            pathFigure.Segments.Add(new LineSegment(_selectionPoints[i], true));
+                        }
+                        pathGeometry.Figures.Add(pathFigure);
+                        pathGeometry.FillRule = FillRule.Nonzero;
+
+                        ApplyNewGeometry(pathGeometry);
+                    }
+                    else
+                    {
+                        ClearSelection();
+                    }
+                }
+                else if (tool == "PolyLasso")
+                {
+                    // For PolyLasso, mouse up does not end the selection.
+                    // Keep _isSelecting true and mouse capture active until Enter or double click.
+                }
+                return;
+            }
+
+            if (!_isDrawingPixels) return;
+            _isDrawingPixels = false;
+            MainScrollViewer.ReleaseMouseCapture();
+
+            if (activeLayer == null || _oldPixelsForUndo == null) return;
+
+            if (tool == "Brush")
+            {
+                if (_brushOverlayBitmap != null)
+                {
+                    int w = activeLayer.Width;
+                    int h = activeLayer.Height;
+                    int stride = w * 4;
+                    int pixelSize = stride * h;
+
+                    activeLayer.Bitmap.Lock();
+                    try
+                    {
+                        var info = new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                        using (var surface = SkiaSharp.SKSurface.Create(info, activeLayer.Bitmap.BackBuffer, activeLayer.Bitmap.BackBufferStride))
+                        {
+                            _brushOverlayBitmap.Lock();
+                            try
+                            {
+                                using (var overlaySKBitmap = new SkiaSharp.SKBitmap())
+                                {
+                                    overlaySKBitmap.InstallPixels(info, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride);
+                                    using (var paint = new SkiaSharp.SKPaint())
+                                    {
+                                        paint.BlendMode = SkiaSharp.SKBlendMode.SrcOver;
+                                        surface.Canvas.DrawBitmap(overlaySKBitmap, 0, 0, paint);
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                _brushOverlayBitmap.Unlock();
+                            }
+                        }
+
+                        int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                        int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                        if (dirtyW > 0 && dirtyH > 0)
+                        {
+                            activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW, dirtyH));
+                        }
+                    }
+                    finally
+                    {
+                        activeLayer.Bitmap.Unlock();
+                    }
+
+                    // Region-based undo: chỉ lưu dirty region thay vì toàn bộ bitmap
+                    int strokeDirtyW = _strokeMaxX - _strokeMinX + 1;
+                    int strokeDirtyH = _strokeMaxY - _strokeMinY + 1;
+                    var strokeHint = new Int32Rect(_strokeMinX, _strokeMinY, Math.Max(1, strokeDirtyW), Math.Max(1, strokeDirtyH));
+
+                    var finalNewPixels = new byte[pixelSize];
+                    activeLayer.Bitmap.CopyPixels(finalNewPixels, stride, 0);
+
+                    var cmd = PixelRegionEditCommand.FromFullPixels(activeLayer, _oldPixelsForUndo, finalNewPixels, strokeHint);
+                    _node.EditorDoc.History.Execute(cmd);
+
+                    _oldPixelsForUndo = null;
+                    _brushOverlayBitmap = null;
+                    _brushSessionLayer = null;
+                    // NOTE: Don't hide ActiveLayerDrawingOverlay here — OnEditorDocumentModified() will
+                    // hide it atomically AFTER the composite renders, preventing the 1-frame flicker
+                    // that occurred when the overlay disappeared before the merged layer was rendered.
+
+                    if (_currentStrokePaint != null)
+                    {
+                        _currentStrokePaint.Dispose();
+                        _currentStrokePaint = null;
+                    }
+                    if (_currentStrokePath != null)
+                    {
+                        _currentStrokePath.Dispose();
+                        _currentStrokePath = null;
+                    }
+                    _currentStrokeInfo = null;
+
+                    if (_cachedBrushTip != null)
+                    {
+                        _cachedBrushTip.Dispose();
+                        _cachedBrushTip = null;
+                    }
+
+                    FlushCompositeAndSync();
+                }
+            }
+            else if (tool == "Eraser")
+            {
+                // Unlock the batched eraser surface before reading pixels
+                _eraserLockedSurface?.Dispose();
+                _eraserLockedSurface = null;
+                if (_eraserBitmapLocked)
+                {
+                    int dirtyW2 = _strokeMaxX - _strokeMinX + 1;
+                    int dirtyH2 = _strokeMaxY - _strokeMinY + 1;
+                    if (dirtyW2 > 0 && dirtyH2 > 0)
+                    {
+                        activeLayer.Bitmap.AddDirtyRect(new Int32Rect(_strokeMinX, _strokeMinY, dirtyW2, dirtyH2));
+                    }
+                    activeLayer.Bitmap.Unlock();
+                    _eraserBitmapLocked = false;
+                }
+
+                int strideFinal = activeLayer.Width * 4;
+                int pixelSize = strideFinal * activeLayer.Height;
+
+                // Region-based undo: chỉ lưu dirty region
+                int dirtyW = _strokeMaxX - _strokeMinX + 1;
+                int dirtyH = _strokeMaxY - _strokeMinY + 1;
+                var strokeHint = new Int32Rect(_strokeMinX, _strokeMinY, Math.Max(1, dirtyW), Math.Max(1, dirtyH));
+
+                var finalNewPixels = new byte[pixelSize];
+                activeLayer.Bitmap.CopyPixels(finalNewPixels, strideFinal, 0);
+
+                var cmd = PixelRegionEditCommand.FromFullPixels(activeLayer, _oldPixelsForUndo, finalNewPixels, strokeHint);
+                _node.EditorDoc.History.Execute(cmd);
+                _oldPixelsForUndo = null;
+                _strokePoints.Clear();
+
+                // Dispose cached eraser paint after stroke ends
+                if (_cachedEraserPaint != null)
+                {
+                    _cachedEraserPaint.Dispose();
+                    _cachedEraserPaint = null;
+                    _cachedEraserBlurSigma = -1;
+                }
+
+                // Dispose cached background plate
+                _eraserBgPlateSK?.Dispose();
+                _eraserBgPlateSK = null;
+                _eraserBgPlate = null;
+
+                FlushCompositeAndSync();
+            }
+        }
+
+    }
+}

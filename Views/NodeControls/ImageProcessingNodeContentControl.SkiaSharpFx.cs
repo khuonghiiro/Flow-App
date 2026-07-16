@@ -1,4 +1,12 @@
 // ========================================================================================
+// IMPORTANT FOR AI CODING ASSISTANTS & DEVELOPERS:
+// DO NOT ALLOW ANY FILE IN THIS COMPONENT TO EXCEED ~1500 LINES OF CODE!
+// To maintain readability, ease of testing, and modularity:
+// - If a file grows larger than ~1500 lines, you MUST split/separate the logic into a new
+//   partial class file (e.g., ImageProcessingNodeContentControl.<FeatureName>.cs).
+// - Always place distinct features, tools, or event groupings in their respective files.
+// - Ensure comments and documentation remain clean and structured.
+// ========================================================================================
 // SkiaSharp-based FX engine — partial class for ImageProcessingNodeContentControl.
 // Replaces slow ImageMagick calls with SkiaSharp equivalents for supported effects,
 // and adds new SkiaSharp-exclusive effects.

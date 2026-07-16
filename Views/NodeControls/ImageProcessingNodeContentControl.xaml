@@ -1,3 +1,11 @@
+<!-- 
+========================================================================================
+IMPORTANT FOR AI CODING ASSISTANTS & DEVELOPERS:
+This is the UI markup file for ImageProcessingNodeContentControl.
+For code-behind logic, please note that any C# code file exceeding ~1500 lines must be split
+into smaller partial class files to maintain readability and ease of maintenance.
+========================================================================================
+-->
 <UserControl x:Class="FlowMy.Views.NodeControls.ImageProcessingNodeContentControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

@@ -1,3 +1,12 @@
+// ========================================================================================
+// IMPORTANT FOR AI CODING ASSISTANTS & DEVELOPERS:
+// DO NOT ALLOW ANY FILE IN THIS COMPONENT TO EXCEED ~1500 LINES OF CODE!
+// To maintain readability, ease of testing, and modularity:
+// - If a file grows larger than ~1500 lines, you MUST split/separate the logic into a new
+//   partial class file (e.g., ImageProcessingNodeContentControl.<FeatureName>.cs).
+// - Always place distinct features, tools, or event groupings in their respective files.
+// - Ensure comments and documentation remain clean and structured.
+// ========================================================================================
 using System;
 using System.Linq;
 using System.Windows;
@@ -39,7 +48,6 @@ namespace FlowMy.Views.NodeControls
         private double _sessionCanvasWidth = 0.0;
         private double _sessionCanvasHeight = 0.0;
 
-        #region TOP OPTION BUTTONS CLICKS
 
 
 
@@ -83,9 +91,7 @@ namespace FlowMy.Views.NodeControls
             CancelTransformSession();
         }
 
-        #endregion
 
-        #region SESSION LIFECYCLE MANAGEMENT
 
         private void CommitTransformSession()
         {
@@ -203,9 +209,7 @@ namespace FlowMy.Views.NodeControls
             TransformBoxTranslate.Y = 0;
         }
 
-        #endregion
 
-        #region PIXEL TRANSFORM UTILITIES
 
         private void RotateActiveLayerImmediate(double angle)
         {
@@ -361,9 +365,7 @@ namespace FlowMy.Views.NodeControls
             UpdateTransformOverlayDisplay();
         }
 
-        #endregion
 
-        #region INTERACTIVE SCALING & ROTATING
 
         private double Distance(Point a, Point b)
         {
@@ -1050,6 +1052,5 @@ namespace FlowMy.Views.NodeControls
             e.Handled = true;
         }
 
-        #endregion
     }
 }
