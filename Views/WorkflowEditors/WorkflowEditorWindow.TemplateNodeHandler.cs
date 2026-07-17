@@ -414,13 +414,11 @@ namespace FlowMy.Views
             }
             catch { }
 
-            double ghostSize = iconSize + 48;
-
             // Tạo ghost mới dựa trên template
             _dragGhost = new Border
             {
-                Width = ghostSize,
-                Height = ghostSize,
+                Width = 80,
+                Height = 80,
                 Background = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
                     ? Services.Rendering.LiquidGlassHelper.CreateGlassBackground(
                         Services.Rendering.LiquidGlassHelper.GetColorFromBrush(background))
