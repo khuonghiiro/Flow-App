@@ -129,6 +129,12 @@ public partial class FloatingWidgetWindow : Window
         InitializeComponent();
         DataContext = _viewModel;
 
+        // Đăng ký các sự kiện để reset bộ đếm thời gian khi người dùng tương tác với widget
+        this.PreviewMouseMove += (s, e) => MarkActivity();
+        this.PreviewMouseDown += (s, e) => MarkActivity();
+        this.PreviewKeyDown += (s, e) => MarkActivity();
+        this.PreviewMouseWheel += (s, e) => MarkActivity();
+
         // Apply config to window
         Topmost = System.Diagnostics.Debugger.IsAttached ? false : Config.AlwaysOnTop;
         ShowInTaskbar = Config.ShowInTaskbar;
@@ -653,6 +659,8 @@ public partial class FloatingWidgetWindow : Window
             _isWidgetMaximized = true;
             _imageNodeContent?.SyncWidgetExpandedFullscreen(true);
         }
+
+        UpdateTimeoutIndicator();
     }
 
     private void CollapseWidget()
@@ -709,6 +717,7 @@ public partial class FloatingWidgetWindow : Window
             SnapToNearestEdge();
 
         ReassertTopmostIfNeeded();
+        UpdateTimeoutIndicator();
     }
 
     // ═══════════════════════════════════════════
@@ -1067,22 +1076,65 @@ public partial class FloatingWidgetWindow : Window
         _idleTimer = null;
     }
 
+    private void UpdateTimeoutIndicator()
+    {
+        if (TimeoutIndicator == null || TimeoutText == null) return;
+
+        // Chỉ hiện đếm ngược khi: 
+        // 1. Widget đang được mở rộng (expanded)
+        // 2. Có bật tự động thu nhỏ khi idle (AutoCollapseWhenIdle)
+        // 3. Không ở chế độ ghim (PinnedNoAutoHide)
+        if (_isExpanded && Config.AutoCollapseWhenIdle && !Config.PinnedNoAutoHide)
+        {
+            // Kiểm tra xem có cửa sổ con nào hiển thị không
+            bool isAnyChildVisible = false;
+            foreach (Window? win in this.OwnedWindows)
+            {
+                if (win != null && win.IsVisible)
+                {
+                    isAnyChildVisible = true;
+                    break;
+                }
+            }
+
+            if (isAnyChildVisible)
+            {
+                // Nếu có child window đang mở, hiển thị thời gian tối đa
+                TimeoutIndicator.Visibility = Visibility.Visible;
+                TimeoutText.Text = $"{(int)Config.IdleTimeoutSeconds}s";
+            }
+            else
+            {
+                var idleSeconds = (DateTime.UtcNow - _lastActivityUtc).TotalSeconds;
+                var remaining = (int)Math.Max(0, Config.IdleTimeoutSeconds - idleSeconds);
+                TimeoutIndicator.Visibility = Visibility.Visible;
+                TimeoutText.Text = $"{remaining}s";
+            }
+        }
+        else
+        {
+            TimeoutIndicator.Visibility = Visibility.Collapsed;
+        }
+    }
+
     private void IdleTimer_Tick(object? sender, EventArgs e)
     {
+        UpdateTimeoutIndicator();
+
         if (Config.PinnedNoAutoHide) return;
 
-        // Nếu widget hoặc bất kỳ cửa sổ con (owned window) nào của nó đang active/tương tác, coi như "not idle"
-        bool isAnyChildActive = false;
+        // Nếu bất kỳ cửa sổ con (owned window) nào của nó đang mở/hiển thị, coi như "not idle"
+        bool isAnyChildVisible = false;
         foreach (Window? win in this.OwnedWindows)
         {
-            if (win != null && win.IsActive)
+            if (win != null && win.IsVisible)
             {
-                isAnyChildActive = true;
+                isAnyChildVisible = true;
                 break;
             }
         }
 
-        if (IsActive || isAnyChildActive)
+        if (isAnyChildVisible)
         {
             MarkActivity();
             return;
@@ -1613,6 +1665,8 @@ public partial class FloatingWidgetWindow : Window
             if (TryFindResource(titleStyleKey) is Style titleStyle)
                 TitlePinToggleBtn.Style = titleStyle;
         }
+
+        UpdateTimeoutIndicator();
     }
 
     private void OutsideCollapseToggleButton_Click(object sender, RoutedEventArgs e)

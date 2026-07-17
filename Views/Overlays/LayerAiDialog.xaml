@@ -514,7 +514,7 @@
                             </Grid.ColumnDefinitions>
                             <Button x:Name="BtnAddSecondaryExpanded" Grid.Column="0" Content="＋ Thêm ảnh phụ" Height="28" Margin="0"
                                     Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
-                            <Button x:Name="BtnTogglePrompt" Grid.Column="2" Content="Ẩn Prompt" Width="80" Height="28" Margin="0"
+                            <Button x:Name="BtnTogglePrompt" Grid.Column="2" Content="Ẩn Prompt" Height="28" Margin="0"
                                     Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnTogglePrompt_Click"/>
                             <Button x:Name="BtnToggleSendModeExpanded" Grid.Column="4" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
                                     Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>

@@ -494,13 +494,30 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- Drag handle -->
-                            <TextBlock Grid.Column="0" Text="⋮⋮"
-                                       Foreground="{DynamicResource TextSecondary}"
-                                       Opacity="0.9"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" Margin="0,0,8,0"
-                                       IsHitTestVisible="False"/>
+                            <!-- Drag handle & Timeout indicator -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0" IsHitTestVisible="False">
+                                <TextBlock Text="⋮⋮"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           Opacity="0.9"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Border x:Name="TimeoutIndicator"
+                                        Background="#1AFF6B6B"
+                                        BorderBrush="#33FF6B6B"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        Padding="4,1"
+                                        VerticalAlignment="Center"
+                                        Visibility="Collapsed">
+                                    <TextBlock x:Name="TimeoutText"
+                                               Text="10s"
+                                               Foreground="#FFFC5C5C"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                            </StackPanel>
 
                             <!-- Title -->
                             <TextBlock x:Name="TitleText" Grid.Column="1"
