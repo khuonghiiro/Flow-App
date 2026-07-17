@@ -41,8 +41,8 @@ namespace FlowMy.Views
                 // Tạo ghost preview ngay
                 CreateDragGhost(border, nodeType);
                 Point mousePos = e.GetPosition(WorkflowCanvas);
-                Canvas.SetLeft(_dragGhost, mousePos.X - 75);
-                Canvas.SetTop(_dragGhost, mousePos.Y - 40);
+                Canvas.SetLeft(_dragGhost, mousePos.X - (_dragGhost.Width / 2));
+                Canvas.SetTop(_dragGhost, mousePos.Y - (_dragGhost.Height / 2));
 
                 e.Handled = true;
             }
@@ -77,8 +77,8 @@ namespace FlowMy.Views
                     try
                     {
                         Point mousePos = e.GetPosition(WorkflowCanvas);
-                        Canvas.SetLeft(_dragGhost, mousePos.X - 75); // Center ghost
-                        Canvas.SetTop(_dragGhost, mousePos.Y - 40);
+                        Canvas.SetLeft(_dragGhost, mousePos.X - (_dragGhost.Width / 2)); // Center ghost
+                        Canvas.SetTop(_dragGhost, mousePos.Y - (_dragGhost.Height / 2));
                         // ✅ Đảm bảo z-index luôn cao nhất khi di chuyển
                         Panel.SetZIndex(_dragGhost, 2000000);
                     }
@@ -86,8 +86,8 @@ namespace FlowMy.Views
                     {
                         // Nếu không lấy được vị trí trên canvas, dùng vị trí window
                         Point windowPos = e.GetPosition(this);
-                        Canvas.SetLeft(_dragGhost, windowPos.X - 275); // Trừ đi menu width và center
-                        Canvas.SetTop(_dragGhost, windowPos.Y - 100);
+                        Canvas.SetLeft(_dragGhost, windowPos.X - 200 - (_dragGhost.Width / 2)); // Trừ đi menu width và center
+                        Canvas.SetTop(_dragGhost, windowPos.Y - (_dragGhost.Height / 2));
                         // ✅ Đảm bảo z-index luôn cao nhất khi di chuyển
                         Panel.SetZIndex(_dragGhost, 2000000);
                     }
@@ -115,8 +115,8 @@ namespace FlowMy.Views
                     if (_dragGhost != null)
                     {
                         dropPosition = new Point(
-                            Canvas.GetLeft(_dragGhost) + 75, // Center của ghost
-                            Canvas.GetTop(_dragGhost) + 40
+                            Canvas.GetLeft(_dragGhost) + (_dragGhost.Width / 2), // Center của ghost
+                            Canvas.GetTop(_dragGhost) + (_dragGhost.Height / 2)
                         );
                     }
                     else
@@ -365,7 +365,7 @@ namespace FlowMy.Views
                 "VideoProcessing" => "circle-video sharp-light",
                 "Code" => "code duotone-regular",
                 "HtmlUi" => "html5 brands",
-                "Folder" => "folder-open duotone-thin",
+                "Folder" => "adobe_pts Custom-icons.color",
                 "HttpRequest" => "globe-pointer sharp-duotone-light",
                 "Web" => "internet-explorer brands",
                 "AsyncTask" => "diagram-project duotone-light",
@@ -414,11 +414,28 @@ namespace FlowMy.Views
             }
             catch { }
 
+            double defaultContainerSize = 60;
+            if (nodeType == "Delay")
+            {
+                defaultContainerSize = 80;
+            }
+            else if (nodeType == "ImageProcessing" || nodeType == "VideoProcessing" || nodeType == "Web" || nodeType == "Loop" || nodeType == "AsyncTask")
+            {
+                defaultContainerSize = 80;
+            }
+            else
+            {
+                defaultContainerSize = Math.Max(60, iconSize);
+            }
+
+            var ghostWidth = defaultContainerSize + 4;
+            var ghostHeight = defaultContainerSize + 4;
+
             // Tạo ghost mới dựa trên template
             _dragGhost = new Border
             {
-                Width = 80,
-                Height = 80,
+                Width = ghostWidth,
+                Height = ghostHeight,
                 Background = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
                     ? Services.Rendering.LiquidGlassHelper.CreateGlassBackground(
                         Services.Rendering.LiquidGlassHelper.GetColorFromBrush(background))
@@ -443,6 +460,8 @@ namespace FlowMy.Views
             // Tạo Grid chứa icon
             var grid = new Grid
             {
+                Width = defaultContainerSize,
+                Height = defaultContainerSize,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };

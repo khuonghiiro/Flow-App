@@ -2090,30 +2090,40 @@ namespace FlowMy.Services.Utilities
                         {
                             var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
                             
-                            // Replace ColorKey
-                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
-                                @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{colorKey}${{2}}");
-                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
-                                @"(TryFindResource\(""|GetBrush\("")([^""]+)Brush(""\))", $"${{1}}{colorKey}Brush${{3}}");
-
-                            // Replace Port Colors
-                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
-                                @"(IsInput\s*=\s*true[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{inPortColor}${{2}}");
-                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
-                                @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{outPortColor}${{2}}");
-
-                            // Replace or Add IconSize
-                            if (methodContent.Contains("IconSize"))
+                            // Tách phần khởi tạo node (var node = new ...) ra khỏi phần định nghĩa Ports bên dưới
+                            var nodeInitEndIdx = methodContent.IndexOf("};");
+                            if (nodeInitEndIdx > 0)
                             {
-                                methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent,
-                                    @"(IconSize\s*=\s*)\d+",
-                                    $"${{1}}{iconSize}");
-                            }
-                            else
-                            {
-                                methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent,
-                                    @"(ColorKey\s*=\s*""[^""]+"",?)",
-                                    $"$1\r\n                IconSize = {iconSize},");
+                                var nodeInitBlock = methodContent.Substring(0, nodeInitEndIdx);
+                                var remainderBlock = methodContent.Substring(nodeInitEndIdx);
+
+                                // Replace ColorKey và NodeBrush cho Node
+                                nodeInitBlock = System.Text.RegularExpressions.Regex.Replace(nodeInitBlock, 
+                                    @"(ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{colorKey}${{2}}");
+                                nodeInitBlock = System.Text.RegularExpressions.Regex.Replace(nodeInitBlock, 
+                                    @"(TryFindResource\(""|GetBrush\("")([^""]+)Brush(""\))", $"${{1}}{colorKey}Brush${{3}}");
+
+                                // Replace or Add IconSize cho Node
+                                if (nodeInitBlock.Contains("IconSize"))
+                                {
+                                    nodeInitBlock = System.Text.RegularExpressions.Regex.Replace(nodeInitBlock,
+                                        @"(IconSize\s*=\s*)\d+",
+                                        $"${{1}}{iconSize}");
+                                }
+                                else
+                                {
+                                    nodeInitBlock = System.Text.RegularExpressions.Regex.Replace(nodeInitBlock,
+                                        @"(ColorKey\s*=\s*""[^""]+"",?)",
+                                        $"$1\r\n                IconSize = {iconSize},");
+                                }
+
+                                // Replace Port Colors cho remainder block
+                                remainderBlock = System.Text.RegularExpressions.Regex.Replace(remainderBlock, 
+                                    @"(IsInput\s*=\s*true[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{inPortColor}${{2}}");
+                                remainderBlock = System.Text.RegularExpressions.Regex.Replace(remainderBlock, 
+                                    @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{outPortColor}${{2}}");
+
+                                methodContent = nodeInitBlock + remainderBlock;
                             }
 
                             content = content.Substring(0, createMethodIdx) + methodContent + content.Substring(endIdx);
@@ -2412,9 +2422,25 @@ namespace FlowMy.Services.Utilities
                     $"${{1}}{iconKey}${{3}}");
             }
 
-            // Thay thế hoặc thêm Width và Height cho SvgViewboxEx trong block palette
-            var paletteIconSize = (int)Math.Round(20.0 * (iconSize / 32.0));
-            var svgTagRegex = new System.Text.RegularExpressions.Regex(@"<controls:SvgViewboxEx\s+[^>]*>");
+            // Thay thế hoặc thêm Padding cho Border đầu tiên trong block palette
+            var calculatedPadding = (int)Math.Round(5.0 - 5.0 * (iconSize - 32.0) / (60.0 - 32.0));
+            var newPadding = Math.Max(0, Math.Min(5, calculatedPadding));
+            var firstBorderRegex = new System.Text.RegularExpressions.Regex(@"^<Border\s+[^>]*>", System.Text.RegularExpressions.RegexOptions.Singleline);
+            newBlock = firstBorderRegex.Replace(newBlock, m =>
+            {
+                var tagContent = m.Value;
+                tagContent = System.Text.RegularExpressions.Regex.Replace(tagContent, @"\s*Padding=""[^""]*""", "");
+                if (tagContent.EndsWith(">"))
+                {
+                    tagContent = tagContent.Insert(tagContent.Length - 1, $" Padding=\"{newPadding}\"");
+                }
+                return tagContent;
+            });
+
+            // Thay thế hoặc thêm Width và Height cho SvgViewboxEx trong block palette (hỗ trợ multiline qua (?s))
+            var calculatedIconSize = (int)Math.Round(20.0 + (48.0 - 20.0) * (iconSize - 32.0) / (60.0 - 32.0));
+            var paletteIconSize = Math.Max(20, Math.Min(48, calculatedIconSize));
+            var svgTagRegex = new System.Text.RegularExpressions.Regex(@"(?s)<controls:SvgViewboxEx\s+[^>]*>");
             newBlock = svgTagRegex.Replace(newBlock, m =>
             {
                 var tagContent = m.Value;

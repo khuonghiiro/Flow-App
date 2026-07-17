@@ -477,8 +477,18 @@ namespace FlowMy.Views.NodeControls.Helpers
                     var iconSvg = FindPrimaryIconSvg(_context.Border);
                     if (iconSvg != null)
                     {
-                        iconSvg.Width = _context.Node.IconSize;
-                        iconSvg.Height = _context.Node.IconSize;
+                        if (iconSvg.Parent is Grid parentGrid && parentGrid.Children.Count == 1)
+                        {
+                            var size = _context.Node.IconSize;
+                            iconSvg.Width = size;
+                            iconSvg.Height = size;
+
+                            var gridSize = Math.Max(60, size);
+                            parentGrid.Width = gridSize;
+                            parentGrid.Height = gridSize;
+                            parentGrid.MinWidth = gridSize;
+                            parentGrid.MinHeight = gridSize;
+                        }
                     }
                 }
                 catch { }
@@ -585,8 +595,18 @@ namespace FlowMy.Views.NodeControls.Helpers
                         var iconSvg = FindPrimaryIconSvg(ctx.Border);
                         if (iconSvg != null)
                         {
-                            iconSvg.Width = ctx.Node.IconSize;
-                            iconSvg.Height = ctx.Node.IconSize;
+                            if (iconSvg.Parent is Grid parentGrid && parentGrid.Children.Count == 1)
+                            {
+                                var size = ctx.Node.IconSize;
+                                iconSvg.Width = size;
+                                iconSvg.Height = size;
+
+                                var gridSize = Math.Max(60, size);
+                                parentGrid.Width = gridSize;
+                                parentGrid.Height = gridSize;
+                                parentGrid.MinWidth = gridSize;
+                                parentGrid.MinHeight = gridSize;
+                            }
                         }
                     }
                 },
