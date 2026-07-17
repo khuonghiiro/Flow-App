@@ -471,6 +471,18 @@ namespace FlowMy.Views.NodeControls.Helpers
                     registration();
                 }
 
+                // Sync initial icon size
+                try
+                {
+                    var iconSvg = FindPrimaryIconSvg(_context.Border);
+                    if (iconSvg != null)
+                    {
+                        iconSvg.Width = _context.Node.IconSize;
+                        iconSvg.Height = _context.Node.IconSize;
+                    }
+                }
+                catch { }
+
                 // Store context in centralized dictionary
                 _contexts[_context.Border] = _context;
 
@@ -565,6 +577,19 @@ namespace FlowMy.Views.NodeControls.Helpers
                 // ColorKey: no default UI action — node-specific code handles icon fill updates.
                 // Providing an empty entry ensures the key is present so custom handlers can override it.
                 [nameof(WorkflowNode.ColorKey)] = ctx => { },
+
+                [nameof(WorkflowNode.IconSize)] = ctx =>
+                {
+                    if (ctx.Border != null)
+                    {
+                        var iconSvg = FindPrimaryIconSvg(ctx.Border);
+                        if (iconSvg != null)
+                        {
+                            iconSvg.Width = ctx.Node.IconSize;
+                            iconSvg.Height = ctx.Node.IconSize;
+                        }
+                    }
+                },
 
                 // NodeBrush: update border background AND resolve the title foreground brush.
                 // The title foreground must be resolved via ResolveTitleBrush so that TitleColorMode
@@ -1554,5 +1579,44 @@ namespace FlowMy.Views.NodeControls.Helpers
         }
 
         #endregion
+        private static FlowMy.Controls.SvgViewboxEx? FindPrimaryIconSvg(DependencyObject parent)
+        {
+            if (parent is FlowMy.Controls.SvgViewboxEx svg) return svg;
+
+            // Try logical / child properties first
+            if (parent is Border border && border.Child != null)
+            {
+                var found = FindPrimaryIconSvg(border.Child);
+                if (found != null) return found;
+            }
+            else if (parent is Panel panel)
+            {
+                foreach (UIElement child in panel.Children)
+                {
+                    var found = FindPrimaryIconSvg(child);
+                    if (found != null) return found;
+                }
+            }
+            else if (parent is ContentControl cc && cc.Content is DependencyObject contentDep)
+            {
+                var found = FindPrimaryIconSvg(contentDep);
+                if (found != null) return found;
+            }
+
+            // Fallback to visual tree
+            try
+            {
+                int count = VisualTreeHelper.GetChildrenCount(parent);
+                for (int i = 0; i < count; i++)
+                {
+                    var child = VisualTreeHelper.GetChild(parent, i);
+                    var found = FindPrimaryIconSvg(child);
+                    if (found != null) return found;
+                }
+            }
+            catch { }
+
+            return null;
+        }
     }
 }

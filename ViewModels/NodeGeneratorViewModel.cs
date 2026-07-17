@@ -745,10 +745,117 @@ namespace FlowMy.ViewModels
                 EditIconSize
             );
 
+            if (result.IsSuccess)
+            {
+                try
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        foreach (Window window in Application.Current.Windows)
+                        {
+                            if (window.GetType().Name == "WorkflowEditorWindow")
+                            {
+                                dynamic editorWindow = window;
+                                var vm = editorWindow.ViewModel;
+                                if (vm != null && vm.Nodes != null)
+                                {
+                                    foreach (var node in vm.Nodes)
+                                    {
+                                        var typeStr = node.Type.ToString();
+                                        var typeName = node.GetType().Name;
+                                        if (string.Equals(typeStr, SelectedExistingNode, StringComparison.OrdinalIgnoreCase) ||
+                                            string.Equals(typeName, SelectedExistingNode + "Node", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            node.IconSize = EditIconSize;
+                                            if (!string.IsNullOrEmpty(EditColorKey))
+                                            {
+                                                node.ColorKey = EditColorKey;
+                                                var brush = Application.Current.TryFindResource($"{EditColorKey}Brush") as System.Windows.Media.Brush;
+                                                if (brush != null)
+                                                {
+                                                    node.NodeBrush = brush;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                var templatesPanel = editorWindow.FindName("NodeTemplatesPanel") as System.Windows.Controls.StackPanel;
+                                if (templatesPanel != null)
+                                {
+                                    foreach (var child in templatesPanel.Children)
+                                    {
+                                        if (child is System.Windows.Controls.WrapPanel wp)
+                                        {
+                                            foreach (var item in wp.Children)
+                                            {
+                                                if (item is System.Windows.Controls.Border paletteBorder && paletteBorder.Tag is string tag)
+                                                {
+                                                    if (string.Equals(tag, SelectedExistingNode, StringComparison.OrdinalIgnoreCase) ||
+                                                        string.Equals(tag, SelectedExistingNode + "Node", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        var paletteIconSvg = FindPrimaryIconSvg(paletteBorder);
+                                                        if (paletteIconSvg != null)
+                                                        {
+                                                            var paletteSize = (int)Math.Round(20.0 * (EditIconSize / 32.0));
+                                                            paletteIconSvg.Width = paletteSize;
+                                                            paletteIconSvg.Height = paletteSize;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                catch { }
+            }
+
             ResultText = result.ToSummary();
             HasError = !result.IsSuccess;
             IsSuccess = result.IsSuccess;
             HasResult = true;
+        }
+
+        private static FlowMy.Controls.SvgViewboxEx? FindPrimaryIconSvg(DependencyObject parent)
+        {
+            if (parent is FlowMy.Controls.SvgViewboxEx svg) return svg;
+
+            if (parent is System.Windows.Controls.Border border && border.Child != null)
+            {
+                var found = FindPrimaryIconSvg(border.Child);
+                if (found != null) return found;
+            }
+            else if (parent is System.Windows.Controls.Panel panel)
+            {
+                foreach (UIElement child in panel.Children)
+                {
+                    var found = FindPrimaryIconSvg(child);
+                    if (found != null) return found;
+                }
+            }
+            else if (parent is System.Windows.Controls.ContentControl cc && cc.Content is DependencyObject contentDep)
+            {
+                var found = FindPrimaryIconSvg(contentDep);
+                if (found != null) return found;
+            }
+
+            try
+            {
+                int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+                for (int i = 0; i < count; i++)
+                {
+                    var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                    var found = FindPrimaryIconSvg(child);
+                    if (found != null) return found;
+                }
+            }
+            catch { }
+
+            return null;
         }
 
         // ─── CLI JSON command ─────────────────────────────────────────────────

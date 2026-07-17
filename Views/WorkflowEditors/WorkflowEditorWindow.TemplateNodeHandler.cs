@@ -403,11 +403,24 @@ namespace FlowMy.Views
             // Tìm Background không trong suốt (từ Border cha hoặc Border con)
             var background = FindNonTransparentBackground(sourceBorder) ?? sourceBorder.Background;
 
+            double iconSize = 32;
+            try
+            {
+                var tempNode = _templateFactory?.Create(nodeType, 0, 0);
+                if (tempNode != null)
+                {
+                    iconSize = tempNode.IconSize;
+                }
+            }
+            catch { }
+
+            double ghostSize = iconSize + 48;
+
             // Tạo ghost mới dựa trên template
             _dragGhost = new Border
             {
-                Width = 80,
-                Height = 80,
+                Width = ghostSize,
+                Height = ghostSize,
                 Background = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
                     ? Services.Rendering.LiquidGlassHelper.CreateGlassBackground(
                         Services.Rendering.LiquidGlassHelper.GetColorFromBrush(background))
@@ -444,8 +457,8 @@ namespace FlowMy.Views
             var iconSvg = new SvgViewboxEx
             {
                 Source = iconUri ?? new Uri("/Assets/Icons/circle2.svg", UriKind.RelativeOrAbsolute),
-                Width = 32,
-                Height = 32,
+                Width = iconSize,
+                Height = iconSize,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Fill = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)

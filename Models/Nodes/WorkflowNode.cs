@@ -341,6 +341,13 @@ namespace FlowMy.Models
             get => _titleColorKey;
             set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
         }
+        private int _iconSize = 32;
+        public virtual int IconSize
+        {
+            get => _iconSize;
+            set { if (_iconSize != value) { _iconSize = value; OnPropertyChanged(); } }
+        }
+
         public string Id { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public double X { get; set; }

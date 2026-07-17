@@ -265,11 +265,12 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("            var iconSvg = new SvgViewboxEx");
             sb.AppendLine("            {");
             sb.AppendLine("                Source = iconUri,");
-            sb.AppendLine($"                Width = {c.IconSize}, Height = {c.IconSize},");
             sb.AppendLine("                HorizontalAlignment = HorizontalAlignment.Center,");
             sb.AppendLine("                VerticalAlignment = VerticalAlignment.Center,");
             sb.AppendLine("                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)");
             sb.AppendLine("            };");
+            sb.AppendLine("            iconSvg.SetBinding(FrameworkElement.WidthProperty, new System.Windows.Data.Binding(nameof(WorkflowNode.IconSize)) { Source = node, Mode = System.Windows.Data.BindingMode.OneWay });");
+            sb.AppendLine("            iconSvg.SetBinding(FrameworkElement.HeightProperty, new System.Windows.Data.Binding(nameof(WorkflowNode.IconSize)) { Source = node, Mode = System.Windows.Data.BindingMode.OneWay });");
             sb.AppendLine();
             sb.AppendLine("            // ─── 2. GRID ───");
             sb.AppendLine("            var grid = new Grid { MinWidth = 60, MinHeight = 60, Width = 60, Height = 60 };");
@@ -1535,6 +1536,7 @@ namespace FlowMy.Services.Utilities
                 Y = y - 30,
                 ColorKey = ""{colorKey}"",
                 NodeBrush = Application.Current.TryFindResource(""{brushResource}"") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.CornflowerBlue,
+                IconSize = {config.IconSize},
 {nodeTypeLine}
             }};
 {inputPorts}{outputPorts}{outputKeys}
@@ -1763,6 +1765,7 @@ namespace FlowMy.Services.Utilities
                 var brushKey = $"{colorKey}Brush";
                 var textOnBrushKey = $"TextOn{colorKey}Brush";
                 var title = string.IsNullOrWhiteSpace(config.Title) ? config.NodeName : config.Title;
+                var paletteIconSize = (int)Math.Round(20.0 * (config.IconSize / 32.0));
 
                 var nl = "\r\n";
                 var paletteXml =
@@ -1806,7 +1809,7 @@ namespace FlowMy.Services.Utilities
                     nl + "                                    </ContextMenu>" +
                     nl + "                                </Border.ContextMenu>" +
                     nl + "                                <Grid>" +
-                    nl + $"                                    <controls:SvgViewboxEx Style=\"{{StaticResource PaletteSvgIconStyle}}\"" +
+                    nl + $"                                    <controls:SvgViewboxEx Style=\"{{StaticResource PaletteSvgIconStyle}}\" Width=\"{paletteIconSize}\" Height=\"{paletteIconSize}\"" +
                     nl + $"                                                          Source=\"{{Binding Source={{x:Static sys:String.Empty}}, Converter={{StaticResource IconKeyToPathConverter}}, ConverterParameter='{config.IconKey}'}}\"" +
                     nl + $"                                                          Fill=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
                     nl + "                                </Grid>" +
@@ -2034,6 +2037,31 @@ namespace FlowMy.Services.Utilities
                         @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", 
                         $"${{1}}{colorKey}${{2}}");
 
+                    // Replace or Add IconSize in constructor of Node.cs
+                    if (content.Contains("IconSize"))
+                    {
+                        content = System.Text.RegularExpressions.Regex.Replace(content,
+                            @"(IconSize\s*=\s*)\d+",
+                            $"${{1}}{iconSize}");
+                    }
+                    else
+                    {
+                        var typePattern = $@"Type\s*=\s*NodeType\.{baseName};";
+                        if (System.Text.RegularExpressions.Regex.IsMatch(content, typePattern))
+                        {
+                            content = System.Text.RegularExpressions.Regex.Replace(content,
+                                typePattern,
+                                $"$0\r\n            IconSize = {iconSize};");
+                        }
+                        else
+                        {
+                            var constructorPattern = $@"public\s+{baseName}Node\s*\(\s*\)\s*\{{";
+                            content = System.Text.RegularExpressions.Regex.Replace(content,
+                                constructorPattern,
+                                $"$0\r\n            IconSize = {iconSize};");
+                        }
+                    }
+
                     if (content != original)
                     {
                         File.WriteAllText(nodeCsPath, content, utf8NoBom);
@@ -2073,6 +2101,20 @@ namespace FlowMy.Services.Utilities
                                 @"(IsInput\s*=\s*true[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{inPortColor}${{2}}");
                             methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
                                 @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{outPortColor}${{2}}");
+
+                            // Replace or Add IconSize
+                            if (methodContent.Contains("IconSize"))
+                            {
+                                methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent,
+                                    @"(IconSize\s*=\s*)\d+",
+                                    $"${{1}}{iconSize}");
+                            }
+                            else
+                            {
+                                methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent,
+                                    @"(ColorKey\s*=\s*""[^""]+"",?)",
+                                    $"$1\r\n                IconSize = {iconSize},");
+                            }
 
                             content = content.Substring(0, createMethodIdx) + methodContent + content.Substring(endIdx);
                             File.WriteAllText(templateFactoryPath, content, utf8NoBom);
@@ -2147,7 +2189,7 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(workflowEditorPath);
-                    var newContent = ReplacePaletteBlock(content, baseName, colorKey, iconKey);
+                    var newContent = ReplacePaletteBlock(content, baseName, colorKey, iconKey, iconSize);
                     if (newContent != null && newContent != content)
                     {
                         File.WriteAllText(workflowEditorPath, newContent, utf8NoBom);
@@ -2271,7 +2313,7 @@ namespace FlowMy.Services.Utilities
         /// <summary>
         /// Chỉ thay thế các giá trị brush/icon trong palette block hiện tại, GIỮ NGUYÊN nội dung tooltip/contextmenu.
         /// </summary>
-        private string? ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey)
+        private string? ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey, int iconSize)
         {
             var targetTag = $"Tag=\"{nodeName}\"";
             var tagIdx = content.IndexOf(targetTag);
@@ -2369,6 +2411,25 @@ namespace FlowMy.Services.Utilities
                     @"(ConverterParameter=')([^']+)(')",
                     $"${{1}}{iconKey}${{3}}");
             }
+
+            // Thay thế hoặc thêm Width và Height cho SvgViewboxEx trong block palette
+            var paletteIconSize = (int)Math.Round(20.0 * (iconSize / 32.0));
+            var svgTagRegex = new System.Text.RegularExpressions.Regex(@"<controls:SvgViewboxEx\s+[^>]*>");
+            newBlock = svgTagRegex.Replace(newBlock, m =>
+            {
+                var tagContent = m.Value;
+                tagContent = System.Text.RegularExpressions.Regex.Replace(tagContent, @"\s*Width=""[^""]*""", "");
+                tagContent = System.Text.RegularExpressions.Regex.Replace(tagContent, @"\s*Height=""[^""]*""", "");
+                if (tagContent.EndsWith("/>"))
+                {
+                    tagContent = tagContent.Insert(tagContent.Length - 2, $" Width=\"{paletteIconSize}\" Height=\"{paletteIconSize}\"");
+                }
+                else if (tagContent.EndsWith(">"))
+                {
+                    tagContent = tagContent.Insert(tagContent.Length - 1, $" Width=\"{paletteIconSize}\" Height=\"{paletteIconSize}\"");
+                }
+                return tagContent;
+            });
 
             if (newBlock == oldBlock) return null;
             return content.Substring(0, blockStart) + newBlock + content.Substring(blockEnd);

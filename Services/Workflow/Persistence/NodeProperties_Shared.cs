@@ -59,6 +59,12 @@ public sealed partial class FileWorkflowPersistenceService
         {
             node.ConditionalVisualMode = parsedConditionalVisualMode;
         }
+
+        if (properties.TryGetValue("IconSize", out var iconSzObj) &&
+            int.TryParse(iconSzObj?.ToString(), out var iconSz))
+        {
+            node.IconSize = iconSz;
+        }
     }
 
     // ===== RESTORE: ReuseRoutes (áp dụng chung cho mọi loại node) =====
@@ -220,6 +226,7 @@ public sealed partial class FileWorkflowPersistenceService
         dict["DiamondSharpness"] = node.DiamondSharpness.ToString();
         if (node.IsConditionalNode)
             dict["ConditionalVisualMode"] = node.ConditionalVisualMode.ToString();
+        dict["IconSize"] = node.IconSize;
     }
 
     // ===== GET: DynamicInputs (all nodes) =====
