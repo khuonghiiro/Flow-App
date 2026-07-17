@@ -366,7 +366,7 @@ namespace FlowMy.Views.NodeControls
             }
             else
             {
-                _activeSelectionGeometry = null;
+                ClearSelection();
             }
 
             if (_activeSelectionGeometry != null)
