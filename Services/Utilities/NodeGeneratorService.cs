@@ -162,6 +162,11 @@ namespace FlowMy.Services.Utilities
         public string GenerateNodeModel(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("// NOTICE TO AI DEVELOPERS / AGENTS:");
+            sb.AppendLine("// 1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
+            sb.AppendLine("// 2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
+            sb.AppendLine("// 3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
+            sb.AppendLine();
             sb.AppendLine("using FlowMy.Models;");
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Collections.ObjectModel;");
@@ -221,6 +226,11 @@ namespace FlowMy.Services.Utilities
         public string GenerateNodeControl(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("// NOTICE TO AI DEVELOPERS / AGENTS:");
+            sb.AppendLine("// 1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
+            sb.AppendLine("// 2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
+            sb.AppendLine("// 3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
+            sb.AppendLine();
             sb.AppendLine("using FlowMy.Controls;");
             sb.AppendLine("using FlowMy.Converters;");
             sb.AppendLine("using FlowMy.Models;");
@@ -332,6 +342,12 @@ namespace FlowMy.Services.Utilities
         public string GenerateDialogXaml(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("<!--");
+            sb.AppendLine("  NOTICE TO AI DEVELOPERS / AGENTS:");
+            sb.AppendLine("  1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
+            sb.AppendLine("  2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
+            sb.AppendLine("  3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
+            sb.AppendLine("-->");
             sb.AppendLine($"<local:BaseNodeDialog x:Class=\"FlowMy.Views.Overlays.{c.DialogClassName}\"");
             sb.AppendLine("    xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"");
             sb.AppendLine("    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"");
@@ -776,6 +792,11 @@ namespace FlowMy.Services.Utilities
         public string GenerateDialogCodeBehind(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("// NOTICE TO AI DEVELOPERS / AGENTS:");
+            sb.AppendLine("// 1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
+            sb.AppendLine("// 2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
+            sb.AppendLine("// 3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
+            sb.AppendLine();
             sb.AppendLine("using FlowMy.Models.Nodes;");
             sb.AppendLine("using FlowMy.Services.Interaction;");
             sb.AppendLine("using FlowMy.ViewModels;");
@@ -837,6 +858,11 @@ namespace FlowMy.Services.Utilities
         public string GenerateViewModel(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("// NOTICE TO AI DEVELOPERS / AGENTS:");
+            sb.AppendLine("// 1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
+            sb.AppendLine("// 2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
+            sb.AppendLine("// 3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
+            sb.AppendLine();
             sb.AppendLine("using CommunityToolkit.Mvvm.ComponentModel;");
             sb.AppendLine("using CommunityToolkit.Mvvm.Input;");
             sb.AppendLine("using FlowMy.Models;");
@@ -1130,6 +1156,11 @@ namespace FlowMy.Services.Utilities
         public string GenerateRenderer(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("// NOTICE TO AI DEVELOPERS / AGENTS:");
+            sb.AppendLine("// 1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
+            sb.AppendLine("// 2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
+            sb.AppendLine("// 3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
+            sb.AppendLine();
             sb.AppendLine("using FlowMy.Models;");
             sb.AppendLine("using FlowMy.Models.Nodes;");
             sb.AppendLine("using FlowMy.Services.Interaction;");

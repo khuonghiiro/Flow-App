@@ -547,7 +547,6 @@ namespace FlowMy.ViewModels
                         _ => "circle-nodes duotone-regular"
                     };
                 }
-                ResultText = $"DEBUG: Selected={value} | baseName={baseName} | ColorKey={EditColorKey} | IconKey={EditIconKey}";
             }
             catch (Exception ex)
             {
