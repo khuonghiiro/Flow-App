@@ -183,6 +183,13 @@ namespace FlowMy.Views
             _nodeGeneratorWindow.Show();
         }
 
+        private void OpenIconEditor_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new IconEditorDialog();
+            dialog.Owner = this;
+            dialog.ShowDialog();
+        }
+
         /// <summary>
         /// Tìm thư mục gốc project chứa *.csproj bằng cách đi ngược từ BaseDirectory.
         /// Debug: BaseDirectory = bin\Debug\net9.0-windows\ → lên 3 cấp = project root.

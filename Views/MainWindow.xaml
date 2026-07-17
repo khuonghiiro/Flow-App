@@ -333,6 +333,33 @@ MinWidth="100">
 
                     <!-- Right: Row 2 - Small buttons -->
                     <StackPanel  Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Click="OpenIconEditor_Click"
+                                Width="40" Height="40"
+                                Cursor="Hand"
+                                Margin="0,0,10,0"
+                                ToolTip="Thêm hoặc chỉnh sửa icon">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bd"
+                                            CornerRadius="20"
+                                            Background="#33FFFFFF">
+                                        <Grid>
+                                            <controls:SvgViewboxEx Width="16" Height="16"
+                                                                    Fill="White"
+                                                                    Source="{Binding Source={x:Static sys:String.Empty},
+                                                                                     Converter={StaticResource IconKeyToPathConverter},
+                                                                                     ConverterParameter='palette duotone-light'}"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#55FFFFFF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
                         <Button Command="{Binding ConfigureLastWidgetCommand}"
                     Width="40" Height="40"
                     Cursor="Hand"
