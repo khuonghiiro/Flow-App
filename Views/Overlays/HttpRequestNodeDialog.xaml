@@ -64,765 +64,789 @@
                 </Grid>
             </Border>
 
-            <!-- Content with tabs: Logic + Bypass + Reuse Flow -->
-            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
-                <!-- Tab 1: Logic (giữ nguyên nội dung cũ) -->
-                <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="16">
-                    
-                    <!-- Cấu hình hiển thị -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            
-                            <TextBlock Text="Hiển thị tiêu đề" 
-                                       Foreground="{DynamicResource TextMuted}" 
-                                       FontSize="10" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="TitleDisplayModeComboBox"
-                                      Height="32"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,8"
-                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+            <!-- Content area with top Request URL Bar and Flat TabControl -->
+            <Grid Grid.Row="1" Margin="16,12" x:Name="MainContentGrid">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-                            <TextBlock Text="Màu tiêu đề" 
-                                       Foreground="{DynamicResource TextMuted}" 
-                                       FontSize="10" Margin="0,0,0,4"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                                <Border x:Name="TitleColorPreview" Grid.Column="1"
-                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}" 
-                                        BorderThickness="1"/>
-                            </Grid>
+                <!-- 🌐 Request URL Panel (Persistent at the top) -->
+                <Border Grid.Row="0" Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/> <!-- Method dropdown -->
+                            <ColumnDefinition Width="*"/>    <!-- URL Textbox -->
+                            <ColumnDefinition Width="Auto"/> <!-- Action Buttons -->
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                                   Text="🌐 Request Configuration" 
+                                   Style="{DynamicResource DialogLabelText}"
+                                   Margin="0,0,0,8"/>
+
+                        <!-- Method Selector -->
+                        <ComboBox Grid.Row="1" Grid.Column="0"
+                                  Height="32" Width="90"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  Margin="0,0,8,0"
+                                  ItemsSource="{Binding HttpMethodOptions}"
+                                  SelectedItem="{Binding HttpMethod, Mode=TwoWay}"/>
+
+                        <!-- URL Input -->
+                        <TextBox Grid.Row="1" Grid.Column="1"
+                                 x:Name="UrlTextBox"
+                                 Text="{Binding Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{DynamicResource BaseTextBoxV2}"
+                                 Height="32"
+                                 VerticalContentAlignment="Center"
+                                 ToolTip="Nhập URL hoặc paste cURL command (tự động parse)"
+                                 PreviewKeyDown="UrlTextBox_PreviewKeyDown"
+                                 TextChanged="UrlTextBox_TextChanged"/>
+
+                        <!-- cURL Utilities -->
+                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                            <Button Content="📥 Import cURL" 
+                                    Style="{DynamicResource PrimaryButton}"
+                                    Height="32" Padding="12,0" Margin="0,0,6,0"
+                                    Click="ImportCurl_Click"
+                                    ToolTip="Paste cURL command từ clipboard (Ctrl+V)"/>
+                            <Button Content="📤 Copy cURL" 
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Height="32" Padding="12,0"
+                                    Click="CopyCurl_Click"
+                                    ToolTip="Copy cURL command vào clipboard"/>
                         </StackPanel>
-                    </Border>
+                    </Grid>
+                </Border>
 
-                    <!-- 🌐 Request Configuration -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🌐 Request Configuration" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            
-                            <Grid Margin="0,0,0,8">
+                <!-- Flat Main TabControl -->
+                <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                    <!-- Tab 1: Params -->
+                    <TabItem Header="Params" Style="{StaticResource HttpTabItemStyle}">
+                        <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,12,0,0">
+                            <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/> <!-- Title -->
+                                    <RowDefinition Height="Auto"/> <!-- Table Header -->
+                                    <RowDefinition Height="*"/>    <!-- Scrollable content -->
+                                    <RowDefinition Height="Auto"/> <!-- Action Button -->
                                 </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Text="Request URL" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                <Button Grid.Row="1" Grid.Column="1" Content="📥 Import cURL" 
-                                        Style="{DynamicResource PrimaryButton}"
-                                        FontSize="11"
-                                        MinWidth="90"
-                                        MaxWidth="120"
-                                        Width="100"
-                                        Height="32"
-                                        Margin="0,0,8,0"
-                                        Click="ImportCurl_Click"
-                                        ToolTip="Paste cURL command from clipboard (Ctrl+V)"/>
-                                <Button Grid.Row="1" Grid.Column="2" Content="📤 Copy cURL" 
-                                        Style="{DynamicResource SecondaryButton}"
-                                        FontSize="11"
-                                        MinWidth="90"
-                                        MaxWidth="120"
-                                        Width="100"
-                                        Height="32"
-                                        Click="CopyCurl_Click"
-                                        ToolTip="Copy cURL command to clipboard"/>
+
+                                <TextBlock Grid.Row="0" Text="Query Parameters (Tham số URL)" Style="{DynamicResource DialogLabelText}" Margin="0,0,0,10"/>
+                                
+                                <!-- Table Header Column Titles -->
+                                <Grid Grid.Row="1" Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="3*"/>
+                                        <ColumnDefinition Width="2.5*"/>
+                                        <ColumnDefinition Width="2.5*"/>
+                                        <ColumnDefinition Width="22"/> <!-- space for delete button -->
+                                        <ColumnDefinition Width="10"/> <!-- offset for scrollbar -->
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Khóa (Key)" Style="{DynamicResource DialogMutedText}"/>
+                                    <TextBlock Grid.Column="1" Text="Giá trị (Value)" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="Liên kết Node" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                    <TextBlock Grid.Column="3" Text="Liên kết Khóa" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                </Grid>
+
+                                <!-- Scrollable List -->
+                                <ScrollViewer Grid.Row="2" x:Name="ParamsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                                    <StackPanel x:Name="ParamsPanel"/>
+                                </ScrollViewer>
+
+                                <Button Grid.Row="3" Content="+ Thêm Param" 
+                                        Style="{DynamicResource SuccessButton}"
+                                        Height="30" Padding="12,0"
+                                        HorizontalAlignment="Left"
+                                        Click="AddParam_Click"/>
                             </Grid>
+                        </Border>
+                    </TabItem>
+
+                    <!-- Tab 2: Headers -->
+                    <TabItem Header="Headers" Style="{StaticResource HttpTabItemStyle}">
+                        <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,12,0,0">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
-                                    <ColumnDefinition Width="*" MinWidth="200"/>
-                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/> <!-- Title -->
+                                    <RowDefinition Height="Auto"/> <!-- Table Header -->
+                                    <RowDefinition Height="*"/>    <!-- Scrollable content -->
+                                    <RowDefinition Height="Auto"/> <!-- Action Button -->
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Text="Headers (Tiêu đề HTTP)" Style="{DynamicResource DialogLabelText}" Margin="0,0,0,10"/>
                                 
-                                <!-- Method Dropdown -->
-                                <ComboBox Grid.Column="0"
-                                          Height="32"
-                                          MinWidth="80"
-                                          MaxWidth="120"
-                                          Width="100"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          Margin="0,0,8,0"
-                                          ItemsSource="{Binding HttpMethodOptions}"
-                                          SelectedItem="{Binding HttpMethod, Mode=TwoWay}"/>
-                                
-                                <!-- URL TextBox -->
-                                <TextBox Grid.Column="1"
-                                         x:Name="UrlTextBox"
-                                         Text="{Binding Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         Height="32"
-                                         MinWidth="200"
-                                         ToolTip="Nhập URL hoặc paste cURL command (tự động parse)"
-                                         PreviewKeyDown="UrlTextBox_PreviewKeyDown"
-                                         TextChanged="UrlTextBox_TextChanged"/>
+                                <!-- Table Header Column Titles -->
+                                <Grid Grid.Row="1" Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="3*"/>
+                                        <ColumnDefinition Width="2.5*"/>
+                                        <ColumnDefinition Width="2.5*"/>
+                                        <ColumnDefinition Width="22"/> <!-- space for delete button -->
+                                        <ColumnDefinition Width="10"/> <!-- offset for scrollbar -->
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Khóa (Key)" Style="{DynamicResource DialogMutedText}"/>
+                                    <TextBlock Grid.Column="1" Text="Giá trị (Value)" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="Liên kết Node" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                    <TextBlock Grid.Column="3" Text="Liên kết Khóa" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                </Grid>
+
+                                <!-- Scrollable List -->
+                                <ScrollViewer Grid.Row="2" x:Name="HeadersScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                                    <StackPanel x:Name="HeadersPanel"/>
+                                </ScrollViewer>
+
+                                <Button Grid.Row="3" Content="+ Thêm Header" 
+                                        Style="{DynamicResource SuccessButton}"
+                                        Height="30" Padding="12,0"
+                                        HorizontalAlignment="Left"
+                                        Click="AddHeader_Click"/>
                             </Grid>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- 📍 Input từ node khác -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📍 Input từ node khác" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            
-                            <!-- Dynamic URL Binding -->
-                            <Expander Header="Bind URL từ node khác" Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,8">
-                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,8,0,0">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MinWidth="120"/>
-                                            <ColumnDefinition Width="*" MinWidth="120"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="8,0,0,4"/>
-                                        
-                                        <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="UrlSourceNodeComboBox"
-                                                  Height="32"
-                                                  MinWidth="120"
-                                                  ItemsSource="{Binding AvailableSources}"
-                                                  SelectedValuePath="NodeId"
-                                                  DisplayMemberPath="Title"
-                                                  SelectedValue="{Binding UrlSourceNodeId, Mode=TwoWay}"/>
-                                        
-                                        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="UrlSourceKeyComboBox"
-                                                  Height="32"
-                                                  MinWidth="120"
-                                                  Style="{DynamicResource BaseComboBox}"
-                                                  Margin="8,0,0,0"
-                                                  ItemsSource="{Binding UrlAvailableOutputKeys}"
-                                                  SelectedValuePath="Key"
-                                                  DisplayMemberPath="DisplayName"
-                                                  SelectedValue="{Binding UrlSourceOutputKey, Mode=TwoWay}"/>
-                                    </Grid>
-                                </Border>
-                            </Expander>
+                        </Border>
+                    </TabItem>
 
-                            <!-- cURL Command Binding -->
-                            <Expander Header="Bind cURL command từ node khác" Foreground="{DynamicResource TextBrush}" FontSize="11">
-                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,8,0,0">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MinWidth="120"/>
-                                            <ColumnDefinition Width="*" MinWidth="120"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="8,0,0,4"/>
-                                        
-                                        <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="CurlSourceNodeComboBox"
-                                                  Height="32"
-                                                  MinWidth="120"
-                                                  ItemsSource="{Binding AvailableSources}"
-                                                  SelectedValuePath="NodeId"
-                                                  DisplayMemberPath="Title"
-                                                  SelectedValue="{Binding CurlSourceNodeId, Mode=TwoWay}"/>
-                                        
-                                        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="CurlSourceKeyComboBox"
-                                                  Height="32"
-                                                  MinWidth="120"
-                                                  Style="{DynamicResource BaseComboBox}"
-                                                  Margin="8,0,0,0"
-                                                  ItemsSource="{Binding CurlAvailableOutputKeys}"
-                                                  SelectedValuePath="Key"
-                                                  DisplayMemberPath="DisplayName"
-                                                  SelectedValue="{Binding CurlSourceOutputKey, Mode=TwoWay}"/>
-                                    </Grid>
-                                </Border>
-                            </Expander>
-                        </StackPanel>
-                    </Border>
+                    <!-- Tab 3: Body -->
+                    <TabItem Header="Body" Style="{StaticResource HttpTabItemStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="0,12,0,0">
+                                <Border Style="{DynamicResource DialogSectionBorder}">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Body Type:" Style="{DynamicResource DialogLabelText}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <ComboBox Grid.Column="1" Height="32" Width="150"
+                                                      HorizontalAlignment="Left"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding BodyTypeOptions}"
+                                                      SelectedItem="{Binding BodyType, Mode=TwoWay}"/>
+                                        </Grid>
 
-                    <!-- Tabs for Headers, Params, Body, Auth -->
-                    <TabControl Background="Transparent" BorderThickness="0" Margin="0,0,0,16">
-                        
-                        <!-- Headers Tab -->
-                        <TabItem Header="Headers" Style="{StaticResource HttpTabItemStyle}">
-                            <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="0,8,8,8" Padding="12" Margin="0,0,0,0">
-                                    <StackPanel>
-                                        <StackPanel x:Name="HeadersPanel"/>
-                                        <Button Content="+ Thêm Header" 
-                                                Style="{DynamicResource PrimaryButton}"
-                                                Width="120"
-                                                HorizontalAlignment="Left"
-                                                Margin="0,8,0,0"
-                                                Click="AddHeader_Click"/>
-                                    </StackPanel>
-                                </Border>
-                            </ScrollViewer>
-                        </TabItem>
-                        
-                        <!-- Query Params Tab -->
-                        <TabItem Header="Params" Style="{StaticResource HttpTabItemStyle}">
-                            <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="0,8,8,8" Padding="12">
-                                    <StackPanel>
-                                        <StackPanel x:Name="ParamsPanel"/>
-                                        <Button Content="+ Thêm Param" 
-                                                HorizontalAlignment="Left"
-                                                Style="{DynamicResource PrimaryButton}"
-                                                FontSize="11"
-                                                Width="100"
-                                                Height="35"
-                                                Margin="0,8,0,0"
-                                                Click="AddParam_Click"/>
-                                    </StackPanel>
-                                </Border>
-                            </ScrollViewer>
-                        </TabItem>
-                        
-                        <!-- Body Tab -->
-                        <TabItem Header="Body" Style="{StaticResource HttpTabItemStyle}">
-                            <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="0,8,8,8" Padding="12">
-                                    <StackPanel>
-                                        <!-- Body Type Selection -->
-                                        <TextBlock Text="Body Type:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,8"/>
-                                        <ComboBox Height="32"
-                                                  Style="{DynamicResource BaseComboBox}"
-                                                  Margin="0,0,0,12"
-                                                  ItemsSource="{Binding BodyTypeOptions}"
-                                                  SelectedItem="{Binding BodyType, Mode=TwoWay}"/>
-                                        
                                         <!-- Raw Body Input (visible when BodyType is Raw or Json) -->
-                                        <StackPanel x:Name="RawBodyPanel" Visibility="{Binding IsRawBodyVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <Grid Margin="0,0,0,8">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="2*"/>
-                                                    <ColumnDefinition Width="3*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="Body Content:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Top"/>
-                                                <TextBox Grid.Column="1"
-                                                         Text="{Binding RawBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{DynamicResource BaseTextBoxV2}"
-                                                         Height="150"
-                                                         AcceptsReturn="True"
-                                                         TextWrapping="Wrap"
-                                                         VerticalScrollBarVisibility="Auto"
-                                                         VerticalContentAlignment="Top"/>
-                                            </Grid>
-                                        
-                                        <!-- Dynamic Body Binding -->
-                                        <Expander Header="Bind Body từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
-                                            <Grid Margin="0,8,0,0">
+                                        <StackPanel x:Name="RawBodyPanel" Visibility="{Binding IsRawBodyVisible, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,12">
+                                            <Grid Margin="0,0,0,6">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                
-                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0" x:Name="BodySourceNodeComboBox"
-                                                          Height="32"
-                                                          ItemsSource="{Binding AvailableSources}"
-                                                          SelectedValuePath="NodeId"
-                                                          DisplayMemberPath="Title"
-                                                          SelectedValue="{Binding BodySourceNodeId, Mode=TwoWay}"/>
-                                                
-                                                <ComboBox Grid.Column="1" x:Name="BodySourceKeyComboBox"
-                                                          Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
-                                                          Margin="8,0,0,0"
-                                                          ItemsSource="{Binding BodyAvailableOutputKeys}"
-                                                          SelectedValuePath="Key"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValue="{Binding BodySourceOutputKey, Mode=TwoWay}"/>
+                                                <TextBlock Grid.Column="0" Text="Nội dung Body:" Style="{DynamicResource DialogMutedText}" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Content="✨ Format JSON" 
+                                                        Style="{DynamicResource SecondaryButton}"
+                                                        Height="24" Padding="8,0" FontSize="11"
+                                                        Click="FormatJson_Click"
+                                                        ToolTip="Định dạng thụt lề chuỗi JSON"/>
                                             </Grid>
-                                        </Expander>
-                                    </StackPanel>
-                                    
+                                            <TextBox Text="{Binding RawBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                     Height="150"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     VerticalContentAlignment="Top"
+                                                     Padding="8"/>
+                                            
+                                            <!-- Dynamic Body Binding -->
+                                            <Expander Header="🔗 Liên kết Body từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,8,0,0">
+                                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
+                                                        
+                                                        <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="BodySourceNodeComboBox"
+                                                                  Height="32"
+                                                                  ItemsSource="{Binding AvailableSources}"
+                                                                  SelectedValuePath="NodeId"
+                                                                  DisplayMemberPath="Title"
+                                                                  SelectedValue="{Binding BodySourceNodeId, Mode=TwoWay}"/>
+                                                        
+                                                        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="BodySourceKeyComboBox"
+                                                                  Height="32"
+                                                                  Style="{DynamicResource BaseComboBox}"
+                                                                  Margin="8,0,0,0"
+                                                                  ItemsSource="{Binding BodyAvailableOutputKeys}"
+                                                                  SelectedValuePath="Key"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValue="{Binding BodySourceOutputKey, Mode=TwoWay}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </Expander>
+                                        </StackPanel>
+
                                         <!-- Form Data (visible when BodyType is FormData or FormUrlEncoded) -->
                                         <StackPanel x:Name="FormDataPanel" Visibility="{Binding IsFormDataVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <TextBlock Text="Form Data:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,8"/>
-                                            <StackPanel x:Name="FormDataItemsPanel"/>
-                                            <Button Content="+ Thêm Field" 
-                                                    Style="{DynamicResource SecondaryButton}"
-                                                    HorizontalAlignment="Left"
-                                                    Margin="0,8,0,0"
-                                                    Click="AddFormData_Click"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </ScrollViewer>
-                        </TabItem>
-                        
-                        <!-- Authorization Tab -->
-                        <TabItem Header="Auth" Style="{StaticResource HttpTabItemStyle}">
-                            <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="0,8,8,8" Padding="12">
-                                <StackPanel>
-                                    <!-- Auth Type Selection -->
-                                    <TextBlock Text="Auth Type:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,8"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              Margin="0,0,0,12"
-                                              ItemsSource="{Binding AuthTypeOptions}"
-                                              SelectedItem="{Binding AuthType, Mode=TwoWay}"/>
-                                    
-                                    <!-- Basic Auth Fields -->
-                                    <StackPanel Visibility="{Binding IsBasicAuthVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="Username:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding AuthUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{DynamicResource BaseTextBoxV2}"
-                                                 Height="32"
-                                                 Margin="0,0,0,8"/>
-                                        
-                                        <TextBlock Text="Password:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                        <PasswordBox x:Name="PasswordBox"
-                                                     Height="32"
-                                                     Margin="0,0,0,8"
-                                                     PasswordChanged="PasswordBox_PasswordChanged"/>
-                                    </StackPanel>
-                                    
-                                    <!-- Bearer Token Fields -->
-                                    <StackPanel Visibility="{Binding IsBearerAuthVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="Token:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding AuthToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{DynamicResource BaseTextBoxV2}"
-                                                 Height="32"
-                                                 Margin="0,0,0,8"/>
-                                        <Expander Header="Bind Token từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
-                                            <Grid Margin="0,8,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0" x:Name="TokenSourceNodeComboBox"
-                                                          Height="32"
-                                                          ItemsSource="{Binding AvailableSources}"
-                                                          SelectedValuePath="NodeId"
-                                                          DisplayMemberPath="Title"
-                                                          SelectedValue="{Binding TokenSourceNodeId, Mode=TwoWay}"/>
-                                                <ComboBox Grid.Column="1" x:Name="TokenSourceKeyComboBox"
-                                                          Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
-                                                          Margin="8,0,0,0"
-                                                          ItemsSource="{Binding TokenAvailableOutputKeys}"
-                                                          SelectedValuePath="Key"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValue="{Binding TokenSourceOutputKey, Mode=TwoWay}"/>
-                                            </Grid>
-                                        </Expander>
-                                    </StackPanel>
-                                    
-                                    <!-- API Key Fields -->
-                                    <StackPanel Visibility="{Binding IsApiKeyAuthVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="Key Name:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding ApiKeyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{DynamicResource BaseTextBoxV2}"
-                                                 Height="32"
-                                                 Margin="0,0,0,8"/>
-                                        
-                                        <TextBlock Text="Key Value:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding ApiKeyValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{DynamicResource BaseTextBoxV2}"
-                                                 Height="32"
-                                                 Margin="0,0,0,8"/>
-                                        <Expander Header="Bind Key Value từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
-                                            <Grid Margin="0,8,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0" x:Name="ApiKeyValueSourceNodeComboBox"
-                                                          Height="32"
-                                                          ItemsSource="{Binding AvailableSources}"
-                                                          SelectedValuePath="NodeId"
-                                                          DisplayMemberPath="Title"
-                                                          SelectedValue="{Binding ApiKeyValueSourceNodeId, Mode=TwoWay}"/>
-                                                <ComboBox Grid.Column="1" x:Name="ApiKeyValueSourceKeyComboBox"
-                                                          Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
-                                                          Margin="8,0,0,0"
-                                                          ItemsSource="{Binding ApiKeyValueAvailableOutputKeys}"
-                                                          SelectedValuePath="Key"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValue="{Binding ApiKeyValueSourceOutputKey, Mode=TwoWay}"/>
-                                            </Grid>
-                                        </Expander>
-                                        
-                                        <CheckBox Content="Gửi trong Header (bỏ tick = Query Param)"
-                                                  IsChecked="{Binding ApiKeyInHeader, Mode=TwoWay}"
-                                                  Foreground="{DynamicResource TextSecondary}"
-                                                  Margin="0,0,0,8"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </TabItem>
-                    </TabControl>
+                                             <TextBlock Text="Form Data Fields:" Style="{DynamicResource DialogLabelText}"/>
+                                             
+                                             <!-- Table Header Column Titles -->
+                                             <Grid Margin="0,0,0,6">
+                                                 <Grid.ColumnDefinitions>
+                                                     <ColumnDefinition Width="2*"/>
+                                                     <ColumnDefinition Width="3*"/>
+                                                     <ColumnDefinition Width="2.5*"/>
+                                                     <ColumnDefinition Width="2.5*"/>
+                                                     <ColumnDefinition Width="22"/> <!-- space for delete button -->
+                                                     <ColumnDefinition Width="10"/> <!-- offset for scrollbar -->
+                                                 </Grid.ColumnDefinitions>
+                                                 <TextBlock Grid.Column="0" Text="Khóa (Key)" Style="{DynamicResource DialogMutedText}"/>
+                                                 <TextBlock Grid.Column="1" Text="Giá trị (Value)" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                                 <TextBlock Grid.Column="2" Text="Liên kết Node" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                                 <TextBlock Grid.Column="3" Text="Liên kết Khóa" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,0"/>
+                                             </Grid>
 
-                    <!-- ⚙️ Settings -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="⚙️ Settings" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            
-                            <TextBlock Text="Timeout (giây)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding TimeoutSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Height="32"
-                                     Width="100"
-                                     HorizontalAlignment="Left"/>
-                        </StackPanel>
-                    </Border>
+                                             <!-- Scrollable List -->
+                                             <ScrollViewer x:Name="FormDataScrollViewer" MaxHeight="240" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                                                 <StackPanel x:Name="FormDataItemsPanel"/>
+                                             </ScrollViewer>
 
-
-
-                            <StackPanel Visibility="Collapsed" >
-                                <!-- 📥 Inputs -->
-                                <Border Background="{DynamicResource WindowBackground}"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📥 Inputs"
-                                                   Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                                        <StackPanel x:Name="InputsPanel"/>
+                                             <Button Content="+ Thêm Field" 
+                                                     Style="{DynamicResource SuccessButton}"
+                                                     Height="30" Padding="12,0"
+                                                     HorizontalAlignment="Left"
+                                                     Click="AddFormData_Click"/>
+                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
-                    
-                    <!-- 📊 Outputs -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12" x:Name="BorderOutputPanel">
-                        <StackPanel>
-                            <TextBlock Text="📊 Outputs" 
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            <StackPanel x:Name="OutputsPanel"/>
-                        </StackPanel>
-                    </Border>
+                        </ScrollViewer>
+                    </TabItem>
 
-                    <!-- Info Note -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="6" Padding="10">
-                        <StackPanel>
-                            <TextBlock Text="💡 Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="10" LineHeight="16">
-                                • Mỗi trường có thể bind giá trị động từ node khác<LineBreak/>
-                                • Outputs bao gồm: Status Code, Response Body, Headers, Success, Error<LineBreak/>
-                                • Timeout mặc định là 30 giây
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
+                    <!-- Tab 4: Auth -->
+                    <TabItem Header="Auth" Style="{StaticResource HttpTabItemStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="0,12,0,0">
+                                <Border Style="{DynamicResource DialogSectionBorder}">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Phương thức Auth:" Style="{DynamicResource DialogLabelText}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <ComboBox Grid.Column="1" Height="32" Width="180"
+                                                      HorizontalAlignment="Left"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding AuthTypeOptions}"
+                                                      SelectedItem="{Binding AuthType, Mode=TwoWay}"/>
+                                        </Grid>
 
-                <TabItem Style="{StaticResource HttpTabItemStyle}">
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🛡 Bypass / Anti-Bot" VerticalAlignment="Center"/>
-                            <Ellipse Width="8" Height="8" Fill="#EF4444" Margin="6,0,0,0" VerticalAlignment="Center"
-                                     Visibility="{Binding IsLibCurlAvailable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                                     ToolTip="Cảnh báo: Không tìm thấy libcurl.dll!"/>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="16">
-                            <!-- Warning banner if libcurl is missing -->
-                            <Border Visibility="{Binding IsLibCurlAvailable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                                    Background="#33EF4444" 
-                                    BorderBrush="#FFEF4444" 
-                                    BorderThickness="1" 
-                                    CornerRadius="8" 
-                                    Padding="12" 
-                                    Margin="0,0,0,16">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="⚠️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock TextWrapping="Wrap" Foreground="#FFFF8080" FontSize="11" LineHeight="16" VerticalAlignment="Center">
-                                         <Bold>Cảnh báo:</Bold> Thư viện <Run FontWeight="Bold">libcurl.dll</Run> không tìm thấy hoặc thiếu phụ thuộc (OpenSSL/zlib).<LineBreak/>
-                                         Hệ thống sẽ tự động fallback sang chạy bằng <Run FontWeight="Bold">curl.exe</Run> từ máy của bạn.
-                                    </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                        <!-- Basic Auth Fields -->
+                                        <StackPanel Visibility="{Binding IsBasicAuthVisible, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,8,0,0">
+                                            <TextBlock Text="Tên người dùng (Username):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding AuthUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
+                                            
+                                            <TextBlock Text="Mật khẩu (Password):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                            <PasswordBox x:Name="PasswordBox" Height="32" Margin="0,0,0,10"
+                                                         PasswordChanged="PasswordBox_PasswordChanged"/>
+                                        </StackPanel>
 
-                            <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
-                                <StackPanel>
-                                    <TextBlock Text="🛡 Bypass / Anti-Bot (libcurl)" Foreground="{DynamicResource WarningColor}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <!-- Bearer Token Fields -->
+                                        <StackPanel Visibility="{Binding IsBearerAuthVisible, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,8,0,0">
+                                            <TextBlock Text="Mã Token (Bearer Token):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding AuthToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
+                                            
+                                            <Expander Header="🔗 Liên kết Token từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
+                                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
+                                                        
+                                                        <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="TokenSourceNodeComboBox"
+                                                                  Height="32" ItemsSource="{Binding AvailableSources}"
+                                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                  SelectedValue="{Binding TokenSourceNodeId, Mode=TwoWay}"/>
+                                                        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="TokenSourceKeyComboBox"
+                                                                  Height="32" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0"
+                                                                  ItemsSource="{Binding TokenAvailableOutputKeys}"
+                                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                                  SelectedValue="{Binding TokenSourceOutputKey, Mode=TwoWay}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </Expander>
+                                        </StackPanel>
 
-                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" LineHeight="18" Margin="0,0,0,10">
-                                        - Bật chế độ này khi API bị chặn bởi Cloudflare, cần TLS fingerprint, hoặc gặp lỗi SSL/TLS trên HttpClient.<LineBreak/>
-                                        - Trên node canvas sẽ hiện badge 🛡 (màu nghệ) để biết node đang dùng bypass.<LineBreak/>
-                                        - Nếu máy bạn không có `libcurl.dll` phù hợp, app sẽ tự fallback sang chạy `curl.exe` (nếu tìm thấy).<LineBreak/>
-                                        - `ImpersonateBrowser` chỉ hoạt động khi bạn dùng bản `curl-impersonate` (curl thường sẽ bỏ qua option này).
-                                    </TextBlock>
+                                        <!-- API Key Fields -->
+                                        <StackPanel Visibility="{Binding IsApiKeyAuthVisible, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,8,0,0">
+                                            <TextBlock Text="Tên khóa (Key Name):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding ApiKeyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
+                                            
+                                            <TextBlock Text="Giá trị khóa (Key Value):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding ApiKeyValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
+                                            
+                                            <Expander Header="🔗 Liên kết Key Value từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
+                                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
+                                                        
+                                                        <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="ApiKeyValueSourceNodeComboBox"
+                                                                  Height="32" ItemsSource="{Binding AvailableSources}"
+                                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                  SelectedValue="{Binding ApiKeyValueSourceNodeId, Mode=TwoWay}"/>
+                                                        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="ApiKeyValueSourceKeyComboBox"
+                                                                  Height="32" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0"
+                                                                  ItemsSource="{Binding ApiKeyValueAvailableOutputKeys}"
+                                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                                  SelectedValue="{Binding ApiKeyValueSourceOutputKey, Mode=TwoWay}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </Expander>
+                                            
+                                            <CheckBox Content="Gửi trong Header (bỏ tích sẽ gửi dưới dạng Query Parameter)"
+                                                      IsChecked="{Binding ApiKeyInHeader, Mode=TwoWay}"
+                                                      Foreground="{DynamicResource TextSecondary}"
+                                                      Style="{DynamicResource {x:Type CheckBox}}"
+                                                      Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
 
-                                    <!-- Toggle UseCurl -->
-                                    <CheckBox Content="Dùng libcurl (bypass CORS, Cloudflare, TLS fingerprint)"
-                                              IsChecked="{Binding UseCurl, Mode=TwoWay}"
-                                              FontSize="13"
-                                              Margin="0,0,0,10">
-                                        <CheckBox.Style>
-                                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
-                                                <Style.Triggers>
-                                                    <MultiDataTrigger>
-                                                        <MultiDataTrigger.Conditions>
-                                                            <Condition Binding="{Binding UseCurl}" Value="True"/>
-                                                            <Condition Binding="{Binding IsLibCurlAvailable}" Value="False"/>
-                                                        </MultiDataTrigger.Conditions>
-                                                        <Setter Property="Foreground" Value="#EF4848"/>
-                                                        <Setter Property="ToolTip" Value="Cảnh báo: Không tìm thấy libcurl.dll, hệ thống sẽ chạy bằng curl.exe"/>
-                                                    </MultiDataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </CheckBox.Style>
-                                    </CheckBox>
+                    <!-- Tab 5: Bypass & Anti-Bot -->
+                    <TabItem Style="{StaticResource HttpTabItemStyle}">
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🛡 Bypass / Anti-Bot" VerticalAlignment="Center"/>
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource DangerBrush}" Margin="6,0,0,0" VerticalAlignment="Center"
+                                         Visibility="{Binding IsLibCurlAvailable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                         ToolTip="Cảnh báo: Không tìm thấy libcurl.dll!"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="0,12,0,0">
+                                <!-- Warning banner if libcurl is missing -->
+                                <Border Visibility="{Binding IsLibCurlAvailable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                        Background="#33EF4444" 
+                                        BorderBrush="{DynamicResource DangerBrush}" 
+                                        BorderThickness="1" 
+                                        CornerRadius="8" 
+                                        Padding="12" 
+                                        Margin="0,0,0,12">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚠️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock TextWrapping="Wrap" Foreground="#FFFF8080" FontSize="11" LineHeight="16" VerticalAlignment="Center">
+                                             <Bold>Cảnh báo:</Bold> Thư viện <Run FontWeight="Bold">libcurl.dll</Run> không tìm thấy hoặc thiếu phụ thuộc (OpenSSL/zlib).<LineBreak/>
+                                             Hệ thống sẽ tự động fallback sang chạy bằng <Run FontWeight="Bold">curl.exe</Run> từ máy của bạn.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
 
-                                    <!-- Impersonate Browser -->
-                                    <TextBlock Text="Impersonate Browser (TLS fingerprint):" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                    <Grid Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <ComboBox Grid.Column="0"
-                                                  Height="32"
-                                                  Style="{DynamicResource BaseComboBox}"
-                                                  Margin="0,0,8,0"
-                                                  SelectedValue="{Binding ImpersonateBrowser, Mode=TwoWay}"
-                                                  ToolTip="Chọn browser để impersonate TLS fingerprint (yêu cầu curl-impersonate)">
-                                            <ComboBoxItem Content="" Tag=""/>
-                                            <ComboBoxItem Content="chrome120 (Chrome 120)" Tag="chrome120"/>
-                                            <ComboBoxItem Content="chrome116 (Chrome 116)" Tag="chrome116"/>
-                                            <ComboBoxItem Content="chrome110 (Chrome 110)" Tag="chrome110"/>
-                                            <ComboBoxItem Content="chrome107 (Chrome 107)" Tag="chrome107"/>
-                                            <ComboBoxItem Content="chrome104 (Chrome 104)" Tag="chrome104"/>
-                                            <ComboBoxItem Content="chrome101 (Chrome 101)" Tag="chrome101"/>
-                                            <ComboBoxItem Content="chrome100 (Chrome 100)" Tag="chrome100"/>
-                                            <ComboBoxItem Content="chrome99 (Chrome 99)" Tag="chrome99"/>
-                                            <ComboBoxItem Content="edge101 (Edge 101)" Tag="edge101"/>
-                                            <ComboBoxItem Content="edge99 (Edge 99)" Tag="edge99"/>
-                                            <ComboBoxItem Content="edge98 (Edge 98)" Tag="edge98"/>
-                                            <ComboBoxItem Content="firefox117 (Firefox 117)" Tag="firefox117"/>
-                                            <ComboBoxItem Content="firefox110 (Firefox 110)" Tag="firefox110"/>
-                                            <ComboBoxItem Content="firefox109 (Firefox 109)" Tag="firefox109"/>
-                                            <ComboBoxItem Content="firefox108 (Firefox 108)" Tag="firefox108"/>
-                                            <ComboBoxItem Content="firefox102 (Firefox 102)" Tag="firefox102"/>
-                                            <ComboBoxItem Content="firefox100 (Firefox 100)" Tag="firefox100"/>
-                                            <ComboBoxItem Content="safari17_0 (Safari 17.0)" Tag="safari17_0"/>
-                                            <ComboBoxItem Content="safari16_5 (Safari 16.5)" Tag="safari16_5"/>
-                                            <ComboBoxItem Content="safari15_5 (Safari 15.5)" Tag="safari15_5"/>
-                                        </ComboBox>
-                                        <TextBox Grid.Column="1"
-                                                 Text="{Binding ImpersonateBrowser, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <Border Style="{DynamicResource DialogSectionBorder}">
+                                    <StackPanel>
+                                        <TextBlock Text="🛡 Bypass / Anti-Bot (libcurl)" Style="{DynamicResource DialogLabelText}"/>
+
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" LineHeight="18" Margin="0,0,0,12">
+                                            - Bật chế độ này khi API bị chặn bởi Cloudflare, cần TLS fingerprint, hoặc gặp lỗi SSL/TLS trên HttpClient.<LineBreak/>
+                                            - Trên node canvas sẽ hiện badge 🛡 để biết node đang dùng bypass.<LineBreak/>
+                                            - Nếu máy bạn không có `libcurl.dll` phù hợp, app sẽ tự fallback sang chạy `curl.exe` (nếu tìm thấy).<LineBreak/>
+                                            - `ImpersonateBrowser` chỉ hoạt động khi bạn dùng bản `curl-impersonate` (curl thường sẽ bỏ qua option này).
+                                        </TextBlock>
+
+                                        <!-- Toggle UseCurl -->
+                                        <CheckBox Content="Dùng libcurl (bypass CORS, Cloudflare, TLS fingerprint)"
+                                                  IsChecked="{Binding UseCurl, Mode=TwoWay}"
+                                                  FontSize="12.5"
+                                                  Margin="0,0,0,12">
+                                            <CheckBox.Style>
+                                                <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding UseCurl}" Value="True"/>
+                                                                <Condition Binding="{Binding IsLibCurlAvailable}" Value="False"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                            <Setter Property="ToolTip" Value="Cảnh báo: Không tìm thấy libcurl.dll, hệ thống sẽ chạy bằng curl.exe"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </CheckBox.Style>
+                                        </CheckBox>
+
+                                        <!-- Impersonate Browser -->
+                                        <TextBlock Text="Impersonate Browser (TLS fingerprint):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox Grid.Column="0"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      Margin="0,0,8,0"
+                                                      SelectedValue="{Binding ImpersonateBrowser, Mode=TwoWay}"
+                                                      ToolTip="Chọn browser để impersonate TLS fingerprint (yêu cầu curl-impersonate)">
+                                                <ComboBoxItem Content="" Tag=""/>
+                                                <ComboBoxItem Content="chrome120 (Chrome 120)" Tag="chrome120"/>
+                                                <ComboBoxItem Content="chrome116 (Chrome 116)" Tag="chrome116"/>
+                                                <ComboBoxItem Content="chrome110 (Chrome 110)" Tag="chrome110"/>
+                                                <ComboBoxItem Content="chrome107 (Chrome 107)" Tag="chrome107"/>
+                                                <ComboBoxItem Content="chrome104 (Chrome 104)" Tag="chrome104"/>
+                                                <ComboBoxItem Content="chrome101 (Chrome 101)" Tag="chrome101"/>
+                                                <ComboBoxItem Content="chrome100 (Chrome 100)" Tag="chrome100"/>
+                                                <ComboBoxItem Content="chrome99 (Chrome 99)" Tag="chrome99"/>
+                                                <ComboBoxItem Content="edge101 (Edge 101)" Tag="edge101"/>
+                                                <ComboBoxItem Content="edge99 (Edge 99)" Tag="edge99"/>
+                                                <ComboBoxItem Content="edge98 (Edge 98)" Tag="edge98"/>
+                                                <ComboBoxItem Content="firefox117 (Firefox 117)" Tag="firefox117"/>
+                                                <ComboBoxItem Content="firefox110 (Firefox 110)" Tag="firefox110"/>
+                                                <ComboBoxItem Content="firefox109 (Firefox 109)" Tag="firefox109"/>
+                                                <ComboBoxItem Content="firefox108 (Firefox 108)" Tag="firefox108"/>
+                                                <ComboBoxItem Content="firefox102 (Firefox 102)" Tag="firefox102"/>
+                                                <ComboBoxItem Content="firefox100 (Firefox 100)" Tag="firefox100"/>
+                                                <ComboBoxItem Content="safari17_0 (Safari 17.0)" Tag="safari17_0"/>
+                                                <ComboBoxItem Content="safari16_5 (Safari 16.5)" Tag="safari16_5"/>
+                                                <ComboBoxItem Content="safari15_5 (Safari 15.5)" Tag="safari15_5"/>
+                                            </ComboBox>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding ImpersonateBrowser, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                     Height="32"
+                                                     Width="120"
+                                                     ToolTip="Nhập tên browser tùy chỉnh (e.g. chrome120)"/>
+                                        </Grid>
+
+                                        <!-- curl.exe Path -->
+                                        <TextBlock Text="curl.exe Path (để trống = auto-detect):" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding CurlPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                  Style="{DynamicResource BaseTextBoxV2}"
                                                  Height="32"
-                                                 Width="120"
-                                                 ToolTip="Nhập tên browser tùy chỉnh (e.g. chrome120)"/>
-                                    </Grid>
+                                                 ToolTip="Đường dẫn curl.exe hoặc curl-impersonate.exe. Để trống để auto-detect"
+                                                 Margin="0,0,0,12"/>
 
-                                    <!-- curl.exe Path -->
-                                    <TextBlock Text="curl.exe Path (để trống = auto-detect):" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding CurlPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             Height="32"
-                                             ToolTip="Đường dẫn curl.exe hoặc curl-impersonate.exe. Để trống để auto-detect (System32, PATH, app dir)"
-                                             Margin="0,0,0,8"/>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <CheckBox Content="Dùng chế độ raw cURL command (bật = kiểu mới, tắt = logic cũ)"
+                                                      IsChecked="{Binding AutoAppendCurlWriteOut, Mode=TwoWay}"
+                                                      Foreground="{DynamicResource TextBrush}"
+                                                      Style="{DynamicResource {x:Type CheckBox}}"
+                                                      Margin="0,0,0,4"/>
+                                            <TextBlock Text="Mặc định: Tắt (unchecked). Khi bật, cURL sẽ tự động gắn thêm cờ output (-w) để lấy chính xác Status Code. Khi tắt, lệnh cURL của bạn sẽ được giữ nguyên 100% không bị can thiệp."
+                                                       Style="{DynamicResource DialogMutedText}"
+                                                       Margin="20,0,0,0"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
 
-                                    <StackPanel Margin="0,0,0,10">
-                                        <CheckBox Content="Dùng chế độ raw cURL command (bật = kiểu mới, tắt = logic cũ)"
-                                                  IsChecked="{Binding AutoAppendCurlWriteOut, Mode=TwoWay}"
-                                                  Foreground="{DynamicResource TextBrush}"
-                                                  FontSize="12"
-                                                  Margin="0,0,0,4"/>
-                                        <TextBlock Text="Mặc định: Tắt (unchecked). Khi bật, cURL sẽ tự động gắn thêm cờ output (-w) để lấy chính xác Status Code. Khi tắt, lệnh cURL của bạn sẽ được giữ nguyên 100% không bị can thiệp."
-                                                   Foreground="{DynamicResource TextSecondary}"
-                                                   FontSize="11"
-                                                   Margin="24,0,0,0"
-                                                   TextWrapping="Wrap"/>
+                                        <Border Background="{DynamicResource CardHoverBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="16">
+                                                💡 Hướng dẫn nhanh:<LineBreak/>
+                                                1) Bật &quot;Dùng libcurl&quot;.<LineBreak/>
+                                                2) Chọn trình duyệt TLS mong muốn (yêu cầu curl-impersonate).<LineBreak/>
+                                                3) Nếu app không gọi được libcurl: trỏ &quot;curl.exe Path&quot; tới curl-impersonate.exe hoặc curl.exe trên máy của bạn.
+                                            </TextBlock>
+                                        </Border>
                                     </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
 
-                                    <Border Background="{DynamicResource CardHoverBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
-                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" LineHeight="18">
-                                            Cách dùng nhanh:<LineBreak/>
-                                            1) Bật "Dùng libcurl".<LineBreak/>
-                                            2) Nếu cần giả lập TLS như trình duyệt: chọn `chrome120` / `firefox117`… (cần `curl-impersonate`).<LineBreak/>
-                                            3) Nếu app không gọi được CurlThin/libcurl: trỏ `curl.exe Path` tới `curl-impersonate.exe` hoặc `curl.exe` trên máy.
+                    <!-- Tab 6: Định tuyến & Tái sử dụng -->
+                    <TabItem Header="Định tuyến &amp; Tái sử dụng" Style="{StaticResource HttpTabItemStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="0,12,0,0">
+                                <!-- Ports positioning -->
+                                <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Vị trí cổng IN/OUT" Style="{DynamicResource DialogLabelText}"/>
+                                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,10">
+                                            Nếu không chọn gì, node sẽ chạy flow mặc định như hiện tại.
+                                            Nếu cấu hình, khi flow đi vào từ một node IN cụ thể thì sau khi chạy xong node hiện tại
+                                            sẽ nhảy sang node OUT được chọn tương ứng.
                                         </TextBlock>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
 
-                <!-- Tab 3: Tái sử dụng flow (route theo node in/out trực tiếp) -->
-                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="16" >
-                            <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
 
-                            <Border Background="{DynamicResource WindowBackground}"
-                                    BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock TextWrapping="Wrap"
-                                               Foreground="{DynamicResource TextMuted}"
-                                               FontSize="10"
-                                               Margin="0,0,0,10">
-                                        Nếu không chọn gì, node sẽ chạy flow mặc định như hiện tại.
-                                        Nếu cấu hình, khi flow đi vào từ một node IN cụ thể thì sau khi chạy xong node hiện tại
-                                        sẽ nhảy sang node OUT được chọn tương ứng.
+                                            <!-- Port IN -->
+                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                <TextBlock Text="Cổng IN" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding PortPositionOptions}"
+                                                          SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                            </StackPanel>
+
+                                            <!-- Port OUT -->
+                                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                <TextBlock Text="Cổng OUT" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding PortPositionOptions}"
+                                                          SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Route List -->
+                                <TextBlock Text="Danh sách định tuyến theo Node" Style="{DynamicResource DialogLabelText}" Margin="0,4,0,8"/>
+                                <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{DynamicResource DialogSectionBorderDark}" Margin="0,0,0,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="2*"/>
+                                                        <ColumnDefinition Width="2*"/>
+                                                        <ColumnDefinition Width="3*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Incoming node (IN) -->
+                                                    <StackPanel Orientation="Vertical" Grid.Column="0" Margin="0,0,8,0">
+                                                        <TextBlock Text="Node IN" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,2"/>
+                                                        <TextBlock Text="{Binding IncomingNodeTitle}" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+
+                                                    <!-- Outgoing node (OUT) -->
+                                                    <StackPanel Orientation="Vertical" Grid.Column="1" Margin="0,0,8,0">
+                                                        <TextBlock Text="Node OUT" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,2"/>
+                                                        <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                  ItemsSource="{Binding OutgoingOptions}"
+                                                                  SelectedValuePath="NodeId"
+                                                                  DisplayMemberPath="Title"
+                                                                  SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
+                                                    </StackPanel>
+
+                                                    <!-- Connection line style -->
+                                                    <StackPanel Orientation="Vertical" Grid.Column="2" Margin="10,0,0,0">
+                                                        <TextBlock Text="Kiểu line OUT" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,2"/>
+                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                  ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
+                                                                  SelectedValuePath="Key"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Border Style="{DynamicResource DialogSectionBorder}" BorderBrush="{DynamicResource PrimaryGlowBrush}" Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource PrimaryBrush}" FontSize="11.5">
+                                        💡 Lưu ý: Chỉ những node nối TRỰC TIẾP vào/ra node này mới xuất hiện ở đây. Mỗi node IN chỉ chọn được đúng 1 node OUT tương ứng.
                                     </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
 
+                    <!-- Tab 7: Cài đặt & Đầu ra -->
+                    <TabItem Header="Cài đặt &amp; Đầu ra" Style="{StaticResource HttpTabItemStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="0,12,0,0">
+                                <!-- Timeout & Display Settings Card -->
+                                <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
                                     <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Port IN -->
-                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                            <TextBlock Text="Port IN"
-                                                       Foreground="{DynamicResource TextMuted}"
-                                                       FontSize="10"
-                                                       Margin="0,0,0,4"/>
-                                            <ComboBox Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      ItemsSource="{Binding PortPositionOptions}"
-                                                      SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                        <!-- Timeout -->
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12">
+                                            <TextBlock Text="Timeout (giây):" Style="{DynamicResource DialogLabelText}"/>
+                                            <TextBox Text="{Binding TimeoutSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                     Height="32" Width="120" HorizontalAlignment="Left"/>
                                         </StackPanel>
 
-                                        <!-- Port OUT -->
-                                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                            <TextBlock Text="Port OUT"
-                                                       Foreground="{DynamicResource TextMuted}"
-                                                       FontSize="10"
-                                                       Margin="0,0,0,4"/>
-                                            <ComboBox Height="32"
+                                        <!-- Title Display Mode -->
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12">
+                                            <TextBlock Text="Hiển thị tiêu đề:" Style="{DynamicResource DialogLabelText}"/>
+                                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="32"
                                                       Style="{DynamicResource BaseComboBox}"
-                                                      ItemsSource="{Binding PortPositionOptions}"
-                                                      SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
                                         </StackPanel>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
 
-                            <!-- Cấu hình tái sử dụng flow -->
-                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{DynamicResource HeaderBackgroundBrush}"
-                                                BorderBrush="{DynamicResource ControlBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="8"
-                                                Padding="10"
-                                                Margin="0,0,0,8">
+                                        <!-- Title Color -->
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4,0,0">
+                                            <TextBlock Text="Màu tiêu đề Node:" Style="{DynamicResource DialogLabelText}"/>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="2*"/>
-                                                    <ColumnDefinition Width="2*"/>
-                                                    <ColumnDefinition Width="3*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-
-                                                <!-- Incoming node (IN) -->
-                                                <StackPanel Orientation="Vertical" Grid.Column="0" Margin="0,0,8,0">
-                                                    <TextBlock Text="Node IN"
-                                                               Foreground="{DynamicResource TextSecondary}"
-                                                               FontSize="11"
-                                                               Margin="0,0,0,2"/>
-                                                    <TextBlock Text="{Binding IncomingNodeTitle}"
-                                                               Foreground="{DynamicResource TextBrush}"
-                                                               FontSize="13"
-                                                               FontWeight="SemiBold"/>
-                                                </StackPanel>
-
-                                                <!-- Outgoing node (OUT) -->
-                                                <StackPanel Orientation="Vertical" Grid.Column="1" Margin="0,0,8,0">
-                                                    <TextBlock Text="Node OUT"
-                                                               Foreground="{DynamicResource TextSecondary}"
-                                                               FontSize="11"
-                                                               Margin="0,0,0,2"/>
-                                                    <controls:NodeSearchComboBoxUserControl Height="32"
-                                                              ItemsSource="{Binding OutgoingOptions}"
-                                                              SelectedValuePath="NodeId"
-                                                              DisplayMemberPath="Title"
-                                                              SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
-                                                </StackPanel>
-
-                                                <!-- Connection line style -->
-                                                <StackPanel Orientation="Vertical" Grid.Column="2" Margin="10,0,0,0">
-                                                    <TextBlock Text="Kiểu line OUT"
-                                                               Foreground="{DynamicResource TextSecondary}"
-                                                               FontSize="11"
-                                                               Margin="0,0,0,2"/>
-                                                    <ComboBox Height="32"
-                                                              Style="{DynamicResource BaseComboBox}"
-                                                              ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
-                                                              SelectedValuePath="Key"
-                                                              DisplayMemberPath="DisplayName"
-                                                              SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
-                                                </StackPanel>
+                                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding TitleColorOptions}"
+                                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                                <Border x:Name="TitleColorPreview" Grid.Column="1"
+                                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                                             </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
 
-                            <Border Background="{DynamicResource HeaderBackgroundBrush}"
-                                    BorderBrush="{DynamicResource PrimaryGlowBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="10"
-                                    Margin="0,8,0,0">
-                                <TextBlock TextWrapping="Wrap"
-                                           Foreground="{DynamicResource PrimaryBrush}"
-                                           FontSize="12">
-                                    Chỉ những node nối TRỰC TIẾP vào/ra node này mới xuất hiện ở đây.
-                                    Mỗi node IN chỉ chọn được đúng 1 node OUT tương ứng.
-                                </TextBlock>
-                            </Border>
+                                <!-- Dynamic URL/cURL bindings -->
+                                <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="🔗 Liên kết URL / cURL động (từ node khác)" Style="{DynamicResource DialogLabelText}"/>
+                                        
+                                        <!-- Dynamic URL Binding -->
+                                        <Expander Header="Bind URL từ node khác" Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,8">
+                                            <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" MinWidth="120"/>
+                                                        <ColumnDefinition Width="*" MinWidth="120"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
+                                                    
+                                                    <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="UrlSourceNodeComboBox"
+                                                              Height="32" MinWidth="120" ItemsSource="{Binding AvailableSources}"
+                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding UrlSourceNodeId, Mode=TwoWay}"/>
+                                                    
+                                                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="UrlSourceKeyComboBox"
+                                                              Height="32" MinWidth="120" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0"
+                                                              ItemsSource="{Binding UrlAvailableOutputKeys}"
+                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding UrlSourceOutputKey, Mode=TwoWay}"/>
+                                                </Grid>
+                                            </Border>
+                                        </Expander>
+
+                                        <!-- cURL Command Binding -->
+                                        <Expander Header="Bind cURL command từ node khác" Foreground="{DynamicResource TextBrush}" FontSize="11">
+                                            <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" MinWidth="120"/>
+                                                        <ColumnDefinition Width="*" MinWidth="120"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
+                                                    
+                                                    <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="CurlSourceNodeComboBox"
+                                                              Height="32" MinWidth="120" ItemsSource="{Binding AvailableSources}"
+                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding CurlSourceNodeId, Mode=TwoWay}"/>
+                                                    
+                                                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="CurlSourceKeyComboBox"
+                                                              Height="32" MinWidth="120" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0"
+                                                              ItemsSource="{Binding CurlAvailableOutputKeys}"
+                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding CurlSourceOutputKey, Mode=TwoWay}"/>
+                                                </Grid>
+                                            </Border>
+                                        </Expander>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Inputs (hidden container needed by base class) -->
+                                <StackPanel Visibility="Collapsed">
+                                    <StackPanel x:Name="InputsPanel"/>
+                                </StackPanel>
+
+                                <!-- Outputs Card -->
+                                <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12" x:Name="BorderOutputPanel">
+                                    <StackPanel>
+                                        <TextBlock Text="📊 Đầu ra (Outputs)" Style="{DynamicResource DialogLabelText}"/>
+                                        <StackPanel x:Name="OutputsPanel"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Notes Info Card -->
+                                <Border Style="{DynamicResource DialogSectionBorderDark}">
+                                    <StackPanel>
+                                        <TextBlock Text="💡 Hướng dẫn &amp; Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="11" LineHeight="16">
+                                            • Mỗi trường của HTTP Request đều có thể liên kết giá trị động từ node đứng trước.<LineBreak/>
+                                            • Các outputs khả dụng: Status Code, Response Body, Headers, Success, Error.<LineBreak/>
+                                            • Timeout mặc định nếu không cấu hình là 30 giây.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+
+                <!-- Loading Overlay (Non-blocking and matches modern look) -->
+                <Border x:Name="LoadingOverlay"
+                        Grid.Row="0" Grid.RowSpan="2"
+                        Background="#66000000"
+                        CornerRadius="8"
+                        Visibility="Collapsed"
+                        Panel.ZIndex="99">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" 
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="24,16"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <ProgressBar IsIndeterminate="True" Width="80" Height="4" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="Đang xử lý cURL... Vui lòng đợi" 
+                                       Foreground="{DynamicResource TextBrush}" 
+                                       FontSize="13" 
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
                         </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-            </TabControl>
+                    </Border>
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </local:BaseNodeDialog>
-

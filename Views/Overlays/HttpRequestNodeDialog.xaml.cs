@@ -5,6 +5,7 @@ using FlowMy.ViewModels;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -26,6 +27,10 @@ namespace FlowMy.Views.Overlays
 
             _viewModel = new HttpRequestNodeDialogViewModel(node, host);
             InitializeBase(_viewModel, owner);
+
+            // Set height to 3/5 of work area height dynamically
+            var workArea = SystemParameters.WorkArea;
+            this.Height = workArea.Height * 0.6;
 
             // Subscribe to collection changes
             _viewModel.HeaderItems.CollectionChanged += HeaderItems_CollectionChanged;
@@ -81,6 +86,11 @@ namespace FlowMy.Views.Overlays
                 var row = CreateKeyValueRow(item, _viewModel.HeaderItems, i, "header");
                 HeadersPanel.Children.Add(row);
             }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                HeadersScrollViewer?.ScrollToBottom();
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void AddHeader_Click(object sender, RoutedEventArgs e)
@@ -107,6 +117,11 @@ namespace FlowMy.Views.Overlays
                 var row = CreateKeyValueRow(item, _viewModel.ParamItems, i, "param");
                 ParamsPanel.Children.Add(row);
             }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ParamsScrollViewer?.ScrollToBottom();
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void AddParam_Click(object sender, RoutedEventArgs e)
@@ -133,6 +148,11 @@ namespace FlowMy.Views.Overlays
                 var row = CreateKeyValueRow(item, _viewModel.FormDataItems, i, "formdata");
                 FormDataItemsPanel.Children.Add(row);
             }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                FormDataScrollViewer?.ScrollToBottom();
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void AddFormData_Click(object sender, RoutedEventArgs e)
@@ -144,7 +164,7 @@ namespace FlowMy.Views.Overlays
 
         #region cURL Paste Detection
 
-        private void ImportCurl_Click(object sender, RoutedEventArgs e)
+        private async void ImportCurl_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -170,25 +190,44 @@ namespace FlowMy.Views.Overlays
                     return;
                 }
 
-                // Reset UI first (clear panels before parsing)
-                HeadersPanel.Children.Clear();
-                ParamsPanel.Children.Clear();
-                FormDataItemsPanel.Children.Clear();
+                // Show Loading Overlay
+                LoadingOverlay.Visibility = Visibility.Visible;
+                Mouse.OverrideCursor = Cursors.Wait;
+                await Task.Delay(100);
 
-                if (_viewModel.ParseAndApplyCurl(clipboardText, out string errorMsg))
+                bool success = false;
+                string errorMsg = string.Empty;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    // Reset UI first (clear panels before parsing)
+                    HeadersPanel.Children.Clear();
+                    ParamsPanel.Children.Clear();
+                    FormDataItemsPanel.Children.Clear();
+
+                    success = _viewModel.ParseAndApplyCurl(clipboardText, out errorMsg);
+                }, System.Windows.Threading.DispatcherPriority.Background);
+
+                if (success)
                 {
                     _lastProcessedText = _viewModel.Url;
                     
-                    // Re-render the panels with cleaned data
-                    RenderHeaders();
-                    RenderParams();
-                    RenderFormData();
-
-                    // Update password box if Basic auth
-                    if (!string.IsNullOrEmpty(_viewModel.AuthPassword))
+                    await Dispatcher.InvokeAsync(() =>
                     {
-                        PasswordBox.Password = _viewModel.AuthPassword;
-                    }
+                        // Re-render the panels with cleaned data
+                        RenderHeaders();
+                        RenderParams();
+                        RenderFormData();
+
+                        // Update password box if Basic auth
+                        if (!string.IsNullOrEmpty(_viewModel.AuthPassword))
+                        {
+                            PasswordBox.Password = _viewModel.AuthPassword;
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Background);
+
+                    LoadingOverlay.Visibility = Visibility.Collapsed;
+                    Mouse.OverrideCursor = null;
 
                     MessageBox.Show(
                         "✅ Đã import cURL thành công!\n\n" +
@@ -204,6 +243,9 @@ namespace FlowMy.Views.Overlays
                 }
                 else
                 {
+                    LoadingOverlay.Visibility = Visibility.Collapsed;
+                    Mouse.OverrideCursor = null;
+
                     var debugInfo = FlowMy.Utils.CurlParser.GetParseDebugInfo(clipboardText);
                     MessageBox.Show(
                         $"❌ Không thể parse cURL command.\n\nLỗi: {errorMsg}\n\n" +
@@ -218,6 +260,8 @@ namespace FlowMy.Views.Overlays
             }
             catch (Exception ex)
             {
+                LoadingOverlay.Visibility = Visibility.Collapsed;
+                Mouse.OverrideCursor = null;
                 MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -309,48 +353,69 @@ namespace FlowMy.Views.Overlays
                 if (!_viewModel.IsCurlCommand(clipboardText))
                     return false;
 
+                _ = ProcessCurlAsync(clipboardText);
+                return true; // handled
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"cURL parse exception: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        private async Task ProcessCurlAsync(string curlText)
+        {
+            try
+            {
                 _isProcessingPaste = true;
+                LoadingOverlay.Visibility = Visibility.Visible;
+                Mouse.OverrideCursor = Cursors.Wait;
+                await Task.Delay(100);
 
-                // Reset UI first (this is done inside ParseAndApplyCurl, but we also clear UI here)
-                // Clear UI panels before parsing to avoid old data showing
-                HeadersPanel.Children.Clear();
-                ParamsPanel.Children.Clear();
-                FormDataItemsPanel.Children.Clear();
+                bool success = false;
+                string errorMsg = string.Empty;
 
-                // Auto parse cURL without asking user
-                // ParseAndApplyCurl will reset state and clean special characters
-                if (_viewModel.ParseAndApplyCurl(clipboardText, out string errorMsg))
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    HeadersPanel.Children.Clear();
+                    ParamsPanel.Children.Clear();
+                    FormDataItemsPanel.Children.Clear();
+
+                    success = _viewModel.ParseAndApplyCurl(curlText, out errorMsg);
+                }, System.Windows.Threading.DispatcherPriority.Background);
+
+                if (success)
                 {
                     _lastProcessedText = _viewModel.Url;
                     
-                    // Re-render the panels with cleaned data
-                    RenderHeaders();
-                    RenderParams();
-                    RenderFormData();
-
-                    // Update password box if Basic auth
-                    if (!string.IsNullOrEmpty(_viewModel.AuthPassword))
+                    await Dispatcher.InvokeAsync(() =>
                     {
-                        PasswordBox.Password = _viewModel.AuthPassword;
-                    }
+                        RenderHeaders();
+                        RenderParams();
+                        RenderFormData();
 
-                    _isProcessingPaste = false;
-                    return true; // cURL was processed successfully
+                        if (!string.IsNullOrEmpty(_viewModel.AuthPassword))
+                        {
+                            PasswordBox.Password = _viewModel.AuthPassword;
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Background);
                 }
                 else
                 {
                     System.Diagnostics.Debug.WriteLine($"cURL parse error: {errorMsg}");
                 }
-
-                _isProcessingPaste = false;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"cURL parse exception: {ex.Message}");
+            }
+            finally
+            {
+                LoadingOverlay.Visibility = Visibility.Collapsed;
+                Mouse.OverrideCursor = null;
                 _isProcessingPaste = false;
             }
-
-            return false; // Not a cURL or failed to parse, let default paste happen
         }
 
         #endregion
@@ -361,27 +426,23 @@ namespace FlowMy.Views.Overlays
         {
             var border = new Border
             {
-                Background = System.Windows.Media.Brushes.Transparent,
-                Margin = new Thickness(0, 0, 0, 8),
-                //Padding = new Thickness(0,0,0,6),
-                //BorderThickness = new Thickness(0, 0, 0, 1),
-                //BorderBrush = Application.Current.TryFindResource("InfoBrush") as Brush
+                Margin = new Thickness(0, 0, 0, 6)
             };
 
             var mainGrid = new Grid();
-            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });   // Key: 2/5
-            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });   // Value: 3/5
-            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });   // Key: 2/10
+            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });   // Value: 3/10
+            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.5, GridUnitType.Star) }); // Bind Node: 2.5/10
+            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.5, GridUnitType.Star) }); // Bind Key: 2.5/10
+            mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                        // Delete
 
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            // Row 1: Key and Value TextBoxes
+            // Key TextBox
             var keyTextBox = new TextBox
             {
-                Height = 32,
-                Margin = new Thickness(0, 0, 4, 0),
-                Style = (Style)FindResource("BaseTextBoxV2")
+                Height = 30,
+                Margin = new Thickness(0, 0, 8, 0),
+                Style = (Style)FindResource("BaseTextBoxV2"),
+                ToolTip = "Khóa (Key)"
             };
             keyTextBox.SetBinding(TextBox.TextProperty, new Binding(nameof(HttpKeyValueItemViewModel.Key))
             {
@@ -389,15 +450,16 @@ namespace FlowMy.Views.Overlays
                 Mode = BindingMode.TwoWay,
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             });
-            Grid.SetRow(keyTextBox, 0);
             Grid.SetColumn(keyTextBox, 0);
             mainGrid.Children.Add(keyTextBox);
 
+            // Value TextBox
             var valueTextBox = new TextBox
             {
-                Height = 32,
-                Margin = new Thickness(4, 0, 4, 0),
-                Style = (Style)FindResource("BaseTextBoxV2")
+                Height = 30,
+                Margin = new Thickness(0, 0, 8, 0),
+                Style = (Style)FindResource("BaseTextBoxV2"),
+                ToolTip = "Giá trị (Value)"
             };
             valueTextBox.SetBinding(TextBox.TextProperty, new Binding(nameof(HttpKeyValueItemViewModel.Value))
             {
@@ -405,25 +467,46 @@ namespace FlowMy.Views.Overlays
                 Mode = BindingMode.TwoWay,
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             });
-            Grid.SetRow(valueTextBox, 0);
             Grid.SetColumn(valueTextBox, 1);
             mainGrid.Children.Add(valueTextBox);
+
+            // Bind Node ComboBox
+            var sourceNodeCombo = new ComboBox
+            {
+                Height = 30,
+                Style = (Style)FindResource("BaseComboBox"),
+                DisplayMemberPath = "Title",
+                SelectedValuePath = "NodeId",
+                Margin = new Thickness(0, 0, 8, 0),
+                ToolTip = "Liên kết với Node"
+            };
+            sourceNodeCombo.SetBinding(ComboBox.ItemsSourceProperty, new Binding(nameof(HttpKeyValueItemViewModel.AvailableSources)) { Source = item });
+            sourceNodeCombo.SetBinding(ComboBox.SelectedValueProperty, new Binding(nameof(HttpKeyValueItemViewModel.SourceNodeId)) { Source = item, Mode = BindingMode.TwoWay });
+            Grid.SetColumn(sourceNodeCombo, 2);
+            mainGrid.Children.Add(sourceNodeCombo);
+
+            // Bind Key ComboBox
+            var outputKeyCombo = new ComboBox
+            {
+                Height = 30,
+                Style = (Style)FindResource("BaseComboBox"),
+                DisplayMemberPath = "DisplayName",
+                SelectedValuePath = "Key",
+                Margin = new Thickness(0, 0, 8, 0),
+                ToolTip = "Liên kết với Khóa Output"
+            };
+            outputKeyCombo.SetBinding(ComboBox.ItemsSourceProperty, new Binding(nameof(HttpKeyValueItemViewModel.AvailableOutputKeys)) { Source = item });
+            outputKeyCombo.SetBinding(ComboBox.SelectedValueProperty, new Binding(nameof(HttpKeyValueItemViewModel.SourceOutputKey)) { Source = item, Mode = BindingMode.TwoWay });
+            Grid.SetColumn(outputKeyCombo, 3);
+            mainGrid.Children.Add(outputKeyCombo);
 
             // Delete button
             var deleteButton = new Button
             {
-                Content = "×",
-                Width = 24,
-                Height = 24,
-                Background = System.Windows.Media.Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                Cursor = System.Windows.Input.Cursors.Hand,
-                FontSize = 16,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(4, 0, 0, 0),
+                Style = (Style)FindResource("DeleteRowButton"),
+                Margin = new Thickness(0),
                 Tag = item
             };
-            BindThemeResource(deleteButton, Control.ForegroundProperty, "TextMuted");
             deleteButton.Click += (s, e) =>
             {
                 if (s is Button btn && btn.Tag is HttpKeyValueItemViewModel itemToRemove)
@@ -431,95 +514,40 @@ namespace FlowMy.Views.Overlays
                     collection.Remove(itemToRemove);
                 }
             };
-            Grid.SetRow(deleteButton, 0);
-            Grid.SetColumn(deleteButton, 2);
+            Grid.SetColumn(deleteButton, 4);
             mainGrid.Children.Add(deleteButton);
-
-            // Row 2: Source Node and Output Key ComboBoxes (Node 2/5, Key 3/5)
-            var bindingPanel = new Grid
-            {
-                Margin = new Thickness(0, 4, 0, 0)
-            };
-            bindingPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });   // Node: 2/5
-            bindingPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });   // Key: 3/5
-
-            var nodeLabel = new TextBlock
-            {
-                Text = "Node:",
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 4, 0)
-            };
-            BindThemeResource(nodeLabel, TextBlock.ForegroundProperty, "TextMuted");
-
-            var sourceNodeCombo = new ComboBox
-            {
-                Height = 28,
-                Width = 150,
-                Style = (Style)FindResource("BaseComboBox"),
-                DisplayMemberPath = "Title",
-                SelectedValuePath = "NodeId",
-                Margin = new Thickness(0, 0, 8, 0)
-            };
-            sourceNodeCombo.SetBinding(ComboBox.ItemsSourceProperty, new Binding(nameof(HttpKeyValueItemViewModel.AvailableSources))
-            {
-                Source = item
-            });
-            sourceNodeCombo.SetBinding(ComboBox.SelectedValueProperty, new Binding(nameof(HttpKeyValueItemViewModel.SourceNodeId))
-            {
-                Source = item,
-                Mode = BindingMode.TwoWay
-            });
-
-            var keyLabel = new TextBlock
-            {
-                Text = "Key:",
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 4, 0)
-            };
-            BindThemeResource(keyLabel, TextBlock.ForegroundProperty, "TextMuted");
-
-            var outputKeyCombo = new ComboBox
-            {
-                Height = 28,
-                Width = 150,
-                Style = (Style)FindResource("BaseComboBox"),
-                DisplayMemberPath = "DisplayName",
-                SelectedValuePath = "Key"
-            };
-            outputKeyCombo.SetBinding(ComboBox.ItemsSourceProperty, new Binding(nameof(HttpKeyValueItemViewModel.AvailableOutputKeys))
-            {
-                Source = item
-            });
-            outputKeyCombo.SetBinding(ComboBox.SelectedValueProperty, new Binding(nameof(HttpKeyValueItemViewModel.SourceOutputKey))
-            {
-                Source = item,
-                Mode = BindingMode.TwoWay
-            });
-
-            var nodeStack = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0) };
-            nodeStack.Children.Add(nodeLabel);
-            nodeStack.Children.Add(sourceNodeCombo);
-            Grid.SetColumn(nodeStack, 0);
-            bindingPanel.Children.Add(nodeStack);
-
-            var keyStack = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0) };
-            keyStack.Children.Add(keyLabel);
-            keyStack.Children.Add(outputKeyCombo);
-            Grid.SetColumn(keyStack, 1);
-            bindingPanel.Children.Add(keyStack);
-
-            Grid.SetRow(bindingPanel, 1);
-            Grid.SetColumn(bindingPanel, 0);
-            Grid.SetColumnSpan(bindingPanel, 3);
-            mainGrid.Children.Add(bindingPanel);
 
             border.Child = mainGrid;
             return border;
         }
 
         #endregion
+
+        private void FormatJson_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var text = _viewModel.RawBody;
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                using (var doc = System.Text.Json.JsonDocument.Parse(text))
+                {
+                    var formatted = System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    });
+                    _viewModel.RawBody = formatted;
+                }
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                MessageBox.Show($"JSON không hợp lệ: {ex.Message}", "Lỗi định dạng JSON", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
     }
 }
