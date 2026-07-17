@@ -113,6 +113,50 @@ namespace FlowMy.Views.Overlays
         }
         #endregion
 
+        #region Preview Background Color
+        private void BtnBgColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string hex)
+            {
+                try
+                {
+                    CanvasPreviewBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+                }
+                catch { }
+            }
+        }
+
+        private void BtnBgChecked_Click(object sender, RoutedEventArgs e)
+        {
+            CanvasPreviewBorder.Background = FindResource("PsDarkCheckeredBrush") as Brush;
+        }
+
+        private void BtnBgLightChecked_Click(object sender, RoutedEventArgs e)
+        {
+            CanvasPreviewBorder.Background = FindResource("PsLightCheckeredBrush") as Brush;
+        }
+
+        private void BtnPickColor_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new System.Windows.Forms.ColorDialog { FullOpen = true };
+            string existing = TxtIconColor.Text.Trim();
+            if (existing.StartsWith("#"))
+            {
+                try
+                {
+                    var color = (Color)ColorConverter.ConvertFromString(existing);
+                    dialog.Color = System.Drawing.Color.FromArgb(color.A, color.R, color.G, color.B);
+                }
+                catch { }
+            }
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                TxtIconColor.Text = $"#{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}".ToLower();
+            }
+        }
+        #endregion
+
         #region SVG Path Parser & Absolute coordinate converter
         private static List<PathCommand> ParsePathData(string pathData)
         {
@@ -653,8 +697,20 @@ namespace FlowMy.Views.Overlays
 
                 // Force reload: set Source=null first so DependencyProperty fires callback
                 // even when path string is the same (same temp file, new content)
+                string colorText = TxtIconColor.Text.Trim();
+                Brush fillBrush = Brushes.Lime;
+                if (colorText.StartsWith("#"))
+                {
+                    try { fillBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorText)); } catch { }
+                }
+                else
+                {
+                    fillBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+                }
+
                 SvgFullPreview.Source = null;
-                SvgFullPreview.UseOriginalColors = true; // Use CLR setter to set _useOriginalColorsExplicitlySet
+                SvgFullPreview.Fill = fillBrush;
+                SvgFullPreview.UseOriginalColors = ChkOriginalColor.IsChecked == true;
                 SvgFullPreview.Source = _svgTempFilePath;
                 SvgFullPreview.Visibility = Visibility.Visible;
             }
@@ -1274,17 +1330,37 @@ namespace FlowMy.Views.Overlays
         {
             if (SvgPreviewPath == null) return;
             string colorText = TxtIconColor.Text.Trim();
+            Brush fillBrush;
             if (colorText.StartsWith("#"))
             {
                 try
                 {
-                    SvgPreviewPath.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorText));
+                    fillBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorText));
                 }
-                catch { }
+                catch
+                {
+                    fillBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+                }
             }
             else
             {
-                SvgPreviewPath.Fill = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+                fillBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+            }
+
+            SvgPreviewPath.Fill = fillBrush;
+
+            if (SvgFullPreview != null)
+            {
+                SvgFullPreview.Fill = fillBrush;
+                SvgFullPreview.UseOriginalColors = ChkOriginalColor.IsChecked == true;
+
+                // Force reload to apply the new color if preview source is loaded
+                if (SvgFullPreview.Source != null)
+                {
+                    var oldSrc = SvgFullPreview.Source;
+                    SvgFullPreview.Source = null;
+                    SvgFullPreview.Source = oldSrc;
+                }
             }
         }
         #endregion

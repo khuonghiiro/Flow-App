@@ -48,6 +48,26 @@
             </VisualBrush.Visual>
         </VisualBrush>
 
+        <!-- Photoshop light checkered brush for SVG editing area -->
+        <VisualBrush x:Key="PsLightCheckeredBrush" TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
+            <VisualBrush.Visual>
+                <Grid Width="16" Height="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="8"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="8"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#e0e0e0"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#ffffff"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#ffffff"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#e0e0e0"/>
+                </Grid>
+            </VisualBrush.Visual>
+        </VisualBrush>
+
         <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
         
         <!-- Sleek ComboBox Style for Dark Dialog -->
@@ -279,15 +299,19 @@
                             <Grid Grid.Row="1" Margin="0,8,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="145"/>
                                     <ColumnDefinition Width="15"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Màu mặc định:" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"/>
-                                <Border Grid.Column="1" Background="#1e222d" BorderBrush="{StaticResource BorderColor}" BorderThickness="1.2" CornerRadius="6" Height="30" VerticalAlignment="Center">
-                                    <TextBox x:Name="TxtIconColor" Text="#4fffb0" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0" 
-                                             Padding="8,4" VerticalAlignment="Center" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtIconColor_TextChanged"/>
-                                </Border>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Height="30">
+                                    <Border Background="#1e222d" BorderBrush="{StaticResource BorderColor}" BorderThickness="1.2" CornerRadius="6" Width="110" Height="30">
+                                        <TextBox x:Name="TxtIconColor" Text="#4fffb0" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0" 
+                                                 Padding="8,4" VerticalAlignment="Center" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtIconColor_TextChanged"/>
+                                    </Border>
+                                    <Button x:Name="BtnPickColor" Content="🎨" Width="30" Height="30" Margin="4,0,0,0" Padding="0"
+                                            Style="{StaticResource ToolButtonStyle}" Click="BtnPickColor_Click" ToolTip="Chọn màu từ bảng màu"/>
+                                </StackPanel>
 
                                 <CheckBox Grid.Column="3" x:Name="ChkOriginalColor" Content="Dùng màu gốc SVG (.color)" Foreground="{StaticResource TextMain}" 
                                           VerticalAlignment="Center" Click="ChkOriginalColor_Click" Cursor="Hand"/>
@@ -337,11 +361,44 @@
                                 <Button x:Name="BtnTemplateTriangle" Content="△" Style="{StaticResource ToolButtonStyle}" Width="26" Height="26" Padding="0" Margin="0,0,2,0" Click="BtnTemplateTriangle_Click" ToolTip="Hình tam giác"/>
                                 <Button x:Name="BtnTemplateStar" Content="⭐" Style="{StaticResource ToolButtonStyle}" Width="26" Height="26" Padding="0" Margin="0,0,2,0" Click="BtnTemplateStar_Click" ToolTip="Hình ngôi sao"/>
                                 <Button x:Name="BtnTemplateGear" Content="⚙️" Style="{StaticResource ToolButtonStyle}" Width="26" Height="26" Padding="0" Margin="0,0,2,0" Click="BtnTemplateGear_Click" ToolTip="Hình bánh răng"/>
+
+                                <Separator Width="1" Height="18" Background="{StaticResource BorderColor}" Margin="10,0,10,0" VerticalAlignment="Center"/>
+
+                                <!-- Preview Background Color -->
+                                <TextBlock Text="Nền:" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" FontSize="11" Margin="0,0,6,0"/>
+                                <Button x:Name="BtnBgDark" Width="22" Height="22" Margin="0,0,3,0" Cursor="Hand" ToolTip="Nền tối" Click="BtnBgColor_Click" Tag="#12141c">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#12141c" BorderBrush="#555" BorderThickness="1.5" CornerRadius="4" Width="22" Height="22"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button x:Name="BtnBgWhite" Width="22" Height="22" Margin="0,0,3,0" Cursor="Hand" ToolTip="Nền trắng" Click="BtnBgColor_Click" Tag="#ffffff">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#ffffff" BorderBrush="#bbb" BorderThickness="1.5" CornerRadius="4" Width="22" Height="22"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button x:Name="BtnBgDarkChecked" Width="22" Height="22" Margin="0,0,3,0" Cursor="Hand" ToolTip="Nền ô caro tối (mặc định)" Click="BtnBgChecked_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{StaticResource PsDarkCheckeredBrush}" BorderBrush="#555" BorderThickness="1.5" CornerRadius="4" Width="22" Height="22"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button x:Name="BtnBgLightChecked" Width="22" Height="22" Margin="0,0,3,0" Cursor="Hand" ToolTip="Nền ô caro sáng" Click="BtnBgLightChecked_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{StaticResource PsLightCheckeredBrush}" BorderBrush="#bbb" BorderThickness="1.5" CornerRadius="4" Width="22" Height="22"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
                             </WrapPanel>
                         </Border>
 
                         <!-- Canvas area -->
-                        <Border Grid.Row="1" Background="{StaticResource PsDarkCheckeredBrush}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1,0,1,1" CornerRadius="0,0,6,6" ClipToBounds="True">
+                        <Border x:Name="CanvasPreviewBorder" Grid.Row="1" Background="{StaticResource PsDarkCheckeredBrush}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1,0,1,1" CornerRadius="0,0,6,6" ClipToBounds="True">
                             <Grid x:Name="CanvasContainerGrid" SizeChanged="CanvasContainerGrid_SizeChanged">
                                 <!-- Background grid overlay -->
                                 <Canvas HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0.15" IsHitTestVisible="False">
