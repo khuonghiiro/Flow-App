@@ -417,15 +417,11 @@ namespace FlowMy.Views
             double defaultContainerSize = 60;
             if (nodeType == "Delay")
             {
-                defaultContainerSize = 80;
-            }
-            else if (nodeType == "ImageProcessing" || nodeType == "VideoProcessing" || nodeType == "Web" || nodeType == "Loop" || nodeType == "AsyncTask")
-            {
-                defaultContainerSize = 80;
+                defaultContainerSize = Math.Max(65, iconSize);
             }
             else
             {
-                defaultContainerSize = Math.Max(60, iconSize);
+                defaultContainerSize = Math.Max(65, iconSize);
             }
 
             var ghostWidth = defaultContainerSize + 4;
@@ -474,8 +470,8 @@ namespace FlowMy.Views
             var iconSvg = new SvgViewboxEx
             {
                 Source = iconUri ?? new Uri("/Assets/Icons/circle2.svg", UriKind.RelativeOrAbsolute),
-                Width = iconSize,
-                Height = iconSize,
+                Width = iconSize * 1.15,
+                Height = iconSize * 1.15,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Fill = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)

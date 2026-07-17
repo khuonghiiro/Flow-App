@@ -480,8 +480,9 @@ namespace FlowMy.Views.NodeControls.Helpers
                         if (iconSvg.Parent is Grid parentGrid && parentGrid.Children.Count == 1)
                         {
                             var size = _context.Node.IconSize;
-                            iconSvg.Width = size;
-                            iconSvg.Height = size;
+                            var visualSize = size * 1.05;
+                            iconSvg.Width = visualSize;
+                            iconSvg.Height = visualSize;
 
                             var gridSize = Math.Max(60, size);
                             parentGrid.Width = gridSize;
@@ -598,8 +599,9 @@ namespace FlowMy.Views.NodeControls.Helpers
                             if (iconSvg.Parent is Grid parentGrid && parentGrid.Children.Count == 1)
                             {
                                 var size = ctx.Node.IconSize;
-                                iconSvg.Width = size;
-                                iconSvg.Height = size;
+                                var visualSize = size * 1.15;
+                                iconSvg.Width = visualSize;
+                                iconSvg.Height = visualSize;
 
                                 var gridSize = Math.Max(60, size);
                                 parentGrid.Width = gridSize;
