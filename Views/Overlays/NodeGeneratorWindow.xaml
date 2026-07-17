@@ -229,7 +229,20 @@
                                                   IsEditable="True"
                                                   ToolTip="Nhóm danh mục trong Node Templates ở menu trái (VD: Flow, Events, Screen...)"/>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2"/>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Icon Size" Style="{StaticResource FieldLabel}"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="32"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Grid.Column="0" Minimum="16" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                    Value="{Binding IconSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding IconSize}" Foreground="{DynamicResource TextBrush}"
+                                                       FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -693,6 +706,29 @@
                                             </StackPanel>
                                         </Grid>
 
+                                        <Grid Margin="0,16,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="10"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Kích thước Icon mới" Style="{StaticResource FieldLabel}"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="32"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Slider Grid.Column="0" Minimum="16" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                            Value="{Binding EditIconSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding EditIconSize}" Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2"/>
+                                        </Grid>
+
                                         <Button Margin="0,20,0,0" Height="40" Content="🛠️ CẬP NHẬT NODE VISUALS"
                                                 Style="{DynamicResource PrimaryButton}" Cursor="Hand"
                                                 Command="{Binding UpdateNodeVisualsCommand}"/>
@@ -744,7 +780,7 @@
                                                FontSize="10" Margin="0,0,0,8"/>
                                     <Grid HorizontalAlignment="Center" Margin="0,0,0,16">
                                         <Border x:Name="NodeMockBorder"
-                                                Width="72" Height="72" CornerRadius="12"
+                                                Width="60" Height="60" CornerRadius="10"
                                                 Background="{DynamicResource InfoBrush}"
                                                 BorderBrush="White" BorderThickness="2">
                                             <Border.Effect>

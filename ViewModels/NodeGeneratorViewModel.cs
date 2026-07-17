@@ -47,6 +47,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _nodeName = string.Empty;
         [ObservableProperty] private string _title = string.Empty;
         [ObservableProperty] private string _iconKey = "circle-nodes duotone-regular";
+        [ObservableProperty] private int _iconSize = 32;
         [ObservableProperty] private string _colorKey = "Info";
 
         // ─── Node Type ────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _selectedExistingNode = string.Empty;
         [ObservableProperty] private string _editColorKey = "Info";
         [ObservableProperty] private string _editIconKey = "circle-nodes duotone-regular";
+        [ObservableProperty] private int _editIconSize = 32;
         [ObservableProperty] private string _editInputPortColorKey = "Info";
         [ObservableProperty] private string _editOutputPortColorKey = "SunsetOrange";
         [ObservableProperty] private bool _hasExistingInputPort = false;
@@ -271,6 +273,7 @@ namespace FlowMy.ViewModels
                 // Reset to empty
                 EditIconKey = string.Empty;
                 EditColorKey = string.Empty;
+                EditIconSize = 32;
                 EditInputPortColorKey = string.Empty;
                 EditOutputPortColorKey = string.Empty;
                 HasExistingInputPort = false;
@@ -437,6 +440,13 @@ namespace FlowMy.ViewModels
                             iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"typeof\(Uri\),\s*""([^""]+)""");
                         if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                     }
+
+                    // Extract icon size
+                    var sizeMatch = System.Text.RegularExpressions.Regex.Match(content, @"Width\s*=\s*(\d+),\s*Height\s*=\s*(\d+)");
+                    if (sizeMatch.Success && int.TryParse(sizeMatch.Groups[1].Value, out var sz))
+                        EditIconSize = sz;
+                    else
+                        EditIconSize = 32;
                 }
 
                 // ── SOURCE 6: WorkflowEditorWindow.xaml (palette — lấy màu nền + icon từ palette block) ──
@@ -731,7 +741,8 @@ namespace FlowMy.ViewModels
                 EditColorKey, 
                 EditIconKey, 
                 EditInputPortColorKey, 
-                EditOutputPortColorKey
+                EditOutputPortColorKey,
+                EditIconSize
             );
 
             ResultText = result.ToSummary();
@@ -843,6 +854,7 @@ namespace FlowMy.ViewModels
                 NodeName = NodeName?.Trim() ?? string.Empty,
                 Title = string.IsNullOrWhiteSpace(Title) ? NodeName?.Trim() ?? string.Empty : Title.Trim(),
                 IconKey = IconKey?.Trim() ?? "circle-nodes duotone-regular",
+                IconSize = IconSize,
                 ColorKey = ColorKey?.Trim() ?? "Info",
                 AddNewNodeType = AddNewNodeType,
                 NodeTypeName = NodeTypeName?.Trim() ?? string.Empty,

@@ -130,6 +130,13 @@ namespace FlowMy.Views.Overlays
                     
                     if (!string.IsNullOrWhiteSpace(colorKeyToUse))
                         _previewIcon.SetResourceReference(FlowMy.Controls.SvgViewboxEx.FillProperty, $"TextOn{colorKeyToUse}Brush");
+
+                    double size = isEditing ? _viewModel.EditIconSize : _viewModel.IconSize;
+                    if (size >= 16 && size <= 60)
+                    {
+                        _previewIcon.Width = size;
+                        _previewIcon.Height = size;
+                    }
                 }
 
                 // Update node mock background từ {ColorKey}Brush

@@ -21,6 +21,9 @@ namespace FlowMy.Services.Utilities
         /// <summary>Icon key (VD: "star duotone-regular")</summary>
         public string IconKey { get; set; } = "circle-nodes duotone-regular";
 
+        /// <summary>Kích thước icon (mặc định = 32, tối đa = 60)</summary>
+        public int IconSize { get; set; } = 32;
+
         /// <summary>Color key (VD: "Info", "Primary", "SunsetOrange")</summary>
         public string ColorKey { get; set; } = "Info";
 
@@ -262,7 +265,7 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("            var iconSvg = new SvgViewboxEx");
             sb.AppendLine("            {");
             sb.AppendLine("                Source = iconUri,");
-            sb.AppendLine("                Width = 32, Height = 32,");
+            sb.AppendLine($"                Width = {c.IconSize}, Height = {c.IconSize},");
             sb.AppendLine("                HorizontalAlignment = HorizontalAlignment.Center,");
             sb.AppendLine("                VerticalAlignment = VerticalAlignment.Center,");
             sb.AppendLine("                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)");
@@ -1980,7 +1983,8 @@ namespace FlowMy.Services.Utilities
             string colorKey, 
             string iconKey, 
             string inPortColor, 
-            string outPortColor)
+            string outPortColor,
+            int iconSize = 32)
         {
             var result = new NodeGenerationResult();
             if (string.IsNullOrWhiteSpace(projectRoot))
@@ -2122,10 +2126,14 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(nodeControlCsPath);
-                    
+
                     content = System.Text.RegularExpressions.Regex.Replace(content,
                         @"(iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*"")[^""]+("")",
                         $"${{1}}{iconKey}${{2}}");
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content,
+                        @"(Width\s*=\s*)\d+(,\s*Height\s*=\s*)\d+",
+                        $"${{1}}{iconSize}${{2}}{iconSize}");
 
                     File.WriteAllText(nodeControlCsPath, content, utf8NoBom);
                     result.ModifiedFiles.Add(nodeControlCsPath);
