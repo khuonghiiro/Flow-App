@@ -3495,8 +3495,19 @@ namespace FlowMy.Views.NodeControls
         {
             if (RootContentGrid == null) return;
 
-            // Giống hướng Image node: không LayoutTransform scale toàn UI (tránh mờ khi kết hợp zoom canvas / effect).
-            RootContentGrid.LayoutTransform = Transform.Identity;
+            var owner = Window.GetWindow(this);
+            bool isWidget = owner != null && owner.GetType().Name == "FloatingWidgetWindow";
+
+            if (isWidget)
+            {
+                RootContentGrid.LayoutTransform = Transform.Identity;
+            }
+            else
+            {
+                // Trên workflow canvas: co dãn tỉ lệ tương đối theo kích thước node (baseline 800px)
+                double scaleVal = Math.Max(0.4, _node.Width / 800.0);
+                RootContentGrid.LayoutTransform = new ScaleTransform(scaleVal, scaleVal);
+            }
         }
 
         private void EmitAutoFitSizeSuggestion()
