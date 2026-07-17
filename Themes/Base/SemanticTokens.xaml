@@ -142,6 +142,10 @@
 
     <!-- ── TRANSPARENT UTILITY ── -->
     <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
+    <SolidColorBrush x:Key="TransparentHoverBrush" Color="#26C8D0E8"/>
+    <SolidColorBrush x:Key="TransparentPressedBrush" Color="#4DC8D0E8"/>
+    <SolidColorBrush x:Key="TransparentFocusBrush" Color="#4DC8D0E8"/>
+    <SolidColorBrush x:Key="TextOnTransparentBrush" Color="#FFC8D0E8"/>
 
     <!-- ── HOVER / INTERACTION ── -->
     <SolidColorBrush x:Key="HoverBackground" Color="#30252A3C"/>

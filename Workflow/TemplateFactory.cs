@@ -1606,7 +1606,8 @@ namespace FlowMy.Workflow
             task2Branch.Port = task2Port;
             node.Ports.Add(task2Port);
             node.AsyncTaskBranches.Add(task2Branch);
-        }
+        }
+
         private WorkflowNode CreateActionCanVasNode(double x, double y)
         {
             var node = new FlowMy.Models.Nodes.ActionCanVasNode

@@ -128,6 +128,9 @@ Mỗi color có: `{Name}Brush` → `{Name}HoverBrush` → `{Name}PressedBrush` +
 ### Accent (Violet)
 | `AccentBrush` / `AccentColor` |
 
+### Transparent
+| `TransparentBrush` | `TransparentHoverBrush` (15% opacity of TextBrush) | `TransparentPressedBrush` (30% opacity of TextBrush) | `TransparentFocusBrush` (30% opacity of TextBrush) | `TextOnTransparentBrush` (TextBrush) |
+
 ---
 
 ## 🔘 Button Styles (có sẵn)

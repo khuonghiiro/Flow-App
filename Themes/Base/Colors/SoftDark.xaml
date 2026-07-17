@@ -1,4 +1,4 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
@@ -84,6 +84,11 @@
     <!-- ===== TEXT ===== -->
     <SolidColorBrush x:Key="TextBrush" Color="#D8D2CC"/>
     <SolidColorBrush x:Key="TextBrushReverse" Color="#FF1A1918"/>
+    <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
+    <SolidColorBrush x:Key="TransparentHoverBrush" Color="#26D8D2CC"/>
+    <SolidColorBrush x:Key="TransparentPressedBrush" Color="#4DD8D2CC"/>
+    <SolidColorBrush x:Key="TransparentFocusBrush" Color="#4DD8D2CC"/>
+    <SolidColorBrush x:Key="TextOnTransparentBrush" Color="#FFD8D2CC"/>
 
     <!-- ===== INPUT BACKGROUNDS ===== -->
     <SolidColorBrush x:Key="TextBoxBackground" Color="#FF2E2C28"/>

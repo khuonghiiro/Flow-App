@@ -84,6 +84,11 @@
     <!-- ===== TEXT ===== -->
     <SolidColorBrush x:Key="TextBrush"        Color="#FF0F172A"/>
     <SolidColorBrush x:Key="TextBrushReverse" Color="#FFEEEEEE"/>
+    <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
+    <SolidColorBrush x:Key="TransparentHoverBrush" Color="#260F172A"/>
+    <SolidColorBrush x:Key="TransparentPressedBrush" Color="#4D0F172A"/>
+    <SolidColorBrush x:Key="TransparentFocusBrush" Color="#4D0F172A"/>
+    <SolidColorBrush x:Key="TextOnTransparentBrush" Color="#FF0F172A"/>
 
     <!-- ===== INPUT BACKGROUNDS ===== -->
     <SolidColorBrush x:Key="TextBoxBackground"         Color="#FFFFFFFF"/>
