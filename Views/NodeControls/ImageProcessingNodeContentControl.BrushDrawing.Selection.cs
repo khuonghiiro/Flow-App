@@ -332,6 +332,25 @@ namespace FlowMy.Views.NodeControls
                 newPath.Dispose();
             }
 
+            // Clip selection to document/image bounds!
+            if (_activeSelectionPathSK != null && !_activeSelectionPathSK.IsEmpty && _node.EditorDoc != null)
+            {
+                using (var imgBoundsPath = new SkiaSharp.SKPath())
+                {
+                    imgBoundsPath.AddRect(new SkiaSharp.SKRect(0, 0, _node.EditorDoc.Width, _node.EditorDoc.Height));
+                    var clipped = new SkiaSharp.SKPath();
+                    if (_activeSelectionPathSK.Op(imgBoundsPath, SkiaSharp.SKPathOp.Intersect, clipped))
+                    {
+                        _activeSelectionPathSK.Dispose();
+                        _activeSelectionPathSK = clipped;
+                    }
+                    else
+                    {
+                        clipped.Dispose();
+                    }
+                }
+            }
+
             // 2. Generate flat, clean _activeSelectionGeometry from _activeSelectionPathSK
             if (_activeSelectionPathSK != null && !_activeSelectionPathSK.IsEmpty)
             {

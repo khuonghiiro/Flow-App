@@ -69,14 +69,22 @@ namespace FlowMy.Views.NodeControls
                 CommitActiveText();
             }
 
-            if (clickPos.X < 0 || clickPos.X > MainImage.ActualWidth ||
-                clickPos.Y < 0 || clickPos.Y > MainImage.ActualHeight)
-                return;
+            // Allow selection tools to click outside the image bounds
+            bool isSelectionTool = (tool == "Selection" || tool == "Lasso" || tool == "PolyLasso" || tool == "Slice");
+            if (!isSelectionTool)
+            {
+                if (clickPos.X < 0 || clickPos.X > MainImage.ActualWidth ||
+                    clickPos.Y < 0 || clickPos.Y > MainImage.ActualHeight)
+                    return;
+            }
 
             double scaleX = _node.EditorDoc.Width / MainImage.ActualWidth;
             double scaleY = _node.EditorDoc.Height / MainImage.ActualHeight;
-            int px = (int)(clickPos.X * scaleX);
-            int py = (int)(clickPos.Y * scaleY);
+            int rawPx = (int)(clickPos.X * scaleX);
+            int rawPy = (int)(clickPos.Y * scaleY);
+
+            int px = Math.Clamp(rawPx, 0, _node.EditorDoc.Width - 1);
+            int py = Math.Clamp(rawPy, 0, _node.EditorDoc.Height - 1);
 
             if (tool == "Move")
             {
@@ -282,7 +290,7 @@ namespace FlowMy.Views.NodeControls
                 }
                 _isSelecting = true;
                 _selectionRect = null;
-                _selectionPoints.Add(new Point(px, py));
+                _selectionPoints.Add(new Point(rawPx, rawPy));
                 SelectionBoxRect.Visibility = Visibility.Collapsed;
                 if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
                 UpdateLassoPreview();
@@ -302,13 +310,13 @@ namespace FlowMy.Views.NodeControls
                     _selectionRect = null;
                     SelectionBoxRect.Visibility = Visibility.Collapsed;
                     if (SelectionBoxRectBg != null) SelectionBoxRectBg.Visibility = Visibility.Collapsed;
-                    _selectionPoints.Add(new Point(px, py));
+                    _selectionPoints.Add(new Point(rawPx, rawPy));
                     UpdatePolyLassoPreview(clickPos);
                     MainScrollViewer.CaptureMouse();
                 }
                 else
                 {
-                    _selectionPoints.Add(new Point(px, py));
+                    _selectionPoints.Add(new Point(rawPx, rawPy));
                     UpdatePolyLassoPreview(clickPos);
                 }
                 return;
@@ -695,8 +703,10 @@ namespace FlowMy.Views.NodeControls
             double docH = _node.EditorDoc.Height;
             double scaleX = docW / MainImage.ActualWidth;
             double scaleY = docH / MainImage.ActualHeight;
-            int px = Math.Clamp((int)(mousePos.X * scaleX), 0, (int)docW - 1);
-            int py = Math.Clamp((int)(mousePos.Y * scaleY), 0, (int)docH - 1);
+            int rawPx = (int)(mousePos.X * scaleX);
+            int rawPy = (int)(mousePos.Y * scaleY);
+            int px = Math.Clamp(rawPx, 0, (int)docW - 1);
+            int py = Math.Clamp(rawPy, 0, (int)docH - 1);
 
             if (_isSelecting)
             {
@@ -707,10 +717,13 @@ namespace FlowMy.Views.NodeControls
                     double w = Math.Abs(_selectionStartPoint.X - mousePos.X);
                     double h = Math.Abs(_selectionStartPoint.Y - mousePos.Y);
 
-                    x = Math.Clamp(x, 0, MainImage.ActualWidth);
-                    y = Math.Clamp(y, 0, MainImage.ActualHeight);
-                    w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
-                    h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+                    if (tool == "ObjectSelection")
+                    {
+                        x = Math.Clamp(x, 0, MainImage.ActualWidth);
+                        y = Math.Clamp(y, 0, MainImage.ActualHeight);
+                        w = Math.Clamp(w, 0, MainImage.ActualWidth - x);
+                        h = Math.Clamp(h, 0, MainImage.ActualHeight - y);
+                    }
 
                     SelectionBoxRect.Margin = new Thickness(x, y, 0, 0);
                     SelectionBoxRect.Width = w;
@@ -747,7 +760,7 @@ namespace FlowMy.Views.NodeControls
                 }
                 else if (tool == "Lasso")
                 {
-                    var newPt = new Point(px, py);
+                    var newPt = new Point(rawPx, rawPy);
                     if (_selectionPoints.Count == 0 || _selectionPoints[_selectionPoints.Count - 1] != newPt)
                     {
                         _selectionPoints.Add(newPt);
