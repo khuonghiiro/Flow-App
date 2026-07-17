@@ -63,6 +63,7 @@ namespace FlowMy.Views.Overlays
         private System.Xml.Linq.XDocument? _currentSvg;
         private System.Xml.Linq.XElement? _editingPathElement;
         private readonly List<System.Windows.UIElement> _svgPreviewShapes = new();
+        private string? _svgTempFilePath;
 
         // WebView2 variables
         private Microsoft.Web.WebView2.Wpf.WebView2? _webView;
@@ -92,12 +93,23 @@ namespace FlowMy.Views.Overlays
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
+            CleanupTempSvgFile();
             Close();
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
+            CleanupTempSvgFile();
             Close();
+        }
+
+        private void CleanupTempSvgFile()
+        {
+            if (_svgTempFilePath != null)
+            {
+                try { if (File.Exists(_svgTempFilePath)) File.Delete(_svgTempFilePath); } catch { }
+                _svgTempFilePath = null;
+            }
         }
         #endregion
 
@@ -570,6 +582,7 @@ namespace FlowMy.Views.Overlays
             try
             {
                 SvgPreviewPath.Visibility = Visibility.Visible;
+                SvgFullPreview.Visibility = Visibility.Collapsed;
                 string pathData = PathCommandsToString(_pathCommands);
                 var geometry = Geometry.Parse(pathData);
                 SvgPreviewPath.Data = geometry;
@@ -621,123 +634,34 @@ namespace FlowMy.Views.Overlays
             ClearSvgPreviewShapes();
             SvgPreviewPath.Data = null;
             SvgPreviewPath.Visibility = Visibility.Collapsed;
-            if (_currentSvg?.Root == null) return;
-
-            RecalculateTransform();
-
-            foreach (var el in _currentSvg.Root.Elements())
+            if (_currentSvg?.Root == null)
             {
-                FrameworkElement? shape = null;
-                string localName = el.Name.LocalName;
+                SvgFullPreview.Visibility = Visibility.Collapsed;
+                return;
+            }
 
-                if (localName == "rect")
+            // Write SVG to temp file and render with SharpVectors (SvgViewboxEx)
+            try
+            {
+                if (_svgTempFilePath == null)
                 {
-                    double x = ParseSvgDouble(el.Attribute("x")?.Value);
-                    double y = ParseSvgDouble(el.Attribute("y")?.Value);
-                    double w = ParseSvgDouble(el.Attribute("width")?.Value);
-                    double h = ParseSvgDouble(el.Attribute("height")?.Value);
-                    double rx = ParseSvgDouble(el.Attribute("rx")?.Value);
-                    double ry = ParseSvgDouble(el.Attribute("ry")?.Value, rx);
+                    var tempDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Cache", "svg_editor_temp");
+                    Directory.CreateDirectory(tempDir);
+                    _svgTempFilePath = System.IO.Path.Combine(tempDir, $"preview_{Guid.NewGuid():N}.svg");
+                }
+                File.WriteAllText(_svgTempFilePath, _currentSvg.ToString());
 
-                    var rect = new Rectangle
-                    {
-                        Width = w * _scaleX,
-                        Height = h * _scaleY,
-                        RadiusX = rx * _scaleX,
-                        RadiusY = ry * _scaleY,
-                        Fill = ParseSvgBrush(el.Attribute("fill")?.Value),
-                        IsHitTestVisible = false,
-                        Tag = "svgpreview"
-                    };
-                    ApplyStroke(rect, el);
-                    Canvas.SetLeft(rect, x * _scaleX + _offsetX);
-                    Canvas.SetTop(rect, y * _scaleY + _offsetY);
-                    shape = rect;
-                }
-                else if (localName == "circle")
-                {
-                    double cx = ParseSvgDouble(el.Attribute("cx")?.Value);
-                    double cy = ParseSvgDouble(el.Attribute("cy")?.Value);
-                    double r = ParseSvgDouble(el.Attribute("r")?.Value);
-
-                    var ell = new Ellipse
-                    {
-                        Width = r * 2 * _scaleX,
-                        Height = r * 2 * _scaleY,
-                        Fill = ParseSvgBrush(el.Attribute("fill")?.Value),
-                        IsHitTestVisible = false,
-                        Tag = "svgpreview"
-                    };
-                    ApplyStroke(ell, el);
-                    Canvas.SetLeft(ell, (cx - r) * _scaleX + _offsetX);
-                    Canvas.SetTop(ell, (cy - r) * _scaleY + _offsetY);
-                    shape = ell;
-                }
-                else if (localName == "ellipse")
-                {
-                    double cx = ParseSvgDouble(el.Attribute("cx")?.Value);
-                    double cy = ParseSvgDouble(el.Attribute("cy")?.Value);
-                    double erx = ParseSvgDouble(el.Attribute("rx")?.Value);
-                    double ery = ParseSvgDouble(el.Attribute("ry")?.Value);
-
-                    var ell = new Ellipse
-                    {
-                        Width = erx * 2 * _scaleX,
-                        Height = ery * 2 * _scaleY,
-                        Fill = ParseSvgBrush(el.Attribute("fill")?.Value),
-                        IsHitTestVisible = false,
-                        Tag = "svgpreview"
-                    };
-                    ApplyStroke(ell, el);
-                    Canvas.SetLeft(ell, (cx - erx) * _scaleX + _offsetX);
-                    Canvas.SetTop(ell, (cy - ery) * _scaleY + _offsetY);
-                    shape = ell;
-                }
-                else if (localName == "line")
-                {
-                    var line = new Line
-                    {
-                        X1 = ParseSvgDouble(el.Attribute("x1")?.Value) * _scaleX + _offsetX,
-                        Y1 = ParseSvgDouble(el.Attribute("y1")?.Value) * _scaleY + _offsetY,
-                        X2 = ParseSvgDouble(el.Attribute("x2")?.Value) * _scaleX + _offsetX,
-                        Y2 = ParseSvgDouble(el.Attribute("y2")?.Value) * _scaleY + _offsetY,
-                        IsHitTestVisible = false,
-                        Tag = "svgpreview"
-                    };
-                    ApplyStroke(line, el);
-                    shape = line;
-                }
-                else if (localName == "path")
-                {
-                    string d = el.Attribute("d")?.Value ?? "";
-                    if (string.IsNullOrEmpty(d)) continue;
-                    try
-                    {
-                        var geom = Geometry.Parse(d);
-                        var path = new System.Windows.Shapes.Path
-                        {
-                            Data = geom,
-                            Fill = ParseSvgBrush(el.Attribute("fill")?.Value),
-                            IsHitTestVisible = false,
-                            Stretch = System.Windows.Media.Stretch.None,
-                            Tag = "svgpreview"
-                        };
-                        ApplyStroke(path, el);
-
-                        var tg = new TransformGroup();
-                        tg.Children.Add(new ScaleTransform(_scaleX, _scaleY));
-                        tg.Children.Add(new TranslateTransform(_offsetX, _offsetY));
-                        path.RenderTransform = tg;
-                        shape = path;
-                    }
-                    catch { continue; }
-                }
-
-                if (shape != null)
-                {
-                    _svgPreviewShapes.Add(shape);
-                    EditingCanvas.Children.Add(shape);
-                }
+                // Force reload: set Source=null first so DependencyProperty fires callback
+                // even when path string is the same (same temp file, new content)
+                SvgFullPreview.Source = null;
+                SvgFullPreview.UseOriginalColors = true; // Use CLR setter to set _useOriginalColorsExplicitlySet
+                SvgFullPreview.Source = _svgTempFilePath;
+                SvgFullPreview.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[IconEditor] SVG preview error: {ex.Message}");
+                SvgFullPreview.Visibility = Visibility.Collapsed;
             }
 
             TxtStatus.Text = "SVG hợp lệ.";
@@ -760,11 +684,7 @@ namespace FlowMy.Views.Overlays
 
         private void RenderCanvasHandles()
         {
-            // Remove only non-preview children (handles, dashed lines, etc.)
-            var toRemove = EditingCanvas.Children.OfType<FrameworkElement>()
-                .Where(e => e.Tag?.ToString() != "svgpreview")
-                .ToList();
-            foreach (var el in toRemove) EditingCanvas.Children.Remove(el);
+            EditingCanvas.Children.Clear();
 
             if (_pathCommands == null || _pathCommands.Count == 0) return;
 

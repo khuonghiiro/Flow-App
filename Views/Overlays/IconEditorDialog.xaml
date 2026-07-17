@@ -348,9 +348,15 @@
                                     <!-- A subtle grid pattern can be added programmatically or with CSS/Shapes -->
                                 </Canvas>
 
-                                <!-- Actual WPF Path drawing the SVG shape -->
+                                <!-- Actual WPF Path drawing the SVG shape (simple path mode) -->
                                 <Path x:Name="SvgPreviewPath" Fill="{StaticResource AccentColor}" StrokeThickness="0" Stroke="Transparent"
                                       HorizontalAlignment="Left" VerticalAlignment="Top" Stretch="None" IsHitTestVisible="False"/>
+
+                                <!-- Full SVG preview using SharpVectors (SVG mode) -->
+                                <controls:SvgViewboxEx x:Name="SvgFullPreview" Visibility="Collapsed" IsHitTestVisible="False"
+                                                    UseOriginalColors="True" Stretch="Uniform" 
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    Margin="20"/>
 
                                 <!-- Editing canvas where handles are drawn -->
                                 <Canvas x:Name="EditingCanvas" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent"
