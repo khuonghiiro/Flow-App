@@ -45,6 +45,45 @@ namespace FlowMy.Views.NodeControls
             public string BlendMode { get; set; } = "Normal";
             public System.Collections.Generic.List<LayerMetadataDto> ChildLayers { get; set; } = new();
             public string? ActiveChildLayerId { get; set; }
+
+            // Extended layer geometry properties
+            public int Width { get; set; }
+            public int Height { get; set; }
+            public int OffsetX { get; set; }
+            public int OffsetY { get; set; }
+            public double LayerScaleX { get; set; } = 1.0;
+            public double LayerScaleY { get; set; } = 1.0;
+            public double LayerAngle { get; set; } = 0.0;
+            public double LayerTranslateX { get; set; } = 0.0;
+            public double LayerTranslateY { get; set; } = 0.0;
+
+            public double ContentBoundsX { get; set; }
+            public double ContentBoundsY { get; set; }
+            public double ContentBoundsWidth { get; set; }
+            public double ContentBoundsHeight { get; set; }
+
+            public double ImageContentBoundsX { get; set; }
+            public double ImageContentBoundsY { get; set; }
+            public double ImageContentBoundsWidth { get; set; }
+            public double ImageContentBoundsHeight { get; set; }
+
+            public string? ContentGeometryMarkup { get; set; }
+
+            // Text layer properties
+            public bool IsTextLayer { get; set; }
+            public string TextContent { get; set; } = "";
+            public double TextX { get; set; }
+            public double TextY { get; set; }
+            public double TextWidth { get; set; } = 200;
+            public double TextHeight { get; set; } = 100;
+            public double TextFontSize { get; set; } = 24;
+            public string TextColor { get; set; } = "#FFFFFFFF";
+            public string TextFontFamily { get; set; } = "Arial";
+            public string TextFontStyle { get; set; } = "Bold";
+            public string TextAlignment { get; set; } = "Left";
+
+            // Dedicated filename in zip for deduplication
+            public string? ImageFileName { get; set; }
         }
 
         // File Menu Handlers
@@ -362,6 +401,11 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private static double SanitizeDouble(double val, double fallback = 0.0)
+        {
+            return double.IsNaN(val) || double.IsInfinity(val) ? fallback : val;
+        }
+
         private void SaveProjectToPath(string filePath, Button? btn = null)
         {
             try
@@ -378,6 +422,8 @@ namespace FlowMy.Views.NodeControls
                         BackgroundColor = _node.EditorDoc.BackgroundColor.ToString()
                     };
 
+                    var savedImages = new System.Collections.Generic.Dictionary<string, string>();
+
                     void AddLayersToDto(System.Collections.Generic.IEnumerable<EditorLayer> layers, System.Collections.Generic.List<LayerMetadataDto> targetList)
                     {
                         foreach (var l in layers)
@@ -390,20 +436,81 @@ namespace FlowMy.Views.NodeControls
                                 IsVisible = l.IsVisible,
                                 IsLocked = l.IsLocked,
                                 BlendMode = l.BlendMode.ToString(),
-                                ActiveChildLayerId = l.ActiveChildLayer?.Id
+                                ActiveChildLayerId = l.ActiveChildLayer?.Id,
+
+                                Width = l.Width,
+                                Height = l.Height,
+                                OffsetX = l.OffsetX,
+                                OffsetY = l.OffsetY,
+                                LayerScaleX = SanitizeDouble(l.LayerScaleX, 1.0),
+                                LayerScaleY = SanitizeDouble(l.LayerScaleY, 1.0),
+                                LayerAngle = SanitizeDouble(l.LayerAngle, 0.0),
+                                LayerTranslateX = SanitizeDouble(l.LayerTranslateX, 0.0),
+                                LayerTranslateY = SanitizeDouble(l.LayerTranslateY, 0.0),
+
+                                ContentBoundsX = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.X, 0.0),
+                                ContentBoundsY = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Y, 0.0),
+                                ContentBoundsWidth = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Width, 0.0),
+                                ContentBoundsHeight = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Height, 0.0),
+
+                                ImageContentBoundsX = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.X, 0.0),
+                                ImageContentBoundsY = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Y, 0.0),
+                                ImageContentBoundsWidth = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Width, 0.0),
+                                ImageContentBoundsHeight = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Height, 0.0),
+
+                                IsTextLayer = l.IsTextLayer,
+                                TextContent = l.TextContent ?? "",
+                                TextX = SanitizeDouble(l.TextX, 0.0),
+                                TextY = SanitizeDouble(l.TextY, 0.0),
+                                TextWidth = SanitizeDouble(l.TextWidth, 200.0),
+                                TextHeight = SanitizeDouble(l.TextHeight, 100.0),
+                                TextFontSize = SanitizeDouble(l.TextFontSize, 24.0),
+                                TextColor = l.TextColor.ToString(),
+                                TextFontFamily = l.TextFontFamily ?? "Arial",
+                                TextFontStyle = l.TextFontStyle ?? "Bold",
+                                TextAlignment = l.TextAlignment ?? "Left"
                             };
 
+                            if (l.ContentGeometry != null)
+                            {
+                                lDto.ContentGeometryMarkup = l.ContentGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            }
+
                             // Save layer bitmap to zip using MemoryStream to avoid seek unsupported exception
-                            var imgEntry = archive.CreateEntry($"layers/{l.Id}.png");
-                            using (var entryStream = imgEntry.Open())
+                            byte[] bytes;
                             using (var ms = new MemoryStream())
                             {
                                 var encoder = new PngBitmapEncoder();
                                 encoder.Frames.Add(BitmapFrame.Create(l.Bitmap));
                                 encoder.Save(ms);
-                                byte[] bytes = ms.ToArray();
-                                entryStream.Write(bytes, 0, bytes.Length);
+                                bytes = ms.ToArray();
                             }
+
+                            // Compute SHA256 of PNG bytes to check for duplicates
+                            string hash;
+                            using (var sha = System.Security.Cryptography.SHA256.Create())
+                            {
+                                var hashBytes = sha.ComputeHash(bytes);
+                                hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                            }
+
+                            string entryName;
+                            if (savedImages.TryGetValue(hash, out var existingEntryName))
+                            {
+                                entryName = existingEntryName;
+                            }
+                            else
+                            {
+                                entryName = $"layers/{l.Id}.png";
+                                var imgEntry = archive.CreateEntry(entryName);
+                                using (var entryStream = imgEntry.Open())
+                                {
+                                    entryStream.Write(bytes, 0, bytes.Length);
+                                }
+                                savedImages[hash] = entryName;
+                            }
+
+                            lDto.ImageFileName = entryName;
 
                             if (l.ChildLayers != null && l.ChildLayers.Count > 0)
                             {
@@ -536,13 +643,53 @@ namespace FlowMy.Views.NodeControls
 
                     EditorLayer RestoreLayer(LayerMetadataDto lDto, EditorLayer? parent)
                     {
-                        var layer = new EditorLayer(dto.Width, dto.Height, lDto.Name)
+                        var layer = new EditorLayer(lDto.Width > 0 ? lDto.Width : dto.Width, lDto.Height > 0 ? lDto.Height : dto.Height, lDto.Name)
                         {
                             Id = lDto.Id,
                             Opacity = lDto.Opacity,
                             IsVisible = lDto.IsVisible,
-                            IsLocked = lDto.IsLocked
+                            IsLocked = lDto.IsLocked,
+                            OffsetX = lDto.OffsetX,
+                            OffsetY = lDto.OffsetY,
+                            LayerScaleX = lDto.LayerScaleX,
+                            LayerScaleY = lDto.LayerScaleY,
+                            LayerAngle = lDto.LayerAngle,
+                            LayerTranslateX = lDto.LayerTranslateX,
+                            LayerTranslateY = lDto.LayerTranslateY,
+                            IsTextLayer = lDto.IsTextLayer,
+                            TextContent = lDto.TextContent ?? "",
+                            TextX = lDto.TextX,
+                            TextY = lDto.TextY,
+                            TextWidth = lDto.TextWidth,
+                            TextHeight = lDto.TextHeight,
+                            TextFontSize = lDto.TextFontSize,
+                            TextFontFamily = lDto.TextFontFamily ?? "Arial",
+                            TextFontStyle = lDto.TextFontStyle ?? "Bold",
+                            TextAlignment = lDto.TextAlignment ?? "Left"
                         };
+
+                        if (!string.IsNullOrEmpty(lDto.TextColor))
+                        {
+                            try { layer.TextColor = (Color)ColorConverter.ConvertFromString(lDto.TextColor); } catch { }
+                        }
+
+                        if (lDto.ContentBoundsWidth > 0 && lDto.ContentBoundsHeight > 0)
+                        {
+                            layer.ContentBounds = new Rect(lDto.ContentBoundsX, lDto.ContentBoundsY, lDto.ContentBoundsWidth, lDto.ContentBoundsHeight);
+                        }
+                        if (lDto.ImageContentBoundsWidth > 0 && lDto.ImageContentBoundsHeight > 0)
+                        {
+                            layer.ImageContentBounds = new Rect(lDto.ImageContentBoundsX, lDto.ImageContentBoundsY, lDto.ImageContentBoundsWidth, lDto.ImageContentBoundsHeight);
+                        }
+
+                        if (!string.IsNullOrEmpty(lDto.ContentGeometryMarkup))
+                        {
+                            try
+                            {
+                                layer.ContentGeometry = Geometry.Parse(lDto.ContentGeometryMarkup);
+                            }
+                            catch { }
+                        }
 
                         if (Enum.TryParse<BlendMode>(lDto.BlendMode, out var bMode))
                         {
@@ -551,7 +698,8 @@ namespace FlowMy.Views.NodeControls
                         layer.ParentLayer = parent;
 
                         // Load bitmap
-                        var imgEntry = archive.GetEntry($"layers/{lDto.Id}.png");
+                        string imgFileName = !string.IsNullOrEmpty(lDto.ImageFileName) ? lDto.ImageFileName : $"layers/{lDto.Id}.png";
+                        var imgEntry = archive.GetEntry(imgFileName);
                         if (imgEntry != null)
                         {
                             using (var imgStream = imgEntry.Open())
@@ -560,8 +708,17 @@ namespace FlowMy.Views.NodeControls
                                 imgStream.CopyTo(ms);
                                 ms.Position = 0;
                                 var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-                                var loadedBmp = new WriteableBitmap(decoder.Frames[0]);
+                                
+                                BitmapSource bmpSource = decoder.Frames[0];
+                                if (bmpSource.Format != PixelFormats.Bgra32)
+                                {
+                                    bmpSource = new FormatConvertedBitmap(bmpSource, PixelFormats.Bgra32, null, 0);
+                                }
+                                var loadedBmp = new WriteableBitmap(bmpSource);
                                 layer.Bitmap = loadedBmp;
+                                
+                                // Restore OriginalTransformBitmap as a separate instance so editing/moving works seamlessly
+                                layer.OriginalTransformBitmap = new WriteableBitmap(loadedBmp);
                             }
                         }
 
