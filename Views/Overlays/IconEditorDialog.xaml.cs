@@ -1621,7 +1621,7 @@ namespace FlowMy.Views.Overlays
             }
 
             // Auto-determine folder based on color checkbox
-            string folder = ChkOriginalColor.IsChecked == true ? "custom-icon.color" : "custom-icon";
+            string folder = ChkOriginalColor.IsChecked == true ? "Custom-icons.color" : "Custom-icons";
 
             string textContent = TxtPathData.Text.Trim();
             if (string.IsNullOrEmpty(textContent))
@@ -1645,7 +1645,7 @@ namespace FlowMy.Views.Overlays
                 svgContent = $"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\">\n  <path fill=\"{fill}\" d=\"{textContent}\" />\n</svg>";
             }
 
-            string relPath = $"Assets/Icons/{folder}/{name}.svg".Replace('\\', '/');
+            string relPath = $"Assets/{folder}/{name}.svg".Replace('\\', '/');
             string projectRoot = DetectProjectRoot();
 
             try

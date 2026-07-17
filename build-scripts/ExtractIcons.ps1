@@ -266,9 +266,19 @@ $manifestLines.Add("# Format: <icon-key>=<relative-path-from-project-root>")
 $manifestLines.Add("# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 $manifestLines.Add("")
 
-# Quet thuc te thu muc Assets/Icons de liet ke toan bo SVG da co (dung khi build/run).
-# Duong dan luu tuong doi de link dong theo project.
-$allSvgFiles = Get-ChildItem -Path $targetIconsFolder -Filter "*.svg" -Recurse -File |
+# Quet thuc te thu muc Assets/Icons va cac thu muc Custom-icons de liet ke toan bo SVG da co.
+$scanFolders = @($targetIconsFolder)
+$customFolder = Join-Path $ProjectRoot "Assets\Custom-icons"
+$customColorFolder = Join-Path $ProjectRoot "Assets\Custom-icons.color"
+
+if (Test-Path $customFolder) {
+    $scanFolders += $customFolder
+}
+if (Test-Path $customColorFolder) {
+    $scanFolders += $customColorFolder
+}
+
+$allSvgFiles = Get-ChildItem -Path $scanFolders -Filter "*.svg" -Recurse -File |
     Sort-Object FullName
 
 $manifestCount = 0
@@ -278,7 +288,12 @@ foreach ($svgFile in $allSvgFiles) {
 
     # Icon key = "<filename-without-ext> <subfolder>"
     $iconFileName = [System.IO.Path]::GetFileNameWithoutExtension($svgFile.Name)
-    $subfolderPath = $svgFile.Directory.FullName.Substring($targetIconsFolder.Length).TrimStart('\', '/').Replace('\', '/')
+    
+    if ($svgFile.FullName.StartsWith($targetIconsFolder)) {
+        $subfolderPath = $svgFile.Directory.FullName.Substring($targetIconsFolder.Length).TrimStart('\', '/').Replace('\', '/')
+    } else {
+        $subfolderPath = $svgFile.Directory.Name
+    }
 
     if ([string]::IsNullOrEmpty($subfolderPath)) {
         # Icon nam truc tiep trong Assets/Icons (khong co subfolder) -> khong tao key

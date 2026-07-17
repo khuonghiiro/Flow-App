@@ -150,6 +150,12 @@
 		<Content Include="Assets\Icons\**\*.svg">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<Content Include="Assets\Custom-icons\**\*.svg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Assets\Custom-icons.color\**\*.svg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 		<!-- Manifest icon do script ExtractIcons.ps1 tạo — IconSelectorUserControl đọc runtime. -->
 		<Content Include="Assets\Icons\available_icons.txt" Condition="Exists('Assets\Icons\available_icons.txt')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
