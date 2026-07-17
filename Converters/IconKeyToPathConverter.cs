@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Windows.Data;
 
 namespace FlowMy.Converters
@@ -16,12 +16,14 @@ namespace FlowMy.Converters
                 string iconPath = IconResources.GetIconPath(iconKey);
                 if (!string.IsNullOrEmpty(iconPath))
                 {
-                    return new Uri(iconPath, UriKind.RelativeOrAbsolute);
+                    string fullPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, iconPath.TrimStart('/', '\\'));
+                    return new Uri(fullPath, UriKind.Absolute);
                 }
             }
 
             // Trả về icon mặc định nếu không tìm thấy
-            return new Uri("/Assets/Icons/circle2.svg", UriKind.RelativeOrAbsolute);
+            string fallbackPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets/Icons/circle2.svg");
+            return new Uri(fallbackPath, UriKind.Absolute);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

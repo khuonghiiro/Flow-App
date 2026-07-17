@@ -367,6 +367,31 @@ namespace FlowMy.ViewModels
                     }
                 }
 
+                // ── SOURCE 5: WorkflowEditorViewModel.cs (icon key từ NodeType switch) ──
+                if (string.IsNullOrWhiteSpace(EditIconKey))
+                {
+                    var vmPath = Path.Combine(ProjectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
+                    if (File.Exists(vmPath))
+                    {
+                        var vmContent = File.ReadAllText(vmPath);
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{baseName}\s*=>\s*""([^""]+)""");
+                        if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                    }
+                }
+
+                // ── SOURCE 5.5: TemplateNodeHandler.cs (tra cứu icon từ mapper của editor) ──
+                if (string.IsNullOrWhiteSpace(EditIconKey))
+                {
+                    var handlerPath = Path.Combine(ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+                    if (!File.Exists(handlerPath)) handlerPath = Path.Combine(ProjectRoot, "Views", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+                    if (File.Exists(handlerPath))
+                    {
+                        var handlerContent = File.ReadAllText(handlerPath);
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(handlerContent, $@"""{baseName}(?:Node)?""\s*=>\s*""([^""]+)""");
+                        if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                    }
+                }
+
                 // ── SOURCE 3: NodeControl XAML (cho icon và màu nền từ giao diện) ──
                 var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}Control.xaml");
                 if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}NodeControl.xaml");
@@ -384,8 +409,8 @@ namespace FlowMy.ViewModels
                             EditColorKey = bgMatch.Groups[1].Value;
                     }
 
-                    // IconKey từ SvgViewboxEx
-                    if (string.IsNullOrWhiteSpace(EditIconKey))
+                    // IconKey từ SvgViewboxEx (chỉ trích xuất từ Control/NodeControl, tránh ContentControl vì chứa icon của các button bên trong body)
+                    if (string.IsNullOrWhiteSpace(EditIconKey) && !xamlPath.Contains("ContentControl"))
                     {
                         // Ưu tiên SvgViewboxEx có PaletteSvgIconStyle (chuẩn của Tool)
                         var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx\s+Style=""\{StaticResource\s+PaletteSvgIconStyle\}""[^>]*ConverterParameter='([^']+)'");
@@ -410,18 +435,6 @@ namespace FlowMy.ViewModels
                         var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*""([^""]+)""");
                         if (!iconMatch.Success)
                             iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"typeof\(Uri\),\s*""([^""]+)""");
-                        if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
-                    }
-                }
-
-                // ── SOURCE 5: WorkflowEditorViewModel.cs (icon key từ NodeType switch) ──
-                if (string.IsNullOrWhiteSpace(EditIconKey))
-                {
-                    var vmPath = Path.Combine(ProjectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
-                    if (File.Exists(vmPath))
-                    {
-                        var vmContent = File.ReadAllText(vmPath);
-                        var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{baseName}\s*=>\s*""([^""]+)""");
                         if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                     }
                 }
@@ -527,9 +540,14 @@ namespace FlowMy.ViewModels
                         "LoopContext" => "arrows-spin duotone",
                         "Condition" => "list-tree sharp-light",
                         "GitSource" => "git-alt brands",
+                        "ActionCanVas" => "square-share-nodes light",
+                        "ActionCanVasNode" => "square-share-nodes light",
+                        "ShowInputMsg" => "user-message regular",
+                        "ShowInputMsgNode" => "user-message regular",
                         _ => "circle-nodes duotone-regular"
                     };
                 }
+                ResultText = $"DEBUG: Selected={value} | baseName={baseName} | ColorKey={EditColorKey} | IconKey={EditIconKey}";
             }
             catch (Exception ex)
             {
