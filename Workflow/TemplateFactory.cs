@@ -136,6 +136,7 @@ namespace FlowMy.Workflow
                 X = x - 180,
                 Y = y - 140,
                 ColorKey = "CharcoalDark",
+                IconSize = 60,
                 NodeBrush = Application.Current.TryFindResource("CharcoalDarkBrush") as Brush ?? Brushes.MediumPurple,
                 Type = NodeType.ImageProcessing,
                 Width = 360,

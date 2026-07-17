@@ -361,7 +361,7 @@ namespace FlowMy.Views
                 "ListOut" => "list-radio regular",
                 "AssignData" => "arrows-left-right duotone",
                 "MediaGallery" => "image-stack duotone",
-                "ImageProcessing" => "image notdog-duo-solid",
+                "ImageProcessing" => "adobe_pts Custom-icons.color",
                 "VideoProcessing" => "circle-video sharp-light",
                 "Code" => "code duotone-regular",
                 "HtmlUi" => "html5 brands",

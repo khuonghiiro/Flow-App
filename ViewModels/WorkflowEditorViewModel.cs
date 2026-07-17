@@ -1130,7 +1130,7 @@ namespace FlowMy.ViewModels
                 NodeType.ListOut => "list-radio regular",
                 NodeType.AssignData => "arrows-left-right duotone",
                 NodeType.MediaGallery => "image-stack duotone",
-                NodeType.ImageProcessing => "image notdog-duo-solid",
+                NodeType.ImageProcessing => "adobe_pts Custom-icons.color",
                 NodeType.VideoProcessing => "circle-video sharp-light",
                 NodeType.Code => "code duotone-regular",
                 NodeType.HtmlUi => "html5 brands",

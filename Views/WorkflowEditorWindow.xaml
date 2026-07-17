@@ -1361,7 +1361,7 @@ Tag="ListOut">
                             <!-- Xử lý ảnh (Ffmpeg/GPU) Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource CharcoalDarkBrush}"
-         Tag="ImageProcessing">
+         Tag="ImageProcessing" Padding="0">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
@@ -1377,7 +1377,7 @@ Tag="ListOut">
                                                 <Border Background="{DynamicResource CharcoalDarkBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
                                                         <TextBlock Text="Xử lý ảnh" Foreground="{DynamicResource TextOnCharcoalDarkBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Mở ảnh từ link/file hoặc base64; xem/zoom/pan trong node; dùng ffmpeg (ưu tiên GPU) để render/xử lý và xuất ra path/base64." Foreground="{DynamicResource TextOnLavenderDreamBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Mở ảnh từ link/file hoặc base64; xem/zoom/pan trong node; dùng ffmpeg (ưu tiên GPU) để render/xử lý và xuất ra path/base64." Foreground="{DynamicResource TextOnCharcoalDarkBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -1386,8 +1386,8 @@ Tag="ListOut">
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='image notdog-duo-solid'}"
-                               Fill="{DynamicResource TextOnCharcoalDarkBrush}"/>
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='adobe_pts Custom-icons.color'}"
+                               Fill="{DynamicResource TextOnCharcoalDarkBrush}" Width="48" Height="48"/>
                                 </Grid>
                             </Border>
 

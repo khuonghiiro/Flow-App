@@ -303,6 +303,7 @@ namespace FlowMy.Models.Nodes
         public ImageProcessingNode()
         {
             Type = NodeType.ImageProcessing;
+            IconSize = 60;
             Title = "Xử lý ảnh";
         }
 

@@ -318,7 +318,7 @@ namespace FlowMy.Controls
                 "StringSplit" => "scissors light",
                 "AssignData" => "arrows-left-right duotone",
                 "MediaGallery" => "image-stack duotone",
-                "ImageProcessing" => "image notdog-duo-solid",
+                "ImageProcessing" => "adobe_pts Custom-icons.color",
                 "Code" => "code duotone-regular",
                 "HtmlUi" => "html5 brands",
                 "Folder" => "folder-open duotone-thin",

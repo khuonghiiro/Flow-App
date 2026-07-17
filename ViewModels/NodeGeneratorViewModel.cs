@@ -114,7 +114,7 @@ namespace FlowMy.ViewModels
         public ObservableCollection<string> ColorKeyOptions { get; } = new()
         {
             // ── Semantic (Bootstrap-style) ──────────────────────────────────────
-            "Info", "Success", "Warning", "Danger", "Dark", "Light",
+            "Info", "Success", "Warning", "Danger", "Dark", "Light", "Transparent",
             // ── Indigo / Blue family ────────────────────────────────────────────
             "Indigo", "IndigoNight", "SkyBlue", "SkyAzure", "OceanBlue",
             "AquaMarine", "TealCyan", "MidnightBlue", "NavyDeep", "CobaltBlue",
