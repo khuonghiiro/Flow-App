@@ -949,8 +949,8 @@
                                     Margin="8,0,0,0">
                             <Border x:Name="HwBadge"
                                     Background="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
-                                    BorderThickness="1" CornerRadius="10"
-                                    Padding="7,3" Margin="0,0,6,0" VerticalAlignment="Center">
+                                    BorderThickness="1" CornerRadius="10" Height="15" Width="15"
+                                    Margin="0,0,6,0" VerticalAlignment="Center">
                                 <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeOnAccentTextBrush}"/>
                             </Border>
                             <Border Padding="7,8" CornerRadius="8"
