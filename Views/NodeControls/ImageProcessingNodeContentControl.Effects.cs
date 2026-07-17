@@ -467,6 +467,7 @@ namespace FlowMy.Views.NodeControls
             _isFxRunning = true;
             _fxCts = new CancellationTokenSource();
             FxLoadingText.Text = $"Đang xử lý: {effectName}...";
+            if (FxLoadingCancelHint != null) FxLoadingCancelHint.Visibility = Visibility.Visible;
             FxLoadingOverlay.Visibility = Visibility.Visible;
 
             // Listen for ESC

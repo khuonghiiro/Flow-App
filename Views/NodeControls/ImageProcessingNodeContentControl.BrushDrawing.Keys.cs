@@ -506,6 +506,11 @@ namespace FlowMy.Views.NodeControls
             ImageProcessingNodeContentControl_PreviewKeyDown(this, e);
         }
 
+        public void HandleShortcutKeyUp(KeyEventArgs e)
+        {
+            ImageProcessingNodeContentControl_PreviewKeyUp(this, e);
+        }
+
         public void CommitBrushDrawingSession()
         {
             if (_brushOverlayBitmap == null)

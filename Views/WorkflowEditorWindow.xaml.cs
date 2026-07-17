@@ -949,6 +949,7 @@ namespace FlowMy.Views
         {
             // Dùng PreviewKeyDown (tunneling) thay vì KeyDown để bắt Ctrl+C/V kể cả khi focus đang ở ComboBox (workflow selector)
             PreviewKeyDown += WorkflowEditorWindow_PreviewKeyDown;
+            PreviewKeyUp += WorkflowEditorWindow_PreviewKeyUp;
             Focusable = true;
 
             // Đóng dialog khi window mất focus (ẩn app hoặc chuyển sang app khác)
@@ -1890,6 +1891,26 @@ namespace FlowMy.Views
             }
 
             _eventService.HandleKeyDown(e);
+        }
+
+        private void WorkflowEditorWindow_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            // Do not intercept keystrokes if focused inside a TextBox or ComboBox to avoid breaking typing!
+            if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox || 
+                Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+            {
+                return;
+            }
+
+            var imageEditor = GetActiveImageEditorNode();
+            if (imageEditor != null && imageEditor.CanHandleKey(e))
+            {
+                imageEditor.HandleShortcutKeyUp(e);
+                if (e.Handled)
+                {
+                    return;
+                }
+            }
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

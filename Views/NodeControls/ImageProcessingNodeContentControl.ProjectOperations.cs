@@ -406,91 +406,132 @@ namespace FlowMy.Views.NodeControls
             return double.IsNaN(val) || double.IsInfinity(val) ? fallback : val;
         }
 
-        private void SaveProjectToPath(string filePath, Button? btn = null)
+        private async void SaveProjectToPath(string filePath, Button? btn = null)
         {
+            CommitBrushDrawingSession();
+            if (_node.EditorDoc == null) return;
+
+            // Show loading
+            if (FxLoadingOverlay != null)
+            {
+                FxLoadingOverlay.Visibility = Visibility.Visible;
+            }
+            if (FxLoadingText != null)
+            {
+                FxLoadingText.Text = "Đang lưu dự án...";
+            }
+            if (FxLoadingCancelHint != null)
+            {
+                FxLoadingCancelHint.Visibility = Visibility.Collapsed;
+            }
+
+            // Yield to let WPF render the loading overlay
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+
             try
             {
-                using (var fs = new FileStream(filePath, FileMode.Create))
-                using (var archive = new ZipArchive(fs, ZipArchiveMode.Create))
+                // 1. Gather all data on the UI thread
+                var dto = new ProjectMetadataDto
                 {
-                    // Build metadata DTO
-                    var dto = new ProjectMetadataDto
-                    {
-                        Width = _node.EditorDoc!.Width,
-                        Height = _node.EditorDoc.Height,
-                        ForegroundColor = _node.EditorDoc.ForegroundColor.ToString(),
-                        BackgroundColor = _node.EditorDoc.BackgroundColor.ToString()
-                    };
+                    Width = _node.EditorDoc.Width,
+                    Height = _node.EditorDoc.Height,
+                    ForegroundColor = _node.EditorDoc.ForegroundColor.ToString(),
+                    BackgroundColor = _node.EditorDoc.BackgroundColor.ToString()
+                };
 
-                    var savedImages = new System.Collections.Generic.Dictionary<string, string>();
-
-                    void AddLayersToDto(System.Collections.Generic.IEnumerable<EditorLayer> layers, System.Collections.Generic.List<LayerMetadataDto> targetList)
+                // We need to collect layer data and encode bitmaps on UI thread
+                var layersToProcess = new System.Collections.Generic.List<(LayerMetadataDto Dto, byte[] PngBytes)>();
+                
+                // Helper to traverse and serialize
+                void AddLayersToDto(System.Collections.Generic.IEnumerable<EditorLayer> layers, System.Collections.Generic.List<LayerMetadataDto> targetList)
+                {
+                    foreach (var l in layers)
                     {
-                        foreach (var l in layers)
+                        var lDto = new LayerMetadataDto
                         {
-                            var lDto = new LayerMetadataDto
-                            {
-                                Id = l.Id,
-                                Name = l.Name,
-                                Opacity = l.Opacity,
-                                IsVisible = l.IsVisible,
-                                IsLocked = l.IsLocked,
-                                BlendMode = l.BlendMode.ToString(),
-                                ActiveChildLayerId = l.ActiveChildLayer?.Id,
+                            Id = l.Id,
+                            Name = l.Name,
+                            Opacity = l.Opacity,
+                            IsVisible = l.IsVisible,
+                            IsLocked = l.IsLocked,
+                            BlendMode = l.BlendMode.ToString(),
+                            ActiveChildLayerId = l.ActiveChildLayer?.Id,
 
-                                Width = l.Width,
-                                Height = l.Height,
-                                OffsetX = l.OffsetX,
-                                OffsetY = l.OffsetY,
-                                LayerScaleX = SanitizeDouble(l.LayerScaleX, 1.0),
-                                LayerScaleY = SanitizeDouble(l.LayerScaleY, 1.0),
-                                LayerAngle = SanitizeDouble(l.LayerAngle, 0.0),
-                                LayerTranslateX = SanitizeDouble(l.LayerTranslateX, 0.0),
-                                LayerTranslateY = SanitizeDouble(l.LayerTranslateY, 0.0),
+                            Width = l.Width,
+                            Height = l.Height,
+                            OffsetX = l.OffsetX,
+                            OffsetY = l.OffsetY,
+                            LayerScaleX = SanitizeDouble(l.LayerScaleX, 1.0),
+                            LayerScaleY = SanitizeDouble(l.LayerScaleY, 1.0),
+                            LayerAngle = SanitizeDouble(l.LayerAngle, 0.0),
+                            LayerTranslateX = SanitizeDouble(l.LayerTranslateX, 0.0),
+                            LayerTranslateY = SanitizeDouble(l.LayerTranslateY, 0.0),
 
-                                ContentBoundsX = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.X, 0.0),
-                                ContentBoundsY = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Y, 0.0),
-                                ContentBoundsWidth = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Width, 0.0),
-                                ContentBoundsHeight = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Height, 0.0),
+                            ContentBoundsX = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.X, 0.0),
+                            ContentBoundsY = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Y, 0.0),
+                            ContentBoundsWidth = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Width, 0.0),
+                            ContentBoundsHeight = l.ContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ContentBounds.Height, 0.0),
 
-                                ImageContentBoundsX = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.X, 0.0),
-                                ImageContentBoundsY = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Y, 0.0),
-                                ImageContentBoundsWidth = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Width, 0.0),
-                                ImageContentBoundsHeight = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Height, 0.0),
+                            ImageContentBoundsX = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.X, 0.0),
+                            ImageContentBoundsY = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Y, 0.0),
+                            ImageContentBoundsWidth = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Width, 0.0),
+                            ImageContentBoundsHeight = l.ImageContentBounds.IsEmpty ? 0.0 : SanitizeDouble(l.ImageContentBounds.Height, 0.0),
 
-                                IsTextLayer = l.IsTextLayer,
-                                TextContent = l.TextContent ?? "",
-                                TextX = SanitizeDouble(l.TextX, 0.0),
-                                TextY = SanitizeDouble(l.TextY, 0.0),
-                                TextWidth = SanitizeDouble(l.TextWidth, 200.0),
-                                TextHeight = SanitizeDouble(l.TextHeight, 100.0),
-                                TextFontSize = SanitizeDouble(l.TextFontSize, 24.0),
-                                TextColor = l.TextColor.ToString(),
-                                TextFontFamily = l.TextFontFamily ?? "Arial",
-                                TextFontStyle = l.TextFontStyle ?? "Bold",
-                                TextAlignment = l.TextAlignment ?? "Left"
-                            };
+                            IsTextLayer = l.IsTextLayer,
+                            TextContent = l.TextContent ?? "",
+                            TextX = SanitizeDouble(l.TextX, 0.0),
+                            TextY = SanitizeDouble(l.TextY, 0.0),
+                            TextWidth = SanitizeDouble(l.TextWidth, 200.0),
+                            TextHeight = SanitizeDouble(l.TextHeight, 100.0),
+                            TextFontSize = SanitizeDouble(l.TextFontSize, 24.0),
+                            TextColor = l.TextColor.ToString(),
+                            TextFontFamily = l.TextFontFamily ?? "Arial",
+                            TextFontStyle = l.TextFontStyle ?? "Bold",
+                            TextAlignment = l.TextAlignment ?? "Left"
+                        };
 
-                            if (l.ContentGeometry != null)
-                            {
-                                lDto.ContentGeometryMarkup = l.ContentGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                            }
+                        if (l.ContentGeometry != null)
+                        {
+                            lDto.ContentGeometryMarkup = l.ContentGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        }
 
-                            // Save layer bitmap to zip using MemoryStream to avoid seek unsupported exception
-                            byte[] bytes;
-                            using (var ms = new MemoryStream())
-                            {
-                                var encoder = new PngBitmapEncoder();
-                                encoder.Frames.Add(BitmapFrame.Create(l.Bitmap));
-                                encoder.Save(ms);
-                                bytes = ms.ToArray();
-                            }
+                        // Encode PNG bytes on UI thread
+                        byte[] bytes;
+                        using (var ms = new MemoryStream())
+                        {
+                            var encoder = new PngBitmapEncoder();
+                            encoder.Frames.Add(BitmapFrame.Create(l.Bitmap));
+                            encoder.Save(ms);
+                            bytes = ms.ToArray();
+                        }
 
-                            // Compute SHA256 of PNG bytes to check for duplicates
+                        layersToProcess.Add((lDto, bytes));
+                        targetList.Add(lDto);
+
+                        if (l.ChildLayers != null && l.ChildLayers.Count > 0)
+                        {
+                            AddLayersToDto(l.ChildLayers, lDto.ChildLayers);
+                        }
+                    }
+                }
+
+                AddLayersToDto(_node.EditorDoc.Layers, dto.Layers);
+
+                // 2. Offload compression and writing to a background thread
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    using (var fs = new FileStream(filePath, FileMode.Create))
+                    using (var archive = new ZipArchive(fs, ZipArchiveMode.Create))
+                    {
+                        var savedImages = new System.Collections.Generic.Dictionary<string, string>();
+
+                        foreach (var item in layersToProcess)
+                        {
+                            // Compute SHA256 of PNG bytes
                             string hash;
                             using (var sha = System.Security.Cryptography.SHA256.Create())
                             {
-                                var hashBytes = sha.ComputeHash(bytes);
+                                var hashBytes = sha.ComputeHash(item.PngBytes);
                                 hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
                             }
 
@@ -501,37 +542,28 @@ namespace FlowMy.Views.NodeControls
                             }
                             else
                             {
-                                entryName = $"layers/{l.Id}.png";
+                                entryName = $"layers/{item.Dto.Id}.png";
                                 var imgEntry = archive.CreateEntry(entryName);
                                 using (var entryStream = imgEntry.Open())
                                 {
-                                    entryStream.Write(bytes, 0, bytes.Length);
+                                    entryStream.Write(item.PngBytes, 0, item.PngBytes.Length);
                                 }
                                 savedImages[hash] = entryName;
                             }
 
-                            lDto.ImageFileName = entryName;
+                            item.Dto.ImageFileName = entryName;
+                        }
 
-                            if (l.ChildLayers != null && l.ChildLayers.Count > 0)
-                            {
-                                AddLayersToDto(l.ChildLayers, lDto.ChildLayers);
-                            }
-
-                            targetList.Add(lDto);
+                        // Save project.json to zip
+                        var jsonEntry = archive.CreateEntry("project.json");
+                        using (var entryStream = jsonEntry.Open())
+                        using (var writer = new StreamWriter(entryStream))
+                        {
+                            var options = new JsonSerializerOptions { WriteIndented = true };
+                            writer.Write(JsonSerializer.Serialize(dto, options));
                         }
                     }
-
-                    AddLayersToDto(_node.EditorDoc.Layers, dto.Layers);
-
-                    // Save project.json to zip
-                    var jsonEntry = archive.CreateEntry("project.json");
-                    using (var entryStream = jsonEntry.Open())
-                    using (var writer = new StreamWriter(entryStream))
-                    {
-                        var options = new JsonSerializerOptions { WriteIndented = true };
-                        writer.Write(JsonSerializer.Serialize(dto, options));
-                    }
-                }
+                });
 
                 _node.EditorDoc.ProjectPath = filePath;
 
@@ -559,6 +591,13 @@ namespace FlowMy.Views.NodeControls
             {
                 MessageBox.Show($"Lỗi lưu dự án: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                if (FxLoadingOverlay != null)
+                {
+                    FxLoadingOverlay.Visibility = Visibility.Collapsed;
+                }
+            }
         }
 
         private void ExportProjectZip()
@@ -583,7 +622,7 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private void ImportProjectZip(string? filePath = null)
+        private async void ImportProjectZip(string? filePath = null)
         {
             string? selectedPath = filePath;
             if (string.IsNullOrEmpty(selectedPath))
@@ -603,164 +642,221 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            // Save current tab state before importing a new project
+            if (_activeTabData != null)
+            {
+                SaveCurrentTabState();
+            }
+
+            // Show loading overlay
+            if (FxLoadingOverlay != null)
+            {
+                FxLoadingOverlay.Visibility = Visibility.Visible;
+            }
+            if (FxLoadingText != null)
+            {
+                FxLoadingText.Text = "Đang mở dự án...";
+            }
+            if (FxLoadingCancelHint != null)
+            {
+                FxLoadingCancelHint.Visibility = Visibility.Collapsed;
+            }
+
+            // Yield to let WPF render the loading overlay
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+
             try
             {
                 ProjectMetadataDto? dto = null;
-                using (var fs = new FileStream(selectedPath, FileMode.Open, FileAccess.Read))
-                using (var archive = new ZipArchive(fs, ZipArchiveMode.Read))
+                var layerBytesMap = new System.Collections.Generic.Dictionary<string, byte[]>();
+
+                // 1. Read files and extract zip archive on background thread
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    var jsonEntry = archive.GetEntry("project.json");
-                    if (jsonEntry == null)
+                    using (var fs = new FileStream(selectedPath, FileMode.Open, FileAccess.Read))
+                    using (var archive = new ZipArchive(fs, ZipArchiveMode.Read))
                     {
-                        MessageBox.Show("Không tìm thấy tệp cấu hình project.json trong dự án.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-
-                    using (var entryStream = jsonEntry.Open())
-                    using (var reader = new StreamReader(entryStream))
-                    {
-                        var json = reader.ReadToEnd();
-                        dto = JsonSerializer.Deserialize<ProjectMetadataDto>(json);
-                    }
-
-                    if (dto == null)
-                    {
-                        MessageBox.Show("Tệp cấu hình dự án không hợp lệ.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-
-                    var doc = new EditorDocument(dto.Width, dto.Height);
-                    doc.ProjectPath = selectedPath;
-
-                    if (!string.IsNullOrEmpty(dto.ForegroundColor))
-                    {
-                        try { doc.ForegroundColor = (Color)ColorConverter.ConvertFromString(dto.ForegroundColor); } catch { }
-                    }
-                    if (!string.IsNullOrEmpty(dto.BackgroundColor))
-                    {
-                        try { doc.BackgroundColor = (Color)ColorConverter.ConvertFromString(dto.BackgroundColor); } catch { }
-                    }
-
-                    EditorLayer RestoreLayer(LayerMetadataDto lDto, EditorLayer? parent)
-                    {
-                        var layer = new EditorLayer(lDto.Width > 0 ? lDto.Width : dto.Width, lDto.Height > 0 ? lDto.Height : dto.Height, lDto.Name)
+                        var jsonEntry = archive.GetEntry("project.json");
+                        if (jsonEntry == null)
                         {
-                            Id = lDto.Id,
-                            Opacity = lDto.Opacity,
-                            IsVisible = lDto.IsVisible,
-                            IsLocked = lDto.IsLocked,
-                            OffsetX = lDto.OffsetX,
-                            OffsetY = lDto.OffsetY,
-                            LayerScaleX = lDto.LayerScaleX,
-                            LayerScaleY = lDto.LayerScaleY,
-                            LayerAngle = lDto.LayerAngle,
-                            LayerTranslateX = lDto.LayerTranslateX,
-                            LayerTranslateY = lDto.LayerTranslateY,
-                            IsTextLayer = lDto.IsTextLayer,
-                            TextContent = lDto.TextContent ?? "",
-                            TextX = lDto.TextX,
-                            TextY = lDto.TextY,
-                            TextWidth = lDto.TextWidth,
-                            TextHeight = lDto.TextHeight,
-                            TextFontSize = lDto.TextFontSize,
-                            TextFontFamily = lDto.TextFontFamily ?? "Arial",
-                            TextFontStyle = lDto.TextFontStyle ?? "Bold",
-                            TextAlignment = lDto.TextAlignment ?? "Left"
-                        };
-
-                        if (!string.IsNullOrEmpty(lDto.TextColor))
-                        {
-                            try { layer.TextColor = (Color)ColorConverter.ConvertFromString(lDto.TextColor); } catch { }
+                            throw new FileNotFoundException("Không tìm thấy tệp cấu hình project.json trong dự án.");
                         }
 
-                        if (lDto.ContentBoundsWidth > 0 && lDto.ContentBoundsHeight > 0)
+                        using (var entryStream = jsonEntry.Open())
+                        using (var reader = new StreamReader(entryStream))
                         {
-                            layer.ContentBounds = new Rect(lDto.ContentBoundsX, lDto.ContentBoundsY, lDto.ContentBoundsWidth, lDto.ContentBoundsHeight);
-                        }
-                        if (lDto.ImageContentBoundsWidth > 0 && lDto.ImageContentBoundsHeight > 0)
-                        {
-                            layer.ImageContentBounds = new Rect(lDto.ImageContentBoundsX, lDto.ImageContentBoundsY, lDto.ImageContentBoundsWidth, lDto.ImageContentBoundsHeight);
+                            var json = reader.ReadToEnd();
+                            dto = JsonSerializer.Deserialize<ProjectMetadataDto>(json);
                         }
 
-                        if (!string.IsNullOrEmpty(lDto.ContentGeometryMarkup))
+                        if (dto == null)
                         {
-                            try
+                            throw new InvalidDataException("Tệp cấu hình dự án không hợp lệ.");
+                        }
+
+                        // Read all entries in the layers/ directory
+                        foreach (var entry in archive.Entries)
+                        {
+                            if (entry.FullName.StartsWith("layers/", StringComparison.OrdinalIgnoreCase) && 
+                                entry.FullName.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                             {
-                                layer.ContentGeometry = Geometry.Parse(lDto.ContentGeometryMarkup);
-                            }
-                            catch { }
-                        }
-
-                        if (Enum.TryParse<BlendMode>(lDto.BlendMode, out var bMode))
-                        {
-                            layer.BlendMode = bMode;
-                        }
-                        layer.ParentLayer = parent;
-
-                        // Load bitmap
-                        string imgFileName = !string.IsNullOrEmpty(lDto.ImageFileName) ? lDto.ImageFileName : $"layers/{lDto.Id}.png";
-                        var imgEntry = archive.GetEntry(imgFileName);
-                        if (imgEntry != null)
-                        {
-                            using (var imgStream = imgEntry.Open())
-                            using (var ms = new MemoryStream())
-                            {
-                                imgStream.CopyTo(ms);
-                                ms.Position = 0;
-                                var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-                                
-                                BitmapSource bmpSource = decoder.Frames[0];
-                                if (bmpSource.Format != PixelFormats.Bgra32)
+                                using (var entryStream = entry.Open())
+                                using (var ms = new MemoryStream())
                                 {
-                                    bmpSource = new FormatConvertedBitmap(bmpSource, PixelFormats.Bgra32, null, 0);
+                                    entryStream.CopyTo(ms);
+                                    layerBytesMap[entry.FullName] = ms.ToArray();
                                 }
-                                var loadedBmp = new WriteableBitmap(bmpSource);
-                                layer.Bitmap = loadedBmp;
-                                
-                                // Restore OriginalTransformBitmap as a separate instance so editing/moving works seamlessly
-                                layer.OriginalTransformBitmap = new WriteableBitmap(loadedBmp);
                             }
                         }
-
-                        // Restore child layers
-                        foreach (var childDto in lDto.ChildLayers)
-                        {
-                            var childLayer = RestoreLayer(childDto, layer);
-                            layer.ChildLayers.Add(childLayer);
-                        }
-
-                        // Restore ActiveChildLayer
-                        if (!string.IsNullOrEmpty(lDto.ActiveChildLayerId))
-                        {
-                            layer.ActiveChildLayer = layer.ChildLayers.FirstOrDefault(c => c.Id == lDto.ActiveChildLayerId);
-                        }
-
-                        return layer;
                     }
+                });
 
-                    foreach (var lDto in dto.Layers)
-                    {
-                        var layer = RestoreLayer(lDto, null);
-                        doc.Layers.Add(layer);
-                    }
+                if (dto == null) return;
 
-                    if (doc.Layers.Count > 0)
-                    {
-                        doc.ActiveLayer = doc.Layers[doc.Layers.Count - 1];
-                    }
+                // 2. Process and build UI elements on UI thread (due to thread affinity)
+                var doc = new EditorDocument(dto.Width, dto.Height);
+                doc.ProjectPath = selectedPath;
 
-                    // Apply to node and view
-                    _node.EditorDoc = doc;
-                    EditorPanel.SetDocument(doc);
-                    OnEditorDocumentModified();
-                    SyncToolboxColors();
+                if (!string.IsNullOrEmpty(dto.ForegroundColor))
+                {
+                    try { doc.ForegroundColor = (Color)ColorConverter.ConvertFromString(dto.ForegroundColor); } catch { }
                 }
+                if (!string.IsNullOrEmpty(dto.BackgroundColor))
+                {
+                    try { doc.BackgroundColor = (Color)ColorConverter.ConvertFromString(dto.BackgroundColor); } catch { }
+                }
+
+                EditorLayer RestoreLayer(LayerMetadataDto lDto, EditorLayer? parent)
+                {
+                    var layer = new EditorLayer(lDto.Width > 0 ? lDto.Width : dto.Width, lDto.Height > 0 ? lDto.Height : dto.Height, lDto.Name)
+                    {
+                        Id = lDto.Id,
+                        Opacity = lDto.Opacity,
+                        IsVisible = lDto.IsVisible,
+                        IsLocked = lDto.IsLocked,
+                        OffsetX = lDto.OffsetX,
+                        OffsetY = lDto.OffsetY,
+                        LayerScaleX = lDto.LayerScaleX,
+                        LayerScaleY = lDto.LayerScaleY,
+                        LayerAngle = lDto.LayerAngle,
+                        LayerTranslateX = lDto.LayerTranslateX,
+                        LayerTranslateY = lDto.LayerTranslateY,
+                        IsTextLayer = lDto.IsTextLayer,
+                        TextContent = lDto.TextContent ?? "",
+                        TextX = lDto.TextX,
+                        TextY = lDto.TextY,
+                        TextWidth = lDto.TextWidth,
+                        TextHeight = lDto.TextHeight,
+                        TextFontSize = lDto.TextFontSize,
+                        TextFontFamily = lDto.TextFontFamily ?? "Arial",
+                        TextFontStyle = lDto.TextFontStyle ?? "Bold",
+                        TextAlignment = lDto.TextAlignment ?? "Left"
+                    };
+
+                    if (!string.IsNullOrEmpty(lDto.TextColor))
+                    {
+                        try { layer.TextColor = (Color)ColorConverter.ConvertFromString(lDto.TextColor); } catch { }
+                    }
+
+                    if (lDto.ContentBoundsWidth > 0 && lDto.ContentBoundsHeight > 0)
+                    {
+                        layer.ContentBounds = new Rect(lDto.ContentBoundsX, lDto.ContentBoundsY, lDto.ContentBoundsWidth, lDto.ContentBoundsHeight);
+                    }
+                    if (lDto.ImageContentBoundsWidth > 0 && lDto.ImageContentBoundsHeight > 0)
+                    {
+                        layer.ImageContentBounds = new Rect(lDto.ImageContentBoundsX, lDto.ImageContentBoundsY, lDto.ImageContentBoundsWidth, lDto.ImageContentBoundsHeight);
+                    }
+
+                    if (!string.IsNullOrEmpty(lDto.ContentGeometryMarkup))
+                    {
+                        try
+                        {
+                            layer.ContentGeometry = Geometry.Parse(lDto.ContentGeometryMarkup);
+                        }
+                        catch { }
+                    }
+
+                    if (Enum.TryParse<BlendMode>(lDto.BlendMode, out var bMode))
+                    {
+                        layer.BlendMode = bMode;
+                    }
+                    layer.ParentLayer = parent;
+
+                    // Load bitmap from cached byte array
+                    string imgFileName = !string.IsNullOrEmpty(lDto.ImageFileName) ? lDto.ImageFileName : $"layers/{lDto.Id}.png";
+                    if (layerBytesMap.TryGetValue(imgFileName, out var pngBytes))
+                    {
+                        using (var ms = new MemoryStream(pngBytes))
+                        {
+                            var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                            BitmapSource bmpSource = decoder.Frames[0];
+                            if (bmpSource.Format != PixelFormats.Bgra32)
+                            {
+                                bmpSource = new FormatConvertedBitmap(bmpSource, PixelFormats.Bgra32, null, 0);
+                            }
+                            var loadedBmp = new WriteableBitmap(bmpSource);
+                            layer.Bitmap = loadedBmp;
+                            
+                            // Restore OriginalTransformBitmap as a separate instance so editing/moving works seamlessly
+                            layer.OriginalTransformBitmap = new WriteableBitmap(loadedBmp);
+                        }
+                    }
+
+                    // Restore child layers
+                    foreach (var childDto in lDto.ChildLayers)
+                    {
+                        var childLayer = RestoreLayer(childDto, layer);
+                        layer.ChildLayers.Add(childLayer);
+                    }
+
+                    // Restore ActiveChildLayer
+                    if (!string.IsNullOrEmpty(lDto.ActiveChildLayerId))
+                    {
+                        layer.ActiveChildLayer = layer.ChildLayers.FirstOrDefault(c => c.Id == lDto.ActiveChildLayerId);
+                    }
+
+                    return layer;
+                }
+
+                foreach (var lDto in dto.Layers)
+                {
+                    var layer = RestoreLayer(lDto, null);
+                    doc.Layers.Add(layer);
+                }
+
+                if (doc.Layers.Count > 0)
+                {
+                    doc.ActiveLayer = doc.Layers[doc.Layers.Count - 1];
+                }
+
+                // Apply to node and view
+                _node.EditorDoc = doc;
+                EditorPanel.SetDocument(doc);
+                CenterImageOnCanvas(doc.Width, doc.Height);
+
+                // Set title and sync active tab
+                if (ImageTitleTextBlock != null)
+                {
+                    ImageTitleTextBlock.Text = System.IO.Path.GetFileName(selectedPath);
+                }
+                _activeTabData = null; // Create a new tab for the imported project
+                SyncActiveTab();
+
+                OnEditorDocumentModified();
+                SyncToolboxColors();
 
                 MessageBox.Show("Mở dự án thành công!", "Mở dự án", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Lỗi mở dự án: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                if (FxLoadingOverlay != null)
+                {
+                    FxLoadingOverlay.Visibility = Visibility.Collapsed;
+                }
             }
         }
     }

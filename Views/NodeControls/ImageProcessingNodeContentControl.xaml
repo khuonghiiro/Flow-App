@@ -1267,7 +1267,7 @@ into smaller partial class files to maintain readability and ease of maintenance
                 <TextBlock x:Name="FxLoadingText" Text="Đang xử lý..."
                            Foreground="#dde3ef" FontSize="13" FontWeight="SemiBold"
                            HorizontalAlignment="Center" Margin="0,6,0,4"/>
-                <TextBlock Text="Nhấn ESC để huỷ" Foreground="#5a6072" FontSize="10"
+                <TextBlock x:Name="FxLoadingCancelHint" Text="Nhấn ESC để huỷ" Foreground="#5a6072" FontSize="10"
                            HorizontalAlignment="Center" FontStyle="Italic"/>
             </StackPanel>
         </Border>

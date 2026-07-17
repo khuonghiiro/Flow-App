@@ -125,7 +125,8 @@ namespace FlowMy.Views.NodeControls
 
             if (_node.ProcessingMode == Models.Nodes.ImageProcessingMode.Manual)
             {
-                if (_isSpacePressed)
+                bool spacePressed = _isSpacePressed || Keyboard.IsKeyDown(Key.Space);
+                if (spacePressed)
                 {
                     _isPanning = true;
                     _hasUserCentered = true;
@@ -311,7 +312,8 @@ namespace FlowMy.Views.NodeControls
                     bool inside = imgPos.X >= 0 && imgPos.X <= MainImage.ActualWidth &&
                                   imgPos.Y >= 0 && imgPos.Y <= MainImage.ActualHeight;
 
-                    if (inside && !_isSpacePressed && !_isPanning)
+                    bool spacePressed = _isSpacePressed || Keyboard.IsKeyDown(Key.Space);
+                    if (inside && !spacePressed && !_isPanning)
                     {
                         if (MainImage.Cursor != Cursors.None)
                         {
@@ -598,7 +600,8 @@ namespace FlowMy.Views.NodeControls
                     bool inside = imgPos.X >= 0 && imgPos.X <= MainImage.ActualWidth &&
                                   imgPos.Y >= 0 && imgPos.Y <= MainImage.ActualHeight;
 
-                    if (inside && !_isSpacePressed && !_isPanning)
+                    bool spacePressed = _isSpacePressed || Keyboard.IsKeyDown(Key.Space);
+                    if (inside && !spacePressed && !_isPanning)
                     {
                         var activeLayer = _node.EditorDoc.ActiveLayer;
                         if (activeLayer != null)
