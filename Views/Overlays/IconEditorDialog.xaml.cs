@@ -1403,11 +1403,27 @@ namespace FlowMy.Views.Overlays
 
             try
             {
-                // Use a dedicated cache profile for the icon editor browser
-                var cachePath = WebNodeCacheHelper.GetProfileCachePath("IconEditor_" + profileName);
-                Directory.CreateDirectory(cachePath);
-                var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath,
-                    new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions());
+                Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
+                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                    }
+                    catch (Exception exShared)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Shared env failed fallback in IconEditor: {exShared.Message}");
+                        var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
+                        Directory.CreateDirectory(cachePath);
+                        env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions());
+                    }
+                }
+                else
+                {
+                    var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                    Directory.CreateDirectory(cachePath);
+                    env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions());
+                }
 
                 if (_webView == null) return;
                 await _webView.EnsureCoreWebView2Async(env);
