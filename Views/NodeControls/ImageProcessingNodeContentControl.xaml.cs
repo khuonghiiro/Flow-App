@@ -516,18 +516,18 @@ namespace FlowMy.Views.NodeControls
 
                 var identity = Transform.Identity;
                 TopMenuBorder.LayoutTransform = identity;
-                // RightMenuBorder.LayoutTransform = identity;
+                TopOptionsBar.LayoutTransform = identity;
+                EditorToolbox.LayoutTransform = identity;
                 IpProcessorHost.LayoutTransform = identity;
-                // LeftMenuBorder.LayoutTransform = identity;
                 PlaceholderTextBlock.LayoutTransform = identity;
-                // CropsLabelText.LayoutTransform = identity;
-                // RenderLabelText.LayoutTransform = identity;
                 EditorPanel.LayoutTransform = new ScaleTransform(typoMul, typoMul);
 
                 var formatMode = typoMul == 1.0 ? TextFormattingMode.Display : TextFormattingMode.Ideal;
                 TextOptions.SetTextFormattingMode(EditorPanel, formatMode);
-                // TextOptions.SetTextFormattingMode(RightMenuBorder, formatMode);
                 TextOptions.SetTextFormattingMode(IpProcessorHost, formatMode);
+                TextOptions.SetTextFormattingMode(TopMenuBorder, formatMode);
+                TextOptions.SetTextFormattingMode(TopOptionsBar, formatMode);
+                TextOptions.SetTextFormattingMode(EditorToolbox, formatMode);
 
                 int Sz(double b) => Math.Max(1, (int)Math.Round(b * typoMul));
                 double leftBtnMul = typoMul * (_widgetExpandedFullscreen ? 0.78 : 1.0);
@@ -590,17 +590,22 @@ namespace FlowMy.Views.NodeControls
             double ipCurrentWidth = effW * (IpColStar / (OtherSiblingStars + IpColStar));
             double ipTextScaleFactor = CurvedChromeScale(ipCurrentWidth, ipBaselineWidth);
 
+            double editorScaleVal = Math.Max(0.5, (_node.Width * 0.32) / 220.0);
+            var editorScale = new ScaleTransform(editorScaleVal, editorScaleVal);
+
+            // Gán tỉ lệ co dãn tương đương cho TopMenuBorder, TopOptionsBar và EditorToolbox giống như EditorPanel khi ở workflow
+            TopMenuBorder.LayoutTransform = editorScale;
+            TopOptionsBar.LayoutTransform = editorScale;
+            EditorToolbox.LayoutTransform = editorScale;
+            TextOptions.SetTextFormattingMode(TopMenuBorder, TextFormattingMode.Ideal);
+            TextOptions.SetTextFormattingMode(TopOptionsBar, TextFormattingMode.Ideal);
+            TextOptions.SetTextFormattingMode(EditorToolbox, TextFormattingMode.Ideal);
+
             var topBarScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
-            TopMenuBorder.LayoutTransform = topBarScale;
             IpProcessorHost.LayoutTransform = topBarScale;
-            // var ipScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
-            // RightMenuBorder.LayoutTransform = ipScale;
-            // TextOptions.SetTextFormattingMode(RightMenuBorder, TextFormattingMode.Ideal);
             TextOptions.SetTextFormattingMode(IpProcessorHost, TextFormattingMode.Ideal);
 
-            // Tính toán tỉ lệ co dãn của EditorPanel để vừa khít chiều rộng cột 2 (220px)
-            double editorScaleVal = Math.Max(0.5, (_node.Width * 0.32) / 220.0);
-            EditorPanel.LayoutTransform = new ScaleTransform(editorScaleVal, editorScaleVal);
+            EditorPanel.LayoutTransform = editorScale;
             TextOptions.SetTextFormattingMode(EditorPanel, TextFormattingMode.Ideal);
 
             var canvasIpTextTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
