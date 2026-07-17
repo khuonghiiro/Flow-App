@@ -69,6 +69,11 @@ namespace FlowMy.Views.Overlays
         private Microsoft.Web.WebView2.Wpf.WebView2? _webView;
         private string _activeProfileName = "Shared";
 
+        // Static cache to keep WebView2 alive across dialog reopenings
+        private static Microsoft.Web.WebView2.Wpf.WebView2? _cachedWebView;
+        private static string? _cachedProfileName;
+        private static System.Threading.CancellationTokenSource? _disposeCts;
+
         public IconEditorDialog()
         {
             InitializeComponent();
@@ -93,14 +98,19 @@ namespace FlowMy.Views.Overlays
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-            CleanupTempSvgFile();
             Close();
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
-            CleanupTempSvgFile();
             Close();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            CleanupTempSvgFile();
+            DetachAndCacheWebView();
         }
 
         private void CleanupTempSvgFile()
@@ -1283,6 +1293,7 @@ namespace FlowMy.Views.Overlays
                             }
 
                             BtnSave.Content = "Cập nhật";
+                            BtnSaveAndClose.Content = "Cập nhật & Đóng";
                         }
                     }
                 }
@@ -1298,6 +1309,7 @@ namespace FlowMy.Views.Overlays
                 TxtIconColor.IsEnabled = false;
                 ChkOriginalColor.IsChecked = false;
                 BtnSave.Content = "Thêm";
+                BtnSaveAndClose.Content = "Thêm & Đóng";
                 LoadTemplateSquare();
             }
 
@@ -1385,11 +1397,107 @@ namespace FlowMy.Views.Overlays
             catch { }
         }
 
+        private void OnWebViewNavigationStarting(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+        {
+            Dispatcher.Invoke(() => UrlLoadingIndicator.Visibility = Visibility.Visible);
+        }
+
+        private void OnWebViewNavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UrlLoadingIndicator.Visibility = Visibility.Collapsed;
+                if (_webView?.CoreWebView2 != null)
+                {
+                    TxtWebUrl.Text = _webView.CoreWebView2.Source;
+                    SaveLastUrl(_webView.CoreWebView2.Source);
+                }
+            });
+        }
+
+        private static void StartCacheExpiryTimer()
+        {
+            _disposeCts?.Cancel();
+            _disposeCts = new System.Threading.CancellationTokenSource();
+            var token = _disposeCts.Token;
+            Task.Delay(TimeSpan.FromMinutes(3), token).ContinueWith(t =>
+            {
+                if (t.IsCompletedSuccessfully && !token.IsCancellationRequested)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (_cachedWebView != null)
+                        {
+                            try { _cachedWebView.Dispose(); } catch { }
+                            _cachedWebView = null;
+                            _cachedProfileName = null;
+                        }
+                    });
+                }
+            });
+        }
+
+        private void DetachAndCacheWebView()
+        {
+            if (_webView != null)
+            {
+                // Unhook event handlers to prevent leaks
+                _webView.NavigationStarting -= OnWebViewNavigationStarting;
+                _webView.NavigationCompleted -= OnWebViewNavigationCompleted;
+
+                // Detach from current parent
+                if (WebBrowserContainer != null && WebBrowserContainer.Children.Contains(_webView))
+                {
+                    WebBrowserContainer.Children.Remove(_webView);
+                }
+
+                _cachedWebView = _webView;
+                _cachedProfileName = _activeProfileName;
+                _webView = null;
+
+                // Start 3-minute delayed disposal timer
+                StartCacheExpiryTimer();
+            }
+        }
+
         private async void InitializeWebView(string profileName)
         {
+            // Cancel active cache timer
+            _disposeCts?.Cancel();
+            _disposeCts = null;
+
             WebBrowserContainer.Children.Clear();
             
-            // Dispose old webview if any
+            // Reuse cached WebView2 if profile matches
+            if (_cachedWebView != null && string.Equals(_cachedProfileName, profileName, StringComparison.OrdinalIgnoreCase))
+            {
+                _webView = _cachedWebView;
+                _cachedWebView = null;
+                _cachedProfileName = null;
+
+                if (_webView.Parent is Panel p)
+                {
+                    p.Children.Remove(_webView);
+                }
+
+                WebBrowserContainer.Children.Add(_webView);
+                _webView.NavigationStarting += OnWebViewNavigationStarting;
+                _webView.NavigationCompleted += OnWebViewNavigationCompleted;
+
+                if (_webView.CoreWebView2 != null)
+                {
+                    TxtWebUrl.Text = _webView.CoreWebView2.Source;
+                }
+                return;
+            }
+
+            // Dispose old mismatching WebView2
+            if (_cachedWebView != null)
+            {
+                try { _cachedWebView.Dispose(); } catch { }
+                _cachedWebView = null;
+                _cachedProfileName = null;
+            }
             if (_webView != null)
             {
                 try { _webView.Dispose(); } catch { }
@@ -1397,8 +1505,6 @@ namespace FlowMy.Views.Overlays
             }
 
             _webView = new Microsoft.Web.WebView2.Wpf.WebView2();
-
-            // CRITICAL: Add WebView2 to visual tree FIRST before EnsureCoreWebView2Async!
             WebBrowserContainer.Children.Add(_webView);
 
             try
@@ -1429,23 +1535,8 @@ namespace FlowMy.Views.Overlays
                 await _webView.EnsureCoreWebView2Async(env);
 
                 // Bind events
-                _webView.NavigationStarting += (s, ev) =>
-                {
-                    Dispatcher.Invoke(() => UrlLoadingIndicator.Visibility = Visibility.Visible);
-                };
-                _webView.NavigationCompleted += (s, ev) =>
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        UrlLoadingIndicator.Visibility = Visibility.Collapsed;
-                        if (_webView?.CoreWebView2 != null)
-                        {
-                            TxtWebUrl.Text = _webView.CoreWebView2.Source;
-                            // Save last visited URL
-                            SaveLastUrl(_webView.CoreWebView2.Source);
-                        }
-                    });
-                };
+                _webView.NavigationStarting += OnWebViewNavigationStarting;
+                _webView.NavigationCompleted += OnWebViewNavigationCompleted;
 
                 // Navigate to the last used URL
                 string lastUrl = LoadLastUrl();
@@ -1610,14 +1701,15 @@ namespace FlowMy.Views.Overlays
             return AppDomain.CurrentDomain.BaseDirectory;
         }
 
-        private void BtnSave_Click(object sender, RoutedEventArgs e)
+        private bool SaveIcon(out string savedKey)
         {
+            savedKey = string.Empty;
             string name = TxtIconName.Text.Trim().ToLower();
 
             if (string.IsNullOrEmpty(name) || Regex.IsMatch(name, @"[^a-z0-9\-_]"))
             {
                 MessageBox.Show("Tên key icon không hợp lệ! (Chỉ chứa chữ thường, số, dấu gạch ngang, gạch dưới).", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                return false;
             }
 
             // Auto-determine folder based on color checkbox
@@ -1627,7 +1719,7 @@ namespace FlowMy.Views.Overlays
             if (string.IsNullOrEmpty(textContent))
             {
                 MessageBox.Show("Nội dung SVG không được rỗng!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                return false;
             }
 
             // Determine SVG content: use full SVG if available, otherwise wrap path data
@@ -1662,6 +1754,7 @@ namespace FlowMy.Views.Overlays
 
                 // 3. Update manifest in project source
                 string key = $"{name} {folder}";
+                savedKey = key;
                 string manifestRelPath = "Assets/Icons/available_icons.txt".Replace('/', System.IO.Path.DirectorySeparatorChar);
                 
                 UpdateManifestFile(System.IO.Path.Combine(projectRoot, manifestRelPath), key, relPath);
@@ -1671,11 +1764,39 @@ namespace FlowMy.Views.Overlays
                 IconResources.ReloadManifest();
 
                 MessageBox.Show($"Lưu thành công biểu tượng '{key}'!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
-                Close();
+                return true;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Lỗi lưu biểu tượng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        private void BtnSave_Click(object sender, RoutedEventArgs e)
+        {
+            if (SaveIcon(out string savedKey))
+            {
+                // Refresh items
+                LoadAvailableIcons();
+
+                // Select newly saved icon in selector ComboBox
+                for (int i = 0; i < CmbIconSelector.Items.Count; i++)
+                {
+                    if (CmbIconSelector.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, savedKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        CmbIconSelector.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void BtnSaveAndClose_Click(object sender, RoutedEventArgs e)
+        {
+            if (SaveIcon(out _))
+            {
+                Close();
             }
         }
 
