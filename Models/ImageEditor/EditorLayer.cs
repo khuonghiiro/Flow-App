@@ -158,13 +158,33 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Vị trí layer trên canvas document (top-left offset).</summary>
         public int OffsetX
         {
-            get => _offsetX;
-            set => SetField(ref _offsetX, value);
+            get => ParentLayer != null ? ParentLayer.OffsetX : _offsetX;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.OffsetX = value;
+                }
+                else
+                {
+                    SetField(ref _offsetX, value);
+                }
+            }
         }
         public int OffsetY
         {
-            get => _offsetY;
-            set => SetField(ref _offsetY, value);
+            get => ParentLayer != null ? ParentLayer.OffsetY : _offsetY;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.OffsetY = value;
+                }
+                else
+                {
+                    SetField(ref _offsetY, value);
+                }
+            }
         }
 
         /// <summary>Bitmap pixel data (BGRA32, kích thước = Width×Height).</summary>
@@ -247,10 +267,42 @@ namespace FlowMy.Models.ImageEditor
         }
 
         public Rect ContentBounds { get; set; } = Rect.Empty;
+        
+        private Rect _imageContentBounds = Rect.Empty;
         /// <summary>Vùng ảnh gốc khi load vào layer (không bị clear bởi commands/tools).
         /// Dùng cho brush/eraser clipping. Chỉ set khi load ảnh vào layer.</summary>
-        public Rect ImageContentBounds { get; set; } = Rect.Empty;
-        public Geometry? ContentGeometry { get; set; }
+        public Rect ImageContentBounds
+        {
+            get => ParentLayer != null ? ParentLayer.ImageContentBounds : _imageContentBounds;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.ImageContentBounds = value;
+                }
+                else
+                {
+                    _imageContentBounds = value;
+                }
+            }
+        }
+
+        private Geometry? _contentGeometry;
+        public Geometry? ContentGeometry
+        {
+            get => ParentLayer != null ? ParentLayer.ContentGeometry : _contentGeometry;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.ContentGeometry = value;
+                }
+                else
+                {
+                    _contentGeometry = value;
+                }
+            }
+        }
 
         public static Rect CalculateContentBounds(WriteableBitmap bitmap)
         {

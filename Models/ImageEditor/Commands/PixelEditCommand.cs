@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace FlowMy.Models.ImageEditor.Commands
@@ -19,6 +20,8 @@ namespace FlowMy.Models.ImageEditor.Commands
         private double _newScaleX = 1.0, _newScaleY = 1.0, _newAngle = 0.0, _newTranslateX = 0.0, _newTranslateY = 0.0;
         private readonly WriteableBitmap? _oldOriginalTransformBitmap;
         private WriteableBitmap? _newOriginalTransformBitmap;
+
+        private readonly Geometry? _oldContentGeometry;
 
         private readonly int _oldOffsetX, _oldOffsetY;
         private int _newOffsetX, _newOffsetY;
@@ -47,6 +50,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             _oldOriginalTransformBitmap = _layer.OriginalTransformBitmap;
             _oldContentBounds = _layer.ContentBounds;
             _newContentBounds = _layer.ContentBounds;
+            _oldContentGeometry = _layer.ContentGeometry;
 
             _oldOffsetX = _layer.OffsetX;
             _oldOffsetY = _layer.OffsetY;
@@ -65,6 +69,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             _oldTranslateX = oldTranslateX;
             _oldTranslateY = oldTranslateY;
             _oldOriginalTransformBitmap = oldOrig;
+            _oldContentGeometry = layer.ContentGeometry;
         }
 
         public void CaptureNewTransformState()
@@ -100,6 +105,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             else
             {
                 _layer.OriginalTransformBitmap = null;
+                _layer.ContentGeometry = null;
             }
 
             _layer.OffsetX = _newOffsetX;
@@ -112,7 +118,7 @@ namespace FlowMy.Models.ImageEditor.Commands
         {
             _layer.Bitmap.WritePixels(new Int32Rect(0, 0, _layer.Width, _layer.Height), _oldPixels, _stride, 0);
             
-            if (KeepOriginalTransformBitmap)
+            if (KeepOriginalTransformBitmap || _oldOriginalTransformBitmap != null)
             {
                 _layer.LayerScaleX = _oldScaleX;
                 _layer.LayerScaleY = _oldScaleY;
@@ -126,6 +132,8 @@ namespace FlowMy.Models.ImageEditor.Commands
             {
                 _layer.OriginalTransformBitmap = null;
             }
+
+            _layer.ContentGeometry = _oldContentGeometry;
 
             _layer.OffsetX = _oldOffsetX;
             _layer.OffsetY = _oldOffsetY;

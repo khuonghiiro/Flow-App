@@ -36,7 +36,7 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class ImageProcessingNodeContentControl : UserControl
     {
-        private void ClearSelection()
+        internal void ClearSelection()
         {
             _selectionRect = null;
             _selectionPoints.Clear();

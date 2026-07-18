@@ -53,10 +53,15 @@ namespace FlowMy.Views.NodeControls
 
             if (tool != "Move" && tool != "Transform")
             {
-                if (activeLayer.OriginalTransformBitmap != null)
+                if (activeLayer.OriginalTransformBitmap != null || activeLayer.ContentGeometry != null)
                 {
-                    activeLayer.OriginalTransformBitmap = null;
-                    activeLayer.ContentBounds = Rect.Empty;
+                    int stride = activeLayer.Width * 4;
+                    byte[] pixels = new byte[stride * activeLayer.Height];
+                    activeLayer.Bitmap.CopyPixels(pixels, stride, 0);
+
+                    var rasterizeCmd = new PixelEditCommand(activeLayer, pixels, pixels);
+                    rasterizeCmd.KeepOriginalTransformBitmap = false;
+                    _node.EditorDoc.History.Execute(rasterizeCmd);
                 }
 
                 // Luôn dùng ImageContentBounds (persistent, không bị clear bởi commands)
