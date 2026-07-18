@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using EmptyFlow.SciterAPI;
@@ -16,6 +17,25 @@ namespace FlowMy.Views.Overlays
         private readonly TaskCompletionSource<bool> _tcs = new();
         private SciterAPIHost? _host;
         private IntPtr _window = IntPtr.Zero;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+        private const int GWL_STYLE = -16;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_POPUP = unchecked((int)0x80000000);
+
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOZORDER = 0x0004;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_FRAMECHANGED = 0x0020;
 
         public Dictionary<string, object?> SubmittedValues { get; } = new();
 
@@ -82,9 +102,25 @@ namespace FlowMy.Views.Overlays
                     // Fallback to coordinates
                 }
 
-                // Create the Sciter Win32 window
-                var window = host.CreateWindow(width: width, height: height, x: x, y: y, asMain: true);
+                // Create the Sciter Win32 window (Popup flag removes basic default window border during creation)
+                var window = host.CreateWindow(width: width, height: height, x: x, y: y, flags: WindowsFlags.Popup, asMain: false);
                 _window = window;
+
+                if (window != IntPtr.Zero)
+                {
+                    const int WS_VISIBLE = 0x10000000;
+                    const int WS_CLIPSIBLINGS = 0x04000000;
+                    
+                    int style = WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS;
+                    SetWindowLong(window, GWL_STYLE, style);
+
+                    // Strip extended borders
+                    SetWindowLong(window, GWL_EXSTYLE, 0);
+
+                    // Force windows manager to apply styles instantly
+                    SetWindowPos(window, IntPtr.Zero, 0, 0, 0, 0, 
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+                }
                 
                 host.SetWindowCaption(window, _node.Title ?? "Dynamic Form");
                 host.SetWindowResizable(window, false);
@@ -154,7 +190,7 @@ namespace FlowMy.Views.Overlays
 
                 // Combine HTML, CSS, and JS into a single loadable document
                 var combinedHtml = $@"<!DOCTYPE html>
-<html>
+<html window-frame=""none"">
 <head>
     <meta charset=""utf-8"">
     <style>

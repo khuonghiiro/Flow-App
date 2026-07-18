@@ -16,6 +16,8 @@ namespace FlowMy.Controls
         private readonly DynamicUiNode _node;
         private SciterAPIHost? _host;
         private IntPtr _sciterWindow = IntPtr.Zero;
+        private IntPtr _rootSciterWindow = IntPtr.Zero;
+        private double _currentZoom = 1.0;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
@@ -29,9 +31,22 @@ namespace FlowMy.Controls
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr GetParent(IntPtr hWnd);
+
         private const int GWL_STYLE = -16;
+        private const int GWL_EXSTYLE = -20;
         private const int WS_CHILD = 0x40000000;
         private const int WS_POPUP = unchecked((int)0x80000000);
+
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOZORDER = 0x0004;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_FRAMECHANGED = 0x0020;
 
         public SciterEmbeddedControl(DynamicUiNode node)
         {
@@ -66,11 +81,40 @@ namespace FlowMy.Controls
 
             if (_sciterWindow != IntPtr.Zero)
             {
-                // Force WS_CHILD style and set parent HWND via Win32 API to satisfy WPF's HwndHost requirement
-                SetParent(_sciterWindow, hwndParent.Handle);
-                int style = GetWindowLong(_sciterWindow, GWL_STYLE);
-                style = (style & ~WS_POPUP) | WS_CHILD;
-                SetWindowLong(_sciterWindow, GWL_STYLE, style);
+                // Find top-level ancestor created by Sciter (below the desktop/null and not the WPF parent)
+                IntPtr current = _sciterWindow;
+                while (true)
+                {
+                    IntPtr parent = GetParent(current);
+                    if (parent == IntPtr.Zero || parent == hwndParent.Handle)
+                    {
+                        break;
+                    }
+                    current = parent;
+                }
+                _rootSciterWindow = current;
+
+                // Reparent the root Sciter window to WPF parent handle
+                SetParent(_rootSciterWindow, hwndParent.Handle);
+
+                const int WS_VISIBLE = 0x10000000;
+                const int WS_CLIPCHILDREN = 0x02000000;
+                const int WS_CLIPSIBLINGS = 0x04000000;
+                int style = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+
+                // Strip titlebar/caption from BOTH the root window and the inner window just in case!
+                SetWindowLong(_rootSciterWindow, GWL_STYLE, style);
+                SetWindowLong(_rootSciterWindow, GWL_EXSTYLE, 0);
+                SetWindowPos(_rootSciterWindow, IntPtr.Zero, 0, 0, 0, 0, 
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+
+                if (_rootSciterWindow != _sciterWindow)
+                {
+                    SetWindowLong(_sciterWindow, GWL_STYLE, style);
+                    SetWindowLong(_sciterWindow, GWL_EXSTYLE, 0);
+                    SetWindowPos(_sciterWindow, IntPtr.Zero, 0, 0, 0, 0, 
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+                }
             }
 
             // Register interop event handler
@@ -128,7 +172,7 @@ namespace FlowMy.Controls
 
             UpdateContent();
 
-            return new HandleRef(this, _sciterWindow);
+            return new HandleRef(this, _rootSciterWindow != IntPtr.Zero ? _rootSciterWindow : _sciterWindow);
         }
 
         public void UpdateOutputsFromDom(string paramsCode, Dictionary<string, object?> resolvedOutputs)
@@ -165,7 +209,7 @@ namespace FlowMy.Controls
   }} catch (e) {{
     return null;
   }}
-}})();";
+}})( );";
 
                 var resultVal = _host.CreateNullValue();
                 bool ok = _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
@@ -182,7 +226,7 @@ namespace FlowMy.Controls
             if (_host == null || _sciterWindow == IntPtr.Zero) return;
 
             var combinedHtml = $@"<!DOCTYPE html>
-<html>
+<html window-frame=""none"">
 <head>
     <meta charset=""utf-8"">
     <style>
@@ -198,6 +242,31 @@ namespace FlowMy.Controls
 </html>";
 
             _host.LoadHtml(combinedHtml, _sciterWindow);
+            
+            var resultVal = _host.CreateNullValue();
+            _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out resultVal);
+
+            SetZoom(_currentZoom);
+        }
+
+        public void SetZoom(double zoom)
+        {
+            _currentZoom = zoom;
+            if (_host == null || _sciterWindow == IntPtr.Zero) return;
+
+            string zStr = zoom.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string script = $@"(function() {{
+                try {{
+                    document.body.style.zoom = {zStr};
+                    if (!document.body.style.zoom) {{
+                        document.body.style.transform = 'scale({zStr})';
+                        document.body.style.transformOrigin = 'top left';
+                    }}
+                }} catch(e) {{}}
+            }})();";
+            
+            var resultVal = _host.CreateNullValue();
+            _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
         }
 
         protected override void DestroyWindowCore(HandleRef hwnd)
@@ -210,6 +279,7 @@ namespace FlowMy.Controls
                 }
                 catch { }
                 _sciterWindow = IntPtr.Zero;
+                _rootSciterWindow = IntPtr.Zero;
             }
         }
 
@@ -217,11 +287,12 @@ namespace FlowMy.Controls
         {
             base.OnRenderSizeChanged(sizeInfo);
 
-            if (_host != null && _sciterWindow != IntPtr.Zero)
+            IntPtr targetHwnd = _rootSciterWindow != IntPtr.Zero ? _rootSciterWindow : _sciterWindow;
+            if (_host != null && targetHwnd != IntPtr.Zero)
             {
                 int width = (int)sizeInfo.NewSize.Width;
                 int height = (int)sizeInfo.NewSize.Height;
-                MoveWindow(_sciterWindow, 0, 0, width, height, true);
+                MoveWindow(targetHwnd, 0, 0, width, height, true);
             }
         }
     }

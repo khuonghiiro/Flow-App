@@ -3,6 +3,7 @@ using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Rendering;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using System;
@@ -12,11 +13,14 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Shapes;
 
 namespace FlowMy.Views.NodeControls
 {
     public static class DynamicUiNodeControl
     {
+        private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
+
         public static Border CreateBorder(DynamicUiNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
@@ -24,10 +28,10 @@ namespace FlowMy.Views.NodeControls
             // --- 1. BORDER ---
             var border = new Border
             {
-                Width = Math.Max(280, node.Width),
-                Height = Math.Max(200, node.Height),
-                MinWidth = 280,
-                MinHeight = 200,
+                Width = Math.Max(600, node.Width),
+                Height = Math.Max(600, node.Height),
+                MinWidth = 600,
+                MinHeight = 600,
                 Background = node.NodeBrush,
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
@@ -40,6 +44,11 @@ namespace FlowMy.Views.NodeControls
                 },
                 Tag = node
             };
+
+            if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(node.Id))
+            {
+                border.Visibility = Visibility.Collapsed;
+            }
 
             // --- 2. GRID CONTAINER ---
             var grid = new Grid();
@@ -111,7 +120,198 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRow(bottomBar, 2);
             grid.Children.Add(bottomBar);
 
-            // --- 7. PROPERTY SYNCS AND PROPERTY CHANGED HANDLERS ---
+            // --- 7. RESIZE HANDLE OVERLAY ---
+            var handleOverlay = new Grid();
+            AddResizeHandle(handleOverlay, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
+            AddResizeHandle(handleOverlay, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
+            AddResizeHandle(handleOverlay, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
+            AddResizeHandle(handleOverlay, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
+            Grid.SetRowSpan(handleOverlay, 3);
+            grid.Children.Add(handleOverlay);
+
+            // --- 8. RESIZING LOGIC ---
+            bool isResizing = false;
+            ResizeDirection currentDir = ResizeDirection.None;
+            Point resizeStart = new Point();
+            double origX = 0, origY = 0, origW = 0, origH = 0;
+
+            border.PreviewMouseDown += (s, e) =>
+            {
+                if (e.OriginalSource is Ellipse el && el.Tag is ResizeDirection dir)
+                {
+                    isResizing = true;
+                    currentDir = dir;
+                    resizeStart = e.GetPosition(host.WorkflowCanvas);
+                    origX = node.X;
+                    origY = node.Y;
+                    origW = border.ActualWidth;
+                    origH = border.ActualHeight;
+                    border.CaptureMouse();
+                    e.Handled = true;
+                }
+            };
+
+            border.PreviewMouseMove += (s, e) =>
+            {
+                if (!isResizing) return;
+                var pos = e.GetPosition(host.WorkflowCanvas);
+                var dx = pos.X - resizeStart.X;
+                var dy = pos.Y - resizeStart.Y;
+                double newX = origX, newY = origY, newW = origW, newH = origH;
+
+                var minW = border.MinWidth;
+                var minH = border.MinHeight;
+
+                switch (currentDir)
+                {
+                    case ResizeDirection.BottomRight:
+                        newW = Math.Max(minW, origW + dx);
+                        newH = Math.Max(minH, origH + dy);
+                        break;
+                    case ResizeDirection.TopRight:
+                        newW = Math.Max(minW, origW + dx);
+                        newH = Math.Max(minH, origH - dy);
+                        newY = origY + (origH - newH);
+                        break;
+                    case ResizeDirection.BottomLeft:
+                        newW = Math.Max(minW, origW - dx);
+                        newH = Math.Max(minH, origH + dy);
+                        newX = origX + (origW - newW);
+                        break;
+                    case ResizeDirection.TopLeft:
+                        newW = Math.Max(minW, origW - dx);
+                        newH = Math.Max(minH, origH - dy);
+                        newX = origX + (origW - newW);
+                        newY = origY + (origH - newH);
+                        break;
+                }
+
+                node.Width = newW;
+                node.Height = newH;
+                node.X = newX;
+                node.Y = newY;
+                border.Width = newW;
+                border.Height = newH;
+
+                if (host.WorkflowCanvas != null)
+                {
+                    Canvas.SetLeft(border, newX);
+                    Canvas.SetTop(border, newY);
+                }
+                e.Handled = true;
+            };
+
+            border.PreviewMouseUp += (s, e) =>
+            {
+                if (isResizing)
+                {
+                    isResizing = false;
+                    border.ReleaseMouseCapture();
+                    e.Handled = true;
+                }
+            };
+
+            // --- 9. CANVAS SCROLL & PAN POSITION SYNC HACK (for native HwndHost child window) ---
+            bool isDisposed = false;
+            EventHandler? scaleChangedHandler = null;
+            EventHandler? translateChangedHandler = null;
+            EventHandler? renderingHandler = null;
+
+            double lastZoom = -1;
+            double lastTranslateX = double.NaN;
+            double lastTranslateY = double.NaN;
+
+            void SyncSciterPosition()
+            {
+                try
+                {
+                    if (isDisposed) return;
+                    if (sciterControl.ActualWidth <= 0 || sciterControl.ActualHeight <= 0) return;
+
+                    var transform = host.TranslateTransform;
+                    bool changed = false;
+                    if (transform != null)
+                    {
+                        if (transform.X != lastTranslateX || transform.Y != lastTranslateY)
+                        {
+                            lastTranslateX = transform.X;
+                            lastTranslateY = transform.Y;
+                            changed = true;
+                        }
+                    }
+
+                    if (host.ZoomLevel != lastZoom)
+                    {
+                        lastZoom = host.ZoomLevel;
+                        sciterControl.SetZoom(lastZoom);
+                        changed = true;
+                    }
+
+                    if (changed || host.DraggedNode == node || isResizing)
+                    {
+                        sciterControl.InvalidateMeasure();
+                        sciterControl.InvalidateArrange();
+                        sciterControl.InvalidateVisual();
+                        if (sciterControl.Parent is FrameworkElement p)
+                        {
+                            p.InvalidateArrange();
+                            p.InvalidateVisual();
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            scaleChangedHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                SyncSciterPosition();
+            };
+            var scaleDescriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                ScaleTransform.ScaleXProperty, typeof(ScaleTransform));
+            scaleDescriptor?.AddValueChanged(host.ScaleTransform, scaleChangedHandler);
+
+            translateChangedHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                SyncSciterPosition();
+            };
+            var translateXDescriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                TranslateTransform.XProperty, typeof(TranslateTransform));
+            var translateYDescriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                TranslateTransform.YProperty, typeof(TranslateTransform));
+            translateXDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
+            translateYDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
+
+            renderingHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                SyncSciterPosition();
+            };
+            System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
+
+            border.Unloaded += (s, e) =>
+            {
+                isDisposed = true;
+                try
+                {
+                    System.Windows.Media.CompositionTarget.Rendering -= renderingHandler;
+                }
+                catch { }
+                try
+                {
+                    scaleDescriptor?.RemoveValueChanged(host.ScaleTransform, scaleChangedHandler);
+                }
+                catch { }
+                try
+                {
+                    translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
+                    translateYDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
+                }
+                catch { }
+            };
+
+            // --- 10. PROPERTY SYNCS AND PROPERTY CHANGED HANDLERS ---
             node.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(DynamicUiNode.HtmlCode) ||
@@ -127,14 +327,16 @@ namespace FlowMy.Views.NodeControls
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        border.Width = Math.Max(280, node.Width);
+                        if (!isResizing)
+                            border.Width = Math.Max(600, node.Width);
                     });
                 }
                 else if (e.PropertyName == nameof(DynamicUiNode.Height))
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        border.Height = Math.Max(200, node.Height);
+                        if (!isResizing)
+                            border.Height = Math.Max(600, node.Height);
                     });
                 }
                 else if (e.PropertyName == nameof(DynamicUiNode.Title))
@@ -160,7 +362,7 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
-            // --- 8. FLUENT API INITIALIZATION ---
+            // --- 11. FLUENT API INITIALIZATION ---
             BaseNodeControlHelper
                 .Initialize(border, titleTextBlock, node, host)
                 .WithTitleManagement()      
@@ -173,6 +375,36 @@ namespace FlowMy.Views.NodeControls
                 .Build();                  
 
             return border;
+        }
+
+        private static void AddResizeHandle(Grid grid, ResizeDirection direction, HorizontalAlignment hAlign, VerticalAlignment vAlign, Thickness margin)
+        {
+            var handle = new Ellipse
+            {
+                Width = 12,
+                Height = 12,
+                Fill = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
+                Stroke = new SolidColorBrush(Colors.White),
+                StrokeThickness = 1,
+                HorizontalAlignment = hAlign,
+                VerticalAlignment = vAlign,
+                Margin = margin,
+                Tag = direction,
+                Cursor = GetCursorForResizeDirection(direction)
+            };
+            grid.Children.Add(handle);
+        }
+
+        private static Cursor GetCursorForResizeDirection(ResizeDirection direction)
+        {
+            return direction switch
+            {
+                ResizeDirection.TopLeft or ResizeDirection.BottomRight => Cursors.SizeNWSE,
+                ResizeDirection.TopRight or ResizeDirection.BottomLeft => Cursors.SizeNESW,
+                ResizeDirection.Left or ResizeDirection.Right => Cursors.SizeWE,
+                ResizeDirection.Top or ResizeDirection.Bottom => Cursors.SizeNS,
+                _ => Cursors.Arrow
+            };
         }
     }
 }

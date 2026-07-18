@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -30,6 +32,7 @@ namespace FlowMy.Services.Rendering
                 dynamicUiNode,
                 Host as Window ?? throw new InvalidOperationException("Host must be a Window."),
                 Host);
+            dynamicUiNode.Border.Tag = dynamicUiNode;
 
             NodeChrome.Apply(dynamicUiNode.Border, dynamicUiNode, Host);
 
@@ -38,13 +41,26 @@ namespace FlowMy.Services.Rendering
             dynamicUiNode.Border.MouseUp += Host.NodeMouseUp;
             dynamicUiNode.Border.MouseEnter += Host.NodeBorderMouseEnter;
             dynamicUiNode.Border.MouseLeave += Host.NodeBorderMouseLeave;
-            dynamicUiNode.Border.ContextMenu = null;
+            dynamicUiNode.Border.ContextMenu = Host.CreateNodeContextMenu(node);
 
             Canvas.SetLeft(dynamicUiNode.Border, dynamicUiNode.X);
             Canvas.SetTop(dynamicUiNode.Border, dynamicUiNode.Y);
             canvas.Children.Add(dynamicUiNode.Border);
 
             Host.ZIndexManager.InitializeNodeZIndex(dynamicUiNode, dynamicUiNode.Border);
+
+            if (dynamicUiNode.TitleTextBlockUI != null && !canvas.Children.Contains(dynamicUiNode.TitleTextBlockUI))
+            {
+                canvas.Children.Add(dynamicUiNode.TitleTextBlockUI);
+                if (node.Border != null)
+                {
+                    var titleLeft = node.X + (node.Border.ActualWidth / 2) - (dynamicUiNode.TitleTextBlockUI.ActualWidth / 2);
+                    var titleTop = node.Y - dynamicUiNode.TitleTextBlockUI.ActualHeight - 4;
+                    Canvas.SetLeft(dynamicUiNode.TitleTextBlockUI, titleLeft);
+                    Canvas.SetTop(dynamicUiNode.TitleTextBlockUI, titleTop);
+                    Panel.SetZIndex(dynamicUiNode.TitleTextBlockUI, 20000);
+                }
+            }
 
             RenderPorts(dynamicUiNode);
         }
@@ -62,6 +78,12 @@ namespace FlowMy.Services.Rendering
 
             if (node is DynamicUiNode dynamicUiNode)
             {
+                if (node.Border != null)
+                {
+                    node.Border.Width = dynamicUiNode.Width;
+                    node.Border.Height = dynamicUiNode.Height;
+                }
+
                 // Update title position
                 if (dynamicUiNode.TitleTextBlockUI != null && Host.WorkflowCanvas != null)
                 {
@@ -84,6 +106,7 @@ namespace FlowMy.Services.Rendering
                         var titleTop = y - titleTextBlock.ActualHeight - 4;
                         Canvas.SetLeft(titleTextBlock, titleLeft);
                         Canvas.SetTop(titleTextBlock, titleTop);
+                        titleTextBlock.UpdateLayout();
                     }
                 }
 
@@ -117,21 +140,25 @@ namespace FlowMy.Services.Rendering
 
         private void RenderPorts(DynamicUiNode node)
         {
-            // Gather standard ports (IN/OUT) and dynamic ports (if any)
-            // Ensure they are correctly drawn based on current visible list
-            foreach (var port in node.Ports)
+            if (Host.WorkflowCanvas == null) return;
+
+            CleanupOrphanedPortsForNode(node, Host.WorkflowCanvas);
+
+            foreach (var port in node.Ports.Where(p => p.IsVisible))
             {
-                port.IsVisible = true; // Always show standard IN/OUT run ports
                 Color portColor = GetPortColor(port);
 
                 if (port.PortUI == null)
                 {
-                    port.PortUI = _portRenderer.CreatePort(portColor);
+                    var margin = GetPortMarginForPosition(port.Position);
+                    port.PortUI = _portRenderer.CreateRectangularPortWithMargin(portColor, margin, width: 12, height: 25);
                     port.PortUI.Tag = port;
                 }
-                else if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
+                else
                 {
-                    ellipse.Fill = new SolidColorBrush(portColor);
+                    var shape = PortRenderer.GetActualPortShape(port.PortUI);
+                    if (shape != null)
+                        shape.Fill = new SolidColorBrush(portColor);
                 }
 
                 _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
@@ -145,21 +172,21 @@ namespace FlowMy.Services.Rendering
             if (node is DynamicUiNode dynamicUiNode && dynamicUiNode.TitleTextBlockUI != null)
             {
                 var titleTextBlock = dynamicUiNode.TitleTextBlockUI;
-                if (canvas.Children.Contains(titleTextBlock))
+                if (canvas != null && canvas.Children.Contains(titleTextBlock))
                 {
                     canvas.Children.Remove(titleTextBlock);
                 }
                 dynamicUiNode.TitleTextBlockUI = null;
             }
 
-            if (node.Border != null && canvas.Children.Contains(node.Border))
+            if (node.Border != null && canvas != null && canvas.Children.Contains(node.Border))
             {
                 canvas.Children.Remove(node.Border);
             }
 
             foreach (var port in node.Ports)
             {
-                if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
+                if (port?.PortUI != null && canvas != null && canvas.Children.Contains(port.PortUI))
                 {
                     canvas.Children.Remove(port.PortUI);
                 }
@@ -171,9 +198,49 @@ namespace FlowMy.Services.Rendering
             var borders = canvas.Children.OfType<Border>().Where(b => b.Tag is WorkflowNode).ToList();
             foreach (var border in borders) canvas.Children.Remove(border);
 
-            var ports = canvas.Children.OfType<System.Windows.Shapes.Ellipse>()
-                .Where(e => e.Tag is NodePort || (e.Width == 18 && e.Height == 18)).ToList();
-            foreach (var port in ports) canvas.Children.Remove(port);
+            var ports = new List<UIElement>();
+            
+            var shapePorts = canvas.Children.OfType<Shape>()
+                .Where(e => e.Tag is NodePort || (e.Width == 18 && e.Height == 18) || (e.Width == 12 && e.Height == 25) ||
+                    (e.Width == 12 && e.Height == 12) ||
+                    (e.Width == 25 && e.Height == 25) ||
+                    (e is Rectangle rect && rect.Tag is Size)
+                ).ToList();
+            ports.AddRange(shapePorts);
+            
+            var frameworkElementPorts = canvas.Children.OfType<FrameworkElement>()
+                .Where(e => e.Tag is NodePort && !(e is Border border && border.Tag is WorkflowNode))
+                .ToList();
+            ports.AddRange(frameworkElementPorts);
+            
+            var borderPorts = canvas.Children.OfType<Border>()
+                .Where(b => 
+                {
+                    if (b.Tag is NodePort)
+                        return true;
+                    
+                    if (b.Child is Rectangle rect)
+                    {
+                        if ((rect.Width == 12 && rect.Height == 25) ||
+                            (rect.Width == 10 && rect.Height == 18) ||
+                            (rect.Width == 14 && rect.Height == 27) ||
+                            (rect.Width == 12 && rect.Height == 20))
+                            return true;
+                        
+                        if (rect.Tag is Size)
+                            return true;
+                    }
+                    
+                    return false;
+                })
+                .ToList();
+            ports.AddRange(borderPorts);
+            
+            foreach (var port in ports.Distinct())
+            {
+                if (port != null && canvas.Children.Contains(port))
+                    canvas.Children.Remove(port);
+            }
         }
 
         private static Color GetPortColor(NodePort port)
@@ -197,6 +264,51 @@ namespace FlowMy.Services.Rendering
                 return brush?.Color;
             }
             catch { return null; }
+        }
+
+        private void CleanupOrphanedPortsForNode(WorkflowNode node, Canvas? canvas)
+        {
+            if (canvas == null) return;
+
+            var orphanedPorts = new List<UIElement>();
+
+            var allPortsOnCanvas = canvas.Children.OfType<FrameworkElement>()
+                .Where(e => e.Tag is NodePort)
+                .ToList();
+
+            foreach (var portUI in allPortsOnCanvas)
+            {
+                if (portUI.Tag is NodePort portTag)
+                {
+                    if (!node.Ports.Contains(portTag))
+                        continue;
+
+                    if (portTag.PortUI != null && !ReferenceEquals(portTag.PortUI, portUI))
+                    {
+                        orphanedPorts.Add(portUI);
+                    }
+                }
+            }
+
+            foreach (var orphanedPort in orphanedPorts.Distinct())
+            {
+                if (canvas.Children.Contains(orphanedPort))
+                {
+                    canvas.Children.Remove(orphanedPort);
+                }
+            }
+        }
+
+        private static Thickness GetPortMarginForPosition(PortPosition position)
+        {
+            return position switch
+            {
+                PortPosition.Left => new Thickness(6, 2, 15, 2),
+                PortPosition.Right => new Thickness(15, 2, 6, 2),
+                PortPosition.Top => new Thickness(2, 3, 2, 1),
+                PortPosition.Bottom => new Thickness(2, 1, 2, 3),
+                _ => new Thickness(2)
+            };
         }
     }
 }
