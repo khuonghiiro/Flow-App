@@ -222,107 +222,55 @@
                                         <controls:SyntaxHighlightCodeEditor SyntaxLanguage="JavaScript" Text="{Binding JsCode, Mode=TwoWay}" MinHeight="250" Height="250"/>
                                     </Grid>
                                 </TabItem>
-                                <TabItem Header="Outputs (Cổng ra)" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                                <TabItem Header="Params (config)" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
                                     <Grid Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <!-- Column 0: List of fields -->
-                                            <ColumnDefinition Width="220"/>
-                                            <!-- Column 1: GridSplitter -->
-                                            <ColumnDefinition Width="5"/>
-                                            <!-- Column 2: Detailed properties of SelectedField -->
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        
-                                        <!-- Master: List of variables -->
-                                        <Grid Grid.Column="0">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="180"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-                                            
-                                            <StackPanel Grid.Row="0" Margin="0,0,0,8">
-                                                <TextBlock Text="Tên biến mới (Key):" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
-                                                <TextBox Text="{Binding NewFieldKey, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28" Margin="0,0,0,4"/>
-                                                <Button Content="+ Thêm Cổng Ra" Height="28" Style="{DynamicResource PrimaryButton}" Command="{Binding AddFieldCommand}"/>
+                                        <controls:SyntaxHighlightCodeEditor SyntaxLanguage="JavaScript" Text="{Binding ParamsCode, Mode=TwoWay}" MinHeight="250" Height="250"/>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Output keys" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                                    <StackPanel Margin="0,8,0,8">
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Output keys (dùng để đưa giá trị từ Sciter DOM ra các node khác):"
+                                                       Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="Đồng bộ Params" Height="32" Width="120" Margin="0,0,8,0"
+                                                        Command="{Binding SyncOutputKeysFromParamsCommand}"
+                                                        Style="{DynamicResource PrimaryButton}"/>
+                                                <Button Content="+ Thêm output key" Height="32"
+                                                        Command="{Binding AddOutputKeyCommand}"
+                                                        Width="160"
+                                                        Style="{DynamicResource PrimaryButton}"/>
                                             </StackPanel>
-                                            
-                                            <ListBox Grid.Row="1" ItemsSource="{Binding FieldsList}" SelectedItem="{Binding SelectedField, Mode=TwoWay}"
-                                                     Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" Margin="0,0,0,6" HorizontalContentAlignment="Stretch">
-                                                <ListBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Padding="4" Background="Transparent">
-                                                            <Grid>
+                                        </Grid>
+                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="220">
+                                                <ItemsControl ItemsSource="{Binding OutputKeysList}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,0,0,6">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*"/>
                                                                     <ColumnDefinition Width="Auto"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <StackPanel Grid.Column="0">
-                                                                    <TextBlock Text="{Binding Label}" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11"/>
-                                                                    <TextBlock Text="{Binding Key}" Foreground="{DynamicResource TextMuted}" FontSize="9"/>
-                                                                </StackPanel>
-                                                                <TextBlock Grid.Column="1" Text="{Binding DataType}" Foreground="{DynamicResource TextSecondary}" FontSize="9" FontStyle="Italic" VerticalAlignment="Center"/>
+                                                                <TextBox Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Style="{DynamicResource BaseTextBoxV2}" Height="32" FontSize="13"/>
+                                                                <Button Grid.Column="1" Content="−" Width="26" Height="26" Margin="8,0,0,0"
+                                                                        Command="{Binding DataContext.RemoveOutputKeyCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                                             </Grid>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ListBox.ItemTemplate>
-                                            </ListBox>
-                                            
-                                            <Grid Grid.Row="2">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                    <Button Width="28" Height="28" Padding="0" Content="▲" Style="{DynamicResource SecondaryButton}" ToolTip="Di chuyển lên" Command="{Binding MoveFieldUpCommand}" Margin="0,0,4,0"/>
-                                                    <Button Width="28" Height="28" Padding="0" Content="▼" Style="{DynamicResource SecondaryButton}" ToolTip="Di chuyển xuống" Command="{Binding MoveFieldDownCommand}"/>
-                                                </StackPanel>
-                                                <Button Grid.Column="1" Width="28" Height="28" Padding="0" Content="🗑️" Style="{DynamicResource DangerButton}" ToolTip="Xóa biến" Command="{Binding RemoveFieldCommand}"/>
-                                            </Grid>
-                                        </Grid>
-                                        
-                                        <!-- Splitter -->
-                                        <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Width="5" Background="Transparent"/>
-                                        
-                                        <!-- Detail: SelectedField Properties -->
-                                        <Border Grid.Column="2" Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="4,0,0,0">
-                                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                                <StackPanel Visibility="{Binding SelectedField, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}">
-                                                    <TextBlock Text="Cấu Hình Cổng Ra Chọn" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,8"/>
-                                                    
-                                                    <TextBlock Text="Tên biến (Key - không dấu, không cách):" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                    <TextBox Text="{Binding SelectedField.Key, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
-
-                                                    <TextBlock Text="Nhãn hiển thị (Label):" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                    <TextBox Text="{Binding SelectedField.Label, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
-
-                                                    <TextBlock Text="Kiểu dữ liệu (DataType):" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                    <ComboBox ItemsSource="{Binding DataTypes}" SelectedItem="{Binding SelectedField.DataType, Mode=TwoWay}" Style="{DynamicResource BaseComboBox}" Height="32" Margin="0,0,0,10"/>
-
-                                                    <TextBlock Text="Giá trị mặc định (Default Value):" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                    <TextBox Text="{Binding SelectedField.DefaultValue, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,10"/>
-
-                                                    <!-- Connect to Input port toggle -->
-                                                    <CheckBox Content="Đồng bộ cổng vào (Bind to Input)" IsChecked="{Binding SelectedField.BindToInput, Mode=TwoWay}" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,10" ToolTip="Tạo cổng vào để truyền dữ liệu mặc định từ các node trước"/>
-
-                                                    <!-- Input port mapping controls -->
-                                                    <StackPanel Visibility="{Binding SelectedField.BindToInput, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
-                                                        <TextBlock Text="Chọn Node nguồn:" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                        <controls:NodeSearchComboBoxUserControl Height="32" Margin="0,0,0,8"
-                                                                  ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
-                                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                                  SelectedValue="{Binding SelectedField.SourceNodeId, Mode=TwoWay}"/>
-
-                                                        <TextBlock Text="Chọn Cổng ra của Node nguồn:" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,10"
-                                                                  ItemsSource="{Binding DataContext.DynamicFieldOutputKeyOptions, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
-                                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                                                  SelectedValue="{Binding SelectedField.SourceOutputKey, Mode=TwoWay}"/>
-                                                    </StackPanel>
-                                                </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </ScrollViewer>
                                         </Border>
-                                    </Grid>
+                                    </StackPanel>
                                 </TabItem>
                             </TabControl>
                         </StackPanel>

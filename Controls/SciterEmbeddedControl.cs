@@ -20,6 +20,19 @@ namespace FlowMy.Controls
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+        private const int GWL_STYLE = -16;
+        private const int WS_CHILD = 0x40000000;
+        private const int WS_POPUP = unchecked((int)0x80000000);
+
         public SciterEmbeddedControl(DynamicUiNode node)
         {
             _node = node ?? throw new ArgumentNullException(nameof(node));
@@ -48,8 +61,17 @@ namespace FlowMy.Controls
                 null,
                 null,
                 hwndParent.Handle,
-                true
+                false
             );
+
+            if (_sciterWindow != IntPtr.Zero)
+            {
+                // Force WS_CHILD style and set parent HWND via Win32 API to satisfy WPF's HwndHost requirement
+                SetParent(_sciterWindow, hwndParent.Handle);
+                int style = GetWindowLong(_sciterWindow, GWL_STYLE);
+                style = (style & ~WS_POPUP) | WS_CHILD;
+                SetWindowLong(_sciterWindow, GWL_STYLE, style);
+            }
 
             // Register interop event handler
             var eventHandler = new DynamicUiEventHandler(_sciterWindow, _host, (methodName, args) =>
@@ -107,6 +129,52 @@ namespace FlowMy.Controls
             UpdateContent();
 
             return new HandleRef(this, _sciterWindow);
+        }
+
+        public void UpdateOutputsFromDom(string paramsCode, Dictionary<string, object?> resolvedOutputs)
+        {
+            if (_host == null || _sciterWindow == IntPtr.Zero || string.IsNullOrWhiteSpace(paramsCode)) return;
+
+            var lines = paramsCode.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine?.Trim();
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("//") || line.StartsWith("#")) continue;
+
+                string[] parts;
+                if (line.Contains(":"))
+                    parts = line.Split(new[] { ':' }, 2);
+                else if (line.Contains("="))
+                    parts = line.Split(new[] { '=' }, 2);
+                else
+                    continue;
+
+                if (parts.Length != 2) continue;
+                var key = parts[0].Trim();
+                var selector = parts[1].Trim();
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(selector)) continue;
+
+                var jsSelector = selector.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                var script = $@"(function() {{
+  try {{
+    var el = document.querySelector(""{jsSelector}"");
+    if (!el) return null;
+    if (typeof el.value !== 'undefined') return el.value;
+    if (el.textContent) return el.textContent;
+    return null;
+  }} catch (e) {{
+    return null;
+  }}
+}})();";
+
+                var resultVal = _host.CreateNullValue();
+                bool ok = _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+                if (ok)
+                {
+                    var valueStr = _host.GetValueString(ref resultVal);
+                    resolvedOutputs[key] = valueStr ?? "";
+                }
+            }
         }
 
         public void UpdateContent()

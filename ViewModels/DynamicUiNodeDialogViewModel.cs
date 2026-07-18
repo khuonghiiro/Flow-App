@@ -14,43 +14,17 @@ namespace FlowMy.ViewModels
     public sealed partial class DynamicUiNodeDialogViewModel : BaseNodeDialogViewModel
     {
         private readonly DynamicUiNode _nodeTyped;
-        private bool _isSyncing = false;
         private bool _isSyncingFromNode = false;
 
-        [ObservableProperty] private DynamicUiFieldConfig? _selectedField;
+        [ObservableProperty] private string _htmlCode = "";
+        [ObservableProperty] private string _cssCode = "";
+        [ObservableProperty] private string _jsCode = "";
+        [ObservableProperty] private string _paramsCode = "";
 
-        // Form inputs for adding a new output variable
-        [ObservableProperty] private string _newFieldKey = "";
-        [ObservableProperty] private string _newFieldLabel = "";
-        [ObservableProperty] private WorkflowDataType _selectedNewDataType = WorkflowDataType.String;
-
-        public ObservableCollection<DynamicUiFieldConfig> FieldsList { get; } = new();
+        public ObservableCollection<OutputKeyItemViewModel> OutputKeysList { get; } = new();
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
-        public ObservableCollection<WorkflowOutputKeyOptionsWrapper> DynamicFieldOutputKeyOptions { get; } = new(); // For individual fields
-        
-        // Input Mappings List (from parent nodes)
         public ObservableCollection<CodeInputMappingItemViewModel> InputMappingsList { get; } = new();
         public List<string> AutoRefreshUnitOptions { get; } = new() { "ms", "s", "min" };
-
-        public List<WorkflowDataType> DataTypes { get; } = Enum.GetValues(typeof(WorkflowDataType)).Cast<WorkflowDataType>().ToList();
-
-        public string HtmlCode
-        {
-            get => _nodeTyped.HtmlCode;
-            set { if (_nodeTyped.HtmlCode != value) { _nodeTyped.HtmlCode = value; OnPropertyChanged(); } }
-        }
-
-        public string CssCode
-        {
-            get => _nodeTyped.CssCode;
-            set { if (_nodeTyped.CssCode != value) { _nodeTyped.CssCode = value; OnPropertyChanged(); } }
-        }
-
-        public string JsCode
-        {
-            get => _nodeTyped.JsCode;
-            set { if (_nodeTyped.JsCode != value) { _nodeTyped.JsCode = value; OnPropertyChanged(); } }
-        }
 
         public double WindowWidth
         {
@@ -81,21 +55,12 @@ namespace FlowMy.ViewModels
         {
             _nodeTyped = node ?? throw new ArgumentNullException(nameof(node));
 
-            // Load existing fields
-            foreach (var field in _nodeTyped.Fields)
-            {
-                var clone = field.Clone();
-                clone.Id = field.Id;
-                clone.PropertyChanged += Field_PropertyChanged;
-                FieldsList.Add(clone);
-            }
+            _htmlCode = node.HtmlCode ?? string.Empty;
+            _cssCode = node.CssCode ?? string.Empty;
+            _jsCode = node.JsCode ?? string.Empty;
+            _paramsCode = node.ParamsCode ?? string.Empty;
 
-            if (FieldsList.Count > 0)
-            {
-                SelectedField = FieldsList[0];
-            }
-
-            // Load input mappings
+            // Load existing input mappings
             var mappings = _nodeTyped.InputMappings ?? new List<CodeInputMapping>();
             if (mappings.Count == 0) mappings.Add(new CodeInputMapping());
             foreach (var m in mappings)
@@ -114,126 +79,52 @@ namespace FlowMy.ViewModels
                 RefreshOutputKeyOptionsFor(item);
             }
 
+            // Load output keys
+            foreach (var k in _nodeTyped.OutputKeys)
+            {
+                OutputKeysList.Add(new OutputKeyItemViewModel { Key = k });
+            }
+
             RefreshAllNodesWithOutputs(AvailableNodeOptions);
         }
 
         protected override string GetDefaultTitle() => "Dynamic UI Form (Sciter)";
 
-        partial void OnSelectedFieldChanging(DynamicUiFieldConfig? oldValue, DynamicUiFieldConfig? newValue)
+        partial void OnHtmlCodeChanged(string value)
         {
-            if (oldValue != null)
-            {
-                oldValue.PropertyChanged -= SelectedField_PropertyChanged;
-            }
+            if (_nodeTyped != null)
+                _nodeTyped.HtmlCode = value ?? string.Empty;
         }
 
-        partial void OnSelectedFieldChanged(DynamicUiFieldConfig? value)
+        partial void OnCssCodeChanged(string value)
         {
-            if (value != null)
-            {
-                value.PropertyChanged += SelectedField_PropertyChanged;
-                RefreshSelectedFieldOutputKeys();
-            }
-            else
-            {
-                DynamicFieldOutputKeyOptions.Clear();
-            }
+            if (_nodeTyped != null)
+                _nodeTyped.CssCode = value ?? string.Empty;
         }
 
-        private void SelectedField_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        partial void OnJsCodeChanged(string value)
         {
-            if (e.PropertyName == nameof(DynamicUiFieldConfig.SourceNodeId))
-            {
-                RefreshSelectedFieldOutputKeys();
-                SyncFieldsToNode();
-            }
-            else if (e.PropertyName == nameof(DynamicUiFieldConfig.SourceOutputKey))
-            {
-                SyncFieldsToNode();
-            }
-            else
-            {
-                if (_isSyncing) return;
-                SyncFieldsToNode();
-            }
+            if (_nodeTyped != null)
+                _nodeTyped.JsCode = value ?? string.Empty;
         }
 
-        private void RefreshSelectedFieldOutputKeys()
+        partial void OnParamsCodeChanged(string value)
         {
-            DynamicFieldOutputKeyOptions.Clear();
-            if (SelectedField == null || string.IsNullOrWhiteSpace(SelectedField.SourceNodeId)) return;
-
-            var options = GetOutputKeysForNode(SelectedField.SourceNodeId);
-            foreach (var opt in options)
-            {
-                DynamicFieldOutputKeyOptions.Add(new WorkflowOutputKeyOptionsWrapper { Option = opt });
-            }
+            if (_nodeTyped != null)
+                _nodeTyped.ParamsCode = value ?? string.Empty;
         }
 
-        private void Field_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        protected override void OnSaveTitle()
         {
-            if (_isSyncing) return;
-            SyncFieldsToNode();
-        }
+            _nodeTyped.HtmlCode = HtmlCode ?? string.Empty;
+            _nodeTyped.JsCode = JsCode ?? string.Empty;
+            _nodeTyped.CssCode = CssCode ?? string.Empty;
+            _nodeTyped.ParamsCode = ParamsCode ?? string.Empty;
 
-        private void SyncFieldsToNode()
-        {
-            _isSyncing = true;
-            try
-            {
-                _nodeTyped.Fields.Clear();
-                foreach (var vmField in FieldsList)
-                {
-                    var modelField = new DynamicUiFieldConfig
-                    {
-                        Id = vmField.Id,
-                        Key = vmField.Key,
-                        Label = vmField.Label,
-                        DataType = vmField.DataType,
-                        DefaultValue = vmField.DefaultValue,
-                        BindToInput = vmField.BindToInput,
-                        SourceNodeId = vmField.SourceNodeId,
-                        SourceOutputKey = vmField.SourceOutputKey
-                    };
-                    _nodeTyped.Fields.Add(modelField);
-                }
+            SyncInputMappingsToNode();
+            SyncOutputKeysToNode();
 
-                // Sync ports
-                _nodeTyped.RebuildDynamicPorts();
-                
-                // Request host to sync data panels / refresh canvas
-                _host.RequestSyncDataPanels(immediate: true);
-            }
-            finally
-            {
-                _isSyncing = false;
-            }
-        }
-
-        public void RefreshOutputKeyOptionsFor(CodeInputMappingItemViewModel item)
-        {
-            item.AvailableOutputKeyOptions.Clear();
-            if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;
-
-            var node = _host.ViewModel.Nodes.FirstOrDefault(n =>
-                string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
-            if (node?.DynamicOutputs == null) return;
-
-            foreach (var o in node.DynamicOutputs)
-            {
-                item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
-                {
-                    Key = o.Key ?? string.Empty,
-                    Type = o.OutputType ?? o.ConvertType,
-                    DisplayName = o.DisplayName ?? o.Key
-                });
-            }
-
-            if (item.AvailableOutputKeyOptions.Count > 0 &&
-                !item.AvailableOutputKeyOptions.Any(k => string.Equals(k.Key, item.SourceOutputKey, StringComparison.Ordinal)))
-            {
-                item.SourceOutputKey = item.AvailableOutputKeyOptions[0].Key;
-            }
+            _nodeTyped.NotifyTitleChanged();
         }
 
         private void InputMappingItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -278,6 +169,43 @@ namespace FlowMy.ViewModels
             }).ToList();
         }
 
+        private void SyncOutputKeysToNode()
+        {
+            _nodeTyped.OutputKeys = OutputKeysList
+                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                .Select(x => x.Key.Trim())
+                .Distinct()
+                .ToList();
+            _nodeTyped.RebuildDynamicPorts();
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        public void RefreshOutputKeyOptionsFor(CodeInputMappingItemViewModel item)
+        {
+            item.AvailableOutputKeyOptions.Clear();
+            if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;
+
+            var node = _host.ViewModel.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
+            if (node?.DynamicOutputs == null) return;
+
+            foreach (var o in node.DynamicOutputs)
+            {
+                item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
+                {
+                    Key = o.Key ?? string.Empty,
+                    Type = o.OutputType ?? o.ConvertType,
+                    DisplayName = o.DisplayName ?? o.Key
+                });
+            }
+
+            if (item.AvailableOutputKeyOptions.Count > 0 &&
+                !item.AvailableOutputKeyOptions.Any(k => string.Equals(k.Key, item.SourceOutputKey, StringComparison.Ordinal)))
+            {
+                item.SourceOutputKey = item.AvailableOutputKeyOptions[0].Key;
+            }
+        }
+
         [RelayCommand]
         private void AddInputMapping()
         {
@@ -299,87 +227,56 @@ namespace FlowMy.ViewModels
         }
 
         [RelayCommand]
-        private void AddField()
+        private void AddOutputKey()
         {
-            var key = string.IsNullOrWhiteSpace(NewFieldKey) ? $"port_{FieldsList.Count + 1}" : NewFieldKey.Trim();
-            var label = string.IsNullOrWhiteSpace(NewFieldLabel) ? $"Port {FieldsList.Count + 1}" : NewFieldLabel.Trim();
-
-            var newField = new DynamicUiFieldConfig
-            {
-                Key = key,
-                Label = label,
-                DataType = SelectedNewDataType
-            };
-
-            newField.PropertyChanged += Field_PropertyChanged;
-            FieldsList.Add(newField);
-            SelectedField = newField;
-
-            // Clear inputs
-            NewFieldKey = "";
-            NewFieldLabel = "";
-
-            SyncFieldsToNode();
+            OutputKeysList.Add(new OutputKeyItemViewModel { Key = "result" });
+            SyncOutputKeysToNode();
         }
 
         [RelayCommand]
-        private void RemoveField()
+        private void RemoveOutputKey(OutputKeyItemViewModel? item)
         {
-            if (SelectedField == null) return;
-
-            var toRemove = SelectedField;
-            var index = FieldsList.IndexOf(toRemove);
-            
-            toRemove.PropertyChanged -= Field_PropertyChanged;
-            FieldsList.Remove(toRemove);
-
-            if (FieldsList.Count > 0)
+            if (item != null && OutputKeysList.Contains(item))
             {
-                SelectedField = FieldsList[Math.Min(index, FieldsList.Count - 1)];
+                OutputKeysList.Remove(item);
+                SyncOutputKeysToNode();
             }
-            else
+        }
+
+        [RelayCommand]
+        private void SyncOutputKeysFromParams()
+        {
+            var raw = ParamsCode ?? string.Empty;
+            var parsedKeys = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var lines = raw.Replace("\r\n", "\n").Split('\n');
+            foreach (var lineRaw in lines)
             {
-                SelectedField = null;
+                var line = lineRaw.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (line.StartsWith("#", StringComparison.Ordinal) || line.StartsWith("//", StringComparison.Ordinal)) continue;
+
+                var colonIndex = line.IndexOf(':');
+                if (colonIndex <= 0) continue;
+
+                var key = line[..colonIndex].Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+
+                if (key.Any(char.IsWhiteSpace)) continue;
+
+                if (seen.Add(key))
+                    parsedKeys.Add(key);
             }
 
-            SyncFieldsToNode();
+            if (parsedKeys.Count == 0) return;
+
+            OutputKeysList.Clear();
+            foreach (var key in parsedKeys)
+            {
+                OutputKeysList.Add(new OutputKeyItemViewModel { Key = key });
+            }
+            SyncOutputKeysToNode();
         }
-
-        [RelayCommand]
-        private void MoveFieldUp()
-        {
-            if (SelectedField == null) return;
-            var index = FieldsList.IndexOf(SelectedField);
-            if (index <= 0) return;
-
-            var item = SelectedField;
-            FieldsList.RemoveAt(index);
-            FieldsList.Insert(index - 1, item);
-            SelectedField = item;
-
-            SyncFieldsToNode();
-        }
-
-        [RelayCommand]
-        private void MoveFieldDown()
-        {
-            if (SelectedField == null) return;
-            var index = FieldsList.IndexOf(SelectedField);
-            if (index < 0 || index >= FieldsList.Count - 1) return;
-
-            var item = SelectedField;
-            FieldsList.RemoveAt(index);
-            FieldsList.Insert(index + 1, item);
-            SelectedField = item;
-
-            SyncFieldsToNode();
-        }
-    }
-
-    public class WorkflowOutputKeyOptionsWrapper
-    {
-        public WorkflowOutputKeyOption? Option { get; set; }
-        public string Key => Option?.Key ?? string.Empty;
-        public string DisplayName => Option?.DisplayName ?? string.Empty;
     }
 }

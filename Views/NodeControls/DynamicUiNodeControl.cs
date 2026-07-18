@@ -41,15 +41,19 @@ namespace FlowMy.Views.NodeControls
                 Tag = node
             };
 
-            // --- 2. SCITER EMBEDDED CONTROL ---
-            var sciterControl = new SciterEmbeddedControl(node);
-
-            // --- 3. GRID CONTAINER ---
+            // --- 2. GRID CONTAINER ---
             var grid = new Grid();
-            grid.Children.Add(sciterControl);
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });               // Row 0: Top Bar
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Row 1: Sciter UI
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });               // Row 2: Bottom Bar
             border.Child = grid;
 
-            // --- 4. TITLE TEXTBLOCK (Floating above node on canvas) ---
+            // --- 3. SCITER EMBEDDED CONTROL ---
+            var sciterControl = new SciterEmbeddedControl(node);
+            Grid.SetRow(sciterControl, 1);
+            grid.Children.Add(sciterControl);
+
+            // --- 4. FLOATING CANVAS TITLE (managed by BaseNodeControlHelper, NOT added to grid) ---
             var titleTextBlock = new TextBlock
             {
                 Text = node.Title ?? "Dynamic UI Form",
@@ -66,7 +70,48 @@ namespace FlowMy.Views.NodeControls
             };
             node.TitleTextBlockUI = titleTextBlock;
 
-            // --- 5. PROPERTY SYNCS AND PROPERTY CHANGED HANDLERS ---
+            // --- 5. TOP BAR (Inside the node grid) ---
+            var topBar = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                Padding = new Thickness(6, 4, 6, 4),
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            var topBarGrid = new Grid();
+            var topBarText = new TextBlock
+            {
+                Text = node.Title ?? "Dynamic UI Form",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            topBarGrid.Children.Add(topBarText);
+            topBar.Child = topBarGrid;
+            Grid.SetRow(topBar, 0);
+            grid.Children.Add(topBar);
+
+            // --- 6. BOTTOM BAR ---
+            var bottomBar = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                Padding = new Thickness(6, 4, 6, 4),
+                VerticalAlignment = VerticalAlignment.Bottom
+            };
+            var bottomText = new TextBlock
+            {
+                Text = "Dynamic UI • Chuột phải để mở cấu hình",
+                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5)),
+                FontSize = 11,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            bottomBar.Child = bottomText;
+            Grid.SetRow(bottomBar, 2);
+            grid.Children.Add(bottomBar);
+
+            // --- 7. PROPERTY SYNCS AND PROPERTY CHANGED HANDLERS ---
             node.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(DynamicUiNode.HtmlCode) ||
@@ -92,9 +137,30 @@ namespace FlowMy.Views.NodeControls
                         border.Height = Math.Max(200, node.Height);
                     });
                 }
+                else if (e.PropertyName == nameof(DynamicUiNode.Title))
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        topBarText.Text = node.Title ?? "Dynamic UI Form";
+                    });
+                }
+                else if (e.PropertyName == nameof(DynamicUiNode.PendingReadDom) && node.PendingReadDom)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            sciterControl.UpdateOutputsFromDom(node.ParamsCode, node.ResolvedOutputs);
+                        }
+                        finally
+                        {
+                            node.PendingReadDom = false;
+                        }
+                    });
+                }
             };
 
-            // --- 6. FLUENT API INITIALIZATION ---
+            // --- 8. FLUENT API INITIALIZATION ---
             BaseNodeControlHelper
                 .Initialize(border, titleTextBlock, node, host)
                 .WithTitleManagement()      
@@ -103,6 +169,7 @@ namespace FlowMy.Views.NodeControls
                 .WithCleanup()             
                 .WithVisibilitySync()      
                 .WithCanvasIntegration()   
+                .WithDialogSupport(ctx => new DynamicUiNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
                 .Build();                  
 
             return border;

@@ -15,8 +15,8 @@ namespace FlowMy.Helpers
                 return baseDir;
             }
 
-            // Failsafe: check if we are in development mode and dll is in lib/x64
-            var devLibDir = Path.Combine(baseDir, "..", "..", "..", "lib", "x64");
+            // Failsafe: check if we are in development mode and dll is in public/library
+            var devLibDir = Path.Combine(baseDir, "..", "..", "..", "public", "library");
             if (Directory.Exists(devLibDir) && File.Exists(Path.Combine(devLibDir, "sciter.dll")))
             {
                 try

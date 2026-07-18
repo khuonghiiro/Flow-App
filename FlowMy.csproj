@@ -83,7 +83,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="lib\x64\sciter.dll">
+		<None Include="public\library\sciter.dll">
 			<Link>sciter.dll</Link>
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>

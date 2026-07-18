@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Text.Json.Serialization;
 using System.Windows.Controls;
 using FlowMy.Models;
@@ -17,6 +18,9 @@ namespace FlowMy.Models.Nodes
         private string _htmlCode = "";
         private string _cssCode = "";
         private string _jsCode = "";
+        private string _paramsCode = "";
+        private List<string> _outputKeys = new();
+        private bool _pendingReadDom = false;
         private double _windowWidth = 420;
         private double _windowHeight = 350;
         private double _width = 420;
@@ -144,6 +148,13 @@ document.$(""#btnCancel"").on(""click"", function() {
   Window.this.xcall(""cancelForm"");
 });";
 
+            _paramsCode = @"// Cấu hình cổng ra
+// key: selector
+username: #username
+role: #role
+";
+            _outputKeys = new List<string> { "username", "role" };
+
             // Default output fields definition
             _fields.Add(new DynamicUiFieldConfig { Key = "username", Label = "Username", DataType = WorkflowDataType.String });
             _fields.Add(new DynamicUiFieldConfig { Key = "role", Label = "Role", DataType = WorkflowDataType.String });
@@ -197,6 +208,33 @@ document.$(""#btnCancel"").on(""click"", function() {
             set { if (_jsCode != value) { _jsCode = value ?? ""; OnPropertyChanged(); } }
         }
 
+        public string ParamsCode
+        {
+            get => _paramsCode;
+            set { if (_paramsCode != value) { _paramsCode = value ?? ""; OnPropertyChanged(); } }
+        }
+
+        public List<string> OutputKeys
+        {
+            get => _outputKeys;
+            set
+            {
+                if (_outputKeys != value)
+                {
+                    _outputKeys = value ?? new List<string>();
+                    OnPropertyChanged();
+                    RebuildDynamicPorts();
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public bool PendingReadDom
+        {
+            get => _pendingReadDom;
+            set { if (_pendingReadDom != value) { _pendingReadDom = value; OnPropertyChanged(); } }
+        }
+
         public double WindowWidth
         {
             get => _windowWidth;
@@ -241,6 +279,20 @@ document.$(""#btnCancel"").on(""click"", function() {
             DynamicOutputs.Clear();
             DynamicInputs.Clear();
 
+            // Rebuild outputs from OutputKeys first
+            foreach (var key in _outputKeys)
+            {
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                DynamicOutputs.Add(new WorkflowDynamicDataPort
+                {
+                    Key = key.Trim(),
+                    DisplayName = key.Trim(),
+                    OutputType = WorkflowDataType.String,
+                    IsUserAdded = true
+                });
+            }
+
+            // Keep Fields for backward compatibility or fallback
             foreach (var field in _fields)
             {
                 if (string.IsNullOrWhiteSpace(field.Key)) continue;
@@ -248,14 +300,17 @@ document.$(""#btnCancel"").on(""click"", function() {
                 var trimmedKey = field.Key.Trim();
                 var displayName = string.IsNullOrWhiteSpace(field.Label) ? trimmedKey : field.Label.Trim();
 
-                // Add to DynamicOutputs
-                DynamicOutputs.Add(new WorkflowDynamicDataPort
+                // Only add to DynamicOutputs if not already added by OutputKeys
+                if (!DynamicOutputs.Any(o => o.Key == trimmedKey))
                 {
-                    Key = trimmedKey,
-                    DisplayName = displayName,
-                    OutputType = field.DataType,
-                    IsUserAdded = true
-                });
+                    DynamicOutputs.Add(new WorkflowDynamicDataPort
+                    {
+                        Key = trimmedKey,
+                        DisplayName = displayName,
+                        OutputType = field.DataType,
+                        IsUserAdded = true
+                    });
+                }
 
                 // If BindToInput is active, add to DynamicInputs
                 if (field.BindToInput)
@@ -268,6 +323,28 @@ document.$(""#btnCancel"").on(""click"", function() {
                         IsUserAdded = true
                     });
                 }
+            }
+        }
+
+        public void AddOutputKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var k = key.Trim();
+            if (!_outputKeys.Contains(k))
+            {
+                _outputKeys.Add(k);
+                RebuildDynamicPorts();
+            }
+        }
+
+        public void RemoveOutputKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var k = key.Trim();
+            if (_outputKeys.Contains(k))
+            {
+                _outputKeys.Remove(k);
+                RebuildDynamicPorts();
             }
         }
     }

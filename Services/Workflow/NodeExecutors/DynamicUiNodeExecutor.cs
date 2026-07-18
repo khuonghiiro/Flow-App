@@ -2,10 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
-using FlowMy.Views.Overlays;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -22,84 +20,41 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                var tcs = new TaskCompletionSource<bool>();
+                // Trigger UI thread to read DOM from Sciter in-node control
+                dynamicUiNode.PendingReadDom = true;
 
-                // 1. Resolve prefilled values from Input Mappings and BindToInput fields
-                var prefilledValues = new Dictionary<string, string>();
-                
-                var mappings = dynamicUiNode.InputMappings ?? new List<CodeInputMapping>();
-                foreach (var mapping in mappings)
+                // Wait for the UI thread to read the DOM and reset the flag (max 2 seconds)
+                var maxWaitMs = 2000;
+                var checkIntervalMs = 50;
+                var waited = 0;
+
+                while (waited < maxWaitMs)
                 {
-                    if (!string.IsNullOrWhiteSpace(mapping.SourceNodeId) && !string.IsNullOrWhiteSpace(mapping.SourceOutputKey))
+                    try
                     {
-                        var val = env.Service.ResolveValueByNodeIdAndKeyForExecution(
-                            env.Connections, mapping.SourceNodeId, mapping.SourceOutputKey, env);
-                        
-                        if (!string.IsNullOrEmpty(val) && !string.Equals(val.Trim(), "—", StringComparison.OrdinalIgnoreCase))
-                        {
-                            prefilledValues[mapping.EffectiveInputKey] = val;
-                        }
+                        await Task.Delay(checkIntervalMs, env.CancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        dynamicUiNode.PendingReadDom = false;
+                        return;
+                    }
+                    waited += checkIntervalMs;
+
+                    if (!dynamicUiNode.PendingReadDom)
+                    {
+                        break;
+                    }
+
+                    if (dynamicUiNode.ResolvedOutputs.Count > 0)
+                    {
+                        break;
                     }
                 }
 
-                foreach (var field in dynamicUiNode.Fields)
-                {
-                    if (field.BindToInput && !string.IsNullOrWhiteSpace(field.Key))
-                    {
-                        var val = env.Service.ResolveValueByNodeIdAndKeyForExecution(
-                            env.Connections, field.SourceNodeId, field.SourceOutputKey, env);
-                        
-                        if (!string.IsNullOrEmpty(val) && !string.Equals(val.Trim(), "—", StringComparison.OrdinalIgnoreCase))
-                        {
-                            prefilledValues[field.Key] = val;
-                        }
-                    }
-                }
+                dynamicUiNode.PendingReadDom = false;
 
-                DynamicUiPopupWindow? popup = null;
-
-                // Handle cancellation token to close the window if execution gets cancelled
-                using (env.CancellationToken.Register(() =>
-                {
-                    popup?.Close();
-                    tcs.TrySetCanceled();
-                }))
-                {
-                    // 2. Dispatch window showing to UI Thread
-                    _ = Application.Current.Dispatcher.InvokeAsync(async () =>
-                    {
-                        try
-                        {
-                            popup = new DynamicUiPopupWindow(dynamicUiNode, prefilledValues);
-                            popup.Show();
-                            
-                            var result = await popup.WaitForSubmitAsync();
-                            
-                            if (result)
-                            {
-                                // Copy values to ResolvedOutputs
-                                foreach (var kvp in popup.SubmittedValues)
-                                {
-                                    dynamicUiNode.ResolvedOutputs[kvp.Key] = kvp.Value;
-                                }
-                            }
-                            
-                            tcs.TrySetResult(result);
-                        }
-                        catch (Exception ex)
-                        {
-                            tcs.TrySetException(ex);
-                        }
-                    });
-
-                    var submitted = await tcs.Task;
-                    if (!submitted)
-                    {
-                        throw new OperationCanceledException("User closed the form without submitting.");
-                    }
-                }
-
-                // 3. Publish outputs to execution scoped store (so downstream nodes can bind to them)
+                // Publish outputs to execution scoped store (so downstream nodes can bind to them)
                 if (!string.IsNullOrWhiteSpace(env.ExecutionId) && dynamicUiNode.ResolvedOutputs.Count > 0)
                 {
                     var snapshot = new Dictionary<string, object?>(
@@ -111,19 +66,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 sw.Stop();
                 env.OnNodeCompleted?.Invoke(dynamicUiNode, sw.Elapsed);
             }
-            catch (OperationCanceledException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[DynamicUiNodeExecutor] Cancelled: {ex.Message}");
-                env.OnNodeFailed?.Invoke(dynamicUiNode, ex.Message);
-            }
             catch (Exception ex)
             {
+                dynamicUiNode.PendingReadDom = false;
                 System.Diagnostics.Debug.WriteLine($"[DynamicUiNodeExecutor] Error: {ex.Message}");
                 env.OnNodeFailed?.Invoke(dynamicUiNode, ex.Message);
                 throw;
             }
 
-            // 4. Traverse to next nodes in workflow
+            // Traverse to next nodes in workflow
             await env.TraverseOutputsAsync(dynamicUiNode).ConfigureAwait(false);
         }
     }
