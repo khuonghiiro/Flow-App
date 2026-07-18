@@ -717,7 +717,7 @@ into smaller partial class files to maintain readability and ease of maintenance
                                     <Border DockPanel.Dock="Right" Background="#181c24" CornerRadius="2" Padding="3,1" MinWidth="28" Margin="4,0,0,0" VerticalAlignment="Center">
                                         <TextBlock x:Name="TxtPopupBrushSize" Text="50" FontSize="9" FontFamily="Consolas" Foreground="#00cfff" HorizontalAlignment="Center"/>
                                     </Border>
-                                    <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="200" Value="50" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
+                                    <Slider x:Name="PopupBrushSize" Minimum="1" Maximum="5000" Value="50" VerticalAlignment="Center" ValueChanged="PopupBrushSize_ValueChanged"/>
                                 </DockPanel>
 
                                 <!-- Hardness -->

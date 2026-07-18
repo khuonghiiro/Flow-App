@@ -48,6 +48,8 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
 
+            MainScrollViewer?.Focus();
+
             string tool = EditorPanel.ActiveToolName;
             var clickPos = e.GetPosition(MainImage);
 
