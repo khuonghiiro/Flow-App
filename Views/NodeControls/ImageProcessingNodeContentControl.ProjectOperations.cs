@@ -33,6 +33,7 @@ namespace FlowMy.Views.NodeControls
             public string ForegroundColor { get; set; } = "#000000";
             public string BackgroundColor { get; set; } = "#FFFFFF";
             public System.Collections.Generic.List<LayerMetadataDto> Layers { get; set; } = new();
+            public string? ActiveLayerId { get; set; }
 
             // Layer AI settings
             public string? LayerAiWebUrl { get; set; }
@@ -58,6 +59,7 @@ namespace FlowMy.Views.NodeControls
             public double Opacity { get; set; } = 1.0;
             public bool IsVisible { get; set; } = true;
             public bool IsLocked { get; set; } = false;
+            public bool IsChildrenCollapsed { get; set; } = false;
             public string BlendMode { get; set; } = "Normal";
             public System.Collections.Generic.List<LayerMetadataDto> ChildLayers { get; set; } = new();
             public string? ActiveChildLayerId { get; set; }
@@ -483,6 +485,7 @@ namespace FlowMy.Views.NodeControls
         {
             public string LayerId { get; set; } = "";
             public BitmapSource? FrozenBitmap { get; set; }
+            public byte[]? EncodedBytes { get; set; }
         }
 
         private async void SaveProjectToPath(string filePath, Button? btn = null)
@@ -516,6 +519,7 @@ namespace FlowMy.Views.NodeControls
                     Height = _node.EditorDoc.Height,
                     ForegroundColor = _node.EditorDoc.ForegroundColor.ToString(),
                     BackgroundColor = _node.EditorDoc.BackgroundColor.ToString(),
+                    ActiveLayerId = _node.EditorDoc.ActiveLayer?.Id,
 
                     // Save Layer AI settings to Project DTO
                     LayerAiWebUrl = _node.LayerAiWebUrl,
@@ -544,6 +548,7 @@ namespace FlowMy.Views.NodeControls
                             Opacity = l.Opacity,
                             IsVisible = l.IsVisible,
                             IsLocked = l.IsLocked,
+                            IsChildrenCollapsed = l.IsChildrenCollapsed,
                             BlendMode = l.BlendMode.ToString(),
                             ActiveChildLayerId = l.ActiveChildLayer?.Id,
 
@@ -635,7 +640,15 @@ namespace FlowMy.Views.NodeControls
                         }
 
                         // Copy pixels and construct a frozen BitmapSource on UI thread (very fast)
-                        if (l.Bitmap != null)
+                        if (l.PngBytes != null)
+                        {
+                            layerBuffers[l.Id] = new LayerPixelBuffer
+                            {
+                                LayerId = l.Id,
+                                EncodedBytes = l.PngBytes
+                            };
+                        }
+                        else if (l.Bitmap != null)
                         {
                             int w = l.Bitmap.PixelWidth;
                             int h = l.Bitmap.PixelHeight;
@@ -681,6 +694,11 @@ namespace FlowMy.Views.NodeControls
 
                     System.Threading.Tasks.Parallel.ForEach(layerBuffers.Values, buffer =>
                     {
+                        if (buffer.EncodedBytes != null)
+                        {
+                            encodedPngs[buffer.LayerId] = buffer.EncodedBytes;
+                            return;
+                        }
                         if (buffer.FrozenBitmap == null) return;
                         try
                         {
@@ -689,7 +707,16 @@ namespace FlowMy.Views.NodeControls
                                 var encoder = new PngBitmapEncoder();
                                 encoder.Frames.Add(BitmapFrame.Create(buffer.FrozenBitmap));
                                 encoder.Save(ms);
-                                encodedPngs[buffer.LayerId] = ms.ToArray();
+                                byte[] bytes = ms.ToArray();
+                                encodedPngs[buffer.LayerId] = bytes;
+
+                                // Cache the encoded bytes back to the layer so subsequent saves are instant
+                                var layer = _node.EditorDoc?.Layers?.FirstOrDefault(x => x.Id == buffer.LayerId)
+                                            ?? _node.EditorDoc?.Layers?.SelectMany(x => x.ChildLayers).FirstOrDefault(x => x.Id == buffer.LayerId);
+                                if (layer != null)
+                                {
+                                    layer.PngBytes = bytes;
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -952,6 +979,7 @@ namespace FlowMy.Views.NodeControls
                         Opacity = lDto.Opacity,
                         IsVisible = lDto.IsVisible,
                         IsLocked = lDto.IsLocked,
+                        IsChildrenCollapsed = lDto.IsChildrenCollapsed,
                         OffsetX = lDto.OffsetX,
                         OffsetY = lDto.OffsetY,
                         LayerScaleX = lDto.LayerScaleX,
@@ -1035,6 +1063,7 @@ namespace FlowMy.Views.NodeControls
                     string imgFileName = !string.IsNullOrEmpty(lDto.ImageFileName) ? lDto.ImageFileName : $"layers/{lDto.Id}.png";
                     if (layerBytesMap.TryGetValue(imgFileName, out var pngBytes))
                     {
+                        layer.PngBytes = pngBytes;
                         using (var ms = new MemoryStream(pngBytes))
                         {
                             var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -1073,7 +1102,20 @@ namespace FlowMy.Views.NodeControls
                     doc.Layers.Add(layer);
                 }
 
-                if (doc.Layers.Count > 0)
+                if (!string.IsNullOrEmpty(dto.ActiveLayerId))
+                {
+                    var foundActive = doc.Layers.FirstOrDefault(x => x.Id == dto.ActiveLayerId)
+                                      ?? doc.Layers.SelectMany(x => x.ChildLayers).FirstOrDefault(x => x.Id == dto.ActiveLayerId);
+                    if (foundActive != null)
+                    {
+                        doc.ActiveLayer = foundActive;
+                    }
+                    else if (doc.Layers.Count > 0)
+                    {
+                        doc.ActiveLayer = doc.Layers[doc.Layers.Count - 1];
+                    }
+                }
+                else if (doc.Layers.Count > 0)
                 {
                     doc.ActiveLayer = doc.Layers[doc.Layers.Count - 1];
                 }

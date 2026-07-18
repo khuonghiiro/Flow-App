@@ -91,6 +91,7 @@ namespace FlowMy.Models.ImageEditor.Commands
         public void Execute()
         {
             _layer.Bitmap.WritePixels(new Int32Rect(0, 0, _layer.Width, _layer.Height), _newPixels, _stride, 0);
+            _layer.PngBytes = null;
             
             if (KeepOriginalTransformBitmap)
             {
@@ -117,6 +118,7 @@ namespace FlowMy.Models.ImageEditor.Commands
         public void Undo()
         {
             _layer.Bitmap.WritePixels(new Int32Rect(0, 0, _layer.Width, _layer.Height), _oldPixels, _stride, 0);
+            _layer.PngBytes = null;
             
             if (KeepOriginalTransformBitmap || _oldOriginalTransformBitmap != null)
             {

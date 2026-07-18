@@ -566,6 +566,7 @@ namespace FlowMy.Models.ImageEditor
             copy.LayerTranslateY = LayerTranslateY;
 
             // Copy Layer AI configurations
+            copy.PngBytes = PngBytes;
             copy.LayerAiPrompt = LayerAiPrompt;
             copy.LayerAiBatchSizeIndex = LayerAiBatchSizeIndex;
             copy.LayerAiAspectRatioIndex = LayerAiAspectRatioIndex;
@@ -825,6 +826,7 @@ namespace FlowMy.Models.ImageEditor
         }
 
         // Layer AI settings specific to this layer
+        public byte[]? PngBytes { get; set; }
         public string LayerAiPrompt { get; set; } = string.Empty;
         public int LayerAiBatchSizeIndex { get; set; } = 2; // Default size index (usually 3)
         public int LayerAiAspectRatioIndex { get; set; } = 3; // Default ratio (1:1)

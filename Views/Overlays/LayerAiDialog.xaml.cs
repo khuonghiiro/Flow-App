@@ -3827,6 +3827,7 @@ namespace FlowMy.Views.Overlays
             // Set OriginalTransformBitmap and ContentBounds so that transform tool works properly
             childLayer.OriginalTransformBitmap = maskedBmp;
             childLayer.ContentBounds = new Rect(posX, posY, finalW, finalH);
+            childLayer.PngBytes = null;
 
             childLayer.InvalidateThumbnail();
         }

@@ -129,6 +129,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             _layer.Bitmap.WritePixels(_dirtyRect, _newRegionPixels, _regionStride, 0);
             _layer.OriginalTransformBitmap = null;
             _layer.ContentGeometry = null;
+            _layer.PngBytes = null;
             _layer.InvalidateThumbnail();
         }
 
@@ -136,6 +137,7 @@ namespace FlowMy.Models.ImageEditor.Commands
         {
             if (_dirtyRect.Width <= 0 || _dirtyRect.Height <= 0) return;
             _layer.Bitmap.WritePixels(_dirtyRect, _oldRegionPixels, _regionStride, 0);
+            _layer.PngBytes = null;
             
             if (_hadOriginalTransform)
             {
