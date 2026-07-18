@@ -162,6 +162,10 @@ namespace FlowMy.Views.NodeControls
         private void SaveCurrentTabState()
         {
             if (_activeTabData == null) return;
+            CommitBrushDrawingSession();
+            CommitTransformSession();
+            CommitActiveText();
+            CommitKeyMoveSession();
             ForceClearDrawingOverlay();
             SaveStateToTabData(_activeTabData);
         }

@@ -553,12 +553,12 @@ namespace FlowMy.Models.ImageEditor
             copy.TextFontStyle = TextFontStyle;
             copy.TextAlignment = TextAlignment;
             copy.IsSelected = IsSelected;
-            copy.ContentBounds = ContentBounds;
-            copy.ImageContentBounds = ImageContentBounds;
             if (OriginalTransformBitmap != null)
             {
                 copy.OriginalTransformBitmap = OriginalTransformBitmap;
             }
+            copy.ContentBounds = ContentBounds;
+            copy.ImageContentBounds = ImageContentBounds;
             copy.LayerScaleX = LayerScaleX;
             copy.LayerScaleY = LayerScaleY;
             copy.LayerAngle = LayerAngle;

@@ -491,6 +491,9 @@ namespace FlowMy.Views.NodeControls
         private async void SaveProjectToPath(string filePath, Button? btn = null)
         {
             CommitBrushDrawingSession();
+            CommitTransformSession();
+            CommitActiveText();
+            CommitKeyMoveSession();
             if (_node.EditorDoc == null) return;
 
             // Show loading
@@ -848,6 +851,9 @@ namespace FlowMy.Views.NodeControls
         private void ExportProjectZip()
         {
             CommitBrushDrawingSession();
+            CommitTransformSession();
+            CommitActiveText();
+            CommitKeyMoveSession();
             if (_node.EditorDoc == null)
             {
                 MessageBox.Show("Chưa có dự án để xuất.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -973,38 +979,67 @@ namespace FlowMy.Views.NodeControls
 
                 EditorLayer RestoreLayer(LayerMetadataDto lDto, EditorLayer? parent)
                 {
-                    var layer = new EditorLayer(lDto.Width > 0 ? lDto.Width : dto.Width, lDto.Height > 0 ? lDto.Height : dto.Height, lDto.Name)
-                    {
-                        Id = lDto.Id,
-                        Opacity = lDto.Opacity,
-                        IsVisible = lDto.IsVisible,
-                        IsLocked = lDto.IsLocked,
-                        IsChildrenCollapsed = lDto.IsChildrenCollapsed,
-                        OffsetX = lDto.OffsetX,
-                        OffsetY = lDto.OffsetY,
-                        LayerScaleX = lDto.LayerScaleX,
-                        LayerScaleY = lDto.LayerScaleY,
-                        LayerAngle = lDto.LayerAngle,
-                        LayerTranslateX = lDto.LayerTranslateX,
-                        LayerTranslateY = lDto.LayerTranslateY,
-                        IsTextLayer = lDto.IsTextLayer,
-                        TextContent = lDto.TextContent ?? "",
-                        TextX = lDto.TextX,
-                        TextY = lDto.TextY,
-                        TextWidth = lDto.TextWidth,
-                        TextHeight = lDto.TextHeight,
-                        TextFontSize = lDto.TextFontSize,
-                        TextFontFamily = lDto.TextFontFamily ?? "Arial",
-                        TextFontStyle = lDto.TextFontStyle ?? "Bold",
-                        TextAlignment = lDto.TextAlignment ?? "Left",
+                    var layer = new EditorLayer(lDto.Width > 0 ? lDto.Width : dto.Width, lDto.Height > 0 ? lDto.Height : dto.Height, lDto.Name);
 
-                        // Restore layer-specific Layer AI configurations
-                        LayerAiPrompt = lDto.LayerAiPrompt ?? string.Empty,
-                        LayerAiBatchSizeIndex = lDto.LayerAiBatchSizeIndex,
-                        LayerAiAspectRatioIndex = lDto.LayerAiAspectRatioIndex,
-                        LayerAiCustomWidth = lDto.LayerAiCustomWidth ?? string.Empty,
-                        LayerAiCustomHeight = lDto.LayerAiCustomHeight ?? string.Empty
-                    };
+                    // 1. Assign parent first so dynamic resolution functions properly
+                    layer.ParentLayer = parent;
+
+                    // 2. Load bitmap first so that setting OriginalTransformBitmap (which triggers the setter calculating default ContentBounds)
+                    // happens BEFORE we restore the saved ContentBounds.
+                    string imgFileName = !string.IsNullOrEmpty(lDto.ImageFileName) ? lDto.ImageFileName : $"layers/{lDto.Id}.png";
+                    if (layerBytesMap.TryGetValue(imgFileName, out var pngBytes))
+                    {
+                        layer.PngBytes = pngBytes;
+                        using (var ms = new MemoryStream(pngBytes))
+                        {
+                            var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                            BitmapSource bmpSource = decoder.Frames[0];
+                            if (bmpSource.Format != PixelFormats.Bgra32)
+                            {
+                                bmpSource = new FormatConvertedBitmap(bmpSource, PixelFormats.Bgra32, null, 0);
+                            }
+                            var loadedBmp = new WriteableBitmap(bmpSource);
+                            layer.Bitmap = loadedBmp;
+                            
+                            // Restore OriginalTransformBitmap as a separate instance so editing/moving works seamlessly
+                            // ONLY if the layer had a non-empty ContentBounds saved!
+                            if (lDto.ContentBoundsWidth > 0 && lDto.ContentBoundsHeight > 0)
+                            {
+                                layer.OriginalTransformBitmap = new WriteableBitmap(loadedBmp);
+                            }
+                        }
+                    }
+
+                    // 3. Now restore all metadata properties from lDto (overwriting the auto-calculated ContentBounds)
+                    layer.Id = lDto.Id;
+                    layer.Opacity = lDto.Opacity;
+                    layer.IsVisible = lDto.IsVisible;
+                    layer.IsLocked = lDto.IsLocked;
+                    layer.IsChildrenCollapsed = lDto.IsChildrenCollapsed;
+                    layer.OffsetX = lDto.OffsetX;
+                    layer.OffsetY = lDto.OffsetY;
+                    layer.LayerScaleX = lDto.LayerScaleX;
+                    layer.LayerScaleY = lDto.LayerScaleY;
+                    layer.LayerAngle = lDto.LayerAngle;
+                    layer.LayerTranslateX = lDto.LayerTranslateX;
+                    layer.LayerTranslateY = lDto.LayerTranslateY;
+                    layer.IsTextLayer = lDto.IsTextLayer;
+                    layer.TextContent = lDto.TextContent ?? "";
+                    layer.TextX = lDto.TextX;
+                    layer.TextY = lDto.TextY;
+                    layer.TextWidth = lDto.TextWidth;
+                    layer.TextHeight = lDto.TextHeight;
+                    layer.TextFontSize = lDto.TextFontSize;
+                    layer.TextFontFamily = lDto.TextFontFamily ?? "Arial";
+                    layer.TextFontStyle = lDto.TextFontStyle ?? "Bold";
+                    layer.TextAlignment = lDto.TextAlignment ?? "Left";
+
+                    // Restore layer-specific Layer AI configurations
+                    layer.LayerAiPrompt = lDto.LayerAiPrompt ?? string.Empty;
+                    layer.LayerAiBatchSizeIndex = lDto.LayerAiBatchSizeIndex;
+                    layer.LayerAiAspectRatioIndex = lDto.LayerAiAspectRatioIndex;
+                    layer.LayerAiCustomWidth = lDto.LayerAiCustomWidth ?? string.Empty;
+                    layer.LayerAiCustomHeight = lDto.LayerAiCustomHeight ?? string.Empty;
 
                     if (lDto.SecondaryImages != null)
                     {
@@ -1056,28 +1091,6 @@ namespace FlowMy.Views.NodeControls
                     if (Enum.TryParse<BlendMode>(lDto.BlendMode, out var bMode))
                     {
                         layer.BlendMode = bMode;
-                    }
-                    layer.ParentLayer = parent;
-
-                    // Load bitmap from cached byte array
-                    string imgFileName = !string.IsNullOrEmpty(lDto.ImageFileName) ? lDto.ImageFileName : $"layers/{lDto.Id}.png";
-                    if (layerBytesMap.TryGetValue(imgFileName, out var pngBytes))
-                    {
-                        layer.PngBytes = pngBytes;
-                        using (var ms = new MemoryStream(pngBytes))
-                        {
-                            var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-                            BitmapSource bmpSource = decoder.Frames[0];
-                            if (bmpSource.Format != PixelFormats.Bgra32)
-                            {
-                                bmpSource = new FormatConvertedBitmap(bmpSource, PixelFormats.Bgra32, null, 0);
-                            }
-                            var loadedBmp = new WriteableBitmap(bmpSource);
-                            layer.Bitmap = loadedBmp;
-                            
-                            // Restore OriginalTransformBitmap as a separate instance so editing/moving works seamlessly
-                            layer.OriginalTransformBitmap = new WriteableBitmap(loadedBmp);
-                        }
                     }
 
                     // Restore child layers
