@@ -359,10 +359,10 @@ namespace FlowMy.Views.NodeControls
                         if (_currentBrushPreset == BrushPreset.Chalk)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
-                            double offsetMul = radius * 6.0;
+                            double offsetMul = radius * 1.0;
                             foreach (var offset in ChalkPresetOffsets)
                             {
-                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * (offset.size * 0.15);
+                                 double imgSpotRadius = 0.5 + (imgRadius - 0.5) * (offset.size * 0.06);
                                 double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
@@ -379,10 +379,10 @@ namespace FlowMy.Views.NodeControls
                         else if (_currentBrushPreset == BrushPreset.Spray)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
-                            double offsetMul = radius * 6.0;
+                            double offsetMul = radius * 1.0;
                             foreach (var offset in SprayPresetOffsets)
                             {
-                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * 0.25;
+                                 double imgSpotRadius = 0.5 + (imgRadius - 0.5) * 0.08;
                                 double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 double distRatio = Math.Sqrt(offset.x * offset.x + offset.y * offset.y);
@@ -400,10 +400,10 @@ namespace FlowMy.Views.NodeControls
                         else if (_currentBrushPreset == BrushPreset.Scatter)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
-                            double offsetMul = radius * 6.0;
+                            double offsetMul = radius * 1.0;
                             foreach (var offset in ScatterPresetOffsets)
                             {
-                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.scale;
+                                 double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.scale * 0.4;
                                 double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
@@ -469,7 +469,7 @@ namespace FlowMy.Views.NodeControls
                         }
                         else if (_currentBrushPreset == BrushPreset.Airbrush)
                         {
-                            double airRadius = radius * 1.8;
+                            double airRadius = radius * 1.0;
                             double airDiameter = airRadius * 2;
                             BrushPreviewCursor.Width = airDiameter;
                             BrushPreviewCursor.Height = airDiameter;
@@ -488,10 +488,10 @@ namespace FlowMy.Views.NodeControls
                         else if (_currentBrushPreset == BrushPreset.Splatter)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
-                            double offsetMul = radius * 6.0;
+                            double offsetMul = radius * 1.0;
                             foreach (var offset in SplatterPresetOffsets)
                             {
-                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.size * 0.4;
+                                 double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.size * 0.15;
                                 double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
@@ -508,10 +508,10 @@ namespace FlowMy.Views.NodeControls
                         else if (_currentBrushPreset == BrushPreset.Charcoal)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
-                            double offsetMul = radius * 4.0;
+                            double offsetMul = radius * 1.0;
                             foreach (var offset in CharcoalPresetOffsets)
                             {
-                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.size * 0.45;
+                                 double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.size * 0.18;
                                 double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
@@ -528,10 +528,10 @@ namespace FlowMy.Views.NodeControls
                         else if (_currentBrushPreset == BrushPreset.OilBrush)
                         {
                             BrushPreviewCursor.Visibility = Visibility.Collapsed;
-                            double offsetMul = radius * 3.5;
+                            double offsetMul = radius * 1.0;
                             foreach (var offset in OilBrushPresetOffsets)
                             {
-                                double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.size * 0.25;
+                                 double imgSpotRadius = 0.5 + (imgRadius - 0.5) * offset.size * 0.10;
                                 double spotRadius = imgSpotRadius * scaleX;
                                 double spotDiameter = spotRadius * 2;
                                 var spotEllipse = new Ellipse
