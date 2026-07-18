@@ -403,11 +403,6 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Brush")
             {
-                // Kiểm tra click có nằm trong layer bounds không
-                if (px < activeLayer.OffsetX || px >= activeLayer.OffsetX + activeLayer.Width ||
-                    py < activeLayer.OffsetY || py >= activeLayer.OffsetY + activeLayer.Height)
-                    return; // Click ngoài layer → bỏ qua
-
                 _isDrawingPixels = true;
 
                 // Xác định kích thước overlay và offset
@@ -552,11 +547,6 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
-                // Kiểm tra click có nằm trong layer bounds không
-                if (px < activeLayer.OffsetX || px >= activeLayer.OffsetX + activeLayer.Width ||
-                    py < activeLayer.OffsetY || py >= activeLayer.OffsetY + activeLayer.Height)
-                    return; // Click ngoài layer → bỏ qua
-
                 _isDrawingPixels = true;
 
                 // Xác định kích thước overlay và offset
