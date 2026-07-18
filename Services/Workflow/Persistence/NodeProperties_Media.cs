@@ -140,6 +140,35 @@ public sealed partial class FileWorkflowPersistenceService
                 catch { }
             }
 
+            // Layer AI settings
+            if (properties.TryGetValue("LayerAiHtmlCode", out var htmlObj))
+                imageNode.LayerAiHtmlCode = htmlObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("LayerAiCssCode", out var cssObj))
+                imageNode.LayerAiCssCode = cssObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("LayerAiJsCode", out var jsObj))
+                imageNode.LayerAiJsCode = jsObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("LayerAiParamsCode", out var paramsObj))
+                imageNode.LayerAiParamsCode = paramsObj?.ToString() ?? string.Empty;
+
+            if (properties.TryGetValue("LayerAiWebUrl", out var webUrlObj))
+                imageNode.LayerAiWebUrl = webUrlObj?.ToString() ?? "https://google.com";
+            if (properties.TryGetValue("LayerAiCacheProfileName", out var profileObj))
+                imageNode.LayerAiCacheProfileName = profileObj?.ToString() ?? "Shared";
+            if (properties.TryGetValue("LayerAiWebTabsJson", out var tabsJsonObj))
+                imageNode.LayerAiWebTabsJson = tabsJsonObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("LayerAiWebSplitMode", out var splitModeObj))
+                imageNode.LayerAiWebSplitMode = splitModeObj?.ToString() ?? "Single";
+            if (properties.TryGetValue("LayerAiActiveTab", out var activeTabObj))
+                imageNode.LayerAiActiveTab = activeTabObj?.ToString() ?? "Prompt";
+
+            if (properties.TryGetValue("LayerAiPromptHidden", out var promptHiddenObj) && promptHiddenObj != null &&
+                bool.TryParse(promptHiddenObj.ToString(), out var ph))
+                imageNode.LayerAiPromptHidden = ph;
+
+            if (properties.TryGetValue("LayerAiSendModeOn", out var sendModeOnObj) && sendModeOnObj != null &&
+                bool.TryParse(sendModeOnObj.ToString(), out var smo))
+                imageNode.LayerAiSendModeOn = smo;
+
             // Deserialize danh sách vùng crop
             if (properties.TryGetValue("Crops", out var cropsObj) && cropsObj != null)
             {
@@ -547,6 +576,30 @@ public sealed partial class FileWorkflowPersistenceService
             // SkipOutputs
             if (imageNode.SkipOutputs != null && imageNode.SkipOutputs.Count > 0)
                 dict["SkipOutputs"] = JsonSerializer.Serialize(imageNode.SkipOutputs.ToList());
+
+            // Layer AI settings
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiHtmlCode))
+                dict["LayerAiHtmlCode"] = imageNode.LayerAiHtmlCode;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiCssCode))
+                dict["LayerAiCssCode"] = imageNode.LayerAiCssCode;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiJsCode))
+                dict["LayerAiJsCode"] = imageNode.LayerAiJsCode;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiParamsCode))
+                dict["LayerAiParamsCode"] = imageNode.LayerAiParamsCode;
+
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiWebUrl))
+                dict["LayerAiWebUrl"] = imageNode.LayerAiWebUrl;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiCacheProfileName))
+                dict["LayerAiCacheProfileName"] = imageNode.LayerAiCacheProfileName;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiWebTabsJson))
+                dict["LayerAiWebTabsJson"] = imageNode.LayerAiWebTabsJson;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiWebSplitMode))
+                dict["LayerAiWebSplitMode"] = imageNode.LayerAiWebSplitMode;
+            if (!string.IsNullOrWhiteSpace(imageNode.LayerAiActiveTab))
+                dict["LayerAiActiveTab"] = imageNode.LayerAiActiveTab;
+
+            dict["LayerAiPromptHidden"] = imageNode.LayerAiPromptHidden;
+            dict["LayerAiSendModeOn"] = imageNode.LayerAiSendModeOn;
 
     }
 

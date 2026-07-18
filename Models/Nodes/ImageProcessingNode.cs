@@ -278,6 +278,24 @@ namespace FlowMy.Models.Nodes
             set { if (_layerAiActiveTab != value) { _layerAiActiveTab = value ?? "Prompt"; OnPropertyChanged(); } }
         }
 
+        private bool _layerAiPromptHidden = false;
+        private bool _layerAiSendModeOn = true;
+
+        /// <summary>Ẩn/hiện prompt trong LayerAiDialog.</summary>
+        public bool LayerAiPromptHidden
+        {
+            get => _layerAiPromptHidden;
+            set { if (_layerAiPromptHidden != value) { _layerAiPromptHidden = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Gửi AI: ON/OFF trong LayerAiDialog.</summary>
+        public bool LayerAiSendModeOn
+        {
+            get => _layerAiSendModeOn;
+            set { if (_layerAiSendModeOn != value) { _layerAiSendModeOn = value; OnPropertyChanged(); } }
+        }
+
+
         /// <summary>Chế độ xử lý hiện tại (AI hoặc Manual).</summary>
         public ImageProcessingMode ProcessingMode
         {

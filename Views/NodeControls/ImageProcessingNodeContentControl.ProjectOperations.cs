@@ -33,6 +33,22 @@ namespace FlowMy.Views.NodeControls
             public string ForegroundColor { get; set; } = "#000000";
             public string BackgroundColor { get; set; } = "#FFFFFF";
             public System.Collections.Generic.List<LayerMetadataDto> Layers { get; set; } = new();
+
+            // Layer AI settings
+            public string? LayerAiWebUrl { get; set; }
+            public string? LayerAiCacheProfileName { get; set; }
+            public string? LayerAiWebTabsJson { get; set; }
+            public string? LayerAiWebSplitMode { get; set; }
+            public string? LayerAiActiveTab { get; set; }
+            public bool LayerAiPromptHidden { get; set; }
+            public bool LayerAiSendModeOn { get; set; } = true;
+        }
+
+        public class SecondaryImageDto
+        {
+            public string? ImageFileName { get; set; }
+            public string? FilePath { get; set; }
+            public bool IsSelected { get; set; }
         }
 
         public class LayerMetadataDto
@@ -84,6 +100,14 @@ namespace FlowMy.Views.NodeControls
 
             // Dedicated filename in zip for deduplication
             public string? ImageFileName { get; set; }
+
+            // Layer AI settings specific to this layer
+            public string? LayerAiPrompt { get; set; }
+            public int LayerAiBatchSizeIndex { get; set; }
+            public int LayerAiAspectRatioIndex { get; set; }
+            public string? LayerAiCustomWidth { get; set; }
+            public string? LayerAiCustomHeight { get; set; }
+            public System.Collections.Generic.List<SecondaryImageDto> SecondaryImages { get; set; } = new();
         }
 
         // File Menu Handlers
@@ -210,11 +234,24 @@ namespace FlowMy.Views.NodeControls
 
         private string GetDefaultExportFileName(string fallbackPrefix = "flow_image")
         {
-            if (_node != null && !string.IsNullOrWhiteSpace(_node.ImageUrl))
+            // 1. Check active tab title or image title text block first
+            string? activeTitle = null;
+            if (_activeTabData != null && !string.IsNullOrWhiteSpace(_activeTabData.Title))
+            {
+                activeTitle = _activeTabData.Title;
+            }
+            else if (ImageTitleTextBlock != null && !string.IsNullOrWhiteSpace(ImageTitleTextBlock.Text))
+            {
+                activeTitle = ImageTitleTextBlock.Text;
+            }
+
+            if (!string.IsNullOrWhiteSpace(activeTitle) && 
+                activeTitle != "Chưa có ảnh" && 
+                activeTitle != "Đang tải ảnh...")
             {
                 try
                 {
-                    string filename = System.IO.Path.GetFileNameWithoutExtension(_node.ImageUrl);
+                    string filename = System.IO.Path.GetFileNameWithoutExtension(activeTitle);
                     if (!string.IsNullOrWhiteSpace(filename) && !filename.Contains(":/") && !filename.Contains("\\"))
                     {
                         return filename;
@@ -223,17 +260,53 @@ namespace FlowMy.Views.NodeControls
                 catch { }
             }
 
-            if (_node?.EditorDoc != null && !string.IsNullOrWhiteSpace(_node.EditorDoc.ProjectPath))
+            // 2. Check active tab's project path or image URL
+            if (_activeTabData != null)
             {
-                try
+                if (_activeTabData.EditorDoc != null && !string.IsNullOrWhiteSpace(_activeTabData.EditorDoc.ProjectPath))
                 {
-                    string filename = System.IO.Path.GetFileNameWithoutExtension(_node.EditorDoc.ProjectPath);
-                    if (!string.IsNullOrWhiteSpace(filename))
+                    try
                     {
-                        return filename;
+                        string filename = System.IO.Path.GetFileNameWithoutExtension(_activeTabData.EditorDoc.ProjectPath);
+                        if (!string.IsNullOrWhiteSpace(filename)) return filename;
                     }
+                    catch { }
                 }
-                catch { }
+                if (!string.IsNullOrWhiteSpace(_activeTabData.ImageUrl))
+                {
+                    try
+                    {
+                        string filename = System.IO.Path.GetFileNameWithoutExtension(_activeTabData.ImageUrl);
+                        if (!string.IsNullOrWhiteSpace(filename)) return filename;
+                    }
+                    catch { }
+                }
+            }
+
+            // 3. Fallback to _node properties
+            if (_node != null)
+            {
+                if (!string.IsNullOrWhiteSpace(_node.ImageUrl))
+                {
+                    try
+                    {
+                        string filename = System.IO.Path.GetFileNameWithoutExtension(_node.ImageUrl);
+                        if (!string.IsNullOrWhiteSpace(filename) && !filename.Contains(":/") && !filename.Contains("\\"))
+                        {
+                            return filename;
+                        }
+                    }
+                    catch { }
+                }
+                if (_node.EditorDoc != null && !string.IsNullOrWhiteSpace(_node.EditorDoc.ProjectPath))
+                {
+                    try
+                    {
+                        string filename = System.IO.Path.GetFileNameWithoutExtension(_node.EditorDoc.ProjectPath);
+                        if (!string.IsNullOrWhiteSpace(filename)) return filename;
+                    }
+                    catch { }
+                }
             }
 
             return $"{fallbackPrefix}_{DateTime.Now:ddMMyyyy_HHmmss}";
@@ -406,6 +479,12 @@ namespace FlowMy.Views.NodeControls
             return double.IsNaN(val) || double.IsInfinity(val) ? fallback : val;
         }
 
+        private class LayerPixelBuffer
+        {
+            public string LayerId { get; set; } = "";
+            public BitmapSource? FrozenBitmap { get; set; }
+        }
+
         private async void SaveProjectToPath(string filePath, Button? btn = null)
         {
             CommitBrushDrawingSession();
@@ -436,11 +515,22 @@ namespace FlowMy.Views.NodeControls
                     Width = _node.EditorDoc.Width,
                     Height = _node.EditorDoc.Height,
                     ForegroundColor = _node.EditorDoc.ForegroundColor.ToString(),
-                    BackgroundColor = _node.EditorDoc.BackgroundColor.ToString()
+                    BackgroundColor = _node.EditorDoc.BackgroundColor.ToString(),
+
+                    // Save Layer AI settings to Project DTO
+                    LayerAiWebUrl = _node.LayerAiWebUrl,
+                    LayerAiCacheProfileName = _node.LayerAiCacheProfileName,
+                    LayerAiWebTabsJson = _node.LayerAiWebTabsJson,
+                    LayerAiWebSplitMode = _node.LayerAiWebSplitMode,
+                    LayerAiActiveTab = _node.LayerAiActiveTab,
+                    LayerAiPromptHidden = _node.LayerAiPromptHidden,
+                    LayerAiSendModeOn = _node.LayerAiSendModeOn
                 };
 
                 // We need to collect layer data and encode bitmaps on UI thread
-                var layersToProcess = new System.Collections.Generic.List<(LayerMetadataDto Dto, byte[] PngBytes)>();
+                var layersToProcess = new System.Collections.Generic.List<(LayerMetadataDto Dto, string LayerId)>();
+                var layerBuffers = new System.Collections.Generic.Dictionary<string, LayerPixelBuffer>();
+                var secondaryImagesToProcess = new System.Collections.Generic.List<(string ImageFileName, BitmapSource Bitmap)>();
                 
                 // Helper to traverse and serialize
                 void AddLayersToDto(System.Collections.Generic.IEnumerable<EditorLayer> layers, System.Collections.Generic.List<LayerMetadataDto> targetList)
@@ -487,25 +577,91 @@ namespace FlowMy.Views.NodeControls
                             TextColor = l.TextColor.ToString(),
                             TextFontFamily = l.TextFontFamily ?? "Arial",
                             TextFontStyle = l.TextFontStyle ?? "Bold",
-                            TextAlignment = l.TextAlignment ?? "Left"
+                            TextAlignment = l.TextAlignment ?? "Left",
+
+                            // Save Layer AI properties specific to this layer
+                            LayerAiPrompt = l.LayerAiPrompt,
+                            LayerAiBatchSizeIndex = l.LayerAiBatchSizeIndex,
+                            LayerAiAspectRatioIndex = l.LayerAiAspectRatioIndex,
+                            LayerAiCustomWidth = l.LayerAiCustomWidth,
+                            LayerAiCustomHeight = l.LayerAiCustomHeight
                         };
+
+                        for (int i = 0; i < 4; i++)
+                        {
+                            var sec = l.LayerAiSecondaryImages[i];
+                            var secDto = new SecondaryImageDto
+                            {
+                                FilePath = sec.FilePath,
+                                IsSelected = sec.IsSelected
+                            };
+
+                            if (sec.Bitmap != null)
+                            {
+                                string entryName = $"layers/{l.Id}_sec_{i}.png";
+                                secDto.ImageFileName = entryName;
+
+                                var bmp = sec.Bitmap;
+                                if (!bmp.IsFrozen)
+                                {
+                                    try
+                                    {
+                                        var clonedBmp = bmp.Clone();
+                                        clonedBmp.Freeze();
+                                        bmp = clonedBmp;
+                                    }
+                                    catch
+                                    {
+                                        int wbW = bmp.PixelWidth;
+                                        int wbH = bmp.PixelHeight;
+                                        int wbStride = wbW * 4;
+                                        byte[] wbPixels = new byte[wbH * wbStride];
+                                        bmp.CopyPixels(wbPixels, wbStride, 0);
+                                        var clonedBmp = BitmapSource.Create(wbW, wbH, bmp.DpiX, bmp.DpiY, PixelFormats.Bgra32, null, wbPixels, wbStride);
+                                        clonedBmp.Freeze();
+                                        bmp = clonedBmp;
+                                    }
+                                }
+
+                                secondaryImagesToProcess.Add((entryName, bmp));
+                            }
+
+                            lDto.SecondaryImages.Add(secDto);
+                        }
 
                         if (l.ContentGeometry != null)
                         {
                             lDto.ContentGeometryMarkup = l.ContentGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
                         }
 
-                        // Encode PNG bytes on UI thread
-                        byte[] bytes;
-                        using (var ms = new MemoryStream())
+                        // Copy pixels and construct a frozen BitmapSource on UI thread (very fast)
+                        if (l.Bitmap != null)
                         {
-                            var encoder = new PngBitmapEncoder();
-                            encoder.Frames.Add(BitmapFrame.Create(l.Bitmap));
-                            encoder.Save(ms);
-                            bytes = ms.ToArray();
+                            int w = l.Bitmap.PixelWidth;
+                            int h = l.Bitmap.PixelHeight;
+                            int stride = l.Bitmap.BackBufferStride;
+                            byte[] pixels = new byte[h * stride];
+                            l.Bitmap.CopyPixels(pixels, stride, 0);
+
+                            var bitmapSource = BitmapSource.Create(
+                                w,
+                                h,
+                                l.Bitmap.DpiX,
+                                l.Bitmap.DpiY,
+                                PixelFormats.Bgra32,
+                                null,
+                                pixels,
+                                stride);
+                            bitmapSource.Freeze();
+
+                            layerBuffers[l.Id] = new LayerPixelBuffer
+                            {
+                                LayerId = l.Id,
+                                FrozenBitmap = bitmapSource
+                            };
                         }
 
-                        layersToProcess.Add((lDto, bytes));
+                        layersToProcess.Add((lDto, l.Id));
                         targetList.Add(lDto);
 
                         if (l.ChildLayers != null && l.ChildLayers.Count > 0)
@@ -520,6 +676,48 @@ namespace FlowMy.Views.NodeControls
                 // 2. Offload compression and writing to a background thread
                 await System.Threading.Tasks.Task.Run(() =>
                 {
+                    // Encode PNG bytes in parallel on background thread pool
+                    var encodedPngs = new System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>();
+
+                    System.Threading.Tasks.Parallel.ForEach(layerBuffers.Values, buffer =>
+                    {
+                        if (buffer.FrozenBitmap == null) return;
+                        try
+                        {
+                            using (var ms = new MemoryStream())
+                            {
+                                var encoder = new PngBitmapEncoder();
+                                encoder.Frames.Add(BitmapFrame.Create(buffer.FrozenBitmap));
+                                encoder.Save(ms);
+                                encodedPngs[buffer.LayerId] = ms.ToArray();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error encoding layer {buffer.LayerId}: {ex.Message}");
+                        }
+                    });
+
+                    // Encode secondary images in parallel
+                    var encodedSecPngs = new System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>();
+                    System.Threading.Tasks.Parallel.ForEach(secondaryImagesToProcess, item =>
+                    {
+                        try
+                        {
+                            using (var ms = new MemoryStream())
+                            {
+                                var encoder = new PngBitmapEncoder();
+                                encoder.Frames.Add(BitmapFrame.Create(item.Bitmap));
+                                encoder.Save(ms);
+                                encodedSecPngs[item.ImageFileName] = ms.ToArray();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error encoding secondary image: {ex.Message}");
+                        }
+                    });
+
                     using (var fs = new FileStream(filePath, FileMode.Create))
                     using (var archive = new ZipArchive(fs, ZipArchiveMode.Create))
                     {
@@ -527,11 +725,17 @@ namespace FlowMy.Views.NodeControls
 
                         foreach (var item in layersToProcess)
                         {
+                            string layerId = item.LayerId;
+                            if (!encodedPngs.TryGetValue(layerId, out var pngBytes))
+                            {
+                                continue;
+                            }
+
                             // Compute SHA256 of PNG bytes
                             string hash;
                             using (var sha = System.Security.Cryptography.SHA256.Create())
                             {
-                                var hashBytes = sha.ComputeHash(item.PngBytes);
+                                var hashBytes = sha.ComputeHash(pngBytes);
                                 hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
                             }
 
@@ -542,11 +746,12 @@ namespace FlowMy.Views.NodeControls
                             }
                             else
                             {
-                                entryName = $"layers/{item.Dto.Id}.png";
-                                var imgEntry = archive.CreateEntry(entryName);
+                                entryName = $"layers/{layerId}.png";
+                                // PNG is already compressed, store it without extra deflate compression to save time
+                                var imgEntry = archive.CreateEntry(entryName, CompressionLevel.NoCompression);
                                 using (var entryStream = imgEntry.Open())
                                 {
-                                    entryStream.Write(item.PngBytes, 0, item.PngBytes.Length);
+                                    entryStream.Write(pngBytes, 0, pngBytes.Length);
                                 }
                                 savedImages[hash] = entryName;
                             }
@@ -554,8 +759,21 @@ namespace FlowMy.Views.NodeControls
                             item.Dto.ImageFileName = entryName;
                         }
 
+                        // Write secondary images to Zip Archive
+                        foreach (var item in secondaryImagesToProcess)
+                        {
+                            if (encodedSecPngs.TryGetValue(item.ImageFileName, out var pngBytes))
+                            {
+                                var entry = archive.CreateEntry(item.ImageFileName, CompressionLevel.NoCompression);
+                                using (var entryStream = entry.Open())
+                                {
+                                    entryStream.Write(pngBytes, 0, pngBytes.Length);
+                                }
+                            }
+                        }
+
                         // Save project.json to zip
-                        var jsonEntry = archive.CreateEntry("project.json");
+                        var jsonEntry = archive.CreateEntry("project.json", CompressionLevel.Fastest);
                         using (var entryStream = jsonEntry.Open())
                         using (var writer = new StreamWriter(entryStream))
                         {
@@ -750,8 +968,39 @@ namespace FlowMy.Views.NodeControls
                         TextFontSize = lDto.TextFontSize,
                         TextFontFamily = lDto.TextFontFamily ?? "Arial",
                         TextFontStyle = lDto.TextFontStyle ?? "Bold",
-                        TextAlignment = lDto.TextAlignment ?? "Left"
+                        TextAlignment = lDto.TextAlignment ?? "Left",
+
+                        // Restore layer-specific Layer AI configurations
+                        LayerAiPrompt = lDto.LayerAiPrompt ?? string.Empty,
+                        LayerAiBatchSizeIndex = lDto.LayerAiBatchSizeIndex,
+                        LayerAiAspectRatioIndex = lDto.LayerAiAspectRatioIndex,
+                        LayerAiCustomWidth = lDto.LayerAiCustomWidth ?? string.Empty,
+                        LayerAiCustomHeight = lDto.LayerAiCustomHeight ?? string.Empty
                     };
+
+                    if (lDto.SecondaryImages != null)
+                    {
+                        for (int i = 0; i < Math.Min(4, lDto.SecondaryImages.Count); i++)
+                        {
+                            var secDto = lDto.SecondaryImages[i];
+                            layer.LayerAiSecondaryImages[i].FilePath = secDto.FilePath;
+                            layer.LayerAiSecondaryImages[i].IsSelected = secDto.IsSelected;
+
+                            if (!string.IsNullOrEmpty(secDto.ImageFileName) && layerBytesMap.TryGetValue(secDto.ImageFileName, out var secPngBytes))
+                            {
+                                layer.LayerAiSecondaryImages[i].PngBytes = secPngBytes;
+                                try
+                                {
+                                    using (var ms = new MemoryStream(secPngBytes))
+                                    {
+                                        var dec = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                        layer.LayerAiSecondaryImages[i].Bitmap = dec.Frames[0];
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
 
                     if (!string.IsNullOrEmpty(lDto.TextColor))
                     {
@@ -833,6 +1082,18 @@ namespace FlowMy.Views.NodeControls
                 _node.EditorDoc = doc;
                 EditorPanel.SetDocument(doc);
                 CenterImageOnCanvas(doc.Width, doc.Height);
+
+                // Restore Layer AI settings from DTO to Node
+                if (dto != null)
+                {
+                    if (dto.LayerAiWebUrl != null) _node.LayerAiWebUrl = dto.LayerAiWebUrl;
+                    if (dto.LayerAiCacheProfileName != null) _node.LayerAiCacheProfileName = dto.LayerAiCacheProfileName;
+                    if (dto.LayerAiWebTabsJson != null) _node.LayerAiWebTabsJson = dto.LayerAiWebTabsJson;
+                    if (dto.LayerAiWebSplitMode != null) _node.LayerAiWebSplitMode = dto.LayerAiWebSplitMode;
+                    if (dto.LayerAiActiveTab != null) _node.LayerAiActiveTab = dto.LayerAiActiveTab;
+                    _node.LayerAiPromptHidden = dto.LayerAiPromptHidden;
+                    _node.LayerAiSendModeOn = dto.LayerAiSendModeOn;
+                }
 
                 // Set title and sync active tab
                 if (ImageTitleTextBlock != null)

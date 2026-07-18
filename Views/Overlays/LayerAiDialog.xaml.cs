@@ -105,6 +105,7 @@ namespace FlowMy.Views.Overlays
 
             this.Closed += (s, e) =>
             {
+                SaveActiveLayerState();
                 if (_ownerWindow != null)
                 {
                     _ownerWindow.Topmost = true;
@@ -170,7 +171,25 @@ namespace FlowMy.Views.Overlays
         private LayerAiState CreateStateForLayer(EditorLayer layer)
         {
             var state = new LayerAiState();
-            // Default prompt
+            
+            // 1. If the layer already has saved LayerAiPrompt, restore state from it!
+            if (!string.IsNullOrEmpty(layer.LayerAiPrompt))
+            {
+                state.Prompt = layer.LayerAiPrompt;
+                state.BatchSizeIndex = layer.LayerAiBatchSizeIndex;
+                state.AspectRatioIndex = layer.LayerAiAspectRatioIndex;
+                state.CustomWidth = layer.LayerAiCustomWidth;
+                state.CustomHeight = layer.LayerAiCustomHeight;
+                for (int i = 0; i < 4; i++)
+                {
+                    state.SecondaryImages[i].FilePath = layer.LayerAiSecondaryImages[i].FilePath;
+                    state.SecondaryImages[i].IsSelected = layer.LayerAiSecondaryImages[i].IsSelected;
+                    state.SecondaryImages[i].Bitmap = layer.LayerAiSecondaryImages[i].Bitmap;
+                }
+                return state;
+            }
+
+            // 2. Otherwise, fallback to dynamic output values or node-level configurations
             var savedPrompt = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
             state.Prompt = !string.IsNullOrEmpty(savedPrompt) ? savedPrompt : (_node.ProcessorPrompt ?? string.Empty);
 
@@ -233,6 +252,43 @@ namespace FlowMy.Views.Overlays
                 state.SecondaryImages[i].Bitmap = _secondaryImages[i].Bitmap;
                 state.SecondaryImages[i].FilePath = _secondaryImages[i].FilePath;
                 state.SecondaryImages[i].IsSelected = _secondaryImages[i].IsSelected;
+            }
+
+            // Sync to the EditorLayer properties!
+            _activeLayer.LayerAiPrompt = state.Prompt;
+            _activeLayer.LayerAiBatchSizeIndex = state.BatchSizeIndex;
+            _activeLayer.LayerAiAspectRatioIndex = state.AspectRatioIndex;
+            _activeLayer.LayerAiCustomWidth = state.CustomWidth;
+            _activeLayer.LayerAiCustomHeight = state.CustomHeight;
+
+            for (int i = 0; i < 4; i++)
+            {
+                _activeLayer.LayerAiSecondaryImages[i].FilePath = state.SecondaryImages[i].FilePath;
+                _activeLayer.LayerAiSecondaryImages[i].IsSelected = state.SecondaryImages[i].IsSelected;
+                _activeLayer.LayerAiSecondaryImages[i].Bitmap = state.SecondaryImages[i].Bitmap;
+
+                // Sync PNG bytes
+                if (state.SecondaryImages[i].Bitmap is BitmapSource bmp)
+                {
+                    try
+                    {
+                        using (var ms = new MemoryStream())
+                        {
+                            var enc = new PngBitmapEncoder();
+                            enc.Frames.Add(BitmapFrame.Create(bmp));
+                            enc.Save(ms);
+                            _activeLayer.LayerAiSecondaryImages[i].PngBytes = ms.ToArray();
+                        }
+                    }
+                    catch
+                    {
+                        _activeLayer.LayerAiSecondaryImages[i].PngBytes = null;
+                    }
+                }
+                else
+                {
+                    _activeLayer.LayerAiSecondaryImages[i].PngBytes = null;
+                }
             }
         }
 
@@ -3015,10 +3071,8 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void BtnToggleSendMode_Click(object sender, RoutedEventArgs e)
+        private void ApplySendModeUi()
         {
-            _sendModeOn = !_sendModeOn;
-            
             var onStyle = FindResource("SuccessButton") as Style;
             var offStyle = FindResource("DangerButton") as Style;
             string text = _sendModeOn ? "Gửi AI: ON" : "Gửi AI: OFF";
@@ -3072,12 +3126,24 @@ namespace FlowMy.Views.Overlays
             UpdatePreviewImage();
         }
 
+        private void BtnToggleSendMode_Click(object sender, RoutedEventArgs e)
+        {
+            _sendModeOn = !_sendModeOn;
+            if (_node != null)
+            {
+                _node.LayerAiSendModeOn = _sendModeOn;
+            }
+            ApplySendModeUi();
+        }
+
         private bool _promptHidden = false;
 
-        private void BtnTogglePrompt_Click(object sender, RoutedEventArgs e)
+        private void ApplyPromptHiddenUi()
         {
-            _promptHidden = !_promptHidden;
-            BtnTogglePrompt.Content = _promptHidden ? "Hiện Prompt" : "Ẩn Prompt";
+            if (BtnTogglePrompt != null)
+            {
+                BtnTogglePrompt.Content = _promptHidden ? "Hiện Prompt" : "Ẩn Prompt";
+            }
 
             // Update WebView Prompt Layout
             if (RowWvBrowser != null && RowWvGap != null && RowWvPrompt != null && GridPromptWvContainer != null)
@@ -3117,6 +3183,17 @@ namespace FlowMy.Views.Overlays
                 }
             }
         }
+
+        private void BtnTogglePrompt_Click(object sender, RoutedEventArgs e)
+        {
+            _promptHidden = !_promptHidden;
+            if (_node != null)
+            {
+                _node.LayerAiPromptHidden = _promptHidden;
+            }
+            ApplyPromptHiddenUi();
+        }
+
 
         private void BtnApply_Click(object sender, RoutedEventArgs e)
         {
@@ -3465,7 +3542,14 @@ namespace FlowMy.Views.Overlays
             // Force SwitchToTab to run fully by setting _activeTab to a different state first
             _activeTab = (savedTab == ActiveTab.Prompt) ? ActiveTab.WebBrowser : ActiveTab.Prompt;
             SwitchToTab(savedTab);
-            UpdateSendButtonsState();
+
+            // Restore prompt hidden state
+            _promptHidden = _node.LayerAiPromptHidden;
+            ApplyPromptHiddenUi();
+
+            // Restore AI Send Mode
+            _sendModeOn = _node.LayerAiSendModeOn;
+            ApplySendModeUi();
         }
 
         private void RefreshRelatedNodeDialogs()

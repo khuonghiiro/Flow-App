@@ -512,6 +512,20 @@ namespace FlowMy.Models.ImageEditor
             copy.LayerAngle = LayerAngle;
             copy.LayerTranslateX = LayerTranslateX;
             copy.LayerTranslateY = LayerTranslateY;
+
+            // Copy Layer AI configurations
+            copy.LayerAiPrompt = LayerAiPrompt;
+            copy.LayerAiBatchSizeIndex = LayerAiBatchSizeIndex;
+            copy.LayerAiAspectRatioIndex = LayerAiAspectRatioIndex;
+            copy.LayerAiCustomWidth = LayerAiCustomWidth;
+            copy.LayerAiCustomHeight = LayerAiCustomHeight;
+            for (int i = 0; i < 4; i++)
+            {
+                copy.LayerAiSecondaryImages[i].PngBytes = LayerAiSecondaryImages[i].PngBytes;
+                copy.LayerAiSecondaryImages[i].FilePath = LayerAiSecondaryImages[i].FilePath;
+                copy.LayerAiSecondaryImages[i].IsSelected = LayerAiSecondaryImages[i].IsSelected;
+                copy.LayerAiSecondaryImages[i].Bitmap = LayerAiSecondaryImages[i].Bitmap;
+            }
             
             if (ParentLayer != null && ParentLayer.ContentGeometry != null)
             {
@@ -757,5 +771,28 @@ namespace FlowMy.Models.ImageEditor
             Bitmap = new WriteableBitmap(converted);
             InvalidateThumbnail();
         }
+
+        // Layer AI settings specific to this layer
+        public string LayerAiPrompt { get; set; } = string.Empty;
+        public int LayerAiBatchSizeIndex { get; set; } = 2; // Default size index (usually 3)
+        public int LayerAiAspectRatioIndex { get; set; } = 3; // Default ratio (1:1)
+        public string LayerAiCustomWidth { get; set; } = string.Empty;
+        public string LayerAiCustomHeight { get; set; } = string.Empty;
+
+        public class LayerAiSecondaryImage
+        {
+            public byte[]? PngBytes { get; set; }
+            public string? FilePath { get; set; }
+            public bool IsSelected { get; set; } = true;
+            public BitmapSource? Bitmap { get; set; }
+        }
+
+        public LayerAiSecondaryImage[] LayerAiSecondaryImages { get; } = new LayerAiSecondaryImage[4]
+        {
+            new LayerAiSecondaryImage(),
+            new LayerAiSecondaryImage(),
+            new LayerAiSecondaryImage(),
+            new LayerAiSecondaryImage()
+        };
     }
 }
