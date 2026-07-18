@@ -339,6 +339,8 @@ namespace FlowMy.Controls
                 "ShowInputMsg" => "user-message regular",
                 "BorderHighlight" => "bolt-lightning sharp-light",
                 "ActionCanVas" => "display regular",
+                "DynamicUi" => "block-question duotone-regular",
+                "DynamicUiNode" => "block-question duotone-regular",
                 _ => "cog"
             };
         }

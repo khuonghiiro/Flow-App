@@ -1,4 +1,4 @@
-﻿using FlowMy.Services.Geometry;
+using FlowMy.Services.Geometry;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Interfaces;
 using FlowMy.Services.Layout;
@@ -96,6 +96,7 @@ namespace FlowMy.Services
             services.AddScoped<BorderHighlightNodeRenderer>();
             services.AddScoped<EmbedApplicationNodeRenderer>();
             services.AddScoped<ShowInputMsgNodeRenderer>();
+            services.AddScoped<DynamicUiNodeRenderer>();
             services.AddScoped<ActionCanVasNodeRenderer>();
             // Không cần renderer riêng cho Break/Continue vì chúng dùng default UI
             services.AddScoped<NodeRenderer>();

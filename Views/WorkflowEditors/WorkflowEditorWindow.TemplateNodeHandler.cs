@@ -383,6 +383,8 @@ namespace FlowMy.Views
                 "GitSource" => "git-alt brands",
                                 "ActionCanVasNode" => "square-share-nodes light",
                                 "ShowInputMsgNode" => "user-message regular",
+                                "DynamicUi" => "block-question duotone-regular",
+                                "DynamicUiNode" => "block-question duotone-regular",
                 _ => "circle duotone"
             };
         }

@@ -66,6 +66,8 @@ namespace FlowMy.Workflow
                 "ActionCanVasNode" => CreateActionCanVasNode(x, y),
                 "ShowInputMsg" => CreateShowInputMsgNode(x, y),
                 "ShowInputMsgNode" => CreateShowInputMsgNode(x, y),
+                "DynamicUi" => CreateDynamicUiNode(x, y),
+                "DynamicUiNode" => CreateDynamicUiNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1648,6 +1650,32 @@ namespace FlowMy.Workflow
             node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
             
             // Rebuild dynamic outputs is already called in constructor of ShowInputMsgNode to initialize "result" output.
+
+            return node;
+        }
+
+        private WorkflowNode CreateDynamicUiNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("PeriwinkleBlueBrush")
+                ?? _colorThemeService.GetBrush("PrimaryBrush")
+                ?? Brushes.MediumSlateBlue;
+
+            var node = new FlowMy.Models.Nodes.DynamicUiNode
+            {
+                Id = $"Node_DynamicUi_{Guid.NewGuid()}",
+                Title = "Dynamic UI Form",
+                X = x - 30,
+                Y = y - 30,
+                ColorKey = "PeriwinkleBlue",
+                NodeBrush = nodeBrush,
+                Type = NodeType.DynamicUi
+            };
+
+            node.Ports.Clear();
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
+
+            node.RebuildDynamicPorts();
 
             return node;
         }

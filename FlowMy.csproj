@@ -83,6 +83,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Include="lib\x64\sciter.dll">
+			<Link>sciter.dll</Link>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- Copy public folder to output directory for default configurations -->
 		<Content Include="public\**\*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -94,6 +101,7 @@
 		<PackageReference Include="AvalonEdit" Version="6.3.1.120" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="CurlThin" Version="0.0.7" />
+		<PackageReference Include="EmptyFlow.SciterAPI" Version="1.2.8" />
 		<PackageReference Include="ExcelDataReader" Version="3.7.0" />
 		<PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
 

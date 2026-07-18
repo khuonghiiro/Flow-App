@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -163,6 +163,59 @@ namespace FlowMy.Converters
                 return Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.DodgerBlue;
             }
             return Application.Current.TryFindResource("SecondaryBrush") ?? Brushes.Gray;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// Returns Visible if not null, Collapsed if null.
+    /// </summary>
+    public class NullToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value != null ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// Returns Collapsed if not null, Visible if null.
+    /// </summary>
+    public class NullToVisibilityInverseConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value != null ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// Returns Visible if enum string matches parameter, Collapsed otherwise.
+    /// </summary>
+    public class EnumToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null || parameter == null) return Visibility.Collapsed;
+            var valString = value.ToString();
+            var paramString = parameter.ToString();
+            return string.Equals(valString, paramString, StringComparison.OrdinalIgnoreCase) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

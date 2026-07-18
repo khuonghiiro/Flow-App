@@ -1154,6 +1154,7 @@ namespace FlowMy.ViewModels
                 NodeType.LoopContext => "arrows-spin duotone",
                 NodeType.Condition => "list-tree sharp-light",
                 NodeType.GitSource => "git-alt brands",
+                NodeType.DynamicUi => "block-question duotone-regular",
                 _ => "circle-nodes duotone-regular"
             };
         }

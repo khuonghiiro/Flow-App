@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using System.Windows;
@@ -52,6 +52,7 @@ namespace FlowMy.Services.Rendering
         private readonly ActionCanVasNodeRenderer _actionCanVasNodeRenderer;
         private readonly ShowInputMsgNodeRenderer _showInputMsgNodeRenderer;
         private readonly EmbedApplicationNodeRenderer _embedApplicationNodeRenderer;
+        private readonly DynamicUiNodeRenderer _dynamicUiNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
         // Dùng cho các node chỉ cần delegate thuần túy (không có inline logic đặc biệt).
@@ -99,7 +100,8 @@ namespace FlowMy.Services.Rendering
             BorderHighlightNodeRenderer borderHighlightNodeRenderer,
             ActionCanVasNodeRenderer actionCanVasNodeRenderer,
             ShowInputMsgNodeRenderer showInputMsgNodeRenderer,
-            EmbedApplicationNodeRenderer embedApplicationNodeRenderer
+            EmbedApplicationNodeRenderer embedApplicationNodeRenderer,
+            DynamicUiNodeRenderer dynamicUiNodeRenderer
             )
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -142,6 +144,7 @@ namespace FlowMy.Services.Rendering
             _actionCanVasNodeRenderer = actionCanVasNodeRenderer ?? throw new ArgumentNullException(nameof(actionCanVasNodeRenderer));
             _showInputMsgNodeRenderer = showInputMsgNodeRenderer ?? throw new ArgumentNullException(nameof(showInputMsgNodeRenderer));
             _embedApplicationNodeRenderer = embedApplicationNodeRenderer ?? throw new ArgumentNullException(nameof(embedApplicationNodeRenderer));
+            _dynamicUiNodeRenderer = dynamicUiNodeRenderer ?? throw new ArgumentNullException(nameof(dynamicUiNodeRenderer));
 
             BuildRendererMap();
         }
@@ -192,6 +195,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(FlowMy.Models.Nodes.ActionCanVasNode)] = _actionCanVasNodeRenderer,
                 [typeof(FlowMy.Models.Nodes.ShowInputMsgNode)] = _showInputMsgNodeRenderer,
                 [typeof(EmbedApplicationNode)]  = _embedApplicationNodeRenderer,
+                [typeof(FlowMy.Models.Nodes.DynamicUiNode)] = _dynamicUiNodeRenderer,
             };
         }
 

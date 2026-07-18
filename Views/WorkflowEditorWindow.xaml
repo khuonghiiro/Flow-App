@@ -1223,6 +1223,51 @@ Tag="ListOut">
                                                             Fill="{DynamicResource TextOnEspressoBrownBrush}"/>
                                 </Grid>
                             </Border>
+
+                            <!-- Dynamic UI Form Node -->
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource PeriwinkleBlueBrush}"
+                                    Tag="DynamicUiNode"
+                                    MouseDown="NodeTemplate_MouseDown"
+                                    MouseMove="NodeTemplate_MouseMove"
+                                    MouseUp="NodeTemplate_MouseUp"
+                                    MouseEnter="NodeTemplate_MouseEnter"
+                                    MouseLeave="NodeTemplate_MouseLeave">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock Text="Dynamic UI Form" FontWeight="Bold"/>
+                                            <TextBlock Text="Tự thiết kế giao diện động (Form) bằng WPF controls gốc cực nhẹ và mượt."
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource PeriwinkleBlueBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Dynamic UI Form"
+                                                                   Foreground="{DynamicResource TextOnPeriwinkleBlueBrush}"
+                                                                   FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Tự thiết kế giao diện nhập liệu (TextBox, CheckBox, ComboBox, Slider, DatePicker). Có cổng vào/ra động để đồng bộ dữ liệu."
+                                                                   Foreground="{DynamicResource TextOnPeriwinkleBlueBrush}"
+                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='block-question duotone-regular'}"
+                                                            Fill="{DynamicResource TextOnPeriwinkleBlueBrush}"/>
+                                </Grid>
+                            </Border>
                             
                             <!-- Storage Node (global data store) -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"

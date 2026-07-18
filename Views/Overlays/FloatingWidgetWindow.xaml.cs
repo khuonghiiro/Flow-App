@@ -82,6 +82,7 @@ public partial class FloatingWidgetWindow : Window
     private bool _webViewContentLoaded;
     private VideoProcessingNodeContentControl? _videoNodeContent;
     private ImageProcessingNodeContentControl? _imageNodeContent;
+    private FlowMy.Controls.SciterEmbeddedControl? _sciterNodeContent;
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
     private readonly List<(string SessionId, string Key, string Value)> _pendingAsyncBuffer = new();
@@ -218,6 +219,10 @@ public partial class FloatingWidgetWindow : Window
         else if (_node is ImageProcessingNode)
         {
             EnsureNativeImageNodeContent();
+        }
+        else if (_node is DynamicUiNode)
+        {
+            EnsureSciterNodeContent();
         }
 
         AttachManualRunObservers();
@@ -516,6 +521,8 @@ public partial class FloatingWidgetWindow : Window
             _videoNodeContent.Visibility = Visibility.Collapsed;
         if (_imageNodeContent != null)
             _imageNodeContent.Visibility = Visibility.Collapsed;
+        if (_sciterNodeContent != null)
+            _sciterNodeContent.Visibility = Visibility.Collapsed;
 
         ApplyIdleAnimation();
         ApplyNativeResizeChromeSettings();
@@ -624,6 +631,14 @@ public partial class FloatingWidgetWindow : Window
             {
                 _imageNodeContent.Visibility = Visibility.Visible;
                 _imageNodeContent.SyncWidgetExpandedFullscreen(_isWidgetMaximized);
+            }
+        }
+        else if (_node is DynamicUiNode)
+        {
+            EnsureSciterNodeContent();
+            if (_sciterNodeContent != null)
+            {
+                _sciterNodeContent.Visibility = Visibility.Visible;
             }
         }
 
@@ -2042,6 +2057,32 @@ public partial class FloatingWidgetWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"[FloatingWidget] Native content init error: {ex.Message}");
+        }
+    }
+
+    private void EnsureSciterNodeContent()
+    {
+        if (_sciterNodeContent != null || _node is not DynamicUiNode dynamicNode) return;
+        try
+        {
+            var contentGrid = ContentArea.Child as Grid;
+            if (contentGrid == null)
+            {
+                contentGrid = new Grid();
+                ContentArea.Child = contentGrid;
+            }
+
+            _sciterNodeContent = new FlowMy.Controls.SciterEmbeddedControl(dynamicNode)
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed
+            };
+            contentGrid.Children.Add(_sciterNodeContent);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Sciter content init error: {ex.Message}");
         }
     }
 

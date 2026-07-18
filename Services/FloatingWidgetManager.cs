@@ -184,7 +184,7 @@ public sealed class FloatingWidgetManager
     {
         // "Chuyển host" visual: ẩn node trên canvas khi widget đang hiển thị cùng node
         // (tránh hai bản UI; với HtmlUi/Web còn tránh tranh WebView2 / drain queue).
-        if (node is not HtmlUiNode && node is not WebNode && node is not VideoProcessingNode && node is not ImageProcessingNode && node is not ShowInputMsgNode)
+        if (node is not HtmlUiNode && node is not WebNode && node is not VideoProcessingNode && node is not ImageProcessingNode && node is not ShowInputMsgNode && node is not DynamicUiNode)
             return;
 
         if (_hiddenNodeVisuals.ContainsKey(node.Id)) return;

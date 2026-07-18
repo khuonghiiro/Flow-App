@@ -910,6 +910,9 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case ShowInputMsgNode showInputMsgNode:
                 RestoreShowInputMsgNodeProperties(showInputMsgNode, properties);
                 break;
+            case DynamicUiNode dynamicUiNode:
+                RestoreDynamicUiNodeProperties(dynamicUiNode, properties);
+                break;
             case FileDownloadNode fdNode:
                 RestoreFileDownloadNodeProperties(fdNode, properties);
                 break;
@@ -996,6 +999,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case FolderNode folderNode: GetFolderNodeProperties(folderNode, dict); break;
             case HtmlUiNode htmlUiNode: GetHtmlUiNodeProperties(htmlUiNode, dict); break;
             case ShowInputMsgNode showInputMsgNode: GetShowInputMsgNodeProperties(showInputMsgNode, dict); break;
+            case DynamicUiNode dynamicUiNode: GetDynamicUiNodeProperties(dynamicUiNode, dict); break;
             case HttpRequestNode httpRequestNode: GetHttpRequestNodeProperties(httpRequestNode, dict); break;
             case OutputNode outputNode: GetOutputNodeProperties(outputNode, dict); break;
             case MacroRecorderNode macroNode: GetMacroRecorderNodeProperties(macroNode, dict); break;

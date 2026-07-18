@@ -592,6 +592,15 @@ namespace FlowMy.Views
                 dstShowMsg.TitleColorKey = srcShowMsg.TitleColorKey;
                 dstShowMsg.NotifyTitleChanged();
             }
+            else if (source is DynamicUiNode srcDynUi && node is DynamicUiNode dstDynUi)
+            {
+                dstDynUi.Fields.Clear();
+                foreach (var f in srcDynUi.Fields)
+                {
+                    dstDynUi.Fields.Add(f.Clone());
+                }
+                dstDynUi.RebuildDynamicPorts();
+            }
             else if (source is FolderNode srcFolder && node is FolderNode dstFolder)
             {
                 dstFolder.RootFolderPath = srcFolder.RootFolderPath ?? string.Empty;
