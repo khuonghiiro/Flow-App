@@ -13,8 +13,8 @@
 		<ProduceReferenceAssembly>true</ProduceReferenceAssembly>
 
 		<!-- Version được đồng bộ cho cả AssemblyVersion và FileVersion -->
-		<AssemblyVersion>1.0.2</AssemblyVersion>
-		<FileVersion>1.0.2</FileVersion>
+		<AssemblyVersion>1.0.3</AssemblyVersion>
+		<FileVersion>1.0.3</FileVersion>
 
 		<!-- Assembly information -->
 		<AssemblyName>FlowMy</AssemblyName>

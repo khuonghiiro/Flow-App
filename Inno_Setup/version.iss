@@ -1,2 +1,2 @@
 ﻿; Auto-generated version file
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
