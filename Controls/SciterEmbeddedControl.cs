@@ -19,6 +19,8 @@ namespace FlowMy.Controls
     {
         private readonly ISciterNode _node;
         private readonly IWorkflowEditorHost? _editorHost;
+        public event EventHandler<System.Collections.Generic.Dictionary<string, object?>>? FormSubmitted;
+        public event EventHandler? FormCancelled;
         private SciterAPIHost? _host;
         private IntPtr _sciterWindow = IntPtr.Zero;
         private IntPtr _rootSciterWindow = IntPtr.Zero;
@@ -236,8 +238,17 @@ namespace FlowMy.Controls
                                 }
                                 catch { }
                             }
+
+                            if (methodName == "submitForm")
+                            {
+                                FormSubmitted?.Invoke(this, new System.Collections.Generic.Dictionary<string, object?>(_node.ResolvedOutputs));
+                            }
                         }
                     }
+                }
+                else if (methodName == "cancelForm")
+                {
+                    FormCancelled?.Invoke(this, EventArgs.Empty);
                 }
                 else if (methodName == "getPrefilledValue")
                 {
@@ -383,6 +394,17 @@ namespace FlowMy.Controls
 </html>";
 
             _host.LoadHtml(combinedHtml, _sciterWindow);
+            
+            var resultVal = _host.CreateNullValue();
+            _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out resultVal);
+
+            SetZoom(_currentZoom);
+        }
+
+        public void LoadHtml(string htmlContent)
+        {
+            if (_host == null || _sciterWindow == IntPtr.Zero) return;
+            _host.LoadHtml(htmlContent, _sciterWindow);
             
             var resultVal = _host.CreateNullValue();
             _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out resultVal);

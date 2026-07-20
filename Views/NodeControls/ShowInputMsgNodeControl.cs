@@ -8,6 +8,7 @@ using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using EmptyFlow.SciterAPI;
 using FlowMy.Helpers;
+using FlowMy.Services.Workflow.NodeExecutors;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -507,44 +508,125 @@ namespace FlowMy.Views.NodeControls
         }
     }
 
-    public class ShowInputMsgPopupWindow
+    public class ShowInputMsgPopupWindow : Window
     {
-        private ShowInputMsgNode _node;
-        private readonly TaskCompletionSource<bool> _tcs = new();
-        private SciterAPIHost? _host;
-        private IntPtr _window = IntPtr.Zero;
-        private IntPtr _previousForegroundHwnd = IntPtr.Zero;
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-
-        [DllImport("user32.dll")]
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
-        private const int GWL_STYLE = -16;
-        private const int GWL_EXSTYLE = -20;
-        private const int WS_POPUP = unchecked((int)0x80000000);
-
-        private const uint SWP_NOMOVE = 0x0002;
-        private const uint SWP_NOSIZE = 0x0001;
-        private const uint SWP_NOZORDER = 0x0004;
-        private const uint SWP_NOACTIVATE = 0x0010;
-        private const uint SWP_FRAMECHANGED = 0x0020;
+        private readonly SciterEmbeddedControl _sciterControl;
+        private TaskCompletionSource<bool>? _tcs;
+        private ShowInputMsgNode _node;
+        private bool _isForceClosing = false;
+        private bool _isShownAndActive = false;
+        private DateTime _showTime = DateTime.MinValue;
+        private IntPtr _previousForegroundHwnd = IntPtr.Zero;
 
         public ShowInputMsgPopupWindow(ShowInputMsgNode node)
         {
             _node = node;
-        }
 
-        public void UpdateNode(ShowInputMsgNode node)
-        {
-            _node = node;
+            Title = "Nhập Dữ Liệu";
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Background = Brushes.Transparent;
+            Topmost = true;
+            ShowInTaskbar = false;
+            SizeToContent = SizeToContent.Manual;
+            Width = node.Width;
+            Height = node.Height;
+
+            var border = new Border
+            {
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1e293b")),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#334155")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                ClipToBounds = true
+            };
+
+            var shadow = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = System.Windows.Media.Colors.Black,
+                BlurRadius = 15,
+                ShadowDepth = 3,
+                Opacity = 0.5
+            };
+            border.Effect = shadow;
+
+            _sciterControl = new SciterEmbeddedControl(node);
+            
+            _sciterControl.FormSubmitted += (s, outputs) =>
+            {
+                System.Diagnostics.Debug.WriteLine("[ShowInputMsg] Form submitted!");
+                _tcs?.TrySetResult(true);
+                ForceClose();
+            };
+
+            _sciterControl.FormCancelled += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine("[ShowInputMsg] Form cancelled!");
+                _tcs?.TrySetResult(false);
+                ForceClose();
+            };
+
+            border.Child = _sciterControl;
+            Content = border;
+
+            Activated += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window activated. Id={_node?.Id}");
+                _isShownAndActive = true;
+            };
+
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Escape pressed. Hiding window. Id={_node?.Id}");
+                    _isShownAndActive = false;
+                    RestorePreviousForegroundWindow();
+                    Hide();
+                    _tcs?.TrySetResult(false);
+                }
+            };
+
+            Deactivated += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window deactivated (isShownAndActive={_isShownAndActive}). Id={_node?.Id}");
+                if (!_isShownAndActive) return;
+                
+                if ((DateTime.UtcNow - _showTime).TotalMilliseconds < 500)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window deactivated too quickly ({(DateTime.UtcNow - _showTime).TotalMilliseconds}ms). Ignoring. Id={_node?.Id}");
+                    return;
+                }
+                
+                _isShownAndActive = false;
+                RestorePreviousForegroundWindow();
+                Hide();
+                _tcs?.TrySetResult(false);
+            };
+
+            Closed += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window closed. Id={_node?.Id}");
+                _isShownAndActive = false;
+                _tcs?.TrySetResult(false);
+                RestorePreviousForegroundWindow();
+                try
+                {
+                    _sciterControl.Dispose();
+                }
+                catch { }
+            };
+
+            IsVisibleChanged += (s, e) =>
+            {
+                if (IsVisible == false)
+                {
+                    RestorePreviousForegroundWindow();
+                }
+            };
         }
 
         public void RestorePreviousForegroundWindow()
@@ -553,172 +635,83 @@ namespace FlowMy.Views.NodeControls
             {
                 if (_previousForegroundHwnd != IntPtr.Zero)
                 {
-                    FlowMy.Helpers.WindowHelper.SetForegroundWindow(_previousForegroundHwnd);
+                    var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                    if (_previousForegroundHwnd != myHwnd)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Restoring foreground window to handle: {_previousForegroundHwnd}");
+                        FlowMy.Helpers.WindowHelper.SetForegroundWindow(_previousForegroundHwnd);
+                    }
                     _previousForegroundHwnd = IntPtr.Zero;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Error restoring foreground window: {ex.Message}");
+            }
         }
 
-        public void Hide()
+        public void UpdateNode(ShowInputMsgNode node)
         {
-            Close();
+            _node = node;
         }
 
         public void ForceClose()
         {
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] ForceClose called. Id={_node?.Id}");
+            _isForceClosing = true;
             Close();
         }
 
-        public void Close()
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (_host != null && _window != IntPtr.Zero)
+            if (_isForceClosing)
             {
-                try
-                {
-                    _host.CloseWindow(_window);
-                }
-                catch { }
+                base.OnClosing(e);
+                return;
             }
+            e.Cancel = true;
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Closing intercepted. Hiding window. Id={_node?.Id}");
+            _isShownAndActive = false;
+            RestorePreviousForegroundWindow();
+            Hide();
+            _tcs?.TrySetResult(false);
         }
 
         public async Task<bool> PrepareAndShowAsync(string htmlContent)
         {
-            _previousForegroundHwnd = GetForegroundWindow();
+            _tcs = new TaskCompletionSource<bool>();
+            _isShownAndActive = false;
 
-            var sciterFolder = SciterWindowHelper.GetSciterFolder();
-            var thread = new System.Threading.Thread(() => RunSciterLoop(sciterFolder, htmlContent));
-            thread.SetApartmentState(System.Threading.ApartmentState.STA);
-            thread.Start();
-
-            return await _tcs.Task;
-        }
-
-        private void RunSciterLoop(string sciterFolder, string htmlContent)
-        {
             try
             {
-                var host = new SciterAPIHost(sciterFolder);
-                _host = host;
-                host.EnableDebugMode();
-                host.EnableFeatures();
+                _previousForegroundHwnd = GetForegroundWindow();
 
-                int width = (int)_node.Width;
-                int height = (int)_node.Height;
-                int x = 100;
-                int y = 100;
+                Width = _node.Width;
+                Height = _node.Height;
 
-                try
-                {
-                    var mousePoint = System.Windows.Forms.Control.MousePosition;
-                    var screen = System.Windows.Forms.Screen.FromPoint(mousePoint);
-                    var bounds = screen.WorkingArea;
+                var mousePos = ShowInputMsgNodeExecutor.GetMousePositionWpf();
+                Left = mousePos.x;
+                Top = mousePos.y;
 
-                    x = mousePoint.X - (width / 2);
-                    y = mousePoint.Y - 50;
+                var screenWidth = SystemParameters.PrimaryScreenWidth;
+                var screenHeight = SystemParameters.PrimaryScreenHeight;
+                if (Left + Width > screenWidth)
+                    Left = screenWidth - Width;
+                if (Top + Height > screenHeight)
+                    Top = screenHeight - Height;
+                if (Left < 0) Left = 0;
+                if (Top < 0) Top = 0;
 
-                    if (x < bounds.Left) x = bounds.Left;
-                    if (x + width > bounds.Right) x = bounds.Right - width;
-                    if (y < bounds.Top) y = bounds.Top;
-                    if (y + height > bounds.Bottom) y = bounds.Bottom - height - 10;
-                }
-                catch { }
+                _showTime = DateTime.UtcNow;
+                _isShownAndActive = true;
 
-                var window = host.CreateWindow(width: width, height: height, x: x, y: y, flags: WindowsFlags.Popup, asMain: false);
-                _window = window;
+                Show();
+                Activate();
 
-                if (window != IntPtr.Zero)
-                {
-                    const int WS_VISIBLE = 0x10000000;
-                    const int WS_CLIPSIBLINGS = 0x04000000;
-                    
-                    int style = WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS;
-                    SetWindowLong(window, GWL_STYLE, style);
-                    SetWindowLong(window, GWL_EXSTYLE, 0);
-                    SetWindowPos(window, IntPtr.Zero, 0, 0, 0, 0, 
-                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-                }
-                
-                host.SetWindowCaption(window, _node.Title ?? "Nhập Dữ Liệu");
-                host.SetWindowResizable(window, false);
-
-                // Register event handler
-                var eventHandler = new DynamicUiEventHandler(window, host, (methodName, args) =>
-                {
-                    if (methodName == "submitForm")
-                    {
-                        if (args.Count > 0)
-                        {
-                            var dataVal = args[0];
-                            if (dataVal.IsMap)
-                            {
-                                var mapItems = host.GetMapItems(ref dataVal);
-                                foreach (var kvp in mapItems)
-                                {
-                                    var key = kvp.Key;
-                                    var val = kvp.Value;
-
-                                    if (val.IsBoolean)
-                                    {
-                                        _node.ResolvedOutputs[key] = val.ToBoolean() == true;
-                                    }
-                                    else if (val.IsInteger)
-                                    {
-                                        _node.ResolvedOutputs[key] = host.GetValueInt32(ref val);
-                                    }
-                                    else if (val.IsFloat)
-                                    {
-                                        _node.ResolvedOutputs[key] = host.GetValueDouble(ref val);
-                                    }
-                                    else
-                                    {
-                                        _node.ResolvedOutputs[key] = host.GetValueString(ref val);
-                                    }
-
-                                    if (_node.DynamicOutputs != null)
-                                    {
-                                        var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
-                                            string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
-                                        if (dyn != null)
-                                            dyn.UserValueOverride = _node.ResolvedOutputs[key]?.ToString();
-                                    }
-                                }
-                            }
-                        }
-
-                        _tcs.TrySetResult(true);
-                        host.CloseWindow(window);
-                    }
-                    else if (methodName == "cancelForm")
-                    {
-                        _tcs.TrySetResult(false);
-                        host.CloseWindow(window);
-                    }
-                    else if (methodName == "getPrefilledValue")
-                    {
-                        if (args.Count > 0)
-                        {
-                            var keyVal = args[0];
-                            var key = host.GetValueString(ref keyVal);
-                            if (_node.ResolvedOutputs.TryGetValue(key, out var resolved) && resolved != null)
-                            {
-                                return host.CreateValue(resolved.ToString());
-                            }
-                        }
-                        return host.CreateNullValue();
-                    }
-
-                    return null;
-                });
-
-                host.AddWindowEventHandler(eventHandler);
-
-                // Inject a helper script to intercept hostSubmit() and redirect it to Sciter's submitForm script event
                 var sciterHelperScript = @"
 <script type=""module"">
   function hostSubmit() {
     var data = {};
-    // Gather values from inputs defined in ParamsCode
     var paramsText = `";
                 
                 sciterHelperScript += (_node.ParamsCode ?? "").Replace("`", "\\`").Replace("$", "\\$");
@@ -752,7 +745,6 @@ namespace FlowMy.Views.NodeControls
 </script>";
 
                 var html = htmlContent;
-                // Since this htmlContent has WebView2 helperScript, we can replace or append the sciterHelperScript
                 if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
                 {
                     html = html.Replace("</body>", sciterHelperScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
@@ -762,18 +754,16 @@ namespace FlowMy.Views.NodeControls
                     html += sciterHelperScript;
                 }
 
-                host.LoadHtml(html, window);
-                host.Process(); // Blocks until window is closed
+                _sciterControl.LoadHtml(html);
+                _sciterControl.Focus();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Sciter Error: {ex}");
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PrepareAndShowAsync Error: {ex}");
                 _tcs.TrySetResult(false);
             }
-            finally
-            {
-                _tcs.TrySetResult(false);
-            }
+
+            return await _tcs.Task;
         }
     }
 }
