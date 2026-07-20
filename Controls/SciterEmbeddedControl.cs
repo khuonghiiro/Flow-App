@@ -37,6 +37,33 @@ namespace FlowMy.Controls
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr GetParent(IntPtr hWnd);
 
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+        private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        private static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong)
+        {
+            if (IntPtr.Size == 8)
+                return SetWindowLongPtr64(hWnd, nIndex, dwNewLong);
+            else
+                return new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
+        }
+
+        private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+        private WndProcDelegate? _subclassWndProc;
+        private IntPtr _oldWndProc = IntPtr.Zero;
+        private IntPtr _oldSciterWndProc = IntPtr.Zero;
+
+        private const int GWL_WNDPROC = -4;
+        private const uint WM_NCCALCSIZE = 0x0083;
+        private const uint WM_NCPAINT = 0x0085;
+        private const uint WM_NCACTIVATE = 0x0086;
+
         private const int GWL_STYLE = -16;
         private const int GWL_EXSTYLE = -20;
         private const int WS_CHILD = 0x40000000;
@@ -115,6 +142,19 @@ namespace FlowMy.Controls
                     SetWindowPos(_sciterWindow, IntPtr.Zero, 0, 0, 0, 0, 
                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
                 }
+
+                try
+                {
+                    _subclassWndProc = new WndProcDelegate(SubclassWndProc);
+                    var newWndProcPtr = Marshal.GetFunctionPointerForDelegate(_subclassWndProc);
+                    _oldWndProc = SetWindowLongPtr(_rootSciterWindow, GWL_WNDPROC, newWndProcPtr);
+
+                    if (_rootSciterWindow != _sciterWindow && _sciterWindow != IntPtr.Zero)
+                    {
+                        _oldSciterWndProc = SetWindowLongPtr(_sciterWindow, GWL_WNDPROC, newWndProcPtr);
+                    }
+                }
+                catch { }
             }
 
             // Register interop event handler
@@ -271,6 +311,26 @@ namespace FlowMy.Controls
 
         protected override void DestroyWindowCore(HandleRef hwnd)
         {
+            if (_oldWndProc != IntPtr.Zero && _rootSciterWindow != IntPtr.Zero)
+            {
+                try
+                {
+                    SetWindowLongPtr(_rootSciterWindow, GWL_WNDPROC, _oldWndProc);
+                }
+                catch { }
+                _oldWndProc = IntPtr.Zero;
+            }
+
+            if (_oldSciterWndProc != IntPtr.Zero && _sciterWindow != IntPtr.Zero)
+            {
+                try
+                {
+                    SetWindowLongPtr(_sciterWindow, GWL_WNDPROC, _oldSciterWndProc);
+                }
+                catch { }
+                _oldSciterWndProc = IntPtr.Zero;
+            }
+
             if (_host != null && _sciterWindow != IntPtr.Zero)
             {
                 try
@@ -294,6 +354,29 @@ namespace FlowMy.Controls
                 int height = (int)sizeInfo.NewSize.Height;
                 MoveWindow(targetHwnd, 0, 0, width, height, true);
             }
+        }
+
+        private IntPtr SubclassWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
+        {
+            if (msg == WM_NCCALCSIZE)
+            {
+                // Ensure client area covers the entire window to strip titlebar/caption/borders
+                return IntPtr.Zero;
+            }
+            if (msg == WM_NCPAINT)
+            {
+                // Prevent drawing the default window frame/caption
+                return IntPtr.Zero;
+            }
+            if (msg == WM_NCACTIVATE)
+            {
+                var oldWndProc = (hWnd == _sciterWindow && _oldSciterWndProc != IntPtr.Zero) ? _oldSciterWndProc : _oldWndProc;
+                CallWindowProc(oldWndProc, hWnd, msg, wParam, lParam);
+                return new IntPtr(1); // Return TRUE to prevent default caption drawing
+            }
+            
+            var targetOldWndProc = (hWnd == _sciterWindow && _oldSciterWndProc != IntPtr.Zero) ? _oldSciterWndProc : _oldWndProc;
+            return CallWindowProc(targetOldWndProc, hWnd, msg, wParam, lParam);
         }
     }
 }
