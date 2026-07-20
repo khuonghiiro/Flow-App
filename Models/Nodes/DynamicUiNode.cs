@@ -9,7 +9,7 @@ using FlowMy.Models;
 
 namespace FlowMy.Models.Nodes
 {
-    public sealed class DynamicUiNode : WorkflowNode
+    public sealed class DynamicUiNode : WorkflowNode, ISciterNode
     {
         private ObservableCollection<DynamicUiFieldConfig> _fields = new();
         private Dictionary<string, object?> _resolvedOutputs = new();

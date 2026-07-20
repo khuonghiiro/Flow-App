@@ -17,7 +17,7 @@ namespace FlowMy.Controls
 {
     public class SciterEmbeddedControl : HwndHost
     {
-        private readonly DynamicUiNode _node;
+        private readonly ISciterNode _node;
         private readonly IWorkflowEditorHost? _editorHost;
         private SciterAPIHost? _host;
         private IntPtr _sciterWindow = IntPtr.Zero;
@@ -103,7 +103,7 @@ namespace FlowMy.Controls
         private const uint SWP_NOACTIVATE = 0x0010;
         private const uint SWP_FRAMECHANGED = 0x0020;
 
-        public SciterEmbeddedControl(DynamicUiNode node, IWorkflowEditorHost? editorHost = null)
+        public SciterEmbeddedControl(ISciterNode node, IWorkflowEditorHost? editorHost = null)
         {
             _node = node ?? throw new ArgumentNullException(nameof(node));
             _editorHost = editorHost;
@@ -230,7 +230,7 @@ namespace FlowMy.Controls
                                                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                                         if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
                                         {
-                                            visualizer.RefreshSavedOutputs(new[] { _node });
+                                            visualizer.RefreshSavedOutputs(new[] { (WorkflowNode)_node });
                                         }
                                     }
                                 }
@@ -251,10 +251,13 @@ namespace FlowMy.Controls
                             return _host.CreateValue(resolved.ToString());
                         }
 
-                        var field = _node.Fields.FirstOrDefault(f => f.Key == key);
-                        if (field != null)
+                        if (_node is DynamicUiNode dynNode)
                         {
-                            return _host.CreateValue(field.DefaultValue ?? "");
+                            var field = dynNode.Fields.FirstOrDefault(f => f.Key == key);
+                            if (field != null)
+                            {
+                                return _host.CreateValue(field.DefaultValue ?? "");
+                            }
                         }
                     }
                     return _host.CreateNullValue();
@@ -343,7 +346,7 @@ namespace FlowMy.Controls
                                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                         if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
                         {
-                            visualizer.RefreshSavedOutputs(new[] { _node });
+                            visualizer.RefreshSavedOutputs(new[] { (WorkflowNode)_node });
                         }
                     }
                 }
@@ -405,6 +408,37 @@ namespace FlowMy.Controls
             
             var resultVal = _host.CreateNullValue();
             _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+        }
+
+        public void ForceMoveWindow()
+        {
+            try
+            {
+                var presentationSource = PresentationSource.FromVisual(this);
+                if (presentationSource == null || presentationSource.RootVisual == null) return;
+
+                var transform = this.TransformToAncestor(presentationSource.RootVisual);
+                var rect = new Rect(0, 0, this.ActualWidth, this.ActualHeight);
+                var transformedRect = transform.TransformBounds(rect);
+
+                var hwnd = this.Handle;
+                if (hwnd != IntPtr.Zero)
+                {
+                    const uint SWP_NOZORDER = 0x0004;
+                    const uint SWP_NOACTIVATE = 0x0010;
+                    
+                    int x = (int)transformedRect.Left;
+                    int y = (int)transformedRect.Top;
+                    int cx = (int)transformedRect.Width;
+                    int cy = (int)transformedRect.Height;
+
+                    SetWindowPos(hwnd, IntPtr.Zero, x, y, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ForceMoveWindow error: {ex.Message}");
+            }
         }
 
         protected override void DestroyWindowCore(HandleRef hwnd)
@@ -512,7 +546,7 @@ namespace FlowMy.Controls
                 if (sourceNode == null && connections != null)
                 {
                     var conn = connections.FirstOrDefault(c =>
-                        c.ToNode == _node && c.FromNode != null &&
+                        c.ToNode == (WorkflowNode)_node && c.FromNode != null &&
                         string.Equals(c.FromNode.Id, mapping.SourceNodeId, StringComparison.OrdinalIgnoreCase));
                     sourceNode = conn?.FromNode;
                 }
@@ -550,7 +584,7 @@ namespace FlowMy.Controls
                     if (sourceNode == null && connections != null)
                     {
                         var conn = connections.FirstOrDefault(c =>
-                            c.ToNode == _node && c.FromNode != null &&
+                            c.ToNode == (WorkflowNode)_node && c.FromNode != null &&
                             string.Equals(c.FromNode.Id, m.SourceNodeId, StringComparison.OrdinalIgnoreCase));
                         sourceNode = conn?.FromNode;
                     }
@@ -607,6 +641,29 @@ namespace FlowMy.Controls
 
         private IntPtr SubclassWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
         {
+            const uint WM_SHOWWINDOW = 0x0018;
+            const uint WM_STYLECHANGING = 0x007C;
+
+            if (msg == WM_SHOWWINDOW || msg == WM_STYLECHANGING)
+            {
+                try
+                {
+                    const int WS_CHILD_STYLE = 0x40000000;
+                    const int WS_VISIBLE_STYLE = 0x10000000;
+                    const int WS_CLIPCHILDREN_STYLE = 0x02000000;
+                    const int WS_CLIPSIBLINGS_STYLE = 0x04000000;
+                    int targetStyle = WS_CHILD_STYLE | WS_VISIBLE_STYLE | WS_CLIPCHILDREN_STYLE | WS_CLIPSIBLINGS_STYLE;
+
+                    var curStyle = GetWindowLong(hWnd, GWL_STYLE);
+                    if ((curStyle & WS_CHILD_STYLE) == 0 || (curStyle & 0x00C00000) != 0) // WS_CAPTION = 0x00C00000
+                    {
+                        SetWindowLong(hWnd, GWL_STYLE, targetStyle);
+                        SetWindowLong(hWnd, GWL_EXSTYLE, 0);
+                    }
+                }
+                catch { }
+            }
+
             if (msg == WM_NCCALCSIZE)
             {
                 // Ensure client area covers the entire window to strip titlebar/caption/borders

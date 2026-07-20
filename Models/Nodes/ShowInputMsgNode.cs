@@ -11,7 +11,7 @@ namespace FlowMy.Models.Nodes
     /// Node Nhập dữ liệu - hiển thị popup HTML UI ở vị trí chuột tại runtime
     /// và hỗ trợ xem trước UI trên canvas.
     /// </summary>
-    public sealed class ShowInputMsgNode : WorkflowNode
+    public sealed class ShowInputMsgNode : WorkflowNode, ISciterNode
     {
         private double _width = 450;
         private double _height = 245;

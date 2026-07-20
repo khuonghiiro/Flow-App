@@ -6,11 +6,13 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using Microsoft.Web.WebView2.Wpf;
+using EmptyFlow.SciterAPI;
+using FlowMy.Helpers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,14 +20,14 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Shapes;
 
 namespace FlowMy.Views.NodeControls
 {
     public static class ShowInputMsgNodeControl
     {
         private static readonly Dictionary<ShowInputMsgNode, Border> _activePreviews = new();
-        private static readonly Dictionary<ShowInputMsgNode, WebView2> _activeWebViews = new();
-        private static readonly System.Threading.SemaphoreSlim _webViewInitGate = new(1, 1);
+        private static readonly Dictionary<ShowInputMsgNode, SciterEmbeddedControl> _activeSciters = new();
 
         public static Border CreateBorder(ShowInputMsgNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
@@ -214,22 +216,22 @@ namespace FlowMy.Views.NodeControls
                 [nameof(ShowInputMsgNode.HtmlCode)] = ctx =>
                 {
                     var n = (ShowInputMsgNode)ctx.Node;
-                    _ = RefreshPreviewHtmlAsync(n, host);
+                    RefreshPreviewHtml(n);
                 },
                 [nameof(ShowInputMsgNode.CssCode)] = ctx =>
                 {
                     var n = (ShowInputMsgNode)ctx.Node;
-                    _ = RefreshPreviewHtmlAsync(n, host);
+                    RefreshPreviewHtml(n);
                 },
                 [nameof(ShowInputMsgNode.JsCode)] = ctx =>
                 {
                     var n = (ShowInputMsgNode)ctx.Node;
-                    _ = RefreshPreviewHtmlAsync(n, host);
+                    RefreshPreviewHtml(n);
                 },
                 [nameof(ShowInputMsgNode.ParamsCode)] = ctx =>
                 {
                     var n = (ShowInputMsgNode)ctx.Node;
-                    _ = RefreshPreviewHtmlAsync(n, host);
+                    RefreshPreviewHtml(n);
                 }
             };
 
@@ -250,14 +252,12 @@ namespace FlowMy.Views.NodeControls
                 if (isDisposed) return;
                 if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
                 {
-                    if (previewBorder.Visibility != Visibility.Visible)
-                        previewBorder.Visibility = Visibility.Visible;
-
-                    UpdatePreviewPosition(node, border, host);
-                    if (_activeWebViews.TryGetValue(node, out var webView))
+                    if (_activeSciters.TryGetValue(node, out var sciterControl))
                     {
-                        UpdateWebViewZoomForCanvasZoom(webView, host);
+                        sciterControl.SetZoom(host.ZoomLevel);
+                        sciterControl.ForceMoveWindow();
                     }
+                    UpdatePreviewPosition(node, border, host);
                 }
             };
 
@@ -266,9 +266,10 @@ namespace FlowMy.Views.NodeControls
                 if (isDisposed) return;
                 if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
                 {
-                    if (previewBorder.Visibility != Visibility.Visible)
-                        previewBorder.Visibility = Visibility.Visible;
-
+                    if (_activeSciters.TryGetValue(node, out var sciterControl))
+                    {
+                        sciterControl.ForceMoveWindow();
+                    }
                     UpdatePreviewPosition(node, border, host);
                 }
             };
@@ -278,7 +279,23 @@ namespace FlowMy.Views.NodeControls
                 if (isDisposed) return;
                 if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
                 {
+                    if (_activeSciters.TryGetValue(node, out var sciterControl))
+                    {
+                        sciterControl.ForceMoveWindow();
+                    }
                     UpdatePreviewPosition(node, border, host);
+                }
+            };
+
+            EventHandler? renderingHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
+                {
+                    if (_activeSciters.TryGetValue(node, out var sciterControl))
+                    {
+                        sciterControl.ForceMoveWindow();
+                    }
                 }
             };
 
@@ -300,6 +317,8 @@ namespace FlowMy.Views.NodeControls
                 leftDescriptor?.AddValueChanged(border, positionChangedHandler);
                 topDescriptor?.AddValueChanged(border, positionChangedHandler);
 
+                System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
+
                 SyncPreviewState(node, border, host);
             };
 
@@ -320,6 +339,12 @@ namespace FlowMy.Views.NodeControls
                 leftDescriptor?.RemoveValueChanged(border, positionChangedHandler);
                 topDescriptor?.RemoveValueChanged(border, positionChangedHandler);
 
+                try
+                {
+                    System.Windows.Media.CompositionTarget.Rendering -= renderingHandler;
+                }
+                catch { }
+
                 if (_activePreviews.TryGetValue(node, out var previewBorder))
                 {
                     if (host.WorkflowCanvas?.Children.Contains(previewBorder) == true)
@@ -329,14 +354,14 @@ namespace FlowMy.Views.NodeControls
                     _activePreviews.Remove(node);
                 }
 
-                if (_activeWebViews.TryGetValue(node, out var webView))
+                if (_activeSciters.TryGetValue(node, out var sciterControl))
                 {
                     try
                     {
-                        webView.Dispose();
+                        sciterControl.Dispose();
                     }
                     catch { }
-                    _activeWebViews.Remove(node);
+                    _activeSciters.Remove(node);
                 }
             };
 
@@ -382,7 +407,7 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 UpdatePreviewPosition(node, border, host);
-                _ = RefreshPreviewHtmlAsync(node, host);
+                RefreshPreviewHtml(node);
             }
             else
             {
@@ -395,14 +420,14 @@ namespace FlowMy.Views.NodeControls
                     _activePreviews.Remove(node);
                 }
 
-                if (_activeWebViews.TryGetValue(node, out var webView))
+                if (_activeSciters.TryGetValue(node, out var sciterControl))
                 {
                     try
                     {
-                        webView.Dispose();
+                        sciterControl.Dispose();
                     }
                     catch { }
-                    _activeWebViews.Remove(node);
+                    _activeSciters.Remove(node);
                 }
             }
         }
@@ -461,249 +486,293 @@ namespace FlowMy.Views.NodeControls
                 IsHitTestVisible = true
             };
 
-            var grid = new Grid();
-            var webView = new WebView2();
+            GpuOptimizationHelper.ApplyToBorder(previewBorder);
 
-            grid.Children.Add(webView);
+            var grid = new Grid();
+            GpuOptimizationHelper.ApplyToElement(grid);
+
+            var sciterControl = new SciterEmbeddedControl(node, host);
+            grid.Children.Add(sciterControl);
             previewBorder.Child = grid;
 
-            // Load and navigate
-            _ = InitializePreviewWebViewAsync(node, webView, host);
+            _activeSciters[node] = sciterControl;
 
             return previewBorder;
         }
 
-        private static async Task InitializePreviewWebViewAsync(ShowInputMsgNode node, WebView2 webView, IWorkflowEditorHost host)
+        private static void RefreshPreviewHtml(ShowInputMsgNode node)
         {
-            await _webViewInitGate.WaitAsync();
+            if (!_activeSciters.TryGetValue(node, out var sciterControl)) return;
+            sciterControl.UpdateContent();
+        }
+    }
+
+    public class ShowInputMsgPopupWindow
+    {
+        private ShowInputMsgNode _node;
+        private readonly TaskCompletionSource<bool> _tcs = new();
+        private SciterAPIHost? _host;
+        private IntPtr _window = IntPtr.Zero;
+        private IntPtr _previousForegroundHwnd = IntPtr.Zero;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        private const int GWL_STYLE = -16;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_POPUP = unchecked((int)0x80000000);
+
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOZORDER = 0x0004;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_FRAMECHANGED = 0x0020;
+
+        public ShowInputMsgPopupWindow(ShowInputMsgNode node)
+        {
+            _node = node;
+        }
+
+        public void UpdateNode(ShowInputMsgNode node)
+        {
+            _node = node;
+        }
+
+        public void RestorePreviousForegroundWindow()
+        {
             try
             {
-                var env = await FlowMy.Services.Workflow.WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                await webView.EnsureCoreWebView2Async(env);
-
-                _activeWebViews[node] = webView;
-
-                webView.CoreWebView2.NavigationCompleted += (s, e) =>
+                if (_previousForegroundHwnd != IntPtr.Zero)
                 {
-                    UpdateWebViewZoomForCanvasZoom(webView, host);
-                };
+                    FlowMy.Helpers.WindowHelper.SetForegroundWindow(_previousForegroundHwnd);
+                    _previousForegroundHwnd = IntPtr.Zero;
+                }
+            }
+            catch { }
+        }
 
-                await RefreshPreviewHtmlAsync(node, host);
-            }
-            catch (Exception ex)
+        public void Hide()
+        {
+            Close();
+        }
+
+        public void ForceClose()
+        {
+            Close();
+        }
+
+        public void Close()
+        {
+            if (_host != null && _window != IntPtr.Zero)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to initialize WebView2 preview: {ex}");
-            }
-            finally
-            {
-                _webViewInitGate.Release();
+                try
+                {
+                    _host.CloseWindow(_window);
+                }
+                catch { }
             }
         }
 
-        private static async Task RefreshPreviewHtmlAsync(ShowInputMsgNode node, IWorkflowEditorHost host)
+        public async Task<bool> PrepareAndShowAsync(string htmlContent)
         {
-            if (!_activeWebViews.TryGetValue(node, out var webView)) return;
+            _previousForegroundHwnd = GetForegroundWindow();
+
+            var sciterFolder = SciterWindowHelper.GetSciterFolder();
+            var thread = new System.Threading.Thread(() => RunSciterLoop(sciterFolder, htmlContent));
+            thread.SetApartmentState(System.Threading.ApartmentState.STA);
+            thread.Start();
+
+            return await _tcs.Task;
+        }
+
+        private void RunSciterLoop(string sciterFolder, string htmlContent)
+        {
             try
             {
-                var core = webView.CoreWebView2;
-                if (core == null) return;
+                var host = new SciterAPIHost(sciterFolder);
+                _host = host;
+                host.EnableDebugMode();
+                host.EnableFeatures();
 
-                var html = BuildHtmlContent(node, host);
-                await webView.Dispatcher.InvokeAsync(() =>
+                int width = (int)_node.Width;
+                int height = (int)_node.Height;
+                int x = 100;
+                int y = 100;
+
+                try
                 {
-                    try
+                    var mousePoint = System.Windows.Forms.Control.MousePosition;
+                    var screen = System.Windows.Forms.Screen.FromPoint(mousePoint);
+                    var bounds = screen.WorkingArea;
+
+                    x = mousePoint.X - (width / 2);
+                    y = mousePoint.Y - 50;
+
+                    if (x < bounds.Left) x = bounds.Left;
+                    if (x + width > bounds.Right) x = bounds.Right - width;
+                    if (y < bounds.Top) y = bounds.Top;
+                    if (y + height > bounds.Bottom) y = bounds.Bottom - height - 10;
+                }
+                catch { }
+
+                var window = host.CreateWindow(width: width, height: height, x: x, y: y, flags: WindowsFlags.Popup, asMain: false);
+                _window = window;
+
+                if (window != IntPtr.Zero)
+                {
+                    const int WS_VISIBLE = 0x10000000;
+                    const int WS_CLIPSIBLINGS = 0x04000000;
+                    
+                    int style = WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS;
+                    SetWindowLong(window, GWL_STYLE, style);
+                    SetWindowLong(window, GWL_EXSTYLE, 0);
+                    SetWindowPos(window, IntPtr.Zero, 0, 0, 0, 0, 
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+                }
+                
+                host.SetWindowCaption(window, _node.Title ?? "Nhập Dữ Liệu");
+                host.SetWindowResizable(window, false);
+
+                // Register event handler
+                var eventHandler = new DynamicUiEventHandler(window, host, (methodName, args) =>
+                {
+                    if (methodName == "submitForm")
                     {
-                        webView.CoreWebView2.NavigateToString(html);
+                        if (args.Count > 0)
+                        {
+                            var dataVal = args[0];
+                            if (dataVal.IsMap)
+                            {
+                                var mapItems = host.GetMapItems(ref dataVal);
+                                foreach (var kvp in mapItems)
+                                {
+                                    var key = kvp.Key;
+                                    var val = kvp.Value;
+
+                                    if (val.IsBoolean)
+                                    {
+                                        _node.ResolvedOutputs[key] = val.ToBoolean() == true;
+                                    }
+                                    else if (val.IsInteger)
+                                    {
+                                        _node.ResolvedOutputs[key] = host.GetValueInt32(ref val);
+                                    }
+                                    else if (val.IsFloat)
+                                    {
+                                        _node.ResolvedOutputs[key] = host.GetValueDouble(ref val);
+                                    }
+                                    else
+                                    {
+                                        _node.ResolvedOutputs[key] = host.GetValueString(ref val);
+                                    }
+
+                                    if (_node.DynamicOutputs != null)
+                                    {
+                                        var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                            string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                                        if (dyn != null)
+                                            dyn.UserValueOverride = _node.ResolvedOutputs[key]?.ToString();
+                                    }
+                                }
+                            }
+                        }
+
+                        _tcs.TrySetResult(true);
+                        host.CloseWindow(window);
                     }
-                    catch (ObjectDisposedException) { }
-                    catch (Exception ex)
+                    else if (methodName == "cancelForm")
                     {
-                        System.Diagnostics.Debug.WriteLine($"Error reloading preview HTML: {ex}");
+                        _tcs.TrySetResult(false);
+                        host.CloseWindow(window);
                     }
+                    else if (methodName == "getPrefilledValue")
+                    {
+                        if (args.Count > 0)
+                        {
+                            var keyVal = args[0];
+                            var key = host.GetValueString(ref keyVal);
+                            if (_node.ResolvedOutputs.TryGetValue(key, out var resolved) && resolved != null)
+                            {
+                                return host.CreateValue(resolved.ToString());
+                            }
+                        }
+                        return host.CreateNullValue();
+                    }
+
+                    return null;
                 });
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in RefreshPreviewHtml: {ex}");
-            }
-        }
 
-        private static string ResolveSingleInputValue(ShowInputMsgNode node, CodeInputMapping mapping, IWorkflowEditorHost host)
-        {
-            if (host?.ViewModel == null) return string.Empty;
-            var allNodes = host.ViewModel.Nodes;
-            var connections = host.ViewModel.Connections;
-            WorkflowNode? sourceNode = null;
-            if (!string.IsNullOrWhiteSpace(mapping.SourceNodeId))
-            {
-                sourceNode = allNodes?.FirstOrDefault(n =>
-                    string.Equals(n.Id, mapping.SourceNodeId, StringComparison.OrdinalIgnoreCase));
-                if (sourceNode == null && connections != null)
-                {
-                    var conn = connections.FirstOrDefault(c =>
-                        c.ToNode == node && c.FromNode != null &&
-                        string.Equals(c.FromNode.Id, mapping.SourceNodeId, StringComparison.OrdinalIgnoreCase));
-                    sourceNode = conn?.FromNode;
-                }
-            }
-            if (sourceNode == null) return string.Empty;
-            var key = string.IsNullOrWhiteSpace(mapping.SourceOutputKey) ? null : mapping.SourceOutputKey.Trim();
-            if (string.IsNullOrWhiteSpace(key) && sourceNode.DynamicOutputs?.Count > 0)
-                key = sourceNode.DynamicOutputs[0].Key ?? "output";
-            var value = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, key ?? "output");
-            if (string.Equals(value?.Trim(), "—", StringComparison.OrdinalIgnoreCase)) value = string.Empty;
-            return value ?? string.Empty;
-        }
+                host.AddWindowEventHandler(eventHandler);
 
-        private static System.Collections.Generic.Dictionary<string, string> ResolveInputValues(ShowInputMsgNode node, IWorkflowEditorHost host)
-        {
-            var result = new System.Collections.Generic.Dictionary<string, string>();
-            if (host?.ViewModel == null) return result;
-            var mappings = node.InputMappings ?? new System.Collections.Generic.List<CodeInputMapping>();
-            foreach (var m in mappings)
-            {
-                var value = ResolveSingleInputValue(node, m, host);
-                var varName = m.EffectiveInputKey;
-                if (string.IsNullOrWhiteSpace(varName)) varName = "input";
-                result[varName] = value ?? string.Empty;
-            }
-            return result;
-        }
-
-        private static string ReplaceVariables(string text, System.Collections.Generic.Dictionary<string, string> variableValues)
-        {
-            if (string.IsNullOrEmpty(text) || variableValues.Count == 0) return text;
-            var regex = new System.Text.RegularExpressions.Regex(@"\{([^}]+)\}");
-            return regex.Replace(text, match =>
-            {
-                var variableName = match.Groups[1].Value.Trim();
-                if (variableValues.TryGetValue(variableName, out var value) && value != null)
-                {
-                    return value;
-                }
-                return match.Value;
-            });
-        }
-
-        private static string BuildHtmlContent(ShowInputMsgNode node, IWorkflowEditorHost host)
-        {
-            var html = node.HtmlCode ?? "";
-            var css = node.CssCode ?? "";
-            var js = node.JsCode ?? "";
-
-            var inputValues = ResolveInputValues(node, host);
-            html = ReplaceVariables(html, inputValues);
-            css = ReplaceVariables(css, inputValues);
-            js = ReplaceVariables(js, inputValues);
-
-            if (!html.Contains("<head>", StringComparison.OrdinalIgnoreCase))
-            {
-                html = html.Replace("<html>", "<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Nhập Dữ Liệu</title>\n</head>", StringComparison.OrdinalIgnoreCase);
-            }
-
-            if (!string.IsNullOrWhiteSpace(css))
-            {
-                var cssTag = $"\n    <style>\n{css}\n    </style>";
-                if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                {
-                    html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-                }
-                else if (html.Contains("<head>", StringComparison.OrdinalIgnoreCase))
-                {
-                    html = html.Replace("<head>", "<head>" + cssTag, StringComparison.OrdinalIgnoreCase);
-                }
-            }
-
-            var helperScript = @"
-<script>
+                // Inject a helper script to intercept hostSubmit() and redirect it to Sciter's submitForm script event
+                var sciterHelperScript = @"
+<script type=""module"">
   function hostSubmit() {
-    if (window.chrome && window.chrome.webview) {
-      window.chrome.webview.postMessage({ type: 'submit' });
+    var data = {};
+    // Gather values from inputs defined in ParamsCode
+    var paramsText = `";
+                
+                sciterHelperScript += (_node.ParamsCode ?? "").Replace("`", "\\`").Replace("$", "\\$");
+                sciterHelperScript += @"`;
+    var lines = paramsText.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || line.startsWith('//') || line.startsWith('#')) continue;
+        var parts = line.includes(':') ? line.split(':') : line.split('=');
+        if (parts.length < 2) continue;
+        var key = parts[0].trim();
+        var selector = parts[1].trim();
+        try {
+            var el = document.querySelector(selector);
+            if (el) {
+                if (typeof el.value !== 'undefined') {
+                    data[key] = el.value;
+                } else if (el.textContent) {
+                    data[key] = el.textContent;
+                }
+            }
+        } catch(e) {}
+    }
+    if (window.Window && window.Window.this) {
+        window.Window.this.xcall('submitForm', data);
+    } else {
+        Window.this.xcall('submitForm', data);
     }
   }
   window.hostSubmit = hostSubmit;
 </script>";
 
-            if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</body>", helperScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
-            else
-                html += helperScript;
-
-            if (!string.IsNullOrWhiteSpace(js))
-            {
-                var jsTag = $"\n    <script>\n{js}\n    </script>";
+                var html = htmlContent;
+                // Since this htmlContent has WebView2 helperScript, we can replace or append the sciterHelperScript
                 if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
                 {
-                    html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
-                }
-                else if (html.Contains("<head>", StringComparison.OrdinalIgnoreCase))
-                {
-                    html = html.Replace("</head>", jsTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
+                    html = html.Replace("</body>", sciterHelperScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
                 }
                 else
                 {
-                    html += jsTag;
+                    html += sciterHelperScript;
                 }
-            }
 
-            // ✅ Inject offline assets (CSS trước, JS sau)
-            var enabledAssets = (node.OfflineAssets ?? new System.Collections.Generic.List<FlowMy.Models.HtmlOfflineAsset>())
-                .Where(a => a.IsEnabled && !string.IsNullOrWhiteSpace(a.LocalFileName));
-
-            foreach (var asset in enabledAssets)
-            {
-                var content = FlowMy.Services.Utils.HtmlOfflineAssetService.GetInlineContent(asset.LocalFileName);
-                if (string.IsNullOrWhiteSpace(content)) continue;
-
-                var safeName = System.Security.SecurityElement.Escape(asset.Title ?? asset.LocalFileName);
-
-                if (string.Equals(asset.AssetType, "css", StringComparison.OrdinalIgnoreCase))
-                {
-                    var cssTag = $"\n    <style>/* [offline] {safeName} */\n{content}\n    </style>";
-                    if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                        html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-                    else
-                        html = "<style>" + content + "</style>" + html;
-                }
-                else // js
-                {
-                    var jsTag = $"\n    <script>/* [offline] {safeName} */\n{content}\n    </script>";
-                    if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                        html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
-                    else if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                        html = html.Replace("</head>", jsTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-                    else
-                        html += jsTag;
-                }
-            }
-
-            return html;
-        }
-
-        private static void UpdateWebViewZoomForCanvasZoom(WebView2 webView, IWorkflowEditorHost host)
-        {
-            try
-            {
-                var core = webView.CoreWebView2;
-                if (core == null) return;
-
-                double canvasZoom = host.ZoomLevel;
-                double webViewZoom = 1.0 / Math.Max(canvasZoom, 0.0001);
-
-                var script = $@"
-                    (function() {{
-                        document.body.style.zoom = '{webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
-                        if (!document.body.style.zoom) {{
-                            document.body.style.transform = 'scale({webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
-                            document.body.style.transformOrigin = 'top left';
-                        }}
-                    }})();
-                ";
-                core.ExecuteScriptAsync(script);
+                host.LoadHtml(html, window);
+                host.Process(); // Blocks until window is closed
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error updating preview zoom: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Sciter Error: {ex}");
+                _tcs.TrySetResult(false);
+            }
+            finally
+            {
+                _tcs.TrySetResult(false);
             }
         }
     }
