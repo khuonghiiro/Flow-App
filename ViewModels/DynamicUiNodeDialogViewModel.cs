@@ -20,6 +20,8 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _cssCode = "";
         [ObservableProperty] private string _jsCode = "";
         [ObservableProperty] private string _paramsCode = "";
+        [ObservableProperty] private int _codeFontSize = 13;
+
 
         public ObservableCollection<OutputKeyItemViewModel> OutputKeysList { get; } = new();
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
@@ -278,5 +280,18 @@ namespace FlowMy.ViewModels
             }
             SyncOutputKeysToNode();
         }
+
+        [RelayCommand]
+        private void IncreaseCodeFontSize()
+        {
+            if (CodeFontSize < 24) CodeFontSize++;
+        }
+
+        [RelayCommand]
+        private void DecreaseCodeFontSize()
+        {
+            if (CodeFontSize > 10) CodeFontSize--;
+        }
     }
+
 }
