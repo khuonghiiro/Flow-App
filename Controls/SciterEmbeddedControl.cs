@@ -6,18 +6,46 @@ using System.Windows;
 using System.Windows.Interop;
 using EmptyFlow.SciterAPI;
 using FlowMy.Helpers;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Views.Overlays;
+using FlowMy.Services.Interaction;
+using FlowMy.Services.Workflow;
+using FlowMy.Services.Rendering;
 
 namespace FlowMy.Controls
 {
     public class SciterEmbeddedControl : HwndHost
     {
         private readonly DynamicUiNode _node;
+        private readonly IWorkflowEditorHost? _editorHost;
         private SciterAPIHost? _host;
         private IntPtr _sciterWindow = IntPtr.Zero;
         private IntPtr _rootSciterWindow = IntPtr.Zero;
         private double _currentZoom = 1.0;
+        private readonly System.Collections.Generic.Dictionary<string, System.Windows.Threading.DispatcherTimer> _autoRefreshTimers = new();
+
+        private static SciterAPIHost? _globalHost;
+        private static readonly object _hostLock = new object();
+
+        private static SciterAPIHost GetHost()
+        {
+            if (_globalHost == null)
+            {
+                lock (_hostLock)
+                {
+                    if (_globalHost == null)
+                    {
+                        var sciterFolder = SciterWindowHelper.GetSciterFolder();
+                        var host = new SciterAPIHost(sciterFolder);
+                        host.EnableDebugMode();
+                        host.EnableFeatures();
+                        _globalHost = host;
+                    }
+                }
+            }
+            return _globalHost;
+        }
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
@@ -75,17 +103,15 @@ namespace FlowMy.Controls
         private const uint SWP_NOACTIVATE = 0x0010;
         private const uint SWP_FRAMECHANGED = 0x0020;
 
-        public SciterEmbeddedControl(DynamicUiNode node)
+        public SciterEmbeddedControl(DynamicUiNode node, IWorkflowEditorHost? editorHost = null)
         {
             _node = node ?? throw new ArgumentNullException(nameof(node));
+            _editorHost = editorHost;
         }
 
         protected override HandleRef BuildWindowCore(HandleRef hwndParent)
         {
-            var sciterFolder = SciterWindowHelper.GetSciterFolder();
-            _host = new SciterAPIHost(sciterFolder);
-            _host.EnableDebugMode();
-            _host.EnableFeatures();
+            _host = GetHost();
 
             int width = (int)ActualWidth;
             int height = (int)ActualHeight;
@@ -180,6 +206,35 @@ namespace FlowMy.Controls
                                 else value = _host.GetValueString(ref val);
 
                                 _node.ResolvedOutputs[key] = value;
+
+                                if (_node.DynamicOutputs != null)
+                                {
+                                    var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                        string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                                    if (dyn != null)
+                                        dyn.UserValueOverride = value?.ToString();
+                                }
+                            }
+
+                            if (_editorHost != null)
+                            {
+                                _editorHost.RequestSyncDataPanels(immediate: false);
+
+                                try
+                                {
+                                    var vm = _editorHost.ViewModel;
+                                    if (vm != null)
+                                    {
+                                        var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                                            .GetField("_executionVisualizer",
+                                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                        if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
+                                        {
+                                            visualizer.RefreshSavedOutputs(new[] { _node });
+                                        }
+                                    }
+                                }
+                                catch { }
                             }
                         }
                     }
@@ -210,7 +265,12 @@ namespace FlowMy.Controls
 
             _host.AddWindowEventHandler(eventHandler);
 
-            UpdateContent();
+            // Defer loading content and starting timers to a background priority to prevent blocking the UI thread on node creation/dragging
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                UpdateContent();
+                StartAutoRefreshTimers();
+            }), System.Windows.Threading.DispatcherPriority.Background);
 
             return new HandleRef(this, _rootSciterWindow != IntPtr.Zero ? _rootSciterWindow : _sciterWindow);
         }
@@ -256,7 +316,40 @@ namespace FlowMy.Controls
                 if (ok)
                 {
                     var valueStr = _host.GetValueString(ref resultVal);
-                    resolvedOutputs[key] = valueStr ?? "";
+                    var valStr = valueStr ?? "";
+                    resolvedOutputs[key] = valStr;
+
+                    if (_node.DynamicOutputs != null)
+                    {
+                        var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                            string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                        if (dyn != null)
+                            dyn.UserValueOverride = valStr;
+                    }
+                }
+            }
+
+            if (_editorHost != null)
+            {
+                _editorHost.RequestSyncDataPanels(immediate: false);
+
+                try
+                {
+                    var vm = _editorHost.ViewModel;
+                    if (vm != null)
+                    {
+                        var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                            .GetField("_executionVisualizer",
+                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
+                        {
+                            visualizer.RefreshSavedOutputs(new[] { _node });
+                        }
+                    }
+                }
+                catch (Exception exVis)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Sciter UI RefreshSavedOutputs error: {exVis.Message}");
                 }
             }
         }
@@ -265,18 +358,23 @@ namespace FlowMy.Controls
         {
             if (_host == null || _sciterWindow == IntPtr.Zero) return;
 
+            var inputValues = ResolveInputValues();
+            var html = ReplaceVariables(_node.HtmlCode ?? string.Empty, inputValues);
+            var css = ReplaceVariables(_node.CssCode ?? string.Empty, inputValues);
+            var js = ReplaceVariables(_node.JsCode ?? string.Empty, inputValues);
+
             var combinedHtml = $@"<!DOCTYPE html>
 <html window-frame=""none"">
 <head>
     <meta charset=""utf-8"">
     <style>
-        {_node.CssCode}
+        {css}
     </style>
 </head>
 <body>
-    {_node.HtmlCode}
+    {html}
     <script type=""module"">
-        {_node.JsCode}
+        {js}
     </script>
 </body>
 </html>";
@@ -311,6 +409,8 @@ namespace FlowMy.Controls
 
         protected override void DestroyWindowCore(HandleRef hwnd)
         {
+            StopAutoRefreshTimers();
+
             if (_oldWndProc != IntPtr.Zero && _rootSciterWindow != IntPtr.Zero)
             {
                 try
@@ -341,6 +441,155 @@ namespace FlowMy.Controls
                 _sciterWindow = IntPtr.Zero;
                 _rootSciterWindow = IntPtr.Zero;
             }
+        }
+
+        public void RestartAutoRefreshTimers()
+        {
+            StartAutoRefreshTimers();
+        }
+
+        private void StopAutoRefreshTimers()
+        {
+            foreach (var t in _autoRefreshTimers.Values) t.Stop();
+            _autoRefreshTimers.Clear();
+        }
+
+        private void StartAutoRefreshTimers()
+        {
+            StopAutoRefreshTimers();
+            if (_host == null || _sciterWindow == IntPtr.Zero) return;
+
+            var mappings = _node.InputMappings ?? new System.Collections.Generic.List<CodeInputMapping>();
+            foreach (var m in mappings)
+            {
+                if (!m.AutoRefreshEnabled) continue;
+                var intervalMs = m.AutoRefreshUnit switch
+                {
+                    "s" => m.AutoRefreshInterval * 1000,
+                    "min" => m.AutoRefreshInterval * 60000,
+                    _ => m.AutoRefreshInterval // "ms"
+                };
+                intervalMs = Math.Max(100, intervalMs); // min 100ms
+                var mapping = m; // capture
+                var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(intervalMs) };
+                timer.Tick += (s2, _) =>
+                {
+                    if (_host == null || _sciterWindow == IntPtr.Zero)
+                    {
+                        (s2 as System.Windows.Threading.DispatcherTimer)?.Stop();
+                        return;
+                    }
+                    try
+                    {
+                        var value = ResolveSingleInputValue(mapping);
+                        var jsKey = System.Text.Json.JsonSerializer.Serialize(mapping.EffectiveInputKey);
+                        var jsVal = System.Text.Json.JsonSerializer.Serialize(value);
+                        
+                        string script = $@"if(typeof window.hostLivePush==='function') window.hostLivePush({jsKey},{jsVal});";
+                        var resultVal = _host.CreateNullValue();
+                        _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Sciter auto-refresh push error: {ex.Message}");
+                    }
+                };
+                timer.Start();
+                _autoRefreshTimers[m.EffectiveInputKey] = timer;
+            }
+        }
+
+        private string ResolveSingleInputValue(CodeInputMapping mapping)
+        {
+            if (_editorHost?.ViewModel == null) return string.Empty;
+            var allNodes = _editorHost.ViewModel.Nodes;
+            var connections = _editorHost.ViewModel.Connections;
+            WorkflowNode? sourceNode = null;
+            if (!string.IsNullOrWhiteSpace(mapping.SourceNodeId))
+            {
+                sourceNode = allNodes?.FirstOrDefault(n =>
+                    string.Equals(n.Id, mapping.SourceNodeId, StringComparison.OrdinalIgnoreCase));
+                if (sourceNode == null && connections != null)
+                {
+                    var conn = connections.FirstOrDefault(c =>
+                        c.ToNode == _node && c.FromNode != null &&
+                        string.Equals(c.FromNode.Id, mapping.SourceNodeId, StringComparison.OrdinalIgnoreCase));
+                    sourceNode = conn?.FromNode;
+                }
+            }
+            if (sourceNode == null) return string.Empty;
+            var key = string.IsNullOrWhiteSpace(mapping.SourceOutputKey) ? null : mapping.SourceOutputKey.Trim();
+            if (string.IsNullOrWhiteSpace(key) && sourceNode.DynamicOutputs?.Count > 0)
+                key = sourceNode.DynamicOutputs[0].Key ?? "output";
+            var value = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, key ?? "output");
+            if (string.Equals(value?.Trim(), "—", StringComparison.OrdinalIgnoreCase)) value = string.Empty;
+            return value ?? string.Empty;
+        }
+
+        private System.Collections.Generic.Dictionary<string, string> ResolveInputValues()
+        {
+            var result = new System.Collections.Generic.Dictionary<string, string>();
+
+            if (_editorHost?.ViewModel == null) return result;
+
+            var mappings = _node.InputMappings ?? new System.Collections.Generic.List<CodeInputMapping>();
+            if (mappings.Count == 0) return result;
+
+            var connections = _editorHost.ViewModel.Connections;
+            var allNodes = _editorHost.ViewModel.Nodes;
+
+            foreach (var m in mappings)
+            {
+                WorkflowNode? sourceNode = null;
+
+                if (!string.IsNullOrWhiteSpace(m.SourceNodeId))
+                {
+                    sourceNode = allNodes?.FirstOrDefault(n =>
+                        string.Equals(n.Id, m.SourceNodeId, StringComparison.OrdinalIgnoreCase));
+
+                    if (sourceNode == null && connections != null)
+                    {
+                        var conn = connections.FirstOrDefault(c =>
+                            c.ToNode == _node && c.FromNode != null &&
+                            string.Equals(c.FromNode.Id, m.SourceNodeId, StringComparison.OrdinalIgnoreCase));
+                        sourceNode = conn?.FromNode;
+                    }
+                }
+
+                string inputValue = string.Empty;
+                if (sourceNode != null)
+                {
+                    var key = string.IsNullOrWhiteSpace(m.SourceOutputKey) ? null : m.SourceOutputKey.Trim();
+                    if (string.IsNullOrWhiteSpace(key) && sourceNode.DynamicOutputs != null && sourceNode.DynamicOutputs.Count > 0)
+                        key = sourceNode.DynamicOutputs[0].Key ?? "output";
+                    inputValue = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, key ?? "output");
+                    if (string.Equals(inputValue?.Trim(), "—", StringComparison.OrdinalIgnoreCase))
+                        inputValue = string.Empty;
+                }
+
+                var varName = m.EffectiveInputKey;
+                if (string.IsNullOrWhiteSpace(varName)) varName = "input";
+
+                result[varName] = inputValue ?? string.Empty;
+            }
+
+            return result;
+        }
+
+        private string ReplaceVariables(string text, System.Collections.Generic.Dictionary<string, string> variableValues)
+        {
+            if (string.IsNullOrEmpty(text) || variableValues.Count == 0) return text;
+
+            var regex = new System.Text.RegularExpressions.Regex(@"\{([^}]+)\}");
+            return regex.Replace(text, match =>
+            {
+                var variableName = match.Groups[1].Value.Trim();
+                if (variableValues.TryGetValue(variableName, out var value) && value != null)
+                {
+                    return value;
+                }
+                return match.Value;
+            });
         }
 
         protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)

@@ -50,15 +50,18 @@ namespace FlowMy.Views.NodeControls
                 border.Visibility = Visibility.Collapsed;
             }
 
+            GpuOptimizationHelper.ApplyToBorder(border);
+
             // --- 2. GRID CONTAINER ---
             var grid = new Grid();
+            GpuOptimizationHelper.ApplyToElement(grid);
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });               // Row 0: Top Bar
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Row 1: Sciter UI
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });               // Row 2: Bottom Bar
             border.Child = grid;
 
             // --- 3. SCITER EMBEDDED CONTROL ---
-            var sciterControl = new SciterEmbeddedControl(node);
+            var sciterControl = new SciterEmbeddedControl(node, host);
             Grid.SetRow(sciterControl, 1);
             grid.Children.Add(sciterControl);
 
@@ -265,7 +268,17 @@ namespace FlowMy.Views.NodeControls
             scaleChangedHandler = (_, _) =>
             {
                 if (isDisposed) return;
-                SyncSciterPosition();
+                if (NodeChrome.IsZooming)
+                {
+                    if (sciterControl.Visibility != Visibility.Collapsed)
+                        sciterControl.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    if (sciterControl.Visibility != Visibility.Visible)
+                        sciterControl.Visibility = Visibility.Visible;
+                    SyncSciterPosition();
+                }
             };
             var scaleDescriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
                 ScaleTransform.ScaleXProperty, typeof(ScaleTransform));
@@ -274,7 +287,17 @@ namespace FlowMy.Views.NodeControls
             translateChangedHandler = (_, _) =>
             {
                 if (isDisposed) return;
-                SyncSciterPosition();
+                if (host.IsPanning)
+                {
+                    if (sciterControl.Visibility != Visibility.Collapsed)
+                        sciterControl.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    if (sciterControl.Visibility != Visibility.Visible)
+                        sciterControl.Visibility = Visibility.Visible;
+                    SyncSciterPosition();
+                }
             };
             var translateXDescriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
                 TranslateTransform.XProperty, typeof(TranslateTransform));
@@ -286,7 +309,19 @@ namespace FlowMy.Views.NodeControls
             renderingHandler = (_, _) =>
             {
                 if (isDisposed) return;
-                SyncSciterPosition();
+                if (host.IsPanning || host.DraggedNode == node || NodeChrome.IsZooming)
+                {
+                    if (sciterControl.Visibility != Visibility.Collapsed)
+                        sciterControl.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    if (sciterControl.Visibility != Visibility.Visible)
+                    {
+                        sciterControl.Visibility = Visibility.Visible;
+                        SyncSciterPosition();
+                    }
+                }
             };
             System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
 
@@ -358,6 +393,14 @@ namespace FlowMy.Views.NodeControls
                         {
                             node.PendingReadDom = false;
                         }
+                    });
+                }
+                else if (e.PropertyName == nameof(DynamicUiNode.InputMappings))
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        sciterControl.RestartAutoRefreshTimers();
+                        sciterControl.UpdateContent();
                     });
                 }
             };
