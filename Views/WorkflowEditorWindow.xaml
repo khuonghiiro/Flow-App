@@ -1226,13 +1226,13 @@ Tag="ListOut">
 
                             <!-- Dynamic UI Form Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource PeriwinkleBlueBrush}"
+                                    Background="{DynamicResource AubergineBrush}"
                                     Tag="DynamicUiNode"
                                     MouseDown="NodeTemplate_MouseDown"
                                     MouseMove="NodeTemplate_MouseMove"
                                     MouseUp="NodeTemplate_MouseUp"
                                     MouseEnter="NodeTemplate_MouseEnter"
-                                    MouseLeave="NodeTemplate_MouseLeave">
+                                    MouseLeave="NodeTemplate_MouseLeave" Padding="0">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="240">
@@ -1246,15 +1246,15 @@ Tag="ListOut">
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource PeriwinkleBlueBrush}"
+                                                <Border Background="{DynamicResource AubergineBrush}"
                                                         CornerRadius="10" Padding="10"
                                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
                                                         <TextBlock Text="Dynamic UI Form"
-                                                                   Foreground="{DynamicResource TextOnPeriwinkleBlueBrush}"
+                                                                   Foreground="{DynamicResource TextOnAubergineBrush}"
                                                                    FontWeight="Bold" FontSize="13"/>
                                                         <TextBlock Text="Tự thiết kế giao diện nhập liệu (TextBox, CheckBox, ComboBox, Slider, DatePicker). Có cổng vào/ra động để đồng bộ dữ liệu."
-                                                                   Foreground="{DynamicResource TextOnPeriwinkleBlueBrush}"
+                                                                   Foreground="{DynamicResource TextOnAubergineBrush}"
                                                                    Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
@@ -1264,8 +1264,8 @@ Tag="ListOut">
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='block-question duotone-regular'}"
-                                                            Fill="{DynamicResource TextOnPeriwinkleBlueBrush}"/>
+                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='desktop-designer Custom-icons.color'}"
+                                                            Fill="{DynamicResource TextOnAubergineBrush}" Width="48" Height="48"/>
                                 </Grid>
                             </Border>
                             

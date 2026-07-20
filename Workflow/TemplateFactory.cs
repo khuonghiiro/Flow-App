@@ -1656,8 +1656,8 @@ namespace FlowMy.Workflow
 
         private WorkflowNode CreateDynamicUiNode(double x, double y)
         {
-            var nodeBrush = _colorThemeService.GetBrush("PeriwinkleBlueBrush")
-                ?? _colorThemeService.GetBrush("PrimaryBrush")
+            var nodeBrush = _colorThemeService.GetBrush("AubergineBrush")
+                ?? _colorThemeService.GetBrush("AubergineBrush")
                 ?? Brushes.MediumSlateBlue;
 
             var node = new FlowMy.Models.Nodes.DynamicUiNode
@@ -1666,7 +1666,8 @@ namespace FlowMy.Workflow
                 Title = "Dynamic UI Form",
                 X = x - 30,
                 Y = y - 30,
-                ColorKey = "PeriwinkleBlue",
+                ColorKey = "Aubergine",
+                IconSize = 60,
                 NodeBrush = nodeBrush,
                 Type = NodeType.DynamicUi
             };

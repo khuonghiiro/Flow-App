@@ -132,6 +132,21 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRowSpan(handleOverlay, 3);
             grid.Children.Add(handleOverlay);
 
+            void RefreshDynamicUiScale()
+            {
+                var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 600.0;
+                var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
+                var topBottomScaleFactor = Math.Max(1.0, rawScale);
+
+                var scaleTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                if (topBarGrid != null)
+                    topBarGrid.LayoutTransform = scaleTransform;
+                if (bottomText != null)
+                    bottomText.LayoutTransform = scaleTransform;
+
+                UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
+            }
+
             // --- 8. RESIZING LOGIC ---
             bool isResizing = false;
             ResizeDirection currentDir = ResizeDirection.None;
@@ -195,6 +210,7 @@ namespace FlowMy.Views.NodeControls
                 node.Y = newY;
                 border.Width = newW;
                 border.Height = newH;
+                RefreshDynamicUiScale();
 
                 if (host.WorkflowCanvas != null)
                 {
@@ -364,6 +380,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         if (!isResizing)
                             border.Width = Math.Max(600, node.Width);
+                        RefreshDynamicUiScale();
                     });
                 }
                 else if (e.PropertyName == nameof(DynamicUiNode.Height))
@@ -372,6 +389,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         if (!isResizing)
                             border.Height = Math.Max(600, node.Height);
+                        RefreshDynamicUiScale();
                     });
                 }
                 else if (e.PropertyName == nameof(DynamicUiNode.Title))
@@ -405,6 +423,11 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
+            border.Loaded += (s, e) =>
+            {
+                RefreshDynamicUiScale();
+            };
+
             // --- 11. FLUENT API INITIALIZATION ---
             BaseNodeControlHelper
                 .Initialize(border, titleTextBlock, node, host)
@@ -433,9 +456,40 @@ namespace FlowMy.Views.NodeControls
                 VerticalAlignment = vAlign,
                 Margin = margin,
                 Tag = direction,
-                Cursor = GetCursorForResizeDirection(direction)
+                Cursor = GetCursorForResizeDirection(direction),
+                CacheMode = null
             };
+            GpuOptimizationHelper.ApplyToShape(handle);
             grid.Children.Add(handle);
+        }
+
+        private static void UpdateInteractionVisualScale(Grid handleOverlay, WorkflowNode node, double rawScale)
+        {
+            var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
+
+            if (handleOverlay != null)
+            {
+                foreach (var child in handleOverlay.Children)
+                {
+                    if (child is Ellipse handle && handle.Tag is ResizeDirection)
+                    {
+                        handle.RenderTransformOrigin = new Point(0.5, 0.5);
+                        handle.RenderTransform = new ScaleTransform(visualScale, visualScale);
+                    }
+                }
+            }
+
+            if (node?.Ports != null)
+            {
+                foreach (var p in node.Ports)
+                {
+                    if (p?.PortUI is FrameworkElement portUi)
+                    {
+                        portUi.RenderTransformOrigin = new Point(0.5, 0.5);
+                        portUi.RenderTransform = new ScaleTransform(visualScale, visualScale);
+                    }
+                }
+            }
         }
 
         private static Cursor GetCursorForResizeDirection(ResizeDirection direction)

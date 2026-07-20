@@ -381,10 +381,10 @@ namespace FlowMy.Views
                 "Callback" => "arrows-turn-right regular",
                 "FileDownload" => "download solid",
                 "GitSource" => "git-alt brands",
-                                "ActionCanVasNode" => "square-share-nodes light",
-                                "ShowInputMsgNode" => "user-message regular",
-                                "DynamicUi" => "block-question duotone-regular",
-                                "DynamicUiNode" => "block-question duotone-regular",
+                "ActionCanVasNode" => "square-share-nodes light",
+                "ShowInputMsgNode" => "user-message regular",
+                "DynamicUi" => "desktop-designer Custom-icons.color",
+                "DynamicUiNode" => "desktop-designer Custom-icons.color",
                 _ => "circle duotone"
             };
         }

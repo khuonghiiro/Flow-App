@@ -989,7 +989,7 @@ namespace FlowMy.ViewModels
                 NodeType.ShowInputMsg => "user-message regular",
                 NodeType.BorderHighlight => "bolt-lightning sharp-light",
                 NodeType.ActionCanVas => "display regular",
-                NodeType.DynamicUi => "block-question duotone-regular",
+                NodeType.DynamicUi => "desktop-designer Custom-icons.color",
                 _ => "circle-question chisel-regular"
             };
         }

@@ -29,8 +29,9 @@ namespace FlowMy.Models.Nodes
         public DynamicUiNode()
         {
             Type = NodeType.DynamicUi;
+            IconSize = 60;
             Title = "Dynamic UI Form";
-            ColorKey = "PeriwinkleBlue";
+            ColorKey = "Aubergine";
 
             // Add standard run ports
             Ports.Add(new NodePort
