@@ -527,8 +527,8 @@ namespace FlowMy.Views.NodeControls
 
             Title = "Nhập Dữ Liệu";
             WindowStyle = WindowStyle.None;
-            AllowsTransparency = true;
-            Background = Brushes.Transparent;
+            AllowsTransparency = false;
+            Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1e293b"));
             Topmost = true;
             ShowInTaskbar = false;
             SizeToContent = SizeToContent.Manual;
@@ -741,6 +741,7 @@ namespace FlowMy.Views.NodeControls
         Window.this.xcall('submitForm', data);
     }
   }
+  globalThis.hostSubmit = hostSubmit;
   window.hostSubmit = hostSubmit;
 </script>";
 

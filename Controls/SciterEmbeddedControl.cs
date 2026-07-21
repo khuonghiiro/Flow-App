@@ -368,9 +368,20 @@ namespace FlowMy.Controls
             }
         }
 
+        private string? _customLoadedHtml = null;
+
         public void UpdateContent()
         {
             if (_host == null || _sciterWindow == IntPtr.Zero) return;
+
+            if (_customLoadedHtml != null)
+            {
+                _host.LoadHtml(_customLoadedHtml, _sciterWindow);
+                var rVal = _host.CreateNullValue();
+                _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out rVal);
+                SetZoom(_currentZoom);
+                return;
+            }
 
             var inputValues = ResolveInputValues();
             var html = ReplaceVariables(_node.HtmlCode ?? string.Empty, inputValues);
@@ -403,6 +414,7 @@ namespace FlowMy.Controls
 
         public void LoadHtml(string htmlContent)
         {
+            _customLoadedHtml = htmlContent;
             if (_host == null || _sciterWindow == IntPtr.Zero) return;
             _host.LoadHtml(htmlContent, _sciterWindow);
             
