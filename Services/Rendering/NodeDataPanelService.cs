@@ -133,6 +133,28 @@ namespace FlowMy.Services.Rendering
         public static string ResolveRawDynamicValueByKey(WorkflowNode node, string key)
         {
             key = key.Trim();
+            if (string.IsNullOrWhiteSpace(key)) return "—";
+
+            // Hỗ trợ truy cập đường dẫn cú pháp ngoặc vuông: key[fieldName], key[index], key[fieldName][index], key[index][fieldName], key[0...n]
+            if (key.Contains("[") && key.Contains("]"))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(key, @"^([^\[]+)((?:\[[^\]]+\])+)$");
+                if (match.Success)
+                {
+                    var rootKey = match.Groups[1].Value.Trim();
+                    var bracketExpr = match.Groups[2].Value;
+
+                    var rootRaw = ResolveRawDynamicValueByKey(node, rootKey);
+                    if (!string.IsNullOrWhiteSpace(rootRaw) && rootRaw != "—")
+                    {
+                        var evaluated = EvaluateJsonPath(rootRaw, bracketExpr);
+                        if (evaluated != null)
+                        {
+                            return evaluated;
+                        }
+                    }
+                }
+            }
 
             // WebNode: cookie, bearer, access_token luôn lấy từ LastCookie/LastBearer/LastAccessToken (runtime từ response),
             // KHÔNG dùng UserValueOverride vì có thể bị sync nhầm từ node input (dữ liệu cookie gửi vào, không phải cookie nhận được).
@@ -615,29 +637,68 @@ namespace FlowMy.Services.Rendering
             if (string.IsNullOrWhiteSpace(rawValue) || rawValue == "—") return "—";
             var trimmed = rawValue.Trim();
 
-            if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+            if ((trimmed.StartsWith("[") && trimmed.EndsWith("]")) ||
+                (trimmed.StartsWith("{") && trimmed.EndsWith("}")))
             {
                 try
                 {
                     using var doc = JsonDocument.Parse(trimmed);
-                    if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                    {
-                        var truncatedItems = new List<string>();
-                        foreach (var element in doc.RootElement.EnumerateArray())
-                        {
-                            string itemStr = element.ValueKind == JsonValueKind.String
-                                ? (element.GetString() ?? string.Empty)
-                                : element.ToString();
-
-                            truncatedItems.Add(TruncateSingleBase64String(itemStr, maxChars));
-                        }
-                        return JsonSerializer.Serialize(truncatedItems);
-                    }
+                    return FormatElementForDisplay(doc.RootElement, maxChars);
                 }
                 catch { }
             }
 
             return TruncateSingleBase64String(trimmed, maxChars);
+        }
+
+        private static string FormatElementForDisplay(JsonElement element, int maxChars = 50)
+        {
+            if (element.ValueKind == JsonValueKind.Array)
+            {
+                var list = new List<object?>();
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String)
+                    {
+                        var str = item.GetString() ?? string.Empty;
+                        list.Add(IsBase64Value(null, str) ? TruncateSingleBase64String(str, maxChars) : (str.Length > maxChars ? str.Substring(0, maxChars) + "..." : str));
+                    }
+                    else if (item.ValueKind == JsonValueKind.Object || item.ValueKind == JsonValueKind.Array)
+                    {
+                        using var doc = JsonDocument.Parse(FormatElementForDisplay(item, maxChars));
+                        list.Add(doc.RootElement.Clone());
+                    }
+                    else
+                    {
+                        list.Add(item.Clone());
+                    }
+                }
+                return JsonSerializer.Serialize(list);
+            }
+            else if (element.ValueKind == JsonValueKind.Object)
+            {
+                var dict = new Dictionary<string, object?>();
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var str = prop.Value.GetString() ?? string.Empty;
+                        dict[prop.Name] = IsBase64Value(prop.Name, str) ? TruncateSingleBase64String(str, maxChars) : (str.Length > maxChars ? str.Substring(0, maxChars) + "..." : str);
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.Object || prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        using var doc = JsonDocument.Parse(FormatElementForDisplay(prop.Value, maxChars));
+                        dict[prop.Name] = doc.RootElement.Clone();
+                    }
+                    else
+                    {
+                        dict[prop.Name] = prop.Value.Clone();
+                    }
+                }
+                return JsonSerializer.Serialize(dict);
+            }
+
+            return element.ToString();
         }
 
         private static string TruncateSingleBase64String(string? value, int maxChars = 50)
@@ -663,6 +724,154 @@ namespace FlowMy.Services.Rendering
             }
 
             return trimmed;
+        }
+
+        /// <summary>
+        /// Evaluate cú pháp ngoặc vuông trên JSON object / JSON array tương tự OutputNode:
+        /// - [fieldName] -> lấy thuộc tính của object
+        /// - [index] -> lấy phần tử của array
+        /// - [fieldName][index] hoặc [index][fieldName] -> lấy mảng trong object / object trong mảng
+        /// - [0...n] -> hiển thị danh sách tất cả phần tử
+        /// </summary>
+        public static string? EvaluateJsonPath(string jsonRaw, string bracketExpression)
+        {
+            if (string.IsNullOrWhiteSpace(jsonRaw) || string.IsNullOrWhiteSpace(bracketExpression))
+                return null;
+
+            var matches = System.Text.RegularExpressions.Regex.Matches(bracketExpression, @"\[([^\]]+)\]");
+            if (matches.Count == 0) return null;
+
+            var segments = new List<string>();
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                var seg = m.Groups[1].Value.Trim();
+                if (!string.IsNullOrEmpty(seg))
+                {
+                    segments.Add(seg);
+                }
+            }
+
+            if (segments.Count == 0) return null;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(jsonRaw.Trim());
+                var current = doc.RootElement;
+
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    var seg = segments[i];
+
+                    if (string.Equals(seg, "0...n", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (current.ValueKind == JsonValueKind.Array)
+                        {
+                            var list = new List<string>();
+                            foreach (var el in current.EnumerateArray())
+                            {
+                                if (el.ValueKind == JsonValueKind.String)
+                                    list.Add(el.GetString() ?? string.Empty);
+                                else
+                                    list.Add(el.ToString());
+                            }
+                            return $"[{string.Join(", ", list)}]";
+                        }
+                        else if (current.ValueKind == JsonValueKind.String)
+                        {
+                            return current.GetString();
+                        }
+                        else
+                        {
+                            return current.ToString();
+                        }
+                    }
+
+                    if (int.TryParse(seg, out var index))
+                    {
+                        if (current.ValueKind == JsonValueKind.Array)
+                        {
+                            int len = current.GetArrayLength();
+                            if (index >= 0 && index < len)
+                            {
+                                current = current[index];
+                            }
+                            else
+                            {
+                                return string.Empty;
+                            }
+                        }
+                        else if (current.ValueKind == JsonValueKind.Object)
+                        {
+                            var indexKey = index.ToString();
+                            bool found = false;
+                            foreach (var prop in current.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, indexKey, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    current = prop.Value;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) return string.Empty;
+                        }
+                        else
+                        {
+                            return string.Empty;
+                        }
+                    }
+                    else
+                    {
+                        if (current.ValueKind == JsonValueKind.Object)
+                        {
+                            bool found = false;
+                            foreach (var prop in current.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, seg, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    current = prop.Value;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) return string.Empty;
+                        }
+                        else
+                        {
+                            return string.Empty;
+                        }
+                    }
+                }
+
+                if (current.ValueKind == JsonValueKind.String)
+                {
+                    return current.GetString() ?? string.Empty;
+                }
+                else if (current.ValueKind == JsonValueKind.Null)
+                {
+                    return string.Empty;
+                }
+                else if (current.ValueKind == JsonValueKind.Array)
+                {
+                    var list = new List<string>();
+                    foreach (var el in current.EnumerateArray())
+                    {
+                        if (el.ValueKind == JsonValueKind.String)
+                            list.Add(el.GetString() ?? string.Empty);
+                        else
+                            list.Add(el.ToString());
+                    }
+                    return $"[{string.Join(", ", list)}]";
+                }
+                else
+                {
+                    return current.ToString();
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
