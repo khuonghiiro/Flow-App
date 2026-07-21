@@ -505,12 +505,21 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                             Cursor = System.Windows.Input.Cursors.Hand
                         };
 
-                        var capturedValue = value;
+                        var capturedIndex = i;
+                        var fallbackValue = value;
                         btnCopyItem.Click += (s, e) =>
                         {
                             try
                             {
-                                Clipboard.SetText(capturedValue);
+                                var fullArrayStr = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
+                                if (TryParseJsonArrayItems(fullArrayStr, out var fullItems) && capturedIndex < fullItems.Count)
+                                {
+                                    Clipboard.SetText(fullItems[capturedIndex]);
+                                }
+                                else
+                                {
+                                    Clipboard.SetText(fallbackValue);
+                                }
                             }
                             catch { }
                         };
@@ -575,12 +584,21 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                             Cursor = System.Windows.Input.Cursors.Hand
                         };
 
-                        var capturedShortValue = value;
+                        var capturedShortIndex = i;
+                        var fallbackShortValue = value;
                         btnCopyShort.Click += (s, e) =>
                         {
                             try
                             {
-                                Clipboard.SetText(capturedShortValue);
+                                var fullArrayStr = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
+                                if (TryParseJsonArrayItems(fullArrayStr, out var fullItems) && capturedShortIndex < fullItems.Count)
+                                {
+                                    Clipboard.SetText(fullItems[capturedShortIndex]);
+                                }
+                                else
+                                {
+                                    Clipboard.SetText(fallbackShortValue);
+                                }
                             }
                             catch { }
                         };
@@ -727,12 +745,13 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     Cursor = System.Windows.Input.Cursors.Hand
                 };
 
-                var capturedRawValue = result.RawValue;
                 btnCopy.Click += (s, e) =>
                 {
                     try
                     {
-                        Clipboard.SetText(capturedRawValue);
+                        var fullVal = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
+                        if (string.IsNullOrWhiteSpace(fullVal) || fullVal == "—") fullVal = result.RawValue;
+                        Clipboard.SetText(fullVal);
                     }
                     catch { }
                 };

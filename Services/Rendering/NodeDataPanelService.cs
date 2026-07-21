@@ -116,9 +116,21 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>
-        /// Resolve giá trị từ node theo key. Dùng cho cả UI và execution.
+        /// Resolve giá trị từ node theo key. Dùng cho cả UI (forDisplay = true) và execution/data-passing (forDisplay = false).
+        /// Khi forDisplay = true (mặc định cho UI canvas), các dữ liệu dạng base64 lớn sẽ được ngắt đoạn "..." để tránh làm đơ WPF canvas.
+        /// Khi forDisplay = false (dành cho copy hoặc truyền dữ liệu sang node logic khác), giữ nguyên base64 đầy đủ.
         /// </summary>
-        public static string ResolveDynamicValueByKey(WorkflowNode node, string key)
+        public static string ResolveDynamicValueByKey(WorkflowNode node, string key, bool forDisplay = true)
+        {
+            var rawValue = ResolveRawDynamicValueByKey(node, key);
+            if (forDisplay && IsBase64Value(key, rawValue))
+            {
+                return TruncateBase64ForDisplay(rawValue);
+            }
+            return rawValue;
+        }
+
+        public static string ResolveRawDynamicValueByKey(WorkflowNode node, string key)
         {
             key = key.Trim();
 
@@ -563,6 +575,94 @@ namespace FlowMy.Services.Rendering
             {
                 return null;
             }
+        }
+
+        public static bool IsBase64Value(string? key, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value == "—") return false;
+            var trimmed = value.Trim();
+
+            if (!string.IsNullOrWhiteSpace(key) && key.Contains("Base64", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (trimmed.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("data:application/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("data:video/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("data:audio/", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (trimmed.StartsWith("[\"data:image/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("[\"iVBORw0", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("[\"/9j/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("[\"UklGR", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (trimmed.Length > 100 && (
+                trimmed.StartsWith("iVBORw0", StringComparison.Ordinal) ||
+                trimmed.StartsWith("/9j/", StringComparison.Ordinal) ||
+                trimmed.StartsWith("UklGR", StringComparison.Ordinal) ||
+                trimmed.StartsWith("R0lGOD", StringComparison.Ordinal) ||
+                trimmed.StartsWith("Qk0", StringComparison.Ordinal)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static string TruncateBase64ForDisplay(string? rawValue, int maxChars = 50)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue) || rawValue == "—") return "—";
+            var trimmed = rawValue.Trim();
+
+            if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(trimmed);
+                    if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        var truncatedItems = new List<string>();
+                        foreach (var element in doc.RootElement.EnumerateArray())
+                        {
+                            string itemStr = element.ValueKind == JsonValueKind.String
+                                ? (element.GetString() ?? string.Empty)
+                                : element.ToString();
+
+                            truncatedItems.Add(TruncateSingleBase64String(itemStr, maxChars));
+                        }
+                        return JsonSerializer.Serialize(truncatedItems);
+                    }
+                }
+                catch { }
+            }
+
+            return TruncateSingleBase64String(trimmed, maxChars);
+        }
+
+        private static string TruncateSingleBase64String(string? value, int maxChars = 50)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            var trimmed = value.Trim();
+
+            if (trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var commaIdx = trimmed.IndexOf(',');
+                if (commaIdx > 0 && commaIdx < trimmed.Length - 1)
+                {
+                    var prefix = trimmed.Substring(0, commaIdx + 1);
+                    var payload = trimmed.Substring(commaIdx + 1);
+                    var shortPayload = payload.Length > 20 ? payload.Substring(0, 20) + "..." : payload;
+                    return $"{prefix}{shortPayload}";
+                }
+            }
+
+            if (trimmed.Length > maxChars)
+            {
+                return trimmed.Substring(0, maxChars) + "...";
+            }
+
+            return trimmed;
         }
     }
 }
