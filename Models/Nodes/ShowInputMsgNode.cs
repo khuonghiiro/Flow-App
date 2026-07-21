@@ -23,82 +23,176 @@ namespace FlowMy.Models.Nodes
         private List<AsyncDataSource> _asyncDataSources = new();
         private bool _pendingAsyncDataPush = false;
 
-        private string _htmlCode =
-            "<!DOCTYPE html>\n" +
-            "<html>\n" +
-            "<head>\n" +
-            "    <meta charset=\"UTF-8\">\n" +
-            "    <title>Nhập Dữ Liệu</title>\n" +
-            "</head>\n" +
-            "<body>\n" +
-            "    <div class=\"card\">\n" +
-            "        <h3>Nhập Dữ Liệu</h3>\n" +
-            "        <div class=\"form-group\">\n" +
-            "            <textarea id=\"inputValue\" placeholder=\"Nhập nội dung ở đây và nhấn Enter để xác nhận...\"></textarea>\n" +
-            "        </div>\n" +
+        public static readonly string DefaultHtmlCode =
+            "<div class=\"chat-input-container\">\n" +
+            "    <div class=\"chat-header\">\n" +
+            "        <span class=\"chat-title\">Nhập Dữ Liệu</span>\n" +
             "    </div>\n" +
-            "</body>\n" +
-            "</html>";
+            "    <div class=\"input-wrapper\">\n" +
+            "        <textarea id=\"inputValue\" placeholder=\"Nhập nội dung... (Enter để gửi, Shift + Enter để xuống dòng)\"></textarea>\n" +
+            "        <button id=\"btnSubmit\" type=\"button\" class=\"btn-send\" title=\"Gửi (Enter)\">\n" +
+            "            <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n" +
+            "                <line x1=\"12\" y1=\"19\" x2=\"12\" y2=\"5\"></line>\n" +
+            "                <polyline points=\"5 12 12 5 19 12\"></polyline>\n" +
+            "            </svg>\n" +
+            "        </button>\n" +
+            "    </div>\n" +
+            "</div>";
 
-        private string _jsCode =
-            "(function() {\n" +
-            "    var txtArea = document.getElementById('inputValue');\n" +
-            "    if (txtArea) {\n" +
-            "        txtArea.focus();\n" +
-            "        txtArea.addEventListener('keydown', function(e) {\n" +
-            "            if (e.key === 'Enter' && !e.shiftKey) {\n" +
-            "                e.preventDefault();\n" +
-            "                if (typeof hostSubmit === 'function') {\n" +
-            "                    hostSubmit();\n" +
-            "                }\n" +
-            "            }\n" +
-            "        });\n" +
+        public static readonly string DefaultJsCode =
+            "function doSubmit() {\n" +
+            "    if (typeof hostSubmit === 'function') {\n" +
+            "        hostSubmit();\n" +
+            "    } else if (typeof Window !== 'undefined' && Window.this) {\n" +
+            "        Window.this.xcall('submitForm');\n" +
             "    }\n" +
-            "})();";
-
-        private string _cssCode =
-            "body {\n" +
-            "    margin: 0;\n" +
-            "    padding: 20px;\n" +
-            "    font-family: system-ui, -apple-system, sans-serif;\n" +
-            "    background: #0f172a;\n" +
-            "    color: #f8fafc;\n" +
             "}\n" +
-            ".card {\n" +
+            "\n" +
+            "document.on('ready', function() {\n" +
+            "    var txt = document.$('#inputValue');\n" +
+            "    if (txt) setTimeout(function() { txt.focus(); }, 100);\n" +
+            "});\n" +
+            "\n" +
+            "document.on('keydown', '#inputValue', function(e) {\n" +
+            "    if (e.key === 'Enter' || e.code === 'Enter') {\n" +
+            "        if (e.shiftKey) {\n" +
+            "            return;\n" +
+            "        }\n" +
+            "        e.preventDefault();\n" +
+            "        doSubmit();\n" +
+            "    }\n" +
+            "});\n" +
+            "\n" +
+            "document.on('click', '#btnSubmit', function(e) {\n" +
+            "    e.preventDefault();\n" +
+            "    doSubmit();\n" +
+            "});";
+
+        public static readonly string DefaultCssCode =
+            "@set dark-scrollbar {\n" +
+            "    .thumb {\n" +
+            "        background: #334155;\n" +
+            "        border-radius: 4px;\n" +
+            "    }\n" +
+            "    .thumb:hover {\n" +
+            "        background: #475569;\n" +
+            "    }\n" +
+            "    .base, .corner {\n" +
+            "        background: transparent;\n" +
+            "    }\n" +
+            "    .prev, .next {\n" +
+            "        display: none;\n" +
+            "    }\n" +
+            "}\n" +
+            "* {\n" +
+            "    box-sizing: border-box;\n" +
+            "}\n" +
+            "html, body {\n" +
+            "    margin: 0;\n" +
+            "    padding: 0;\n" +
+            "    width: 100%;\n" +
+            "    height: 100%;\n" +
+            "    background-color: #0f172a;\n" +
+            "    color: #f8fafc;\n" +
+            "    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n" +
+            "    overflow: hidden;\n" +
+            "}\n" +
+            ".chat-input-container {\n" +
+            "    display: flex;\n" +
+            "    flex-direction: column;\n" +
+            "    width: 100%;\n" +
+            "    height: 100%;\n" +
+            "    padding: 16px;\n" +
+            "    background: #0f172a;\n" +
+            "}\n" +
+            ".chat-header {\n" +
+            "    margin-bottom: 8px;\n" +
+            "    display: flex;\n" +
+            "    align-items: center;\n" +
+            "}\n" +
+            ".chat-title {\n" +
+            "    font-size: 13px;\n" +
+            "    font-weight: 600;\n" +
+            "    color: #38bdf8;\n" +
+            "    letter-spacing: 0.3px;\n" +
+            "}\n" +
+            ".input-wrapper {\n" +
+            "    position: relative;\n" +
+            "    flex: 1;\n" +
+            "    display: flex;\n" +
             "    background: #1e293b;\n" +
             "    border: 1px solid #334155;\n" +
             "    border-radius: 12px;\n" +
-            "    padding: 20px;\n" +
-            "    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);\n" +
+            "    padding: 12px 50px 12px 14px;\n" +
+            "    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);\n" +
+            "    transition: border-color 0.2s, box-shadow 0.2s;\n" +
             "}\n" +
-            "h3 {\n" +
-            "    margin-top: 0;\n" +
-            "    margin-bottom: 16px;\n" +
-            "    color: #38bdf8;\n" +
-            "    font-size: 16px;\n" +
-            "}\n" +
-            ".form-group {\n" +
-            "    margin-bottom: 0;\n" +
+            ".input-wrapper:focus-within {\n" +
+            "    border-color: #38bdf8;\n" +
+            "    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);\n" +
             "}\n" +
             "textarea {\n" +
             "    width: 100%;\n" +
-            "    height: 120px;\n" +
-            "    padding: 10px;\n" +
-            "    background: #0f172a;\n" +
-            "    border: 1px solid #475569;\n" +
-            "    border-radius: 6px;\n" +
+            "    height: 100%;\n" +
+            "    background: transparent;\n" +
+            "    border: none;\n" +
+            "    outline: none;\n" +
             "    color: #f8fafc;\n" +
             "    font-family: inherit;\n" +
             "    font-size: 14px;\n" +
+            "    line-height: 1.5;\n" +
             "    resize: none;\n" +
-            "    box-sizing: border-box;\n" +
+            "    vertical-scrollbar: \"dark-scrollbar\";\n" +
+            "    overflow-y: auto;\n" +
             "}\n" +
-            "textarea:focus {\n" +
-            "    border-color: #38bdf8;\n" +
-            "    outline: none;\n" +
+            "textarea::placeholder {\n" +
+            "    color: #64748b;\n" +
+            "}\n" +
+            ".btn-send {\n" +
+            "    position: absolute;\n" +
+            "    right: 10px;\n" +
+            "    bottom: 10px;\n" +
+            "    width: 32px;\n" +
+            "    height: 32px;\n" +
+            "    border-radius: 8px;\n" +
+            "    border: none;\n" +
+            "    background: #38bdf8;\n" +
+            "    color: #0f172a;\n" +
+            "    display: flex;\n" +
+            "    align-items: center;\n" +
+            "    justify-content: center;\n" +
+            "    cursor: pointer;\n" +
+            "    transition: all 0.2s ease;\n" +
+            "    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);\n" +
+            "}\n" +
+            ".btn-send:hover {\n" +
+            "    background: #0ea5e9;\n" +
+            "    transform: scale(1.05);\n" +
+            "}\n" +
+            ".btn-send:active {\n" +
+            "    transform: scale(0.95);\n" +
+            "}\n" +
+            "::-webkit-scrollbar {\n" +
+            "    width: 6px;\n" +
+            "    height: 6px;\n" +
+            "}\n" +
+            "::-webkit-scrollbar-track {\n" +
+            "    background: transparent;\n" +
+            "}\n" +
+            "::-webkit-scrollbar-thumb {\n" +
+            "    background: #334155;\n" +
+            "    border-radius: 10px;\n" +
+            "}\n" +
+            "::-webkit-scrollbar-thumb:hover {\n" +
+            "    background: #475569;\n" +
             "}";
 
-        private string _paramsCode = "result: #inputValue";
+        public static readonly string DefaultParamsCode = "result: #inputValue";
+
+        private string _htmlCode = DefaultHtmlCode;
+        private string _jsCode = DefaultJsCode;
+        private string _cssCode = DefaultCssCode;
+        private string _paramsCode = DefaultParamsCode;
 
         private bool _pendingReadDom = false;
 
@@ -115,27 +209,45 @@ namespace FlowMy.Models.Nodes
             RebuildDynamicOutputs();
         }
 
+        public void EnsureUpgradedTemplate()
+        {
+            if (string.IsNullOrWhiteSpace(_htmlCode) ||
+                _htmlCode.Contains("class=\"card\"", StringComparison.OrdinalIgnoreCase) ||
+                _htmlCode.Contains("Nhập nội dung ở đây và nhấn Enter để xác nhận", StringComparison.OrdinalIgnoreCase) ||
+                !_cssCode.Contains("dark-scrollbar", StringComparison.OrdinalIgnoreCase))
+            {
+                _htmlCode = DefaultHtmlCode;
+                _cssCode = DefaultCssCode;
+                _jsCode = DefaultJsCode;
+                _paramsCode = DefaultParamsCode;
+                OnPropertyChanged(nameof(HtmlCode));
+                OnPropertyChanged(nameof(CssCode));
+                OnPropertyChanged(nameof(JsCode));
+                OnPropertyChanged(nameof(ParamsCode));
+            }
+        }
+
         public string HtmlCode
         {
-            get => _htmlCode;
+            get { EnsureUpgradedTemplate(); return _htmlCode; }
             set { if (_htmlCode != value) { _htmlCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public string JsCode
         {
-            get => _jsCode;
+            get { EnsureUpgradedTemplate(); return _jsCode; }
             set { if (_jsCode != value) { _jsCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public string CssCode
         {
-            get => _cssCode;
+            get { EnsureUpgradedTemplate(); return _cssCode; }
             set { if (_cssCode != value) { _cssCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public string ParamsCode
         {
-            get => _paramsCode;
+            get { EnsureUpgradedTemplate(); return _paramsCode; }
             set { if (_paramsCode != value) { _paramsCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 

@@ -424,7 +424,7 @@ namespace FlowMy.Controls
             var safeParamsCode = paramsCode.Replace("`", "\\`").Replace("$", "\\$");
 
             return $@"
-<script type=""module"">
+<script>
 (function() {{
   if (globalThis.__sciterHostReady) return;
   globalThis.__sciterHostReady = true;
@@ -471,7 +471,7 @@ namespace FlowMy.Controls
     }}
     if (typeof Window !== 'undefined' && Window.this) {{
       Window.this.xcall('submitForm', data);
-    }} else if (window.Window && window.Window.this) {{
+    }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
       window.Window.this.xcall('submitForm', data);
     }}
   }}
@@ -479,7 +479,7 @@ namespace FlowMy.Controls
   function hostStart() {{
     if (typeof Window !== 'undefined' && Window.this) {{
       Window.this.xcall('startWorkflow');
-    }} else if (window.Window && window.Window.this) {{
+    }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
       window.Window.this.xcall('startWorkflow');
     }}
   }}
@@ -547,7 +547,7 @@ namespace FlowMy.Controls
 <body>
     {html}
     {runtimeScript}
-    <script type=""module"">
+    <script>
         {js}
     </script>
 </body>
