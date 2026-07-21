@@ -434,6 +434,8 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRow(webView, 1);
             var isDisposed = false;
             Action recreateWebView = null!;
+            string activeCacheMode = node.CacheMode ?? "Shared";
+            string activeCustomCacheName = node.CustomCacheName ?? "Shared";
 
             // JS injection bridge: when workflow runs WebNodeExecutor it sets node.PendingJavaScript.
             // WebNodeControl listens and executes the script into WebView2.
@@ -1122,10 +1124,18 @@ namespace FlowMy.Views.NodeControls
                     else if (string.Equals(e.PropertyName, nameof(WebNode.CacheMode), StringComparison.Ordinal) ||
                              string.Equals(e.PropertyName, nameof(WebNode.CustomCacheName), StringComparison.Ordinal))
                     {
-                        border.Dispatcher.BeginInvoke(new Action(() =>
+                        var targetMode = node.CacheMode ?? "Shared";
+                        var targetName = node.CustomCacheName ?? "Shared";
+                        if (!string.Equals(activeCacheMode, targetMode, StringComparison.Ordinal) ||
+                            !string.Equals(activeCustomCacheName, targetName, StringComparison.Ordinal))
                         {
-                            recreateWebView?.Invoke();
-                        }), DispatcherPriority.Normal);
+                            activeCacheMode = targetMode;
+                            activeCustomCacheName = targetName;
+                            border.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                recreateWebView?.Invoke();
+                            }), DispatcherPriority.Normal);
+                        }
                     }
                 };
             }
@@ -1580,7 +1590,8 @@ namespace FlowMy.Views.NodeControls
                 BorderThickness = new Thickness(0),
                 Foreground = textBrush,
                 CaretBrush = textBrush,
-                SelectionBrush = new SolidColorBrush(Color.FromArgb(100, 100, 180, 255))
+                SelectionBrush = new SolidColorBrush(Color.FromRgb(254, 224, 138)), // Nền vàng nhẹ mờ mờ kiểu Google Chrome
+                SelectionOpacity = 0.45
             };
             Grid.SetColumn(urlBox, 1);
             urlPillInner.Children.Add(urlBox);
@@ -1690,9 +1701,15 @@ namespace FlowMy.Views.NodeControls
                 UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus
             });
 
-            // PreviewKeyDown: popup navigation (↑↓/Escape/Enter item) + Enter navigate bình thường
+            // PreviewKeyDown: Ctrl+A bôi đen toàn bộ chữ + popup navigation (↑↓/Escape/Enter item) + Enter navigate bình thường
             urlBox.PreviewKeyDown += (s, e) =>
             {
+                if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    e.Handled = true;
+                    urlBox.SelectAll();
+                    return;
+                }
                 if (suggestPopup.IsOpen)
                 {
                     if (e.Key == Key.Down)

@@ -140,18 +140,26 @@ namespace FlowMy.ViewModels
 
         partial void OnCacheModeChanged(string value)
         {
-            _webNode.CacheMode = value ?? "Shared";
-            if (value == "Shared")
+            var newMode = value ?? "Shared";
+            if (!string.Equals(_webNode.CacheMode, newMode, StringComparison.Ordinal))
             {
-                CustomCacheName = "Shared";
+                _webNode.CacheMode = newMode;
+                if (newMode == "Shared")
+                {
+                    CustomCacheName = "Shared";
+                }
+                _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
             }
-            _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
         }
 
         partial void OnCustomCacheNameChanged(string value)
         {
-            _webNode.CustomCacheName = value ?? "Shared";
-            _webNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
+            var newName = value ?? "Shared";
+            if (!string.Equals(_webNode.CustomCacheName, newName, StringComparison.Ordinal))
+            {
+                _webNode.CustomCacheName = newName;
+                _webNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
+            }
         }
 
         [RelayCommand]
