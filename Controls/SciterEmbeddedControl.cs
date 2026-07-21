@@ -190,11 +190,13 @@ namespace FlowMy.Controls
             {
                 if (methodName == "submitForm" || methodName == "updateValue")
                 {
+                    bool hasMapData = false;
                     if (args.Count > 0)
                     {
                         var dataVal = args[0];
                         if (dataVal.IsMap)
                         {
+                            hasMapData = true;
                             var mapItems = _host.GetMapItems(ref dataVal);
                             foreach (var kvp in mapItems)
                             {
@@ -217,33 +219,79 @@ namespace FlowMy.Controls
                                         dyn.UserValueOverride = value?.ToString();
                                 }
                             }
+                        }
+                    }
 
-                            if (_editorHost != null)
+                    if (!hasMapData)
+                    {
+                        var paramsCode = _node.ParamsCode ?? "";
+                        UpdateOutputsFromDom(paramsCode, _node.ResolvedOutputs);
+                    }
+
+                    if (_editorHost != null)
+                    {
+                        _editorHost.RequestSyncDataPanels(immediate: false);
+
+                        try
+                        {
+                            var vm = _editorHost.ViewModel;
+                            if (vm != null)
                             {
-                                _editorHost.RequestSyncDataPanels(immediate: false);
-
-                                try
+                                var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                                    .GetField("_executionVisualizer",
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
                                 {
-                                    var vm = _editorHost.ViewModel;
-                                    if (vm != null)
+                                    visualizer.RefreshSavedOutputs(new[] { (WorkflowNode)_node });
+                                }
+                            }
+                        }
+                        catch (Exception exVis)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Sciter UI RefreshSavedOutputs error: {exVis.Message}");
+                        }
+                    }
+
+                    if (methodName == "submitForm")
+                    {
+                        FormSubmitted?.Invoke(this, new System.Collections.Generic.Dictionary<string, object?>(_node.ResolvedOutputs));
+                    }
+                }
+                else if (methodName == "startWorkflow" || methodName == "hostStart" || methodName == "startTest")
+                {
+                    if (_editorHost != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            try
+                            {
+                                var vm = _editorHost.ViewModel;
+                                if (vm != null)
+                                {
+                                    var vmType = vm.GetType();
+                                    var startTestMethod = vmType.GetMethod("StartTest",
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                    if (startTestMethod != null)
                                     {
-                                        var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
-                                            .GetField("_executionVisualizer",
-                                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                        if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
+                                        var task = startTestMethod.Invoke(vm, null) as System.Threading.Tasks.Task;
+                                        if (task != null) await task;
+                                    }
+                                    else
+                                    {
+                                        var commandProp = vmType.GetProperty("StartTestCommand",
+                                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                                        if (commandProp?.GetValue(vm) is System.Windows.Input.ICommand cmd && cmd.CanExecute(null))
                                         {
-                                            visualizer.RefreshSavedOutputs(new[] { (WorkflowNode)_node });
+                                            cmd.Execute(null);
                                         }
                                     }
                                 }
-                                catch { }
                             }
-
-                            if (methodName == "submitForm")
+                            catch (Exception ex)
                             {
-                                FormSubmitted?.Invoke(this, new System.Collections.Generic.Dictionary<string, object?>(_node.ResolvedOutputs));
+                                System.Diagnostics.Debug.WriteLine($"[Sciter] startWorkflow error: {ex.Message}");
                             }
-                        }
+                        }), System.Windows.Threading.DispatcherPriority.Normal);
                     }
                 }
                 else if (methodName == "cancelForm")
@@ -368,15 +416,104 @@ namespace FlowMy.Controls
             }
         }
 
+        private string BuildRuntimeScript()
+        {
+            var inputValues = ResolveInputValues();
+            var inputValuesJson = System.Text.Json.JsonSerializer.Serialize(inputValues);
+            var paramsCode = _node.ParamsCode ?? "";
+            var safeParamsCode = paramsCode.Replace("`", "\\`").Replace("$", "\\$");
+
+            return $@"
+<script type=""module"">
+(function() {{
+  if (globalThis.__sciterHostReady) return;
+  globalThis.__sciterHostReady = true;
+
+  var liveVals = {inputValuesJson};
+  globalThis.hostLive = {{ values: liveVals, _callbacks: [] }};
+  globalThis.hostLive.on = function() {{
+    var args = Array.prototype.slice.call(arguments);
+    var cb = args[args.length - 1];
+    if (typeof cb !== 'function') return;
+    var keys = args.slice(0, -1);
+    globalThis.hostLive._callbacks.push({{ keys: keys, cb: cb }});
+    try {{
+      var vals0 = keys.length > 0
+        ? keys.map(function(k) {{ return globalThis.hostLive.values[k]; }})
+        : [globalThis.hostLive.values];
+      setTimeout(function() {{ try {{ cb.apply(null, vals0); }} catch(e) {{}} }}, 0);
+    }} catch(e) {{}}
+  }};
+
+  function hostSubmit(data) {{
+    if (!data || typeof data !== 'object') {{
+      data = {{}};
+      var paramsText = `{safeParamsCode}`;
+      var lines = paramsText.split('\n');
+      for (var i = 0; i < lines.length; i++) {{
+        var line = lines[i].trim();
+        if (!line || line.startsWith('//') || line.startsWith('#')) continue;
+        var parts = line.includes(':') ? line.split(':') : line.split('=');
+        if (parts.length < 2) continue;
+        var key = parts[0].trim();
+        var selector = parts[1].trim();
+        try {{
+          var el = document.querySelector(selector);
+          if (el) {{
+            if (typeof el.value !== 'undefined') {{
+              data[key] = el.value;
+            }} else if (el.textContent) {{
+              data[key] = el.textContent;
+            }}
+          }}
+        }} catch(e) {{}}
+      }}
+    }}
+    if (typeof Window !== 'undefined' && Window.this) {{
+      Window.this.xcall('submitForm', data);
+    }} else if (window.Window && window.Window.this) {{
+      window.Window.this.xcall('submitForm', data);
+    }}
+  }}
+
+  function hostStart() {{
+    if (typeof Window !== 'undefined' && Window.this) {{
+      Window.this.xcall('startWorkflow');
+    }} else if (window.Window && window.Window.this) {{
+      window.Window.this.xcall('startWorkflow');
+    }}
+  }}
+
+  globalThis.hostSubmit = hostSubmit;
+  globalThis.hostStart = hostStart;
+  if (typeof window !== 'undefined') {{
+    window.hostLive = globalThis.hostLive;
+    window.hostSubmit = hostSubmit;
+    window.hostStart = hostStart;
+  }}
+}})();
+</script>";
+        }
+
         private string? _customLoadedHtml = null;
 
         public void UpdateContent()
         {
             if (_host == null || _sciterWindow == IntPtr.Zero) return;
 
+            var runtimeScript = BuildRuntimeScript();
+
             if (_customLoadedHtml != null)
             {
-                _host.LoadHtml(_customLoadedHtml, _sciterWindow);
+                var htmlToLoad = _customLoadedHtml;
+                if (!htmlToLoad.Contains("__sciterHostReady", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (htmlToLoad.Contains("</body>", StringComparison.OrdinalIgnoreCase))
+                        htmlToLoad = htmlToLoad.Replace("</body>", runtimeScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
+                    else
+                        htmlToLoad += runtimeScript;
+                }
+                _host.LoadHtml(htmlToLoad, _sciterWindow);
                 var rVal = _host.CreateNullValue();
                 _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out rVal);
                 SetZoom(_currentZoom);
@@ -393,11 +530,23 @@ namespace FlowMy.Controls
 <head>
     <meta charset=""utf-8"">
     <style>
+        html, body {{
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: auto;
+            box-sizing: border-box;
+        }}
         {css}
     </style>
 </head>
 <body>
     {html}
+    {runtimeScript}
     <script type=""module"">
         {js}
     </script>
@@ -414,6 +563,15 @@ namespace FlowMy.Controls
 
         public void LoadHtml(string htmlContent)
         {
+            var runtimeScript = BuildRuntimeScript();
+            if (!htmlContent.Contains("__sciterHostReady", StringComparison.OrdinalIgnoreCase))
+            {
+                if (htmlContent.Contains("</body>", StringComparison.OrdinalIgnoreCase))
+                    htmlContent = htmlContent.Replace("</body>", runtimeScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
+                else
+                    htmlContent += runtimeScript;
+            }
+
             _customLoadedHtml = htmlContent;
             if (_host == null || _sciterWindow == IntPtr.Zero) return;
             _host.LoadHtml(htmlContent, _sciterWindow);
