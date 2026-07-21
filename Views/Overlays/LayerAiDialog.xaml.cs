@@ -82,6 +82,7 @@ namespace FlowMy.Views.Overlays
         private bool _isMouseDownOnImage = false;
         private bool _isAiLoading = false;
         private bool _sendModeOn = true;
+        private bool _isCombinedMode = true;
 
         public LayerAiDialog(System.Collections.Generic.List<EditorLayer> selectedLayers, EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
@@ -146,6 +147,9 @@ namespace FlowMy.Views.Overlays
 
             // Load saved settings for active layer
             LoadSavedSettings();
+
+            _isCombinedMode = _node.LayerAiIsCombinedMode;
+            UpdateImageModeButtonUI();
 
             // Sync prompt from node to prompt boxes
             LoadActiveLayerState();
@@ -504,6 +508,49 @@ namespace FlowMy.Views.Overlays
             Close();
         }
 
+        private void UpdateImageModeButtonUI()
+        {
+            if (BtnToggleImageMode == null) return;
+
+            if (_isCombinedMode)
+            {
+                BtnToggleImageMode.Content = "Ảnh chung";
+                BtnToggleImageMode.Style = TryFindResource("SecondaryButton") as Style;
+                BtnToggleImageMode.ToolTip = "Chế độ: Ảnh chung (mặc định)";
+            }
+            else
+            {
+                BtnToggleImageMode.Content = "Ảnh đơn";
+                BtnToggleImageMode.Style = TryFindResource("PrimaryButton") as Style ?? TryFindResource("SecondaryButton") as Style;
+                BtnToggleImageMode.ToolTip = "Chế độ: Ảnh đơn (1 ảnh chính + 1 ảnh phụ)";
+            }
+        }
+
+        private void BtnToggleImageMode_Click(object sender, RoutedEventArgs e)
+        {
+            _isCombinedMode = !_isCombinedMode;
+            if (_node != null)
+            {
+                _node.LayerAiIsCombinedMode = _isCombinedMode;
+
+                // Cập nhật UserValueOverride của dynamic output "isCombinedImage" nếu có
+                var port = _node.DynamicOutputs?.FirstOrDefault(o =>
+                    string.Equals(o.Key, "isCombinedImage", StringComparison.OrdinalIgnoreCase));
+                if (port != null)
+                {
+                    port.UserValueOverride = _isCombinedMode.ToString().ToLowerInvariant();
+                }
+            }
+
+            UpdateImageModeButtonUI();
+
+            try
+            {
+                _host?.RequestSyncDataPanels(immediate: true);
+            }
+            catch { }
+        }
+
         #endregion
 
         #region Tab Switching (Prompt / WebView / WebBrowser)
@@ -623,6 +670,11 @@ namespace FlowMy.Views.Overlays
             TabContentPrompt.Visibility = newTab == ActiveTab.Prompt ? Visibility.Visible : Visibility.Collapsed;
             TabContentWebView.Visibility = newTab == ActiveTab.WebView ? Visibility.Visible : Visibility.Collapsed;
             TabContentWebBrowser.Visibility = newTab == ActiveTab.WebBrowser ? Visibility.Visible : Visibility.Collapsed;
+
+            if (BtnToggleImageMode != null)
+            {
+                BtnToggleImageMode.Visibility = (newTab == ActiveTab.Prompt) ? Visibility.Visible : Visibility.Collapsed;
+            }
 
             // Tab header styling
             SetTabStyles(newTab);

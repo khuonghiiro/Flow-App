@@ -354,16 +354,21 @@
                                 </Border>
                             </Grid>
 
-                            <!-- Add image button and send mode toggle -->
+                            <!-- Add image button, image mode toggle, and send mode toggle -->
                             <Grid Grid.Row="2" Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="6"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="BtnAddSecondary" Grid.Column="0" Content="＋ Thêm ảnh phụ" Height="28" Margin="0"
                                         Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
-                                <Button x:Name="BtnToggleSendMode" Grid.Column="2" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
+                                <Button x:Name="BtnToggleImageMode" Grid.Column="2" Content="Ảnh chung" Width="90" Height="28" Margin="0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnToggleImageMode_Click"
+                                        ToolTip="Chế độ: Ảnh chung (mặc định) / Ảnh đơn"/>
+                                <Button x:Name="BtnToggleSendMode" Grid.Column="4" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
                                         Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>
                             </Grid>
                         </Grid>

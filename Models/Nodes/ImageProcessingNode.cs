@@ -295,6 +295,15 @@ namespace FlowMy.Models.Nodes
             set { if (_layerAiSendModeOn != value) { _layerAiSendModeOn = value; OnPropertyChanged(); } }
         }
 
+        private bool _layerAiIsCombinedMode = true;
+
+        /// <summary>Chế độ ảnh Layer AI: true = Ảnh chung (mặc định), false = Ảnh đơn.</summary>
+        public bool LayerAiIsCombinedMode
+        {
+            get => _layerAiIsCombinedMode;
+            set { if (_layerAiIsCombinedMode != value) { _layerAiIsCombinedMode = value; OnPropertyChanged(); } }
+        }
+
 
         /// <summary>Chế độ xử lý hiện tại (AI hoặc Manual).</summary>
         public ImageProcessingMode ProcessingMode
