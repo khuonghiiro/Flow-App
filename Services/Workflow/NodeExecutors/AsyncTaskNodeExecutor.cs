@@ -602,15 +602,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             WorkflowExecutionService service,
             string iterationExecutionId)
         {
-            // Tìm tất cả HtmlUiNode trong workflow
-            var htmlUiNodes = connections
+            // Tìm tất cả UI node (HtmlUiNode, ShowInputMsgNode, DynamicUiNode, ISciterNode) trong workflow
+            var targetUiNodes = connections
                 .SelectMany(c => new[] { c.FromNode, c.ToNode })
-                .OfType<HtmlUiNode>()
-                .Where(h => h.AsyncDataSources != null && h.AsyncDataSources.Count > 0)
-                .Distinct()
+                .Where(n => n != null)
+                .Select(n => new
+                {
+                    Node = n!,
+                    Sources = (n as HtmlUiNode)?.AsyncDataSources ?? (n as ISciterNode)?.AsyncDataSources,
+                    Queue = (n as HtmlUiNode)?.PendingAsyncPushQueue ?? (n as ISciterNode)?.PendingAsyncPushQueue,
+                    ReplayBuffer = (n as HtmlUiNode)?.AsyncDataReplayBuffer ?? (n as ISciterNode)?.AsyncDataReplayBuffer,
+                    Cache = (n as HtmlUiNode)?.AsyncDataCache ?? (n as ISciterNode)?.AsyncDataCache,
+                    SetPendingPush = new Action(() =>
+                    {
+                        if (n is HtmlUiNode h) h.PendingAsyncDataPush = true;
+                        else if (n is ISciterNode s) s.PendingAsyncDataPush = true;
+                    })
+                })
+                .Where(x => x.Sources != null && x.Sources.Count > 0 && x.Queue != null && x.ReplayBuffer != null && x.Cache != null)
+                .GroupBy(x => x.Node.Id)
+                .Select(g => g.First())
                 .ToList();
 
-            if (htmlUiNodes.Count == 0) return;
+            if (targetUiNodes.Count == 0) return;
 
             // Tạo map tất cả node theo ID để lookup nhanh
             var nodeMap = connections
@@ -619,10 +633,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 .GroupBy(n => n!.Id)
                 .ToDictionary(g => g.Key, g => g.First()!, System.StringComparer.OrdinalIgnoreCase);
 
-            foreach (var htmlUi in htmlUiNodes)
+            foreach (var uiItem in targetUiNodes)
             {
                 var pushed = false;
-                foreach (var ads in htmlUi.AsyncDataSources)
+                foreach (var ads in uiItem.Sources!)
                 {
                     if (string.IsNullOrWhiteSpace(ads.SourceNodeId) || string.IsNullOrWhiteSpace(ads.SourceOutputKey))
                         continue;
@@ -631,8 +645,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         continue;
 
                     // Ưu tiên scoped value từ iteration hiện tại.
-                    // QUAN TRỌNG: không dùng ResolveDynamicValueForRun() ở nhánh parallel vì hàm đó
-                    // có fallback sang output dùng chung (NodeDataPanel), dễ gây mọi dispatch đọc cùng 1 giá trị.
                     string? value = null;
                     var outputKey = ads.SourceOutputKey?.Trim();
                     try
@@ -664,23 +676,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var receiverKey = ads.EffectiveKey;
                         var sessionId = NormalizeAsyncSessionId(iterationExecutionId);
                         // Enqueue cho push handler (thread-safe, không mất khi parallel)
-                        htmlUi.PendingAsyncPushQueue.Enqueue((sessionId, receiverKey, value));
+                        uiItem.Queue!.Enqueue((sessionId, receiverKey, value));
                         // Lưu history để replay đầy đủ sau F5/Ctrl+R (không chỉ value cuối theo key).
-                        htmlUi.AsyncDataReplayBuffer.Enqueue((sessionId, receiverKey, value));
-                        while (htmlUi.AsyncDataReplayBuffer.Count > 2000)
+                        uiItem.ReplayBuffer!.Enqueue((sessionId, receiverKey, value));
+                        while (uiItem.ReplayBuffer.Count > 2000)
                         {
-                            htmlUi.AsyncDataReplayBuffer.TryDequeue(out _);
+                            uiItem.ReplayBuffer.TryDequeue(out _);
                         }
                         // Cập nhật cache cho F5 reload (last known value)
-                        htmlUi.AsyncDataCache[receiverKey] = value;
+                        uiItem.Cache![receiverKey] = value;
                         pushed = true;
-                        System.Diagnostics.Debug.WriteLine($"[AsyncPush] Enqueued '{receiverKey}' = '{value}'");
+                        System.Diagnostics.Debug.WriteLine($"[AsyncPush] Enqueued '{receiverKey}' = '{value}' for node '{uiItem.Node.Id}'");
                     }
                 }
 
                 if (pushed)
                 {
-                    htmlUi.PendingAsyncDataPush = true;
+                    uiItem.SetPendingPush();
                 }
             }
         }

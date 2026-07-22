@@ -435,6 +435,42 @@ namespace FlowMy.Views.Overlays
                 }
             }
         }
+
+        private void CopyApiDocRow_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn) return;
+            var text = btn.Tag as string;
+            if (string.IsNullOrWhiteSpace(text)) return;
+            try
+            {
+                System.Windows.Clipboard.SetText(text);
+            }
+            catch { }
+        }
+
+        private void CopyApiDocAll_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var docText = @"Sciter JS ↔ C# Host Functions:
+- hostLive.on('key', function(val) { ... })
+- hostLive.values
+- hostAsync.on('key', function(val) { ... })
+- hostAsync.values
+- hostSubmit()
+- sciterUpdate()
+- sciterSubmitAndClose()
+- sciterRunSingleNode()
+- sciterRunFromNode()
+- hostStart()
+- hostCancel()
+- hostResolvePath(localPath, requestId)
+- hostCurl(rawCurl, fileName, key)
+- hostPickImages(requestId)";
+                System.Windows.Clipboard.SetText(docText);
+            }
+            catch { }
+        }
     }
 }
 

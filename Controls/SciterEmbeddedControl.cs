@@ -602,6 +602,37 @@ namespace FlowMy.Controls
     }}
   }};
 
+  // Async data stream (hostAsync) for parallel/background job results
+  var _asyncData = {{}};
+  var _asyncKeyCbs = {{}};
+  var _asyncAllCbs = [];
+  globalThis.hostAsync = {{
+    values: _asyncData,
+    on: function(keyOrFn, fn) {{
+      if (typeof keyOrFn === 'function') {{
+        _asyncAllCbs.push(keyOrFn);
+        try {{ keyOrFn(JSON.parse(JSON.stringify(_asyncData))); }} catch(e) {{}}
+      }} else if (typeof keyOrFn === 'string' && typeof fn === 'function') {{
+        if (!_asyncKeyCbs[keyOrFn]) _asyncKeyCbs[keyOrFn] = [];
+        _asyncKeyCbs[keyOrFn].push(fn);
+        try {{ if (_asyncData[keyOrFn] !== undefined) fn(_asyncData[keyOrFn]); }} catch(e) {{}}
+      }}
+    }}
+  }};
+
+  globalThis.hostAsyncPush = function(key, value) {{
+    _asyncData[key] = value;
+    var cbs = _asyncKeyCbs[key];
+    if (cbs) {{
+      for (var i = 0; i < cbs.length; i++) {{
+        try {{ cbs[i](value); }} catch(e) {{}}
+      }}
+    }}
+    for (var j = 0; j < _asyncAllCbs.length; j++) {{
+      try {{ _asyncAllCbs[j](JSON.parse(JSON.stringify(_asyncData))); }} catch(e) {{}}
+    }}
+  }};
+
   // Action queue: JS pushes actions here, C# polls via ExecuteWindowEval every 100ms
   if (!globalThis.__pendingActions) globalThis.__pendingActions = [];
 
@@ -760,6 +791,8 @@ namespace FlowMy.Controls
   if (typeof window !== 'undefined') {{
     window.hostLive = globalThis.hostLive;
     window.hostLivePush = globalThis.hostLivePush;
+    window.hostAsync = globalThis.hostAsync;
+    window.hostAsyncPush = globalThis.hostAsyncPush;
     window.hostSubmit = hostSubmit;
     window.hostSubmitAndClose = hostSubmitAndClose;
     window.hostStart = hostStart;
@@ -846,6 +879,7 @@ namespace FlowMy.Controls
             _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out resultVal);
 
             SetZoom(_currentZoom);
+            RepushCachedAsyncData();
         }
 
         public void LoadHtml(string htmlContent)
@@ -869,6 +903,7 @@ namespace FlowMy.Controls
             _host.ExecuteWindowEval(_sciterWindow, "document.documentElement.setAttribute('window-frame', 'none');", out resultVal);
 
             SetZoom(_currentZoom);
+            RepushCachedAsyncData();
         }
 
         public void SetZoom(double zoom)
@@ -1046,6 +1081,85 @@ namespace FlowMy.Controls
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Sciter Poll] Error: {ex.Message}");
+            }
+
+            // Drain any pending async data pushes queued during workflow execution
+            if (_node.PendingAsyncDataPush || (_node.PendingAsyncPushQueue != null && !_node.PendingAsyncPushQueue.IsEmpty))
+            {
+                DrainPendingAsyncPushQueue();
+            }
+        }
+
+        public void DrainPendingAsyncPushQueue()
+        {
+            if (_host == null || _sciterWindow == IntPtr.Zero) return;
+            try
+            {
+                var queue = _node.PendingAsyncPushQueue;
+                if (queue == null) return;
+
+                var items = new List<(string SessionId, string Key, string Value)>();
+                while (queue.TryDequeue(out var item))
+                {
+                    items.Add(item);
+                }
+
+                if (items.Count == 0)
+                {
+                    _node.PendingAsyncDataPush = false;
+                    return;
+                }
+
+                foreach (var kvp in items)
+                {
+                    var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
+                    var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
+                    string script = $@"if(typeof globalThis.hostAsyncPush==='function') globalThis.hostAsyncPush({jsKey},{jsVal});";
+                    var resultVal = _host.CreateNullValue();
+                    _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Sciter DrainPendingAsyncPushQueue error: {ex.Message}");
+            }
+            finally
+            {
+                _node.PendingAsyncDataPush = false;
+            }
+        }
+
+        public void RepushCachedAsyncData()
+        {
+            if (_host == null || _sciterWindow == IntPtr.Zero) return;
+            try
+            {
+                if (_node.AsyncDataReplayBuffer != null && !_node.AsyncDataReplayBuffer.IsEmpty)
+                {
+                    foreach (var item in _node.AsyncDataReplayBuffer.ToArray())
+                    {
+                        var jsKey = System.Text.Json.JsonSerializer.Serialize(item.Key);
+                        var jsVal = System.Text.Json.JsonSerializer.Serialize(item.Value);
+                        string script = $@"if(typeof globalThis.hostAsyncPush==='function') globalThis.hostAsyncPush({jsKey},{jsVal});";
+                        var resultVal = _host.CreateNullValue();
+                        _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+                    }
+                }
+                else if (_node.AsyncDataCache != null && _node.AsyncDataCache.Count > 0)
+                {
+                    foreach (var kvp in _node.AsyncDataCache)
+                    {
+                        var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
+                        var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
+                        string script = $@"if(typeof globalThis.hostAsyncPush==='function') globalThis.hostAsyncPush({jsKey},{jsVal});";
+                        var resultVal = _host.CreateNullValue();
+                        _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Sciter RepushCachedAsyncData error: {ex.Message}");
             }
         }
 

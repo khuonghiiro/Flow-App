@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace FlowMy.Models.Nodes
@@ -10,6 +11,11 @@ namespace FlowMy.Models.Nodes
         string JsCode { get; set; }
         string ParamsCode { get; set; }
         List<CodeInputMapping> InputMappings { get; set; }
+        List<AsyncDataSource>? AsyncDataSources { get; set; }
+        ConcurrentDictionary<string, string> AsyncDataCache { get; }
+        ConcurrentQueue<(string SessionId, string Key, string Value)> AsyncDataReplayBuffer { get; }
+        ConcurrentQueue<(string SessionId, string Key, string Value)> PendingAsyncPushQueue { get; }
+        bool PendingAsyncDataPush { get; set; }
         Dictionary<string, object?> ResolvedOutputs { get; set; }
         List<WorkflowDynamicDataPort> DynamicOutputs { get; }
         bool PendingReadDom { get; set; }

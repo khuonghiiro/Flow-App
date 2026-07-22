@@ -13,8 +13,32 @@ namespace FlowMy.Models.Nodes
     {
         private ObservableCollection<DynamicUiFieldConfig> _fields = new();
         private Dictionary<string, object?> _resolvedOutputs = new();
-        private List<CodeInputMapping> _inputMappings = new();
+        private List<AsyncDataSource>? _asyncDataSources = new();
+        private bool _pendingAsyncDataPush = false;
 
+        public List<AsyncDataSource>? AsyncDataSources
+        {
+            get => _asyncDataSources;
+            set { _asyncDataSources = value; OnPropertyChanged(); }
+        }
+
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentDictionary<string, string> AsyncDataCache { get; set; } = new();
+
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentQueue<(string SessionId, string Key, string Value)> AsyncDataReplayBuffer { get; } = new();
+
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentQueue<(string SessionId, string Key, string Value)> PendingAsyncPushQueue { get; } = new();
+
+        [JsonIgnore]
+        public bool PendingAsyncDataPush
+        {
+            get => _pendingAsyncDataPush;
+            set { _pendingAsyncDataPush = value; OnPropertyChanged(); }
+        }
+
+        private List<CodeInputMapping> _inputMappings = new();
         private string _htmlCode = "";
         private string _cssCode = "";
         private string _jsCode = "";
