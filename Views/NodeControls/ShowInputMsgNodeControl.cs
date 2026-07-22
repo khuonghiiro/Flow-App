@@ -513,6 +513,9 @@ namespace FlowMy.Views.NodeControls
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool IsChild(IntPtr hWndParent, IntPtr hWnd);
+
         private readonly SciterEmbeddedControl _sciterControl;
         private TaskCompletionSource<bool>? _tcs;
         private ShowInputMsgNode _node;
@@ -553,20 +556,43 @@ namespace FlowMy.Views.NodeControls
             };
             border.Effect = shadow;
 
-            _sciterControl = new SciterEmbeddedControl(node);
+            IWorkflowEditorHost? host = null;
+            if (System.Windows.Application.Current != null)
+            {
+                foreach (Window win in System.Windows.Application.Current.Windows)
+                {
+                    if (win is IWorkflowEditorHost weHost)
+                    {
+                        host = weHost;
+                        break;
+                    }
+                }
+            }
+
+            _sciterControl = new SciterEmbeddedControl(node, host);
             
             _sciterControl.FormSubmitted += (s, outputs) =>
             {
-                System.Diagnostics.Debug.WriteLine("[ShowInputMsg] Form submitted!");
-                _tcs?.TrySetResult(true);
-                ForceClose();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    System.Diagnostics.Debug.WriteLine("[ShowInputMsg] Form submitted!");
+                    _isShownAndActive = false;
+                    RestorePreviousForegroundWindow();
+                    Hide();
+                    _tcs?.TrySetResult(true);
+                }));
             };
 
             _sciterControl.FormCancelled += (s, e) =>
             {
-                System.Diagnostics.Debug.WriteLine("[ShowInputMsg] Form cancelled!");
-                _tcs?.TrySetResult(false);
-                ForceClose();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    System.Diagnostics.Debug.WriteLine("[ShowInputMsg] Form cancelled!");
+                    _isShownAndActive = false;
+                    RestorePreviousForegroundWindow();
+                    Hide();
+                    _tcs?.TrySetResult(false);
+                }));
             };
 
             border.Child = _sciterControl;
@@ -590,23 +616,6 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
-            Deactivated += (s, e) =>
-            {
-                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window deactivated (isShownAndActive={_isShownAndActive}). Id={_node?.Id}");
-                if (!_isShownAndActive) return;
-                
-                if ((DateTime.UtcNow - _showTime).TotalMilliseconds < 500)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window deactivated too quickly ({(DateTime.UtcNow - _showTime).TotalMilliseconds}ms). Ignoring. Id={_node?.Id}");
-                    return;
-                }
-                
-                _isShownAndActive = false;
-                RestorePreviousForegroundWindow();
-                Hide();
-                _tcs?.TrySetResult(false);
-            };
-
             Closed += (s, e) =>
             {
                 System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window closed. Id={_node?.Id}");
@@ -620,6 +629,22 @@ namespace FlowMy.Views.NodeControls
                 catch { }
             };
 
+            Deactivated += (s, e) =>
+            {
+                if (!_isShownAndActive) return;
+                if ((DateTime.UtcNow - _showTime).TotalMilliseconds < 300) return;
+
+                if (ShouldHideOnDeactivation())
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Deactivated event -> Hiding window. Id={_node?.Id}");
+                    _isShownAndActive = false;
+                    RestorePreviousForegroundWindow();
+                    Hide();
+                    _sciterControl.SubmitFormFromDom();
+                    _tcs?.TrySetResult(true);
+                }
+            };
+
             IsVisibleChanged += (s, e) =>
             {
                 if (IsVisible == false)
@@ -627,6 +652,112 @@ namespace FlowMy.Views.NodeControls
                     RestorePreviousForegroundWindow();
                 }
             };
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var source = System.Windows.Interop.HwndSource.FromHwnd(helper.Handle);
+            source?.AddHook(HwndSourceHook);
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+
+        private bool IsCursorInsidePopupWindow()
+        {
+            try
+            {
+                var helper = new System.Windows.Interop.WindowInteropHelper(this);
+                if (helper.Handle != IntPtr.Zero && GetWindowRect(helper.Handle, out RECT rect))
+                {
+                    GetCursorPos(out var pt);
+                    return pt.X >= rect.Left - 5 && pt.X <= rect.Right + 5 &&
+                           pt.Y >= rect.Top - 5 && pt.Y <= rect.Bottom + 5;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private bool ShouldHideOnDeactivation()
+        {
+            try
+            {
+                if (IsCursorInsidePopupWindow())
+                {
+                    return false;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return !IsCursorInsidePopupWindow();
+            }
+        }
+
+        private const int WM_ACTIVATE = 0x0006;
+        private const int WM_NCACTIVATE = 0x0086;
+        private const int WM_KILLFOCUS = 0x0008;
+        private const int WA_INACTIVE = 0;
+
+        private IntPtr HwndSourceHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_ACTIVATE || msg == WM_NCACTIVATE || msg == WM_KILLFOCUS)
+            {
+                bool isDeactivating = false;
+                if (msg == WM_ACTIVATE)
+                {
+                    var activeState = wParam.ToInt32() & 0xFFFF;
+                    if (activeState == WA_INACTIVE) isDeactivating = true;
+                }
+                else if (msg == WM_NCACTIVATE)
+                {
+                    if (wParam == IntPtr.Zero) isDeactivating = true;
+                }
+                else if (msg == WM_KILLFOCUS)
+                {
+                    isDeactivating = true;
+                }
+
+                if (isDeactivating && _isShownAndActive)
+                {
+                    if ((DateTime.UtcNow - _showTime).TotalMilliseconds < 300)
+                    {
+                        return IntPtr.Zero;
+                    }
+
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (!_isShownAndActive) return;
+
+                        if (ShouldHideOnDeactivation())
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Deactivation message (0x{msg:X4}) -> Hiding window. Id={_node?.Id}");
+                            _isShownAndActive = false;
+                            RestorePreviousForegroundWindow();
+                            Hide();
+                            _sciterControl.SubmitFormFromDom();
+                            _tcs?.TrySetResult(true);
+                        }
+                    }));
+                }
+            }
+            return IntPtr.Zero;
         }
 
         public void RestorePreviousForegroundWindow()
@@ -677,10 +808,152 @@ namespace FlowMy.Views.NodeControls
             _tcs?.TrySetResult(false);
         }
 
+        private void SubscribeOutsideClicks(MouseButtonEventHandler handler)
+        {
+            try
+            {
+                foreach (Window win in Application.Current.Windows)
+                {
+                    if (win != this)
+                    {
+                        win.PreviewMouseDown -= handler;
+                        win.PreviewMouseDown += handler;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private void UnsubscribeOutsideClicks(MouseButtonEventHandler handler)
+        {
+            try
+            {
+                foreach (Window win in Application.Current.Windows)
+                {
+                    if (win != this)
+                    {
+                        win.PreviewMouseDown -= handler;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private const int WH_MOUSE_LL = 14;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+
+        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        private IntPtr _mouseHookHandle = IntPtr.Zero;
+        private LowLevelMouseProc? _mouseProc;
+
+        private void InstallMouseHook()
+        {
+            try
+            {
+                if (_mouseHookHandle != IntPtr.Zero) return;
+                _mouseProc = HookCallback;
+                using (var curProcess = System.Diagnostics.Process.GetCurrentProcess())
+                using (var curModule = curProcess.MainModule)
+                {
+                    IntPtr hMod = curModule != null ? GetModuleHandle(curModule.ModuleName) : IntPtr.Zero;
+                    _mouseHookHandle = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, hMod, 0);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InstallMouseHook Error: {ex.Message}");
+            }
+        }
+
+        private void UninstallMouseHook()
+        {
+            try
+            {
+                if (_mouseHookHandle != IntPtr.Zero)
+                {
+                    UnhookWindowsHookEx(_mouseHookHandle);
+                    _mouseHookHandle = IntPtr.Zero;
+                    _mouseProc = null;
+                }
+            }
+            catch { }
+        }
+
+        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && _isShownAndActive)
+            {
+                int msg = wParam.ToInt32();
+                if (msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_NCLBUTTONDOWN)
+                {
+                    if ((DateTime.UtcNow - _showTime).TotalMilliseconds >= 300)
+                    {
+                        try
+                        {
+                            var hookStruct = System.Runtime.InteropServices.Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                            int clickX = hookStruct.pt.X;
+                            int clickY = hookStruct.pt.Y;
+
+                            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+                            if (helper.Handle != IntPtr.Zero && GetWindowRect(helper.Handle, out RECT rect))
+                            {
+                                bool isInside = clickX >= rect.Left - 5 && clickX <= rect.Right + 5 &&
+                                                clickY >= rect.Top - 5 && clickY <= rect.Bottom + 5;
+                                if (!isInside)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Global mouse hook -> Click outside at ({clickX},{clickY}). Hiding window.");
+                                    Dispatcher.BeginInvoke(new Action(() =>
+                                    {
+                                        if (!_isShownAndActive) return;
+                                        _isShownAndActive = false;
+                                        UninstallMouseHook();
+                                        RestorePreviousForegroundWindow();
+                                        Hide();
+                                        _sciterControl.SubmitFormFromDom();
+                                        _tcs?.TrySetResult(true);
+                                    }));
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            return CallNextHookEx(_mouseHookHandle, nCode, wParam, lParam);
+        }
+
         public async Task<bool> PrepareAndShowAsync(string htmlContent)
         {
             _tcs = new TaskCompletionSource<bool>();
             _isShownAndActive = false;
+
+            MouseButtonEventHandler? outsideClickHandler = null;
 
             try
             {
@@ -705,66 +978,49 @@ namespace FlowMy.Views.NodeControls
                 _showTime = DateTime.UtcNow;
                 _isShownAndActive = true;
 
+                outsideClickHandler = (s, e) =>
+                {
+                    if (!_isShownAndActive) return;
+                    if ((DateTime.UtcNow - _showTime).TotalMilliseconds < 300) return;
+
+                    if (!IsCursorInsidePopupWindow())
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PreviewMouseDown -> Click outside detected. Hiding window. Id={_node?.Id}");
+                        _isShownAndActive = false;
+                        UninstallMouseHook();
+                        UnsubscribeOutsideClicks(outsideClickHandler);
+                        RestorePreviousForegroundWindow();
+                        Hide();
+                        _sciterControl.SubmitFormFromDom();
+                        _tcs?.TrySetResult(true);
+                    }
+                };
+
+                SubscribeOutsideClicks(outsideClickHandler);
+                InstallMouseHook();
+
                 Show();
                 Activate();
 
-                var sciterHelperScript = @"
-<script type=""module"">
-  function hostSubmit() {
-    var data = {};
-    var paramsText = `";
-                
-                sciterHelperScript += (_node.ParamsCode ?? "").Replace("`", "\\`").Replace("$", "\\$");
-                sciterHelperScript += @"`;
-    var lines = paramsText.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line || line.startsWith('//') || line.startsWith('#')) continue;
-        var parts = line.includes(':') ? line.split(':') : line.split('=');
-        if (parts.length < 2) continue;
-        var key = parts[0].trim();
-        var selector = parts[1].trim();
-        try {
-            var el = document.querySelector(selector);
-            if (el) {
-                if (typeof el.value !== 'undefined') {
-                    data[key] = el.value;
-                } else if (el.textContent) {
-                    data[key] = el.textContent;
-                }
-            }
-        } catch(e) {}
-    }
-    if (window.Window && window.Window.this) {
-        window.Window.this.xcall('submitForm', data);
-    } else {
-        Window.this.xcall('submitForm', data);
-    }
-  }
-  globalThis.hostSubmit = hostSubmit;
-  window.hostSubmit = hostSubmit;
-</script>";
-
-                var html = htmlContent;
-                if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                {
-                    html = html.Replace("</body>", sciterHelperScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
-                }
-                else
-                {
-                    html += sciterHelperScript;
-                }
-
-                _sciterControl.LoadHtml(html);
+                _sciterControl.LoadHtml(htmlContent);
                 _sciterControl.Focus();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PrepareAndShowAsync Error: {ex}");
+                UninstallMouseHook();
                 _tcs.TrySetResult(false);
             }
 
-            return await _tcs.Task;
+            var result = await _tcs.Task;
+
+            UninstallMouseHook();
+            if (outsideClickHandler != null)
+            {
+                UnsubscribeOutsideClicks(outsideClickHandler);
+            }
+
+            return result;
         }
     }
 }

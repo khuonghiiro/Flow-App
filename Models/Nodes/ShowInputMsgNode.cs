@@ -30,7 +30,7 @@ namespace FlowMy.Models.Nodes
             "    </div>\n" +
             "    <div class=\"input-wrapper\">\n" +
             "        <textarea id=\"inputValue\" placeholder=\"Nhập nội dung... (Enter để gửi, Shift + Enter để xuống dòng)\"></textarea>\n" +
-            "        <button id=\"btnSubmit\" type=\"button\" class=\"btn-send\" title=\"Gửi (Enter)\">\n" +
+            "        <button id=\"btnSubmit\" type=\"button\" class=\"btn-send\" title=\"Gửi (Enter)\" onclick=\"hostSubmitAndClose()\">\n" +
             "            <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n" +
             "                <line x1=\"12\" y1=\"19\" x2=\"12\" y2=\"5\"></line>\n" +
             "                <polyline points=\"5 12 12 5 19 12\"></polyline>\n" +
@@ -40,32 +40,18 @@ namespace FlowMy.Models.Nodes
             "</div>";
 
         public static readonly string DefaultJsCode =
-            "function doSubmit() {\n" +
-            "    if (typeof hostSubmit === 'function') {\n" +
-            "        hostSubmit();\n" +
-            "    } else if (typeof Window !== 'undefined' && Window.this) {\n" +
-            "        Window.this.xcall('submitForm');\n" +
-            "    }\n" +
-            "}\n" +
-            "\n" +
-            "document.on('ready', function() {\n" +
-            "    var txt = document.$('#inputValue');\n" +
-            "    if (txt) setTimeout(function() { txt.focus(); }, 100);\n" +
+            "document.on('click', '#btnSubmit', function(evt) {\n" +
+            "    if (typeof hostSubmitAndClose === 'function') hostSubmitAndClose();\n" +
+            "    else if (typeof hostSubmit === 'function') hostSubmit();\n" +
             "});\n" +
             "\n" +
-            "document.on('keydown', '#inputValue', function(e) {\n" +
-            "    if (e.key === 'Enter' || e.code === 'Enter') {\n" +
-            "        if (e.shiftKey) {\n" +
-            "            return;\n" +
-            "        }\n" +
-            "        e.preventDefault();\n" +
-            "        doSubmit();\n" +
+            "document.on('keydown', '#inputValue', function(evt) {\n" +
+            "    if ((evt.key === 'Enter' || evt.code === 'Enter' || evt.keyCode === 13) && !evt.shiftKey) {\n" +
+            "        if (typeof evt.preventDefault === 'function') evt.preventDefault();\n" +
+            "        if (typeof hostSubmitAndClose === 'function') hostSubmitAndClose();\n" +
+            "        else if (typeof hostSubmit === 'function') hostSubmit();\n" +
+            "        return true;\n" +
             "    }\n" +
-            "});\n" +
-            "\n" +
-            "document.on('click', '#btnSubmit', function(e) {\n" +
-            "    e.preventDefault();\n" +
-            "    doSubmit();\n" +
             "});";
 
         public static readonly string DefaultCssCode =
@@ -214,7 +200,8 @@ namespace FlowMy.Models.Nodes
             if (string.IsNullOrWhiteSpace(_htmlCode) ||
                 _htmlCode.Contains("class=\"card\"", StringComparison.OrdinalIgnoreCase) ||
                 _htmlCode.Contains("Nhập nội dung ở đây và nhấn Enter để xác nhận", StringComparison.OrdinalIgnoreCase) ||
-                !_cssCode.Contains("dark-scrollbar", StringComparison.OrdinalIgnoreCase))
+                (!_htmlCode.Contains("onclick=\"hostSubmitAndClose()\"", StringComparison.OrdinalIgnoreCase) && !_htmlCode.Contains("onclick=\"hostSubmit()\"", StringComparison.OrdinalIgnoreCase)) ||
+                !_jsCode.Contains("document.on(", StringComparison.OrdinalIgnoreCase))
             {
                 _htmlCode = DefaultHtmlCode;
                 _cssCode = DefaultCssCode;

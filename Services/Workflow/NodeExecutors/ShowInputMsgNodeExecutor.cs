@@ -223,7 +223,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (!string.IsNullOrWhiteSpace(js))
                 {
-                    var jsTag = $"\n    <script type=\"module\">\n{js}\n    </script>";
+                    var jsTag = $"\n    <script>\n{js}\n    </script>";
                     if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
                         html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
                     else
@@ -232,7 +232,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (offlineJs.Length > 0)
                 {
-                    var offlineJsTag = $"\n    <script type=\"module\">\n{offlineJs}\n    </script>";
+                    var offlineJsTag = $"\n    <script>\n{offlineJs}\n    </script>";
                     if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
                         html = html.Replace("</body>", offlineJsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
                 }
@@ -263,7 +263,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 </head>
 <body>
     {html}
-    <script type=""module"">
+    <script>
         {offlineJs}
         {js}
     </script>

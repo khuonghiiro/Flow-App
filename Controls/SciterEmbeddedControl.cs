@@ -186,7 +186,7 @@ namespace FlowMy.Controls
             }
 
             // Register interop event handler
-            var eventHandler = new DynamicUiEventHandler(_sciterWindow, _host, (methodName, args) =>
+            Func<string, List<SciterValue>, SciterValue?> handleScriptCall = (methodName, args) =>
             {
                 if (methodName == "submitForm" || methodName == "updateValue")
                 {
@@ -194,29 +194,32 @@ namespace FlowMy.Controls
                     if (args.Count > 0)
                     {
                         var dataVal = args[0];
-                        if (dataVal.IsMap)
+                        if (dataVal.IsMap || dataVal.IsObject)
                         {
-                            hasMapData = true;
                             var mapItems = _host.GetMapItems(ref dataVal);
-                            foreach (var kvp in mapItems)
+                            if (mapItems != null && mapItems.Count > 0)
                             {
-                                var key = kvp.Key;
-                                var val = kvp.Value;
-                                object? value = null;
-
-                                if (val.IsBoolean) value = val.ToBoolean() == true;
-                                else if (val.IsInteger) value = _host.GetValueInt32(ref val);
-                                else if (val.IsFloat) value = _host.GetValueDouble(ref val);
-                                else value = _host.GetValueString(ref val);
-
-                                _node.ResolvedOutputs[key] = value;
-
-                                if (_node.DynamicOutputs != null)
+                                hasMapData = true;
+                                foreach (var kvp in mapItems)
                                 {
-                                    var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
-                                        string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
-                                    if (dyn != null)
-                                        dyn.UserValueOverride = value?.ToString();
+                                    var key = kvp.Key;
+                                    var val = kvp.Value;
+                                    object? value = null;
+
+                                    if (val.IsBoolean) value = val.ToBoolean() == true;
+                                    else if (val.IsInteger) value = _host.GetValueInt32(ref val);
+                                    else if (val.IsFloat) value = _host.GetValueDouble(ref val);
+                                    else value = _host.GetValueString(ref val);
+
+                                    _node.ResolvedOutputs[key] = value;
+
+                                    if (_node.DynamicOutputs != null)
+                                    {
+                                        var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                            string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                                        if (dyn != null)
+                                            dyn.UserValueOverride = value?.ToString();
+                                    }
                                 }
                             }
                         }
@@ -323,9 +326,16 @@ namespace FlowMy.Controls
                 }
 
                 return null;
-            });
+            };
 
-            _host.AddWindowEventHandler(eventHandler);
+            var childEventHandler = new DynamicUiEventHandler(_sciterWindow, _host, handleScriptCall);
+            _host.AddWindowEventHandler(childEventHandler);
+
+            if (_rootSciterWindow != IntPtr.Zero && _rootSciterWindow != _sciterWindow)
+            {
+                var rootEventHandler = new DynamicUiEventHandler(_rootSciterWindow, _host, handleScriptCall);
+                _host.AddWindowEventHandler(rootEventHandler);
+            }
 
             // Defer loading content and starting timers to a background priority to prevent blocking the UI thread on node creation/dragging
             Dispatcher.BeginInvoke(new Action(() =>
@@ -360,18 +370,17 @@ namespace FlowMy.Controls
                 var selector = parts[1].Trim();
                 if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(selector)) continue;
 
-                var jsSelector = selector.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                var jsSelector = selector.Replace("\\", "\\\\").Replace("'", "\\'");
                 var script = $@"(function() {{
   try {{
-    var el = document.querySelector(""{jsSelector}"");
-    if (!el) return null;
-    if (typeof el.value !== 'undefined') return el.value;
-    if (el.textContent) return el.textContent;
-    return null;
+    var el = document.querySelector('{jsSelector}') || (typeof document.$ === 'function' ? document.$('{jsSelector}') : null);
+    if (!el) return '';
+    var v = el.value !== undefined ? el.value : (el.textContent || '');
+    return String(v);
   }} catch (e) {{
-    return null;
+    return '';
   }}
-}})( );";
+}})()";
 
                 var resultVal = _host.CreateNullValue();
                 bool ok = _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
@@ -416,6 +425,17 @@ namespace FlowMy.Controls
             }
         }
 
+        public void SubmitFormFromDom()
+        {
+            var paramsCode = _node.ParamsCode ?? "";
+            UpdateOutputsFromDom(paramsCode, _node.ResolvedOutputs);
+            if (_editorHost != null)
+            {
+                _editorHost.RequestSyncDataPanels(immediate: false);
+            }
+            FormSubmitted?.Invoke(this, new System.Collections.Generic.Dictionary<string, object?>(_node.ResolvedOutputs));
+        }
+
         private string BuildRuntimeScript()
         {
             var inputValues = ResolveInputValues();
@@ -438,11 +458,35 @@ namespace FlowMy.Controls
     var keys = args.slice(0, -1);
     globalThis.hostLive._callbacks.push({{ keys: keys, cb: cb }});
     try {{
-      var vals0 = keys.length > 0
-        ? keys.map(function(k) {{ return globalThis.hostLive.values[k]; }})
-        : [globalThis.hostLive.values];
-      setTimeout(function() {{ try {{ cb.apply(null, vals0); }} catch(e) {{}} }}, 0);
+      if (keys.length === 1 && typeof keys[0] === 'string') {{
+        var k = keys[0];
+        var v = globalThis.hostLive.values[k];
+        setTimeout(function() {{ try {{ cb(v); }} catch(e) {{}} }}, 0);
+      }} else {{
+        var vals0 = keys.length > 0
+          ? keys.map(function(k) {{ return globalThis.hostLive.values[k]; }})
+          : [globalThis.hostLive.values];
+        setTimeout(function() {{ try {{ cb.apply(null, vals0); }} catch(e) {{}} }}, 0);
+      }}
     }} catch(e) {{}}
+  }};
+
+  globalThis.hostLivePush = function(key, value) {{
+    globalThis.hostLive.values[key] = value;
+    var cbs = globalThis.hostLive._callbacks || [];
+    for (var i = 0; i < cbs.length; i++) {{
+      var item = cbs[i];
+      try {{
+        if (!item.keys || item.keys.length === 0) {{
+          item.cb(globalThis.hostLive.values);
+        }} else if (item.keys.length === 1 && item.keys[0] === key) {{
+          item.cb(value);
+        }} else if (item.keys.indexOf(key) >= 0) {{
+          var vals = item.keys.map(function(k) {{ return globalThis.hostLive.values[k]; }});
+          item.cb.apply(null, vals);
+        }}
+      }} catch(e) {{}}
+    }}
   }};
 
   function hostSubmit(data) {{
@@ -458,7 +502,7 @@ namespace FlowMy.Controls
         var key = parts[0].trim();
         var selector = parts[1].trim();
         try {{
-          var el = document.querySelector(selector);
+          var el = document.querySelector(selector) || (typeof document.$ === 'function' ? document.$(selector) : null);
           if (el) {{
             if (typeof el.value !== 'undefined') {{
               data[key] = el.value;
@@ -469,27 +513,117 @@ namespace FlowMy.Controls
         }} catch(e) {{}}
       }}
     }}
-    if (typeof Window !== 'undefined' && Window.this) {{
-      Window.this.xcall('submitForm', data);
-    }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-      window.Window.this.xcall('submitForm', data);
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('updateValue', data);
+      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
+        window.Window.this.xcall('updateValue', data);
+      }}
+    }} catch(e) {{}}
+  }}
+
+  function hostSubmitAndClose(data) {{
+    if (!data || typeof data !== 'object') {{
+      data = {{}};
+      var paramsText = `{safeParamsCode}`;
+      var lines = paramsText.split('\n');
+      for (var i = 0; i < lines.length; i++) {{
+        var line = lines[i].trim();
+        if (!line || line.startsWith('//') || line.startsWith('#')) continue;
+        var parts = line.includes(':') ? line.split(':') : line.split('=');
+        if (parts.length < 2) continue;
+        var key = parts[0].trim();
+        var selector = parts[1].trim();
+        try {{
+          var el = document.querySelector(selector) || (typeof document.$ === 'function' ? document.$(selector) : null);
+          if (el) {{
+            if (typeof el.value !== 'undefined') {{
+              data[key] = el.value;
+            }} else if (el.textContent) {{
+              data[key] = el.textContent;
+            }}
+          }}
+        }} catch(e) {{}}
+      }}
     }}
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('submitForm', data);
+      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
+        window.Window.this.xcall('submitForm', data);
+      }}
+    }} catch(e) {{}}
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('submitForm');
+      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
+        window.Window.this.xcall('submitForm');
+      }}
+    }} catch(e) {{}}
   }}
 
   function hostStart() {{
-    if (typeof Window !== 'undefined' && Window.this) {{
-      Window.this.xcall('startWorkflow');
-    }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-      window.Window.this.xcall('startWorkflow');
-    }}
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('startWorkflow');
+      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
+        window.Window.this.xcall('startWorkflow');
+      }}
+    }} catch(e) {{}}
+  }}
+
+  function hostCancel() {{
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('cancelForm');
+      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
+        window.Window.this.xcall('cancelForm');
+      }}
+    }} catch(e) {{}}
+  }}
+
+  function hostResolvePath(localPath, requestId) {{
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('hostResolvePath', localPath, requestId);
+      }}
+    }} catch(e) {{}}
+  }}
+
+  function hostCurl(rawCurl, fileName, key) {{
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('hostCurl', rawCurl, fileName, key);
+      }}
+    }} catch(e) {{}}
+  }}
+
+  function hostPickImages(requestId) {{
+    try {{
+      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
+        Window.this.xcall('hostPickImages', requestId);
+      }}
+    }} catch(e) {{}}
   }}
 
   globalThis.hostSubmit = hostSubmit;
+  globalThis.hostSubmitAndClose = hostSubmit;
   globalThis.hostStart = hostStart;
+  globalThis.hostCancel = hostCancel;
+  globalThis.hostResolvePath = hostResolvePath;
+  globalThis.hostCurl = hostCurl;
+  globalThis.hostPickImages = hostPickImages;
+
   if (typeof window !== 'undefined') {{
     window.hostLive = globalThis.hostLive;
+    window.hostLivePush = globalThis.hostLivePush;
     window.hostSubmit = hostSubmit;
+    window.hostSubmitAndClose = hostSubmit;
     window.hostStart = hostStart;
+    window.hostCancel = hostCancel;
+    window.hostResolvePath = hostResolvePath;
+    window.hostCurl = hostCurl;
+    window.hostPickImages = hostPickImages;
   }}
 }})();
 </script>";
