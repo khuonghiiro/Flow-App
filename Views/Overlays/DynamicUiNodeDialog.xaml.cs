@@ -7,8 +7,13 @@ using System.Windows.Controls;
 using FlowMy.Controls;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Utils;
 using FlowMy.ViewModels;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using System.Windows.Media;
 using FlowMy.Services.Rendering;
 
 namespace FlowMy.Views.Overlays
@@ -73,8 +78,6 @@ namespace FlowMy.Views.Overlays
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            UpdateAllBindings();
-            _viewModel.SaveTitleCommand?.Execute(null);
             Close();
         }
 
@@ -719,6 +722,198 @@ namespace FlowMy.Views.Overlays
             {
                 MessageBox.Show(this, $"Export thất bại: {ex.Message}", "Lỗi Export", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void AddPresetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn)
+            {
+                var preset = btn.Tag switch
+                {
+                    PresetDisplayItem displayItem => displayItem.Preset,
+                    AssetPreset p => p,
+                    _ => null
+                };
+                if (preset != null)
+                {
+                    _viewModel.AddOfflineAssetFromPresetCommand.Execute(preset);
+                    RefreshPresetStatus();
+                }
+            }
+        }
+
+        private async void AddAssetFromUrl_Click(object sender, RoutedEventArgs e)
+        {
+            var url = NewAssetUrlBox?.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                SetAssetStatus("⚠ Vui lòng nhập URL hợp lệ", isError: true);
+                return;
+            }
+
+            var title = NewAssetTitleBox?.Text?.Trim();
+            var desc = NewAssetDescBox?.Text?.Trim() ?? string.Empty;
+            var fileName = NewAssetFileNameBox?.Text?.Trim();
+            var assetType = (NewAssetTypeCombo?.SelectedItem as ComboBoxItem)?.Content?.ToString()?.ToLower() ?? "js";
+
+            if (string.IsNullOrWhiteSpace(fileName))
+                fileName = HtmlOfflineAssetService.GuessFileNameFromUrl(url);
+            if (string.IsNullOrWhiteSpace(title))
+                title = Path.GetFileNameWithoutExtension(fileName);
+
+            var item = new HtmlOfflineAssetItemViewModel
+            {
+                Title = title ?? fileName,
+                Description = desc,
+                SourceUrl = url,
+                LocalFileName = fileName,
+                AssetType = assetType,
+                IsEnabled = true,
+                IsDownloading = true,
+                StatusMessage = "⏳ Đang tải..."
+            };
+            _viewModel.OfflineAssetsList.Add(item);
+            SetAssetStatus($"⏳ Đang tải {fileName}...");
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+                var progress = new Progress<string>(msg => item.StatusMessage = msg);
+                var savedFileName = await HtmlOfflineAssetService.DownloadAssetAsync(
+                    url, fileName, progress, cts.Token);
+                item.LocalFileName = savedFileName;
+                item.IsDownloading = false;
+                item.StatusMessage = "✓ Tải xong";
+                item.NotifyLocalAvailabilityChanged();
+                SetAssetStatus($"✅ Đã tải: {savedFileName}");
+                RefreshPresetStatus();
+
+                if (NewAssetTitleBox != null) NewAssetTitleBox.Text = string.Empty;
+                if (NewAssetDescBox != null) NewAssetDescBox.Text = string.Empty;
+                if (NewAssetUrlBox != null) NewAssetUrlBox.Text = string.Empty;
+                if (NewAssetFileNameBox != null) NewAssetFileNameBox.Text = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                item.IsDownloading = false;
+                item.StatusMessage = $"✗ Lỗi: {ex.Message}";
+                SetAssetStatus($"❌ Lỗi tải: {ex.Message}", isError: true);
+            }
+        }
+
+        private void AddAssetFromFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Chọn file JS hoặc CSS",
+                Filter = "JS/CSS files (*.js;*.css)|*.js;*.css|All files (*.*)|*.*",
+                Multiselect = false
+            };
+
+            if (dlg.ShowDialog(this) != true) return;
+
+            try
+            {
+                var savedFileName = HtmlOfflineAssetService.CopyAssetFromFile(dlg.FileName);
+                var ext = Path.GetExtension(savedFileName).TrimStart('.').ToLower();
+                var assetType = ext == "css" ? "css" : "js";
+                var title = NewAssetTitleBox?.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(title))
+                    title = Path.GetFileNameWithoutExtension(savedFileName);
+
+                _viewModel.OfflineAssetsList.Add(new HtmlOfflineAssetItemViewModel
+                {
+                    Title = title,
+                    Description = NewAssetDescBox?.Text?.Trim() ?? string.Empty,
+                    SourceUrl = dlg.FileName,
+                    LocalFileName = savedFileName,
+                    AssetType = assetType,
+                    IsEnabled = true,
+                    StatusMessage = "✓ Có sẵn (từ file local)"
+                });
+                SetAssetStatus($"✅ Đã copy: {savedFileName}");
+                RefreshPresetStatus();
+            }
+            catch (Exception ex)
+            {
+                SetAssetStatus($"❌ Lỗi: {ex.Message}", isError: true);
+            }
+        }
+
+        private async void DownloadAsset_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not HtmlOfflineAssetItemViewModel item) return;
+            if (string.IsNullOrWhiteSpace(item.SourceUrl))
+            {
+                SetAssetStatus("⚠ Asset này không có URL nguồn để tải.", isError: true);
+                return;
+            }
+
+            item.IsDownloading = true;
+            item.StatusMessage = "⏳ Đang tải...";
+            SetAssetStatus($"⏳ Đang tải lại: {item.LocalFileName}...");
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+                var progress = new Progress<string>(msg => item.StatusMessage = msg);
+                var savedFileName = await HtmlOfflineAssetService.DownloadAssetAsync(
+                    item.SourceUrl, item.LocalFileName, progress, cts.Token);
+                item.LocalFileName = savedFileName;
+                item.StatusMessage = "✓ Tải xong";
+                item.NotifyLocalAvailabilityChanged();
+                SetAssetStatus($"✅ Đã tải lại: {savedFileName}");
+                RefreshPresetStatus();
+            }
+            catch (Exception ex)
+            {
+                item.StatusMessage = $"✗ Lỗi: {ex.Message}";
+                SetAssetStatus($"❌ Lỗi tải: {ex.Message}", isError: true);
+            }
+            finally
+            {
+                item.IsDownloading = false;
+            }
+        }
+
+        private void OpenAssetsFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var folder = HtmlOfflineAssetService.GetAssetsFolder();
+                System.Diagnostics.Process.Start("explorer.exe", folder);
+            }
+            catch { }
+        }
+
+        private void AssetsFolderText_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                var path = HtmlOfflineAssetService.GetAssetsFolder();
+                System.Windows.Clipboard.SetText(path);
+                SetAssetStatus("📋 Đã copy đường dẫn!");
+            }
+            catch { }
+        }
+
+        private void SetAssetStatus(string message, bool isError = false)
+        {
+            if (AssetStatusText == null) return;
+            AssetStatusText.Text = message;
+            AssetStatusText.Foreground = isError
+                ? (TryFindResource("DangerBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71)))
+                : (TryFindResource("SuccessBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80)));
+        }
+
+        private void RefreshPresetStatus()
+        {
+            try
+            {
+                foreach (var p in _viewModel.PopularJsPresets) p.Refresh(_viewModel.OfflineAssetsList);
+                foreach (var p in _viewModel.PopularCssPresets) p.Refresh(_viewModel.OfflineAssetsList);
+            }
+            catch { }
         }
     }
 }

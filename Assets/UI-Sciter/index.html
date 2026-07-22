@@ -2,63 +2,103 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Sciter Local Media & API Test</title>
+    <title>Sciter Modern Local Media &amp; Interop Test</title>
 </head>
 <body>
-    <div class="container">
-        <h2>🎬 Sciter Local Media & Interop Test</h2>
-        <p class="subtitle">Test hiển thị Ảnh / Video local trực tiếp qua <code>file:///</code> &amp; giao tiếp C#</p>
-
-        <!-- Form Inputs -->
-        <div class="card">
-            <h3>📝 Nhập Thông Tin Test</h3>
-            <div class="form-group">
-                <label>Ghi chú (Caret con trỏ màu cyan):</label>
-                <input type="text" id="noteInput" class="caret-cyan" value="Nội dung test Sciter" placeholder="Nhập văn bản..." />
-            </div>
-
-            <div class="form-group">
-                <label>Đường dẫn Ảnh local (Windows path hoặc file:///):</label>
-                <div class="input-row">
-                    <input type="text" id="imgPathInput" class="caret-cyan" value="C:/Windows/Web/Wallpaper/Windows/img0.jpg" placeholder="VD: C:\Images\photo.jpg" />
-                    <button id="btnLoadImg">Tải Ảnh</button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Đường dẫn Video local (Windows path hoặc file:///):</label>
-                <div class="input-row">
-                    <input type="text" id="videoPathInput" class="caret-cyan" value="C:/Videos/sample.mp4" placeholder="VD: C:\Videos\clip.mp4" />
-                    <button id="btnLoadVideo">Tải Video</button>
-                </div>
-            </div>
+    <div class="app-container">
+        <!-- Header Banner -->
+        <div class="hero-header">
+            <div class="logo-badge">⚡ SCITER.JS NATIVE</div>
+            <h1 class="hero-title">Sciter Local Media &amp; C# Interop Suite</h1>
+            <p class="hero-subtitle">Test hiển thị Ảnh/Video local (hỗ trợ Tiếng Việt &amp; khoảng trắng) + Giao tiếp 2 chiều C# Host</p>
         </div>
 
-        <!-- Preview Area -->
-        <div class="card preview-card">
-            <h3>🖼 Preview Local Media</h3>
-            <div class="media-grid">
-                <div class="media-box">
-                    <h4>Ảnh Local:</h4>
-                    <img id="imgPreview" src="" alt="Chưa có ảnh" />
+        <!-- Main Grid Layout (Flexbox Compatible with Sciter) -->
+        <div class="grid-layout">
+            <!-- Left Column: Input Form & File Pickers -->
+            <div class="card glass-card">
+                <div class="card-header">
+                    <span class="icon">📁</span>
+                    <h3>Chọn &amp; Kiểm Tra File Media Local</h3>
                 </div>
-                <div class="media-box">
-                    <h4>Video Local:</h4>
-                    <video id="videoPreview" src="" controls autoplay width="100%"></video>
-                </div>
-            </div>
-        </div>
+                <div class="card-body">
+                    <!-- Text Caret Demo -->
+                    <div class="form-group">
+                        <label for="noteInput">Ghi chú Test (Con trỏ màu Cyan):</label>
+                        <input type="text" id="noteInput" class="caret-cyan" value="Kiểm tra Sciter.JS Native Engine - FlowMy" placeholder="Nhập ghi chú..." />
+                    </div>
 
-        <!-- Action Buttons -->
-        <div class="card action-card">
-            <h3>⚡ Control Actions (C# Interop)</h3>
-            <div class="btn-group">
-                <button id="btnSubmit" class="btn-primary">🔄 Update Form (sciterUpdate)</button>
-                <button id="btnRunSingle" class="btn-success">▶ Chạy Node Này (sciterRunSingleNode)</button>
-                <button id="btnStartWorkflow" class="btn-warning">🚀 Chạy Workflow (hostStart)</button>
-                <button id="btnClose" class="btn-danger">✕ Submit &amp; Đóng (sciterSubmitAndClose)</button>
+                    <!-- Image File Picker -->
+                    <div class="form-group">
+                        <label for="imgPathInput">Đường dẫn Ảnh local (Windows path bất kỳ):</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="imgPathInput" class="caret-cyan" value="C:\Users\khuongpv\Pictures\Bài 3\1.png" placeholder="VD: C:\Users\Admin\Pictures\Bài 1\photo.png" />
+                            <button id="btnPickImg" class="btn-icon-text" title="Chọn file ảnh từ đĩa cứng">📁 Chọn File</button>
+                            <button id="btnLoadImg" class="btn-action">🖼 Tải Ảnh</button>
+                        </div>
+                        <div class="path-hint" id="imgUrlHint">URL Format: file:///...</div>
+                    </div>
+
+                    <!-- Video File Picker -->
+                    <div class="form-group">
+                        <label for="videoPathInput">Đường dẫn Video local (Windows path bất kỳ):</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="videoPathInput" class="caret-cyan" value="C:\Videos\Test Video 1\sample.mp4" placeholder="VD: C:\Videos\clip.mp4" />
+                            <button id="btnPickVideo" class="btn-icon-text" title="Chọn file video từ đĩa cứng">📁 Chọn File</button>
+                            <button id="btnLoadVideo" class="btn-action">🎬 Tải Video</button>
+                        </div>
+                        <div class="path-hint" id="videoUrlHint">URL Format: file:///...</div>
+                    </div>
+                </div>
             </div>
-            <div id="statusBox" class="status-box">Sẵn sàng</div>
+
+            <!-- Right Column: Media Previews -->
+            <div class="card glass-card">
+                <div class="card-header">
+                    <span class="icon">🖼</span>
+                    <h3>Preview Media Direct Local</h3>
+                </div>
+                <div class="card-body">
+                    <div class="media-display-container">
+                        <!-- Image Frame -->
+                        <div class="media-frame">
+                            <div class="frame-title">📸 Xem Trước Ảnh</div>
+                            <div class="frame-content">
+                                <img id="imgPreview" src="" alt="Chưa chọn ảnh hoặc chưa bấm Tải Ảnh" />
+                            </div>
+                        </div>
+
+                        <!-- Video Frame -->
+                        <div class="media-frame">
+                            <div class="frame-title">🎥 Xem Trước Video</div>
+                            <div class="frame-content">
+                                <video id="videoPreview" src="" controls width="100%"></video>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Full Row: Control Actions & Live Stream -->
+            <div class="card glass-card full-width">
+                <div class="card-header">
+                    <span class="icon">🚀</span>
+                    <h3>Điều Khiển Flow &amp; Interop C#</h3>
+                </div>
+                <div class="card-body">
+                    <div class="action-grid">
+                        <button id="btnSubmit" class="btn-pill btn-glow-blue">🔄 Cập Nhật Output (sciterUpdate)</button>
+                        <button id="btnRunSingle" class="btn-pill btn-glow-green">▶ Chạy Node Này (sciterRunSingleNode)</button>
+                        <button id="btnStartWorkflow" class="btn-pill btn-glow-amber">🚀 Bắt Đầu Workflow (hostStart)</button>
+                        <button id="btnClose" class="btn-pill btn-glow-red">✕ Submit &amp; Đóng (sciterSubmitAndClose)</button>
+                    </div>
+
+                    <div class="status-console">
+                        <div class="console-label">🖥 Log Console Interop:</div>
+                        <div id="statusBox" class="console-body">Sciter Engine Initialized successfully. Sẵn sàng test file local.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </body>

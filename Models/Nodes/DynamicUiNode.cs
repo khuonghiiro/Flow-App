@@ -22,6 +22,21 @@ namespace FlowMy.Models.Nodes
             set { _asyncDataSources = value; OnPropertyChanged(); }
         }
 
+        private List<HtmlOfflineAsset> _offlineAssets = new();
+
+        public List<HtmlOfflineAsset> OfflineAssets
+        {
+            get => _offlineAssets;
+            set
+            {
+                if (_offlineAssets != value)
+                {
+                    _offlineAssets = value ?? new List<HtmlOfflineAsset>();
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         [JsonIgnore]
         public System.Collections.Concurrent.ConcurrentDictionary<string, string> AsyncDataCache { get; set; } = new();
 

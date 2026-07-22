@@ -1005,17 +1005,12 @@ namespace FlowMy.Controls
             _autoRefreshTimers.Clear();
         }
 
-        /// <summary>
-        /// Start a DispatcherTimer that polls the JS __pendingActions queue every 100ms.
-        /// This is the reliable JS→C# communication bridge for embedded Sciter child windows
-        /// where Window.this.xcall() does not work (no Sciter message loop / host.Process()).
-        /// </summary>
         private void StartActionPollTimer()
         {
             StopActionPollTimer();
             _actionPollTimer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(50)
+                Interval = TimeSpan.FromMilliseconds(200)
             };
             _actionPollTimer.Tick += ActionPollTimer_Tick;
             _actionPollTimer.Start();
@@ -1305,12 +1300,17 @@ namespace FlowMy.Controls
         {
             base.OnRenderSizeChanged(sizeInfo);
 
-            IntPtr targetHwnd = _rootSciterWindow != IntPtr.Zero ? _rootSciterWindow : _sciterWindow;
-            if (_host != null && targetHwnd != IntPtr.Zero)
+            if (_host != null)
             {
                 int width = (int)sizeInfo.NewSize.Width;
                 int height = (int)sizeInfo.NewSize.Height;
-                MoveWindow(targetHwnd, 0, 0, width, height, true);
+                if (width > 0 && height > 0)
+                {
+                    if (_sciterWindow != IntPtr.Zero)
+                        MoveWindow(_sciterWindow, 0, 0, width, height, true);
+                    if (_rootSciterWindow != IntPtr.Zero && _rootSciterWindow != _sciterWindow)
+                        MoveWindow(_rootSciterWindow, 0, 0, width, height, true);
+                }
             }
         }
 

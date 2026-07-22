@@ -374,16 +374,24 @@ namespace FlowMy.Views.NodeControls
             };
 
             // --- 10. PROPERTY SYNCS AND PROPERTY CHANGED HANDLERS ---
+            bool isUpdateScheduled = false;
             node.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(DynamicUiNode.HtmlCode) ||
                     e.PropertyName == nameof(DynamicUiNode.CssCode) ||
-                    e.PropertyName == nameof(DynamicUiNode.JsCode))
+                    e.PropertyName == nameof(DynamicUiNode.JsCode) ||
+                    e.PropertyName == nameof(DynamicUiNode.ParamsCode) ||
+                    e.PropertyName == nameof(DynamicUiNode.OfflineAssets))
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    if (!isUpdateScheduled)
                     {
-                        sciterControl.UpdateContent();
-                    });
+                        isUpdateScheduled = true;
+                        Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            isUpdateScheduled = false;
+                            sciterControl.UpdateContent();
+                        }, System.Windows.Threading.DispatcherPriority.Background);
+                    }
                 }
                 else if (e.PropertyName == nameof(DynamicUiNode.Width))
                 {
