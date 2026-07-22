@@ -47,7 +47,8 @@ namespace FlowMy.Views.Overlays
             public int AspectRatioIndex { get; set; } = 3; // Default ratio (1:1)
             public string CustomWidth { get; set; } = string.Empty;
             public string CustomHeight { get; set; } = string.Empty;
-            public SecondaryImageItem[] SecondaryImages { get; } = new SecondaryImageItem[4]
+            public int SlotCount { get; set; } = 4;
+            public List<SecondaryImageItem> SecondaryImages { get; } = new List<SecondaryImageItem>
             {
                 new SecondaryImageItem(),
                 new SecondaryImageItem(),
@@ -56,24 +57,26 @@ namespace FlowMy.Views.Overlays
             };
         }
 
-        private readonly SecondaryImageItem[] _secondaryImages = new SecondaryImageItem[4]
+        private readonly List<SecondaryImageItem> _secondaryImages = new List<SecondaryImageItem>
         {
             new SecondaryImageItem(),
             new SecondaryImageItem(),
             new SecondaryImageItem(),
             new SecondaryImageItem()
         };
+        private int _secondarySlotCount = 4;
+        private bool _isUpdatingSlotCount = false;
 
-        // Cached references to UI elements for each slot
-        private Border[] _slotBorders = null!;
-        private Image[] _slotImages = null!;
-        private TextBlock[] _slotPlaceholders = null!;
-        private Border[] _slotChecks = null!;
-        private Border[] _slotRemoves = null!;
-        private Border[] _slotBordersWv = null!;
-        private Image[] _slotImagesWv = null!;
-        private TextBlock[] _slotPlaceholdersWv = null!;
-        private Border[] _slotRemovesWv = null!;
+        // Cached references to UI elements for each slot (dynamically built)
+        private List<Border> _slotBorders = new();
+        private List<Image> _slotImages = new();
+        private List<TextBlock> _slotPlaceholders = new();
+        private List<Border> _slotChecks = new();
+        private List<Border> _slotRemoves = new();
+        private List<Border> _slotBordersWv = new();
+        private List<Image> _slotImagesWv = new();
+        private List<TextBlock> _slotPlaceholdersWv = new();
+        private List<Border> _slotRemovesWv = new();
 
         // Tab + dialog state
         private double _originalWidth;
@@ -128,16 +131,11 @@ namespace FlowMy.Views.Overlays
             _originalWidth = Width;
             _originalHeight = Height;
 
-            // Initialize slot references
-            _slotBorders = new[] { SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3 };
-            _slotImages = new[] { SlotImage0, SlotImage1, SlotImage2, SlotImage3 };
-            _slotPlaceholders = new[] { SlotPlaceholder0, SlotPlaceholder1, SlotPlaceholder2, SlotPlaceholder3 };
-            _slotChecks = new[] { SlotCheck0, SlotCheck1, SlotCheck2, SlotCheck3 };
-            _slotRemoves = new[] { SlotRemove0, SlotRemove1, SlotRemove2, SlotRemove3 };
-            _slotBordersWv = new[] { SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3 };
-            _slotImagesWv = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
-            _slotPlaceholdersWv = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
-            _slotRemovesWv = new[] { SlotRemoveWv0, SlotRemoveWv1, SlotRemoveWv2, SlotRemoveWv3 };
+            // Build dynamic slot grids (default 4 slots)
+            _secondarySlotCount = _activeLayer.LayerAiSecondarySlotCount > 0 ? _activeLayer.LayerAiSecondarySlotCount : 4;
+            RebuildSecondaryGrid(_secondarySlotCount);
+            RebuildSecondaryGridWv(_secondarySlotCount);
+            UpdateSlotCountUI(_secondarySlotCount);
 
             // Pre-create and initialize AI state cache for all selected layers
             foreach (var layer in _selectedLayers)
@@ -184,12 +182,20 @@ namespace FlowMy.Views.Overlays
                 state.AspectRatioIndex = layer.LayerAiAspectRatioIndex;
                 state.CustomWidth = layer.LayerAiCustomWidth;
                 state.CustomHeight = layer.LayerAiCustomHeight;
-                for (int i = 0; i < 4; i++)
+                state.SlotCount = layer.LayerAiSecondarySlotCount > 0 ? layer.LayerAiSecondarySlotCount : 4;
+                state.SecondaryImages.Clear();
+                foreach (var src in layer.LayerAiSecondaryImages)
                 {
-                    state.SecondaryImages[i].FilePath = layer.LayerAiSecondaryImages[i].FilePath;
-                    state.SecondaryImages[i].IsSelected = layer.LayerAiSecondaryImages[i].IsSelected;
-                    state.SecondaryImages[i].Bitmap = layer.LayerAiSecondaryImages[i].Bitmap;
+                    state.SecondaryImages.Add(new SecondaryImageItem
+                    {
+                        FilePath = src.FilePath,
+                        IsSelected = src.IsSelected,
+                        Bitmap = src.Bitmap
+                    });
                 }
+                // Ensure at least slotCount items
+                while (state.SecondaryImages.Count < state.SlotCount)
+                    state.SecondaryImages.Add(new SecondaryImageItem());
                 return state;
             }
 
@@ -250,12 +256,17 @@ namespace FlowMy.Views.Overlays
             state.AspectRatioIndex = CmbAspectRatio.SelectedIndex;
             state.CustomWidth = TxtCustomWidth.Text;
             state.CustomHeight = TxtCustomHeight.Text;
+            state.SlotCount = _secondarySlotCount;
 
-            for (int i = 0; i < 4; i++)
+            state.SecondaryImages.Clear();
+            foreach (var img in _secondaryImages)
             {
-                state.SecondaryImages[i].Bitmap = _secondaryImages[i].Bitmap;
-                state.SecondaryImages[i].FilePath = _secondaryImages[i].FilePath;
-                state.SecondaryImages[i].IsSelected = _secondaryImages[i].IsSelected;
+                state.SecondaryImages.Add(new SecondaryImageItem
+                {
+                    Bitmap = img.Bitmap,
+                    FilePath = img.FilePath,
+                    IsSelected = img.IsSelected
+                });
             }
 
             // Sync to the EditorLayer properties!
@@ -264,15 +275,20 @@ namespace FlowMy.Views.Overlays
             _activeLayer.LayerAiAspectRatioIndex = state.AspectRatioIndex;
             _activeLayer.LayerAiCustomWidth = state.CustomWidth;
             _activeLayer.LayerAiCustomHeight = state.CustomHeight;
+            _activeLayer.LayerAiSecondarySlotCount = _secondarySlotCount;
 
-            for (int i = 0; i < 4; i++)
+            _activeLayer.LayerAiSecondaryImages.Clear();
+            foreach (var img in state.SecondaryImages)
             {
-                _activeLayer.LayerAiSecondaryImages[i].FilePath = state.SecondaryImages[i].FilePath;
-                _activeLayer.LayerAiSecondaryImages[i].IsSelected = state.SecondaryImages[i].IsSelected;
-                _activeLayer.LayerAiSecondaryImages[i].Bitmap = state.SecondaryImages[i].Bitmap;
+                var layerImg = new EditorLayer.LayerAiSecondaryImage
+                {
+                    FilePath = img.FilePath,
+                    IsSelected = img.IsSelected,
+                    Bitmap = img.Bitmap
+                };
 
                 // Sync PNG bytes
-                if (state.SecondaryImages[i].Bitmap is BitmapSource bmp)
+                if (img.Bitmap is BitmapSource bmp)
                 {
                     try
                     {
@@ -281,18 +297,15 @@ namespace FlowMy.Views.Overlays
                             var enc = new PngBitmapEncoder();
                             enc.Frames.Add(BitmapFrame.Create(bmp));
                             enc.Save(ms);
-                            _activeLayer.LayerAiSecondaryImages[i].PngBytes = ms.ToArray();
+                            layerImg.PngBytes = ms.ToArray();
                         }
                     }
                     catch
                     {
-                        _activeLayer.LayerAiSecondaryImages[i].PngBytes = null;
+                        layerImg.PngBytes = null;
                     }
                 }
-                else
-                {
-                    _activeLayer.LayerAiSecondaryImages[i].PngBytes = null;
-                }
+                _activeLayer.LayerAiSecondaryImages.Add(layerImg);
             }
         }
 
@@ -316,12 +329,30 @@ namespace FlowMy.Views.Overlays
                 TxtCustomWidth.Text = state.CustomWidth;
                 TxtCustomHeight.Text = state.CustomHeight;
 
-                for (int i = 0; i < 4; i++)
+                // Restore slot count and rebuild grids if needed
+                int newSlotCount = state.SlotCount > 0 ? state.SlotCount : 4;
+                if (newSlotCount != _secondarySlotCount)
                 {
-                    _secondaryImages[i].Bitmap = state.SecondaryImages[i].Bitmap;
-                    _secondaryImages[i].FilePath = state.SecondaryImages[i].FilePath;
-                    _secondaryImages[i].IsSelected = state.SecondaryImages[i].IsSelected;
+                    _secondarySlotCount = newSlotCount;
+                    EnsureSecondaryImagesCount(_secondarySlotCount);
+                    RebuildSecondaryGrid(_secondarySlotCount);
+                    RebuildSecondaryGridWv(_secondarySlotCount);
+                    UpdateSlotCountUI(_secondarySlotCount);
                 }
+
+                _secondaryImages.Clear();
+                foreach (var src in state.SecondaryImages)
+                {
+                    _secondaryImages.Add(new SecondaryImageItem
+                    {
+                        Bitmap = src.Bitmap,
+                        FilePath = src.FilePath,
+                        IsSelected = src.IsSelected
+                    });
+                }
+                // Ensure at least slotCount items
+                while (_secondaryImages.Count < _secondarySlotCount)
+                    _secondaryImages.Add(new SecondaryImageItem());
 
                 UpdatePreviewImage();
                 RefreshAllSlotsUI();
@@ -716,12 +747,11 @@ namespace FlowMy.Views.Overlays
             if (tab != ActiveTab.Prompt)
             {
                 ImgPreviewWv.Source = ImgPreview.Source;
-                var wvImages = new[] { SlotImageWv0, SlotImageWv1, SlotImageWv2, SlotImageWv3 };
-                var wvPlaceholders = new[] { SlotPlaceholderWv0, SlotPlaceholderWv1, SlotPlaceholderWv2, SlotPlaceholderWv3 };
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < _slotImagesWv.Count && i < _slotImages.Count; i++)
                 {
-                    wvImages[i].Source = _slotImages[i].Source;
-                    wvPlaceholders[i].Visibility = _secondaryImages[i]?.HasImage == true ? Visibility.Collapsed : Visibility.Visible;
+                    _slotImagesWv[i].Source = _slotImages[i].Source;
+                    if (i < _slotPlaceholdersWv.Count && i < _secondaryImages.Count)
+                        _slotPlaceholdersWv[i].Visibility = _secondaryImages[i]?.HasImage == true ? Visibility.Collapsed : Visibility.Visible;
                 }
             }
         }
@@ -1946,11 +1976,318 @@ namespace FlowMy.Views.Overlays
 
         #region Secondary Images Slots
 
+        private void BtnSlotPreset_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string tagStr && int.TryParse(tagStr, out int count) && count > 0)
+            {
+                SetSlotCount(count);
+            }
+        }
+
+        private void TxtSlotCount_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isUpdatingSlotCount) return;
+            if (SecondaryImagesGrid == null || SecondaryImagesGridWv == null) return;
+            if (int.TryParse(TxtSlotCount.Text.Trim(), out int count))
+            {
+                if (count <= 0)
+                {
+                    // Hide secondary images grid
+                    SecondaryImagesGrid.Visibility = Visibility.Collapsed;
+                    SecondaryImagesGridWv.Visibility = Visibility.Collapsed;
+                    return;
+                }
+                SecondaryImagesGrid.Visibility = Visibility.Visible;
+                SecondaryImagesGridWv.Visibility = Visibility.Visible;
+                SetSlotCount(count);
+            }
+        }
+
+        private void SetSlotCount(int count)
+        {
+            if (count < 1) count = 1;
+            if (count > 100) count = 100; // Reasonable upper limit
+            if (count == _secondarySlotCount) return;
+
+            _secondarySlotCount = count;
+            EnsureSecondaryImagesCount(count);
+            RebuildSecondaryGrid(count);
+            RebuildSecondaryGridWv(count);
+            UpdateSlotCountUI(count);
+            SetupDragAndDrop();
+            RefreshAllSlotsUI();
+
+            // Persist to active layer
+            _activeLayer.LayerAiSecondarySlotCount = count;
+        }
+
+        private void EnsureSecondaryImagesCount(int count)
+        {
+            // Grow: add empty items
+            while (_secondaryImages.Count < count)
+                _secondaryImages.Add(new SecondaryImageItem());
+            // We do NOT shrink — data is preserved but hidden
+        }
+
+        private void UpdateSlotCountUI(int count)
+        {
+            _isUpdatingSlotCount = true;
+            try
+            {
+                if (TxtSlotCount != null) TxtSlotCount.Text = count.ToString();
+
+                // Update header text
+                if (TxtSecondaryHeader != null) TxtSecondaryHeader.Text = $"🖼️ ẢNH PHỤ ({count})";
+                if (TxtSecondaryHeaderWv != null) TxtSecondaryHeaderWv.Text = $"🖼️ Ảnh phụ ({count})";
+
+                // Update preset button highlights
+                var presetButtons = new[] { BtnSlot4, BtnSlot6, BtnSlot8, BtnSlot10 };
+                foreach (var btn in presetButtons)
+                {
+                    if (btn == null) continue;
+                    bool isActive = btn.Tag is string t && int.TryParse(t, out int v) && v == count;
+                    btn.Style = null; // Reset to allow direct property setting
+                    btn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#4fffb0" : "#252a39"));
+                    btn.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#111318" : "#788296"));
+                    // Re-apply template with CornerRadius
+                    var template = new ControlTemplate(typeof(Button));
+                    var borderFactory = new FrameworkElementFactory(typeof(Border));
+                    borderFactory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent) });
+                    borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+                    borderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 0, 2, 0));
+                    var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+                    contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                    contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                    borderFactory.AppendChild(contentFactory);
+                    template.VisualTree = borderFactory;
+                    btn.Template = template;
+                }
+            }
+            finally
+            {
+                _isUpdatingSlotCount = false;
+            }
+        }
+
+        private void RebuildSecondaryGrid(int count)
+        {
+            SecondaryImagesGrid.Children.Clear();
+            SecondaryImagesGrid.RowDefinitions.Clear();
+            SecondaryImagesGrid.ColumnDefinitions.Clear();
+            _slotBorders.Clear();
+            _slotImages.Clear();
+            _slotPlaceholders.Clear();
+            _slotChecks.Clear();
+            _slotRemoves.Clear();
+
+            if (count <= 0) return;
+
+            // Calculate a balanced grid layout (square-ish)
+            int cols = (int)Math.Ceiling(Math.Sqrt(count));
+            int rows = (int)Math.Ceiling((double)count / cols);
+
+            // Create row definitions with gaps
+            for (int r = 0; r < rows; r++)
+            {
+                if (r > 0) SecondaryImagesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(4) });
+                SecondaryImagesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            }
+
+            // Create column definitions with gaps
+            for (int c = 0; c < cols; c++)
+            {
+                if (c > 0) SecondaryImagesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+                SecondaryImagesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
+
+            // Create slot borders in row-major order
+            for (int i = 0; i < count; i++)
+            {
+                int row = i / cols;
+                int col = i % cols;
+                int gridRow = row * 2; // account for gap rows
+                int gridCol = col * 2; // account for gap cols
+
+                var border = CreateSlotBorder(i, isCompact: false);
+                Grid.SetRow(border, gridRow);
+                Grid.SetColumn(border, gridCol);
+                SecondaryImagesGrid.Children.Add(border);
+            }
+        }
+
+        private void RebuildSecondaryGridWv(int count)
+        {
+            SecondaryImagesGridWv.Children.Clear();
+            SecondaryImagesGridWv.RowDefinitions.Clear();
+            SecondaryImagesGridWv.ColumnDefinitions.Clear();
+            _slotBordersWv.Clear();
+            _slotImagesWv.Clear();
+            _slotPlaceholdersWv.Clear();
+            _slotRemovesWv.Clear();
+
+            if (count <= 0) return;
+
+            // Calculate a balanced grid layout (square-ish)
+            int cols = (int)Math.Ceiling(Math.Sqrt(count));
+            int rows = (int)Math.Ceiling((double)count / cols);
+
+            for (int r = 0; r < rows; r++)
+            {
+                if (r > 0) SecondaryImagesGridWv.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+                SecondaryImagesGridWv.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            }
+
+            for (int c = 0; c < cols; c++)
+            {
+                if (c > 0) SecondaryImagesGridWv.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+                SecondaryImagesGridWv.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                int row = i / cols;
+                int col = i % cols;
+                int gridRow = row * 2;
+                int gridCol = col * 2;
+
+                var border = CreateSlotBorder(i, isCompact: true);
+                Grid.SetRow(border, gridRow);
+                Grid.SetColumn(border, gridCol);
+                SecondaryImagesGridWv.Children.Add(border);
+            }
+        }
+
+        /// <summary>Create a single slot Border with all child elements (checkerboard, image, placeholder, check, remove, number badge).</summary>
+        private Border CreateSlotBorder(int index, bool isCompact)
+        {
+            // SecondaryImageBorder style reference
+            var borderStyle = (Style)FindResource("SecondaryImageBorder");
+
+            var border = new Border
+            {
+                Style = borderStyle,
+                Focusable = true,
+                Tag = index.ToString()
+            };
+            border.KeyDown += SlotBorder_KeyDown;
+            border.MouseEnter += Slot_MouseEnter;
+            border.MouseLeave += Slot_MouseLeave;
+            border.MouseLeftButtonDown += Slot_Click;
+
+            var grid = new Grid();
+
+            // Checkerboard
+            var checkerBrush = (Brush)FindResource("PsDarkCheckeredBrush");
+            var rect = new System.Windows.Shapes.Rectangle { Fill = checkerBrush, SnapsToDevicePixels = true };
+            grid.Children.Add(rect);
+
+            // Image
+            var image = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(isCompact ? 1 : 2) };
+            grid.Children.Add(image);
+
+            // Placeholder
+            var placeholder = new TextBlock
+            {
+                Text = "＋",
+                FontSize = isCompact ? 16 : 24,
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3a3f52")),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.Bold
+            };
+            grid.Children.Add(placeholder);
+
+            // Check badge (only normal, not compact)
+            Border? checkBadge = null;
+            if (!isCompact)
+            {
+                checkBadge = new Border
+                {
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0")),
+                    CornerRadius = new CornerRadius(0, 0, 6, 0),
+                    Padding = new Thickness(4, 2, 4, 2),
+                    Visibility = Visibility.Collapsed
+                };
+                checkBadge.Child = new TextBlock
+                {
+                    Text = "✓",
+                    Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#111318")),
+                    FontSize = 10,
+                    FontWeight = FontWeights.Bold
+                };
+                grid.Children.Add(checkBadge);
+            }
+
+            // Remove button
+            var removeBorder = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#cc3333")),
+                CornerRadius = new CornerRadius(0, 0, 0, 6),
+                Padding = isCompact ? new Thickness(4, 1, 4, 1) : new Thickness(5, 2, 5, 2),
+                Cursor = Cursors.Hand,
+                Visibility = Visibility.Collapsed,
+                Tag = index.ToString()
+            };
+            removeBorder.Child = new TextBlock
+            {
+                Text = "✕",
+                Foreground = Brushes.White,
+                FontSize = isCompact ? 8 : 9,
+                FontWeight = FontWeights.Bold
+            };
+            removeBorder.MouseLeftButtonDown += SlotRemove_Click;
+            grid.Children.Add(removeBorder);
+
+            // Number badge
+            var numberBadge = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#aa111318")),
+                CornerRadius = new CornerRadius(0, 4, 0, 0),
+                Padding = new Thickness(5, 2, 5, 2),
+                IsHitTestVisible = false
+            };
+            numberBadge.Child = new TextBlock
+            {
+                Text = (index + 1).ToString(),
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#dde3ef")),
+                FontSize = 10,
+                FontWeight = FontWeights.Bold
+            };
+            grid.Children.Add(numberBadge);
+
+            border.Child = grid;
+
+            // Register in the appropriate lists
+            if (isCompact)
+            {
+                _slotBordersWv.Add(border);
+                _slotImagesWv.Add(image);
+                _slotPlaceholdersWv.Add(placeholder);
+                _slotRemovesWv.Add(removeBorder);
+            }
+            else
+            {
+                _slotBorders.Add(border);
+                _slotImages.Add(image);
+                _slotPlaceholders.Add(placeholder);
+                _slotChecks.Add(checkBadge!);
+                _slotRemoves.Add(removeBorder);
+            }
+
+            return border;
+        }
+
         private void BtnAddSecondary_Click(object sender, RoutedEventArgs e)
         {
             // Find first empty slot
             int emptySlot = -1;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < _secondarySlotCount && i < _secondaryImages.Count; i++)
             {
                 if (!_secondaryImages[i].HasImage)
                 {
@@ -1961,7 +2298,7 @@ namespace FlowMy.Views.Overlays
 
             if (emptySlot == -1)
             {
-                MessageBox.Show("Đã đủ 4 ảnh phụ. Hãy xóa ảnh cũ trước.", "Ảnh phụ", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Đã đủ {_secondarySlotCount} ảnh phụ. Hãy xóa ảnh cũ trước.", "Ảnh phụ", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1978,12 +2315,12 @@ namespace FlowMy.Views.Overlays
                 int slotIdx = emptySlot;
                 foreach (var file in dlg.FileNames)
                 {
-                    if (slotIdx >= 4) break;
+                    if (slotIdx >= _secondarySlotCount) break;
 
                     // Find next empty slot
-                    while (slotIdx < 4 && _secondaryImages[slotIdx].HasImage)
+                    while (slotIdx < _secondarySlotCount && slotIdx < _secondaryImages.Count && _secondaryImages[slotIdx].HasImage)
                         slotIdx++;
-                    if (slotIdx >= 4) break;
+                    if (slotIdx >= _secondarySlotCount) break;
 
                     try
                     {
@@ -2011,7 +2348,7 @@ namespace FlowMy.Views.Overlays
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
                 border.Focus();
-                if (idx < 0 || idx >= 4) return;
+                if (idx < 0 || idx >= _secondarySlotCount || idx >= _secondaryImages.Count) return;
 
                 if (_secondaryImages[idx].HasImage)
                 {
@@ -2027,7 +2364,7 @@ namespace FlowMy.Views.Overlays
                     {
                         // OFF mode: toggle selection, enforce single-select
                         bool wasSelected = _secondaryImages[idx].IsSelected;
-                        for (int i = 0; i < 4; i++)
+                        for (int i = 0; i < _secondaryImages.Count; i++)
                         {
                             _secondaryImages[i].IsSelected = false;
                         }
@@ -2070,7 +2407,7 @@ namespace FlowMy.Views.Overlays
                             else
                             {
                                 // OFF mode: deselect all others, select this one
-                                for (int i = 0; i < 4; i++)
+                                for (int i = 0; i < _secondaryImages.Count; i++)
                                 {
                                     _secondaryImages[i].IsSelected = false;
                                 }
@@ -2094,7 +2431,7 @@ namespace FlowMy.Views.Overlays
         {
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
-                if (idx >= 0 && idx < 4)
+                if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
                     _secondaryImages[idx].Bitmap = null;
                     _secondaryImages[idx].FilePath = null;
@@ -2112,7 +2449,7 @@ namespace FlowMy.Views.Overlays
             _hoveredImageContainer = sender as FrameworkElement;
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
-                if (idx >= 0 && idx < 4)
+                if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
                     // Hover glow effect
                     border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
@@ -2121,8 +2458,8 @@ namespace FlowMy.Views.Overlays
                     // Show remove button if has image
                     if (_secondaryImages[idx].HasImage)
                     {
-                        _slotRemoves[idx].Visibility = Visibility.Visible;
-                        _slotRemovesWv[idx].Visibility = Visibility.Visible;
+                        if (idx < _slotRemoves.Count) _slotRemoves[idx].Visibility = Visibility.Visible;
+                        if (idx < _slotRemovesWv.Count) _slotRemovesWv[idx].Visibility = Visibility.Visible;
                     }
                 }
             }
@@ -2136,7 +2473,7 @@ namespace FlowMy.Views.Overlays
             }
             if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
             {
-                if (idx >= 0 && idx < 4)
+                if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
                     // Reset border based on selection state
                     if (_secondaryImages[idx].HasImage && _secondaryImages[idx].IsSelected)
@@ -2151,8 +2488,8 @@ namespace FlowMy.Views.Overlays
                     }
 
                     // Hide remove button
-                    _slotRemoves[idx].Visibility = Visibility.Collapsed;
-                    _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
+                    if (idx < _slotRemoves.Count) _slotRemoves[idx].Visibility = Visibility.Collapsed;
+                    if (idx < _slotRemovesWv.Count) _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
                 }
             }
         }
@@ -2232,7 +2569,7 @@ namespace FlowMy.Views.Overlays
                     else if (name.EndsWith("3")) idx = 3;
                 }
 
-                if (idx >= 0 && idx < 4)
+                if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
                     _secondaryImages[idx].Bitmap = bitmap;
                     _secondaryImages[idx].FilePath = null;
@@ -2401,14 +2738,15 @@ namespace FlowMy.Views.Overlays
 
         private void RefreshAllSlotsUI()
         {
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < _secondarySlotCount && i < _secondaryImages.Count; i++)
                 RefreshSlotUI(i);
             UpdateSecondaryInfo();
         }
 
         private void RefreshSlotUI(int idx)
         {
-            if (idx < 0 || idx >= 4) return;
+            if (idx < 0 || idx >= _secondarySlotCount || idx >= _secondaryImages.Count) return;
+            if (idx >= _slotBorders.Count || idx >= _slotImages.Count) return;
 
             var item = _secondaryImages[idx];
 
@@ -2417,11 +2755,11 @@ namespace FlowMy.Views.Overlays
                 // Normal slots
                 _slotImages[idx].Source = item.Bitmap;
                 _slotPlaceholders[idx].Visibility = Visibility.Collapsed;
-                _slotChecks[idx].Visibility = item.IsSelected ? Visibility.Visible : Visibility.Collapsed;
+                if (idx < _slotChecks.Count) _slotChecks[idx].Visibility = item.IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
                 // Expanded slots
-                _slotImagesWv[idx].Source = item.Bitmap;
-                _slotPlaceholdersWv[idx].Visibility = Visibility.Collapsed;
+                if (idx < _slotImagesWv.Count) _slotImagesWv[idx].Source = item.Bitmap;
+                if (idx < _slotPlaceholdersWv.Count) _slotPlaceholdersWv[idx].Visibility = Visibility.Collapsed;
 
                 var activeBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
                 var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
@@ -2430,15 +2768,21 @@ namespace FlowMy.Views.Overlays
                 {
                     _slotBorders[idx].BorderBrush = activeBrush;
                     _slotBorders[idx].BorderThickness = new Thickness(2);
-                    _slotBordersWv[idx].BorderBrush = activeBrush;
-                    _slotBordersWv[idx].BorderThickness = new Thickness(2);
+                    if (idx < _slotBordersWv.Count)
+                    {
+                        _slotBordersWv[idx].BorderBrush = activeBrush;
+                        _slotBordersWv[idx].BorderThickness = new Thickness(2);
+                    }
                 }
                 else
                 {
                     _slotBorders[idx].BorderBrush = normalBrush;
                     _slotBorders[idx].BorderThickness = new Thickness(1.5);
-                    _slotBordersWv[idx].BorderBrush = normalBrush;
-                    _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
+                    if (idx < _slotBordersWv.Count)
+                    {
+                        _slotBordersWv[idx].BorderBrush = normalBrush;
+                        _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
+                    }
                 }
             }
             else
@@ -2446,19 +2790,22 @@ namespace FlowMy.Views.Overlays
                 // Normal slots
                 _slotImages[idx].Source = null;
                 _slotPlaceholders[idx].Visibility = Visibility.Visible;
-                _slotChecks[idx].Visibility = Visibility.Collapsed;
-                _slotRemoves[idx].Visibility = Visibility.Collapsed;
+                if (idx < _slotChecks.Count) _slotChecks[idx].Visibility = Visibility.Collapsed;
+                if (idx < _slotRemoves.Count) _slotRemoves[idx].Visibility = Visibility.Collapsed;
 
                 // Expanded slots
-                _slotImagesWv[idx].Source = null;
-                _slotPlaceholdersWv[idx].Visibility = Visibility.Visible;
-                _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
+                if (idx < _slotImagesWv.Count) _slotImagesWv[idx].Source = null;
+                if (idx < _slotPlaceholdersWv.Count) _slotPlaceholdersWv[idx].Visibility = Visibility.Visible;
+                if (idx < _slotRemovesWv.Count) _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
 
                 var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
                 _slotBorders[idx].BorderBrush = normalBrush;
                 _slotBorders[idx].BorderThickness = new Thickness(1.5);
-                _slotBordersWv[idx].BorderBrush = normalBrush;
-                _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
+                if (idx < _slotBordersWv.Count)
+                {
+                    _slotBordersWv[idx].BorderBrush = normalBrush;
+                    _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
+                }
             }
         }
 
@@ -2490,7 +2837,7 @@ namespace FlowMy.Views.Overlays
         private int GetSelectedSlotIndex()
         {
             if (_secondaryImages == null) return -1;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < _secondaryImages.Count; i++)
             {
                 if (_secondaryImages[i] != null && _secondaryImages[i].HasImage && _secondaryImages[i].IsSelected)
                 {
@@ -3152,11 +3499,15 @@ namespace FlowMy.Views.Overlays
             if (BtnApply != null) BtnApply.Visibility = applyVisibility;
             if (BtnCancel != null) BtnCancel.Margin = cancelMargin;
 
+            // Toggle batch size vs slot count selector in bottom bar
+            if (PanelBatchSize != null) PanelBatchSize.Visibility = _sendModeOn ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelSlotCount != null) PanelSlotCount.Visibility = _sendModeOn ? Visibility.Collapsed : Visibility.Visible;
+
             if (!_sendModeOn)
             {
                 // Enforce single select for slots in OFF mode: deselect all but the first selected slot
                 int firstSelectedIdx = -1;
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < _secondaryImages.Count; i++)
                 {
                     if (_secondaryImages[i] != null && _secondaryImages[i].HasImage && _secondaryImages[i].IsSelected)
                     {
@@ -3295,7 +3646,7 @@ namespace FlowMy.Views.Overlays
 
                 EditorLayer? activeChild = null;
 
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < state.SecondaryImages.Count; i++)
                 {
                     var slot = state.SecondaryImages[i];
                     if (slot.HasImage)
@@ -3967,12 +4318,11 @@ namespace FlowMy.Views.Overlays
         private void SetupDragAndDrop()
         {
             // --- WPF-to-WebView Drag Source Setup ---
-            var dragSources = new FrameworkElement[]
-            {
-                ImgPreview, ImgPreviewWv,
-                SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3,
-                SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3
-            };
+            var dragSources = new List<FrameworkElement>();
+            if (ImgPreview != null) dragSources.Add(ImgPreview);
+            if (ImgPreviewWv != null) dragSources.Add(ImgPreviewWv);
+            dragSources.AddRange(_slotBorders);
+            dragSources.AddRange(_slotBordersWv);
 
             foreach (var src in dragSources)
             {
@@ -4002,12 +4352,11 @@ namespace FlowMy.Views.Overlays
             }
 
             // --- WebView-to-WPF Drop Target Setup ---
-            var dropTargets = new FrameworkElement[]
-            {
-                ImgPreview, ImgPreviewWv,
-                SlotBorder0, SlotBorder1, SlotBorder2, SlotBorder3,
-                SlotBorderWv0, SlotBorderWv1, SlotBorderWv2, SlotBorderWv3
-            };
+            var dropTargets = new List<FrameworkElement>();
+            if (ImgPreview != null) dropTargets.Add(ImgPreview);
+            if (ImgPreviewWv != null) dropTargets.Add(ImgPreviewWv);
+            dropTargets.AddRange(_slotBorders);
+            dropTargets.AddRange(_slotBordersWv);
 
             foreach (var target in dropTargets)
             {
@@ -4054,7 +4403,7 @@ namespace FlowMy.Views.Overlays
                         bitmap = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
                         tempFileName = "Main";
                     }
-                    else if (border.Tag is string tagStr && int.TryParse(tagStr, out int idx) && idx >= 0 && idx < 4)
+                    else if (border.Tag is string tagStr && int.TryParse(tagStr, out int idx) && idx >= 0 && idx < _secondaryImages.Count)
                     {
                         bitmap = _secondaryImages[idx].Bitmap;
                         tempFileName = $"{idx + 1}.Slot";
@@ -4096,7 +4445,7 @@ namespace FlowMy.Views.Overlays
             {
                 if (sender is Border border && border.Tag is string tagStr && int.TryParse(tagStr, out int idx))
                 {
-                    if (idx >= 0 && idx < 4)
+                    if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                     {
                         _secondaryImages[idx].Bitmap = null;
                         _secondaryImages[idx].FilePath = null;
@@ -4574,7 +4923,7 @@ namespace FlowMy.Views.Overlays
                 else if (name.EndsWith("3")) idx = 3;
             }
 
-            if (idx >= 0 && idx < 4)
+            if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
             {
                 _secondaryImages[idx].Bitmap = bitmap;
                 _secondaryImages[idx].FilePath = null;
@@ -4584,7 +4933,7 @@ namespace FlowMy.Views.Overlays
             else
             {
                 int targetIdx = -1;
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < _secondaryImages.Count; i++)
                 {
                     if (!_secondaryImages[i].HasImage)
                     {

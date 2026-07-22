@@ -572,12 +572,17 @@ namespace FlowMy.Models.ImageEditor
             copy.LayerAiAspectRatioIndex = LayerAiAspectRatioIndex;
             copy.LayerAiCustomWidth = LayerAiCustomWidth;
             copy.LayerAiCustomHeight = LayerAiCustomHeight;
-            for (int i = 0; i < 4; i++)
+            copy.LayerAiSecondarySlotCount = LayerAiSecondarySlotCount;
+            copy.LayerAiSecondaryImages.Clear();
+            foreach (var src in LayerAiSecondaryImages)
             {
-                copy.LayerAiSecondaryImages[i].PngBytes = LayerAiSecondaryImages[i].PngBytes;
-                copy.LayerAiSecondaryImages[i].FilePath = LayerAiSecondaryImages[i].FilePath;
-                copy.LayerAiSecondaryImages[i].IsSelected = LayerAiSecondaryImages[i].IsSelected;
-                copy.LayerAiSecondaryImages[i].Bitmap = LayerAiSecondaryImages[i].Bitmap;
+                copy.LayerAiSecondaryImages.Add(new LayerAiSecondaryImage
+                {
+                    PngBytes = src.PngBytes,
+                    FilePath = src.FilePath,
+                    IsSelected = src.IsSelected,
+                    Bitmap = src.Bitmap
+                });
             }
             
             if (ParentLayer != null && ParentLayer.ContentGeometry != null)
@@ -832,6 +837,7 @@ namespace FlowMy.Models.ImageEditor
         public int LayerAiAspectRatioIndex { get; set; } = 3; // Default ratio (1:1)
         public string LayerAiCustomWidth { get; set; } = string.Empty;
         public string LayerAiCustomHeight { get; set; } = string.Empty;
+        public int LayerAiSecondarySlotCount { get; set; } = 4;
 
         public class LayerAiSecondaryImage
         {
@@ -841,7 +847,7 @@ namespace FlowMy.Models.ImageEditor
             public BitmapSource? Bitmap { get; set; }
         }
 
-        public LayerAiSecondaryImage[] LayerAiSecondaryImages { get; } = new LayerAiSecondaryImage[4]
+        public List<LayerAiSecondaryImage> LayerAiSecondaryImages { get; } = new List<LayerAiSecondaryImage>
         {
             new LayerAiSecondaryImage(),
             new LayerAiSecondaryImage(),
