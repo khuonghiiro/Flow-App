@@ -126,26 +126,22 @@ namespace FlowMy.ViewModels
 
         partial void OnHtmlCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.HtmlCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         partial void OnCssCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.CssCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         partial void OnJsCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.JsCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         partial void OnParamsCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.ParamsCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         protected override void OnSaveTitle()

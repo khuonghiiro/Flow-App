@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Sciter Local Media & API Test</title>
+</head>
+<body>
+    <div class="container">
+        <h2>🎬 Sciter Local Media & Interop Test</h2>
+        <p class="subtitle">Test hiển thị Ảnh / Video local trực tiếp qua <code>file:///</code> &amp; giao tiếp C#</p>
+
+        <!-- Form Inputs -->
+        <div class="card">
+            <h3>📝 Nhập Thông Tin Test</h3>
+            <div class="form-group">
+                <label>Ghi chú (Caret con trỏ màu cyan):</label>
+                <input type="text" id="noteInput" class="caret-cyan" value="Nội dung test Sciter" placeholder="Nhập văn bản..." />
+            </div>
+
+            <div class="form-group">
+                <label>Đường dẫn Ảnh local (Windows path hoặc file:///):</label>
+                <div class="input-row">
+                    <input type="text" id="imgPathInput" class="caret-cyan" value="C:/Windows/Web/Wallpaper/Windows/img0.jpg" placeholder="VD: C:\Images\photo.jpg" />
+                    <button id="btnLoadImg">Tải Ảnh</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Đường dẫn Video local (Windows path hoặc file:///):</label>
+                <div class="input-row">
+                    <input type="text" id="videoPathInput" class="caret-cyan" value="C:/Videos/sample.mp4" placeholder="VD: C:\Videos\clip.mp4" />
+                    <button id="btnLoadVideo">Tải Video</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Area -->
+        <div class="card preview-card">
+            <h3>🖼 Preview Local Media</h3>
+            <div class="media-grid">
+                <div class="media-box">
+                    <h4>Ảnh Local:</h4>
+                    <img id="imgPreview" src="" alt="Chưa có ảnh" />
+                </div>
+                <div class="media-box">
+                    <h4>Video Local:</h4>
+                    <video id="videoPreview" src="" controls autoplay width="100%"></video>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="card action-card">
+            <h3>⚡ Control Actions (C# Interop)</h3>
+            <div class="btn-group">
+                <button id="btnSubmit" class="btn-primary">🔄 Update Form (sciterUpdate)</button>
+                <button id="btnRunSingle" class="btn-success">▶ Chạy Node Này (sciterRunSingleNode)</button>
+                <button id="btnStartWorkflow" class="btn-warning">🚀 Chạy Workflow (hostStart)</button>
+                <button id="btnClose" class="btn-danger">✕ Submit &amp; Đóng (sciterSubmitAndClose)</button>
+            </div>
+            <div id="statusBox" class="status-box">Sẵn sàng</div>
+        </div>
+    </div>
+</body>
+</html>

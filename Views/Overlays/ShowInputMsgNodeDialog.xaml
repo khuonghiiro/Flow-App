@@ -213,6 +213,12 @@
                                             ToolTip="Chỉ import JS và ghi đè toàn bộ tab JS hiện tại theo file đã chọn."
                                             Cursor="Hand" Padding="6,0" FontSize="12"
                                             Click="ImportJsOverwriteButton_Click"/>
+                                    <Button x:Name="ExportBundleButton"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            Content="📤 Export Zip" Width="95" Height="28" Margin="0,0,6,0"
+                                            ToolTip="Export toàn bộ HTML/CSS/JS (giữ nguyên thứ tự tab con JS)/PARAM thành file nén .webpkg.zip hoặc .zip"
+                                            Cursor="Hand" Padding="6,0" FontSize="12"
+                                            Click="ExportBundleButton_Click"/>
                                     <Button Content="A−" Width="28" Height="28" Margin="0,0,4,0"
                                             Style="{DynamicResource SecondaryButton}" Command="{Binding DecreaseCodeFontSizeCommand}"
                                             Cursor="Hand" Padding="0" FontSize="14"/>

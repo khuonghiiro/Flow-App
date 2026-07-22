@@ -1,5 +1,6 @@
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Rendering;
 using FlowMy.Services.Utils;
 using FlowMy.ViewModels;
 using FlowMy.Controls;
@@ -673,8 +674,8 @@ hostSubmit()
 
                 var dlg = new Microsoft.Win32.OpenFileDialog
                 {
-                    Title = "Import HTML/CSS/JS/PARAM",
-                    Filter = "Code files|*.html;*.htm;*.css;*.js;*.txt;*.*|All files|*.*",
+                    Title = "Import HTML/CSS/JS/PARAM hoặc Gói Zip",
+                    Filter = "UI Package / Code files|*.webpkg.zip;*.zip;*.html;*.htm;*.css;*.js;*.txt;*.*|Zip Package (*.zip;*.webpkg.zip)|*.webpkg.zip;*.zip|All files|*.*",
                     Multiselect = true
                 };
                 if (dlg.ShowDialog(this) != true) return;
@@ -684,6 +685,24 @@ hostSubmit()
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 if (files.Count == 0) return;
+
+                // Trường hợp chọn 1 file nén (.zip hoặc .webpkg.zip)
+                if (files.Count == 1 && (files[0].EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || files[0].EndsWith(".webpkg.zip", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var bundle = UiNodeBundleService.ImportFromZip(files[0]);
+                    if (!string.IsNullOrWhiteSpace(bundle.HtmlCode)) vm.HtmlCode = bundle.HtmlCode;
+                    if (!string.IsNullOrWhiteSpace(bundle.CssCode)) vm.CssCode = bundle.CssCode;
+                    if (!string.IsNullOrWhiteSpace(bundle.ParamsCode)) vm.ParamsCode = bundle.ParamsCode;
+                    if (!string.IsNullOrWhiteSpace(bundle.JsCode))
+                    {
+                        SetJsTabsFromSingleCode(bundle.JsCode);
+                        SortJsTabsByPriority();
+                        SyncJsTabsToViewModel();
+                    }
+
+                    MessageBox.Show(this, "Đã import thành công trọn bộ UI từ gói nén .zip!", "Import thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
 
                 var htmlFiles = files.Where(f =>
                 {
@@ -1977,6 +1996,41 @@ body {
 }, 500);";
 
             vm.ParamsCode = string.Empty;
+        }
+
+        private void ExportBundleButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                UpdateAllBindings();
+                var html = _viewModel.HtmlCode ?? string.Empty;
+                var css = _viewModel.CssCode ?? string.Empty;
+                var js = BuildCombinedJsCodeFromTabs();
+                var param = _viewModel.ParamsCode ?? string.Empty;
+                var title = _viewModel?.NodeTitle ?? "show_input_msg_bundle";
+
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "Export UI Bundle Package",
+                    Filter = "Web Package (*.webpkg.zip)|*.webpkg.zip|Zip Package (*.zip)|*.zip|All files (*.*)|*.*",
+                    FileName = $"{title}.webpkg.zip"
+                };
+
+                if (dlg.ShowDialog(this) != true) return;
+
+                UiNodeBundleService.ExportToZip(dlg.FileName, title, html, css, js, param);
+
+                MessageBox.Show(
+                    this,
+                    $"Đã export thành công gói UI Bundle:\n{dlg.FileName}",
+                    "Export thành công",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Export thất bại: {ex.Message}", "Lỗi Export", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

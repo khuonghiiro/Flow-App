@@ -217,25 +217,25 @@ namespace FlowMy.Models.Nodes
 
         public string HtmlCode
         {
-            get { EnsureUpgradedTemplate(); return _htmlCode; }
+            get => _htmlCode;
             set { if (_htmlCode != value) { _htmlCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public string JsCode
         {
-            get { EnsureUpgradedTemplate(); return _jsCode; }
+            get => _jsCode;
             set { if (_jsCode != value) { _jsCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public string CssCode
         {
-            get { EnsureUpgradedTemplate(); return _cssCode; }
+            get => _cssCode;
             set { if (_cssCode != value) { _cssCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public string ParamsCode
         {
-            get { EnsureUpgradedTemplate(); return _paramsCode; }
+            get => _paramsCode;
             set { if (_paramsCode != value) { _paramsCode = value ?? string.Empty; OnPropertyChanged(); } }
         }
 

@@ -248,6 +248,30 @@
                                            Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
                                            VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="CopyAllCodeForAiButton"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Content="📋 Copy" Width="60" Height="28" Margin="0,0,6,0"
+                                            ToolTip="Copy toàn bộ code hiện tại (#region HTML / CSS / JS / PARAM) để gửi cho AI đọc/sửa"
+                                            Cursor="Hand" Padding="6,0" FontSize="12"
+                                            Click="CopyAllCodeForAiButton_Click"/>
+                                    <Button x:Name="ImportFourPartsButton"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Content="📥 Import" Width="78" Height="28" Margin="0,0,6,0"
+                                            ToolTip="Import HTML/CSS/PARAM/JS lẻ hoặc chọn file nén .zip / .webpkg.zip chứa trọn bộ UI."
+                                            Cursor="Hand" Padding="6,0" FontSize="12"
+                                            Click="ImportFourPartsButton_Click"/>
+                                    <Button x:Name="ImportJsOverwriteButton"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Content="🧹 JS ghi đè" Width="104" Height="28" Margin="0,0,6,0"
+                                            ToolTip="Chỉ import JS và ghi đè toàn bộ tab JS hiện tại theo file đã chọn."
+                                            Cursor="Hand" Padding="6,0" FontSize="12"
+                                            Click="ImportJsOverwriteButton_Click"/>
+                                    <Button x:Name="ExportBundleButton"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            Content="📤 Export Zip" Width="95" Height="28" Margin="0,0,6,0"
+                                            ToolTip="Export toàn bộ HTML/CSS/JS (giữ nguyên thứ tự tab con JS)/PARAM thành file nén .webpkg.zip hoặc .zip"
+                                            Cursor="Hand" Padding="6,0" FontSize="12"
+                                            Click="ExportBundleButton_Click"/>
                                     <Button Content="A−" Width="28" Height="28" Margin="0,0,4,0"
                                             Style="{DynamicResource SecondaryButton}"
                                             Command="{Binding DecreaseCodeFontSizeCommand}"
@@ -630,7 +654,12 @@
                                     <TextBlock Text="⚠ Lưu ý quan trọng khi dùng Sciter (khác WebView2):"
                                                Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
                                     <TextBlock Foreground="{DynamicResource PrimaryBrush}" FontSize="10" TextWrapping="Wrap">
-                                        <Run Text="• CSS: Dùng text-selection-caret-color thay cho caret-color (Sciter không hỗ trợ caret-color)."/>
+                                         <Run Text="• CSS Con trỏ gõ chữ (Caret): " FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                         <Run Text="Dùng class ngắn " Foreground="{DynamicResource TextSecondary}"/>
+                                         <Run Text=".caret-cyan" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                                         <Run Text=" hoặc thuộc tính " Foreground="{DynamicResource TextSecondary}"/>
+                                         <Run Text="caret-color: #38bdf8;" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                                         <Run Text=" (hệ thống tự map sang Sciter engine)." Foreground="{DynamicResource TextSecondary}"/>
                                         <LineBreak/>
                                         <Run Text="• CSS: Dùng vertical-scrollbar: &quot;dark-scrollbar&quot; cho custom scrollbar."/>
                                         <LineBreak/>
