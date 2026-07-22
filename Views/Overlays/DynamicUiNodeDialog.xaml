@@ -11,6 +11,40 @@
     ShowInTaskbar="False" Topmost="True"
     Width="850" MinWidth="600" MaxWidth="1200" MinHeight="580" Height="680">
 
+    <!--
+    ╔══════════════════════════════════════════════════════════════════════════╗
+    ║  📖 Sciter JS ↔ C# Host Functions (Polling Bridge)                     ║
+    ╠══════════════════════════════════════════════════════════════════════════╣
+    ║  Các hàm JS có thể gọi từ Sciter HTML/JS để giao tiếp với C# Host:    ║
+    ║                                                                        ║
+    ║  🔄 Submit / Update Form Data:                                          ║
+    ║    • sciterUpdate()           - Cập nhật form data lên C# Host         ║
+    ║    • sciterSubmitAndClose()   - Submit form data + đóng dialog         ║
+    ║    • hostSubmit(data)         - Submit data object lên C# Host         ║
+    ║    • hostSubmitAndClose(data) - Submit data + đóng                     ║
+    ║                                                                        ║
+    ║  ▶ Chạy Node / Workflow:                                               ║
+    ║    • sciterRunSingleNode()    - Chạy riêng node này                    ║
+    ║    • sciterRunFromNode()      - Chạy workflow từ node này              ║
+    ║    • hostStart()              - Bắt đầu workflow test                  ║
+    ║                                                                        ║
+    ║  ❌ Hủy:                                                                ║
+    ║    • hostCancel()             - Hủy form                               ║
+    ║                                                                        ║
+    ║  📂 File / API:                                                         ║
+    ║    • hostResolvePath(path, requestId) - Resolve đường dẫn file        ║
+    ║    • hostCurl(rawCurl, fileName, key) - Gọi cURL API                  ║
+    ║    • hostPickImages(requestId)        - Chọn ảnh từ file dialog       ║
+    ║                                                                        ║
+    ║  📡 Live Data (C# → JS):                                               ║
+    ║    • hostLive.values           - Object chứa dữ liệu live từ C#       ║
+    ║    • hostLive.on(key, callback) - Lắng nghe thay đổi dữ liệu live    ║
+    ║                                                                        ║
+    ║  🎨 CSS cho Sciter (khác với Browser):                                  ║
+    ║    • text-selection-caret-color: #38bdf8;  (thay cho caret-color)     ║
+    ║    • vertical-scrollbar: "dark-scrollbar"; (custom scrollbar)          ║
+    ╚══════════════════════════════════════════════════════════════════════════╝
+    -->
     <local:BaseNodeDialog.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>

@@ -980,7 +980,7 @@ namespace FlowMy.Controls
             StopActionPollTimer();
             _actionPollTimer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(100)
+                Interval = TimeSpan.FromMilliseconds(50)
             };
             _actionPollTimer.Tick += ActionPollTimer_Tick;
             _actionPollTimer.Start();
@@ -1441,7 +1441,7 @@ namespace FlowMy.Controls
                     }
                 }
                 // --- Handle Cancel ---
-                else if (action == "cancelForm" || action == "sciterCancel")
+                else if (action == "cancelForm" || action == "sciterCancel" || action == "hostCancel")
                 {
                     FormCancelled?.Invoke(this, EventArgs.Empty);
                 }

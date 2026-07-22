@@ -149,6 +149,7 @@ input[type=""text""], select {
     border-radius: 8px;
     color: #ffffff;
     caret-color: #38bdf8;
+    text-selection-caret-color: #38bdf8;
     stroke: #38bdf8;
     font-size: 13px;
     font-family: inherit;
@@ -165,6 +166,7 @@ textarea {
     border-radius: 8px;
     color: #ffffff;
     caret-color: #38bdf8;
+    text-selection-caret-color: #38bdf8;
     stroke: #38bdf8;
     font-size: 13px;
     font-family: inherit;
