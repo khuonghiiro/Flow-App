@@ -26,6 +26,7 @@ namespace FlowMy.Controls
         private IntPtr _rootSciterWindow = IntPtr.Zero;
         private double _currentZoom = 1.0;
         private readonly System.Collections.Generic.Dictionary<string, System.Windows.Threading.DispatcherTimer> _autoRefreshTimers = new();
+        private System.Windows.Threading.DispatcherTimer? _actionPollTimer;
 
         private static SciterAPIHost? _globalHost;
         private static readonly object _hostLock = new object();
@@ -67,6 +68,9 @@ namespace FlowMy.Controls
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr GetParent(IntPtr hWnd);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr SendMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
+
         [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
         private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
 
@@ -93,6 +97,7 @@ namespace FlowMy.Controls
         private const uint WM_NCCALCSIZE = 0x0083;
         private const uint WM_NCPAINT = 0x0085;
         private const uint WM_NCACTIVATE = 0x0086;
+        private const uint WM_SETTEXT = 0x000C;
 
         private const int GWL_STYLE = -16;
         private const int GWL_EXSTYLE = -20;
@@ -104,6 +109,9 @@ namespace FlowMy.Controls
         private const uint SWP_NOZORDER = 0x0004;
         private const uint SWP_NOACTIVATE = 0x0010;
         private const uint SWP_FRAMECHANGED = 0x0020;
+
+        private const string SCITER_ACTION_PREFIX = "__SCITER_ACTION__:";
+        private bool _isProcessingAction = false;
 
         public SciterEmbeddedControl(ISciterNode node, IWorkflowEditorHost? editorHost = null)
         {
@@ -188,7 +196,7 @@ namespace FlowMy.Controls
             // Register interop event handler
             Func<string, List<SciterValue>, SciterValue?> handleScriptCall = (methodName, args) =>
             {
-                if (methodName == "submitForm" || methodName == "updateValue")
+                if (methodName == "submitForm" || methodName == "hostSubmitAndClose" || methodName == "sciterSubmit" || methodName == "sciterSubmitAndClose" || methodName == "updateValue" || methodName == "hostSubmit" || methodName == "sciterUpdate")
                 {
                     bool hasMapData = false;
                     if (args.Count > 0)
@@ -255,12 +263,114 @@ namespace FlowMy.Controls
                         }
                     }
 
-                    if (methodName == "submitForm")
+                    if (methodName == "submitForm" || methodName == "hostSubmitAndClose" || methodName == "sciterSubmit" || methodName == "sciterSubmitAndClose")
                     {
                         FormSubmitted?.Invoke(this, new System.Collections.Generic.Dictionary<string, object?>(_node.ResolvedOutputs));
                     }
+
+                    return _host.CreateValue(true);
                 }
-                else if (methodName == "startWorkflow" || methodName == "hostStart" || methodName == "startTest")
+                else if (methodName == "sciterRunSingleNode" || methodName == "hostRunSingleNode" || methodName == "runSingleNode")
+                {
+                    if (args.Count > 0)
+                    {
+                        var dataVal = args[0];
+                        if (dataVal.IsMap || dataVal.IsObject)
+                        {
+                            var mapItems = _host.GetMapItems(ref dataVal);
+                            if (mapItems != null && mapItems.Count > 0)
+                            {
+                                foreach (var kvp in mapItems)
+                                {
+                                    var key = kvp.Key;
+                                    var val = kvp.Value;
+                                    object? value = null;
+                                    if (val.IsBoolean) value = val.ToBoolean() == true;
+                                    else if (val.IsInteger) value = _host.GetValueInt32(ref val);
+                                    else if (val.IsFloat) value = _host.GetValueDouble(ref val);
+                                    else value = _host.GetValueString(ref val);
+
+                                    _node.ResolvedOutputs[key] = value;
+                                    if (_node.DynamicOutputs != null)
+                                    {
+                                        var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                            string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                                        if (dyn != null) dyn.UserValueOverride = value?.ToString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (_editorHost != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                _editorHost.RequestRunSingleNode((WorkflowNode)_node);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Sciter] sciterRunSingleNode error: {ex.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                    return _host.CreateValue(true);
+                }
+                else if (methodName == "sciterRunFromNode" || methodName == "hostRunFromNode" || methodName == "runFromNode")
+                {
+                    if (args.Count > 0)
+                    {
+                        var dataVal = args[0];
+                        if (dataVal.IsMap || dataVal.IsObject)
+                        {
+                            var mapItems = _host.GetMapItems(ref dataVal);
+                            if (mapItems != null && mapItems.Count > 0)
+                            {
+                                foreach (var kvp in mapItems)
+                                {
+                                    var key = kvp.Key;
+                                    var val = kvp.Value;
+                                    object? value = null;
+                                    if (val.IsBoolean) value = val.ToBoolean() == true;
+                                    else if (val.IsInteger) value = _host.GetValueInt32(ref val);
+                                    else if (val.IsFloat) value = _host.GetValueDouble(ref val);
+                                    else value = _host.GetValueString(ref val);
+
+                                    _node.ResolvedOutputs[key] = value;
+                                    if (_node.DynamicOutputs != null)
+                                    {
+                                        var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                            string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                                        if (dyn != null) dyn.UserValueOverride = value?.ToString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (_editorHost != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            try
+                            {
+                                var vm = _editorHost.ViewModel;
+                                if (vm != null)
+                                {
+                                    await vm.RunWorkflowFromNodeAsync((WorkflowNode)_node);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Sciter] sciterRunFromNode error: {ex.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                    return _host.CreateValue(true);
+                }
+                else if (methodName == "startWorkflow" || methodName == "hostStart" || methodName == "sciterStart" || methodName == "startTest")
                 {
                     if (_editorHost != null)
                     {
@@ -296,10 +406,12 @@ namespace FlowMy.Controls
                             }
                         }), System.Windows.Threading.DispatcherPriority.Normal);
                     }
+                    return _host.CreateValue(true);
                 }
-                else if (methodName == "cancelForm")
+                else if (methodName == "cancelForm" || methodName == "sciterCancel")
                 {
                     FormCancelled?.Invoke(this, EventArgs.Empty);
+                    return _host.CreateValue(true);
                 }
                 else if (methodName == "getPrefilledValue")
                 {
@@ -325,7 +437,7 @@ namespace FlowMy.Controls
                     return _host.CreateNullValue();
                 }
 
-                return null;
+                return _host.CreateNullValue();
             };
 
             var childEventHandler = new DynamicUiEventHandler(_sciterWindow, _host, handleScriptCall);
@@ -342,6 +454,7 @@ namespace FlowMy.Controls
             {
                 UpdateContent();
                 StartAutoRefreshTimers();
+                StartActionPollTimer();
             }), System.Windows.Threading.DispatcherPriority.Background);
 
             return new HandleRef(this, _rootSciterWindow != IntPtr.Zero ? _rootSciterWindow : _sciterWindow);
@@ -489,6 +602,17 @@ namespace FlowMy.Controls
     }}
   }};
 
+  // Action queue: JS pushes actions here, C# polls via ExecuteWindowEval every 100ms
+  if (!globalThis.__pendingActions) globalThis.__pendingActions = [];
+
+  function sendHostAction(methodName, data) {{
+    try {{
+      globalThis.__pendingActions.push({{ action: methodName, data: data || {{}} }});
+    }} catch(e) {{
+      try {{ console.log('sendHostAction error: ' + e); }} catch(ex) {{}}
+    }}
+  }}
+
   function hostSubmit(data) {{
     if (!data || typeof data !== 'object') {{
       data = {{}};
@@ -513,13 +637,7 @@ namespace FlowMy.Controls
         }} catch(e) {{}}
       }}
     }}
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('updateValue', data);
-      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-        window.Window.this.xcall('updateValue', data);
-      }}
-    }} catch(e) {{}}
+    sendHostAction('hostSubmit', data);
   }}
 
   function hostSubmitAndClose(data) {{
@@ -546,84 +664,117 @@ namespace FlowMy.Controls
         }} catch(e) {{}}
       }}
     }}
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('submitForm', data);
-      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-        window.Window.this.xcall('submitForm', data);
-      }}
-    }} catch(e) {{}}
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('submitForm');
-      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-        window.Window.this.xcall('submitForm');
-      }}
-    }} catch(e) {{}}
+    sendHostAction('submitForm', data);
   }}
 
   function hostStart() {{
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('startWorkflow');
-      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-        window.Window.this.xcall('startWorkflow');
-      }}
-    }} catch(e) {{}}
+    sendHostAction('startWorkflow');
   }}
 
   function hostCancel() {{
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('cancelForm');
-      }} else if (typeof window !== 'undefined' && window.Window && window.Window.this) {{
-        window.Window.this.xcall('cancelForm');
+    sendHostAction('cancelForm');
+  }}
+
+  function sciterRunSingleNode(data) {{
+    if (!data || typeof data !== 'object') {{
+      data = {{}};
+      var paramsText = `{safeParamsCode}`;
+      var lines = paramsText.split('\n');
+      for (var i = 0; i < lines.length; i++) {{
+        var line = lines[i].trim();
+        if (!line || line.startsWith('//') || line.startsWith('#')) continue;
+        var parts = line.includes(':') ? line.split(':') : line.split('=');
+        if (parts.length < 2) continue;
+        var key = parts[0].trim();
+        var selector = parts[1].trim();
+        try {{
+          var el = document.querySelector(selector) || (typeof document.$ === 'function' ? document.$(selector) : null);
+          if (el) {{
+            if (typeof el.value !== 'undefined') {{
+              data[key] = el.value;
+            }} else if (el.textContent) {{
+              data[key] = el.textContent;
+            }}
+          }}
+        }} catch(e) {{}}
       }}
-    }} catch(e) {{}}
+    }}
+    sendHostAction('sciterRunSingleNode', data);
+  }}
+
+  function sciterRunFromNode(data) {{
+    if (!data || typeof data !== 'object') {{
+      data = {{}};
+      var paramsText = `{safeParamsCode}`;
+      var lines = paramsText.split('\n');
+      for (var i = 0; i < lines.length; i++) {{
+        var line = lines[i].trim();
+        if (!line || line.startsWith('//') || line.startsWith('#')) continue;
+        var parts = line.includes(':') ? line.split(':') : line.split('=');
+        if (parts.length < 2) continue;
+        var key = parts[0].trim();
+        var selector = parts[1].trim();
+        try {{
+          var el = document.querySelector(selector) || (typeof document.$ === 'function' ? document.$(selector) : null);
+          if (el) {{
+            if (typeof el.value !== 'undefined') {{
+              data[key] = el.value;
+            }} else if (el.textContent) {{
+              data[key] = el.textContent;
+            }}
+          }}
+        }} catch(e) {{}}
+      }}
+    }}
+    sendHostAction('sciterRunFromNode', data);
   }}
 
   function hostResolvePath(localPath, requestId) {{
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('hostResolvePath', localPath, requestId);
-      }}
-    }} catch(e) {{}}
+    sendHostAction('hostResolvePath', {{ localPath: localPath, requestId: requestId }});
   }}
 
   function hostCurl(rawCurl, fileName, key) {{
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('hostCurl', rawCurl, fileName, key);
-      }}
-    }} catch(e) {{}}
+    sendHostAction('hostCurl', {{ rawCurl: rawCurl, fileName: fileName, key: key }});
   }}
 
   function hostPickImages(requestId) {{
-    try {{
-      if (typeof Window !== 'undefined' && Window.this && typeof Window.this.xcall === 'function') {{
-        Window.this.xcall('hostPickImages', requestId);
-      }}
-    }} catch(e) {{}}
+    sendHostAction('hostPickImages', {{ requestId: requestId }});
   }}
 
   globalThis.hostSubmit = hostSubmit;
-  globalThis.hostSubmitAndClose = hostSubmit;
+  globalThis.hostSubmitAndClose = hostSubmitAndClose;
   globalThis.hostStart = hostStart;
   globalThis.hostCancel = hostCancel;
   globalThis.hostResolvePath = hostResolvePath;
   globalThis.hostCurl = hostCurl;
   globalThis.hostPickImages = hostPickImages;
 
+  globalThis.sciterSubmit = hostSubmit;
+  globalThis.sciterSubmitAndClose = hostSubmitAndClose;
+  globalThis.sciterUpdate = hostSubmit;
+  globalThis.sciterStart = hostStart;
+  globalThis.sciterCancel = hostCancel;
+  globalThis.sciterRunSingleNode = sciterRunSingleNode;
+  globalThis.sciterRunFromNode = sciterRunFromNode;
+
   if (typeof window !== 'undefined') {{
     window.hostLive = globalThis.hostLive;
     window.hostLivePush = globalThis.hostLivePush;
     window.hostSubmit = hostSubmit;
-    window.hostSubmitAndClose = hostSubmit;
+    window.hostSubmitAndClose = hostSubmitAndClose;
     window.hostStart = hostStart;
     window.hostCancel = hostCancel;
     window.hostResolvePath = hostResolvePath;
     window.hostCurl = hostCurl;
     window.hostPickImages = hostPickImages;
+
+    window.sciterSubmit = hostSubmit;
+    window.sciterSubmitAndClose = hostSubmitAndClose;
+    window.sciterUpdate = hostSubmit;
+    window.sciterStart = hostStart;
+    window.sciterCancel = hostCancel;
+    window.sciterRunSingleNode = sciterRunSingleNode;
+    window.sciterRunFromNode = sciterRunFromNode;
   }}
 }})();
 </script>";
@@ -642,10 +793,12 @@ namespace FlowMy.Controls
                 var htmlToLoad = _customLoadedHtml;
                 if (!htmlToLoad.Contains("__sciterHostReady", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (htmlToLoad.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                        htmlToLoad = htmlToLoad.Replace("</body>", runtimeScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
+                    if (htmlToLoad.Contains("</head>", StringComparison.OrdinalIgnoreCase))
+                        htmlToLoad = htmlToLoad.Replace("</head>", runtimeScript + "\n</head>", StringComparison.OrdinalIgnoreCase);
+                    else if (htmlToLoad.Contains("<body>", StringComparison.OrdinalIgnoreCase))
+                        htmlToLoad = htmlToLoad.Replace("<body>", "<body>\n" + runtimeScript, StringComparison.OrdinalIgnoreCase);
                     else
-                        htmlToLoad += runtimeScript;
+                        htmlToLoad = runtimeScript + "\n" + htmlToLoad;
                 }
                 _host.LoadHtml(htmlToLoad, _sciterWindow);
                 var rVal = _host.CreateNullValue();
@@ -663,6 +816,7 @@ namespace FlowMy.Controls
 <html window-frame=""none"">
 <head>
     <meta charset=""utf-8"">
+    {runtimeScript}
     <style>
         html, body {{
             margin: 0;
@@ -680,7 +834,6 @@ namespace FlowMy.Controls
 </head>
 <body>
     {html}
-    {runtimeScript}
     <script>
         {js}
     </script>
@@ -700,10 +853,12 @@ namespace FlowMy.Controls
             var runtimeScript = BuildRuntimeScript();
             if (!htmlContent.Contains("__sciterHostReady", StringComparison.OrdinalIgnoreCase))
             {
-                if (htmlContent.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                    htmlContent = htmlContent.Replace("</body>", runtimeScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
+                if (htmlContent.Contains("</head>", StringComparison.OrdinalIgnoreCase))
+                    htmlContent = htmlContent.Replace("</head>", runtimeScript + "\n</head>", StringComparison.OrdinalIgnoreCase);
+                else if (htmlContent.Contains("<body>", StringComparison.OrdinalIgnoreCase))
+                    htmlContent = htmlContent.Replace("<body>", "<body>\n" + runtimeScript, StringComparison.OrdinalIgnoreCase);
                 else
-                    htmlContent += runtimeScript;
+                    htmlContent = runtimeScript + "\n" + htmlContent;
             }
 
             _customLoadedHtml = htmlContent;
@@ -769,6 +924,7 @@ namespace FlowMy.Controls
 
         protected override void DestroyWindowCore(HandleRef hwnd)
         {
+            StopActionPollTimer();
             StopAutoRefreshTimers();
 
             if (_oldWndProc != IntPtr.Zero && _rootSciterWindow != IntPtr.Zero)
@@ -812,6 +968,85 @@ namespace FlowMy.Controls
         {
             foreach (var t in _autoRefreshTimers.Values) t.Stop();
             _autoRefreshTimers.Clear();
+        }
+
+        /// <summary>
+        /// Start a DispatcherTimer that polls the JS __pendingActions queue every 100ms.
+        /// This is the reliable JS→C# communication bridge for embedded Sciter child windows
+        /// where Window.this.xcall() does not work (no Sciter message loop / host.Process()).
+        /// </summary>
+        private void StartActionPollTimer()
+        {
+            StopActionPollTimer();
+            _actionPollTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _actionPollTimer.Tick += ActionPollTimer_Tick;
+            _actionPollTimer.Start();
+        }
+
+        private void StopActionPollTimer()
+        {
+            if (_actionPollTimer != null)
+            {
+                _actionPollTimer.Stop();
+                _actionPollTimer.Tick -= ActionPollTimer_Tick;
+                _actionPollTimer = null;
+            }
+        }
+
+        private void ActionPollTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_host == null || _sciterWindow == IntPtr.Zero)
+            {
+                StopActionPollTimer();
+                return;
+            }
+
+            try
+            {
+                // Read and atomically clear the pending actions queue from JS
+                var script = @"(function() {
+                    var q = globalThis.__pendingActions;
+                    if (!q || q.length === 0) return '';
+                    globalThis.__pendingActions = [];
+                    return JSON.stringify(q);
+                })();";
+
+                var resultVal = _host.CreateNullValue();
+                bool ok = _host.ExecuteWindowEval(_sciterWindow, script, out resultVal);
+
+                if (ok)
+                {
+                    var jsonArray = _host.GetValueString(ref resultVal);
+                    if (!string.IsNullOrEmpty(jsonArray))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Sciter Poll] Got actions: {jsonArray}");
+
+                        // Parse the array of actions
+                        using var doc = System.Text.Json.JsonDocument.Parse(jsonArray);
+                        if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            foreach (var item in doc.RootElement.EnumerateArray())
+                            {
+                                try
+                                {
+                                    ProcessSciterAction(item.GetRawText());
+                                }
+                                catch (Exception exAction)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[Sciter Poll] Action error: {exAction.Message}");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sciter Poll] Error: {ex.Message}");
+            }
         }
 
         private void StartAutoRefreshTimers()
@@ -990,6 +1225,7 @@ namespace FlowMy.Controls
                 catch { }
             }
 
+
             if (msg == WM_NCCALCSIZE)
             {
                 // Ensure client area covers the entire window to strip titlebar/caption/borders
@@ -1009,6 +1245,222 @@ namespace FlowMy.Controls
             
             var targetOldWndProc = (hWnd == _sciterWindow && _oldSciterWndProc != IntPtr.Zero) ? _oldSciterWndProc : _oldWndProc;
             return CallWindowProc(targetOldWndProc, hWnd, msg, wParam, lParam);
+        }
+
+        /// <summary>
+        /// Process a JS→C# action received via polling bridge (DispatcherTimer + ExecuteWindowEval).
+        /// Parses JSON payload and dispatches to the appropriate C# handler.
+        /// </summary>
+        private void ProcessSciterAction(string json)
+        {
+            if (_host == null || _sciterWindow == IntPtr.Zero) return;
+
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                var action = root.GetProperty("action").GetString() ?? "";
+                var dataElement = root.TryGetProperty("data", out var d) ? d : default;
+
+                System.Diagnostics.Debug.WriteLine($"[Sciter Action] Received: {action}");
+
+                // Extract key-value pairs from "data" JSON object into a dictionary
+                var formData = new Dictionary<string, object?>();
+                if (dataElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    foreach (var prop in dataElement.EnumerateObject())
+                    {
+                        object? val = prop.Value.ValueKind switch
+                        {
+                            System.Text.Json.JsonValueKind.True => true,
+                            System.Text.Json.JsonValueKind.False => false,
+                            System.Text.Json.JsonValueKind.Number => prop.Value.TryGetInt32(out var iv) ? (object)iv : prop.Value.GetDouble(),
+                            System.Text.Json.JsonValueKind.String => prop.Value.GetString(),
+                            _ => prop.Value.GetRawText()
+                        };
+                        formData[prop.Name] = val;
+                    }
+                }
+
+                // --- Handle submit/update actions ---
+                if (action == "submitForm" || action == "hostSubmitAndClose" || action == "sciterSubmit" || action == "sciterSubmitAndClose" ||
+                    action == "updateValue" || action == "hostSubmit" || action == "sciterUpdate")
+                {
+                    // Write form data to node outputs
+                    if (formData.Count > 0)
+                    {
+                        foreach (var kvp in formData)
+                        {
+                            _node.ResolvedOutputs[kvp.Key] = kvp.Value;
+
+                            if (_node.DynamicOutputs != null)
+                            {
+                                var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                    string.Equals(o.Key, kvp.Key, StringComparison.OrdinalIgnoreCase));
+                                if (dyn != null)
+                                    dyn.UserValueOverride = kvp.Value?.ToString();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: read from DOM using ParamsCode selectors
+                        var paramsCode = _node.ParamsCode ?? "";
+                        UpdateOutputsFromDom(paramsCode, _node.ResolvedOutputs);
+                    }
+
+                    if (_editorHost != null)
+                    {
+                        _editorHost.RequestSyncDataPanels(immediate: false);
+
+                        try
+                        {
+                            var vm = _editorHost.ViewModel;
+                            if (vm != null)
+                            {
+                                var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                                    .GetField("_executionVisualizer",
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
+                                {
+                                    visualizer.RefreshSavedOutputs(new[] { (WorkflowNode)_node });
+                                }
+                            }
+                        }
+                        catch (Exception exVis)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Sciter Action] RefreshSavedOutputs error: {exVis.Message}");
+                        }
+                    }
+
+                    if (action == "submitForm" || action == "hostSubmitAndClose" || action == "sciterSubmit" || action == "sciterSubmitAndClose")
+                    {
+                        FormSubmitted?.Invoke(this, new Dictionary<string, object?>(_node.ResolvedOutputs));
+                    }
+                }
+                // --- Handle Run Single Node ---
+                else if (action == "sciterRunSingleNode" || action == "hostRunSingleNode" || action == "runSingleNode")
+                {
+                    // Write form data to outputs before running
+                    foreach (var kvp in formData)
+                    {
+                        _node.ResolvedOutputs[kvp.Key] = kvp.Value;
+                        if (_node.DynamicOutputs != null)
+                        {
+                            var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                string.Equals(o.Key, kvp.Key, StringComparison.OrdinalIgnoreCase));
+                            if (dyn != null) dyn.UserValueOverride = kvp.Value?.ToString();
+                        }
+                    }
+
+                    if (_editorHost != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                _editorHost.RequestRunSingleNode((WorkflowNode)_node);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Sciter Action] sciterRunSingleNode error: {ex.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                }
+                // --- Handle Run From Node ---
+                else if (action == "sciterRunFromNode" || action == "hostRunFromNode" || action == "runFromNode")
+                {
+                    foreach (var kvp in formData)
+                    {
+                        _node.ResolvedOutputs[kvp.Key] = kvp.Value;
+                        if (_node.DynamicOutputs != null)
+                        {
+                            var dyn = _node.DynamicOutputs.FirstOrDefault(o =>
+                                string.Equals(o.Key, kvp.Key, StringComparison.OrdinalIgnoreCase));
+                            if (dyn != null) dyn.UserValueOverride = kvp.Value?.ToString();
+                        }
+                    }
+
+                    if (_editorHost != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            try
+                            {
+                                var vm = _editorHost.ViewModel;
+                                if (vm != null)
+                                {
+                                    await vm.RunWorkflowFromNodeAsync((WorkflowNode)_node);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Sciter Action] sciterRunFromNode error: {ex.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                }
+                // --- Handle Start Workflow ---
+                else if (action == "startWorkflow" || action == "hostStart" || action == "sciterStart" || action == "startTest")
+                {
+                    if (_editorHost != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            try
+                            {
+                                var vm = _editorHost.ViewModel;
+                                if (vm != null)
+                                {
+                                    var vmType = vm.GetType();
+                                    var startTestMethod = vmType.GetMethod("StartTest",
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                    if (startTestMethod != null)
+                                    {
+                                        var task = startTestMethod.Invoke(vm, null) as System.Threading.Tasks.Task;
+                                        if (task != null) await task;
+                                    }
+                                    else
+                                    {
+                                        var commandProp = vmType.GetProperty("StartTestCommand",
+                                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                                        if (commandProp?.GetValue(vm) is System.Windows.Input.ICommand cmd && cmd.CanExecute(null))
+                                        {
+                                            cmd.Execute(null);
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Sciter Action] startWorkflow error: {ex.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Normal);
+                    }
+                }
+                // --- Handle Cancel ---
+                else if (action == "cancelForm" || action == "sciterCancel")
+                {
+                    FormCancelled?.Invoke(this, EventArgs.Empty);
+                }
+                // --- Handle getPrefilledValue ---
+                else if (action == "getPrefilledValue")
+                {
+                    // This is typically called from JS during load, not via button click
+                    // For WM_SETTEXT bridge, we can't return values. Use ExecuteWindowEval instead.
+                    System.Diagnostics.Debug.WriteLine("[Sciter Action] getPrefilledValue called via WM_SETTEXT bridge - not supported in this mode");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Sciter Action] Unknown action: {action}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sciter Action] JSON parse error: {ex.Message}, json={json}");
+            }
         }
     }
 }

@@ -124,6 +124,7 @@ namespace FlowMy.Models.Nodes
             "    border: none;\n" +
             "    outline: none;\n" +
             "    color: #f8fafc;\n" +
+            "    caret-color: #38bdf8;\n" +
             "    font-family: inherit;\n" +
             "    font-size: 14px;\n" +
             "    line-height: 1.5;\n" +

@@ -62,6 +62,17 @@ namespace FlowMy.Views.NodeControls
 
             // --- 3. SCITER EMBEDDED CONTROL ---
             var sciterControl = new SciterEmbeddedControl(node, host);
+            sciterControl.FormSubmitted += (s, outputs) =>
+            {
+                if (outputs != null)
+                {
+                    foreach (var kvp in outputs)
+                    {
+                        node.ResolvedOutputs[kvp.Key] = kvp.Value;
+                    }
+                }
+                host.RequestSyncDataPanels(immediate: true);
+            };
             Grid.SetRow(sciterControl, 1);
             grid.Children.Add(sciterControl);
 
@@ -124,7 +135,7 @@ namespace FlowMy.Views.NodeControls
             grid.Children.Add(bottomBar);
 
             // --- 7. RESIZE HANDLE OVERLAY ---
-            var handleOverlay = new Grid();
+            var handleOverlay = new Grid { IsHitTestVisible = false };
             AddResizeHandle(handleOverlay, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
             AddResizeHandle(handleOverlay, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
             AddResizeHandle(handleOverlay, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
@@ -457,6 +468,7 @@ namespace FlowMy.Views.NodeControls
                 Margin = margin,
                 Tag = direction,
                 Cursor = GetCursorForResizeDirection(direction),
+                IsHitTestVisible = true,
                 CacheMode = null
             };
             GpuOptimizationHelper.ApplyToShape(handle);
