@@ -2565,6 +2565,8 @@ namespace FlowMy.ViewModels
                 tgtWeb.CssZoom = srcWeb.CssZoom;
                 tgtWeb.Width = srcWeb.Width;
                 tgtWeb.Height = srcWeb.Height;
+                tgtWeb.CacheMode = srcWeb.CacheMode;
+                tgtWeb.CustomCacheName = srcWeb.CustomCacheName;
 
                 // ResponseOutputs
                 tgtWeb.ResponseOutputs.Clear();

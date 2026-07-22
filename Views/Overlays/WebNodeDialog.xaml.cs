@@ -740,6 +740,22 @@ namespace FlowMy.Views.Overlays
             });
             stack.Children.Add(waitCheckBox);
 
+            // Checkbox: Kích hoạt chạy workflow từ node tiếp theo khi bắt được response khớp
+            var triggerNextCheckBox = new CheckBox
+            {
+                Content = "Kích hoạt chạy workflow từ node tiếp theo khi khớp",
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 0, 4),
+                ToolTip = "Khi WebView2 bắt được response khớp URL & Method này, tự động kích hoạt chạy workflow bắt đầu từ các node nối tiếp sau WebNode này."
+            };
+            BindThemeResource(triggerNextCheckBox, Control.ForegroundProperty, "TextBrush");
+            triggerNextCheckBox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.TriggerNextWorkflow))
+            {
+                Source = output,
+                Mode = System.Windows.Data.BindingMode.TwoWay
+            });
+            stack.Children.Add(triggerNextCheckBox);
+
             // Border bao ngoài mỗi output, có margin bottom để tạo khoảng cách với output kế tiếp
             var border = new Border
             {

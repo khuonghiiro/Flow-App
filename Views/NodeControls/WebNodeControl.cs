@@ -4185,6 +4185,10 @@ if (window.__elementInspector) {
                                         string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
                                     if (dyn != null) dyn.UserValueOverride = val;
                                 }
+                                if (ro != null && ro.TriggerNextWorkflow)
+                                {
+                                    TryTriggerDownstreamWorkflow(host, n, ro);
+                                }
                                 if (host != null)
                                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                                     {
@@ -5183,6 +5187,48 @@ if (window.__elementInspector) {
                         host.RequestRunSingleNode(outputNode);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Khi WebView2 bắt/nhận được response khớp với một WebResponseOutput có TriggerNextWorkflow = true,
+        /// tự động tìm các node nối tiếp sau WebNode này (Node A, ...) và kích hoạt chạy workflow từ các node đó.
+        /// </summary>
+        private static void TryTriggerDownstreamWorkflow(IWorkflowEditorHost? host, WebNode sourceNode, WebResponseOutput responseOutput)
+        {
+            if (host?.ViewModel == null || responseOutput == null || !responseOutput.TriggerNextWorkflow) return;
+
+            var vm = host.ViewModel;
+            var connections = vm.Connections;
+            if (connections == null || connections.Count == 0) return;
+
+            // Tìm các node nối sau WebNode này (outgoing edges)
+            var nextNodes = connections
+                .Where(c => c.FromNode != null && string.Equals(c.FromNode.Id, sourceNode.Id, StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.ToNode)
+                .Where(n => n != null && n != sourceNode)
+                .Distinct()
+                .ToList();
+
+            if (nextNodes.Count == 0) return;
+
+            // Trigger chạy workflow bắt đầu từ từng node tiếp theo trên UI thread
+            foreach (var nextNode in nextNodes)
+            {
+                if (nextNode == null) continue;
+                System.Diagnostics.Debug.WriteLine($"[WebNodeControl] 🚀 Auto-triggering workflow from next node '{nextNode.Title}' ({nextNode.Id}) due to matched output '{responseOutput.Key}'");
+
+                host.Dispatcher.BeginInvoke(new Action(async () =>
+                {
+                    try
+                    {
+                        await vm.RunWorkflowFromNodeAsync(nextNode);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeControl] Error auto-triggering workflow from node '{nextNode.Title}': {ex.Message}");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
 

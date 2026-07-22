@@ -122,6 +122,9 @@ public static class WebNodeCacheHelper
     /// <summary>
     /// Lưu cache WebView2 (CSS, JS, cookies, cấu hình) của tất cả WebNode vào thư mục workflow.
     /// Gọi sau khi Save workflow (Ctrl+S).
+    /// <summary>
+    /// Lưu cache WebView2 (CSS, JS, cookies, cấu hình) của tất cả WebNode vào thư mục workflow.
+    /// Gọi sau khi Save workflow (Ctrl+S). Hỗ trợ cả profile độc lập (CustomCacheName).
     /// </summary>
     public static void SaveWorkflowWebNodeCaches(string workflowsDir, string workflowName, IEnumerable<WorkflowNode> nodes)
     {
@@ -129,6 +132,23 @@ public static class WebNodeCacheHelper
         var cacheBase = GetWorkflowWebCacheDir(workflowsDir, workflowName);
         foreach (var n in nodes.OfType<WebNode>())
         {
+            // Nếu node dùng Isolated profile với CustomCacheName, lưu profile đó
+            if (string.Equals(n.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(n.CustomCacheName) &&
+                !string.Equals(n.CustomCacheName, "Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                var profileSrc = GetProfileCachePath(n.CustomCacheName);
+                if (Directory.Exists(profileSrc))
+                {
+                    var profileDest = Path.Combine(cacheBase, "profiles", n.CustomCacheName);
+                    try { CopyDirectory(profileSrc, profileDest); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebNodeCacheHelper.SaveWorkflowWebNodeCaches profile {n.CustomCacheName}: {ex.Message}");
+                    }
+                }
+            }
+
             var src = GetRuntimeCachePath(n.Id);
             if (!Directory.Exists(src)) continue;
             var dest = Path.Combine(cacheBase, n.Id);
@@ -217,6 +237,23 @@ public static class WebNodeCacheHelper
         var cacheBase = GetWorkflowWebCacheDir(workflowsDir, workflowName);
         foreach (var n in nodes.OfType<WebNode>())
         {
+            // Restore isolated profile if specified
+            if (string.Equals(n.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(n.CustomCacheName) &&
+                !string.Equals(n.CustomCacheName, "Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                var profileSrc = Path.Combine(cacheBase, "profiles", n.CustomCacheName);
+                if (Directory.Exists(profileSrc))
+                {
+                    var profileDest = GetProfileCachePath(n.CustomCacheName);
+                    try { CopyDirectory(profileSrc, profileDest); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebNodeCacheHelper.RestoreWorkflowWebNodeCaches profile {n.CustomCacheName}: {ex.Message}");
+                    }
+                }
+            }
+
             var src = Path.Combine(cacheBase, n.Id);
             if (!Directory.Exists(src)) continue;
             var dest = GetRuntimeCachePath(n.Id);
@@ -372,6 +409,21 @@ public static class WebNodeCacheHelper
 
         foreach (var n in nodes.OfType<WebNode>())
         {
+            if (string.Equals(n.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(n.CustomCacheName) &&
+                !string.Equals(n.CustomCacheName, "Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                var profileSrc = Path.Combine(portableCacheRoot, "profiles", n.CustomCacheName);
+                if (Directory.Exists(profileSrc))
+                {
+                    try { CopyDirectory(profileSrc, GetProfileCachePath(n.CustomCacheName)); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebNodeCacheHelper.RestorePortableWebCaches profile {n.CustomCacheName}: {ex.Message}");
+                    }
+                }
+            }
+
             var src = Path.Combine(portableCacheRoot, n.Id);
             if (!Directory.Exists(src)) continue;
             var dest = GetRuntimeCachePath(n.Id);

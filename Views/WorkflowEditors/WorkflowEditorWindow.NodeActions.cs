@@ -478,7 +478,8 @@ namespace FlowMy.Views
                         Url = ro.Url,
                         RequestMethod = ro.RequestMethod,
                         ExtractType = ro.ExtractType,
-                        WaitForCompletion = ro.WaitForCompletion
+                        WaitForCompletion = ro.WaitForCompletion,
+                        TriggerNextWorkflow = ro.TriggerNextWorkflow
                     });
                 }
                 dstWeb.RebuildResponseOutputs();

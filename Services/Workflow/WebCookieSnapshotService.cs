@@ -84,53 +84,88 @@ public static class WebCookieSnapshotService
         var lookupUris = CollectCookieLookupUris(nodes);
         var entries = new List<PortableCookieEntryDto>();
 
+        // Collect all profiles used by WebNodes (Shared + Isolated custom cache profiles)
+        var profilesToExport = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Shared" };
+        foreach (var w in nodes.OfType<WebNode>())
+        {
+            if (string.Equals(w.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(w.CustomCacheName))
+            {
+                profilesToExport.Add(w.CustomCacheName.Trim());
+            }
+        }
+
         await ExportWebViewGate.WaitAsync(cancellationToken).ConfigureAwait(true);
-        Window? host = null;
-        WebView2? wv = null;
         try
         {
-            host = new Window
-            {
-                Width = 1,
-                Height = 1,
-                Left = -32000,
-                Top = 0,
-                WindowStyle = WindowStyle.ToolWindow,
-                ShowInTaskbar = false,
-                ShowActivated = false,
-                Visibility = Visibility.Hidden
-            };
-            wv = new WebView2();
-            host.Content = wv;
-            host.Show();
-
-            var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync().ConfigureAwait(true);
-            await wv.EnsureCoreWebView2Async(env).ConfigureAwait(true);
-            var core = wv.CoreWebView2 ?? throw new InvalidOperationException("CoreWebView2 is null after init.");
-            var mgr = core.CookieManager;
-
-            foreach (var uri in lookupUris)
+            foreach (var profileName in profilesToExport)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                IReadOnlyList<CoreWebView2Cookie> batch;
+                Window? host = null;
                 try
                 {
-                    batch = await mgr.GetCookiesAsync(uri).ConfigureAwait(true);
+                    host = new Window
+                    {
+                        Width = 1,
+                        Height = 1,
+                        Left = -32000,
+                        Top = 0,
+                        WindowStyle = WindowStyle.ToolWindow,
+                        ShowInTaskbar = false,
+                        ShowActivated = false,
+                        Visibility = Visibility.Hidden
+                    };
+                    var wv = new WebView2();
+                    host.Content = wv;
+                    host.Show();
+
+                    CoreWebView2Environment env;
+                    if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
+                    {
+                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync().ConfigureAwait(true);
+                    }
+                    else
+                    {
+                        var profilePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                        System.IO.Directory.CreateDirectory(profilePath);
+                        env = await CoreWebView2Environment.CreateAsync(null, profilePath).ConfigureAwait(true);
+                    }
+
+                    await wv.EnsureCoreWebView2Async(env).ConfigureAwait(true);
+                    var core = wv.CoreWebView2 ?? throw new InvalidOperationException("CoreWebView2 is null after init.");
+                    var mgr = core.CookieManager;
+
+                    foreach (var uri in lookupUris)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        IReadOnlyList<CoreWebView2Cookie> batch;
+                        try
+                        {
+                            batch = await mgr.GetCookiesAsync(uri).ConfigureAwait(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.GetCookiesAsync({uri}, profile '{profileName}'): {ex.Message}");
+                            continue;
+                        }
+
+                        var list = batch.Select(SerializeCookie).Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain)).ToList();
+                        if (list.Count > 0)
+                            entries.Add(new PortableCookieEntryDto { RequestUri = uri, Cookies = list });
+                    }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.GetCookiesAsync({uri}): {ex.Message}");
-                    continue;
+                    System.Diagnostics.Debug.WriteLine($"Error exporting cookies for profile '{profileName}': {ex.Message}");
                 }
-
-                var list = batch.Select(SerializeCookie).Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain)).ToList();
-                if (list.Count > 0)
-                    entries.Add(new PortableCookieEntryDto { RequestUri = uri, Cookies = list });
+                finally
+                {
+                    try { host?.Close(); } catch { /* ignore */ }
+                }
             }
         }
         finally
         {
-            try { host?.Close(); } catch { /* ignore */ }
             ExportWebViewGate.Release();
         }
 
