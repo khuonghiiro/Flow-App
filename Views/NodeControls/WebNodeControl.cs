@@ -2456,6 +2456,14 @@ if (window.__elementInspector) {
                         catch { }
                     }
 
+                    // Override User-Agent thành Chrome chuẩn để các website (labs.google, Next.js apps...)
+                    // không reject WebView2 vì UA mặc định chứa "Edg/" khiến một số site throw client-side exception.
+                    try
+                    {
+                        core.Settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
+                    }
+                    catch { }
+
                     // ⚠️ CRITICAL: Đảm bảo WebResourceRequested được raise cho TẤT CẢ requests (mọi context, mọi URL)
                     // CoreWebView2WebResourceContext.All bao gồm cả XHR (XmlHttpRequest) requests từ JavaScript
                     // Phải set filter TRƯỚC KHI subscribe events và TRƯỚC KHI navigate
