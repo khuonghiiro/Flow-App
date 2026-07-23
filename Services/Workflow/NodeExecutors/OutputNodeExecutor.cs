@@ -2,9 +2,12 @@ using System;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Rendering;
+using System.Collections.Specialized;
+using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Media.Imaging;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -103,14 +106,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             {
                                 value = scopedValue ?? string.Empty;
                             }
-                            else if (sourceNode is InputNode)
-                            {
-                                // InputNode can be static configuration and may not always have scoped snapshot.
-                                value = env.Service.ResolveDynamicValueForExecution(sourceNode, variable.SourceOutputKey, env);
-                            }
                             else
                             {
-                                value = string.Empty;
+                                // Fallback: đọc từ DynamicOutputs / UserValueOverride (vd: cropBase64 set từ LayerAiDialog)
+                                // InputNode luôn cần fallback; các node khác cũng cần nếu output nằm trong DynamicOutputs.
+                                value = env.Service.ResolveDynamicValueForExecution(sourceNode, variable.SourceOutputKey, env);
                             }
                         }
                     }
@@ -195,6 +195,27 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy to clipboard: {ex.Message}");
+                    }
+                }
+                // Copy images to clipboard if CopyImagesToClipboard is enabled
+                if (outputNode.CopyImagesToClipboard)
+                {
+                    try
+                    {
+                        var base64List = ExtractBase64Images(outputNode, variableValues, variableArrays);
+                        if (base64List.Count > 0)
+                        {
+                            CopyBase64ImagesToClipboard(base64List);
+                            System.Diagnostics.Debug.WriteLine($"OutputNode: Copied {base64List.Count} image(s) to clipboard");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"OutputNode: CopyImagesToClipboard enabled but no base64 images found");
+                        }
+                    }
+                    catch (Exception imgEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy images to clipboard: {imgEx.Message}");
                     }
                 }
 
@@ -720,6 +741,265 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             return value ?? "[]";
+        }
+
+        // ─── Base64 Image Clipboard Helpers ───
+
+        /// <summary>
+        /// Extract base64 image strings from resolved variable values.
+        /// If ImageParamKeys is specified, only look at those keys; otherwise use all variables.
+        /// Supports: plain base64 string, JSON array of base64 strings, JSON object with specified field keys.
+        /// </summary>
+        private List<string> ExtractBase64Images(
+            OutputNode outputNode,
+            Dictionary<string, string> variableValues,
+            Dictionary<string, List<string>> variableArrays)
+        {
+            var result = new List<string>();
+            var paramKeysRaw = outputNode.ImageParamKeys?.Trim() ?? string.Empty;
+
+            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: ImageParamKeys='{paramKeysRaw}'");
+            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: variableValues keys=[{string.Join(", ", variableValues.Keys)}]");
+            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: variableArrays keys=[{string.Join(", ", variableArrays.Keys)}]");
+
+            // Determine which variable keys to scan
+            IEnumerable<string> keysToScan;
+            if (!string.IsNullOrWhiteSpace(paramKeysRaw))
+            {
+                // User specified explicit keys, split by , or ;
+                keysToScan = paramKeysRaw
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(k => k.Trim())
+                    .Where(k => k.Length > 0)
+                    .ToList();
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: explicit keysToScan=[{string.Join(", ", keysToScan)}]");
+            }
+            else
+            {
+                // Use all variable keys
+                keysToScan = variableValues.Keys.ToList();
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: using ALL variable keys");
+            }
+
+            foreach (var key in keysToScan)
+            {
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: scanning key='{key}'");
+
+                // Check array values first
+                if (variableArrays.TryGetValue(key, out var arr) && arr != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' found in variableArrays ({arr.Count} items)");
+                    foreach (var item in arr)
+                    {
+                        var b64 = CleanBase64(item);
+                        if (IsLikelyBase64Image(b64))
+                        {
+                            result.Add(b64);
+                            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added base64 from array item ({b64.Length} chars)");
+                        }
+                    }
+                    continue;
+                }
+
+                // Check plain string value
+                if (variableValues.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val))
+                {
+                    var trimmed = val.Trim();
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' value length={trimmed.Length}, starts='{(trimmed.Length > 30 ? trimmed.Substring(0, 30) : trimmed)}...'");
+
+                    // If it's a JSON array string, parse it
+                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+                    {
+                        try
+                        {
+                            var parsed = ParseArrayToList(trimmed);
+                            if (parsed != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: parsed JSON array with {parsed.Count} items");
+                                foreach (var item in parsed)
+                                {
+                                    var b64 = CleanBase64(item);
+                                    if (IsLikelyBase64Image(b64))
+                                    {
+                                        result.Add(b64);
+                                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added base64 from JSON array ({b64.Length} chars)");
+                                    }
+                                }
+                                continue;
+                            }
+                        }
+                        catch { /* not a valid JSON array, try as plain base64 */ }
+                    }
+
+                    // If it's a JSON object, try extracting fields matching paramKeys
+                    if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(trimmed);
+                            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                            {
+                                // If paramKeysRaw has specific sub-keys, try them as JSON field names
+                                var subKeys = paramKeysRaw
+                                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                    .Select(k => k.Trim())
+                                    .Where(k => k.Length > 0);
+
+                                foreach (var subKey in subKeys)
+                                {
+                                    if (doc.RootElement.TryGetProperty(subKey, out var prop))
+                                    {
+                                        var propVal = prop.ValueKind == JsonValueKind.String
+                                            ? prop.GetString() ?? string.Empty
+                                            : prop.GetRawText();
+                                        var b64 = CleanBase64(propVal);
+                                        if (IsLikelyBase64Image(b64))
+                                        {
+                                            result.Add(b64);
+                                            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added base64 from JSON object field '{subKey}' ({b64.Length} chars)");
+                                        }
+                                    }
+                                }
+                                continue;
+                            }
+                        }
+                        catch { /* not valid JSON object */ }
+                    }
+
+                    // Plain base64 string
+                    var cleaned = CleanBase64(trimmed);
+                    if (IsLikelyBase64Image(cleaned))
+                    {
+                        result.Add(cleaned);
+                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added plain base64 ({cleaned.Length} chars)");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' value is NOT a valid base64 image");
+                    }
+                }
+                else if (variableValues.TryGetValue(key, out var emptyVal))
+                {
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' found but value is EMPTY (source node may not have run yet)");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' NOT found in variableValues (check Variable Key name)");
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: total extracted={result.Count}");
+            return result;
+        }
+
+        /// <summary>
+        /// Decode base64 images, save as temp PNG files, and copy to clipboard.
+        /// Supports both folder paste (FileDrop) and web paste (BitmapImage).
+        /// </summary>
+        private void CopyBase64ImagesToClipboard(List<string> base64List)
+        {
+            if (base64List.Count == 0) return;
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "FlowMy_ClipboardImages");
+            Directory.CreateDirectory(tempDir);
+
+            // Clean old temp files
+            try
+            {
+                foreach (var old in Directory.GetFiles(tempDir, "*.png"))
+                {
+                    try { File.Delete(old); } catch { }
+                }
+            }
+            catch { }
+
+            var tempFiles = new StringCollection();
+            BitmapImage? firstBitmap = null;
+
+            for (int i = 0; i < base64List.Count; i++)
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(base64List[i]);
+                    var fileName = $"image_{i + 1}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                    var filePath = Path.Combine(tempDir, fileName);
+                    File.WriteAllBytes(filePath, bytes);
+                    tempFiles.Add(filePath);
+
+                    // Keep first image as BitmapImage for web paste support
+                    if (firstBitmap == null)
+                    {
+                        firstBitmap = new BitmapImage();
+                        firstBitmap.BeginInit();
+                        firstBitmap.StreamSource = new MemoryStream(bytes);
+                        firstBitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        firstBitmap.EndInit();
+                        firstBitmap.Freeze();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to decode base64 image {i}: {ex.Message}");
+                }
+            }
+
+            if (tempFiles.Count == 0) return;
+
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var dataObject = new DataObject();
+
+                // FileDrop: cho phép Ctrl+V vào folder
+                dataObject.SetFileDropList(tempFiles);
+
+                // Bitmap: cho phép Ctrl+V vào web/app hỗ trợ paste ảnh
+                if (firstBitmap != null)
+                {
+                    dataObject.SetImage(firstBitmap);
+                }
+
+                Clipboard.SetDataObject(dataObject, true);
+            });
+        }
+
+        /// <summary>
+        /// Remove data URL prefix (e.g. "data:image/png;base64,") if present.
+        /// </summary>
+        private static string CleanBase64(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            var s = input.Trim();
+            // Remove data URL prefix
+            var commaIdx = s.IndexOf(',');
+            if (commaIdx >= 0 && commaIdx < 100 && s.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                s = s.Substring(commaIdx + 1);
+            }
+            return s.Trim();
+        }
+
+        /// <summary>
+        /// Quick check if a string is likely a base64-encoded image (minimum length + valid chars).
+        /// </summary>
+        private static bool IsLikelyBase64Image(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s) || s.Length < 100) return false;
+            // Must be reasonable length and contain only base64 chars
+            foreach (var c in s)
+            {
+                if (!char.IsLetterOrDigit(c) && c != '+' && c != '/' && c != '=' && !char.IsWhiteSpace(c))
+                    return false;
+            }
+            // Try decode a small portion to verify
+            try
+            {
+                Convert.FromBase64String(s.Length > 256 ? s.Substring(0, 256).PadRight(256 + (4 - 256 % 4) % 4, '=') : s);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

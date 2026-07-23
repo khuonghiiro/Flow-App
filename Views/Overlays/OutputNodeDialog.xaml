@@ -17,6 +17,7 @@
         MinHeight="420">
     <local:BaseNodeDialog.Resources>
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </local:BaseNodeDialog.Resources>
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
@@ -275,10 +276,11 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 📝 Format String -->
+                    <!-- 📝 Format String (ẩn khi chọn dán ảnh Base64) -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                            Visibility="{Binding CopyImagesToClipboard, Converter={StaticResource InverseBoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Text="📝 Format String"
                                        Foreground="{DynamicResource TextBrush}"
@@ -305,8 +307,45 @@
                                   FontSize="11"/>
                     </Border>
 
-                    <!-- Info -->
-                    <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                    <!-- 🖼️ Dán ảnh từ Base64 -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <CheckBox Content="Dán ảnh từ Base64 (Ctrl+V)"
+                                      IsChecked="{Binding CopyImagesToClipboard, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="11" Margin="0,0,0,8"/>
+
+                            <!-- Image Param Keys (chỉ hiện khi checkbox được bật) -->
+                            <StackPanel Visibility="{Binding CopyImagesToClipboard, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Tên Variable Key chứa ảnh base64 (cách nhau dấu , hoặc ;):"
+                                           Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding ImageParamKeys, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                         ToolTip="Nhập tên Variable Key đã tạo ở phần Input Variables"/>
+                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="8" Margin="0,6,0,0">
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="9" LineHeight="14">
+                                        <Run FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}">📌 Hướng dẫn:</Run>
+                                        <LineBreak/>
+                                        <Run>• Nhập tên Variable Key đã tạo ở mục &quot;📍 Input Variables&quot; phía trên</Run>
+                                        <LineBreak/>
+                                        <Run>• Ví dụ: Bạn tạo variable key là &quot;img1&quot; và nối với ImageProcessingNode (output: imageBase64)</Run>
+                                        <LineBreak/>
+                                        <Run>  → Nhập: </Run><Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1</Run>
+                                        <LineBreak/>
+                                        <Run>• Nhiều ảnh: </Run><Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1, img2</Run>
+                                        <LineBreak/>
+                                        <Run>• Để trống = tự quét tất cả Variable Key</Run>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Info (ẩn khi chọn dán ảnh Base64) -->
+                    <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                            Visibility="{Binding CopyImagesToClipboard, Converter={StaticResource InverseBoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Text="💡 Hướng dẫn Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             

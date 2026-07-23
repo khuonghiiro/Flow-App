@@ -112,7 +112,9 @@ namespace FlowMy.Views.Overlays
                 SaveActiveLayerState();
                 if (_ownerWindow != null)
                 {
-                    _ownerWindow.Topmost = true;
+                    // Đưa owner lên trước rồi tắt Topmost để không che các dialog/app khác
+                    _ownerWindow.Activate();
+                    _ownerWindow.Topmost = false;
                 }
                 try
                 {

@@ -101,6 +101,8 @@ namespace FlowMy.Models.Nodes
         private string _formatString = string.Empty;
         private string _outputText = string.Empty;
         private bool _saveToClipboard = false;
+        private bool _copyImagesToClipboard = false;
+        private string _imageParamKeys = string.Empty;
 
         [System.Text.Json.Serialization.JsonIgnore]
         private readonly object _parallelDispatchAccumulateGate = new object();
@@ -207,6 +209,40 @@ namespace FlowMy.Models.Nodes
                 if (_saveToClipboard != value)
                 {
                     _saveToClipboard = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Khi được check, giải mã base64 thành ảnh rồi copy vào clipboard (Ctrl+V để dán).
+        /// </summary>
+        public bool CopyImagesToClipboard
+        {
+            get => _copyImagesToClipboard;
+            set
+            {
+                if (_copyImagesToClipboard != value)
+                {
+                    _copyImagesToClipboard = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Danh sách tên param ảnh (base64 keys), phân cách bằng , hoặc ;
+        /// Ví dụ: "imageBase64,cropBase64" hoặc "input1;input2"
+        /// Để trống = dùng tất cả input variables.
+        /// </summary>
+        public string ImageParamKeys
+        {
+            get => _imageParamKeys;
+            set
+            {
+                if (_imageParamKeys != value)
+                {
+                    _imageParamKeys = value ?? string.Empty;
                     OnPropertyChanged();
                 }
             }

@@ -369,6 +369,15 @@ public sealed partial class FileWorkflowPersistenceService
                 bool.TryParse(saveToClipboardObj?.ToString(), out var saveToClipboard))
                 outputNode.SaveToClipboard = saveToClipboard;
 
+            // Deserialize CopyImagesToClipboard
+            if (properties.TryGetValue("CopyImagesToClipboard", out var copyImagesObj) &&
+                bool.TryParse(copyImagesObj?.ToString(), out var copyImages))
+                outputNode.CopyImagesToClipboard = copyImages;
+
+            // Deserialize ImageParamKeys
+            if (properties.TryGetValue("ImageParamKeys", out var imageParamKeysObj))
+                outputNode.ImageParamKeys = imageParamKeysObj?.ToString() ?? string.Empty;
+
             // Deserialize InputVariables
             if (properties.TryGetValue("InputVariables", out var variablesObj))
             {
@@ -967,6 +976,13 @@ public sealed partial class FileWorkflowPersistenceService
 
             // Serialize SaveToClipboard
             dict["SaveToClipboard"] = outputNode.SaveToClipboard.ToString();
+
+            // Serialize CopyImagesToClipboard
+            dict["CopyImagesToClipboard"] = outputNode.CopyImagesToClipboard.ToString();
+
+            // Serialize ImageParamKeys
+            if (!string.IsNullOrEmpty(outputNode.ImageParamKeys))
+                dict["ImageParamKeys"] = outputNode.ImageParamKeys;
 
             // Serialize InputVariables
             if (outputNode.InputVariables != null && outputNode.InputVariables.Count > 0)

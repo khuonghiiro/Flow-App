@@ -224,6 +224,12 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool _saveToClipboard = false;
 
+        [ObservableProperty]
+        private bool _copyImagesToClipboard = false;
+
+        [ObservableProperty]
+        private string _imageParamKeys = string.Empty;
+
         public ObservableCollection<InputVariableItemViewModel> Variables { get; } = new();
 
         [ObservableProperty]
@@ -239,6 +245,8 @@ namespace FlowMy.ViewModels
             FormatString = _outputNode.FormatString;
             TitleDisplayMode = _outputNode.TitleDisplayMode;
             SaveToClipboard = _outputNode.SaveToClipboard;
+            CopyImagesToClipboard = _outputNode.CopyImagesToClipboard;
+            ImageParamKeys = _outputNode.ImageParamKeys;
 
             // Load existing variables
             LoadVariables();
@@ -267,6 +275,14 @@ namespace FlowMy.ViewModels
                     else if (e.PropertyName == nameof(OutputNode.SaveToClipboard))
                     {
                         SaveToClipboard = _outputNode.SaveToClipboard;
+                    }
+                    else if (e.PropertyName == nameof(OutputNode.CopyImagesToClipboard))
+                    {
+                        CopyImagesToClipboard = _outputNode.CopyImagesToClipboard;
+                    }
+                    else if (e.PropertyName == nameof(OutputNode.ImageParamKeys))
+                    {
+                        ImageParamKeys = _outputNode.ImageParamKeys;
                     }
                     OnNodePropertyChanged(e.PropertyName ?? string.Empty);
                 };
@@ -379,6 +395,22 @@ namespace FlowMy.ViewModels
             if (_outputNode.SaveToClipboard != value)
             {
                 _outputNode.SaveToClipboard = value;
+            }
+        }
+
+        partial void OnCopyImagesToClipboardChanged(bool value)
+        {
+            if (_outputNode.CopyImagesToClipboard != value)
+            {
+                _outputNode.CopyImagesToClipboard = value;
+            }
+        }
+
+        partial void OnImageParamKeysChanged(string value)
+        {
+            if (_outputNode.ImageParamKeys != value)
+            {
+                _outputNode.ImageParamKeys = value ?? string.Empty;
             }
         }
 
