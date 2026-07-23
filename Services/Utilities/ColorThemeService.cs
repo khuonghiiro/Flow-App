@@ -206,7 +206,7 @@ namespace FlowMy.Services.Utilities
             try
             {
                 Properties.Settings.Default.ThemePreference = themeName;
-                Properties.Settings.Default.Save();
+                try { Properties.Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
             }
             catch (Exception ex)
             {

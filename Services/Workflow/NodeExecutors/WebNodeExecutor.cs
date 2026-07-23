@@ -231,6 +231,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 finally
                 {
                     // Dọn state runtime
+                    webNode.CancelPendingOutputsDebounce();
                     webNode.PendingOutputsTcs = null;
                 }
             }

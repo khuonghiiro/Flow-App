@@ -102,6 +102,17 @@ namespace FlowMy.Models.Nodes
             set { if (_waitForCompletion != value) { _waitForCompletion = value; OnPropertyChanged(); } }
         }
 
+        private bool _isList;
+        /// <summary>
+        /// Nếu true: gom tất cả response khớp vào mảng JSON ["item1", "item2"].
+        /// Mặc định false: chỉ giữ 1 giá trị chuỗi đơn lẻ duy nhất.
+        /// </summary>
+        public bool IsList
+        {
+            get => _isList;
+            set { if (_isList != value) { _isList = value; OnPropertyChanged(); } }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -854,42 +865,120 @@ namespace FlowMy.Models.Nodes
         private readonly Dictionary<string, List<string>> _responseOutputLists = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
-        /// Thêm một giá trị trích xuất (response, curl, headers, ...) vào mảng kết quả của key tương ứng trong lần chạy hiện tại.
-        /// Kết quả lưu vào ResponseOutputValues[key] dưới dạng chuỗi JSON Array (vd: ["res1", "res2"]).
+        /// Cập nhật giá trị trích xuất cho key tương ứng trong lần chạy hiện tại.
+        /// - Nếu isList = true: gom tất cả response khớp vào mảng JSON ["res1", "res2"].
+        /// - Nếu isList = false (mặc định): lưu giá trị chuỗi đơn lẻ duy nhất (không thành mảng JSON).
         /// </summary>
-        public void AppendResponseOutputValue(string key, string value)
+        public void UpdateResponseOutputValue(string key, string value, bool isList)
         {
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
+            var valStr = value ?? string.Empty;
             lock (_responseOutputLock)
             {
-                if (!_responseOutputLists.TryGetValue(trimmedKey, out var list))
+                if (isList)
                 {
-                    list = new List<string>();
-                    _responseOutputLists[trimmedKey] = list;
-                }
-                list.Add(value ?? string.Empty);
-                var jsonArray = System.Text.Json.JsonSerializer.Serialize(list);
-                ResponseOutputValues[trimmedKey] = jsonArray;
+                    if (!_responseOutputLists.TryGetValue(trimmedKey, out var list))
+                    {
+                        list = new List<string>();
+                        _responseOutputLists[trimmedKey] = list;
+                    }
+                    list.Add(valStr);
+                    var jsonArray = System.Text.Json.JsonSerializer.Serialize(list);
+                    ResponseOutputValues[trimmedKey] = jsonArray;
 
-                if (DynamicOutputs != null)
+                    if (DynamicOutputs != null)
+                    {
+                        var dyn = DynamicOutputs.FirstOrDefault(o =>
+                            string.Equals(o.Key, trimmedKey, StringComparison.OrdinalIgnoreCase));
+                        if (dyn != null) dyn.UserValueOverride = jsonArray;
+                    }
+                }
+                else
                 {
-                    var dyn = DynamicOutputs.FirstOrDefault(o =>
-                        string.Equals(o.Key, trimmedKey, StringComparison.OrdinalIgnoreCase));
-                    if (dyn != null) dyn.UserValueOverride = jsonArray;
+                    ResponseOutputValues[trimmedKey] = valStr;
+
+                    if (DynamicOutputs != null)
+                    {
+                        var dyn = DynamicOutputs.FirstOrDefault(o =>
+                            string.Equals(o.Key, trimmedKey, StringComparison.OrdinalIgnoreCase));
+                        if (dyn != null) dyn.UserValueOverride = valStr;
+                    }
                 }
             }
         }
+
+        public void AppendResponseOutputValue(string key, string value)
+        {
+            UpdateResponseOutputValue(key, value, isList: false);
+        }
+
+        private System.Threading.CancellationTokenSource? _pendingOutputsDebounceCts;
+        private readonly object _pendingOutputsDebounceLock = new object();
 
         /// <summary>
         /// Xóa sạch các mảng kết quả output tích lũy của lần chạy trước để chuẩn bị cho luồng execution mới.
         /// </summary>
         public void ClearResponseOutputValues()
         {
+            CancelPendingOutputsDebounce();
             lock (_responseOutputLock)
             {
                 _responseOutputLists.Clear();
                 ResponseOutputValues.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Lên lịch (schedule hoặc reset) debounce completion cho PendingOutputsTcs.
+        /// Giúp chờ đủ các response trong 1 stream mà không bị hoàn thành quá sớm ngay từ request đầu tiên.
+        /// </summary>
+        public void SchedulePendingOutputsCompletion(int debounceMs = 800)
+        {
+            var tcs = PendingOutputsTcs;
+            if (tcs == null || tcs.Task.IsCompleted) return;
+
+            lock (_pendingOutputsDebounceLock)
+            {
+                try
+                {
+                    _pendingOutputsDebounceCts?.Cancel();
+                    _pendingOutputsDebounceCts?.Dispose();
+                }
+                catch { }
+
+                var cts = new System.Threading.CancellationTokenSource();
+                _pendingOutputsDebounceCts = cts;
+
+                System.Threading.Tasks.Task.Delay(debounceMs, cts.Token).ContinueWith(t =>
+                {
+                    if (t.IsCompletedSuccessfully && !cts.IsCancellationRequested)
+                    {
+                        var curTcs = PendingOutputsTcs;
+                        if (curTcs != null && !curTcs.Task.IsCompleted)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[WebNode] ✓ Debounce idle period ({debounceMs}ms) passed without new responses, completing PendingOutputsTcs.");
+                            curTcs.TrySetResult(true);
+                        }
+                    }
+                }, System.Threading.Tasks.TaskScheduler.Default);
+            }
+        }
+
+        /// <summary>
+        /// Hủy debounce timer đang chờ.
+        /// </summary>
+        public void CancelPendingOutputsDebounce()
+        {
+            lock (_pendingOutputsDebounceLock)
+            {
+                try
+                {
+                    _pendingOutputsDebounceCts?.Cancel();
+                    _pendingOutputsDebounceCts?.Dispose();
+                }
+                catch { }
+                _pendingOutputsDebounceCts = null;
             }
         }
 

@@ -740,6 +740,21 @@ namespace FlowMy.Views.Overlays
             });
             stack.Children.Add(waitCheckBox);
 
+            // Checkbox: Gom list dữ liệu (chỉ trả về mảng JSON khi checked, mặc định unchecked)
+            var isListCheckBox = new CheckBox
+            {
+                Content = "Gom list dữ liệu (Mảng JSON array)",
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+            BindThemeResource(isListCheckBox, Control.ForegroundProperty, "TextBrush");
+            isListCheckBox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.IsList))
+            {
+                Source = output,
+                Mode = System.Windows.Data.BindingMode.TwoWay
+            });
+            stack.Children.Add(isListCheckBox);
+
             // Border bao ngoài mỗi output, có margin bottom để tạo khoảng cách với output kế tiếp
             var border = new Border
             {

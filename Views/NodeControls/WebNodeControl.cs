@@ -3613,7 +3613,7 @@ if (window.__elementInspector) {
 
                                                     if (extractedValue != null)
                                                     {
-                                                        node.AppendResponseOutputValue(key, extractedValue);
+                                                        node.UpdateResponseOutputValue(key, extractedValue, responseOutput?.IsList ?? false);
                                                         shouldUpdateUI = true;
 
                                                         // Khi output được cập nhật (ví dụ CurlCmd), tự động trigger các node phụ thuộc
@@ -3681,7 +3681,7 @@ if (window.__elementInspector) {
                                                                         var key = responseOutput?.Key?.Trim() ?? string.Empty;
                                                                         if (string.IsNullOrWhiteSpace(key)) continue;
 
-                                                                        node.AppendResponseOutputValue(key, body);
+                                                                        node.UpdateResponseOutputValue(key, body, responseOutput?.IsList ?? false);
                                                                         shouldUpdateUI = true;
                                                                     }
                                                                 }
@@ -3799,8 +3799,8 @@ if (window.__elementInspector) {
 
                                             if (ready)
                                             {
-                                                System.Diagnostics.Debug.WriteLine("[WebNodeControl] ✓ Required ResponseOutputs populated, completing PendingOutputsTcs.");
-                                                tcs.TrySetResult(true);
+                                                System.Diagnostics.Debug.WriteLine("[WebNodeControl] ✓ Required ResponseOutputs populated, scheduling debounced PendingOutputsTcs completion.");
+                                                node.SchedulePendingOutputsCompletion(800);
                                             }
                                         }
                                     }
@@ -4169,7 +4169,7 @@ if (window.__elementInspector) {
                                 val = string.Empty;
                             if (val != null)
                             {
-                                n.AppendResponseOutputValue(key, val);
+                                n.UpdateResponseOutputValue(key, val, ro?.IsList ?? false);
                                 if (host != null)
                                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                                     {
@@ -4226,8 +4226,8 @@ if (window.__elementInspector) {
 
                                                 if (ready)
                                                 {
-                                                    System.Diagnostics.Debug.WriteLine("[WebNodeControl] ✓ Required ResponseOutputs populated (blocked request), completing PendingOutputsTcs.");
-                                                    tcs.TrySetResult(true);
+                                                    System.Diagnostics.Debug.WriteLine("[WebNodeControl] ✓ Required ResponseOutputs populated (blocked request), scheduling debounced PendingOutputsTcs completion.");
+                                                    n.SchedulePendingOutputsCompletion(800);
                                                 }
                                             }
                                         }

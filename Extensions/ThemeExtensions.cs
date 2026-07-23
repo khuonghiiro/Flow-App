@@ -183,7 +183,7 @@ namespace FlowMy.Extensions
             try
             {
                 Properties.Settings.Default.AppTheme = themeName;
-                Properties.Settings.Default.Save();
+                try { Properties.Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
             }
             catch (Exception ex)
             {

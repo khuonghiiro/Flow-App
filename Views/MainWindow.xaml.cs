@@ -103,7 +103,7 @@ namespace FlowMy.Views
             if (HideToTrayButton != null)
                 HideToTrayButton.IsEnabled = true;
             Properties.Settings.Default.EnableHideToTray = true;
-            Properties.Settings.Default.Save();
+            try { Properties.Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
         }
 
         private void EnableHideToTrayCheckBox_Unchecked(object sender, RoutedEventArgs e)
@@ -112,7 +112,7 @@ namespace FlowMy.Views
             if (HideToTrayButton != null)
                 HideToTrayButton.IsEnabled = false;
             Properties.Settings.Default.EnableHideToTray = false;
-            Properties.Settings.Default.Save();
+            try { Properties.Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
         }
 
         private void ToggleBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)

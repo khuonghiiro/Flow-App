@@ -713,7 +713,7 @@ namespace FlowMy.Views
             Settings.Default.EnergyDotTextRotate = _energyDotTextRotate;
             Settings.Default.EnergyRunSpeed = _energyRunSpeed;
             Settings.Default.EnergyTextSpinSeconds = _energyTextSpinSeconds;
-            Settings.Default.Save();
+            try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
             RefreshExecutionEnergyVisual();
             if (ViewModel?.Nodes != null)
                 NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
@@ -950,7 +950,7 @@ namespace FlowMy.Views
             {
                 _energyDotGap = v;
                 Settings.Default.EnergyDotGap = v;
-                Settings.Default.Save();
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                 RefreshExecutionEnergyVisual();
             }
         }
@@ -963,7 +963,7 @@ namespace FlowMy.Views
             {
                 _energyDotThicknessExtra = v;
                 Settings.Default.EnergyDotThicknessExtra = v;
-                Settings.Default.Save();
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                 RefreshExecutionEnergyVisual();
             }
         }
@@ -974,7 +974,7 @@ namespace FlowMy.Views
             if (sender is not TextBox tb) return;
             _energyDotText = tb.Text ?? string.Empty;
             Settings.Default.EnergyDotText = _energyDotText;
-            Settings.Default.Save();
+            try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
             RefreshExecutionEnergyVisual();
         }
 
@@ -984,7 +984,7 @@ namespace FlowMy.Views
             if (sender is not CheckBox cb) return;
             _energyDotTextRotate = cb.IsChecked == true;
             Settings.Default.EnergyDotTextRotate = _energyDotTextRotate;
-            Settings.Default.Save();
+            try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
             RefreshExecutionEnergyVisual();
         }
 
@@ -996,7 +996,7 @@ namespace FlowMy.Views
             {
                 _energyRunSpeed = v;
                 Settings.Default.EnergyRunSpeed = v;
-                Settings.Default.Save();
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                 RefreshExecutionEnergyVisual();
             }
         }
@@ -1009,7 +1009,7 @@ namespace FlowMy.Views
             {
                 _energyTextSpinSeconds = v;
                 Settings.Default.EnergyTextSpinSeconds = v;
-                Settings.Default.Save();
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                 RefreshExecutionEnergyVisual();
             }
         }

@@ -921,7 +921,7 @@ namespace FlowMy.Views
                 {
                     _gpuEnabled = value;
                     Settings.Default.GpuEnabled = value;
-                    Settings.Default.Save();
+                    try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                     ApplyGpuSettings();
                 }
             }
@@ -939,7 +939,7 @@ namespace FlowMy.Views
                 {
                     _gpuRenderQuality = value;
                     Settings.Default.GpuRenderQuality = (int)value;
-                    Settings.Default.Save();
+                    try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                     ApplyGpuSettings();
                 }
             }

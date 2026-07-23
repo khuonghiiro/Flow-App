@@ -553,6 +553,13 @@ public sealed partial class FileWorkflowPersistenceService
                                         if (bool.TryParse(wfcStr, out var wfcBool))
                                             ro.WaitForCompletion = wfcBool;
                                     }
+                                    // IsList (optional, backward compatible)
+                                    if (e.TryGetProperty("IsList", out var isl))
+                                    {
+                                        var islStr = GetStringFromJsonValue(isl);
+                                        if (bool.TryParse(islStr, out var islBool))
+                                            ro.IsList = islBool;
+                                    }
 
                                     System.Diagnostics.Debug.WriteLine($"Deserialized ResponseOutput [{count}]: Key='{ro.Key}', Url='{ro.Url}', Method='{ro.RequestMethod}', ExtractType='{ro.ExtractType}'");
                                     webNode.ResponseOutputs.Add(ro);
@@ -843,6 +850,7 @@ public sealed partial class FileWorkflowPersistenceService
                             var method = ro?.RequestMethod ?? "GET";
                             var extractType = ro?.ExtractType ?? "Response";
                             var waitForCompletion = ro?.WaitForCompletion ?? false;
+                            var isList = ro?.IsList ?? false;
 
                             // Debug log để kiểm tra giá trị
                             System.Diagnostics.Debug.WriteLine($"[{index}] ResponseOutput - Key='{key}', Url='{url}', Method='{method}', ExtractType='{extractType}'");
@@ -854,7 +862,8 @@ public sealed partial class FileWorkflowPersistenceService
                                 ["Url"] = url,
                                 ["RequestMethod"] = method,
                                 ["ExtractType"] = extractType,
-                                ["WaitForCompletion"] = waitForCompletion ? "true" : "false"
+                                ["WaitForCompletion"] = waitForCompletion ? "true" : "false",
+                                ["IsList"] = isList ? "true" : "false"
                             };
                             responseOutputsArr.Add(itemDict);
                             index++;

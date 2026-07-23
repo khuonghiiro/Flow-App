@@ -258,7 +258,7 @@ namespace FlowMy.Views
             StartPaletteWidthAnimation(from, 0, () =>
             {
                 Settings.Default.WorkflowEditorNodePaletteOpen = false;
-                Settings.Default.Save();
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
                 PlayExpandButtonEntrance();
             });
         }
@@ -282,7 +282,7 @@ namespace FlowMy.Views
             {
                 _suppressExpandDuringOpenAnimation = false;
                 Settings.Default.WorkflowEditorNodePaletteOpen = true;
-                Settings.Default.Save();
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
             });
         }
 
