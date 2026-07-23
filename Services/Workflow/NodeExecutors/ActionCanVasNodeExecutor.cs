@@ -416,8 +416,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 isHeadless = await uiDispatcher.InvokeAsync(() =>
                 {
-                    var win = Window.GetWindow(macroNode.Border) as FlowMy.Views.WorkflowEditorWindow;
-                    return win != null && win.IsHeadlessMode;
+                    var win = (macroNode.Border != null ? Window.GetWindow(macroNode.Border) : null)
+                        ?? System.Windows.Application.Current?.Windows.OfType<FlowMy.Views.WorkflowEditorWindow>().FirstOrDefault();
+                    return win is FlowMy.Views.WorkflowEditorWindow editorWin && editorWin.IsHeadlessMode;
                 });
             }
 
@@ -519,8 +520,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 await dispatcher.InvokeAsync(() =>
                 {
-                    editorWindow = Window.GetWindow(macroNode.Border);
-                    if (editorWindow == null) editorWindow = Application.Current?.MainWindow;
+                    editorWindow = macroNode.Border != null ? Window.GetWindow(macroNode.Border) : null;
+                    if (editorWindow == null) editorWindow = Application.Current?.Windows.OfType<FlowMy.Views.WorkflowEditorWindow>().FirstOrDefault() ?? Application.Current?.MainWindow;
                     if (editorWindow != null)
                     {
                         editorHwnd = new System.Windows.Interop.WindowInteropHelper(editorWindow).Handle;
@@ -883,8 +884,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                     await Task.Delay(30);
-                                    if (action.Key.Contains('+')) env.Service.KeyboardInput.SendHotkeyPress(action.Key, 1, 0);
-                                    else env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
+                                    await SimulateVirtualKeyEventAsync(ax, ay, overlayHwnd, capturedHwnd, editorWindow, editorHwnd, lastValidClientOrigin, isHeadless, node, action, env);
                                     
                                     await Task.Delay(50);
                                     overlay?.ShowRightActionInfo(null, null);
@@ -1572,7 +1572,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         
                                         if (actionType == "MouseUp")
                                         {
-                                            ActiveVirtualCdpWebView = null;
+                                            // Keep active WebView reference for subsequent key actions
+                                            // ActiveVirtualCdpWebView = null;
                                         }
                                     }
 
@@ -1847,6 +1848,268 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             return targetHwnd;
+        }
+
+        private static async Task SimulateVirtualKeyEventAsync(
+            int ax, int ay,
+            IntPtr overlayHwnd,
+            IntPtr capturedHwnd,
+            Window? editorWindow,
+            IntPtr editorHwnd,
+            POINT lastValidClientOrigin,
+            bool isHeadless,
+            FlowMy.Models.WorkflowNode? macroNode,
+            FlowMy.Models.MacroAction action,
+            NodeExecutionEnvironment env)
+        {
+            if (action == null || string.IsNullOrWhiteSpace(action.Key)) return;
+
+            try
+            {
+                var dispatcher = editorWindow?.Dispatcher ?? Application.Current?.Dispatcher;
+                if (dispatcher != null)
+                {
+                    bool handledByCdp = false;
+                    var tcs = new TaskCompletionSource<bool>();
+
+                    await dispatcher.InvokeAsync(async () =>
+                    {
+                        try
+                        {
+                            Microsoft.Web.WebView2.Wpf.WebView2? webView = ActiveVirtualCdpWebView;
+
+                            if (webView == null && editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                            {
+                                var vm = directHost.ViewModel;
+                                if (vm != null)
+                                {
+                                    var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWindow);
+                                    double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                                    double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                                    var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                    var txVal = directHost.TranslateTransform?.X ?? 0;
+                                    var tyVal = directHost.TranslateTransform?.Y ?? 0;
+
+                                    double logicalClientX = (ax - (editorWindow.Left > -10000 ? editorWindow.Left : lastValidClientOrigin.X)) / dpiScaleX;
+                                    double logicalClientY = (ay - (editorWindow.Top > -10000 ? editorWindow.Top : lastValidClientOrigin.Y)) / dpiScaleY;
+                                    double canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
+                                    double canvasY = (logicalClientY - CanvasLayoutOffset.Y - tyVal) / scale;
+
+                                    foreach (var n in vm.Nodes)
+                                    {
+                                        if (n.Type == FlowMy.Models.NodeType.Web ||
+                                            n.Type == FlowMy.Models.NodeType.HtmlUi ||
+                                            n.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                        {
+                                            double nw = (n.Border != null && n.Border.ActualWidth > 0) ? n.Border.ActualWidth : 600;
+                                            double nh = (n.Border != null && n.Border.ActualHeight > 0) ? n.Border.ActualHeight : 600;
+                                            if (canvasX >= n.X && canvasX <= n.X + nw && canvasY >= n.Y && canvasY <= n.Y + nh)
+                                            {
+                                                if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(n.Id))
+                                                {
+                                                    var widget = FlowMy.Services.FloatingWidgetManager.Instance.GetWidget(n.Id);
+                                                    if (widget?.WidgetWebView != null) webView = widget.WidgetWebView;
+                                                }
+                                                if (webView == null)
+                                                {
+                                                    var dialogWin = GetActiveDialog(n.Id);
+                                                    if (dialogWin != null) webView = FindWebView2InVisualTree(dialogWin);
+                                                }
+                                                if (webView == null && n.Border != null)
+                                                {
+                                                    webView = FindWebView2InVisualTree(n.Border);
+                                                }
+                                                if (webView != null)
+                                                {
+                                                    ActiveVirtualCdpWebView = webView;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (webView != null && webView.CoreWebView2 != null)
+                            {
+                                EnsureWebViewActiveInBackground(webView);
+                                try { webView.Focus(); } catch { }
+
+                                string keyStr = action.Key;
+                                bool ctrl = action.CtrlHeld || keyStr.StartsWith("Ctrl+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Ctrl");
+                                bool shift = action.ShiftHeld || keyStr.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Shift");
+                                bool alt = action.AltHeld || keyStr.StartsWith("Alt+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Alt");
+
+                                int modifiers = 0;
+                                if (alt) modifiers |= 1;
+                                if (ctrl) modifiers |= 2;
+                                if (shift) modifiers |= 8;
+
+                                string cleanKey = keyStr;
+                                if (cleanKey.Contains('+'))
+                                {
+                                    var parts = cleanKey.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                    cleanKey = parts.Length > 0 ? parts[^1] : cleanKey;
+                                }
+
+                                var (cdpKey, cdpCode, cdpVk, cdpText) = GetCdpKeyDetails(cleanKey);
+
+                                // A. Full CDP 4-step sequence for Ctrl shortcuts (Ctrl+C, Ctrl+V, Ctrl+A, Ctrl+X...)
+                                if (ctrl)
+                                {
+                                    var ctrlDownPayload = new { type = "rawKeyDown", key = "Control", code = "ControlLeft", windowsVirtualKeyCode = 17, modifiers = modifiers };
+                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(ctrlDownPayload));
+
+                                    var keyShortDownPayload = new { type = "rawKeyDown", key = cdpKey, code = cdpCode, windowsVirtualKeyCode = cdpVk, modifiers = modifiers };
+                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyShortDownPayload));
+
+                                    if (cleanKey.Equals("V", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('paste')"); } catch { }
+                                    }
+                                    else if (cleanKey.Equals("C", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('copy')"); } catch { }
+                                    }
+                                    else if (cleanKey.Equals("A", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('selectAll')"); } catch { }
+                                    }
+                                    else if (cleanKey.Equals("X", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('cut')"); } catch { }
+                                    }
+
+                                    var keyShortUpPayload = new { type = "keyUp", key = cdpKey, code = cdpCode, windowsVirtualKeyCode = cdpVk, modifiers = modifiers };
+                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyShortUpPayload));
+
+                                    var ctrlUpPayload = new { type = "keyUp", key = "Control", code = "ControlLeft", windowsVirtualKeyCode = 17, modifiers = 0 };
+                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(ctrlUpPayload));
+
+                                    tcs.TrySetResult(true);
+                                    return;
+                                }
+
+                                // B. Standard CDP Key sequence for single key input
+                                var keyDownPayload = new
+                                {
+                                    type = "rawKeyDown",
+                                    key = cdpKey,
+                                    code = cdpCode,
+                                    windowsVirtualKeyCode = cdpVk,
+                                    modifiers = modifiers
+                                };
+                                await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyDownPayload));
+
+                                if (modifiers == 0 && !string.IsNullOrEmpty(cdpText))
+                                {
+                                    var charPayload = new
+                                    {
+                                        type = "char",
+                                        key = cdpKey,
+                                        code = cdpCode,
+                                        windowsVirtualKeyCode = cdpVk,
+                                        text = cdpText
+                                    };
+                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(charPayload));
+                                }
+
+                                var keyUpPayload = new
+                                {
+                                    type = "keyUp",
+                                    key = cdpKey,
+                                    code = cdpCode,
+                                    windowsVirtualKeyCode = cdpVk,
+                                    modifiers = modifiers
+                                };
+                                await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyUpPayload));
+
+                                tcs.TrySetResult(true);
+                            }
+                            else
+                            {
+                                tcs.TrySetResult(false);
+                            }
+                        }
+                        catch (Exception cdpEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MacroExecutor] CDP dispatchKeyEvent error: {cdpEx.Message}");
+                            tcs.TrySetResult(false);
+                        }
+                    });
+
+                    handledByCdp = await tcs.Task;
+                    if (handledByCdp) return;
+                }
+
+                // Fallback cho Win32 app hoặc control ngoài WebView2
+                if (action.Key.Contains('+')) env.Service.KeyboardInput.SendHotkeyPress(action.Key, 1, 0);
+                else env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] SimulateVirtualKeyEventAsync error: {ex.Message}");
+            }
+        }
+
+        private static (string key, string code, int vk, string text) GetCdpKeyDetails(string cleanKey)
+        {
+            var lower = cleanKey.ToLowerInvariant();
+            switch (lower)
+            {
+                case "enter": case "return":
+                    return ("Enter", "Enter", 13, "\r");
+                case "tab":
+                    return ("Tab", "Tab", 9, "\t");
+                case "backspace":
+                    return ("Backspace", "Backspace", 8, "");
+                case "space":
+                    return (" ", "Space", 32, " ");
+                case "escape": case "esc":
+                    return ("Escape", "Escape", 27, "");
+                case "delete": case "del":
+                    return ("Delete", "Delete", 46, "");
+                case "left": case "←":
+                    return ("ArrowLeft", "ArrowLeft", 37, "");
+                case "up": case "↑":
+                    return ("ArrowUp", "ArrowUp", 38, "");
+                case "right": case "→":
+                    return ("ArrowRight", "ArrowRight", 39, "");
+                case "down": case "↓":
+                    return ("ArrowDown", "ArrowDown", 40, "");
+                case "home":
+                    return ("Home", "Home", 36, "");
+                case "end":
+                    return ("End", "End", 35, "");
+                case "pageup": case "pgup":
+                    return ("PageUp", "PageUp", 33, "");
+                case "pagedown": case "pgdn":
+                    return ("PageDown", "PageDown", 34, "");
+            }
+
+            if (cleanKey.Length == 1)
+            {
+                char ch = cleanKey[0];
+                if (char.IsLetter(ch))
+                {
+                    char upper = char.ToUpperInvariant(ch);
+                    char lowerChar = char.ToLowerInvariant(ch);
+                    return (lowerChar.ToString(), "Key" + upper, (int)upper, lowerChar.ToString());
+                }
+                if (char.IsDigit(ch))
+                {
+                    return (ch.ToString(), "Digit" + ch, 0x30 + (ch - '0'), ch.ToString());
+                }
+                string code = ch switch
+                {
+                    ';' => "Semicolon", '=' => "Equal", ',' => "Comma", '-' => "Minus", '.' => "Period", '/' => "Slash",
+                    '`' => "Backquote", '[' => "BracketLeft", '\\' => "Backslash", ']' => "BracketRight", '\'' => "Quote",
+                    _ => ""
+                };
+                return (ch.ToString(), string.IsNullOrEmpty(code) ? "Unidentified" : code, (int)ch, ch.ToString());
+            }
+
+            return (cleanKey, cleanKey, 0, "");
         }
 
         // ═══════════════════════════════════════════════════════════════
