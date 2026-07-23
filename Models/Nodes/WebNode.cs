@@ -65,7 +65,6 @@ namespace FlowMy.Models.Nodes
         private string _requestMethod = "GET";
         private string _extractType = "Response";
         private bool _waitForCompletion; // Nếu true: executor sẽ đợi key này trước khi chạy node tiếp theo
-        private bool _triggerNextWorkflow; // Nếu true: tự động kích hoạt chạy workflow từ các node tiếp theo kết nối sau WebNode này khi WebView2 bắt được response khớp
 
         public string Key
         {
@@ -101,16 +100,6 @@ namespace FlowMy.Models.Nodes
         {
             get => _waitForCompletion;
             set { if (_waitForCompletion != value) { _waitForCompletion = value; OnPropertyChanged(); } }
-        }
-
-        /// <summary>
-        /// Nếu true: khi WebView2 bắt được request/response khớp với (Method + URL) của output này,
-        /// hệ thống sẽ tự động kích hoạt chạy workflow bắt đầu từ các node kế tiếp được kết nối sau WebNode này.
-        /// </summary>
-        public bool TriggerNextWorkflow
-        {
-            get => _triggerNextWorkflow;
-            set { if (_triggerNextWorkflow != value) { _triggerNextWorkflow = value; OnPropertyChanged(); } }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -857,9 +846,52 @@ namespace FlowMy.Models.Nodes
         [JsonIgnore]
         public bool HasTriggeredBlockingChain { get; set; }
 
-        /// <summary>Dictionary lưu response outputs theo key: key -> response body.</summary>
+        /// <summary>Dictionary lưu response outputs theo key: key -> json array string of responses/curls.</summary>
         [JsonIgnore]
         public Dictionary<string, string> ResponseOutputValues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        private readonly object _responseOutputLock = new();
+        private readonly Dictionary<string, List<string>> _responseOutputLists = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Thêm một giá trị trích xuất (response, curl, headers, ...) vào mảng kết quả của key tương ứng trong lần chạy hiện tại.
+        /// Kết quả lưu vào ResponseOutputValues[key] dưới dạng chuỗi JSON Array (vd: ["res1", "res2"]).
+        /// </summary>
+        public void AppendResponseOutputValue(string key, string value)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var trimmedKey = key.Trim();
+            lock (_responseOutputLock)
+            {
+                if (!_responseOutputLists.TryGetValue(trimmedKey, out var list))
+                {
+                    list = new List<string>();
+                    _responseOutputLists[trimmedKey] = list;
+                }
+                list.Add(value ?? string.Empty);
+                var jsonArray = System.Text.Json.JsonSerializer.Serialize(list);
+                ResponseOutputValues[trimmedKey] = jsonArray;
+
+                if (DynamicOutputs != null)
+                {
+                    var dyn = DynamicOutputs.FirstOrDefault(o =>
+                        string.Equals(o.Key, trimmedKey, StringComparison.OrdinalIgnoreCase));
+                    if (dyn != null) dyn.UserValueOverride = jsonArray;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Xóa sạch các mảng kết quả output tích lũy của lần chạy trước để chuẩn bị cho luồng execution mới.
+        /// </summary>
+        public void ClearResponseOutputValues()
+        {
+            lock (_responseOutputLock)
+            {
+                _responseOutputLists.Clear();
+                ResponseOutputValues.Clear();
+            }
+        }
 
         /// <summary>
         /// TCS dùng để đồng bộ giữa WebNodeExecutor và WebView2 (WebNodeControl).

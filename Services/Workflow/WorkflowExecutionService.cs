@@ -535,6 +535,45 @@ namespace FlowMy.Services.Workflow
                     if (kvb.ResolvedOutputs != null && kvb.ResolvedOutputs.Count > 0)
                         CopyDict(kvb.ResolvedOutputs);
                     break;
+                case TextScanNode textScan:
+                    if (textScan.DynamicOutputs != null)
+                    {
+                        foreach (var o in textScan.DynamicOutputs)
+                        {
+                            if (string.IsNullOrWhiteSpace(o.Key)) continue;
+                            var val = !string.IsNullOrWhiteSpace(o.UserValueOverride)
+                                ? o.UserValueOverride
+                                : NodeDataPanelService.ResolveRawDynamicValueByKey(textScan, o.Key);
+                            SetScopedNodeStringOutput(executionId, node.Id, o.Key.Trim(), val);
+                        }
+                    }
+                    break;
+                case ScreenCaptureNode sc:
+                    if (sc.DynamicOutputs != null)
+                    {
+                        foreach (var o in sc.DynamicOutputs)
+                        {
+                            if (string.IsNullOrWhiteSpace(o.Key)) continue;
+                            var val = !string.IsNullOrWhiteSpace(o.UserValueOverride)
+                                ? o.UserValueOverride
+                                : NodeDataPanelService.ResolveRawDynamicValueByKey(sc, o.Key);
+                            SetScopedNodeStringOutput(executionId, node.Id, o.Key.Trim(), val);
+                        }
+                    }
+                    break;
+                case ImageProcessingNode img:
+                    if (img.DynamicOutputs != null)
+                    {
+                        foreach (var o in img.DynamicOutputs)
+                        {
+                            if (string.IsNullOrWhiteSpace(o.Key)) continue;
+                            var val = !string.IsNullOrWhiteSpace(o.UserValueOverride)
+                                ? o.UserValueOverride
+                                : NodeDataPanelService.ResolveRawDynamicValueByKey(img, o.Key);
+                            SetScopedNodeStringOutput(executionId, node.Id, o.Key.Trim(), val);
+                        }
+                    }
+                    break;
                 default:
                     break;
             }
@@ -1833,11 +1872,11 @@ namespace FlowMy.Services.Workflow
 
             try
             {
-                var clean1 = CleanBase64String(base64_1);
-                var clean2 = CleanBase64String(base64_2);
+                byte[]? bytes1 = ExtractImageDataBytes(base64_1);
+                byte[]? bytes2 = ExtractImageDataBytes(base64_2);
 
-                byte[] bytes1 = Convert.FromBase64String(clean1);
-                byte[] bytes2 = Convert.FromBase64String(clean2);
+                if (bytes1 == null || bytes1.Length == 0 || bytes2 == null || bytes2.Length == 0)
+                    return 0;
 
                 using var origBmp1 = SkiaSharp.SKBitmap.Decode(bytes1);
                 using var origBmp2 = SkiaSharp.SKBitmap.Decode(bytes2);
@@ -1877,6 +1916,54 @@ namespace FlowMy.Services.Workflow
                 System.Diagnostics.Debug.WriteLine($"[ComputeImageSimilarity] Error: {ex.Message}");
                 return 0;
             }
+        }
+
+        private static byte[]? ExtractImageDataBytes(string? rawInput)
+        {
+            if (string.IsNullOrWhiteSpace(rawInput)) return null;
+            var trimmed = rawInput.Trim();
+
+            // Nếu input là JSON array (ví dụ ["data:image..."] hoặc ["C:\\path\\file.png"])
+            if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(trimmed);
+                    if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+                    {
+                        var first = doc.RootElement[0];
+                        trimmed = first.ValueKind == JsonValueKind.String
+                            ? (first.GetString() ?? string.Empty).Trim()
+                            : first.GetRawText().Trim();
+                    }
+                }
+                catch { }
+            }
+
+            if (string.IsNullOrWhiteSpace(trimmed)) return null;
+
+            // Xử lý file:// URI
+            var filePath = trimmed;
+            if (filePath.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            {
+                try { filePath = new Uri(filePath).LocalPath; } catch { }
+            }
+
+            // Nếu là file trên đĩa
+            if (System.IO.File.Exists(filePath))
+            {
+                try { return System.IO.File.ReadAllBytes(filePath); } catch { }
+            }
+
+            // Thử giải mã Base64
+            try
+            {
+                var clean = CleanBase64String(trimmed);
+                return Convert.FromBase64String(clean);
+            }
+            catch { }
+
+            return null;
         }
 
         private static string CleanBase64String(string b64)

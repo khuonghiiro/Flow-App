@@ -966,11 +966,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         System.Windows.Media.Color.FromRgb(0x1E, 0x1E, 0x2E));
                 }
 
+                // Snapshot canvas.Children sang List<UIElement> để tránh exception "collection changed" khi await
+                var childrenSnapshot = canvas.Children.OfType<System.Windows.UIElement>().ToList();
+
                 // ── 2. Force Visible cho children bị Collapsed bởi viewport culling ──
                 // ViewportCullingService ẩn (Collapsed) nodes ngoài viewport → RenderSize = 0.
                 // Phải tạm bật Visible, force layout update để WPF tính lại RenderSize.
                 var restoredChildren = new List<(System.Windows.UIElement child, System.Windows.Visibility original)>();
-                foreach (System.Windows.UIElement child in canvas.Children)
+                foreach (var child in childrenSnapshot)
                 {
                     if (child.Visibility == System.Windows.Visibility.Collapsed ||
                         child.Visibility == System.Windows.Visibility.Hidden)
@@ -1019,7 +1022,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     // WebView2 dùng native HWND nên VisualBrush không chụp được.
                     // Phải dùng CapturePreviewAsync() trước, lưu bitmap rồi vẽ sau.
                     var webViewCaptures = new Dictionary<System.Windows.UIElement, BitmapSource>();
-                    foreach (System.Windows.UIElement child in canvas.Children)
+                    foreach (var child in childrenSnapshot)
                     {
                         if (child.Visibility != System.Windows.Visibility.Visible) continue;
 
@@ -1072,7 +1075,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             new System.Windows.Rect(0, 0, width, height));
 
                         // Render từng child
-                        foreach (System.Windows.UIElement child in canvas.Children)
+                        foreach (var child in childrenSnapshot)
                         {
                             if (child.Visibility != System.Windows.Visibility.Visible)
                                 continue;

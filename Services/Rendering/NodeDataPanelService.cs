@@ -272,6 +272,91 @@ namespace FlowMy.Services.Rendering
                 return cap.HasCaptureRegion ? $"Region {cap.CaptureWidth}×{cap.CaptureHeight} @ ({cap.CaptureX},{cap.CaptureY})" : "—";
             }
 
+            // TextScanNode (OCR)
+            if (node is TextScanNode textScan)
+            {
+                if (textScan.SkipOutputs != null && textScan.SkipOutputs.Contains(key))
+                    return "—";
+
+                var hasImg = textScan.CapturedImage != null;
+                var w = hasImg ? textScan.CapturedImage!.PixelWidth : textScan.CaptureWidth;
+                var h = hasImg ? textScan.CapturedImage!.PixelHeight : textScan.CaptureHeight;
+
+                switch (key.ToLowerInvariant())
+                {
+                    case "extractedtext":
+                    case "text":
+                        return string.IsNullOrWhiteSpace(textScan.ExtractedText) ? "—" : textScan.ExtractedText;
+                    case "extractedtextlines":
+                    case "lines":
+                        return string.IsNullOrWhiteSpace(textScan.ExtractedTextLines) ? "—" : textScan.ExtractedTextLines;
+                    case "capturex": return textScan.HasCaptureRegion ? textScan.CaptureX.ToString() : "—";
+                    case "capturey": return textScan.HasCaptureRegion ? textScan.CaptureY.ToString() : "—";
+                    case "capturewidth": return textScan.HasCaptureRegion ? textScan.CaptureWidth.ToString() : "—";
+                    case "captureheight": return textScan.HasCaptureRegion ? textScan.CaptureHeight.ToString() : "—";
+                    case "imagewidth": return w > 0 ? w.ToString() : "—";
+                    case "imageheight": return h > 0 ? h.ToString() : "—";
+                    case "ocrlanguage": return string.IsNullOrWhiteSpace(textScan.OcrLanguage) ? "—" : textScan.OcrLanguage;
+                    case "wordcount": return textScan.ExtractedWords != null ? textScan.ExtractedWords.Count.ToString() : "0";
+                    case "imagebase64":
+                    case "base64":
+                    case "image":
+                        {
+                            var bytes = TryEncodePngBytes(textScan.CapturedImage);
+                            if (bytes != null && bytes.Length > 0)
+                            {
+                                return Convert.ToBase64String(bytes);
+                            }
+                            if (!string.IsNullOrWhiteSpace(textScan.Base64Image))
+                            {
+                                return textScan.Base64Image;
+                            }
+                            if (!string.IsNullOrWhiteSpace(textScan.ImagePath) && File.Exists(textScan.ImagePath))
+                            {
+                                try
+                                {
+                                    var fileBytes = File.ReadAllBytes(textScan.ImagePath);
+                                    return Convert.ToBase64String(fileBytes);
+                                }
+                                catch { }
+                            }
+                            return "—";
+                        }
+                }
+            }
+
+            // ImageProcessingNode
+            if (node is ImageProcessingNode imgProc)
+            {
+                if (imgProc.SkipOutputs != null && imgProc.SkipOutputs.Contains(key))
+                    return "—";
+
+                switch (key.ToLowerInvariant())
+                {
+                    case "imagebase64":
+                    case "base64":
+                    case "image":
+                    case "processedimagebase64":
+                        if (!string.IsNullOrWhiteSpace(imgProc.ImageBase64))
+                            return imgProc.ImageBase64;
+                        if (!string.IsNullOrWhiteSpace(imgProc.ImageUrl) && File.Exists(imgProc.ImageUrl))
+                        {
+                            try
+                            {
+                                var fileBytes = File.ReadAllBytes(imgProc.ImageUrl);
+                                return Convert.ToBase64String(fileBytes);
+                            }
+                            catch { }
+                        }
+                        if (!string.IsNullOrWhiteSpace(imgProc.ImageUrl))
+                            return imgProc.ImageUrl;
+                        return "—";
+                    case "imageurl":
+                    case "imagepath":
+                        return string.IsNullOrWhiteSpace(imgProc.ImageUrl) ? "—" : imgProc.ImageUrl;
+                }
+            }
+
             // Input Node
             if (node is InputNode input)
             {

@@ -96,8 +96,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 webNode.PendingOutputsTcs = pendingOutputsTcs;
             }
 
-            // Reset previous response outputs
-            try { webNode.ResponseOutputValues?.Clear(); } catch { }
+            // Reset previous response outputs for new execution run
+            try { webNode.ClearResponseOutputValues(); } catch { }
 
             var cookie = ResolveCookie(webNode, connections, env);
             var urlTemplate = webNode.ExtractUrl?.Trim() ?? string.Empty;
