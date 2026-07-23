@@ -3613,7 +3613,7 @@ if (window.__elementInspector) {
 
                                                     if (extractedValue != null)
                                                     {
-                                                        node.UpdateResponseOutputValue(key, extractedValue, responseOutput?.IsList ?? false);
+                                                        node.UpdateResponseOutputValueForActiveRuns(key, extractedValue, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
                                                         shouldUpdateUI = true;
 
                                                         // Khi output được cập nhật (ví dụ CurlCmd), tự động trigger các node phụ thuộc
@@ -4169,7 +4169,7 @@ if (window.__elementInspector) {
                                 val = string.Empty;
                             if (val != null)
                             {
-                                n.UpdateResponseOutputValue(key, val, ro?.IsList ?? false);
+                                n.UpdateResponseOutputValueForActiveRuns(key, val, ro?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
                                 if (host != null)
                                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                                     {

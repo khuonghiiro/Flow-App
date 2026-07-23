@@ -84,20 +84,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch { /* ignore */ }
 
+            var executionId = env.ExecutionId;
+            var executionRun = webNode.StartExecutionRun(executionId);
+
             // Nếu node có cấu hình ResponseOutputs thì chuẩn bị TCS để chờ WebView2 populate outputs.
-            // WebNodeControl (WebResourceResponseReceived / ExtractFromBlockedRequest) sẽ TrySetResult(true)
-            // sau khi đã đẩy đủ dữ liệu tương ứng vào ResponseOutputValues.
-            // - Nếu bất kỳ ResponseOutput nào có WaitForCompletion = true → chỉ đợi những key đó.
-            // - Nếu không có output nào đánh dấu WaitForCompletion → đợi tất cả outputs (giữ tương thích cũ).
-            // - Nếu effectiveWaitTimeoutMs <= 0 → không chờ (bỏ qua TCS).
             if (webNode.ResponseOutputs != null && webNode.ResponseOutputs.Count > 0 && effectiveWaitTimeoutMs != 0)
             {
                 pendingOutputsTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                executionRun.PendingOutputsTcs = pendingOutputsTcs;
                 webNode.PendingOutputsTcs = pendingOutputsTcs;
             }
-
-            // Reset previous response outputs for new execution run
-            try { webNode.ClearResponseOutputValues(); } catch { }
 
             var cookie = ResolveCookie(webNode, connections, env);
             var urlTemplate = webNode.ExtractUrl?.Trim() ?? string.Empty;
@@ -253,12 +249,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "bearer", webNode.LastBearer ?? string.Empty);
             service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "access_token", webNode.LastAccessToken ?? string.Empty);
 
-            if (webNode.ResponseOutputValues != null)
+            var run = webNode.GetExecutionRun(env.ExecutionId);
+            var sourceOutputs = run != null ? run.ResponseOutputValues : webNode.ResponseOutputValues;
+
+            if (sourceOutputs != null)
             {
-                foreach (var kv in webNode.ResponseOutputValues)
+                var lockObj = run?.Lock ?? new object();
+                lock (lockObj)
                 {
-                    if (string.IsNullOrWhiteSpace(kv.Key)) continue;
-                    service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, kv.Key.Trim(), kv.Value ?? string.Empty);
+                    foreach (var kv in sourceOutputs)
+                    {
+                        if (string.IsNullOrWhiteSpace(kv.Key)) continue;
+                        service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, kv.Key.Trim(), kv.Value ?? string.Empty);
+                    }
                 }
             }
         }

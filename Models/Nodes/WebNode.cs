@@ -863,6 +863,108 @@ namespace FlowMy.Models.Nodes
 
         private readonly object _responseOutputLock = new();
         private readonly Dictionary<string, List<string>> _responseOutputLists = new(StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, WebNodeExecutionRun> _activeExecutionRuns = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Bắt đầu một luồng thực thi workflow mới (ExecutionId).
+        /// Đảm bảo xóa sạch 100% dữ liệu mảng cũ của luồng đó trước khi nhận các request mới.
+        /// </summary>
+        public WebNodeExecutionRun StartExecutionRun(string executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId))
+                executionId = "default";
+
+            if (_activeExecutionRuns.TryRemove(executionId, out var oldRun))
+            {
+                oldRun.CancelDebounce();
+            }
+
+            ClearResponseOutputValues();
+
+            var run = new WebNodeExecutionRun(executionId);
+            _activeExecutionRuns[executionId] = run;
+            return run;
+        }
+
+        public WebNodeExecutionRun? GetExecutionRun(string? executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId)) return null;
+            _activeExecutionRuns.TryGetValue(executionId, out var run);
+            return run;
+        }
+
+        public IReadOnlyCollection<WebNodeExecutionRun> GetActiveExecutionRuns()
+        {
+            return _activeExecutionRuns.Values.ToList();
+        }
+
+        public void FinishExecutionRun(string executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId)) return;
+            if (_activeExecutionRuns.TryRemove(executionId, out var run))
+            {
+                run.CancelDebounce();
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật response output cho tất cả luồng execution đang active của node này,
+        /// đồng thời đẩy real-time vào WorkflowExecutionService (nếu có) và schedule debounce TCS.
+        /// </summary>
+        public void UpdateResponseOutputValueForActiveRuns(string key, string value, bool isList, object? executionServiceObj)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var trimmedKey = key.Trim();
+            var valStr = value ?? string.Empty;
+
+            // 1. Cập nhật UI display chung của node
+            UpdateResponseOutputValue(trimmedKey, valStr, isList);
+            SchedulePendingOutputsCompletion(800);
+
+            // 2. Cập nhật từng luồng ExecutionRun độc lập
+            var activeRuns = GetActiveExecutionRuns();
+            var execService = executionServiceObj as FlowMy.Services.Workflow.WorkflowExecutionService;
+
+            foreach (var run in activeRuns)
+            {
+                string jsonOrVal;
+                lock (run.Lock)
+                {
+                    if (isList)
+                    {
+                        if (!run.ResponseOutputLists.TryGetValue(trimmedKey, out var list))
+                        {
+                            list = new List<string>();
+                            run.ResponseOutputLists[trimmedKey] = list;
+                        }
+                        list.Add(valStr);
+                        jsonOrVal = System.Text.Json.JsonSerializer.Serialize(list);
+                        run.ResponseOutputValues[trimmedKey] = jsonOrVal;
+                    }
+                    else
+                    {
+                        jsonOrVal = valStr;
+                        run.ResponseOutputValues[trimmedKey] = jsonOrVal;
+                    }
+                }
+
+                // Push real-time vào Scoped Outputs của executionId này
+                if (execService != null && !string.IsNullOrEmpty(run.ExecutionId))
+                {
+                    try
+                    {
+                        execService.SetScopedNodeStringOutput(run.ExecutionId, Id, trimmedKey, jsonOrVal);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNode] Real-time sync error: {ex.Message}");
+                    }
+                }
+
+                // Schedule debounce TCS completion cho luồng run này
+                run.ScheduleDebounceCompletion(800);
+            }
+        }
 
         /// <summary>
         /// Cập nhật giá trị trích xuất cho key tương ứng trong lần chạy hiện tại.
@@ -1007,9 +1109,72 @@ namespace FlowMy.Models.Nodes
                 }
             }
         }
-
         public void RequestWake() => WakeRequestToken++;
 
         #endregion
+    }
+
+    /// <summary>
+    /// Đại diện cho luồng dữ liệu riêng biệt của một lần chạy workflow (ExecutionId).
+    /// </summary>
+    public sealed class WebNodeExecutionRun
+    {
+        public string ExecutionId { get; }
+        public Dictionary<string, string> ResponseOutputValues { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, List<string>> ResponseOutputLists { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public TaskCompletionSource<bool>? PendingOutputsTcs { get; set; }
+        public System.Threading.CancellationTokenSource? DebounceCts { get; set; }
+        public object Lock { get; } = new();
+
+        public WebNodeExecutionRun(string executionId)
+        {
+            ExecutionId = executionId;
+        }
+
+        public void CancelDebounce()
+        {
+            lock (Lock)
+            {
+                try
+                {
+                    DebounceCts?.Cancel();
+                    DebounceCts?.Dispose();
+                }
+                catch { }
+                DebounceCts = null;
+            }
+        }
+
+        public void ScheduleDebounceCompletion(int debounceMs = 800)
+        {
+            var tcs = PendingOutputsTcs;
+            if (tcs == null || tcs.Task.IsCompleted) return;
+
+            lock (Lock)
+            {
+                try
+                {
+                    DebounceCts?.Cancel();
+                    DebounceCts?.Dispose();
+                }
+                catch { }
+
+                var cts = new System.Threading.CancellationTokenSource();
+                DebounceCts = cts;
+
+                System.Threading.Tasks.Task.Delay(debounceMs, cts.Token).ContinueWith(t =>
+                {
+                    if (t.IsCompletedSuccessfully && !cts.IsCancellationRequested)
+                    {
+                        var curTcs = PendingOutputsTcs;
+                        if (curTcs != null && !curTcs.Task.IsCompleted)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun] ✓ Debounce idle period ({debounceMs}ms) passed for execution {ExecutionId}, completing PendingOutputsTcs.");
+                            curTcs.TrySetResult(true);
+                        }
+                    }
+                }, System.Threading.Tasks.TaskScheduler.Default);
+            }
+        }
     }
 }
