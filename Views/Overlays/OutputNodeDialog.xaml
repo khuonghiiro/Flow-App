@@ -326,15 +326,33 @@
                                          ToolTip="Nhập tên Variable Key đã tạo ở phần Input Variables"/>
                                 <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="8" Margin="0,6,0,0">
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="9" LineHeight="14">
-                                        <Run FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}">📌 Hướng dẫn:</Run>
+                                        <Run FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}">📌 Hướng dẫn (cú pháp giống Format String):</Run>
                                         <LineBreak/>
-                                        <Run>• Nhập tên Variable Key đã tạo ở mục &quot;📍 Input Variables&quot; phía trên</Run>
+                                        <Run>• Lấy toàn bộ giá trị:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1</Run>
                                         <LineBreak/>
-                                        <Run>• Ví dụ: Bạn tạo variable key là &quot;img1&quot; và nối với ImageProcessingNode (output: imageBase64)</Run>
+                                        <Run>• Nhiều nguồn:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1, img2</Run>
                                         <LineBreak/>
-                                        <Run>  → Nhập: </Run><Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1</Run>
+                                        <Run>• Lấy phần tử mảng:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1[0]</Run>
+                                        <Run> (phần tử đầu)</Run>
                                         <LineBreak/>
-                                        <Run>• Nhiều ảnh: </Run><Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1, img2</Run>
+                                        <Run>• Tất cả mảng:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1[0...n]</Run>
+                                        <LineBreak/>
+                                        <Run>• Trường JSON:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1[imageBase64]</Run>
+                                        <LineBreak/>
+                                        <Run>• Lồng nhau:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1[0][imageBase64]</Run>
+                                        <LineBreak/>
+                                        <Run>• Chỉ mục động:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">img1[{index}][name]</Run>
+                                        <Run> ({index} = giá trị biến khác)</Run>
+                                        <LineBreak/>
+                                        <Run>• Dạng braces:</Run>
+                                        <Run Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold">{img1[name]}</Run>
                                         <LineBreak/>
                                         <Run>• Để trống = tự quét tất cả Variable Key</Run>
                                     </TextBlock>

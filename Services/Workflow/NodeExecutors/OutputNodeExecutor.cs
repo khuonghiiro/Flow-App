@@ -202,7 +202,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     try
                     {
-                        var base64List = ExtractBase64Images(outputNode, variableValues, variableArrays);
+                        var base64List = ExtractBase64Images(outputNode, variableValues, variableArrays, variableObjects);
                         if (base64List.Count > 0)
                         {
                             CopyBase64ImagesToClipboard(base64List);
@@ -747,149 +747,178 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         /// <summary>
         /// Extract base64 image strings from resolved variable values.
-        /// If ImageParamKeys is specified, only look at those keys; otherwise use all variables.
-        /// Supports: plain base64 string, JSON array of base64 strings, JSON object with specified field keys.
+        /// Supports same syntax as FormatString:
+        ///   - input1                    → plain variable key
+        ///   - input1[0]                 → array index
+        ///   - input1[name]              → object field
+        ///   - input1[0][name]           → nested: array index + field
+        ///   - input1[{index}][name]     → dynamic variable as index
+        ///   - input1[0...n]             → all array items
+        ///   - {input1[name]}            → braces syntax (same as without braces)
         /// </summary>
         private List<string> ExtractBase64Images(
             OutputNode outputNode,
             Dictionary<string, string> variableValues,
-            Dictionary<string, List<string>> variableArrays)
+            Dictionary<string, List<string>> variableArrays,
+            Dictionary<string, Dictionary<string, string>> variableObjects)
         {
             var result = new List<string>();
             var paramKeysRaw = outputNode.ImageParamKeys?.Trim() ?? string.Empty;
 
             System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: ImageParamKeys='{paramKeysRaw}'");
-            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: variableValues keys=[{string.Join(", ", variableValues.Keys)}]");
-            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: variableArrays keys=[{string.Join(", ", variableArrays.Keys)}]");
 
-            // Determine which variable keys to scan
-            IEnumerable<string> keysToScan;
-            if (!string.IsNullOrWhiteSpace(paramKeysRaw))
+            if (string.IsNullOrWhiteSpace(paramKeysRaw))
             {
-                // User specified explicit keys, split by , or ;
-                keysToScan = paramKeysRaw
-                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(k => k.Trim())
-                    .Where(k => k.Length > 0)
-                    .ToList();
-                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: explicit keysToScan=[{string.Join(", ", keysToScan)}]");
-            }
-            else
-            {
-                // Use all variable keys
-                keysToScan = variableValues.Keys.ToList();
-                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: using ALL variable keys");
-            }
-
-            foreach (var key in keysToScan)
-            {
-                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: scanning key='{key}'");
-
-                // Check array values first
-                if (variableArrays.TryGetValue(key, out var arr) && arr != null)
+                // No explicit keys → scan ALL variable values for base64
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: scanning ALL variables");
+                foreach (var kvp in variableArrays)
                 {
-                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' found in variableArrays ({arr.Count} items)");
-                    foreach (var item in arr)
+                    foreach (var item in kvp.Value)
+                        CollectBase64FromValue(item, result);
+                }
+                foreach (var kvp in variableValues)
+                {
+                    // Skip keys already handled as arrays
+                    if (variableArrays.ContainsKey(kvp.Key)) continue;
+                    CollectBase64FromValue(kvp.Value, result);
+                }
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: total extracted={result.Count}");
+                return result;
+            }
+
+            // Split by , or ;
+            var expressions = paramKeysRaw
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(e => e.Trim())
+                .Where(e => e.Length > 0)
+                .ToList();
+
+            foreach (var rawExpr in expressions)
+            {
+                var expr = rawExpr;
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: processing expression='{expr}'");
+
+                // Strip outer braces: {input1[0]} → input1[0]
+                if (expr.StartsWith("{") && expr.EndsWith("}") && !expr.Contains(","))
+                    expr = expr.Substring(1, expr.Length - 2).Trim();
+
+                // Pre-resolve {var} references within the expression
+                // e.g. input1[{index}][name] → input1[2][name] (if index variable = "2")
+                expr = Regex.Replace(expr, @"\{([^{}]+)\}", m =>
+                {
+                    var innerKey = m.Groups[1].Value.Trim();
+                    if (variableValues.TryGetValue(innerKey, out var innerVal) && !string.IsNullOrWhiteSpace(innerVal))
                     {
-                        var b64 = CleanBase64(item);
-                        if (IsLikelyBase64Image(b64))
+                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: resolved {{'{innerKey}'}} → '{innerVal}'");
+                        return innerVal;
+                    }
+                    return m.Value; // keep as-is if not found
+                });
+
+                // Check [0...n] pattern → expand ALL array items
+                var arrayAllMatch = Regex.Match(expr, @"^(.+?)\[0\.\.\.n\]$");
+                if (arrayAllMatch.Success)
+                {
+                    var baseKey = arrayAllMatch.Groups[1].Value.Trim();
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: [0...n] pattern, baseKey='{baseKey}'");
+
+                    // Try variableArrays first
+                    if (variableArrays.TryGetValue(baseKey, out var arr) && arr != null)
+                    {
+                        foreach (var item in arr)
+                            CollectBase64FromValue(item, result);
+                        continue;
+                    }
+
+                    // Try parsing from variableValues
+                    if (variableValues.TryGetValue(baseKey, out var val) && IsArrayValue(val))
+                    {
+                        var parsed = ParseArrayToList(val);
+                        if (parsed != null)
                         {
-                            result.Add(b64);
-                            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added base64 from array item ({b64.Length} chars)");
+                            foreach (var item in parsed)
+                                CollectBase64FromValue(item, result);
                         }
+                        continue;
+                    }
+
+                    // Try object field that is an array: e.g. input1[fieldName][0...n]
+                    // Already handled by pre-resolving the expression above
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: [0...n] no array found for '{baseKey}'");
+                    continue;
+                }
+
+                // Check if it's a simple key (no brackets) → direct lookup
+                if (!expr.Contains("["))
+                {
+                    // Simple key: input1
+                    if (variableArrays.TryGetValue(expr, out var arr) && arr != null)
+                    {
+                        foreach (var item in arr)
+                            CollectBase64FromValue(item, result);
+                    }
+                    else if (variableValues.TryGetValue(expr, out var val) && !string.IsNullOrWhiteSpace(val))
+                    {
+                        CollectBase64FromValue(val, result);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{expr}' not found or empty");
                     }
                     continue;
                 }
 
-                // Check plain string value
-                if (variableValues.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val))
+                // Expression with brackets → use FormatString engine to resolve
+                // e.g. input1[0], input1[name], input1[0][name]
+                var formatted = FormatString("{" + expr + "}", variableValues, variableArrays, variableObjects);
+
+                // If FormatString returned the placeholder unchanged, it wasn't resolved
+                if (formatted == "{" + expr + "}")
                 {
-                    var trimmed = val.Trim();
-                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' value length={trimmed.Length}, starts='{(trimmed.Length > 30 ? trimmed.Substring(0, 30) : trimmed)}...'");
-
-                    // If it's a JSON array string, parse it
-                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
-                    {
-                        try
-                        {
-                            var parsed = ParseArrayToList(trimmed);
-                            if (parsed != null)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: parsed JSON array with {parsed.Count} items");
-                                foreach (var item in parsed)
-                                {
-                                    var b64 = CleanBase64(item);
-                                    if (IsLikelyBase64Image(b64))
-                                    {
-                                        result.Add(b64);
-                                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added base64 from JSON array ({b64.Length} chars)");
-                                    }
-                                }
-                                continue;
-                            }
-                        }
-                        catch { /* not a valid JSON array, try as plain base64 */ }
-                    }
-
-                    // If it's a JSON object, try extracting fields matching paramKeys
-                    if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
-                    {
-                        try
-                        {
-                            using var doc = JsonDocument.Parse(trimmed);
-                            if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                            {
-                                // If paramKeysRaw has specific sub-keys, try them as JSON field names
-                                var subKeys = paramKeysRaw
-                                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                                    .Select(k => k.Trim())
-                                    .Where(k => k.Length > 0);
-
-                                foreach (var subKey in subKeys)
-                                {
-                                    if (doc.RootElement.TryGetProperty(subKey, out var prop))
-                                    {
-                                        var propVal = prop.ValueKind == JsonValueKind.String
-                                            ? prop.GetString() ?? string.Empty
-                                            : prop.GetRawText();
-                                        var b64 = CleanBase64(propVal);
-                                        if (IsLikelyBase64Image(b64))
-                                        {
-                                            result.Add(b64);
-                                            System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added base64 from JSON object field '{subKey}' ({b64.Length} chars)");
-                                        }
-                                    }
-                                }
-                                continue;
-                            }
-                        }
-                        catch { /* not valid JSON object */ }
-                    }
-
-                    // Plain base64 string
-                    var cleaned = CleanBase64(trimmed);
-                    if (IsLikelyBase64Image(cleaned))
-                    {
-                        result.Add(cleaned);
-                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: added plain base64 ({cleaned.Length} chars)");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' value is NOT a valid base64 image");
-                    }
+                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: FormatString could not resolve '{expr}'");
+                    continue;
                 }
-                else if (variableValues.TryGetValue(key, out var emptyVal))
-                {
-                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' found but value is EMPTY (source node may not have run yet)");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: key='{key}' NOT found in variableValues (check Variable Key name)");
-                }
+
+                System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: FormatString resolved '{expr}' → length={formatted.Length}");
+                CollectBase64FromValue(formatted, result);
             }
 
             System.Diagnostics.Debug.WriteLine($"OutputNode.ExtractBase64Images: total extracted={result.Count}");
             return result;
+        }
+
+        /// <summary>
+        /// Collect base64 images from a resolved value (plain string or JSON array).
+        /// </summary>
+        private void CollectBase64FromValue(string? value, List<string> result)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            var trimmed = value.Trim();
+
+            // If it's a JSON array, parse each item
+            if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+            {
+                try
+                {
+                    var parsed = ParseArrayToList(trimmed);
+                    if (parsed != null && parsed.Count > 0)
+                    {
+                        foreach (var item in parsed)
+                        {
+                            var b64 = CleanBase64(item);
+                            if (IsLikelyBase64Image(b64))
+                                result.Add(b64);
+                        }
+                        return;
+                    }
+                }
+                catch { /* not a valid array, try as plain */ }
+            }
+
+            // Plain base64 string
+            var cleaned = CleanBase64(trimmed);
+            if (IsLikelyBase64Image(cleaned))
+                result.Add(cleaned);
         }
 
         /// <summary>
