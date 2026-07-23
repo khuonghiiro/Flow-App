@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -188,6 +188,11 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("TargetWindowTitle", out var twtObj2))
                 textScan.TargetWindowTitle = twtObj2?.ToString() ?? string.Empty;
 
+            // Canvas Workflow Capture
+            if (properties.TryGetValue("CaptureWorkflowCanvas", out var cwcObj) &&
+                bool.TryParse(cwcObj?.ToString(), out var cwc))
+                textScan.CaptureWorkflowCanvas = cwc;
+
             // Background Mode
             if (properties.TryGetValue("UseBackgroundMode", out var ubmObj2) &&
                 bool.TryParse(ubmObj2?.ToString(), out var ubm2))
@@ -326,6 +331,9 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["TargetProcessName"] = textScan.TargetProcessName;
             if (!string.IsNullOrWhiteSpace(textScan.TargetWindowTitle))
                 dict["TargetWindowTitle"] = textScan.TargetWindowTitle;
+
+            // Canvas Workflow Capture
+            dict["CaptureWorkflowCanvas"] = textScan.CaptureWorkflowCanvas;
 
             // Background Mode
             dict["UseBackgroundMode"] = textScan.UseBackgroundMode;

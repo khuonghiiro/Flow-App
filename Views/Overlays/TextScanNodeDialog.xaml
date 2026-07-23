@@ -166,30 +166,41 @@
                                         </Grid>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Ứng dụng cần chụp" Foreground="{DynamicResource TextBrush}"
-                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="SelectedTargetWindow" Grid.Column="0" Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding ActiveWindows}"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1" Content="↻" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
-                                            Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại" Cursor="Hand"
-                                            Command="{Binding LoadWindowsCommand}"/>
-                                </Grid>
 
-                                <!-- Background Mode Checkbox -->
-                                <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,12"
-                                          Visibility="{Binding ShowBackgroundModeCheckbox, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <!-- CheckBox Chụp tại Workflow -->
+                                <CheckBox IsChecked="{Binding CaptureWorkflowCanvas, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10">
                                     <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
-                                        <Run Text="📸 Chụp không cần active app (chạy ngầm)"/>
+                                        <Run Text="📸 Chụp tại Workflow (chụp ngầm trên Canvas)"/>
                                     </TextBlock>
                                 </CheckBox>
+
+                                <!-- Select Target App (Ẩn khi chọn Chụp tại Workflow) -->
+                                <StackPanel Visibility="{Binding ShowTargetWindowSelection, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="Ứng dụng cần chụp" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="SelectedTargetWindow" Grid.Column="0" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding ActiveWindows}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                        <Button Grid.Column="1" Content="↻" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
+                                                Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại" Cursor="Hand"
+                                                Command="{Binding LoadWindowsCommand}"/>
+                                    </Grid>
+
+                                    <!-- Background Mode Checkbox -->
+                                    <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,12"
+                                              Visibility="{Binding ShowBackgroundModeCheckbox, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
+                                            <Run Text="📸 Chụp không cần active app (chạy ngầm)"/>
+                                        </TextBlock>
+                                    </CheckBox>
+                                </StackPanel>
                             </StackPanel>
 
                             <!-- MODE: From Node -->
@@ -259,30 +270,40 @@
                             <!-- MODE: Manual Region -->
                             <StackPanel x:Name="ManualRegionPanel"
                                         Visibility="{Binding IsManualRegionMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="Ứng dụng cần chụp" Foreground="{DynamicResource TextBrush}"
-                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="ManualRegionTargetWindow" Grid.Column="0" Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding ActiveWindows}"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1" Content="↻" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
-                                            Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại" Cursor="Hand"
-                                            Command="{Binding LoadWindowsCommand}"/>
-                                </Grid>
-
-                                <!-- Background Mode Checkbox -->
-                                <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10"
-                                          Visibility="{Binding ShowBackgroundModeCheckbox, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <!-- CheckBox Chụp tại Workflow -->
+                                <CheckBox IsChecked="{Binding CaptureWorkflowCanvas, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10">
                                     <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
-                                        <Run Text="📸 Chụp không cần active app (chạy ngầm)"/>
+                                        <Run Text="📸 Chụp tại Workflow (chụp ngầm trên Canvas)"/>
                                     </TextBlock>
                                 </CheckBox>
+
+                                <!-- Select Target App (Ẩn khi chọn Chụp tại Workflow) -->
+                                <StackPanel Visibility="{Binding ShowTargetWindowSelection, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="Ứng dụng cần chụp" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="ManualRegionTargetWindow" Grid.Column="0" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding ActiveWindows}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                        <Button Grid.Column="1" Content="↻" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
+                                                Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại" Cursor="Hand"
+                                                Command="{Binding LoadWindowsCommand}"/>
+                                    </Grid>
+
+                                    <!-- Background Mode Checkbox -->
+                                    <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10"
+                                              Visibility="{Binding ShowBackgroundModeCheckbox, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
+                                            <Run Text="📸 Chụp không cần active app (chạy ngầm)"/>
+                                        </TextBlock>
+                                    </CheckBox>
+                                </StackPanel>
 
                                 <Button x:Name="ManualCaptureButton" Content="📸 Chụp vùng thủ công" Height="36" Margin="0,0,0,10"
                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand" Click="ManualCaptureButton_Click"/>

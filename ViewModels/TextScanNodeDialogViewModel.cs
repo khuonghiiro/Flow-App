@@ -68,9 +68,13 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
         public IRelayCommand LoadWindowsCommand { get; }
 
+        // ── Canvas Workflow Capture ─────────────────────────────────────────────
+        [ObservableProperty] private bool _captureWorkflowCanvas = false;
+        public bool ShowTargetWindowSelection => !CaptureWorkflowCanvas;
+
         // ── Background Mode (chụp không cần active app) ────────────────────
         [ObservableProperty] private bool _useBackgroundMode = false;
-        public bool ShowBackgroundModeCheckbox => SelectedTargetWindow != null;
+        public bool ShowBackgroundModeCheckbox => SelectedTargetWindow != null && !CaptureWorkflowCanvas;
 
         // ── Danh sách node có thể chọn ────────────────────────────────────────────
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
@@ -109,6 +113,9 @@ namespace FlowMy.ViewModels
 
             OcrLanguage = node.OcrLanguage;
             AutoDetectLanguage = node.AutoDetectLanguage;
+
+            // Canvas workflow capture
+            CaptureWorkflowCanvas = node.CaptureWorkflowCanvas;
 
             // Background mode
             UseBackgroundMode = node.UseBackgroundMode;
@@ -196,6 +203,14 @@ namespace FlowMy.ViewModels
         protected override string GetDefaultTitle() => "Text Scan (OCR)";
 
         // ── Partial callbacks ────────────────────────────────────────────────
+        partial void OnCaptureWorkflowCanvasChanged(bool value)
+        {
+            _textScanNode.CaptureWorkflowCanvas = value;
+            OnPropertyChanged(nameof(ShowTargetWindowSelection));
+            OnPropertyChanged(nameof(ShowBackgroundModeCheckbox));
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
         partial void OnUseBackgroundModeChanged(bool value)
         {
             _textScanNode.UseBackgroundMode = value;
@@ -543,6 +558,9 @@ namespace FlowMy.ViewModels
             // Lưu target app
             _textScanNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _textScanNode.TargetWindowTitle = SelectedTargetWindow?.Title ?? string.Empty;
+
+            // Canvas workflow capture
+            _textScanNode.CaptureWorkflowCanvas = CaptureWorkflowCanvas;
 
             // Lưu background mode
             _textScanNode.UseBackgroundMode = UseBackgroundMode;

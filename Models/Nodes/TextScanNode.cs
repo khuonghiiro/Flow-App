@@ -125,6 +125,9 @@ namespace FlowMy.Models.Nodes
         private string _targetProcessName = string.Empty;
         private string _targetWindowTitle = string.Empty;
 
+        // ── Canvas Workflow Capture ─────────────────────────────────────────────
+        private bool _captureWorkflowCanvas = false;
+
         // ── Background Mode ─────────────────────────────────────────────────────
         private bool _useBackgroundMode = false;
         private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
@@ -288,6 +291,18 @@ namespace FlowMy.Models.Nodes
         {
             get => _targetWindowTitle;
             set { if (_targetWindowTitle != value) { _targetWindowTitle = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        // ── Canvas Workflow Capture ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Chụp trực tiếp từ Canvas của Workflow (chạy ngầm, dựa trên vị trí canvas).
+        /// Khi true, không cần chọn app ngoài để chụp.
+        /// </summary>
+        public bool CaptureWorkflowCanvas
+        {
+            get => _captureWorkflowCanvas;
+            set { if (_captureWorkflowCanvas != value) { _captureWorkflowCanvas = value; OnPropertyChanged(); } }
         }
 
         // ── Background Mode ─────────────────────────────────────────────────────

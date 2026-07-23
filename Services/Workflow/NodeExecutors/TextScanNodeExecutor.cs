@@ -164,6 +164,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return null;
             }
 
+            if (textScan.CaptureWorkflowCanvas)
+            {
+                return await CaptureWorkflowCanvasRegionAsync(textScan, env);
+            }
+
             BitmapImage? bitmap = null;
 
             // Nếu dùng background mode và có target window → chụp trực tiếp từ window
@@ -236,6 +241,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return textScan.CapturedImage;
 
             if (w <= 0 || h <= 0) return null;
+
+            if (textScan.CaptureWorkflowCanvas)
+            {
+                var canvasBitmap = await CaptureWorkflowCanvasRegionAsync(textScan, env);
+                if (canvasBitmap != null)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        textScan.CaptureX = x;
+                        textScan.CaptureY = y;
+                        textScan.CaptureWidth = w;
+                        textScan.CaptureHeight = h;
+                    });
+                }
+                return canvasBitmap;
+            }
 
             BitmapImage? bitmap = null;
 
@@ -832,6 +853,102 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return ms.ToArray();
             }
             catch { return null; }
+        }
+
+        public static async Task<BitmapImage?> CaptureWorkflowCanvasRegionAsync(TextScanNode textScan, NodeExecutionEnvironment env)
+        {
+            int x = textScan.CaptureX;
+            int y = textScan.CaptureY;
+            int w = textScan.CaptureWidth;
+            int h = textScan.CaptureHeight;
+
+            if (w <= 0 || h <= 0) return null;
+
+            return await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    System.Windows.Controls.Canvas? canvas = null;
+                    if (Application.Current.MainWindow is FlowMy.Services.Interaction.IWorkflowEditorHost host)
+                    {
+                        canvas = host.WorkflowCanvas;
+                    }
+                    else
+                    {
+                        var hostWin = Application.Current.Windows.OfType<FlowMy.Services.Interaction.IWorkflowEditorHost>().FirstOrDefault();
+                        if (hostWin != null) canvas = hostWin.WorkflowCanvas;
+                    }
+
+                    if (canvas == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[TextScanNodeExecutor] CaptureWorkflowCanvas: WorkflowCanvas not found");
+                        return null;
+                    }
+
+                    return RenderCanvasRegion(canvas, x, y, w, h);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] CaptureWorkflowCanvas error: {ex.Message}");
+                    return null;
+                }
+            });
+        }
+
+        public static BitmapImage? RenderCanvasRegion(System.Windows.Controls.Canvas canvas, int x, int y, int width, int height)
+        {
+            if (width <= 0 || height <= 0) return null;
+
+            try
+            {
+                int w = width;
+                int h = height;
+
+                var rtb = new RenderTargetBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                var dv = new System.Windows.Media.DrawingVisual();
+
+                using (var dc = dv.RenderOpen())
+                {
+                    dc.PushTransform(new System.Windows.Media.TranslateTransform(-x, -y));
+
+                    if (canvas.RenderTransform != null && !canvas.RenderTransform.Value.IsIdentity)
+                    {
+                        var inv = canvas.RenderTransform.Value;
+                        if (inv.HasInverse)
+                        {
+                            inv.Invert();
+                            dc.PushTransform(new System.Windows.Media.MatrixTransform(inv));
+                        }
+                    }
+
+                    double renderW = canvas.ActualWidth > 0 ? canvas.ActualWidth : 10000;
+                    double renderH = canvas.ActualHeight > 0 ? canvas.ActualHeight : 10000;
+
+                    dc.DrawRectangle(new System.Windows.Media.VisualBrush(canvas) { Stretch = System.Windows.Media.Stretch.None }, null, new System.Windows.Rect(0, 0, renderW, renderH));
+                }
+
+                rtb.Render(dv);
+
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(rtb));
+                using var ms = new MemoryStream();
+                encoder.Save(ms);
+                ms.Position = 0;
+
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.StreamSource = ms;
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze();
+
+                return bitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] RenderCanvasRegion error: {ex.Message}");
+                return null;
+            }
         }
 
         private class OcrResult
