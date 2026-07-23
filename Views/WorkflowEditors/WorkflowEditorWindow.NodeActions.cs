@@ -945,6 +945,9 @@ namespace FlowMy.Views
                 if (srcTextScan.SkipOutputs != null && srcTextScan.SkipOutputs.Count > 0)
                     dstTextScan.SkipOutputs = new HashSet<string>(srcTextScan.SkipOutputs, StringComparer.OrdinalIgnoreCase);
 
+                // Enable text scan
+                dstTextScan.EnableTextScan = srcTextScan.EnableTextScan;
+
                 // Title properties
                 dstTextScan.TitleDisplayMode = srcTextScan.TitleDisplayMode;
                 dstTextScan.TitleColorMode = srcTextScan.TitleColorMode;

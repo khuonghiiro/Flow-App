@@ -132,6 +132,9 @@ namespace FlowMy.Models.Nodes
         private bool _useBackgroundMode = false;
         private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
 
+        // ── Cho phép quét text (OCR) ─────────────────────────────────────────────
+        private bool _enableTextScan = true;
+
         // ── Kết quả OCR ─────────────────────────────────────────────────────────
         private string _extractedText = string.Empty;
         private string _extractedTextLines = string.Empty; // Text phân theo dòng
@@ -328,6 +331,17 @@ namespace FlowMy.Models.Nodes
         {
             get => _backgroundInputMode;
             set { if (_backgroundInputMode != value) { _backgroundInputMode = value; OnPropertyChanged(); } }
+        }
+
+        // ── Cho phép quét text (OCR) ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Bật/tắt tính năng quét text (OCR). Khi false, node chỉ chụp ảnh mà không OCR.
+        /// </summary>
+        public bool EnableTextScan
+        {
+            get => _enableTextScan;
+            set { if (_enableTextScan != value) { _enableTextScan = value; OnPropertyChanged(); } }
         }
 
         // ── Kết quả OCR ─────────────────────────────────────────────────────────

@@ -201,6 +201,11 @@ public sealed partial class FileWorkflowPersistenceService
                 Enum.TryParse<FlowMy.Helpers.BackgroundInputHelper.InputMode>(bimObj2?.ToString(), out var bim2))
                 textScan.BackgroundInputMode = bim2;
 
+            // Enable Text Scan
+            if (properties.TryGetValue("EnableTextScan", out var etsObj) &&
+                bool.TryParse(etsObj?.ToString(), out var ets))
+                textScan.EnableTextScan = ets;
+
             // SkipOutputs
             if (properties.TryGetValue("SkipOutputs", out var soObj) && soObj != null)
             {
@@ -338,6 +343,9 @@ public sealed partial class FileWorkflowPersistenceService
             // Background Mode
             dict["UseBackgroundMode"] = textScan.UseBackgroundMode;
             dict["BackgroundInputMode"] = textScan.BackgroundInputMode.ToString();
+
+            // Enable Text Scan
+            dict["EnableTextScan"] = textScan.EnableTextScan;
 
             // SkipOutputs
             if (textScan.SkipOutputs != null && textScan.SkipOutputs.Count > 0)

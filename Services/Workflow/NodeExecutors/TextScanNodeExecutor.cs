@@ -124,8 +124,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     return;
                 }
 
-                // Thực hiện OCR
-                var ocrResult = await PerformOcr(image, textScan);
+                OcrResult ocrResult;
+
+                if (textScan.EnableTextScan)
+                {
+                    // Thực hiện OCR
+                    ocrResult = await PerformOcr(image, textScan);
+                }
+                else
+                {
+                    // Bỏ qua OCR — trả về kết quả rỗng
+                    ocrResult = new OcrResult
+                    {
+                        Text = string.Empty,
+                        Lines = string.Empty,
+                        Words = new System.Collections.Generic.Dictionary<string, string>()
+                    };
+                }
 
                 // Cập nhật kết quả vào node
                 await Application.Current.Dispatcher.InvokeAsync(() =>

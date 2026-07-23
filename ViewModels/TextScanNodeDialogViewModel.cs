@@ -76,6 +76,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _useBackgroundMode = false;
         public bool ShowBackgroundModeCheckbox => SelectedTargetWindow != null && !CaptureWorkflowCanvas;
 
+        // ── Cho phép quét text (OCR) ─────────────────────────────────────────
+        [ObservableProperty] private bool _enableTextScan = true;
+        public bool ShowTextScanSettings => EnableTextScan;
+
         // ── Danh sách node có thể chọn ────────────────────────────────────────────
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -119,6 +123,9 @@ namespace FlowMy.ViewModels
 
             // Background mode
             UseBackgroundMode = node.UseBackgroundMode;
+
+            // Enable text scan
+            EnableTextScan = node.EnableTextScan;
 
             // Sync selected languages
             SelectedLanguages.Clear();
@@ -214,6 +221,13 @@ namespace FlowMy.ViewModels
         partial void OnUseBackgroundModeChanged(bool value)
         {
             _textScanNode.UseBackgroundMode = value;
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        partial void OnEnableTextScanChanged(bool value)
+        {
+            _textScanNode.EnableTextScan = value;
+            OnPropertyChanged(nameof(ShowTextScanSettings));
             _host.RequestSyncDataPanels(immediate: true);
         }
 
@@ -564,6 +578,9 @@ namespace FlowMy.ViewModels
 
             // Lưu background mode
             _textScanNode.UseBackgroundMode = UseBackgroundMode;
+
+            // Enable text scan
+            _textScanNode.EnableTextScan = EnableTextScan;
 
             _textScanNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
