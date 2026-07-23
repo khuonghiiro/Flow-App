@@ -864,7 +864,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (w <= 0 || h <= 0) return null;
 
-            return await Application.Current.Dispatcher.InvokeAsync(() =>
+            // Phải chạy trên UI thread vì cần truy cập visual tree + WebView2
+            var tcs = new TaskCompletionSource<BitmapImage?>();
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 try
                 {
@@ -882,73 +884,286 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     if (canvas == null)
                     {
                         System.Diagnostics.Debug.WriteLine("[TextScanNodeExecutor] CaptureWorkflowCanvas: WorkflowCanvas not found");
-                        return null;
+                        tcs.TrySetResult(null);
+                        return;
                     }
 
-                    return RenderCanvasRegion(canvas, x, y, w, h);
+                    var result = await RenderCanvasRegionAsync(canvas, x, y, w, h);
+                    tcs.TrySetResult(result);
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] CaptureWorkflowCanvas error: {ex.Message}");
-                    return null;
+                    tcs.TrySetResult(null);
                 }
             });
+            return await tcs.Task;
         }
 
-        public static BitmapImage? RenderCanvasRegion(System.Windows.Controls.Canvas canvas, int x, int y, int width, int height)
+        public static async Task<BitmapImage?> RenderCanvasRegionAsync(System.Windows.Controls.Canvas canvas, int x, int y, int width, int height)
         {
             if (width <= 0 || height <= 0) return null;
 
             try
             {
-                int w = width;
-                int h = height;
-
-                var rtb = new RenderTargetBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
-                var dv = new System.Windows.Media.DrawingVisual();
-
-                using (var dc = dv.RenderOpen())
+                // ── 1. Lấy background từ parent visual tree ──────────────────
+                System.Windows.Media.Brush bgBrush = canvas.Background;
+                if (bgBrush == null || bgBrush == System.Windows.Media.Brushes.Transparent)
                 {
-                    dc.PushTransform(new System.Windows.Media.TranslateTransform(-x, -y));
-
-                    if (canvas.RenderTransform != null && !canvas.RenderTransform.Value.IsIdentity)
+                    var parent = System.Windows.Media.VisualTreeHelper.GetParent(canvas) as System.Windows.FrameworkElement;
+                    while (parent != null)
                     {
-                        var inv = canvas.RenderTransform.Value;
-                        if (inv.HasInverse)
+                        System.Windows.Media.Brush? found = null;
+                        if (parent is System.Windows.Controls.Panel panel)
+                            found = panel.Background;
+                        else if (parent is System.Windows.Controls.Border border)
+                            found = border.Background;
+                        else if (parent is System.Windows.Controls.ScrollViewer sv)
+                            found = sv.Background;
+
+                        if (found != null && found != System.Windows.Media.Brushes.Transparent)
                         {
-                            inv.Invert();
-                            dc.PushTransform(new System.Windows.Media.MatrixTransform(inv));
+                            bgBrush = found;
+                            break;
+                        }
+                        parent = System.Windows.Media.VisualTreeHelper.GetParent(parent) as System.Windows.FrameworkElement;
+                    }
+                    bgBrush ??= new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x1E, 0x1E, 0x2E));
+                }
+
+                // ── 2. Force Visible cho children bị Collapsed bởi viewport culling ──
+                // ViewportCullingService ẩn (Collapsed) nodes ngoài viewport → RenderSize = 0.
+                // Phải tạm bật Visible, force layout update để WPF tính lại RenderSize.
+                var restoredChildren = new List<(System.Windows.UIElement child, System.Windows.Visibility original)>();
+                foreach (System.Windows.UIElement child in canvas.Children)
+                {
+                    if (child.Visibility == System.Windows.Visibility.Collapsed ||
+                        child.Visibility == System.Windows.Visibility.Hidden)
+                    {
+                        // Kiểm tra xem child có nằm trong hoặc gần vùng chụp không
+                        // dùng Canvas.Left/Top (không phụ thuộc RenderSize vì đang Collapsed)
+                        double left = System.Windows.Controls.Canvas.GetLeft(child);
+                        double top  = System.Windows.Controls.Canvas.GetTop(child);
+                        if (double.IsNaN(left)) left = 0;
+                        if (double.IsNaN(top))  top  = 0;
+
+                        // Dùng DesiredSize hoặc Width/Height fallback (RenderSize = 0 khi Collapsed)
+                        double estW = child.DesiredSize.Width;
+                        double estH = child.DesiredSize.Height;
+                        if (estW <= 0 && child is System.Windows.FrameworkElement fe1)
+                        {
+                            estW = fe1.Width > 0 ? fe1.Width : 400;
+                            estH = fe1.Height > 0 ? fe1.Height : 300;
+                        }
+                        if (estW <= 0) estW = 400;
+                        if (estH <= 0) estH = 300;
+
+                        // Kiểm tra overlap với capture region (mở rộng margin)
+                        double drawX = left - x;
+                        double drawY = top  - y;
+                        if (drawX + estW > -100 && drawY + estH > -100
+                            && drawX < width + 100 && drawY < height + 100)
+                        {
+                            restoredChildren.Add((child, child.Visibility));
+                            child.Visibility = System.Windows.Visibility.Visible;
+                        }
+                    }
+                }
+
+                // Force layout update để WPF tính RenderSize cho children vừa bật Visible
+                if (restoredChildren.Count > 0)
+                {
+                    canvas.UpdateLayout();
+                    // Cho dispatcher xử lý layout pass
+                    await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
+                }
+
+                try
+                {
+                    // ── 3. Pre-capture WebView2 content ──────────────────────────
+                    // WebView2 dùng native HWND nên VisualBrush không chụp được.
+                    // Phải dùng CapturePreviewAsync() trước, lưu bitmap rồi vẽ sau.
+                    var webViewCaptures = new Dictionary<System.Windows.UIElement, BitmapSource>();
+                    foreach (System.Windows.UIElement child in canvas.Children)
+                    {
+                        if (child.Visibility != System.Windows.Visibility.Visible) continue;
+
+                        double left = System.Windows.Controls.Canvas.GetLeft(child);
+                        double top  = System.Windows.Controls.Canvas.GetTop(child);
+                        if (double.IsNaN(left)) left = 0;
+                        if (double.IsNaN(top))  top  = 0;
+
+                        var rs = child.RenderSize;
+                        if (rs.Width <= 0 || rs.Height <= 0) continue;
+
+                        double drawX = left - x;
+                        double drawY = top  - y;
+                        if (drawX + rs.Width <= 0 || drawY + rs.Height <= 0
+                            || drawX >= width || drawY >= height)
+                            continue;
+
+                        // Tìm WebView2 trong child tree
+                        var wv2 = FindFirstVisualChild<Microsoft.Web.WebView2.Wpf.WebView2>(child);
+                        if (wv2?.CoreWebView2 != null)
+                        {
+                            try
+                            {
+                                using var ms = new MemoryStream();
+                                await wv2.CoreWebView2.CapturePreviewAsync(
+                                    Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png, ms);
+                                ms.Position = 0;
+                                var decoder = new PngBitmapDecoder(ms,
+                                    BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                if (decoder.Frames.Count > 0)
+                                    webViewCaptures[child] = decoder.Frames[0];
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[RenderCanvasRegion] CapturePreviewAsync error: {ex.Message}");
+                            }
                         }
                     }
 
-                    double renderW = canvas.ActualWidth > 0 ? canvas.ActualWidth : 10000;
-                    double renderH = canvas.ActualHeight > 0 ? canvas.ActualHeight : 10000;
+                    // ── 4. Render từng child riêng lẻ ────────────────────────────
+                    var rtb = new RenderTargetBitmap(width, height, 96, 96,
+                        System.Windows.Media.PixelFormats.Pbgra32);
+                    var dv = new System.Windows.Media.DrawingVisual();
 
-                    dc.DrawRectangle(new System.Windows.Media.VisualBrush(canvas) { Stretch = System.Windows.Media.Stretch.None }, null, new System.Windows.Rect(0, 0, renderW, renderH));
+                    using (var dc = dv.RenderOpen())
+                    {
+                        // Vẽ background
+                        dc.DrawRectangle(bgBrush, null,
+                            new System.Windows.Rect(0, 0, width, height));
+
+                        // Render từng child
+                        foreach (System.Windows.UIElement child in canvas.Children)
+                        {
+                            if (child.Visibility != System.Windows.Visibility.Visible)
+                                continue;
+
+                            double left = System.Windows.Controls.Canvas.GetLeft(child);
+                            double top  = System.Windows.Controls.Canvas.GetTop(child);
+                            if (double.IsNaN(left)) left = 0;
+                            if (double.IsNaN(top))  top  = 0;
+
+                            var rs = child.RenderSize;
+                            double childW = rs.Width;
+                            double childH = rs.Height;
+                            if (childW <= 0 || childH <= 0) continue;
+
+                            double drawX = left - x;
+                            double drawY = top  - y;
+
+                            if (drawX + childW <= 0 || drawY + childH <= 0
+                                || drawX >= width || drawY >= height)
+                                continue;
+
+                            // Nếu child có WebView2 đã capture → vẽ WPF overlay + bitmap web
+                            if (webViewCaptures.TryGetValue(child, out var wvBitmap))
+                            {
+                                // Vẽ phần WPF overlay trước (border, title bar, etc.)
+                                var childBrush = new System.Windows.Media.VisualBrush(child)
+                                {
+                                    Stretch    = System.Windows.Media.Stretch.None,
+                                    AlignmentX = System.Windows.Media.AlignmentX.Left,
+                                    AlignmentY = System.Windows.Media.AlignmentY.Top
+                                };
+                                dc.DrawRectangle(childBrush, null,
+                                    new System.Windows.Rect(drawX, drawY, childW, childH));
+
+                                // Tìm vị trí WebView2 trong child để vẽ bitmap web đúng chỗ
+                                var wv2 = FindFirstVisualChild<Microsoft.Web.WebView2.Wpf.WebView2>(child);
+                                if (wv2 != null)
+                                {
+                                    try
+                                    {
+                                        // Lấy vị trí WebView2 tương đối với child
+                                        var wvPos = wv2.TranslatePoint(new System.Windows.Point(0, 0),
+                                            child as System.Windows.UIElement);
+                                        double wvDrawX = drawX + wvPos.X;
+                                        double wvDrawY = drawY + wvPos.Y;
+                                        double wvW = wv2.RenderSize.Width;
+                                        double wvH = wv2.RenderSize.Height;
+
+                                        if (wvW > 0 && wvH > 0)
+                                        {
+                                            dc.DrawImage(wvBitmap,
+                                                new System.Windows.Rect(wvDrawX, wvDrawY, wvW, wvH));
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine(
+                                            $"[RenderCanvasRegion] WebView2 position error: {ex.Message}");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // Child thường → dùng VisualBrush
+                                var childBrush = new System.Windows.Media.VisualBrush(child)
+                                {
+                                    Stretch    = System.Windows.Media.Stretch.None,
+                                    AlignmentX = System.Windows.Media.AlignmentX.Left,
+                                    AlignmentY = System.Windows.Media.AlignmentY.Top
+                                };
+                                dc.DrawRectangle(childBrush, null,
+                                    new System.Windows.Rect(drawX, drawY, childW, childH));
+                            }
+                        }
+                    }
+
+                    rtb.Render(dv);
+
+                    // ── 5. Encode → BitmapImage ──────────────────────────────────
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(rtb));
+                    using var encMs = new MemoryStream();
+                    encoder.Save(encMs);
+                    encMs.Position = 0;
+
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.StreamSource = encMs;
+                    bitmap.CacheOption  = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+
+                    return bitmap;
                 }
-
-                rtb.Render(dv);
-
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rtb));
-                using var ms = new MemoryStream();
-                encoder.Save(ms);
-                ms.Position = 0;
-
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.StreamSource = ms;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                bitmap.Freeze();
-
-                return bitmap;
+                finally
+                {
+                    // ── 6. Khôi phục Visibility gốc cho các children đã bị tạm bật ──
+                    foreach (var (child, original) in restoredChildren)
+                    {
+                        child.Visibility = original;
+                    }
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] RenderCanvasRegion error: {ex.Message}");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Tìm visual child đầu tiên có type T trong visual tree (recursive).
+        /// </summary>
+        private static T? FindFirstVisualChild<T>(System.Windows.DependencyObject parent) where T : System.Windows.DependencyObject
+        {
+            if (parent == null) return null;
+            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T found) return found;
+                var result = FindFirstVisualChild<T>(child);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private class OcrResult

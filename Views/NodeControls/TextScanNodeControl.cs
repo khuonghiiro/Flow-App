@@ -250,10 +250,10 @@ namespace FlowMy.Views.NodeControls
             border.SizeChanged += (s, e) => UpdateButtonLabels(e.NewSize.Width);
 
             // ── 9. BUTTON EVENTS ─────────────────────────────────────────────
-            captureButton.Click += (s, e) =>
+            captureButton.Click += async (s, e) =>
             {
                 e.Handled = true;
-                FlowMy.Helpers.ScreenCaptureHelper.CaptureForTextScanNode(node, ownerWindow);
+                await FlowMy.Helpers.ScreenCaptureHelper.CaptureForTextScanNodeAsync(node, ownerWindow);
             };
 
             pickFileButton.Click += (s, e) =>

@@ -253,7 +253,7 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void ManualCaptureButton_Click(object sender, RoutedEventArgs e)
+        private async void ManualCaptureButton_Click(object sender, RoutedEventArgs e)
         {
             var node = _viewModel.Node as TextScanNode;
             if (node == null) return;
@@ -270,7 +270,7 @@ namespace FlowMy.Views.Overlays
             }
 
             // Use ScreenCaptureHelper to capture region
-            bool success = Helpers.ScreenCaptureHelper.CaptureForTextScanNode(node, this);
+            bool success = await Helpers.ScreenCaptureHelper.CaptureForTextScanNodeAsync(node, this);
 
             if (success)
             {

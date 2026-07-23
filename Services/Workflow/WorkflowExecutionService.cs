@@ -1592,7 +1592,8 @@ namespace FlowMy.Services.Workflow
             System.Diagnostics.Debug.WriteLine($"AutoTrigger: Triggering screen capture for {node.Type} node {node.Id}");
 
             // Gọi ScreenCaptureHelper trực tiếp trên UI thread
-            bool captureResult = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            var tcs = new TaskCompletionSource<bool>();
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 try
                 {
@@ -1601,28 +1602,34 @@ namespace FlowMy.Services.Workflow
                     if (mainWindow == null)
                     {
                         System.Diagnostics.Debug.WriteLine($"AutoTrigger: Main window not found");
-                        return false;
+                        tcs.TrySetResult(false);
+                        return;
                     }
 
                     // Sử dụng ScreenCaptureHelper để thực hiện capture
                     if (node is TextScanNode textScanNode)
                     {
-                        return FlowMy.Helpers.ScreenCaptureHelper.CaptureForTextScanNode(textScanNode, mainWindow);
+                        var result = await FlowMy.Helpers.ScreenCaptureHelper.CaptureForTextScanNodeAsync(textScanNode, mainWindow);
+                        tcs.TrySetResult(result);
                     }
                     else if (node is ScreenCaptureNode screenCaptureNode)
                     {
-                        return FlowMy.Helpers.ScreenCaptureHelper.CaptureForScreenCaptureNode(screenCaptureNode, mainWindow);
+                        var result = FlowMy.Helpers.ScreenCaptureHelper.CaptureForScreenCaptureNode(screenCaptureNode, mainWindow);
+                        tcs.TrySetResult(result);
                     }
-
-                    return false;
+                    else
+                    {
+                        tcs.TrySetResult(false);
+                    }
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"AutoTrigger: Error during screen capture: {ex.Message}");
-                    return false;
+                    tcs.TrySetResult(false);
                 }
             });
 
+            bool captureResult = await tcs.Task;
             if (captureResult)
             {
                 System.Diagnostics.Debug.WriteLine($"AutoTrigger: Screen capture completed for {node.Type} node {node.Id}");

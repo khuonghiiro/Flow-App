@@ -12,7 +12,7 @@ namespace FlowMy.Helpers
         /// <summary>
         /// Thực hiện chụp màn hình với overlay dialog cho TextScanNode
         /// </summary>
-        public static bool CaptureForTextScanNode(TextScanNode node, Window ownerWindow)
+        public static async Task<bool> CaptureForTextScanNodeAsync(TextScanNode node, Window ownerWindow)
         {
             if (node == null || ownerWindow == null) return false;
 
@@ -31,7 +31,7 @@ namespace FlowMy.Helpers
                         WindowHelper.BringToFront(match.Handle);
                 }
 
-                System.Threading.Thread.Sleep(150);
+                await Task.Delay(150);
 
                 var overlay = new ScreenCaptureOverlay();
                 if (overlay.ShowDialog() == true)
@@ -65,7 +65,7 @@ namespace FlowMy.Helpers
                                 node.CaptureY = cY;
                                 node.CaptureWidth = cW;
                                 node.CaptureHeight = cH;
-                                node.CapturedImage = FlowMy.Services.Workflow.NodeExecutors.TextScanNodeExecutor.RenderCanvasRegion(canvas, cX, cY, cW, cH);
+                                node.CapturedImage = await FlowMy.Services.Workflow.NodeExecutors.TextScanNodeExecutor.RenderCanvasRegionAsync(canvas, cX, cY, cW, cH);
                                 return true;
                             }
                         }
