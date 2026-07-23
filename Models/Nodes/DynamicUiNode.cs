@@ -22,6 +22,21 @@ namespace FlowMy.Models.Nodes
             set { _asyncDataSources = value; OnPropertyChanged(); }
         }
 
+        private List<HtmlOfflineAsset> _offlineAssets = new();
+
+        public List<HtmlOfflineAsset> OfflineAssets
+        {
+            get => _offlineAssets;
+            set
+            {
+                if (_offlineAssets != value)
+                {
+                    _offlineAssets = value ?? new List<HtmlOfflineAsset>();
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         [JsonIgnore]
         public System.Collections.Concurrent.ConcurrentDictionary<string, string> AsyncDataCache { get; set; } = new();
 
@@ -402,25 +417,25 @@ note: #note";
 
         public string HtmlCode
         {
-            get { EnsureUpgradedTemplate(); return _htmlCode; }
+            get => _htmlCode;
             set { if (_htmlCode != value) { _htmlCode = value ?? ""; OnPropertyChanged(); } }
         }
 
         public string CssCode
         {
-            get { EnsureUpgradedTemplate(); return _cssCode; }
+            get => _cssCode;
             set { if (_cssCode != value) { _cssCode = value ?? ""; OnPropertyChanged(); } }
         }
 
         public string JsCode
         {
-            get { EnsureUpgradedTemplate(); return _jsCode; }
+            get => _jsCode;
             set { if (_jsCode != value) { _jsCode = value ?? ""; OnPropertyChanged(); } }
         }
 
         public string ParamsCode
         {
-            get { EnsureUpgradedTemplate(); return _paramsCode; }
+            get => _paramsCode;
             set { if (_paramsCode != value) { _paramsCode = value ?? ""; OnPropertyChanged(); } }
         }
 

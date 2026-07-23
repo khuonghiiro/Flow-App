@@ -120,32 +120,106 @@ namespace FlowMy.ViewModels
 
             RefreshAllNodesWithOutputs(AvailableNodeOptions);
             RefreshAsyncAvailableNodes();
+
+            // Load offline assets
+            foreach (var asset in _nodeTyped.OfflineAssets ?? new List<HtmlOfflineAsset>())
+            {
+                var vm = new HtmlOfflineAssetItemViewModel
+                {
+                    Title = asset.Title ?? string.Empty,
+                    Description = asset.Description ?? string.Empty,
+                    SourceUrl = asset.SourceUrl ?? string.Empty,
+                    LocalFileName = asset.LocalFileName ?? string.Empty,
+                    AssetType = asset.AssetType ?? "js",
+                    IsEnabled = asset.IsEnabled
+                };
+                OfflineAssetsList.Add(vm);
+            }
+            HookOfflineAssetsList();
+        }
+
+        public ObservableCollection<HtmlOfflineAssetItemViewModel> OfflineAssetsList { get; } = new();
+
+        public ObservableCollection<PresetDisplayItem> PopularJsPresets { get; } = new(
+            HtmlOfflineAssetItemViewModel.WellKnownPresets
+                .Where(p => p.Type?.ToLower() == "js")
+                .Select(p => new PresetDisplayItem(p)));
+
+        public ObservableCollection<PresetDisplayItem> PopularCssPresets { get; } = new(
+            HtmlOfflineAssetItemViewModel.WellKnownPresets
+                .Where(p => p.Type?.ToLower() == "css")
+                .Select(p => new PresetDisplayItem(p)));
+
+        private void HookOfflineAssetsList()
+        {
+            OfflineAssetsList.CollectionChanged += (_, e) =>
+            {
+                if (_isSyncingFromNode) return;
+                SyncOfflineAssetsToNode();
+            };
+        }
+
+        private void SyncOfflineAssetsToNode()
+        {
+            _nodeTyped.OfflineAssets = OfflineAssetsList.Select(x => x.ToModel()).ToList();
+        }
+
+        [RelayCommand]
+        private void AddOfflineAsset()
+        {
+            OfflineAssetsList.Add(new HtmlOfflineAssetItemViewModel
+            {
+                Title = "Thư viện mới",
+                AssetType = "js",
+                IsEnabled = true
+            });
+        }
+
+        [RelayCommand]
+        private void RemoveOfflineAsset(HtmlOfflineAssetItemViewModel? item)
+        {
+            if (item != null && OfflineAssetsList.Contains(item))
+                OfflineAssetsList.Remove(item);
+        }
+
+        [RelayCommand]
+        private void AddOfflineAssetFromPreset(AssetPreset? preset)
+        {
+            if (preset == null) return;
+            if (OfflineAssetsList.Any(a => string.Equals(a.SourceUrl, preset.Url, StringComparison.OrdinalIgnoreCase))) return;
+
+            OfflineAssetsList.Add(new HtmlOfflineAssetItemViewModel
+            {
+                Title = preset.Title,
+                Description = preset.Description,
+                SourceUrl = preset.Url,
+                LocalFileName = preset.FileName,
+                AssetType = preset.Type,
+                IsEnabled = true,
+                StatusMessage = FlowMy.Services.Utils.HtmlOfflineAssetService.AssetExists(preset.FileName) ? "✓ Có sẵn" : "✗ Chưa tải về"
+            });
         }
 
         protected override string GetDefaultTitle() => "Dynamic UI Form (Sciter)";
 
         partial void OnHtmlCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.HtmlCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         partial void OnCssCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.CssCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         partial void OnJsCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.JsCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         partial void OnParamsCodeChanged(string value)
         {
-            if (_nodeTyped != null)
-                _nodeTyped.ParamsCode = value ?? string.Empty;
+            // Do not mutate _nodeTyped live while typing/importing in dialog.
         }
 
         protected override void OnSaveTitle()
@@ -157,6 +231,7 @@ namespace FlowMy.ViewModels
 
             SyncInputMappingsToNode();
             SyncOutputKeysToNode();
+            SyncOfflineAssetsToNode();
 
             _nodeTyped.NotifyTitleChanged();
         }

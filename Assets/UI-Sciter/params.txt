@@ -1,0 +1,4 @@
+// Mapping PARAM keys -> DOM CSS selectors
+noteText: #noteInput
+selectedImagePath: #imgPathInput
+selectedVideoPath: #videoPathInput

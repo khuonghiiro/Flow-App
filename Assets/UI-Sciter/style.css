@@ -1,0 +1,328 @@
+/* 🎨 STUNNING MODERN DARK GLASSMORPHIC CSS FOR SCITER UI */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background-color: #0b0f19;
+    background: linear-gradient(135deg, #0b0f19 0%, #111827 50%, #0f172a 100%);
+    color: #f3f4f6;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.app-container {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+/* Header Banner */
+.hero-header {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+}
+
+.logo-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.hero-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #ffffff 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+/* Flex Grid Layout Compatible with Sciter */
+.grid-layout {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+    width: 100%;
+}
+
+/* Cards */
+.card {
+    flex: 1 1 340px;
+    min-width: 280px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.full-width {
+    flex: 1 1 100%;
+    width: 100%;
+}
+
+.card-header {
+    background: rgba(15, 23, 42, 0.6);
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-header .icon {
+    font-size: 15px;
+}
+
+.card-header h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin: 0;
+}
+
+.card-body {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Form Controls */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.2px;
+}
+
+.input-with-btn {
+    display: flex;
+    gap: 6px;
+}
+
+.input-with-btn input {
+    flex: 1;
+}
+
+input[type="text"], textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #f8fafc;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.2s ease;
+    /* Caret color trong Sciter */
+    text-selection-caret-color: #38bdf8;
+    caret-color: #38bdf8;
+}
+
+input[type="text"]:focus, textarea:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.caret-cyan {
+    text-selection-caret-color: #38bdf8;
+    caret-color: #38bdf8;
+}
+
+.path-hint {
+    font-size: 10px;
+    color: #64748b;
+    font-family: monospace;
+    word-break: break-all;
+    margin-top: 2px;
+}
+
+/* Buttons */
+button {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 7px 12px;
+}
+
+.btn-icon-text {
+    background-color: #1e293b;
+    border-color: #475569;
+    color: #cbd5e1;
+    white-space: nowrap;
+}
+
+.btn-icon-text:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.btn-action:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.btn-pill {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+    text-align: center;
+}
+
+.btn-glow-blue {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    border-color: #38bdf8;
+}
+.btn-glow-blue:hover { background: #0369a1; }
+
+.btn-glow-green {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    border-color: #4ade80;
+}
+.btn-glow-green:hover { background: #15803d; }
+
+.btn-glow-amber {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    border-color: #fbbf24;
+}
+.btn-glow-amber:hover { background: #b45309; }
+
+.btn-glow-red {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border-color: #f87171;
+}
+.btn-glow-red:hover { background: #b91c1c; }
+
+/* Media Previews */
+.media-display-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.media-frame {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.frame-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.frame-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 120px;
+    background: #070a12;
+    border-radius: 6px;
+    overflow: hidden;
+    padding: 4px;
+}
+
+.frame-content img {
+    max-width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.frame-content video {
+    max-width: 100%;
+    max-height: 180px;
+    border-radius: 4px;
+}
+
+/* Console Status */
+.status-console {
+    background: #070a12;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.console-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #38bdf8;
+    margin-bottom: 4px;
+}
+
+.console-body {
+    font-size: 11px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    color: #4ade80;
+    word-break: break-all;
+}
