@@ -13,5 +13,8 @@ namespace FlowMy.Models
         public string? RightLiteralValue { get; set; }
         public string? RightSourceNodeId { get; set; }
         public string? RightKey { get; set; }
+
+        /// <summary>Ngưỡng % cho so sánh ảnh (0-100). Chỉ dùng với ImageSimilarity* operators.</summary>
+        public double SimilarityThreshold { get; set; } = 90;
     }
 }

@@ -18,7 +18,11 @@ namespace FlowMy.Models
         Empty,               // Chuỗi rỗng (chỉ cần Left)
         NotEmpty,            // Không rỗng (chỉ cần Left)
         True,                // Giá trị Left là true (chỉ cần Left)
-        False                // Giá trị Left là false (chỉ cần Left)
+        False,               // Giá trị Left là false (chỉ cần Left)
+        ImageSimilarityGte,  // Độ khớp ảnh >= ngưỡng% (Left, Right = base64 ảnh, SimilarityThreshold = %)
+        ImageSimilarityLte,  // Độ khớp ảnh <= ngưỡng%
+        ImageSimilarityGt,   // Độ khớp ảnh > ngưỡng%
+        ImageSimilarityLt    // Độ khớp ảnh < ngưỡng%
     }
 
     /// <summary>Toán tử logic kết hợp điều kiện: OR (||) hoặc AND (&&).</summary>

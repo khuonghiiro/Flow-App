@@ -52,7 +52,11 @@ namespace FlowMy.ViewModels
             new ConditionOperatorOption(ConditionOperator.Empty, "Rỗng"),
             new ConditionOperatorOption(ConditionOperator.NotEmpty, "Không rỗng"),
             new ConditionOperatorOption(ConditionOperator.True, "Giá trị là TRUE"),
-            new ConditionOperatorOption(ConditionOperator.False, "Giá trị là FALSE")
+            new ConditionOperatorOption(ConditionOperator.False, "Giá trị là FALSE"),
+            new ConditionOperatorOption(ConditionOperator.ImageSimilarityGte, "🖼️ Ảnh khớp >= %"),
+            new ConditionOperatorOption(ConditionOperator.ImageSimilarityLte, "🖼️ Ảnh khớp <= %"),
+            new ConditionOperatorOption(ConditionOperator.ImageSimilarityGt, "🖼️ Ảnh khớp > %"),
+            new ConditionOperatorOption(ConditionOperator.ImageSimilarityLt, "🖼️ Ảnh khớp < %")
         };
 
         public ConditionalNodeDialogViewModel(WorkflowNode node, IWorkflowEditorHost host)

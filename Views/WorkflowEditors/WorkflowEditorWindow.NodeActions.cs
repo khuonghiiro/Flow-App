@@ -1624,7 +1624,8 @@ namespace FlowMy.Views
                         RightUseLiteralValue = x.RightUseLiteralValue,
                         RightLiteralValue = x.RightLiteralValue,
                         RightSourceNodeId = x.RightSourceNodeId,
-                        RightKey = x.RightKey
+                        RightKey = x.RightKey,
+                        SimilarityThreshold = x.SimilarityThreshold
                     }).ToList(),
                     OperatorsBetween = b.OperatorsBetween?.ToList(),
                     LeftKey = b.LeftKey,
@@ -1632,7 +1633,8 @@ namespace FlowMy.Views
                     RightUseLiteralValue = b.RightUseLiteralValue,
                     RightLiteralValue = b.RightLiteralValue,
                     RightSourceNodeId = b.RightSourceNodeId,
-                    RightKey = b.RightKey
+                    RightKey = b.RightKey,
+                    SimilarityThreshold = b.SimilarityThreshold
                 };
 
                 if (b.Port != null && portMap.TryGetValue(b.Port, out var mapped))

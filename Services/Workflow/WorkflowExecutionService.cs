@@ -1782,8 +1782,29 @@ namespace FlowMy.Services.Workflow
         /// </summary>
         internal static bool EvaluateCondition(string? left, string? right, ConditionOperator op)
         {
+            return EvaluateCondition(left, right, op, 90);
+        }
+
+        internal static bool EvaluateCondition(string? left, string? right, ConditionOperator op, double similarityThreshold)
+        {
             left = left?.Trim() ?? string.Empty;
             right = right?.Trim() ?? string.Empty;
+
+            if (op == ConditionOperator.ImageSimilarityGte ||
+                op == ConditionOperator.ImageSimilarityLte ||
+                op == ConditionOperator.ImageSimilarityGt ||
+                op == ConditionOperator.ImageSimilarityLt)
+            {
+                double similarity = ComputeImageSimilarity(left, right);
+                System.Diagnostics.Debug.WriteLine($"[EvaluateCondition] ImageSimilarity: {similarity:F2}%, Target Threshold: {similarityThreshold:F2}%, Operator: {op}");
+                switch (op)
+                {
+                    case ConditionOperator.ImageSimilarityGte: return similarity >= similarityThreshold;
+                    case ConditionOperator.ImageSimilarityLte: return similarity <= similarityThreshold;
+                    case ConditionOperator.ImageSimilarityGt: return similarity > similarityThreshold;
+                    case ConditionOperator.ImageSimilarityLt: return similarity < similarityThreshold;
+                }
+            }
 
             switch (op)
             {
@@ -1803,6 +1824,70 @@ namespace FlowMy.Services.Workflow
                 case ConditionOperator.False: return !ConditionValueToBool(left);
                 default: return false;
             }
+        }
+
+        public static double ComputeImageSimilarity(string? base64_1, string? base64_2)
+        {
+            if (string.IsNullOrWhiteSpace(base64_1) || string.IsNullOrWhiteSpace(base64_2))
+                return 0;
+
+            try
+            {
+                var clean1 = CleanBase64String(base64_1);
+                var clean2 = CleanBase64String(base64_2);
+
+                byte[] bytes1 = Convert.FromBase64String(clean1);
+                byte[] bytes2 = Convert.FromBase64String(clean2);
+
+                using var origBmp1 = SkiaSharp.SKBitmap.Decode(bytes1);
+                using var origBmp2 = SkiaSharp.SKBitmap.Decode(bytes2);
+
+                if (origBmp1 == null || origBmp2 == null)
+                    return 0;
+
+                const int targetSize = 64;
+                var info = new SkiaSharp.SKImageInfo(targetSize, targetSize, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+
+                using var resized1 = origBmp1.Resize(info, SkiaSharp.SKFilterQuality.Low);
+                using var resized2 = origBmp2.Resize(info, SkiaSharp.SKFilterQuality.Low);
+
+                if (resized1 == null || resized2 == null)
+                    return 0;
+
+                var pixels1 = resized1.Bytes;
+                var pixels2 = resized2.Bytes;
+
+                if (pixels1 == null || pixels2 == null || pixels1.Length != pixels2.Length)
+                    return 0;
+
+                double totalDiff = 0;
+                int totalBytes = pixels1.Length;
+
+                for (int i = 0; i < totalBytes; i++)
+                {
+                    totalDiff += Math.Abs(pixels1[i] - pixels2[i]);
+                }
+
+                double maxDiff = totalBytes * 255.0;
+                double similarity = (1.0 - (totalDiff / maxDiff)) * 100.0;
+                return similarity;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ComputeImageSimilarity] Error: {ex.Message}");
+                return 0;
+            }
+        }
+
+        private static string CleanBase64String(string b64)
+        {
+            b64 = b64.Trim();
+            int idx = b64.IndexOf(",");
+            if (idx >= 0 && idx < 100)
+            {
+                b64 = b64.Substring(idx + 1);
+            }
+            return b64.Trim();
         }
 
         private static bool TryCompareNumeric(string left, string right, out int result)

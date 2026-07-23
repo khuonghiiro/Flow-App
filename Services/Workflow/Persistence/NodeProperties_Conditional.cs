@@ -89,6 +89,7 @@ public sealed partial class FileWorkflowPersistenceService
                 if (d.TryGetValue("RightLiteralValue", out v)) branch.RightLiteralValue = GetStringFromJsonValue(v);
                 if (d.TryGetValue("RightSourceNodeId", out v)) branch.RightSourceNodeId = GetStringFromJsonValue(v);
                 if (d.TryGetValue("RightKey", out v)) branch.RightKey = GetStringFromJsonValue(v);
+                if (d.TryGetValue("SimilarityThreshold", out v) && double.TryParse(GetStringFromJsonValue(v), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var st)) branch.SimilarityThreshold = st;
                 if (d.TryGetValue("Condition", out v)) branch.Condition = GetStringFromJsonValue(v);
                 if (d.TryGetValue("CanRemove", out v) && bool.TryParse(GetStringFromJsonValue(v), out var cr)) branch.CanRemove = cr;
                 if (d.TryGetValue("SubConditions", out v) && v is JsonElement se)
@@ -108,6 +109,7 @@ public sealed partial class FileWorkflowPersistenceService
                                 if (x.TryGetValue("RightLiteralValue", out vx)) expr.RightLiteralValue = GetStringFromJsonValue(vx);
                                 if (x.TryGetValue("RightSourceNodeId", out vx)) expr.RightSourceNodeId = GetStringFromJsonValue(vx);
                                 if (x.TryGetValue("RightKey", out vx)) expr.RightKey = GetStringFromJsonValue(vx);
+                                if (x.TryGetValue("SimilarityThreshold", out vx) && double.TryParse(GetStringFromJsonValue(vx), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var stx)) expr.SimilarityThreshold = stx;
                                 return expr;
                             }).ToList();
                         }
@@ -148,6 +150,7 @@ public sealed partial class FileWorkflowPersistenceService
             RightLiteralValue = b.RightLiteralValue,
             RightSourceNodeId = b.RightSourceNodeId,
             RightKey = b.RightKey,
+            SimilarityThreshold = b.SimilarityThreshold,
             Condition = b.Condition,
             CanRemove = b.CanRemove,
             SubConditions = b.SubConditions?.Select(expr => new
@@ -158,7 +161,8 @@ public sealed partial class FileWorkflowPersistenceService
                 RightUseLiteralValue = expr.RightUseLiteralValue,
                 RightLiteralValue = expr.RightLiteralValue,
                 RightSourceNodeId = expr.RightSourceNodeId,
-                RightKey = expr.RightKey
+                RightKey = expr.RightKey,
+                SimilarityThreshold = expr.SimilarityThreshold
             }).ToList(),
             OperatorsBetween = b.OperatorsBetween?.Select(o => o.ToString()).ToList()
         }).ToList());

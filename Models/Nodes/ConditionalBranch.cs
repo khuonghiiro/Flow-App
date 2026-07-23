@@ -31,6 +31,9 @@ namespace FlowMy.Models
         public string? RightSourceNodeId { get; set; }
         public string? RightKey { get; set; }
 
+        /// <summary>Ngưỡng % cho so sánh ảnh (0-100). Chỉ dùng với ImageSimilarity* operators.</summary>
+        public double SimilarityThreshold { get; set; } = 90;
+
         /// <summary>Nhiều điều kiện con kết hợp OR/AND. Null/empty = dùng Left/Op/Right ở trên.</summary>
         public List<ConditionExpression>? SubConditions { get; set; }
         /// <summary>Toán tử giữa SubConditions[i] và SubConditions[i+1]: LogicalOperator.Or hoặc .And.</summary>

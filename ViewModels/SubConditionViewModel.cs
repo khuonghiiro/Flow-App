@@ -37,6 +37,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private string? _rightKey;
 
+        [ObservableProperty]
+        private double _similarityThreshold = 90;
+
         public ObservableCollection<WorkflowDataSourceOption> AvailableSourceNodes { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> AvailableLeftKeys { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> AvailableRightKeys { get; } = new();
@@ -46,6 +49,12 @@ namespace FlowMy.ViewModels
             Operator != ConditionOperator.NotEmpty &&
             Operator != ConditionOperator.True &&
             Operator != ConditionOperator.False;
+
+        public bool IsImageSimilarityMode =>
+            Operator == ConditionOperator.ImageSimilarityGte ||
+            Operator == ConditionOperator.ImageSimilarityLte ||
+            Operator == ConditionOperator.ImageSimilarityGt ||
+            Operator == ConditionOperator.ImageSimilarityLt;
 
         public string OperatorLabel => OperatorBefore == LogicalOperator.Or ? "OR" : "AND";
 
@@ -71,6 +80,7 @@ namespace FlowMy.ViewModels
             _rightLiteralValue = expression.RightLiteralValue ?? string.Empty;
             _rightSourceNodeId = expression.RightSourceNodeId;
             _rightKey = expression.RightKey;
+            _similarityThreshold = expression.SimilarityThreshold;
 
             foreach (var opt in availableSourceNodes)
                 AvailableSourceNodes.Add(opt);
@@ -119,7 +129,11 @@ namespace FlowMy.ViewModels
             }
         }
 
-        partial void OnOperatorChanged(ConditionOperator value) => OnPropertyChanged(nameof(IsRightSideVisible));
+        partial void OnOperatorChanged(ConditionOperator value)
+        {
+            OnPropertyChanged(nameof(IsRightSideVisible));
+            OnPropertyChanged(nameof(IsImageSimilarityMode));
+        }
 
         public void SyncToExpression()
         {
@@ -130,6 +144,7 @@ namespace FlowMy.ViewModels
             Expression.RightLiteralValue = string.IsNullOrWhiteSpace(RightLiteralValue) ? null : RightLiteralValue.Trim();
             Expression.RightSourceNodeId = RightSourceNodeId;
             Expression.RightKey = RightKey;
+            Expression.SimilarityThreshold = SimilarityThreshold;
         }
     }
 }

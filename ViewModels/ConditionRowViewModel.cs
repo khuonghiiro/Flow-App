@@ -53,6 +53,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool _isElse;
 
+        [ObservableProperty]
+        private double _similarityThreshold = 90;
+
         public bool CanRemove { get; }
 
         /// <summary>Sub-conditions thêm bằng OR/AND (item đầu = main condition từ Left/Op/Right).</summary>
@@ -73,6 +76,12 @@ namespace FlowMy.ViewModels
             Operator != ConditionOperator.NotEmpty &&
             Operator != ConditionOperator.True &&
             Operator != ConditionOperator.False;
+
+        public bool IsImageSimilarityMode =>
+            Operator == ConditionOperator.ImageSimilarityGte ||
+            Operator == ConditionOperator.ImageSimilarityLte ||
+            Operator == ConditionOperator.ImageSimilarityGt ||
+            Operator == ConditionOperator.ImageSimilarityLt;
 
         public ConditionRowViewModel(
             WorkflowNode conditionalNode,
@@ -96,6 +105,7 @@ namespace FlowMy.ViewModels
             _rightLiteralValue = branch.RightLiteralValue ?? string.Empty;
             _rightSourceNodeId = branch.RightSourceNodeId;
             _rightKey = branch.RightKey;
+            _similarityThreshold = branch.SimilarityThreshold;
 
             foreach (var opt in availableSourceNodes)
                 AvailableSourceNodes.Add(opt);
@@ -156,6 +166,7 @@ namespace FlowMy.ViewModels
         partial void OnOperatorChanged(ConditionOperator value)
         {
             OnPropertyChanged(nameof(IsRightSideVisible));
+            OnPropertyChanged(nameof(IsImageSimilarityMode));
         }
 
         private void LoadSubConditions(ObservableCollection<WorkflowDataSourceOption> availableSourceNodes)
@@ -242,6 +253,7 @@ namespace FlowMy.ViewModels
                 Branch.RightLiteralValue = Branch.SubConditions?[0]?.RightLiteralValue;
                 Branch.RightSourceNodeId = Branch.SubConditions?[0]?.RightSourceNodeId;
                 Branch.RightKey = Branch.SubConditions?[0]?.RightKey;
+                Branch.SimilarityThreshold = Branch.SubConditions?[0]?.SimilarityThreshold ?? SimilarityThreshold;
                 for (int i = 1; i < SubConditions.Count; i++)
                     SubConditions[i].SyncToExpression();
             }
@@ -254,6 +266,7 @@ namespace FlowMy.ViewModels
                 Branch.RightLiteralValue = string.IsNullOrWhiteSpace(RightLiteralValue) ? null : RightLiteralValue.Trim();
                 Branch.RightSourceNodeId = RightSourceNodeId;
                 Branch.RightKey = RightKey;
+                Branch.SimilarityThreshold = SimilarityThreshold;
             }
         }
     }

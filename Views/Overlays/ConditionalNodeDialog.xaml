@@ -207,18 +207,59 @@
                                                                 <!-- Bên phải -->
                                                                 <StackPanel Grid.Row="3" Orientation="Vertical" Margin="0,0,0,0"
                                                                             Visibility="{Binding IsRightSideVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    <!-- CheckBox dùng giá trị nhập (ẩn khi so sánh ảnh) -->
                                                                     <CheckBox Content="Dùng giá trị nhập (so sánh với text bên dưới)"
                                                                               IsChecked="{Binding RightUseLiteralValue, Mode=TwoWay}"
+                                                                              Visibility="{Binding IsImageSimilarityMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                                                                               Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,6"/>
+
+                                                                    <!-- Ngưỡng khớp % (chỉ hiện khi so sánh ảnh) -->
                                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6"
-                                                                                Visibility="{Binding RightUseLiteralValue, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                                Visibility="{Binding IsImageSimilarityMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                        <TextBlock Text="Ngưỡng khớp (%)" Foreground="{DynamicResource TextMuted}" FontSize="10" Width="100" VerticalAlignment="Center"/>
+                                                                        <TextBox Height="32" Width="100" Style="{DynamicResource BaseTextBoxV2}" Margin="8,0,0,0"
+                                                                                 Text="{Binding SimilarityThreshold, UpdateSourceTrigger=PropertyChanged}"
+                                                                                 VerticalContentAlignment="Center" Padding="8,0,8,0"/>
+                                                                        <TextBlock Text="%" Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                                    </StackPanel>
+
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                                        <StackPanel.Style>
+                                                                            <Style TargetType="StackPanel">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <MultiDataTrigger>
+                                                                                        <MultiDataTrigger.Conditions>
+                                                                                            <Condition Binding="{Binding RightUseLiteralValue}" Value="True"/>
+                                                                                            <Condition Binding="{Binding IsImageSimilarityMode}" Value="False"/>
+                                                                                        </MultiDataTrigger.Conditions>
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </MultiDataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </StackPanel.Style>
                                                                         <TextBlock Text="Giá trị so sánh" Foreground="{DynamicResource TextMuted}" FontSize="10" Width="100" VerticalAlignment="Center"/>
                                                                         <TextBox Height="32" MinWidth="200" Style="{DynamicResource BaseTextBoxV2}" Margin="8,0,0,0"
                                                                                  Text="{Binding RightLiteralValue, UpdateSourceTrigger=PropertyChanged}"
                                                                                  VerticalContentAlignment="Center" Padding="8,0,8,0"/>
                                                                     </StackPanel>
-                                                                    <!-- Node phải + Key phải: 2 cột bằng nhau -->
-                                                                    <Grid Visibility="{Binding RightUseLiteralValue, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+
+                                                                    <!-- Node phải + Key phải: 2 cột bằng nhau (hiện khi không dùng literal HOẶC khi so sánh ảnh) -->
+                                                                    <Grid>
+                                                                        <Grid.Style>
+                                                                            <Style TargetType="Grid">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <MultiDataTrigger>
+                                                                                        <MultiDataTrigger.Conditions>
+                                                                                            <Condition Binding="{Binding RightUseLiteralValue}" Value="True"/>
+                                                                                            <Condition Binding="{Binding IsImageSimilarityMode}" Value="False"/>
+                                                                                        </MultiDataTrigger.Conditions>
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </MultiDataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Grid.Style>
                                                                         <Grid.ColumnDefinitions>
                                                                             <ColumnDefinition Width="*"/>
                                                                             <ColumnDefinition Width="*"/>
