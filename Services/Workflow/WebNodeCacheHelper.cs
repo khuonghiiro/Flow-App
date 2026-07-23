@@ -404,7 +404,7 @@ public static class WebNodeCacheHelper
         {
             RestorePortableHtmlAssetsOnly(portableCacheRoot);
             WebCookiePortableBridge.Enqueue(cookieFileText);
-            return;
+            // Không return sớm — tiếp tục phía dưới để restore profile Isolated nếu có trong bundle
         }
 
         foreach (var n in nodes.OfType<WebNode>())

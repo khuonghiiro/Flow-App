@@ -2585,7 +2585,10 @@ if (window.__elementInspector) {
                         System.Diagnostics.Debug.WriteLine($"DevTools Network enable error: {ex.Message}");
                     }
 
-                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager);
+                    var profileForCookie = string.Equals(activeCacheMode, "Isolated", StringComparison.OrdinalIgnoreCase)
+                        ? (activeCustomCacheName ?? "Shared")
+                        : "Shared";
+                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager, profileForCookie);
                     EnsureWebViewAndNavigate();
 
                     // If there's queued JS from workflow execution, run it as soon as CoreWebView2 is ready.

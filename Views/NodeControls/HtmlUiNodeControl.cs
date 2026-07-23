@@ -1835,7 +1835,7 @@ namespace FlowMy.Views.NodeControls
                                 var core1 = TryGetCoreSafe(wvInit);
                                 if (core1 == null) return;
                                 AttachProcessFailedHandler(wvInit, isTab1: true);
-                                await WebCookiePortableBridge.TryConsumeAndApplyAsync(core1.CookieManager);
+                                await WebCookiePortableBridge.TryConsumeAndApplyAsync(core1.CookieManager, "Shared");
                                 core1.NavigationCompleted += (_, _) =>
                                 {
                                     var url = core1.Source;
@@ -3635,7 +3635,7 @@ namespace FlowMy.Views.NodeControls
                     };
 
                     // Load HTML từ các tab
-                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager);
+                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager, "Shared");
                     await ReloadHtmlAsync();
                     }
 

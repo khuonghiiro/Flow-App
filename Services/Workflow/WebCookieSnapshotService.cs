@@ -18,7 +18,7 @@ namespace FlowMy.Services.Workflow;
 /// </summary>
 public static class WebCookieSnapshotService
 {
-    public const int FormatVersion = 2;
+    public const int FormatVersion = 3;
 
     private static readonly SemaphoreSlim ExportWebViewGate = new(1, 1);
 
@@ -35,6 +35,10 @@ public static class WebCookieSnapshotService
     {
         [JsonPropertyName("requestUri")]
         public string? RequestUri { get; set; }
+
+        /// <summary>Tên profile WebView2 sở hữu cookie entry này ("Shared" hoặc tên profile độc lập). Mặc định "Shared" nếu null/empty (tương thích v2).</summary>
+        [JsonPropertyName("profile")]
+        public string? Profile { get; set; }
 
         [JsonPropertyName("cookies")]
         public List<PortableCookieItemDto>? Cookies { get; set; }
@@ -151,7 +155,7 @@ public static class WebCookieSnapshotService
 
                         var list = batch.Select(SerializeCookie).Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain)).ToList();
                         if (list.Count > 0)
-                            entries.Add(new PortableCookieEntryDto { RequestUri = uri, Cookies = list });
+                            entries.Add(new PortableCookieEntryDto { RequestUri = uri, Profile = profileName, Cookies = list });
                     }
                 }
                 catch (Exception ex)
@@ -173,7 +177,20 @@ public static class WebCookieSnapshotService
         return JsonSerializer.Serialize(dto, JsonOpts);
     }
 
+    /// <summary>
+    /// Apply tất cả cookie từ snapshot JSON vào cookie manager (không phân biệt profile — legacy).
+    /// </summary>
     public static Task ApplySnapshotJsonAsync(CoreWebView2CookieManager mgr, string json)
+    {
+        return ApplySnapshotJsonForProfileAsync(mgr, json, profileName: null);
+    }
+
+    /// <summary>
+    /// Apply cookie từ snapshot JSON, chỉ apply các entry có profile khớp <paramref name="profileName"/>.
+    /// Nếu <paramref name="profileName"/> là null, apply tất cả entries (legacy behavior).
+    /// Entry không có trường profile (v2) mặc định coi là "Shared".
+    /// </summary>
+    public static Task ApplySnapshotJsonForProfileAsync(CoreWebView2CookieManager mgr, string json, string? profileName)
     {
         if (mgr == null || string.IsNullOrWhiteSpace(json)) return Task.CompletedTask;
 
@@ -188,7 +205,7 @@ public static class WebCookieSnapshotService
             return Task.CompletedTask;
         }
 
-        if (dto == null || dto.Format != FormatVersion || dto.Entries == null || dto.Entries.Count == 0)
+        if (dto == null || !IsSupportedFormatVersion(dto.Format) || dto.Entries == null || dto.Entries.Count == 0)
             return Task.CompletedTask;
 
         try
@@ -196,6 +213,15 @@ public static class WebCookieSnapshotService
             foreach (var entry in dto.Entries)
             {
                 if (entry.Cookies == null) continue;
+
+                // Nếu profileName được chỉ định, chỉ apply entry khớp profile
+                if (profileName != null)
+                {
+                    var entryProfile = string.IsNullOrWhiteSpace(entry.Profile) ? "Shared" : entry.Profile.Trim();
+                    if (!string.Equals(entryProfile, profileName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+
                 foreach (var c in entry.Cookies)
                 {
                     var name = c.Name?.Trim();
@@ -228,6 +254,10 @@ public static class WebCookieSnapshotService
         return Task.CompletedTask;
     }
 
+    /// <summary>Kiểm tra format version hỗ trợ (v2 hoặc v3).</summary>
+    private static bool IsSupportedFormatVersion(int version) => version == 2 || version == 3;
+
+    /// <summary>Kiểm tra JSON có phải portable cookie bundle hợp lệ (v2 hoặc v3).</summary>
     public static bool IsV2PortableCookieBundleJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return false;
@@ -236,7 +266,7 @@ public static class WebCookieSnapshotService
             using var doc = JsonDocument.Parse(json);
             if (!doc.RootElement.TryGetProperty("format", out var f) || f.ValueKind != JsonValueKind.Number)
                 return false;
-            return f.GetInt32() == FormatVersion;
+            return IsSupportedFormatVersion(f.GetInt32());
         }
         catch
         {
