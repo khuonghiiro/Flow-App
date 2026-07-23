@@ -120,6 +120,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (image == null)
                 {
+                    if (!textScan.EnableTextScan)
+                    {
+                        // Tắt OCR → không cần ảnh, bỏ qua và tiếp tục workflow
+                        var emptyResult = new OcrResult
+                        {
+                            Text = string.Empty,
+                            Lines = string.Empty,
+                            Words = new System.Collections.Generic.Dictionary<string, string>()
+                        };
+                        PublishOutputs(textScan, null!, emptyResult, env);
+
+                        sw.Stop();
+                        env.OnNodeCompleted?.Invoke(textScan, sw.Elapsed);
+                        await env.TraverseOutputsAsync(textScan);
+                        return;
+                    }
+
                     env.OnNodeFailed?.Invoke(textScan, "Không thể tải ảnh để OCR");
                     return;
                 }
@@ -250,12 +267,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                 }
             }
+            // Nếu không có input toạ độ từ node nguồn → dùng toạ độ đã lưu trong node
 
-            // Nếu không có input toạ độ và đã có ảnh → dùng lại
-            if (!shouldCapture && textScan.CapturedImage != null)
-                return textScan.CapturedImage;
-
-            if (w <= 0 || h <= 0) return null;
+            // Có toạ độ hợp lệ → luôn chụp lại (kể cả khi đã có ảnh cache)
+            // Không có toạ độ nhưng có ảnh cache → dùng lại ảnh cũ
+            if (w <= 0 || h <= 0)
+            {
+                return textScan.CapturedImage; // null nếu chưa có ảnh
+            }
 
             if (textScan.CaptureWorkflowCanvas)
             {
@@ -604,13 +623,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         // ── Publish outputs ───────────────────────────────────────────────────
 
-        private static void PublishOutputs(TextScanNode textScan, BitmapImage image, OcrResult ocrResult, NodeExecutionEnvironment env)
+        private static void PublishOutputs(TextScanNode textScan, BitmapImage? image, OcrResult ocrResult, NodeExecutionEnvironment env)
         {
             if (textScan.DynamicOutputs == null) return;
 
             // Encode PNG nếu cần
             bool needBase64 = !textScan.SkipOutputs.Contains("imageBase64");
-            byte[]? pngBytes = needBase64 ? TryEncodePng(image) : null;
+            byte[]? pngBytes = (needBase64 && image != null) ? TryEncodePng(image) : null;
 
             foreach (var port in textScan.DynamicOutputs)
             {
@@ -625,8 +644,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     "extractedtext" => ocrResult.Text,
                     "extractedtextlines" => ocrResult.Lines,
-                    "imagewidth" => image.PixelWidth.ToString(),
-                    "imageheight" => image.PixelHeight.ToString(),
+                    "imagewidth" => image?.PixelWidth.ToString() ?? "0",
+                    "imageheight" => image?.PixelHeight.ToString() ?? "0",
                     "imagebase64" => pngBytes != null ? Convert.ToBase64String(pngBytes) : string.Empty,
                     "capturex" => textScan.CaptureX.ToString(),
                     "capturey" => textScan.CaptureY.ToString(),
