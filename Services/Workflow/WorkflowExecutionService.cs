@@ -302,7 +302,7 @@ namespace FlowMy.Services.Workflow
             }
             else
             {
-                resolved = NodeDataPanelService.ResolveDynamicValueByKey(node, k) ?? string.Empty;
+                resolved = NodeDataPanelService.ResolveDynamicValueByKey(node, k, forDisplay: false) ?? string.Empty;
             }
             return string.Equals(resolved, "—", StringComparison.Ordinal) ? string.Empty : resolved;
         }
@@ -321,7 +321,7 @@ namespace FlowMy.Services.Workflow
             if (k.Length == 0) return string.Empty;
             if (env.RefreshOnly)
             {
-                var r = NodeDataPanelService.ResolveDynamicValueByKey(node, k) ?? string.Empty;
+                var r = NodeDataPanelService.ResolveDynamicValueByKey(node, k, forDisplay: false) ?? string.Empty;
                 return string.Equals(r, "—", StringComparison.Ordinal) ? string.Empty : r;
             }
 

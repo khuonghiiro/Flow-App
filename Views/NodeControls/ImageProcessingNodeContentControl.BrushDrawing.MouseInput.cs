@@ -48,15 +48,22 @@ namespace FlowMy.Views.NodeControls
             var activeLayer = _node.EditorDoc.ActiveLayer;
             if (activeLayer == null || activeLayer.IsLocked || !activeLayer.IsVisible) return;
 
+            MainScrollViewer?.Focus();
+
             string tool = EditorPanel.ActiveToolName;
             var clickPos = e.GetPosition(MainImage);
 
             if (tool != "Move" && tool != "Transform")
             {
-                if (activeLayer.OriginalTransformBitmap != null)
+                if (activeLayer.OriginalTransformBitmap != null || activeLayer.ContentGeometry != null)
                 {
-                    activeLayer.OriginalTransformBitmap = null;
-                    activeLayer.ContentBounds = Rect.Empty;
+                    int stride = activeLayer.Width * 4;
+                    byte[] pixels = new byte[stride * activeLayer.Height];
+                    activeLayer.Bitmap.CopyPixels(pixels, stride, 0);
+
+                    var rasterizeCmd = new PixelEditCommand(activeLayer, pixels, pixels);
+                    rasterizeCmd.KeepOriginalTransformBitmap = false;
+                    _node.EditorDoc.History.Execute(rasterizeCmd);
                 }
 
                 // Luôn dùng ImageContentBounds (persistent, không bị clear bởi commands)
@@ -398,11 +405,6 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Brush")
             {
-                // Kiểm tra click có nằm trong layer bounds không
-                if (px < activeLayer.OffsetX || px >= activeLayer.OffsetX + activeLayer.Width ||
-                    py < activeLayer.OffsetY || py >= activeLayer.OffsetY + activeLayer.Height)
-                    return; // Click ngoài layer → bỏ qua
-
                 _isDrawingPixels = true;
 
                 // Xác định kích thước overlay và offset
@@ -547,11 +549,6 @@ namespace FlowMy.Views.NodeControls
             }
             else if (tool == "Eraser")
             {
-                // Kiểm tra click có nằm trong layer bounds không
-                if (px < activeLayer.OffsetX || px >= activeLayer.OffsetX + activeLayer.Width ||
-                    py < activeLayer.OffsetY || py >= activeLayer.OffsetY + activeLayer.Height)
-                    return; // Click ngoài layer → bỏ qua
-
                 _isDrawingPixels = true;
 
                 // Xác định kích thước overlay và offset

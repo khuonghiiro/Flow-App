@@ -349,7 +349,7 @@ namespace FlowMy.Views.NodeControls
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
-            double offsetMul = r * 6.0;
+            double offsetMul = r * 1.0;
 
             if (r <= 0.5)
             {
@@ -377,7 +377,7 @@ namespace FlowMy.Views.NodeControls
             {
                 double spotCx = cx + offset.x * offsetMul;
                 double spotCy = cy + offset.y * offsetMul;
-                double spotRadius = 0.5 + (r - 0.5) * (offset.size * 0.15);
+                double spotRadius = 0.5 + (r - 0.5) * (offset.size * 0.06);
 
                 int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
                 int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
@@ -417,7 +417,7 @@ namespace FlowMy.Views.NodeControls
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
-            double offsetMul = r * 6.0;
+            double offsetMul = r * 1.0;
 
             if (r <= 0.5)
             {
@@ -447,7 +447,7 @@ namespace FlowMy.Views.NodeControls
             {
                 double spotCx = cx + offset.x * offsetMul;
                 double spotCy = cy + offset.y * offsetMul;
-                double spotRadius = 0.5 + (r - 0.5) * 0.25;
+                double spotRadius = 0.5 + (r - 0.5) * 0.08;
 
                 int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
                 int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
@@ -491,7 +491,7 @@ namespace FlowMy.Views.NodeControls
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
-            double offsetMul = r * 6.0;
+            double offsetMul = r * 1.0;
 
             if (r <= 0.5)
             {
@@ -519,7 +519,7 @@ namespace FlowMy.Views.NodeControls
             {
                 double blobCx = cx + offset.x * offsetMul;
                 double blobCy = cy + offset.y * offsetMul;
-                double blobRadius = 0.5 + (r - 0.5) * offset.scale;
+                double blobRadius = 0.5 + (r - 0.5) * offset.scale * 0.4;
 
                 int startX = Math.Max(0, (int)Math.Floor(blobCx - blobRadius - 0.5));
                 int endX = Math.Min(width - 1, (int)Math.Ceiling(blobCx + blobRadius + 0.5));
@@ -633,7 +633,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            double outerRadius = r * 1.8 + 0.5;
+            double outerRadius = r + 0.5;
             int startX = Math.Max(0, (int)Math.Floor(cx - outerRadius));
             int endX = Math.Min(width - 1, (int)Math.Ceiling(cx + outerRadius));
             int startY = Math.Max(0, (int)Math.Floor(cy - outerRadius));
@@ -677,7 +677,7 @@ namespace FlowMy.Views.NodeControls
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
-            double offsetMul = r * 6.0;
+            double offsetMul = r * 1.0;
 
             if (r <= 0.5)
             {
@@ -705,7 +705,7 @@ namespace FlowMy.Views.NodeControls
             {
                 double spotCx = cx + offset.x * offsetMul;
                 double spotCy = cy + offset.y * offsetMul;
-                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.4;
+                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.15;
 
                 int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
                 int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
@@ -744,7 +744,7 @@ namespace FlowMy.Views.NodeControls
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
-            double offsetMul = r * 4.0;
+            double offsetMul = r * 1.0;
 
             if (r <= 0.5)
             {
@@ -774,7 +774,7 @@ namespace FlowMy.Views.NodeControls
             {
                 double spotCx = cx + offset.x * offsetMul;
                 double spotCy = cy + offset.y * offsetMul;
-                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.45;
+                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.18;
 
                 int startX = Math.Max(0, (int)Math.Floor(spotCx - spotRadius - 0.5));
                 int endX = Math.Min(width - 1, (int)Math.Ceiling(spotCx + spotRadius + 0.5));
@@ -816,7 +816,7 @@ namespace FlowMy.Views.NodeControls
         {
             double r = radius * 0.5;
             double flowMul = flow / 100.0;
-            double offsetMul = r * 3.5;
+            double offsetMul = r * 1.0;
 
             if (r <= 0.5)
             {
@@ -844,7 +844,7 @@ namespace FlowMy.Views.NodeControls
             {
                 double spotCx = cx + offset.x * offsetMul;
                 double spotCy = cy + offset.y * offsetMul;
-                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.25;
+                double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.10;
 
                 double bristleFlow = 0.6 + 0.4 * (Math.Abs(Math.Sin(offset.x * 37.13 + offset.y * 53.45) * 1000.0) % 1.0);
 

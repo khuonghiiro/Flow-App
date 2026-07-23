@@ -116,11 +116,45 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>
-        /// Resolve giá trị từ node theo key. Dùng cho cả UI và execution.
+        /// Resolve giá trị từ node theo key. Dùng cho cả UI (forDisplay = true) và execution/data-passing (forDisplay = false).
+        /// Khi forDisplay = true (mặc định cho UI canvas), các dữ liệu dạng base64 lớn sẽ được ngắt đoạn "..." để tránh làm đơ WPF canvas.
+        /// Khi forDisplay = false (dành cho copy hoặc truyền dữ liệu sang node logic khác), giữ nguyên base64 đầy đủ.
         /// </summary>
-        public static string ResolveDynamicValueByKey(WorkflowNode node, string key)
+        public static string ResolveDynamicValueByKey(WorkflowNode node, string key, bool forDisplay = true)
+        {
+            var rawValue = ResolveRawDynamicValueByKey(node, key);
+            if (forDisplay && IsBase64Value(key, rawValue))
+            {
+                return TruncateBase64ForDisplay(rawValue);
+            }
+            return rawValue;
+        }
+
+        public static string ResolveRawDynamicValueByKey(WorkflowNode node, string key)
         {
             key = key.Trim();
+            if (string.IsNullOrWhiteSpace(key)) return "—";
+
+            // Hỗ trợ truy cập đường dẫn cú pháp ngoặc vuông: key[fieldName], key[index], key[fieldName][index], key[index][fieldName], key[0...n]
+            if (key.Contains("[") && key.Contains("]"))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(key, @"^([^\[]+)((?:\[[^\]]+\])+)$");
+                if (match.Success)
+                {
+                    var rootKey = match.Groups[1].Value.Trim();
+                    var bracketExpr = match.Groups[2].Value;
+
+                    var rootRaw = ResolveRawDynamicValueByKey(node, rootKey);
+                    if (!string.IsNullOrWhiteSpace(rootRaw) && rootRaw != "—")
+                    {
+                        var evaluated = EvaluateJsonPath(rootRaw, bracketExpr);
+                        if (evaluated != null)
+                        {
+                            return evaluated;
+                        }
+                    }
+                }
+            }
 
             // WebNode: cookie, bearer, access_token luôn lấy từ LastCookie/LastBearer/LastAccessToken (runtime từ response),
             // KHÔNG dùng UserValueOverride vì có thể bị sync nhầm từ node input (dữ liệu cookie gửi vào, không phải cookie nhận được).
@@ -558,6 +592,281 @@ namespace FlowMy.Services.Rendering
                 using var ms = new MemoryStream();
                 encoder.Save(ms);
                 return ms.ToArray();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static bool IsBase64Value(string? key, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value == "—") return false;
+            var trimmed = value.Trim();
+
+            if (!string.IsNullOrWhiteSpace(key) && key.Contains("Base64", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (trimmed.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("data:application/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("data:video/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("data:audio/", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (trimmed.StartsWith("[\"data:image/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("[\"iVBORw0", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("[\"/9j/", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("[\"UklGR", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (trimmed.Length > 100 && (
+                trimmed.StartsWith("iVBORw0", StringComparison.Ordinal) ||
+                trimmed.StartsWith("/9j/", StringComparison.Ordinal) ||
+                trimmed.StartsWith("UklGR", StringComparison.Ordinal) ||
+                trimmed.StartsWith("R0lGOD", StringComparison.Ordinal) ||
+                trimmed.StartsWith("Qk0", StringComparison.Ordinal)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static string TruncateBase64ForDisplay(string? rawValue, int maxChars = 50)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue) || rawValue == "—") return "—";
+            var trimmed = rawValue.Trim();
+
+            if ((trimmed.StartsWith("[") && trimmed.EndsWith("]")) ||
+                (trimmed.StartsWith("{") && trimmed.EndsWith("}")))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(trimmed);
+                    return FormatElementForDisplay(doc.RootElement, maxChars);
+                }
+                catch { }
+            }
+
+            return TruncateSingleBase64String(trimmed, maxChars);
+        }
+
+        private static string FormatElementForDisplay(JsonElement element, int maxChars = 50)
+        {
+            if (element.ValueKind == JsonValueKind.Array)
+            {
+                var list = new List<object?>();
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String)
+                    {
+                        var str = item.GetString() ?? string.Empty;
+                        list.Add(IsBase64Value(null, str) ? TruncateSingleBase64String(str, maxChars) : (str.Length > maxChars ? str.Substring(0, maxChars) + "..." : str));
+                    }
+                    else if (item.ValueKind == JsonValueKind.Object || item.ValueKind == JsonValueKind.Array)
+                    {
+                        using var doc = JsonDocument.Parse(FormatElementForDisplay(item, maxChars));
+                        list.Add(doc.RootElement.Clone());
+                    }
+                    else
+                    {
+                        list.Add(item.Clone());
+                    }
+                }
+                return JsonSerializer.Serialize(list);
+            }
+            else if (element.ValueKind == JsonValueKind.Object)
+            {
+                var dict = new Dictionary<string, object?>();
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var str = prop.Value.GetString() ?? string.Empty;
+                        dict[prop.Name] = IsBase64Value(prop.Name, str) ? TruncateSingleBase64String(str, maxChars) : (str.Length > maxChars ? str.Substring(0, maxChars) + "..." : str);
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.Object || prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        using var doc = JsonDocument.Parse(FormatElementForDisplay(prop.Value, maxChars));
+                        dict[prop.Name] = doc.RootElement.Clone();
+                    }
+                    else
+                    {
+                        dict[prop.Name] = prop.Value.Clone();
+                    }
+                }
+                return JsonSerializer.Serialize(dict);
+            }
+
+            return element.ToString();
+        }
+
+        private static string TruncateSingleBase64String(string? value, int maxChars = 50)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            var trimmed = value.Trim();
+
+            if (trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var commaIdx = trimmed.IndexOf(',');
+                if (commaIdx > 0 && commaIdx < trimmed.Length - 1)
+                {
+                    var prefix = trimmed.Substring(0, commaIdx + 1);
+                    var payload = trimmed.Substring(commaIdx + 1);
+                    var shortPayload = payload.Length > 20 ? payload.Substring(0, 20) + "..." : payload;
+                    return $"{prefix}{shortPayload}";
+                }
+            }
+
+            if (trimmed.Length > maxChars)
+            {
+                return trimmed.Substring(0, maxChars) + "...";
+            }
+
+            return trimmed;
+        }
+
+        /// <summary>
+        /// Evaluate cú pháp ngoặc vuông trên JSON object / JSON array tương tự OutputNode:
+        /// - [fieldName] -> lấy thuộc tính của object
+        /// - [index] -> lấy phần tử của array
+        /// - [fieldName][index] hoặc [index][fieldName] -> lấy mảng trong object / object trong mảng
+        /// - [0...n] -> hiển thị danh sách tất cả phần tử
+        /// </summary>
+        public static string? EvaluateJsonPath(string jsonRaw, string bracketExpression)
+        {
+            if (string.IsNullOrWhiteSpace(jsonRaw) || string.IsNullOrWhiteSpace(bracketExpression))
+                return null;
+
+            var matches = System.Text.RegularExpressions.Regex.Matches(bracketExpression, @"\[([^\]]+)\]");
+            if (matches.Count == 0) return null;
+
+            var segments = new List<string>();
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                var seg = m.Groups[1].Value.Trim();
+                if (!string.IsNullOrEmpty(seg))
+                {
+                    segments.Add(seg);
+                }
+            }
+
+            if (segments.Count == 0) return null;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(jsonRaw.Trim());
+                var current = doc.RootElement;
+
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    var seg = segments[i];
+
+                    if (string.Equals(seg, "0...n", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (current.ValueKind == JsonValueKind.Array)
+                        {
+                            var list = new List<string>();
+                            foreach (var el in current.EnumerateArray())
+                            {
+                                if (el.ValueKind == JsonValueKind.String)
+                                    list.Add(el.GetString() ?? string.Empty);
+                                else
+                                    list.Add(el.ToString());
+                            }
+                            return $"[{string.Join(", ", list)}]";
+                        }
+                        else if (current.ValueKind == JsonValueKind.String)
+                        {
+                            return current.GetString();
+                        }
+                        else
+                        {
+                            return current.ToString();
+                        }
+                    }
+
+                    if (int.TryParse(seg, out var index))
+                    {
+                        if (current.ValueKind == JsonValueKind.Array)
+                        {
+                            int len = current.GetArrayLength();
+                            if (index >= 0 && index < len)
+                            {
+                                current = current[index];
+                            }
+                            else
+                            {
+                                return string.Empty;
+                            }
+                        }
+                        else if (current.ValueKind == JsonValueKind.Object)
+                        {
+                            var indexKey = index.ToString();
+                            bool found = false;
+                            foreach (var prop in current.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, indexKey, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    current = prop.Value;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) return string.Empty;
+                        }
+                        else
+                        {
+                            return string.Empty;
+                        }
+                    }
+                    else
+                    {
+                        if (current.ValueKind == JsonValueKind.Object)
+                        {
+                            bool found = false;
+                            foreach (var prop in current.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, seg, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    current = prop.Value;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) return string.Empty;
+                        }
+                        else
+                        {
+                            return string.Empty;
+                        }
+                    }
+                }
+
+                if (current.ValueKind == JsonValueKind.String)
+                {
+                    return current.GetString() ?? string.Empty;
+                }
+                else if (current.ValueKind == JsonValueKind.Null)
+                {
+                    return string.Empty;
+                }
+                else if (current.ValueKind == JsonValueKind.Array)
+                {
+                    var list = new List<string>();
+                    foreach (var el in current.EnumerateArray())
+                    {
+                        if (el.ValueKind == JsonValueKind.String)
+                            list.Add(el.GetString() ?? string.Empty);
+                        else
+                            list.Add(el.ToString());
+                    }
+                    return $"[{string.Join(", ", list)}]";
+                }
+                else
+                {
+                    return current.ToString();
+                }
             }
             catch
             {

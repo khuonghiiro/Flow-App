@@ -257,113 +257,46 @@
                             </Grid>
                         </Grid>
 
-                        <!-- Column 2: Secondary Images Grid (4 Slots) -->
+                        <!-- Column 2: Secondary Images Grid (Dynamic Slots) -->
                         <Grid Grid.Column="2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="🖼️ ẢNH PHỤ (tối đa 4)" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <Grid x:Name="SecondaryImagesGrid" Grid.Row="1">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="4"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="4"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                            <!-- Header -->
+                            <TextBlock x:Name="TxtSecondaryHeader" Grid.Row="0" Text="🖼️ ẢNH PHỤ (4)" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,4"/>
+                            <!-- Dynamic slots container (populated in code-behind) -->
+                            <ScrollViewer x:Name="SecondaryImagesScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <ScrollViewer.Style>
+                                    <Style TargetType="ScrollViewer">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ScrollViewer.Style>
+                                <Grid x:Name="SecondaryImagesGrid">
+                                    <!-- Dynamically built in code-behind via RebuildSecondaryGrid() -->
+                                </Grid>
+                            </ScrollViewer>
 
-                                <!-- Slot 1 -->
-                                <Border x:Name="SlotBorder0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="0">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImage0" Stretch="Uniform" Margin="2"/>
-                                        <TextBlock x:Name="SlotPlaceholder0" Text="＋" FontSize="24" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotCheck0" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
-                                            <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border x:Name="SlotRemove0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="0">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="1" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Slot 2 -->
-                                <Border x:Name="SlotBorder1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="1">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImage1" Stretch="Uniform" Margin="2"/>
-                                        <TextBlock x:Name="SlotPlaceholder1" Text="＋" FontSize="24" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotCheck1" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
-                                            <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border x:Name="SlotRemove1" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="1">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="2" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Slot 3 -->
-                                <Border x:Name="SlotBorder2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="2">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImage2" Stretch="Uniform" Margin="2"/>
-                                        <TextBlock x:Name="SlotPlaceholder2" Text="＋" FontSize="24" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotCheck2" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
-                                            <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border x:Name="SlotRemove2" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="2">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="3" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Slot 4 -->
-                                <Border x:Name="SlotBorder3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="3">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImage3" Stretch="Uniform" Margin="2"/>
-                                        <TextBlock x:Name="SlotPlaceholder3" Text="＋" FontSize="24" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotCheck3" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#4fffb0" CornerRadius="0,0,6,0" Padding="4,2" Visibility="Collapsed">
-                                            <TextBlock Text="✓" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border x:Name="SlotRemove3" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="5,2" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="3">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="9" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="4" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                            </Grid>
-
-                            <!-- Add image button and send mode toggle -->
+                            <!-- Add image button, image mode toggle, and send mode toggle -->
                             <Grid Grid.Row="2" Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="6"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="BtnAddSecondary" Grid.Column="0" Content="＋ Thêm ảnh phụ" Height="28" Margin="0"
                                         Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnAddSecondary_Click"/>
-                                <Button x:Name="BtnToggleSendMode" Grid.Column="2" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
+                                <Button x:Name="BtnToggleImageMode" Grid.Column="2" Content="Ảnh chung" Width="90" Height="28" Margin="0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="11" Click="BtnToggleImageMode_Click"
+                                        ToolTip="Chế độ: Ảnh chung (mặc định) / Ảnh đơn"/>
+                                <Button x:Name="BtnToggleSendMode" Grid.Column="4" Content="Gửi AI: ON" Width="90" Height="28" Margin="0"
                                         Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>
                             </Grid>
                         </Grid>
@@ -424,83 +357,27 @@
                             </Grid>
                         </Grid>
 
-                        <!-- Row 2: Ảnh phụ (2x2 compact) -->
+                        <!-- Row 2: Ảnh phụ (compact dynamic) -->
                         <Grid Grid.Row="2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="🖼️ Ảnh phụ" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
-                            <Grid x:Name="SecondaryImagesGridWv" Grid.Row="1">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="3"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="3"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 4 compact slots -->
-                                <Border x:Name="SlotBorderWv0" Grid.Row="0" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="0">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImageWv0" Stretch="Uniform" Margin="1"/>
-                                        <TextBlock x:Name="SlotPlaceholderWv0" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotRemoveWv0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="0">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="1" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                                <Border x:Name="SlotBorderWv1" Grid.Row="0" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="1">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImageWv1" Stretch="Uniform" Margin="1"/>
-                                        <TextBlock x:Name="SlotPlaceholderWv1" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotRemoveWv1" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="1">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="2" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                                <Border x:Name="SlotBorderWv2" Grid.Row="2" Grid.Column="0" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="2">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImageWv2" Stretch="Uniform" Margin="1"/>
-                                        <TextBlock x:Name="SlotPlaceholderWv2" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotRemoveWv2" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="2">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="3" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                                <Border x:Name="SlotBorderWv3" Grid.Row="2" Grid.Column="2" Style="{StaticResource SecondaryImageBorder}" Focusable="True" KeyDown="SlotBorder_KeyDown"
-                                        MouseEnter="Slot_MouseEnter" MouseLeave="Slot_MouseLeave" MouseLeftButtonDown="Slot_Click" Tag="3">
-                                    <Grid>
-                                        <Rectangle Fill="{StaticResource PsDarkCheckeredBrush}" SnapsToDevicePixels="True"/>
-                                        <Image x:Name="SlotImageWv3" Stretch="Uniform" Margin="1"/>
-                                        <TextBlock x:Name="SlotPlaceholderWv3" Text="＋" FontSize="16" Foreground="#3a3f52" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                                        <Border x:Name="SlotRemoveWv3" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#cc3333" CornerRadius="0,0,0,6" Padding="4,1" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonDown="SlotRemove_Click" Tag="3">
-                                            <TextBlock Text="✕" Foreground="White" FontSize="8" FontWeight="Bold"/>
-                                        </Border>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#aa111318" CornerRadius="0,4,0,0" Padding="5,2" IsHitTestVisible="False">
-                                            <TextBlock Text="4" Foreground="#dde3ef" FontSize="10" FontWeight="Bold"/>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                            </Grid>
+                            <TextBlock x:Name="TxtSecondaryHeaderWv" Grid.Row="0" Text="🖼️ Ảnh phụ (4)" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
+                            <ScrollViewer x:Name="SecondaryImagesScrollViewerWv" Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <ScrollViewer.Style>
+                                    <Style TargetType="ScrollViewer">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ScrollViewer.Style>
+                                <Grid x:Name="SecondaryImagesGridWv">
+                                    <!-- Dynamically built in code-behind via RebuildSecondaryGridWv() -->
+                                </Grid>
+                            </ScrollViewer>
                         </Grid>
 
                         <!-- Row 3: Buttons -->
@@ -860,8 +737,8 @@
 
                     <!-- Configurations (Left) -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Batch size -->
-                        <StackPanel Margin="0,0,16,0">
+                        <!-- Batch size (hidden when OFF mode) -->
+                        <StackPanel x:Name="PanelBatchSize" Margin="0,0,16,0">
                             <TextBlock Text="Số lượng ảnh" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
                             <ComboBox x:Name="CmbBatchSize" Width="80" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="1">
                                 <ComboBoxItem Content="1"/>
@@ -896,6 +773,114 @@
                                 <TextBlock Text="Cao (px)" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
                                 <TextBox x:Name="TxtCustomHeight" Width="60" Height="28" Padding="6,0" VerticalContentAlignment="Center" Text="512" TextChanged="TxtCustomSize_TextChanged"
                                          Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2" CaretBrush="#4fffb0" SelectionBrush="#804fffb0"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Slot count selector (visible when OFF mode) -->
+                        <StackPanel x:Name="PanelSlotCount" Margin="0,0,16,0" Visibility="Collapsed">
+                            <TextBlock Text="Ảnh phụ" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnSlot4" Content="4" Tag="4" Width="28" Height="28" FontSize="10" FontWeight="Bold" Margin="0,0,3,0"
+                                        Cursor="Hand" Click="BtnSlotPreset_Click" ToolTip="4 ảnh phụ">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#4fffb0"/>
+                                            <Setter Property="Foreground" Value="#111318"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="2,0">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#62ffc0"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="BtnSlot6" Content="6" Tag="6" Width="28" Height="28" FontSize="10" FontWeight="Bold" Margin="0,0,3,0"
+                                        Cursor="Hand" Click="BtnSlotPreset_Click" ToolTip="6 ảnh phụ">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#252a39"/>
+                                            <Setter Property="Foreground" Value="#788296"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="2,0">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#333a4d"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="BtnSlot8" Content="8" Tag="8" Width="28" Height="28" FontSize="10" FontWeight="Bold" Margin="0,0,3,0"
+                                        Cursor="Hand" Click="BtnSlotPreset_Click" ToolTip="8 ảnh phụ">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#252a39"/>
+                                            <Setter Property="Foreground" Value="#788296"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="2,0">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#333a4d"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="BtnSlot10" Content="10" Tag="10" Width="28" Height="28" FontSize="10" FontWeight="Bold" Margin="0,0,6,0"
+                                        Cursor="Hand" Click="BtnSlotPreset_Click" ToolTip="10 ảnh phụ">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#252a39"/>
+                                            <Setter Property="Foreground" Value="#788296"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="2,0">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#333a4d"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <TextBox x:Name="TxtSlotCount" Width="36" Height="28" FontSize="10" FontWeight="Bold" Text="4"
+                                         Padding="4,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                         Background="#1e222d" Foreground="#dde3ef" BorderBrush="#2a2e3d" BorderThickness="1.2"
+                                         CaretBrush="#4fffb0" SelectionBrush="#804fffb0" ToolTip="Nhập số ảnh phụ tuỳ chọn"
+                                         TextChanged="TxtSlotCount_TextChanged"/>
                             </StackPanel>
                         </StackPanel>
 

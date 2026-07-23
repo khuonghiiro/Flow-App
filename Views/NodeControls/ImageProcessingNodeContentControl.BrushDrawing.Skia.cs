@@ -453,12 +453,12 @@ namespace FlowMy.Views.NodeControls
 
                 case BrushPreset.Chalk:
                     {
-                        double offsetMul = r * 6.0;
+                        double offsetMul = r * 1.0;
                         foreach (var offset in ChalkPresetOffsets)
                         {
                             double spotCx = cx + offset.x * offsetMul;
                             double spotCy = cy + offset.y * offsetMul;
-                            double spotRadius = 0.5 + (r - 0.5) * (offset.size * 0.15);
+                            double spotRadius = 0.5 + (r - 0.5) * (offset.size * 0.06);
 
                             using (var paint = CreateSkiaStampPaint(flow * 180.0 / 255.0, color, isEraser))
                             {
@@ -470,12 +470,12 @@ namespace FlowMy.Views.NodeControls
 
                 case BrushPreset.Spray:
                     {
-                        double offsetMul = r * 6.0;
+                        double offsetMul = r * 1.0;
                         foreach (var offset in SprayPresetOffsets)
                         {
                             double spotCx = cx + offset.x * offsetMul;
                             double spotCy = cy + offset.y * offsetMul;
-                            double spotRadius = 0.5 + (r - 0.5) * 0.25;
+                            double spotRadius = 0.5 + (r - 0.5) * 0.08;
 
                             double distRatio = Math.Sqrt(offset.x * offset.x + offset.y * offset.y);
                             double opacityScale = Math.Max(0.0, 1.0 - distRatio * 0.5);
@@ -490,12 +490,12 @@ namespace FlowMy.Views.NodeControls
 
                 case BrushPreset.Scatter:
                     {
-                        double offsetMul = r * 6.0;
+                        double offsetMul = r * 1.0;
                         foreach (var offset in ScatterPresetOffsets)
                         {
                             double blobCx = cx + offset.x * offsetMul;
                             double blobCy = cy + offset.y * offsetMul;
-                            double blobRadius = 0.5 + (r - 0.5) * offset.scale;
+                            double blobRadius = 0.5 + (r - 0.5) * offset.scale * 0.4;
 
                             using (var paint = CreateSkiaStampPaint(flow, color, isEraser))
                             {
@@ -533,12 +533,12 @@ namespace FlowMy.Views.NodeControls
 
                 case BrushPreset.Splatter:
                     {
-                        double offsetMul = r * 6.0;
+                        double offsetMul = r * 1.0;
                         foreach (var offset in SplatterPresetOffsets)
                         {
                             double spotCx = cx + offset.x * offsetMul;
                             double spotCy = cy + offset.y * offsetMul;
-                            double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.4;
+                            double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.15;
 
                             using (var paint = CreateSkiaStampPaint(flow * offset.opacity, color, isEraser))
                             {
@@ -550,12 +550,12 @@ namespace FlowMy.Views.NodeControls
 
                 case BrushPreset.Charcoal:
                     {
-                        double offsetMul = r * 4.0;
+                        double offsetMul = r * 1.0;
                         foreach (var offset in CharcoalPresetOffsets)
                         {
                             double spotCx = cx + offset.x * offsetMul;
                             double spotCy = cy + offset.y * offsetMul;
-                            double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.45;
+                            double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.18;
 
                             using (var paint = CreateSkiaStampPaint(flow * offset.opacity, color, isEraser))
                             {
@@ -572,12 +572,12 @@ namespace FlowMy.Views.NodeControls
 
                 case BrushPreset.OilBrush:
                     {
-                        double offsetMul = r * 3.5;
+                        double offsetMul = r * 1.0;
                         foreach (var offset in OilBrushPresetOffsets)
                         {
                             double spotCx = cx + offset.x * offsetMul;
                             double spotCy = cy + offset.y * offsetMul;
-                            double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.25;
+                            double spotRadius = 0.5 + (r - 0.5) * offset.size * 0.10;
 
                             double bristleFlow = 0.6 + 0.4 * (Math.Abs(Math.Sin(offset.x * 37.13 + offset.y * 53.45) * 1000.0) % 1.0);
 

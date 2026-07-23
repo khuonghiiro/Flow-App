@@ -667,6 +667,15 @@ namespace FlowMy.Views.NodeControls
             ApplyResponsiveScale();
             SyncIpToggleIcon();
 
+            if (EditorPanel != null)
+            {
+                string activeTool = EditorPanel.ActiveToolName;
+                if (activeTool == "Brush" || activeTool == "Eraser")
+                {
+                    Dispatcher.BeginInvoke(new Action(() => MainScrollViewer?.Focus()), System.Windows.Threading.DispatcherPriority.Loaded);
+                }
+            }
+
             // Warm up SkiaSharp on a background thread to prevent first-draw lag
             System.Threading.Tasks.Task.Run(() =>
             {

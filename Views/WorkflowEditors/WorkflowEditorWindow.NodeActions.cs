@@ -414,22 +414,41 @@ namespace FlowMy.Views
             }
             else if (source is WebNode srcWeb && node is WebNode dstWeb)
             {
+                // Size
                 dstWeb.Width = srcWeb.Width;
                 dstWeb.Height = srcWeb.Height;
+
+                // Extract config
                 dstWeb.ExtractUrl = srcWeb.ExtractUrl ?? "";
                 dstWeb.ExtractRequestMethod = srcWeb.ExtractRequestMethod ?? "GET";
                 dstWeb.ExtractStatusCode = srcWeb.ExtractStatusCode ?? "200";
+
+                // Profile & Cache config
+                dstWeb.CacheMode = srcWeb.CacheMode ?? "Shared";
+                dstWeb.CustomCacheName = srcWeb.CustomCacheName ?? "Shared";
+
+                // Blocking rules (deep copy including Method + ChildRules)
+                dstWeb.BlockAllRequestsAfterFirstMatch = srcWeb.BlockAllRequestsAfterFirstMatch;
                 dstWeb.BlockingRules.Clear();
                 foreach (var rule in srcWeb.BlockingRules)
                 {
-                    dstWeb.BlockingRules.Add(new WebBlockingRule { UrlPattern = rule.UrlPattern });
+                    var clonedRule = new WebBlockingRule
+                    {
+                        UrlPattern = rule.UrlPattern,
+                        Method = rule.Method ?? "All"
+                    };
+                    foreach (var child in rule.ChildRules)
+                    {
+                        clonedRule.ChildRules.Add(new WebBlockingChildRule
+                        {
+                            UrlPattern = child.UrlPattern,
+                            Method = child.Method ?? "All"
+                        });
+                    }
+                    dstWeb.BlockingRules.Add(clonedRule);
                 }
-                dstWeb.TitleDisplayMode = srcWeb.TitleDisplayMode;
-                dstWeb.TitleColorMode = srcWeb.TitleColorMode;
-                dstWeb.TitleColorKey = srcWeb.TitleColorKey;
-                dstWeb.EnableSleepMode = srcWeb.EnableSleepMode;
-                dstWeb.SleepIdleTimeoutValue = srcWeb.SleepIdleTimeoutValue;
-                dstWeb.SleepIdleTimeoutUnit = srcWeb.SleepIdleTimeoutUnit;
+
+                // Request intercept rules (deep copy including ReplaceUrlWithNodeKey)
                 dstWeb.RequestInterceptRules.Clear();
                 foreach (var r in srcWeb.RequestInterceptRules)
                 {
@@ -439,6 +458,7 @@ namespace FlowMy.Views
                         ReplaceUrlValue = r.ReplaceUrlValue,
                         ReplaceUrlSourceNodeId = r.ReplaceUrlSourceNodeId,
                         ReplaceUrlSourceOutputKey = r.ReplaceUrlSourceOutputKey,
+                        ReplaceUrlWithNodeKey = r.ReplaceUrlWithNodeKey,
                         ReplaceParamsValue = r.ReplaceParamsValue,
                         ReplaceParamsSourceNodeId = r.ReplaceParamsSourceNodeId,
                         ReplaceParamsSourceOutputKey = r.ReplaceParamsSourceOutputKey,
@@ -447,6 +467,37 @@ namespace FlowMy.Views
                         ReplaceBodySourceOutputKey = r.ReplaceBodySourceOutputKey
                     });
                 }
+
+                // Response outputs (tab Output) — deep copy + rebuild DynamicOutputs
+                dstWeb.ResponseOutputs.Clear();
+                foreach (var ro in srcWeb.ResponseOutputs)
+                {
+                    dstWeb.ResponseOutputs.Add(new WebResponseOutput
+                    {
+                        Key = ro.Key,
+                        Url = ro.Url,
+                        RequestMethod = ro.RequestMethod,
+                        ExtractType = ro.ExtractType,
+                        WaitForCompletion = ro.WaitForCompletion,
+                        TriggerNextWorkflow = ro.TriggerNextWorkflow
+                    });
+                }
+                dstWeb.RebuildResponseOutputs();
+                dstWeb.SyncLiveOutputsToResults = srcWeb.SyncLiveOutputsToResults;
+                dstWeb.ResponseOutputsWaitTimeoutMs = srcWeb.ResponseOutputsWaitTimeoutMs;
+                dstWeb.ResponseOutputsWaitMode = srcWeb.ResponseOutputsWaitMode;
+
+                // Input mappings (URL template variables)
+                dstWeb.InputMappings = srcWeb.InputMappings != null
+                    ? srcWeb.InputMappings.Select(m => new WebInputMapping
+                    {
+                        SourceNodeId = m.SourceNodeId,
+                        SourceOutputKey = m.SourceOutputKey,
+                        InputKeyOverride = m.InputKeyOverride
+                    }).ToList()
+                    : new List<WebInputMapping> { new WebInputMapping() };
+
+                // DynamicInputs[0] (cookie input source)
                 if (dstWeb.DynamicInputs != null && dstWeb.DynamicInputs.Count > 0 && srcWeb.DynamicInputs != null && srcWeb.DynamicInputs.Count > 0)
                 {
                     var di = dstWeb.DynamicInputs[0];
@@ -455,14 +506,43 @@ namespace FlowMy.Views
                     di.SelectedSourceOutputKey = si.SelectedSourceOutputKey;
                 }
 
-                // Copy JS injection config
+                // JS injection config (deep copy including timer config)
                 dstWeb.JsSources = srcWeb.JsSources != null
                     ? srcWeb.JsSources.Select(m => new WebJsSourceMapping
                     {
                         SourceNodeId = m.SourceNodeId,
-                        SourceOutputKey = m.SourceOutputKey
+                        SourceOutputKey = m.SourceOutputKey,
+                        AutoTimerEnabled = m.AutoTimerEnabled,
+                        AutoTimerIntervalValue = m.AutoTimerIntervalValue,
+                        AutoTimerIntervalUnit = m.AutoTimerIntervalUnit
                     }).ToList()
                     : new List<WebJsSourceMapping>();
+
+                // Auto-reload timer
+                dstWeb.AutoReloadEnabled = srcWeb.AutoReloadEnabled;
+                dstWeb.AutoReloadIntervalValue = srcWeb.AutoReloadIntervalValue;
+                dstWeb.AutoReloadIntervalUnit = srcWeb.AutoReloadIntervalUnit;
+
+                // Cookie text
+                dstWeb.CookieText = srcWeb.CookieText;
+
+                // Sleep mode
+                dstWeb.EnableSleepMode = srcWeb.EnableSleepMode;
+                dstWeb.SleepIdleTimeoutValue = srcWeb.SleepIdleTimeoutValue;
+                dstWeb.SleepIdleTimeoutUnit = srcWeb.SleepIdleTimeoutUnit;
+
+                // CSS zoom & domain
+                dstWeb.CssZoom = srcWeb.CssZoom;
+                dstWeb.LastHost = srcWeb.LastHost;
+
+                // Element inspector
+                dstWeb.EnableElementInspector = srcWeb.EnableElementInspector;
+                dstWeb.EnableCssSelectorInspector = srcWeb.EnableCssSelectorInspector;
+
+                // Title display
+                dstWeb.TitleDisplayMode = srcWeb.TitleDisplayMode;
+                dstWeb.TitleColorMode = srcWeb.TitleColorMode;
+                dstWeb.TitleColorKey = srcWeb.TitleColorKey;
 
                 WebNodeCacheHelper.CopyWebNodeCache(srcWeb.Id, dstWeb.Id);
                 dstWeb.NotifyTitleChanged();

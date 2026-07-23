@@ -316,6 +316,11 @@ namespace FlowMy.Views.NodeControls
 
             UpdatePolygonDisplay();
             UpdateTransformOverlayDisplay(); // Ensure transform bounding box updates immediately when active tool changes!
+
+            if (activeTool == "Brush" || activeTool == "Eraser")
+            {
+                MainScrollViewer?.Focus();
+            }
         }
 
         private void SyncToolboxColors()

@@ -65,6 +65,7 @@ namespace FlowMy.Models.Nodes
         private string _requestMethod = "GET";
         private string _extractType = "Response";
         private bool _waitForCompletion; // Nếu true: executor sẽ đợi key này trước khi chạy node tiếp theo
+        private bool _triggerNextWorkflow; // Nếu true: tự động kích hoạt chạy workflow từ các node tiếp theo kết nối sau WebNode này khi WebView2 bắt được response khớp
 
         public string Key
         {
@@ -100,6 +101,16 @@ namespace FlowMy.Models.Nodes
         {
             get => _waitForCompletion;
             set { if (_waitForCompletion != value) { _waitForCompletion = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Nếu true: khi WebView2 bắt được request/response khớp với (Method + URL) của output này,
+        /// hệ thống sẽ tự động kích hoạt chạy workflow bắt đầu từ các node kế tiếp được kết nối sau WebNode này.
+        /// </summary>
+        public bool TriggerNextWorkflow
+        {
+            get => _triggerNextWorkflow;
+            set { if (_triggerNextWorkflow != value) { _triggerNextWorkflow = value; OnPropertyChanged(); } }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

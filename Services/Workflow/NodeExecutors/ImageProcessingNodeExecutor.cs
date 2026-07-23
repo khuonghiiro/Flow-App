@@ -170,6 +170,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // prompt: text từ Image Processor
                 SetOutput(imageNode, "prompt", imageNode.ProcessorPrompt ?? string.Empty, env);
 
+                // isCombinedImage: bool (true = Ảnh chung, false = Ảnh đơn)
+                SetOutput(imageNode, "isCombinedImage", imageNode.LayerAiIsCombinedMode.ToString().ToLowerInvariant(), env);
+
                 // executionId: id duy nhất cho lần chạy này, dùng để map ảnh render về đúng crop
                 SetOutput(imageNode, "executionId", env.ExecutionId, env);
             }

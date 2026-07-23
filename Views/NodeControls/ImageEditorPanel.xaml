@@ -175,7 +175,7 @@
                              <Border x:Name="CollapseToggle" DockPanel.Dock="Left" Width="16" Height="20" Margin="0,0,2,0"
                                      VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
                                      Background="Transparent" Visibility="Collapsed"
-                                     MouseLeftButtonDown="CollapseToggle_Click">
+                                     PreviewMouseLeftButtonDown="CollapseToggle_Click">
                                  <TextBlock Text="{Binding CollapseIcon}" Foreground="{StaticResource ipMuted}" FontSize="8"
                                             HorizontalAlignment="Center" VerticalAlignment="Center"
                                             IsHitTestVisible="False"/>
@@ -184,7 +184,7 @@
                              <Border x:Name="LayerVisibilityToggle" DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,4,0"
                                      VerticalAlignment="Center" Cursor="Hand" CornerRadius="3"
                                      Background="Transparent"
-                                     MouseLeftButtonDown="LayerVisibilityToggle_Click">
+                                     PreviewMouseLeftButtonDown="LayerVisibilityToggle_Click">
                                  <controls:SvgViewboxEx x:Name="EyeIcon" Width="14" Height="14"
                                      Fill="{StaticResource ipText}"
                                      Source="{Binding Source={x:Static sys:String.Empty},
@@ -254,7 +254,7 @@
                                 <!-- Lock toggle (rightmost) -->
                                 <Border x:Name="LayerLockToggle" Width="20" Height="20" Cursor="Hand" CornerRadius="3"
                                         Background="Transparent" ToolTip="Khoá/Mở khoá Layer"
-                                        MouseLeftButtonDown="LayerLockToggle_Click">
+                                        PreviewMouseLeftButtonDown="LayerLockToggle_Click">
                                     <controls:SvgViewboxEx x:Name="LockIcon" Width="12" Height="12"
                                         Fill="{StaticResource ipText}"
                                         Source="{Binding Source={x:Static sys:String.Empty},
@@ -646,7 +646,7 @@
                                                        FontFamily="Consolas" HorizontalAlignment="Center"
                                                        Text="50"/>
                                         </Border>
-                                        <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="200" Value="50"
+                                        <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="5000" Value="50"
                                                 VerticalAlignment="Center" Margin="4,0"
                                                 ValueChanged="SliderBrushSize_ValueChanged"/>
                                     </DockPanel>

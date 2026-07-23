@@ -36,7 +36,7 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class ImageProcessingNodeContentControl : UserControl
     {
-        private void ClearSelection()
+        internal void ClearSelection()
         {
             _selectionRect = null;
             _selectionPoints.Clear();
@@ -707,10 +707,31 @@ namespace FlowMy.Views.NodeControls
                     {
                         double curSize = EditorPanel.SliderBrushSize.Value;
                         double change = e.Key == Key.OemOpenBrackets ? -Math.Max(1, Math.Round(curSize * 0.1)) : Math.Max(1, Math.Round(curSize * 0.1));
-                        double newSize = Math.Clamp(curSize + change, 1, 200);
+                        double newSize = Math.Clamp(curSize + change, 1, 5000);
                         EditorPanel.SliderBrushSize.Value = newSize;
                         e.Handled = true;
                         return;
+                    }
+                }
+
+                // Brush sizing shortcuts: Ctrl + and Ctrl -
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    bool isMinus = (e.Key == Key.OemMinus || e.Key == Key.Subtract);
+                    bool isPlus = (e.Key == Key.OemPlus || e.Key == Key.Add);
+                    if (isMinus || isPlus)
+                    {
+                        string tool = EditorPanel.ActiveToolName;
+                        if (tool == "Brush" || tool == "Eraser")
+                        {
+                            double curSize = EditorPanel.SliderBrushSize.Value;
+                            double delta = e.IsRepeat ? 10 : 1;
+                            double newSize = isPlus ? (curSize + delta) : (curSize - delta);
+                            newSize = Math.Clamp(newSize, 1, 5000);
+                            EditorPanel.SliderBrushSize.Value = newSize;
+                            e.Handled = true;
+                            return;
+                        }
                     }
                 }
 

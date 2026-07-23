@@ -498,6 +498,19 @@ namespace FlowMy.Views.NodeControls
             if (e.Key == Key.Y && modifiers == ModifierKeys.Control)
                 return true;
 
+            // 10. Brush sizing shortcuts: Ctrl + and Ctrl -
+            if (modifiers.HasFlag(ModifierKeys.Control))
+            {
+                bool isMinus = (e.Key == Key.OemMinus || e.Key == Key.Subtract);
+                bool isPlus = (e.Key == Key.OemPlus || e.Key == Key.Add);
+                if (isMinus || isPlus)
+                {
+                    string tool = EditorPanel.ActiveToolName;
+                    if (tool == "Brush" || tool == "Eraser")
+                        return true;
+                }
+            }
+
             return false;
         }
 

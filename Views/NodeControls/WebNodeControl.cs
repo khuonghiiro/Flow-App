@@ -434,6 +434,8 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRow(webView, 1);
             var isDisposed = false;
             Action recreateWebView = null!;
+            string activeCacheMode = node.CacheMode ?? "Shared";
+            string activeCustomCacheName = node.CustomCacheName ?? "Shared";
 
             // JS injection bridge: when workflow runs WebNodeExecutor it sets node.PendingJavaScript.
             // WebNodeControl listens and executes the script into WebView2.
@@ -1122,10 +1124,18 @@ namespace FlowMy.Views.NodeControls
                     else if (string.Equals(e.PropertyName, nameof(WebNode.CacheMode), StringComparison.Ordinal) ||
                              string.Equals(e.PropertyName, nameof(WebNode.CustomCacheName), StringComparison.Ordinal))
                     {
-                        border.Dispatcher.BeginInvoke(new Action(() =>
+                        var targetMode = node.CacheMode ?? "Shared";
+                        var targetName = node.CustomCacheName ?? "Shared";
+                        if (!string.Equals(activeCacheMode, targetMode, StringComparison.Ordinal) ||
+                            !string.Equals(activeCustomCacheName, targetName, StringComparison.Ordinal))
                         {
-                            recreateWebView?.Invoke();
-                        }), DispatcherPriority.Normal);
+                            activeCacheMode = targetMode;
+                            activeCustomCacheName = targetName;
+                            border.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                recreateWebView?.Invoke();
+                            }), DispatcherPriority.Normal);
+                        }
                     }
                 };
             }
@@ -1580,7 +1590,8 @@ namespace FlowMy.Views.NodeControls
                 BorderThickness = new Thickness(0),
                 Foreground = textBrush,
                 CaretBrush = textBrush,
-                SelectionBrush = new SolidColorBrush(Color.FromArgb(100, 100, 180, 255))
+                SelectionBrush = new SolidColorBrush(Color.FromRgb(254, 224, 138)), // Nền vàng nhẹ mờ mờ kiểu Google Chrome
+                SelectionOpacity = 0.45
             };
             Grid.SetColumn(urlBox, 1);
             urlPillInner.Children.Add(urlBox);
@@ -1690,9 +1701,15 @@ namespace FlowMy.Views.NodeControls
                 UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus
             });
 
-            // PreviewKeyDown: popup navigation (↑↓/Escape/Enter item) + Enter navigate bình thường
+            // PreviewKeyDown: Ctrl+A bôi đen toàn bộ chữ + popup navigation (↑↓/Escape/Enter item) + Enter navigate bình thường
             urlBox.PreviewKeyDown += (s, e) =>
             {
+                if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    e.Handled = true;
+                    urlBox.SelectAll();
+                    return;
+                }
                 if (suggestPopup.IsOpen)
                 {
                     if (e.Key == Key.Down)
@@ -2438,6 +2455,14 @@ if (window.__elementInspector) {
                         }
                         catch { }
                     }
+
+                    // Override User-Agent thành Chrome chuẩn để các website (labs.google, Next.js apps...)
+                    // không reject WebView2 vì UA mặc định chứa "Edg/" khiến một số site throw client-side exception.
+                    try
+                    {
+                        core.Settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
+                    }
+                    catch { }
 
                     // ⚠️ CRITICAL: Đảm bảo WebResourceRequested được raise cho TẤT CẢ requests (mọi context, mọi URL)
                     // CoreWebView2WebResourceContext.All bao gồm cả XHR (XmlHttpRequest) requests từ JavaScript
@@ -4160,6 +4185,10 @@ if (window.__elementInspector) {
                                         string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
                                     if (dyn != null) dyn.UserValueOverride = val;
                                 }
+                                if (ro != null && ro.TriggerNextWorkflow)
+                                {
+                                    TryTriggerDownstreamWorkflow(host, n, ro);
+                                }
                                 if (host != null)
                                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                                     {
@@ -5158,6 +5187,48 @@ if (window.__elementInspector) {
                         host.RequestRunSingleNode(outputNode);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Khi WebView2 bắt/nhận được response khớp với một WebResponseOutput có TriggerNextWorkflow = true,
+        /// tự động tìm các node nối tiếp sau WebNode này (Node A, ...) và kích hoạt chạy workflow từ các node đó.
+        /// </summary>
+        private static void TryTriggerDownstreamWorkflow(IWorkflowEditorHost? host, WebNode sourceNode, WebResponseOutput responseOutput)
+        {
+            if (host?.ViewModel == null || responseOutput == null || !responseOutput.TriggerNextWorkflow) return;
+
+            var vm = host.ViewModel;
+            var connections = vm.Connections;
+            if (connections == null || connections.Count == 0) return;
+
+            // Tìm các node nối sau WebNode này (outgoing edges)
+            var nextNodes = connections
+                .Where(c => c.FromNode != null && string.Equals(c.FromNode.Id, sourceNode.Id, StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.ToNode)
+                .Where(n => n != null && n != sourceNode)
+                .Distinct()
+                .ToList();
+
+            if (nextNodes.Count == 0) return;
+
+            // Trigger chạy workflow bắt đầu từ từng node tiếp theo trên UI thread
+            foreach (var nextNode in nextNodes)
+            {
+                if (nextNode == null) continue;
+                System.Diagnostics.Debug.WriteLine($"[WebNodeControl] 🚀 Auto-triggering workflow from next node '{nextNode.Title}' ({nextNode.Id}) due to matched output '{responseOutput.Key}'");
+
+                host.Dispatcher.BeginInvoke(new Action(async () =>
+                {
+                    try
+                    {
+                        await vm.RunWorkflowFromNodeAsync(nextNode);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeControl] Error auto-triggering workflow from node '{nextNode.Title}': {ex.Message}");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
 

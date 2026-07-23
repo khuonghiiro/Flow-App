@@ -417,7 +417,7 @@ namespace FlowMy.Views.NodeControls
             if (OptBrushSizeInput == null || EditorPanel == null) return;
             if (double.TryParse(OptBrushSizeInput.Text, out double size))
             {
-                size = Math.Clamp(size, 1.0, 200.0);
+                size = Math.Clamp(size, 1.0, 5000.0);
                 if (EditorPanel.SliderBrushSize != null && EditorPanel.SliderBrushSize.Value != size)
                 {
                     EditorPanel.SliderBrushSize.Value = size;

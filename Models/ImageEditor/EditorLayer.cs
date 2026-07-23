@@ -158,13 +158,33 @@ namespace FlowMy.Models.ImageEditor
         /// <summary>Vị trí layer trên canvas document (top-left offset).</summary>
         public int OffsetX
         {
-            get => _offsetX;
-            set => SetField(ref _offsetX, value);
+            get => ParentLayer != null ? ParentLayer.OffsetX : _offsetX;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.OffsetX = value;
+                }
+                else
+                {
+                    SetField(ref _offsetX, value);
+                }
+            }
         }
         public int OffsetY
         {
-            get => _offsetY;
-            set => SetField(ref _offsetY, value);
+            get => ParentLayer != null ? ParentLayer.OffsetY : _offsetY;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.OffsetY = value;
+                }
+                else
+                {
+                    SetField(ref _offsetY, value);
+                }
+            }
         }
 
         /// <summary>Bitmap pixel data (BGRA32, kích thước = Width×Height).</summary>
@@ -247,10 +267,42 @@ namespace FlowMy.Models.ImageEditor
         }
 
         public Rect ContentBounds { get; set; } = Rect.Empty;
+        
+        private Rect _imageContentBounds = Rect.Empty;
         /// <summary>Vùng ảnh gốc khi load vào layer (không bị clear bởi commands/tools).
         /// Dùng cho brush/eraser clipping. Chỉ set khi load ảnh vào layer.</summary>
-        public Rect ImageContentBounds { get; set; } = Rect.Empty;
-        public Geometry? ContentGeometry { get; set; }
+        public Rect ImageContentBounds
+        {
+            get => ParentLayer != null ? ParentLayer.ImageContentBounds : _imageContentBounds;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.ImageContentBounds = value;
+                }
+                else
+                {
+                    _imageContentBounds = value;
+                }
+            }
+        }
+
+        private Geometry? _contentGeometry;
+        public Geometry? ContentGeometry
+        {
+            get => ParentLayer != null ? ParentLayer.ContentGeometry : _contentGeometry;
+            set
+            {
+                if (ParentLayer != null)
+                {
+                    ParentLayer.ContentGeometry = value;
+                }
+                else
+                {
+                    _contentGeometry = value;
+                }
+            }
+        }
 
         public static Rect CalculateContentBounds(WriteableBitmap bitmap)
         {
@@ -501,17 +553,37 @@ namespace FlowMy.Models.ImageEditor
             copy.TextFontStyle = TextFontStyle;
             copy.TextAlignment = TextAlignment;
             copy.IsSelected = IsSelected;
-            copy.ContentBounds = ContentBounds;
-            copy.ImageContentBounds = ImageContentBounds;
             if (OriginalTransformBitmap != null)
             {
                 copy.OriginalTransformBitmap = OriginalTransformBitmap;
             }
+            copy.ContentBounds = ContentBounds;
+            copy.ImageContentBounds = ImageContentBounds;
             copy.LayerScaleX = LayerScaleX;
             copy.LayerScaleY = LayerScaleY;
             copy.LayerAngle = LayerAngle;
             copy.LayerTranslateX = LayerTranslateX;
             copy.LayerTranslateY = LayerTranslateY;
+
+            // Copy Layer AI configurations
+            copy.PngBytes = PngBytes;
+            copy.LayerAiPrompt = LayerAiPrompt;
+            copy.LayerAiBatchSizeIndex = LayerAiBatchSizeIndex;
+            copy.LayerAiAspectRatioIndex = LayerAiAspectRatioIndex;
+            copy.LayerAiCustomWidth = LayerAiCustomWidth;
+            copy.LayerAiCustomHeight = LayerAiCustomHeight;
+            copy.LayerAiSecondarySlotCount = LayerAiSecondarySlotCount;
+            copy.LayerAiSecondaryImages.Clear();
+            foreach (var src in LayerAiSecondaryImages)
+            {
+                copy.LayerAiSecondaryImages.Add(new LayerAiSecondaryImage
+                {
+                    PngBytes = src.PngBytes,
+                    FilePath = src.FilePath,
+                    IsSelected = src.IsSelected,
+                    Bitmap = src.Bitmap
+                });
+            }
             
             if (ParentLayer != null && ParentLayer.ContentGeometry != null)
             {
@@ -757,5 +829,30 @@ namespace FlowMy.Models.ImageEditor
             Bitmap = new WriteableBitmap(converted);
             InvalidateThumbnail();
         }
+
+        // Layer AI settings specific to this layer
+        public byte[]? PngBytes { get; set; }
+        public string LayerAiPrompt { get; set; } = string.Empty;
+        public int LayerAiBatchSizeIndex { get; set; } = 2; // Default size index (usually 3)
+        public int LayerAiAspectRatioIndex { get; set; } = 3; // Default ratio (1:1)
+        public string LayerAiCustomWidth { get; set; } = string.Empty;
+        public string LayerAiCustomHeight { get; set; } = string.Empty;
+        public int LayerAiSecondarySlotCount { get; set; } = 4;
+
+        public class LayerAiSecondaryImage
+        {
+            public byte[]? PngBytes { get; set; }
+            public string? FilePath { get; set; }
+            public bool IsSelected { get; set; } = true;
+            public BitmapSource? Bitmap { get; set; }
+        }
+
+        public List<LayerAiSecondaryImage> LayerAiSecondaryImages { get; } = new List<LayerAiSecondaryImage>
+        {
+            new LayerAiSecondaryImage(),
+            new LayerAiSecondaryImage(),
+            new LayerAiSecondaryImage(),
+            new LayerAiSecondaryImage()
+        };
     }
 }

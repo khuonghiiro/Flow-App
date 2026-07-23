@@ -7,6 +7,7 @@
 // ========================================================================================
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace FlowMy.Models.ImageEditor.Commands
@@ -24,6 +25,12 @@ namespace FlowMy.Models.ImageEditor.Commands
         private readonly byte[] _oldRegionPixels;
         private readonly byte[] _newRegionPixels;
         private readonly int _regionStride;
+
+        private readonly bool _hadOriginalTransform;
+        private readonly WriteableBitmap? _oldOriginalTransformBitmap;
+        private readonly double _oldScaleX, _oldScaleY, _oldAngle, _oldTranslateX, _oldTranslateY;
+        private readonly Rect _oldContentBounds;
+        private readonly Geometry? _oldContentGeometry;
 
         public string Description => "Paint/Erase (Region)";
 
@@ -45,6 +52,20 @@ namespace FlowMy.Models.ImageEditor.Commands
             _oldRegionPixels = oldRegionPixels ?? throw new ArgumentNullException(nameof(oldRegionPixels));
             _newRegionPixels = newRegionPixels ?? throw new ArgumentNullException(nameof(newRegionPixels));
             _regionStride = dirtyRect.Width * 4;
+
+            _oldContentGeometry = layer.ContentGeometry;
+
+            _hadOriginalTransform = (layer.OriginalTransformBitmap != null);
+            if (_hadOriginalTransform)
+            {
+                _oldOriginalTransformBitmap = layer.OriginalTransformBitmap;
+                _oldScaleX = layer.LayerScaleX;
+                _oldScaleY = layer.LayerScaleY;
+                _oldAngle = layer.LayerAngle;
+                _oldTranslateX = layer.LayerTranslateX;
+                _oldTranslateY = layer.LayerTranslateY;
+                _oldContentBounds = layer.ContentBounds;
+            }
         }
 
         /// <summary>
@@ -107,6 +128,8 @@ namespace FlowMy.Models.ImageEditor.Commands
             if (_dirtyRect.Width <= 0 || _dirtyRect.Height <= 0) return;
             _layer.Bitmap.WritePixels(_dirtyRect, _newRegionPixels, _regionStride, 0);
             _layer.OriginalTransformBitmap = null;
+            _layer.ContentGeometry = null;
+            _layer.PngBytes = null;
             _layer.InvalidateThumbnail();
         }
 
@@ -114,7 +137,24 @@ namespace FlowMy.Models.ImageEditor.Commands
         {
             if (_dirtyRect.Width <= 0 || _dirtyRect.Height <= 0) return;
             _layer.Bitmap.WritePixels(_dirtyRect, _oldRegionPixels, _regionStride, 0);
-            _layer.OriginalTransformBitmap = null;
+            _layer.PngBytes = null;
+            
+            if (_hadOriginalTransform)
+            {
+                _layer.LayerScaleX = _oldScaleX;
+                _layer.LayerScaleY = _oldScaleY;
+                _layer.LayerAngle = _oldAngle;
+                _layer.LayerTranslateX = _oldTranslateX;
+                _layer.LayerTranslateY = _oldTranslateY;
+                _layer.OriginalTransformBitmap = _oldOriginalTransformBitmap;
+                _layer.ContentBounds = _oldContentBounds;
+            }
+            else
+            {
+                _layer.OriginalTransformBitmap = null;
+            }
+            
+            _layer.ContentGeometry = _oldContentGeometry;
             _layer.InvalidateThumbnail();
         }
 

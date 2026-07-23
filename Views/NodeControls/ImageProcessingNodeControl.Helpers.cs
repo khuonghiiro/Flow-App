@@ -41,7 +41,7 @@ namespace FlowMy.Views.NodeControls
             var src = host.ViewModel?.Nodes?.FirstOrDefault(n =>
                 string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
             if (src == null) return null;
-            var value = NodeDataPanelService.ResolveDynamicValueByKey(src, key);
+            var value = NodeDataPanelService.ResolveDynamicValueByKey(src, key, forDisplay: false);
             if (string.IsNullOrWhiteSpace(value) || value == "—") return null;
             return value;
         }
