@@ -2,6 +2,8 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.Overlays;
+using CefSharp;
+using CefSharp.Wpf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +16,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 {
     /// <summary>
     /// Executor cho ActionCanVasNode.
-    /// Minimize FlowMy â†’ countdown â†’ lÆ°u target HWND â†’ phÃ¡t láº¡i vá»›i SetForegroundWindow trÆ°á»›c má»—i click.
+    /// Minimize FlowMy → countdown → lưu target HWND → phát lại với SetForegroundWindow trước mỗi click.
     /// </summary>
     internal sealed class ActionCanVasNodeExecutor : INodeExecutor
     {
@@ -23,7 +25,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         public static bool IsVirtualLeftButtonDown { get; set; }
         public static bool IsPlaybackActive { get; set; }
-        public static Microsoft.Web.WebView2.Wpf.WebView2? ActiveVirtualCdpWebView { get; set; }
+        public static ChromiumWebBrowser? ActiveVirtualCdpWebView { get; set; }
         public static bool IsVirtualEventDispatching { get; set; }
         public static Point CanvasLayoutOffset { get; set; } = new Point(250, 60);
 
@@ -1190,13 +1192,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             bool isWindowActive = editorWindow.IsActive;
                             System.Diagnostics.Debug.WriteLine($"[MacroExecutor] {actionType} wpfPt=({wpfPoint.X:F0},{wpfPoint.Y:F0}) hitTest={hitTestSucceeded} cached={hitElement == _lastWpfHitElement && !hitTestSucceeded} hitElem={hitElement?.GetType().Name ?? "NULL"} windowActive={isWindowActive}");
 
-                            Microsoft.Web.WebView2.Wpf.WebView2? webView = ActiveVirtualCdpWebView;
+                            CefSharp.Wpf.ChromiumWebBrowser? webView = ActiveVirtualCdpWebView;
                             bool isNativeHost = webView != null;
                             FlowMy.Models.WorkflowNode? resolvedHostNode = null;
+                            FlowMy.Services.Interaction.IWorkflowEditorHost? directHost = editorWindow as FlowMy.Services.Interaction.IWorkflowEditorHost;
 
-                            if (webView == null && editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHostVal)
+                            if (webView == null && directHost != null)
                             {
-                                var vmVal = directHostVal.ViewModel;
+                                var vmVal = directHost.ViewModel;
                                 if (vmVal != null && macroNode != null && action != null)
                                 {
                                     double canvasX;
@@ -1218,9 +1221,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     }
                                     else
                                     {
-                                        var scale = directHostVal.ScaleTransform?.ScaleX ?? 1.0;
-                                        var txVal = directHostVal.TranslateTransform?.X ?? 0;
-                                        var tyVal = directHostVal.TranslateTransform?.Y ?? 0;
+                                        var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                        var txVal = directHost.TranslateTransform?.X ?? 0;
+                                        var tyVal = directHost.TranslateTransform?.Y ?? 0;
                                         double logicalClientX = wpfPoint.X / dpiScaleX;
                                         double logicalClientY = wpfPoint.Y / dpiScaleY;
                                         canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
@@ -1293,24 +1296,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     System.Windows.DependencyObject current = hitElement;
                                     while (current != null)
                                     {
-                                        if (current is Microsoft.Web.WebView2.Wpf.WebView2 wv2)
+                                        if (current is CefSharp.Wpf.ChromiumWebBrowser wv2)
                                         {
                                             webView = wv2;
                                             isNativeHost = true;
                                             break;
                                         }
-                                        if (current is System.Windows.Interop.HwndHost || current.GetType().Name.Contains("WebView2"))
+                                        if (current is System.Windows.Interop.HwndHost || current.GetType().Name.Contains("ChromiumWebBrowser"))
                                         {
                                             isNativeHost = true;
-                                            if (current is Microsoft.Web.WebView2.Wpf.WebView2 v) webView = v;
+                                            if (current is CefSharp.Wpf.ChromiumWebBrowser v) webView = v;
                                         }
                                         current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
                                     }
                                 }
 
-                                // Fallback target matching: Nếu cửa sổ không hoạt động hoặc hitTest trả về null,
-                                // dùng DPI-scaled coordinates để tìm WebView2 node chứa toạ độ chuột simulated.
-                                if (webView == null && editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                                if (webView == null && directHost != null)
                                 {
                                     var vm = directHost.ViewModel;
                                     if (vm != null)
@@ -1388,15 +1389,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                             }
 
-                            if (webView != null && webView.CoreWebView2 != null)
+                            if (webView != null)
                             {
                                 handledByCdp = true;
                                 try 
                                 {
                                     Point wvPoint;
-                                    // Robust manual calculation to ensure 100% identical coordinates
-                                    // between active and background/minimized states.
-                                    if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                                    if (directHost != null)
                                     {
                                         var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
                                         var txVal = directHost.TranslateTransform?.X ?? 0;
@@ -1553,29 +1552,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         ActiveVirtualCdpWebView = webView;
                                     }
 
-                                    if (actionType == "MouseDown")
-                                    {
-                                        // Gửi mouseMoved trước để đồng bộ hover/focus
-                                        var hoverPayload = new { type = "mouseMoved", x = wvPoint.X, y = wvPoint.Y, button = "none", buttons = 0, clickCount = 0, modifiers = modifiers };
-                                        _ = webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(hoverPayload));
-                                    }
+                                     if (actionType == "MouseDown")
+                                     {
+                                         var hoverJs = $"document.elementFromPoint({wvPoint.X}, {wvPoint.Y})?.focus();";
+                                         webView.ExecuteScriptAsync(hoverJs);
+                                     }
 
-                                    if (actionType == "MouseScroll")
-                                    {
-                                        var scrollPayload = new { type = "mouseWheel", x = wvPoint.X, y = wvPoint.Y, deltaX = 0, deltaY = -scrollDelta * 120, modifiers = modifiers };
-                                        _ = webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(scrollPayload));
-                                    }
-                                    else
-                                    {
-                                        var payload = new { type = cdpType, x = wvPoint.X, y = wvPoint.Y, button = cdpButton, buttons = cdpButtons, clickCount = clickCount, modifiers = modifiers };
-                                        _ = webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(payload));
-                                        
-                                        if (actionType == "MouseUp")
-                                        {
-                                            // Keep active WebView reference for subsequent key actions
-                                            // ActiveVirtualCdpWebView = null;
-                                        }
-                                    }
+                                     if (actionType == "MouseScroll")
+                                     {
+                                         var scrollJs = $"window.scrollBy(0, {-scrollDelta * 120});";
+                                         webView.ExecuteScriptAsync(scrollJs);
+                                     }
+                                     else
+                                     {
+                                         var clickJs = $"var el = document.elementFromPoint({wvPoint.X}, {wvPoint.Y}); if(el) el.click();";
+                                         webView.ExecuteScriptAsync(clickJs);
+                                     }
 
                                     // Always bubble up MouseUp to WPF to clear any stuck DragDropHandler state
                                     if (actionType == "MouseUp")
@@ -1603,7 +1595,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 bool directHandled = false;
                                 if (actionType == "MouseDown" || actionType == "MouseMove" || actionType == "MouseUp")
                                 {
-                                    if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
                                     {
                                         var vm = directHost.ViewModel;
                                         if (vm != null)
@@ -1876,7 +1867,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         try
                         {
-                            Microsoft.Web.WebView2.Wpf.WebView2? webView = ActiveVirtualCdpWebView;
+                            CefSharp.Wpf.ChromiumWebBrowser? webView = ActiveVirtualCdpWebView;
 
                             if (webView == null && editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
                             {
@@ -1930,7 +1921,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                             }
 
-                            if (webView != null && webView.CoreWebView2 != null)
+                            if (webView != null)
                             {
                                 EnsureWebViewActiveInBackground(webView);
                                 try { webView.Focus(); } catch { }
@@ -1952,77 +1943,27 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     cleanKey = parts.Length > 0 ? parts[^1] : cleanKey;
                                 }
 
-                                var (cdpKey, cdpCode, cdpVk, cdpText) = GetCdpKeyDetails(cleanKey);
-
-                                // A. Full CDP 4-step sequence for Ctrl shortcuts (Ctrl+C, Ctrl+V, Ctrl+A, Ctrl+X...)
                                 if (ctrl)
                                 {
-                                    var ctrlDownPayload = new { type = "rawKeyDown", key = "Control", code = "ControlLeft", windowsVirtualKeyCode = 17, modifiers = modifiers };
-                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(ctrlDownPayload));
-
-                                    var keyShortDownPayload = new { type = "rawKeyDown", key = cdpKey, code = cdpCode, windowsVirtualKeyCode = cdpVk, modifiers = modifiers };
-                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyShortDownPayload));
-
                                     if (cleanKey.Equals("V", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('paste')"); } catch { }
+                                        try { webView.ExecuteScriptAsync("document.execCommand('paste')"); } catch { }
                                     }
                                     else if (cleanKey.Equals("C", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('copy')"); } catch { }
+                                        try { webView.ExecuteScriptAsync("document.execCommand('copy')"); } catch { }
                                     }
                                     else if (cleanKey.Equals("A", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('selectAll')"); } catch { }
+                                        try { webView.ExecuteScriptAsync("document.execCommand('selectAll')"); } catch { }
                                     }
                                     else if (cleanKey.Equals("X", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { await webView.CoreWebView2.ExecuteScriptAsync("document.execCommand('cut')"); } catch { }
+                                        try { webView.ExecuteScriptAsync("document.execCommand('cut')"); } catch { }
                                     }
-
-                                    var keyShortUpPayload = new { type = "keyUp", key = cdpKey, code = cdpCode, windowsVirtualKeyCode = cdpVk, modifiers = modifiers };
-                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyShortUpPayload));
-
-                                    var ctrlUpPayload = new { type = "keyUp", key = "Control", code = "ControlLeft", windowsVirtualKeyCode = 17, modifiers = 0 };
-                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(ctrlUpPayload));
-
                                     tcs.TrySetResult(true);
                                     return;
                                 }
-
-                                // B. Standard CDP Key sequence for single key input
-                                var keyDownPayload = new
-                                {
-                                    type = "rawKeyDown",
-                                    key = cdpKey,
-                                    code = cdpCode,
-                                    windowsVirtualKeyCode = cdpVk,
-                                    modifiers = modifiers
-                                };
-                                await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyDownPayload));
-
-                                if (modifiers == 0 && !string.IsNullOrEmpty(cdpText))
-                                {
-                                    var charPayload = new
-                                    {
-                                        type = "char",
-                                        key = cdpKey,
-                                        code = cdpCode,
-                                        windowsVirtualKeyCode = cdpVk,
-                                        text = cdpText
-                                    };
-                                    await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(charPayload));
-                                }
-
-                                var keyUpPayload = new
-                                {
-                                    type = "keyUp",
-                                    key = cdpKey,
-                                    code = cdpCode,
-                                    windowsVirtualKeyCode = cdpVk,
-                                    modifiers = modifiers
-                                };
-                                await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", System.Text.Json.JsonSerializer.Serialize(keyUpPayload));
 
                                 tcs.TrySetResult(true);
                             }
@@ -2285,12 +2226,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return matched;
         }
 
-        private static Microsoft.Web.WebView2.Wpf.WebView2? FindWebView2InVisualTree(System.Windows.DependencyObject parent)
+        private static ChromiumWebBrowser? FindWebView2InVisualTree(System.Windows.DependencyObject parent)
         {
             if (parent == null) return null;
-            if (parent is Microsoft.Web.WebView2.Wpf.WebView2 wv2)
+            if (parent is ChromiumWebBrowser wv)
             {
-                return wv2;
+                return wv;
             }
             int childrenCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
             for (int i = 0; i < childrenCount; i++)
@@ -2302,50 +2243,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return null;
         }
 
-        private static void EnsureWebViewActiveInBackground(Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        private static void EnsureWebViewActiveInBackground(ChromiumWebBrowser webView)
         {
-            try
-            {
-                if (webView.CoreWebView2 != null)
-                {
-                    var isSuspendedProp = webView.CoreWebView2.GetType().GetProperty("IsSuspended");
-                    if (isSuspendedProp != null)
-                    {
-                        bool isSuspended = (bool)isSuspendedProp.GetValue(webView.CoreWebView2);
-                        if (isSuspended)
-                        {
-                            var resumeMethod = webView.CoreWebView2.GetType().GetMethod("Resume");
-                            resumeMethod?.Invoke(webView.CoreWebView2, null);
-                            System.Diagnostics.Debug.WriteLine("[MacroExecutor] CoreWebView2 was suspended. Called Resume().");
-                        }
-                    }
-                }
-
-                var type = typeof(Microsoft.Web.WebView2.Wpf.WebView2);
-                var field = type.GetField("_coreWebView2Controller", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                            ?? type.GetField("_controller", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field != null)
-                {
-                    var controller = field.GetValue(webView);
-                    if (controller != null)
-                    {
-                        var isVisibleProp = controller.GetType().GetProperty("IsVisible");
-                        if (isVisibleProp != null && isVisibleProp.CanWrite)
-                        {
-                            bool currentVal = (bool)isVisibleProp.GetValue(controller);
-                            if (!currentVal)
-                            {
-                                isVisibleProp.SetValue(controller, true);
-                                System.Diagnostics.Debug.WriteLine("[MacroExecutor] Forced CoreWebView2Controller.IsVisible = true in background");
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Failed to force WebView2 active: {ex.Message}");
-            }
         }
     }
 }

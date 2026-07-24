@@ -5,6 +5,8 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls;
+using CefSharp;
+using CefSharp.Wpf;
 using Microsoft.Win32;
 using System.Collections.Concurrent;
 using System.IO;
@@ -594,7 +596,7 @@ namespace FlowMy.Views.Overlays
         // WebView2 browser (lazy init)
         public class WebTabItem
         {
-            public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; set; }
+            public ChromiumWebBrowser? WebView { get; set; }
             public string Url { get; set; } = "https://google.com";
             public string Title { get; set; } = "New Tab";
             public string ProfileName { get; set; } = "Shared";
@@ -612,7 +614,7 @@ namespace FlowMy.Views.Overlays
         private int _activeTabIdx = -1;
         private string _splitMode = "Single";
         private bool _webBrowserInitialized = false;
-        private Microsoft.Web.WebView2.Wpf.WebView2? _dynamicWebView;
+        private ChromiumWebBrowser? _dynamicWebView;
         private System.Windows.Controls.Primitives.Popup? _suggestPopup;
         private ListBox? _suggestListBox;
         private System.Windows.Threading.DispatcherTimer? _suggestDebounceTimer;
@@ -785,55 +787,34 @@ namespace FlowMy.Views.Overlays
 
         #endregion
 
-        #region Web Browser (WebView2 + Search + Profile)
+        #region Web Browser (CefSharp + Search + Profile)
 
-        private Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions GetBrowserEnvironmentOptions()
+        private static void InjectDragDropInterceptorScriptAsync(ChromiumWebBrowser webView)
         {
-            var options = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
-            var browserArgs = new System.Text.StringBuilder();
-
-            browserArgs.Append("--disable-background-timer-throttling ");
-            browserArgs.Append("--disable-backgrounding-occluded-windows ");
-            browserArgs.Append("--disable-renderer-backgrounding ");
-            browserArgs.Append("--calculate-native-win-occlusion=false ");
-
-            if (GpuDetectionHelper.IsGpuAvailable)
+            if (webView == null) return;
+            webView.FrameLoadEnd += (s, e) =>
             {
-                browserArgs.Append("--enable-gpu-rasterization ");
-                browserArgs.Append("--enable-zero-copy ");
-                browserArgs.Append("--enable-features=VaapiVideoDecoder ");
-                browserArgs.Append("--ignore-gpu-blacklist ");
-                browserArgs.Append("--enable-accelerated-2d-canvas ");
-                browserArgs.Append("--enable-accelerated-video-decode ");
-            }
-            else
-            {
-                browserArgs.Append("--disable-gpu ");
-            }
-
-            options.AdditionalBrowserArguments = browserArgs.ToString().Trim();
-            return options;
+                if (e.Frame.IsMain)
+                {
+                    try { e.Frame.ExecuteJavaScriptAsync("window.resetDragState = function() { };"); } catch { }
+                }
+            };
         }
 
-        private async void InitDynamicWebViewAsync()
+        private void InitDynamicWebViewAsync()
         {
             try
             {
                 var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
                 if (cacheState.DynamicWebView == null)
                 {
-                    var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+                    var webView = new ChromiumWebBrowser
+                    {
+                        RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext("DynamicUi_" + _node.Id)
+                    };
                     
-                    // Add WebView2 to container FIRST so it's in the visual tree!
                     WebViewContainer.Child = webView;
-
-                    var cachePath = WebNodeCacheHelper.GetProfileCachePath("DynamicUi_" + _node.Id);
-                    Directory.CreateDirectory(cachePath);
-                    var options = GetBrowserEnvironmentOptions();
-                    var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-
-                    await webView.EnsureCoreWebView2Async(env);
-                    await InjectDragDropInterceptorScriptAsync(webView);
+                    InjectDragDropInterceptorScriptAsync(webView);
                     cacheState.DynamicWebView = webView;
                 }
                 else
@@ -844,7 +825,6 @@ namespace FlowMy.Views.Overlays
                         parentBorder.Child = null;
                     }
                     WebViewContainer.Child = webView;
-                    try { webView.CoreWebView2?.Resume(); } catch { }
                 }
 
                 _dynamicWebView = cacheState.DynamicWebView;
@@ -859,7 +839,7 @@ namespace FlowMy.Views.Overlays
 
         private void RenderDynamicUi()
         {
-            if (_dynamicWebView?.CoreWebView2 == null) return;
+            if (_dynamicWebView == null) return;
 
             try
             {
@@ -886,7 +866,7 @@ namespace FlowMy.Views.Overlays
                 builder.AppendLine("</html>");
 
                 var fullHtml = builder.ToString();
-                _dynamicWebView.CoreWebView2.NavigateToString(fullHtml);
+                _dynamicWebView.LoadHtml(fullHtml);
             }
             catch (Exception ex)
             {
@@ -1032,107 +1012,51 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void InitializeWebViewAfterLoading(WebTabItem tab, Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        private void InitializeWebViewAfterLoading(WebTabItem tab, ChromiumWebBrowser webView)
         {
-            _ = Task.Run(async () =>
+            try
             {
-                await Dispatcher.InvokeAsync(async () =>
-                {
-                    try
-                    {
-                        var profileName = tab.ProfileName;
-                        Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
+                webView.RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext(tab.ProfileName);
+                InjectDragDropInterceptorScriptAsync(webView);
 
-                        if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
-                        {
-                            try
-                            {
-                                env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                            }
-                            catch (Exception exShared)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Shared env failed fallback: {exShared.Message}");
-                                var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
-                                Directory.CreateDirectory(cachePath);
-                                var options = GetBrowserEnvironmentOptions();
-                                env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                            }
-                        }
-                        else
-                        {
-                            var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                            Directory.CreateDirectory(cachePath);
-                            var options = GetBrowserEnvironmentOptions();
-                            env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                        }
-
-                        await webView.EnsureCoreWebView2Async(env);
-                        await InjectDragDropInterceptorScriptAsync(webView);
-
-                        var url = tab.Url;
-                        if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
-                        webView.CoreWebView2.Navigate(url);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Deferred WebView2 initialization failed: {ex.Message}");
-                    }
-                });
-            });
+                var url = tab.Url;
+                if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
+                webView.LoadUrl(url);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Deferred CefSharp initialization failed: {ex.Message}");
+            }
         }
 
-        private void BindWebViewEvents(WebTabItem tab, Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        private void BindWebViewEvents(WebTabItem tab, ChromiumWebBrowser webView)
         {
-            webView.NavigationStarting += (s, e) =>
+            webView.LoadingStateChanged += (s, e) =>
             {
-                tab.IsLoading = true;
+                tab.IsLoading = e.IsLoading;
                 Dispatcher.Invoke(() => {
-                    RefreshWebTabStrip();
-                    if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
+                    if (!e.IsLoading)
                     {
-                        UrlLoadingIndicator.Visibility = Visibility.Visible;
-                    }
-                });
-            };
-
-            webView.NavigationCompleted += (s, e) =>
-            {
-                tab.IsLoading = false;
-                Dispatcher.Invoke(() => {
-                    try
-                    {
-                        if (webView.CoreWebView2 != null)
+                        try
                         {
-                            tab.Url = webView.CoreWebView2.Source;
-                            tab.Title = webView.CoreWebView2.DocumentTitle;
+                            tab.Url = webView.Address ?? tab.Url;
+                            tab.Title = webView.Title ?? tab.Title;
                             if (string.IsNullOrWhiteSpace(tab.Title)) tab.Title = "New Tab";
+                            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
+                            {
+                                TxtWebUrl.Text = tab.Url;
+                                _node.LayerAiWebUrl = tab.Url;
+                            }
                         }
+                        catch { }
                     }
-                    catch { }
                     RefreshWebTabStrip();
                     UpdateNavigationButtons();
                     if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
                     {
-                        UrlLoadingIndicator.Visibility = Visibility.Collapsed;
-                        TxtWebUrl.Text = tab.Url;
+                        if (e.IsLoading) UrlLoadingIndicator.Visibility = Visibility.Visible;
+                        else UrlLoadingIndicator.Visibility = Visibility.Collapsed;
                     }
-                });
-            };
-
-            webView.SourceChanged += (s, e) =>
-            {
-                Dispatcher.Invoke(() => {
-                    try
-                    {
-                        tab.Url = webView.Source?.ToString() ?? tab.Url;
-                        if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
-                        {
-                            TxtWebUrl.Text = tab.Url;
-                            _node.LayerAiWebUrl = tab.Url;
-                        }
-                    }
-                    catch { }
-                    SaveWebTabsState();
                 });
             };
 
@@ -1204,7 +1128,7 @@ namespace FlowMy.Views.Overlays
 
                     if (needsInitialization)
                     {
-                        var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+                        var webView = new ChromiumWebBrowser();
                         tab.WebView = webView;
                         
                         HookActivityEvents(webView);
@@ -1593,9 +1517,9 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                if (tab.WebView?.CoreWebView2 != null && tab.WebView.CanGoBack)
+                if (tab.WebView != null && tab.WebView.CanGoBack)
                 {
-                    tab.WebView.GoBack();
+                    tab.WebView.Back();
                 }
             }
         }
@@ -1605,9 +1529,9 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                if (tab.WebView?.CoreWebView2 != null && tab.WebView.CanGoForward)
+                if (tab.WebView != null && tab.WebView.CanGoForward)
                 {
-                    tab.WebView.GoForward();
+                    tab.WebView.Forward();
                 }
             }
         }
@@ -1617,7 +1541,7 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                if (tab.WebView?.CoreWebView2 != null)
+                if (tab.WebView != null)
                 {
                     tab.WebView.Reload();
                 }
@@ -1701,7 +1625,7 @@ namespace FlowMy.Views.Overlays
                 {
                     try
                     {
-                        var oldUrl = tab.WebView.CoreWebView2?.Source ?? tab.Url;
+                        var oldUrl = tab.WebView.Address ?? tab.Url;
                         tab.WebView.Dispose();
                         tab.WebView = null;
 
@@ -1777,7 +1701,7 @@ namespace FlowMy.Views.Overlays
         {
             if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) return;
             var tab = _webTabs[_activeTabIdx];
-            if (tab.WebView?.CoreWebView2 == null) return;
+            if (tab.WebView == null) return;
 
             var trimmed = input?.Trim() ?? "";
             if (string.IsNullOrEmpty(trimmed)) return;
@@ -1797,7 +1721,7 @@ namespace FlowMy.Views.Overlays
             }
 
             TxtWebUrl.Text = url;
-            tab.WebView.CoreWebView2.Navigate(url);
+            tab.WebView.LoadUrl(url);
         }
 
         private void BtnWebGo_Click(object sender, RoutedEventArgs e) => NavigateWebBrowser(TxtWebUrl.Text);
@@ -2702,12 +2626,12 @@ namespace FlowMy.Views.Overlays
                         string? pageUrl = sourcePageUrl;
                         if (string.IsNullOrWhiteSpace(pageUrl))
                         {
-                            Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
+                            ChromiumWebBrowser? activeWv = null;
                             if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                             else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
-                            if (activeWv?.Source != null)
+                            if (activeWv != null && !string.IsNullOrWhiteSpace(activeWv.Address))
                             {
-                                pageUrl = activeWv.Source.ToString();
+                                pageUrl = activeWv.Address;
                             }
                         }
                         if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = _node?.LayerAiWebUrl;
@@ -4494,15 +4418,15 @@ namespace FlowMy.Views.Overlays
                 foreach (var cachedTab in cacheState.WebBrowsers)
                 {
                     var activeWv = cachedTab.WebView;
-                    if (activeWv != null && activeWv.CoreWebView2 != null)
+                    if (activeWv != null)
                     {
-                        try { await activeWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();"); } catch { }
+                        try { await activeWv.EvaluateScriptAsync("if (window.resetDragState) window.resetDragState();"); } catch { }
                     }
                 }
                 var dynamicWv = cacheState.DynamicWebView;
-                if (dynamicWv != null && dynamicWv.CoreWebView2 != null)
+                if (dynamicWv != null)
                 {
-                    await dynamicWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();");
+                    await dynamicWv.EvaluateScriptAsync("if (window.resetDragState) window.resetDragState();");
                 }
             }
             catch (Exception ex)
@@ -4689,12 +4613,12 @@ namespace FlowMy.Views.Overlays
                     string? pageUrl = sourcePageUrl;
                     if (string.IsNullOrWhiteSpace(pageUrl))
                     {
-                        Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
+                        ChromiumWebBrowser? activeWv = null;
                         if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                         else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
-                        if (activeWv?.Source != null)
+                        if (activeWv != null && !string.IsNullOrWhiteSpace(activeWv.Address))
                         {
-                            pageUrl = activeWv.Source.ToString();
+                            pageUrl = activeWv.Address;
                         }
                     }
                     if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = _node?.LayerAiWebUrl;
@@ -4992,20 +4916,18 @@ namespace FlowMy.Views.Overlays
             try
             {
                 // Find the active WebView2 instance to extract session cookies
-                Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
+                ChromiumWebBrowser? activeWv = null;
                 if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                 else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
 
                 using (var client = new System.Net.Http.HttpClient())
                 {
-                    // Add standard browser headers
                     client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-                    // Set Referer to the current page URL
                     string? pageUrl = null;
-                    if (activeWv?.Source != null)
+                    if (activeWv != null && !string.IsNullOrWhiteSpace(activeWv.Address))
                     {
-                        pageUrl = activeWv.Source.ToString();
+                        pageUrl = activeWv.Address;
                     }
                     if (string.IsNullOrWhiteSpace(pageUrl))
                     {
@@ -5021,13 +4943,12 @@ namespace FlowMy.Views.Overlays
                         client.DefaultRequestHeaders.Referrer = new Uri(pageUrl);
                     }
 
-                    // Extract and add cookies as raw header string (avoids CookieContainer exceptions)
-                    if (activeWv?.CoreWebView2 != null)
+                    if (activeWv != null)
                     {
                         try
                         {
-                            var cookieManager = activeWv.CoreWebView2.CookieManager;
-                            var cookies = await cookieManager.GetCookiesAsync(uri.ToString());
+                            var cookieManager = Cef.GetGlobalCookieManager();
+                            var cookies = await cookieManager.VisitUrlCookiesAsync(uri.ToString(), true);
                             if (cookies != null && cookies.Count > 0)
                             {
                                 var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
@@ -5037,7 +4958,7 @@ namespace FlowMy.Views.Overlays
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Failed to get WebView2 cookies: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Failed to get CefSharp cookies: {ex.Message}");
                         }
                     }
 
@@ -5163,151 +5084,6 @@ namespace FlowMy.Views.Overlays
 
         [System.Runtime.InteropServices.DllImport("kernel32.dll")]
         private static extern int GlobalSize(IntPtr hMem);
-
-        private async System.Threading.Tasks.Task InjectDragDropInterceptorScriptAsync(Microsoft.Web.WebView2.Wpf.WebView2 webView)
-        {
-            if (webView?.CoreWebView2 == null) return;
-            try
-            {
-                // Inject the JS script to run on every page load
-                string script = @"
-                    (function() {
-                        window._isMouseDownOnImage = false;
-                        
-                        window.resetDragState = function() {
-                            window._isMouseDownOnImage = false;
-                            const lastEl = document.activeElement || document.body;
-                            const eventOptions = { bubbles: true, cancelable: true, view: window };
-                            
-                            const mouseUpEv = new MouseEvent('mouseup', eventOptions);
-                            const pointerUpEv = new PointerEvent('pointerup', eventOptions);
-                            const dragEndEv = new DragEvent('dragend', eventOptions);
-                            const dragLeaveEv = new DragEvent('dragleave', eventOptions);
-                            
-                            if (lastEl) {
-                                lastEl.dispatchEvent(mouseUpEv);
-                                lastEl.dispatchEvent(pointerUpEv);
-                                lastEl.dispatchEvent(dragLeaveEv);
-                                lastEl.dispatchEvent(dragEndEv);
-                            }
-                            
-                            document.dispatchEvent(mouseUpEv);
-                            document.dispatchEvent(pointerUpEv);
-                            document.dispatchEvent(dragLeaveEv);
-                            document.dispatchEvent(dragEndEv);
-                            
-                            window.dispatchEvent(mouseUpEv);
-                            window.dispatchEvent(pointerUpEv);
-                            
-                            const escDown = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
-                            const escUp = new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
-                            
-                            if (lastEl) {
-                                lastEl.dispatchEvent(escDown);
-                                lastEl.dispatchEvent(escUp);
-                            }
-                            document.dispatchEvent(escDown);
-                            document.dispatchEvent(escUp);
-                            window.dispatchEvent(escDown);
-                            window.dispatchEvent(escUp);
-                        };
-
-                        // 1. Force draggable=true when user starts to drag or click-down on images and links
-                        document.addEventListener('mousedown', function(e) {
-                            let target = e.target;
-                            while (target && target.tagName !== 'IMG' && target.tagName !== 'A') {
-                                target = target.parentNode;
-                            }
-                            if (target) {
-                                window._isMouseDownOnImage = true;
-                                if (target.tagName === 'IMG' && target.getAttribute('draggable') !== 'true') {
-                                    target.setAttribute('draggable', 'true');
-                                } else if (target.tagName === 'A') {
-                                    const img = target.querySelector('img');
-                                    if (img && img.getAttribute('draggable') !== 'true') {
-                                        img.setAttribute('draggable', 'true');
-                                    }
-                                    if (target.getAttribute('draggable') !== 'true') {
-                                        target.setAttribute('draggable', 'true');
-                                    }
-                                }
-                            }
-                        }, true);
-
-                        // Reset flag on mouseup / pointerup / dragend
-                        const resetFlag = function() {
-                            window._isMouseDownOnImage = false;
-                        };
-                        document.addEventListener('mouseup', resetFlag, true);
-                        document.addEventListener('pointerup', resetFlag, true);
-                        document.addEventListener('dragend', resetFlag, true);
-
-                        // Block mouse/pointer move events if mouse is down on image to prevent JS drag libraries from launching custom dragging previews
-                        const blockMoveEvents = function(e) {
-                            if (window._isMouseDownOnImage) {
-                                e.stopImmediatePropagation();
-                            }
-                        };
-                        document.addEventListener('mousemove', blockMoveEvents, true);
-                        document.addEventListener('pointermove', blockMoveEvents, true);
-
-                        // 2. Intercept dragstart in capture phase to bypass target-level blockages
-                        document.addEventListener('dragstart', function(e) {
-                            let target = e.target;
-                            while (target && target.tagName !== 'IMG' && target.tagName !== 'A') {
-                                target = target.parentNode;
-                            }
-                            if (target) {
-                                // Stop event propagation immediately to prevent SPA/React DnD libraries from running their custom drag overlays
-                                e.stopImmediatePropagation();
-                                
-                                let imageUrl = '';
-                                if (target.tagName === 'IMG') {
-                                    imageUrl = target.src;
-                                } else if (target.tagName === 'A') {
-                                    const img = target.querySelector('img');
-                                    if (img) {
-                                        imageUrl = img.src;
-                                    } else if (/\.(png|jpg|jpeg|gif|webp|bmp)/i.test(target.href)) {
-                                        imageUrl = target.href;
-                                    }
-                                }
-                                if (imageUrl) {
-                                    try {
-                                        const absoluteUrl = new URL(imageUrl, window.location.href).href;
-                                        // Set data transfer details
-                                        e.dataTransfer.effectAllowed = 'copyLink';
-                                        e.dataTransfer.setData('text/plain', absoluteUrl);
-                                        e.dataTransfer.setData('text/uri-list', absoluteUrl);
-                                        
-                                        // Disable preventDefault so React / SPA page scripts cannot cancel the native drag
-                                        e.preventDefault = function() {};
-                                    } catch (err) {
-                                        console.error('Failed to resolve URL on dragstart:', err);
-                                    }
-                                }
-                            }
-                        }, true);
-
-                        // 3. Intercept drag event to prevent page scripts from updating drag positions
-                        document.addEventListener('drag', function(e) {
-                            let target = e.target;
-                            while (target && target.tagName !== 'IMG' && target.tagName !== 'A') {
-                                target = target.parentNode;
-                            }
-                            if (target) {
-                                e.stopImmediatePropagation();
-                            }
-                        }, true);
-                    })();
-                ";
-                await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to inject drag-drop interceptor script: {ex.Message}");
-            }
-        }
  
         #endregion
  
@@ -5320,7 +5096,7 @@ namespace FlowMy.Views.Overlays
 
         public class CachedTabState
         {
-            public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; set; }
+            public ChromiumWebBrowser? WebView { get; set; }
             public string Url { get; set; } = "https://google.com";
             public string Title { get; set; } = "New Tab";
             public string ProfileName { get; set; } = "Shared";
@@ -5328,7 +5104,7 @@ namespace FlowMy.Views.Overlays
 
         public class CachedWebViewState
         {
-            public Microsoft.Web.WebView2.Wpf.WebView2? DynamicWebView { get; set; }
+            public ChromiumWebBrowser? DynamicWebView { get; set; }
             public System.Collections.Generic.List<CachedTabState> WebBrowsers { get; set; } = new();
             public string SplitMode { get; set; } = "Single";
             public int ActiveTabIdx { get; set; } = 0;
@@ -5388,27 +5164,15 @@ namespace FlowMy.Views.Overlays
             {
                 if (_cache.TryGetValue(nodeId, out var state))
                 {
-                    System.Windows.Application.Current.Dispatcher.Invoke(async () =>
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         try
                         {
-                            if (state.DynamicWebView?.CoreWebView2 != null)
-                            {
-                                await state.DynamicWebView.CoreWebView2.TrySuspendAsync();
-                                System.Diagnostics.Debug.WriteLine($"WebView2 Dynamic UI suspended for node {nodeId}");
-                            }
-                            foreach (var tabState in state.WebBrowsers)
-                            {
-                                if (tabState.WebView?.CoreWebView2 != null)
-                                {
-                                    await tabState.WebView.CoreWebView2.TrySuspendAsync();
-                                    System.Diagnostics.Debug.WriteLine($"WebView2 WebBrowser (profile: {tabState.ProfileName}) suspended for node {nodeId}");
-                                }
-                            }
+                            System.Diagnostics.Debug.WriteLine($"ChromiumWebBrowser idle check for node {nodeId}");
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error suspending WebView2: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error putting browser to sleep: {ex.Message}");
                         }
                     });
                 }

@@ -5,22 +5,18 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
+using CefSharp;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 
 namespace FlowMy.Services.Workflow;
 
 /// <summary>
-/// Export/apply cookie snapshot cho gói portable (format 2 — file cookies.json nhỏ, không copy cả profile WebView2).
+/// Export/apply cookie snapshot cho gói portable dùng CefSharp ICookieManager.
 /// </summary>
 public static class WebCookieSnapshotService
 {
     public const int FormatVersion = 3;
-
-    private static readonly SemaphoreSlim ExportWebViewGate = new(1, 1);
 
     private sealed class PortableCookieBundleDto
     {
@@ -36,7 +32,6 @@ public static class WebCookieSnapshotService
         [JsonPropertyName("requestUri")]
         public string? RequestUri { get; set; }
 
-        /// <summary>Tên profile WebView2 sở hữu cookie entry này ("Shared" hoặc tên profile độc lập). Mặc định "Shared" nếu null/empty (tương thích v2).</summary>
         [JsonPropertyName("profile")]
         public string? Profile { get; set; }
 
@@ -67,7 +62,6 @@ public static class WebCookieSnapshotService
         [JsonPropertyName("sameSite")]
         public int? SameSite { get; set; }
 
-        /// <summary>ISO 8601 hoặc bỏ trống = session.</summary>
         [JsonPropertyName("expires")]
         public string? Expires { get; set; }
     }
@@ -78,17 +72,12 @@ public static class WebCookieSnapshotService
         WriteIndented = false
     };
 
-    /// <summary>Phải gọi trên UI thread (WebView2 WPF).</summary>
     public static async Task<string> ExportSnapshotJsonAsync(IReadOnlyCollection<WorkflowNode> nodes, CancellationToken cancellationToken)
     {
-        if (Application.Current?.Dispatcher.CheckAccess() != true)
-            throw new InvalidOperationException("ExportSnapshotJsonAsync must run on the WPF UI thread.");
-
         cancellationToken.ThrowIfCancellationRequested();
         var lookupUris = CollectCookieLookupUris(nodes);
         var entries = new List<PortableCookieEntryDto>();
 
-        // Collect all profiles used by WebNodes (Shared + Isolated custom cache profiles)
         var profilesToExport = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Shared" };
         foreach (var w in nodes.OfType<WebNode>())
         {
@@ -99,100 +88,71 @@ public static class WebCookieSnapshotService
             }
         }
 
-        await ExportWebViewGate.WaitAsync(cancellationToken).ConfigureAwait(true);
-        try
+        foreach (var profileName in profilesToExport)
         {
-            foreach (var profileName in profilesToExport)
+            cancellationToken.ThrowIfCancellationRequested();
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                Window? host = null;
-                try
+                ICookieManager cookieManager;
+                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
                 {
-                    host = new Window
-                    {
-                        Width = 1,
-                        Height = 1,
-                        Left = -32000,
-                        Top = 0,
-                        WindowStyle = WindowStyle.ToolWindow,
-                        ShowInTaskbar = false,
-                        ShowActivated = false,
-                        Visibility = Visibility.Hidden
-                    };
-                    var wv = new WebView2();
-                    host.Content = wv;
-                    host.Show();
-
-                    CoreWebView2Environment env;
-                    if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
-                    {
-                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync().ConfigureAwait(true);
-                    }
-                    else
-                    {
-                        var profilePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                        System.IO.Directory.CreateDirectory(profilePath);
-                        env = await CoreWebView2Environment.CreateAsync(null, profilePath).ConfigureAwait(true);
-                    }
-
-                    await wv.EnsureCoreWebView2Async(env).ConfigureAwait(true);
-                    var core = wv.CoreWebView2 ?? throw new InvalidOperationException("CoreWebView2 is null after init.");
-                    var mgr = core.CookieManager;
-
-                    foreach (var uri in lookupUris)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        IReadOnlyList<CoreWebView2Cookie> batch;
-                        try
-                        {
-                            batch = await mgr.GetCookiesAsync(uri).ConfigureAwait(true);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.GetCookiesAsync({uri}, profile '{profileName}'): {ex.Message}");
-                            continue;
-                        }
-
-                        var list = batch.Select(SerializeCookie).Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain)).ToList();
-                        if (list.Count > 0)
-                            entries.Add(new PortableCookieEntryDto { RequestUri = uri, Profile = profileName, Cookies = list });
-                    }
+                    cookieManager = Cef.GetGlobalCookieManager();
                 }
-                catch (Exception ex)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error exporting cookies for profile '{profileName}': {ex.Message}");
+                    var rc = CefSharpEnvironmentManager.CreateProfileRequestContext(profileName);
+                    cookieManager = rc.GetCookieManager(null);
                 }
-                finally
+
+                if (cookieManager == null) continue;
+
+                foreach (var uri in lookupUris)
                 {
-                    try { host?.Close(); } catch { /* ignore */ }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        var cookies = await cookieManager.VisitUrlCookiesAsync(uri, includeHttpOnly: true);
+                        if (cookies != null && cookies.Count > 0)
+                        {
+                            var list = cookies.Select(SerializeCookie)
+                                .Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain))
+                                .ToList();
+
+                            if (list.Count > 0)
+                            {
+                                entries.Add(new PortableCookieEntryDto
+                                {
+                                    RequestUri = uri,
+                                    Profile = profileName,
+                                    Cookies = list
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.VisitUrlCookiesAsync({uri}, profile '{profileName}'): {ex.Message}");
+                    }
                 }
             }
-        }
-        finally
-        {
-            ExportWebViewGate.Release();
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error exporting cookies for profile '{profileName}': {ex.Message}");
+            }
         }
 
         var dto = new PortableCookieBundleDto { Format = FormatVersion, Entries = entries };
         return JsonSerializer.Serialize(dto, JsonOpts);
     }
 
-    /// <summary>
-    /// Apply tất cả cookie từ snapshot JSON vào cookie manager (không phân biệt profile — legacy).
-    /// </summary>
-    public static Task ApplySnapshotJsonAsync(CoreWebView2CookieManager mgr, string json)
+    public static Task ApplySnapshotJsonAsync(ICookieManager mgr, string json)
     {
         return ApplySnapshotJsonForProfileAsync(mgr, json, profileName: null);
     }
 
-    /// <summary>
-    /// Apply cookie từ snapshot JSON, chỉ apply các entry có profile khớp <paramref name="profileName"/>.
-    /// Nếu <paramref name="profileName"/> là null, apply tất cả entries (legacy behavior).
-    /// Entry không có trường profile (v2) mặc định coi là "Shared".
-    /// </summary>
-    public static Task ApplySnapshotJsonForProfileAsync(CoreWebView2CookieManager mgr, string json, string? profileName)
+    public static async Task ApplySnapshotJsonForProfileAsync(ICookieManager mgr, string json, string? profileName)
     {
-        if (mgr == null || string.IsNullOrWhiteSpace(json)) return Task.CompletedTask;
+        if (mgr == null || string.IsNullOrWhiteSpace(json)) return;
 
         PortableCookieBundleDto? dto;
         try
@@ -202,11 +162,11 @@ public static class WebCookieSnapshotService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.Apply: parse error: {ex.Message}");
-            return Task.CompletedTask;
+            return;
         }
 
         if (dto == null || !IsSupportedFormatVersion(dto.Format) || dto.Entries == null || dto.Entries.Count == 0)
-            return Task.CompletedTask;
+            return;
 
         try
         {
@@ -214,7 +174,6 @@ public static class WebCookieSnapshotService
             {
                 if (entry.Cookies == null) continue;
 
-                // Nếu profileName được chỉ định, chỉ apply entry khớp profile
                 if (profileName != null)
                 {
                     var entryProfile = string.IsNullOrWhiteSpace(entry.Profile) ? "Shared" : entry.Profile.Trim();
@@ -229,20 +188,28 @@ public static class WebCookieSnapshotService
                     if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(domain)) continue;
 
                     var path = string.IsNullOrWhiteSpace(c.Path) ? "/" : c.Path.Trim();
-                    var cookie = mgr.CreateCookie(name, c.Value ?? string.Empty, domain, path);
-                    cookie.IsSecure = c.Secure;
-                    cookie.IsHttpOnly = c.HttpOnly;
-                    if (c.SameSite is int si && Enum.IsDefined(typeof(CoreWebView2CookieSameSiteKind), si))
-                        cookie.SameSite = (CoreWebView2CookieSameSiteKind)si;
+                    var cookieUrl = $"https://{domain.TrimStart('.')}{path}";
 
+                    DateTime? expires = null;
                     if (!string.IsNullOrWhiteSpace(c.Expires) &&
                         DateTime.TryParse(c.Expires, System.Globalization.CultureInfo.InvariantCulture,
                             System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
                     {
-                        cookie.Expires = exp;
+                        expires = exp;
                     }
 
-                    mgr.AddOrUpdateCookie(cookie);
+                    var cookie = new Cookie
+                    {
+                        Name = name,
+                        Value = c.Value ?? string.Empty,
+                        Domain = domain,
+                        Path = path,
+                        Secure = c.Secure,
+                        HttpOnly = c.HttpOnly,
+                        Expires = expires
+                    };
+
+                    await mgr.SetCookieAsync(cookieUrl, cookie);
                 }
             }
         }
@@ -250,14 +217,10 @@ public static class WebCookieSnapshotService
         {
             System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.Apply: {ex.Message}");
         }
-
-        return Task.CompletedTask;
     }
 
-    /// <summary>Kiểm tra format version hỗ trợ (v2 hoặc v3).</summary>
     private static bool IsSupportedFormatVersion(int version) => version == 2 || version == 3;
 
-    /// <summary>Kiểm tra JSON có phải portable cookie bundle hợp lệ (v2 hoặc v3).</summary>
     public static bool IsV2PortableCookieBundleJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return false;
@@ -274,7 +237,6 @@ public static class WebCookieSnapshotService
         }
     }
 
-    /// <summary>URI tuyệt đối dùng cho GetCookiesAsync (thêm cả origin để bắt cookie scope rộng hơn).</summary>
     public static List<string> CollectCookieLookupUris(IEnumerable<WorkflowNode> nodes)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -306,7 +268,6 @@ public static class WebCookieSnapshotService
                         foreach (var ro in w.ResponseOutputs)
                             AddUrl(ro?.Url);
                     }
-
                     break;
                 case HtmlUiNode h when h.UseWebTab:
                     AddUrl(h.WebTabUrl);
@@ -317,14 +278,13 @@ public static class WebCookieSnapshotService
         return set.ToList();
     }
 
-    private static PortableCookieItemDto SerializeCookie(CoreWebView2Cookie c)
+    private static PortableCookieItemDto SerializeCookie(Cookie c)
     {
         string? expiresIso = null;
         try
         {
-            var exp = c.Expires;
-            if (exp != DateTime.MinValue && exp.Year > 1601)
-                expiresIso = exp.ToUniversalTime().ToString("o", System.Globalization.CultureInfo.InvariantCulture);
+            if (c.Expires.HasValue && c.Expires.Value != DateTime.MinValue)
+                expiresIso = c.Expires.Value.ToUniversalTime().ToString("o", System.Globalization.CultureInfo.InvariantCulture);
         }
         catch { /* ignore */ }
 
@@ -334,8 +294,8 @@ public static class WebCookieSnapshotService
             Value = c.Value,
             Domain = c.Domain,
             Path = string.IsNullOrEmpty(c.Path) ? "/" : c.Path,
-            Secure = c.IsSecure,
-            HttpOnly = c.IsHttpOnly,
+            Secure = c.Secure,
+            HttpOnly = c.HttpOnly,
             SameSite = (int)c.SameSite,
             Expires = expiresIso
         };

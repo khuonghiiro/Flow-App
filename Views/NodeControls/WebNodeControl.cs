@@ -6,8 +6,8 @@ using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
+using CefSharp;
+using CefSharp.Wpf;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -32,21 +32,15 @@ namespace FlowMy.Views.NodeControls
         private static readonly Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
         private static readonly Dictionary<Border, (double x, double y, double w, double h)> _viewportExpandRestore = new();
         private static readonly FontFamily ViewportExpandIconFont = new("Segoe MDL2 Assets");
-        private static readonly Dictionary<Border, double> _webViewZoomLevels = new(); // Lưu zoom level của từng WebView2
-        // Tránh init đồng thời nhiều WebView2 khi mở workflow lớn (giảm khựng UI).
+        private static readonly Dictionary<Border, double> _webViewZoomLevels = new();
         private static readonly System.Threading.SemaphoreSlim _webView2InitGate = new(1, 1);
         private static int _webViewInitSequence;
         private const int WebViewInitStaggerMs = 120;
         private const int WebViewInitStaggerMaxMs = 2200;
 
-        // Lưu zoom theo tên miền (domain) trong phạm vi workflow hiện tại
         private static readonly Dictionary<string, double> _domainZoomByHost = new(StringComparer.OrdinalIgnoreCase);
-
-        // Cache request payloads để dùng cho Payload extraction (key = requestUrl|requestMethod)
         private static readonly Dictionary<string, string> _requestPayloadCache = new();
 
-        // Cache "full" request headers/body captured from DevTools Protocol (CDP Network domain).
-        // WebResourceRequested headers are often incomplete compared to browser DevTools.
         private sealed class CdpRequestInfo
         {
             public Dictionary<string, string> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -59,64 +53,6 @@ namespace FlowMy.Views.NodeControls
 
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Url, string Method)> _cdpRequestIdToUrlMethod
             = new(StringComparer.OrdinalIgnoreCase);
-
-        private static bool TryGetCdpRequestInfo(string url, string method, out Dictionary<string, string> headers, out string? postData)
-        {
-            headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            postData = null;
-            if (string.IsNullOrWhiteSpace(url)) return false;
-            var m = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim();
-            var key = $"{url}|{m}";
-            if (!_cdpByUrlMethod.TryGetValue(key, out var info) || info == null) return false;
-            try
-            {
-                headers = new Dictionary<string, string>(info.Headers ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
-                postData = info.PostData;
-                return headers.Count > 0 || !string.IsNullOrWhiteSpace(postData);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static async Task<string> ReadResponseBodyAsync(Microsoft.Web.WebView2.Core.CoreWebView2WebResourceResponseView response)
-        {
-            if (response == null) return string.Empty;
-
-            try
-            {
-                using var rawStream = await response.GetContentAsync();
-                if (rawStream == null) return string.Empty;
-
-                using var reader = new System.IO.StreamReader(rawStream, System.Text.Encoding.UTF8);
-                return await reader.ReadToEndAsync();
-            }
-            catch (System.Runtime.InteropServices.COMException comEx)
-            {
-                if (comEx.HResult != unchecked((int)0x800700E8) && comEx.HResult != unchecked((int)0xFFFF8300))
-                    System.Diagnostics.Debug.WriteLine($"COMException khi lấy content: {comEx.HResult:X8} - {comEx.Message}");
-                return string.Empty;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Lỗi khi lấy content: {ex.GetType().Name} - {ex.Message}");
-                return string.Empty;
-            }
-        }
-
-        private static async Task EnsureCoreWebView2ThrottledAsync(WebView2 target, CoreWebView2Environment env)
-        {
-            await _webView2InitGate.WaitAsync();
-            try
-            {
-                await target.EnsureCoreWebView2Async(env);
-            }
-            finally
-            {
-                _webView2InitGate.Release();
-            }
-        }
 
         private static int GetInitStaggerDelayMs()
         {
@@ -148,20 +84,11 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        /// <summary>
-        /// Parse cookie text và set vào WebView2. Hỗ trợ nhiều format:
-        /// - JSON object format: {"url":"...", "cookies":[{name, value, domain, ...}]}
-        /// - JSON array format: [{name, value, domain, path, ...}, ...]
-        /// - Netscape format (# Netscape HTTP Cookie File hoặc tab-separated)
-        /// - Raw cookie string (name=value; name2=value2)
-        /// Trả về URL nếu tìm thấy trong cookie text, null nếu không có.
-        /// </summary>
-        private static async Task<string?> SetCookiesFromTextAsync(CoreWebView2 coreWebView2, string cookieText)
+        private static async Task<string?> SetCookiesFromTextAsync(ICookieManager cookieManager, string cookieText)
         {
             if (string.IsNullOrWhiteSpace(cookieText)) return null;
 
             string? extractedUrl = null;
-            var cookieManager = coreWebView2.CookieManager;
             var lines = cookieText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             try
@@ -221,10 +148,17 @@ namespace FlowMy.Views.NodeControls
                                         
                                         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
 
-                                        var cookie = cookieManager.CreateCookie(name, value ?? "", domain, path ?? "/");
-                                        cookie.IsSecure = secure;
-                                        cookie.IsHttpOnly = httpOnly;
-                                        cookieManager.AddOrUpdateCookie(cookie);
+                                        var cookie = new CefSharp.Cookie
+                                        {
+                                            Name = name,
+                                            Value = value ?? "",
+                                            Domain = domain,
+                                            Path = path ?? "/",
+                                            Secure = secure,
+                                            HttpOnly = httpOnly
+                                        };
+                                        var cookieUrl = $"https://{domain.TrimStart('.')}{(path ?? "/")}";
+                                        await cookieManager.SetCookieAsync(cookieUrl, cookie);
                                         System.Diagnostics.Debug.WriteLine($"[Cookie] Added from JSON object: {name}={value?.Substring(0, Math.Min(20, value?.Length ?? 0))}... (domain: {domain})");
                                     }
                                     catch (Exception ex)
@@ -266,10 +200,17 @@ namespace FlowMy.Views.NodeControls
                                     
                                     if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
 
-                                    var cookie = cookieManager.CreateCookie(name, value ?? "", domain, path ?? "/");
-                                    cookie.IsSecure = secure;
-                                    cookie.IsHttpOnly = httpOnly;
-                                    cookieManager.AddOrUpdateCookie(cookie);
+                                    var cookie = new CefSharp.Cookie
+                                    {
+                                        Name = name,
+                                        Value = value ?? "",
+                                        Domain = domain,
+                                        Path = path ?? "/",
+                                        Secure = secure,
+                                        HttpOnly = httpOnly
+                                    };
+                                    var cookieUrl = $"https://{domain.TrimStart('.')}{(path ?? "/")}";
+                                    await cookieManager.SetCookieAsync(cookieUrl, cookie);
                                     System.Diagnostics.Debug.WriteLine($"[Cookie] Added from JSON array: {name}={value?.Substring(0, Math.Min(20, value?.Length ?? 0))}... (domain: {domain})");
                                 }
                                 catch (Exception ex)
@@ -329,9 +270,16 @@ namespace FlowMy.Views.NodeControls
 
                                 if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
 
-                                var cookie = cookieManager.CreateCookie(name, value, domain, path);
-                                cookie.IsSecure = secure;
-                                cookieManager.AddOrUpdateCookie(cookie);
+                                var cookie = new CefSharp.Cookie
+                                {
+                                    Name = name,
+                                    Value = value,
+                                    Domain = domain,
+                                    Path = path,
+                                    Secure = secure
+                                };
+                                var cookieUrl = $"https://{domain.TrimStart('.')}{(path ?? "/")}";
+                                await cookieManager.SetCookieAsync(cookieUrl, cookie);
                                 System.Diagnostics.Debug.WriteLine($"[Cookie] Added from Netscape: {name}={value} (domain: {domain})");
                             }
                             catch (Exception ex)
@@ -402,8 +350,15 @@ namespace FlowMy.Views.NodeControls
                                     
                                     if (!string.IsNullOrWhiteSpace(name))
                                     {
-                                        var cookie = cookieManager.CreateCookie(name, value, cookieDomain, "/");
-                                        cookieManager.AddOrUpdateCookie(cookie);
+                                        var cookie = new CefSharp.Cookie
+                                        {
+                                            Name = name,
+                                            Value = value,
+                                            Domain = cookieDomain,
+                                            Path = "/"
+                                        };
+                                        var cookieUrl = $"https://{cookieDomain.TrimStart('.')}/";
+                                        await cookieManager.SetCookieAsync(cookieUrl, cookie);
                                         System.Diagnostics.Debug.WriteLine($"[Cookie] Added from raw: {name}={value} (domain: {cookieDomain})");
                                     }
                                 }
@@ -471,7 +426,7 @@ namespace FlowMy.Views.NodeControls
             // Áp dụng GPU optimization cho grid (tự động kiểm tra GPU)
             GpuOptimizationHelper.ApplyToElement(grid);
 
-            var webView = new WebView2
+            var webView = new ChromiumWebBrowser
             {
                 Visibility = Visibility.Collapsed
             };
@@ -715,7 +670,7 @@ namespace FlowMy.Views.NodeControls
                 if (string.IsNullOrWhiteSpace(js)) return;
 
                 // If WebView2 not ready yet, queue it.
-                if (webView.CoreWebView2 == null)
+                if (webView == null)
                 {
                     pendingJsQueue = js;
                     return;
@@ -726,25 +681,21 @@ namespace FlowMy.Views.NodeControls
                     // Reset flag trước mỗi lần chạy JS để tránh bị ảnh hưởng bởi lần chạy trước.
                     try
                     {
-                        await webView.CoreWebView2.ExecuteScriptAsync("window.__FlowMyWorkflowDone = false;");
+                        await webView.EvaluateScriptAsync("window.__FlowMyWorkflowDone = false;");
                     }
                     catch { /* ignore */ }
 
                     // Ensure helper exists
-                    await webView.CoreWebView2.ExecuteScriptAsync(BuildAutomationHelperScript());
+                    await webView.EvaluateScriptAsync(BuildAutomationHelperScript());
 
                     // Execute user script (wrapped to support await)
                     var wrapped = WrapUserScript(js);
-                    await webView.CoreWebView2.ExecuteScriptAsync(wrapped);
+                    await webView.EvaluateScriptAsync(wrapped);
 
-                    // Nếu JS có đặt cờ đặc biệt window.__FlowMyWorkflowDone = true
-                    // thì coi như WebNode đã hoàn thành và cho phép workflow tiếp tục ngay,
-                    // bỏ qua việc chờ ResponseOutputsWaitTimeoutMs.
                     try
                     {
-                        var flagResult = await webView.CoreWebView2.ExecuteScriptAsync("window.__FlowMyWorkflowDone === true");
-                        // ExecuteScriptAsync trả về JSON-stringified; với boolean true sẽ là "true"
-                        if (string.Equals(flagResult, "true", StringComparison.OrdinalIgnoreCase))
+                        var flagResp = await webView.EvaluateScriptAsync("window.__FlowMyWorkflowDone === true");
+                        if (flagResp.Success && string.Equals(flagResp.Result?.ToString(), "true", StringComparison.OrdinalIgnoreCase))
                         {
                             var tcs = node.PendingOutputsTcs;
                             if (tcs != null && !tcs.Task.IsCompleted)
@@ -833,11 +784,10 @@ namespace FlowMy.Views.NodeControls
                     foreach (var timer in jsSourceTimers.Values)
                         timer.Stop();
 
-                    var core = webView.CoreWebView2;
-                    if (core != null)
+                    if (webView != null)
                     {
                         suppressUrlSyncForSleepNav = true;
-                        core.Navigate("about:blank");
+                        webView.LoadUrl("about:blank");
                     }
                 }
                 catch { }
@@ -869,13 +819,12 @@ namespace FlowMy.Views.NodeControls
 
                 try
                 {
-                    var core = webView.CoreWebView2;
-                    var currentUrl = core?.Source;
-                    if (core != null && (string.IsNullOrWhiteSpace(currentUrl) || string.Equals(currentUrl, "about:blank", StringComparison.OrdinalIgnoreCase)))
+                    var currentUrl = webView?.Address;
+                    if (webView != null && (string.IsNullOrWhiteSpace(currentUrl) || string.Equals(currentUrl, "about:blank", StringComparison.OrdinalIgnoreCase)))
                     {
                         var targetUrl = node.ExtractUrl?.Trim();
                         if (!string.IsNullOrWhiteSpace(targetUrl) && targetUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                            core.Navigate(targetUrl);
+                            webView.LoadUrl(targetUrl);
                     }
                 }
                 catch { }
@@ -941,11 +890,10 @@ namespace FlowMy.Views.NodeControls
                 {
                     try
                     {
-                        var core = webView.CoreWebView2;
-                        if (core != null)
+                        if (webView != null)
                         {
                             System.Diagnostics.Debug.WriteLine($"[AutoReload] Reloading page (interval={interval.TotalSeconds:0.##}s)...");
-                            core.Reload();
+                            webView.Reload();
                         }
                     }
                     catch (Exception ex)
@@ -1110,10 +1058,10 @@ namespace FlowMy.Views.NodeControls
                         {
                             MarkActivity();
                             await WakeRuntimeAsync();
-                            if (webView.CoreWebView2 != null && !string.IsNullOrWhiteSpace(node.CookieText))
+                            if (webView != null && !string.IsNullOrWhiteSpace(node.CookieText))
                             {
                                 System.Diagnostics.Debug.WriteLine("[Cookie] User clicked 'Chạy' button - applying cookies...");
-                                var extractedUrl = await SetCookiesFromTextAsync(webView.CoreWebView2, node.CookieText);
+                                var extractedUrl = await SetCookiesFromTextAsync(Cef.GetGlobalCookieManager(), node.CookieText);
                                 
                                 if (!string.IsNullOrWhiteSpace(extractedUrl))
                                 {
@@ -1121,7 +1069,7 @@ namespace FlowMy.Views.NodeControls
                                     {
                                         System.Diagnostics.Debug.WriteLine($"[Cookie] Navigating to: {extractedUrl}");
                                         node.ExtractUrl = extractedUrl;
-                                        webView.CoreWebView2.Navigate(extractedUrl);
+                                        webView.LoadUrl(extractedUrl);
                                     }
                                     catch (Exception ex)
                                     {
@@ -1134,18 +1082,17 @@ namespace FlowMy.Views.NodeControls
                                     System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - reloading current page to apply cookies");
                                     try
                                     {
-                                        var currentUrl = webView.CoreWebView2.Source;
+                                        var currentUrl = webView.Address;
                                         if (!string.IsNullOrWhiteSpace(currentUrl) && 
                                             !currentUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase) &&
                                             currentUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                                         {
-                                            webView.CoreWebView2.Reload();
+                                            webView.Reload();
                                         }
                                         else if (!string.IsNullOrWhiteSpace(node.ExtractUrl) &&
                                                  node.ExtractUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                                         {
-                                            // Nếu trang trống, navigate đến ExtractUrl
-                                            webView.CoreWebView2.Navigate(node.ExtractUrl);
+                                            webView.LoadUrl(node.ExtractUrl);
                                         }
                                     }
                                     catch (Exception ex)
@@ -1280,8 +1227,7 @@ namespace FlowMy.Views.NodeControls
 
                 try
                 {
-                    var coreLocal = webView.CoreWebView2;
-                    if (coreLocal == null) return;
+                    if (webView == null) return;
 
                     var script = $@"
                         (function() {{
@@ -1292,7 +1238,7 @@ namespace FlowMy.Views.NodeControls
                             }}
                         }})();
                     ";
-                    coreLocal.ExecuteScriptAsync(script);
+                    webView.EvaluateScriptAsync(script);
                     _webViewZoomLevels[border] = zoomFactor;
                 }
                 catch (Exception ex)
@@ -1330,8 +1276,7 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    var core = webView.CoreWebView2;
-                    if (core == null) return;
+                    if (webView == null) return;
 
                     // Tính toán zoom
                     double canvasZoom = host.ZoomLevel;
@@ -1372,7 +1317,7 @@ namespace FlowMy.Views.NodeControls
                             }}
                         }})();
                     ";
-                    core.ExecuteScriptAsync(script);
+                    webView.EvaluateScriptAsync(script);
 
                     // Cập nhật cache zoom
                     _webViewZoomLevels[border] = webViewZoom;
@@ -1591,15 +1536,15 @@ namespace FlowMy.Views.NodeControls
             
             backBtn.Click += (s, e) =>
             {
-                try { if (webView.CoreWebView2?.CanGoBack == true) webView.CoreWebView2.GoBack(); } catch { }
+                try { if (webView?.CanGoBack == true) webView.Back(); } catch { }
             };
             fwdBtn.Click += (s, e) =>
             {
-                try { if (webView.CoreWebView2?.CanGoForward == true) webView.CoreWebView2.GoForward(); } catch { }
+                try { if (webView?.CanGoForward == true) webView.Forward(); } catch { }
             };
             f5Btn.Click += (s, e) =>
             {
-                try { webView.CoreWebView2?.Reload(); } catch { }
+                try { webView?.Reload(); } catch { }
             };
 
             var navPanel = new StackPanel
@@ -1951,38 +1896,34 @@ namespace FlowMy.Views.NodeControls
             // Định nghĩa function navigate (phải sau urlBox)
             void EnsureWebViewAndNavigate()
             {
-                if (webView.CoreWebView2 == null) return;
+                if (webView == null) return;
                 var urlFromTextBox = urlBox.Text?.Trim();
                 var input = !string.IsNullOrEmpty(urlFromTextBox) ? urlFromTextBox : (node.ExtractUrl?.Trim());
 
                 if (string.IsNullOrEmpty(input))
                 {
-                    try { webView.CoreWebView2.Navigate("about:blank"); } catch { }
+                    try { webView.LoadUrl("about:blank"); } catch { }
                     return;
                 }
 
-                // ── Phân biệt URL vs từ khóa tìm kiếm ──────────────────────────
-                // 1. Đã có protocol → navigate thẳng
                 if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
-                    try { webView.CoreWebView2.Navigate(input); node.ExtractUrl = input; }
+                    try { webView.LoadUrl(input); node.ExtractUrl = input; }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Navigate error: {ex.Message}"); }
                     return;
                 }
 
-                // 2. Trông như domain (không có khoảng trắng, có dấu chấm) → thêm https://
                 var looksLikeDomain = !input.Contains(' ') && input.Contains('.');
                 if (looksLikeDomain)
                 {
                     var withProtocol = "https://" + input;
-                    try { webView.CoreWebView2.Navigate(withProtocol); node.ExtractUrl = withProtocol; } catch { }
+                    try { webView.LoadUrl(withProtocol); node.ExtractUrl = withProtocol; } catch { }
                     return;
                 }
 
-                // 3. Từ khóa tìm kiếm → Google Search
                 var searchUrl = "https://www.google.com/search?q=" + Uri.EscapeDataString(input);
-                try { webView.CoreWebView2.Navigate(searchUrl); node.ExtractUrl = searchUrl; } catch { }
+                try { webView.LoadUrl(searchUrl); node.ExtractUrl = searchUrl; } catch { }
             }
 
 
@@ -1991,9 +1932,8 @@ namespace FlowMy.Views.NodeControls
 
             refreshBtn.Click += async (s, e) =>
             {
-                if (webView.CoreWebView2 == null) return;
+                if (webView == null) return;
 
-                // Hiển thị dialog xác nhận
                 var result = MessageBox.Show(
                     "Bạn có muốn làm mới trang không? Tất cả dữ liệu (session, auth, cookies, cache) sẽ bị xóa.",
                     "Xác nhận làm mới",
@@ -2004,8 +1944,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     try
                     {
-                        var core = webView.CoreWebView2;
-                        var currentUrl = core.Source;
+                        var currentUrl = webView.Address;
                         
                         // Lấy domain từ URL hiện tại
                         string? domain = null;
@@ -2019,27 +1958,7 @@ namespace FlowMy.Views.NodeControls
                         {
                             try
                             {
-                                var cookieManager = core.CookieManager;
-                                // Lấy tất cả cookies (không filter để lấy hết)
-                                var cookies = await cookieManager.GetCookiesAsync(null);
-                                
-                                foreach (var cookie in cookies)
-                                {
-                                    try
-                                    {
-                                        // Xóa cookie nếu thuộc domain hiện tại hoặc subdomain
-                                        var cookieDomain = cookie.Domain?.TrimStart('.') ?? "";
-                                        var currentDomain = domain.TrimStart('.');
-                                        
-                                        if (string.Equals(cookieDomain, currentDomain, StringComparison.OrdinalIgnoreCase) ||
-                                            cookieDomain.EndsWith("." + currentDomain, StringComparison.OrdinalIgnoreCase) ||
-                                            currentDomain.EndsWith("." + cookieDomain, StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            cookieManager.DeleteCookie(cookie);
-                                        }
-                                    }
-                                    catch { }
-                                }
+                                Cef.GetGlobalCookieManager().DeleteCookies(domain, null);
                             }
                             catch (Exception cookieEx)
                             {
@@ -2047,63 +1966,29 @@ namespace FlowMy.Views.NodeControls
                             }
                         }
 
-                        // 2. Clear localStorage, sessionStorage, IndexedDB qua JavaScript
                         var clearStorageScript = @"
 (function() {
     try {
-        // Clear localStorage
-        if (window.localStorage) {
-            window.localStorage.clear();
-        }
-        // Clear sessionStorage
-        if (window.sessionStorage) {
-            window.sessionStorage.clear();
-        }
-        // Clear IndexedDB (nếu có)
-        if (window.indexedDB) {
-            indexedDB.databases().then(databases => {
-                databases.forEach(db => {
-                    if (db.name) {
-                        indexedDB.deleteDatabase(db.name);
-                    }
-                });
-            }).catch(() => {});
-        }
-        // Clear cookies qua document.cookie (cho domain hiện tại)
-        if (document.cookie) {
-            var cookies = document.cookie.split(';');
-            cookies.forEach(function(c) {
-                var cookieName = c.split('=')[0].trim();
-                if (cookieName) {
-                    // Xóa cookie với tất cả các path và domain có thể
-                    document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
-                    document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=' + window.location.hostname + ';';
-                    document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.' + window.location.hostname + ';';
-                }
-            });
-        }
-    } catch (e) {
-        console.error('Error clearing storage:', e);
-    }
+        if (window.localStorage) window.localStorage.clear();
+        if (window.sessionStorage) window.sessionStorage.clear();
+    } catch (e) {}
 })();";
                         try
                         {
-                            await core.ExecuteScriptAsync(clearStorageScript);
+                            webView.ExecuteScriptAsync(clearStorageScript);
                         }
                         catch (Exception jsEx)
                         {
                             System.Diagnostics.Debug.WriteLine($"Lỗi clear storage qua JS: {jsEx.Message}");
                         }
 
-                        // 4. Navigate lại URL hiện tại (như mở lần đầu)
                         if (!string.IsNullOrEmpty(currentUrl))
                         {
-                            core.Navigate(currentUrl);
+                            webView.LoadUrl(currentUrl);
                         }
                         else
                         {
-                            // Nếu không có URL, reload
-                            core.Reload();
+                            webView.Reload();
                         }
                     }
                     catch (Exception ex)
@@ -2344,13 +2229,13 @@ namespace FlowMy.Views.NodeControls
 })();";
             }
 
-            // Hàm inject JavaScript vào WebView2 (được định nghĩa trước để dùng trong NavigationCompleted)
+            // Hàm inject JavaScript vào ChromiumWebBrowser
             async void EnableElementInspector()
             {
-                if (webView.CoreWebView2 == null) return;
+                if (webView == null) return;
                 try
                 {
-                    await webView.CoreWebView2.ExecuteScriptAsync(BuildElementInspectorScript());
+                    await webView.EvaluateScriptAsync(BuildElementInspectorScript());
                 }
                 catch (Exception ex)
                 {
@@ -2358,13 +2243,13 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            // Hàm remove JavaScript khỏi WebView2
+            // Hàm remove JavaScript khỏi ChromiumWebBrowser
             async void DisableElementInspector()
             {
-                if (webView.CoreWebView2 == null) return;
+                if (webView == null) return;
                 try
                 {
-                    await webView.CoreWebView2.ExecuteScriptAsync(@"
+                    await webView.EvaluateScriptAsync(@"
 if (window.__elementInspector) {
   window.__elementInspector.cleanup();
   delete window.__elementInspector;
@@ -2379,290 +2264,15 @@ if (window.__elementInspector) {
             RoutedEventHandler loadedHandler = null!;
             loadedHandler = async (s, e) =>
             {
-                var webViewForInit = (WebView2)s;
+                var webViewForInit = (ChromiumWebBrowser)s;
                 try
                 {
                     if (isDisposed || !border.IsLoaded)
                         return;
 
-                    if (webViewForInit.CoreWebView2 == null)
-                    {
-
-                        if (ShouldUseViewportLazyInit(border))
-                        {
-                            var waitCycles = 0;
-                            while (!isDisposed &&
-                                   border.IsLoaded &&
-                                   border.Visibility != Visibility.Visible &&
-                                   waitCycles < 300)
-                            {
-                                await Task.Delay(50);
-                                waitCycles++;
-                            }
-                        }
-
-                        if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
-                            return;
-
-                        // Stagger init để tránh nhiều node WebView2 giành UI thread cùng lúc khi vừa load workflow.
-                        var staggerDelayMs = GetInitStaggerDelayMs();
-                        if (staggerDelayMs > 0)
-                            await Task.Delay(staggerDelayMs);
-
-                        if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
-                            return;
-
-                        CoreWebView2Environment? env = null;
-                        if (node.CacheMode == "Isolated")
-                        {
-                            try
-                            {
-                                var cachePath = WebNodeCacheHelper.GetProfileCachePath(node.CustomCacheName);
-                                Directory.CreateDirectory(cachePath);
-
-                                var options = new CoreWebView2EnvironmentOptions();
-                                var browserArgs = new StringBuilder();
-
-                                // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
-                                browserArgs.Append("--disable-background-timer-throttling ");
-                                browserArgs.Append("--disable-backgrounding-occluded-windows ");
-                                browserArgs.Append("--disable-renderer-backgrounding ");
-                                browserArgs.Append("--calculate-native-win-occlusion=false ");
-
-                                if (GpuDetectionHelper.IsGpuAvailable)
-                                {
-                                    browserArgs.Append("--enable-gpu-rasterization ");
-                                    browserArgs.Append("--enable-zero-copy ");
-                                    browserArgs.Append("--enable-features=VaapiVideoDecoder ");
-                                    browserArgs.Append("--ignore-gpu-blacklist ");
-                                    browserArgs.Append("--enable-accelerated-2d-canvas ");
-                                    browserArgs.Append("--enable-accelerated-video-decode ");
-                                }
-                                else
-                                {
-                                    browserArgs.Append("--disable-gpu ");
-                                }
-
-                                options.AdditionalBrowserArguments = browserArgs.ToString().Trim();
-                                env = await CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                            }
-                            catch (Exception isolatedEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Failed to create isolated WebView2 env: {isolatedEx.Message}");
-                                try
-                                {
-                                    env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                                }
-                                catch { }
-                            }
-                        }
-                        else
-                        {
-                            try
-                            {
-                                // Ưu tiên dùng CoreWebView2Environment dùng chung (pre-init)
-                                env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                            }
-                            catch (Exception envEx)
-                            {
-                                // Nếu shared env lỗi (ví dụ warm-up fail), fallback về CreateAsync như cũ
-                                System.Diagnostics.Debug.WriteLine($"Shared WebView2 env error, fallback per-node: {envEx.Message}");
-
-                                var cachePathFallback = WebNodeCacheHelper.GetSharedRuntimeCachePath();
-                                var optionsFallback = new CoreWebView2EnvironmentOptions();
-                                var browserArgsFallback = new StringBuilder();
-
-                                // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
-                                browserArgsFallback.Append("--disable-background-timer-throttling ");
-                                browserArgsFallback.Append("--disable-backgrounding-occluded-windows ");
-                                browserArgsFallback.Append("--disable-renderer-backgrounding ");
-                                browserArgsFallback.Append("--calculate-native-win-occlusion=false ");
-
-                                if (GpuDetectionHelper.IsGpuAvailable)
-                                {
-                                    browserArgsFallback.Append("--enable-gpu-rasterization ");
-                                    browserArgsFallback.Append("--enable-zero-copy ");
-                                    browserArgsFallback.Append("--enable-features=VaapiVideoDecoder ");
-                                    browserArgsFallback.Append("--ignore-gpu-blacklist ");
-                                    browserArgsFallback.Append("--enable-accelerated-2d-canvas ");
-                                    browserArgsFallback.Append("--enable-accelerated-video-decode ");
-                                }
-                                else
-                                {
-                                    browserArgsFallback.Append("--disable-gpu ");
-                                }
-
-                                optionsFallback.AdditionalBrowserArguments = browserArgsFallback.ToString().Trim();
-                                env = await CoreWebView2Environment.CreateAsync(null, cachePathFallback, optionsFallback);
-                            }
-                        }
-
-                        await EnsureCoreWebView2ThrottledAsync(webViewForInit, env);
-
-                    // ⚠️ CRITICAL: Phải set filter và subscribe events TRƯỚC KHI navigate
-                    // để đảm bảo bắt được TẤT CẢ requests bao gồm cả XHR từ JavaScript
-                    var core = webViewForInit.CoreWebView2;
-                    if (core == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: CoreWebView2 is null after EnsureCoreWebView2Async");
-                        return;
-                    }
-
-                    // Cấu hình thêm cho CoreWebView2 để tối ưu GPU
-                    if (GpuDetectionHelper.IsGpuAvailable)
-                    {
-                        try
-                        {
-                            // Enable hardware acceleration trong settings
-                            var settings = core.Settings;
-                            // WebView2 mặc định đã enable hardware acceleration
-                            // Có thể thêm các setting khác nếu cần
-                        }
-                        catch { }
-                    }
-
-                    // Override User-Agent thành Chrome chuẩn để các website (labs.google, Next.js apps...)
-                    // không reject WebView2 vì UA mặc định chứa "Edg/" khiến một số site throw client-side exception.
-                    try
-                    {
-                        core.Settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
-                    }
-                    catch { }
-
-                    // ⚠️ CRITICAL: Đảm bảo WebResourceRequested được raise cho TẤT CẢ requests (mọi context, mọi URL)
-                    // CoreWebView2WebResourceContext.All bao gồm cả XHR (XmlHttpRequest) requests từ JavaScript
-                    // Phải set filter TRƯỚC KHI subscribe events và TRƯỚC KHI navigate
-                    try
-                    {
-                        core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
-                        System.Diagnostics.Debug.WriteLine("WebView2: Added filter for ALL resource contexts (including XHR) - BEFORE navigation");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"AddWebResourceRequestedFilter error: {ex.Message}");
-                    }
-
-                    // Enable DevTools Protocol Network events to capture "full" request headers/body (closer to browser DevTools).
-                    // This is necessary because args.Request.Headers in WebResourceRequested is often incomplete (missing sec-*, accept*, priority...).
-                    try
-                    {
-                        _ = core.CallDevToolsProtocolMethodAsync("Network.enable", "{}");
-
-                        CoreWebView2DevToolsProtocolEventReceiver? recvWillBeSent = null;
-                        CoreWebView2DevToolsProtocolEventReceiver? recvExtraInfo = null;
-
-                        try { recvWillBeSent = core.GetDevToolsProtocolEventReceiver("Network.requestWillBeSent"); } catch { }
-                        try { recvExtraInfo = core.GetDevToolsProtocolEventReceiver("Network.requestWillBeSentExtraInfo"); } catch { }
-
-                        if (recvWillBeSent != null)
-                        {
-                            recvWillBeSent.DevToolsProtocolEventReceived += (_, e) =>
-                            {
-                                try
-                                {
-                                    var json = e.ParameterObjectAsJson;
-                                    if (string.IsNullOrWhiteSpace(json)) return;
-                                    using var doc = JsonDocument.Parse(json);
-                                    var root = doc.RootElement;
-                                    if (!root.TryGetProperty("request", out var reqEl)) return;
-
-                                    var url = reqEl.TryGetProperty("url", out var u) ? (u.GetString() ?? "") : "";
-                                    var method = reqEl.TryGetProperty("method", out var m) ? (m.GetString() ?? "GET") : "GET";
-                                    if (string.IsNullOrWhiteSpace(url)) return;
-
-                                    var reqId = root.TryGetProperty("requestId", out var rId) ? rId.GetString() : null;
-                                    if (!string.IsNullOrWhiteSpace(reqId))
-                                    {
-                                        _cdpRequestIdToUrlMethod[reqId] = (url, method);
-                                    }
-
-                                    var key = $"{url}|{method}";
-                                    var info = _cdpByUrlMethod.GetOrAdd(key, _ => new CdpRequestInfo());
-                                    info.UpdatedAt = DateTimeOffset.UtcNow;
-
-                                    if (reqEl.TryGetProperty("postData", out var pd) && pd.ValueKind == JsonValueKind.String)
-                                    {
-                                        var postData = pd.GetString();
-                                        if (!string.IsNullOrWhiteSpace(postData))
-                                            info.PostData = postData;
-                                    }
-
-                                    if (reqEl.TryGetProperty("headers", out var headersEl) && headersEl.ValueKind == JsonValueKind.Object)
-                                    {
-                                        var hdr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                        foreach (var p in headersEl.EnumerateObject())
-                                        {
-                                            var hn = p.Name ?? "";
-                                            if (hn.Length == 0) continue;
-                                            var hv = p.Value.ValueKind == JsonValueKind.String ? (p.Value.GetString() ?? "") : p.Value.ToString();
-                                            hdr[hn] = hv ?? "";
-                                        }
-                                        if (hdr.Count > 0) info.Headers = hdr;
-                                    }
-                                }
-                                catch { }
-                            };
-                        }
-
-                        if (recvExtraInfo != null)
-                        {
-                            recvExtraInfo.DevToolsProtocolEventReceived += (_, e) =>
-                            {
-                                try
-                                {
-                                    var json = e.ParameterObjectAsJson;
-                                    if (string.IsNullOrWhiteSpace(json)) return;
-                                    using var doc = JsonDocument.Parse(json);
-                                    var root = doc.RootElement;
-
-                                    // ExtraInfo has no URL, but it does include headers; we merge into latest matching URL|method when possible.
-                                    if (!root.TryGetProperty("headers", out var headersEl) || headersEl.ValueKind != JsonValueKind.Object)
-                                        return;
-
-                                    var hdr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                    foreach (var p in headersEl.EnumerateObject())
-                                    {
-                                        var hn = p.Name ?? "";
-                                        if (hn.Length == 0) continue;
-                                        var hv = p.Value.ValueKind == JsonValueKind.String ? (p.Value.GetString() ?? "") : p.Value.ToString();
-                                        hdr[hn] = hv ?? "";
-                                    }
-                                    if (hdr.Count == 0) return;
-
-                                    // Heuristic: merge into most recently updated entry (good enough for "latest request matching pattern" use-case).
-                                    CdpRequestInfo? mostRecent = null;
-                                    string? mostRecentKey = null;
-                                    foreach (var kv in _cdpByUrlMethod)
-                                    {
-                                        if (mostRecent == null || kv.Value.UpdatedAt > mostRecent.UpdatedAt)
-                                        {
-                                            mostRecent = kv.Value;
-                                            mostRecentKey = kv.Key;
-                                        }
-                                    }
-
-                                    if (mostRecent != null && mostRecentKey != null)
-                                    {
-                                        mostRecent.Headers = hdr;
-                                        mostRecent.UpdatedAt = DateTimeOffset.UtcNow;
-                                    }
-                                }
-                                catch { }
-                            };
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DevTools Network enable error: {ex.Message}");
-                    }
-
-                    var profileForCookie = string.Equals(activeCacheMode, "Isolated", StringComparison.OrdinalIgnoreCase)
-                        ? (activeCustomCacheName ?? "Shared")
-                        : "Shared";
-                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager, profileForCookie);
+                    webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node);
                     EnsureWebViewAndNavigate();
 
-                    // If there's queued JS from workflow execution, run it as soon as CoreWebView2 is ready.
                     if (!string.IsNullOrWhiteSpace(pendingJsQueue))
                     {
                         var js = pendingJsQueue;
@@ -2670,1620 +2280,44 @@ if (window.__elementInspector) {
                         await TryExecutePendingJsAsync(js);
                     }
 
-                    // Set zoom mặc định 10% (0.9) sau khi WebView2 đã sẵn sàng
-                    // Trong WPF WebView2, dùng ExecuteScript để set zoom qua CSS
-                    void SetWebViewZoom(double zoomFactor)
+                    webViewForInit.AddressChanged += (sf, ef) =>
                     {
-                        // Dùng helper chung để áp dụng zoom và update model/UI
-                        ApplyWebViewZoom(zoomFactor);
-                    }
-
-                    webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        // ✅ Set zoom dựa trên canvas zoom hiện tại (để giữ tỉ lệ)
-                        UpdateWebViewZoomForCanvasZoom();
-                    }), DispatcherPriority.Loaded);
-
-                    // Đồng bộ thanh URL theo trang hiện tại (giống Chrome: click link YouTube, chuyển trang → URL cập nhật)
-                    void SyncUrlBarFromWebView()
-                    {
-                        var coreView = webViewForInit.CoreWebView2;
-                        if (coreView == null) return;
-                        var uri = coreView.Source;
-                        if (string.IsNullOrEmpty(uri)) return;
-                        if (suppressUrlSyncForSleepNav && string.Equals(uri, "about:blank", StringComparison.OrdinalIgnoreCase))
-                            return;
-                        if (webViewForInit.Dispatcher.CheckAccess())
-                            node.ExtractUrl = uri;
-                        else
-                            webViewForInit.Dispatcher.Invoke(() => node.ExtractUrl = uri);
-
-                        // Cập nhật LastHost để dùng cho map zoom theo domain
-                        try
-                        {
-                            if (Uri.TryCreate(uri, UriKind.Absolute, out var u) && !string.IsNullOrEmpty(u.Host))
-                            {
-                                node.LastHost = u.Host.ToLowerInvariant();
-
-                                // Nếu đã có zoom cho domain này, áp dụng cho node hiện tại
-                                if (_domainZoomByHost.TryGetValue(node.LastHost, out var domainZoom) &&
-                                    domainZoom > 0)
-                                {
-                                    node.CssZoom = domainZoom;
-                                }
-                            }
-                        }
-                        catch { }
-                    }
-
-                    if (core != null)
-                    {
-                        // Reset blocking state khi navigation mới
-                        node.ClearResponseOutputValues();
-
-                        // Hiển thị progress bar khi bắt đầu navigation
-                        core.NavigationStarting += (_, _) =>
+                        var uri = ef.NewValue as string;
+                        if (!string.IsNullOrEmpty(uri))
                         {
                             if (webViewForInit.Dispatcher.CheckAccess())
-                                progressBar.Visibility = Visibility.Visible;
+                                node.ExtractUrl = uri;
                             else
-                                webViewForInit.Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Visible);
-                        };
+                                webViewForInit.Dispatcher.Invoke(() => node.ExtractUrl = uri);
+                        }
+                    };
 
-                        core.SourceChanged += (_, _) => SyncUrlBarFromWebView();
-                        core.NavigationCompleted += (_, navArgs) =>
+                    webViewForInit.FrameLoadEnd += (sf, ef) =>
+                    {
+                        if (ef.Frame.IsMain)
                         {
-                            // Ẩn progress bar khi navigation hoàn thành
                             if (webViewForInit.Dispatcher.CheckAccess())
                                 progressBar.Visibility = Visibility.Collapsed;
                             else
                                 webViewForInit.Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Collapsed);
 
-                            if (navArgs.IsSuccess)
+                            if (node.EnableElementInspector || node.EnableCssSelectorInspector)
                             {
-                                SyncUrlBarFromWebView();
-
-                                // ✅ Set lại zoom level sau khi navigation hoàn thành dựa trên canvas zoom hiện tại
-                                webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
+                                webViewForInit.Dispatcher.BeginInvoke(new Action(async () =>
                                 {
                                     try
                                     {
-                                        // Update zoom để giữ tỉ lệ với canvas zoom
-                                        UpdateWebViewZoomForCanvasZoom();
+                                        await System.Threading.Tasks.Task.Delay(500);
+                                        if (node.EnableElementInspector || node.EnableCssSelectorInspector)
+                                        {
+                                            EnableElementInspector();
+                                        }
                                     }
                                     catch { }
-                                }), DispatcherPriority.Loaded);
-
-                                // ✅ Re-inject inspector script nếu đang bật
-                                if (node.EnableElementInspector || node.EnableCssSelectorInspector)
-                                {
-                                    webViewForInit.Dispatcher.BeginInvoke(new Action(async () =>
-                                    {
-                                        try
-                                        {
-                                            await System.Threading.Tasks.Task.Delay(500); // Đợi page load xong
-                                            if (webViewForInit.CoreWebView2 != null && (node.EnableElementInspector || node.EnableCssSelectorInspector))
-                                            {
-                                                EnableElementInspector();
-                                            }
-                                        }
-                                        catch { }
-                                    }), DispatcherPriority.Background);
-                                }
-                            }
-                        };
-
-                        // Helper function để extract URL từ cURL command
-                        string ExtractUrlFromCurl(string curlCommand)
-                        {
-                            if (string.IsNullOrWhiteSpace(curlCommand)) return string.Empty;
-
-                            // Prefer robust detection: find first absolute http(s) URL anywhere in the command.
-                            // DevTools/Postman often generate: curl --location -X POST "https://..." ...
-                            try
-                            {
-                                var m = System.Text.RegularExpressions.Regex.Match(
-                                    curlCommand,
-                                    @"https?://[^\s'\""]+",
-                                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                                if (m.Success)
-                                    return m.Value.Trim();
-                            }
-                            catch { }
-
-                            // Nếu đã là URL (bắt đầu bằng http/https), trả về trực tiếp
-                            if (curlCommand.TrimStart().StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                                curlCommand.TrimStart().StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return curlCommand.Trim();
-                            }
-
-                            // Parse cURL command: tìm URL sau 'curl' hoặc trong quotes
-                            // Format: curl 'https://example.com' hoặc curl "https://example.com"
-                            var trimmed = curlCommand.Trim();
-                            if (trimmed.StartsWith("curl", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var afterCurl = trimmed.Substring(4).TrimStart();
-                                // Tìm URL trong quotes hoặc không có quotes
-                                if (afterCurl.StartsWith("'"))
-                                {
-                                    var endQuote = afterCurl.IndexOf('\'', 1);
-                                    if (endQuote > 0)
-                                        return afterCurl.Substring(1, endQuote - 1);
-                                }
-                                else if (afterCurl.StartsWith("\""))
-                                {
-                                    var endQuote = afterCurl.IndexOf('"', 1);
-                                    if (endQuote > 0)
-                                        return afterCurl.Substring(1, endQuote - 1);
-                                }
-                                else
-                                {
-                                    // Không có quotes, lấy phần đầu (đến space hoặc -)
-                                    var spaceIndex = afterCurl.IndexOfAny(new[] { ' ', '\t', '-' });
-                                    if (spaceIndex > 0)
-                                        return afterCurl.Substring(0, spaceIndex);
-                                    return afterCurl;
-                                }
-                            }
-
-                            return string.Empty;
-                        }
-
-                        // Xử lý request intercept: chặn request, thay request, lấy response outputs
-                        // ⚠️ CRITICAL: Event này sẽ được trigger cho TẤT CẢ requests bao gồm cả XHR từ JavaScript
-                        core.WebResourceRequested += (sender, args) =>
-                        {
-                            try
-                            {
-                                var requestUrl = args.Request?.Uri ?? "";
-                                if (string.IsNullOrEmpty(requestUrl)) return;
-
-                                var requestMethod = args.Request?.Method ?? "";
-                                var originalRequestUrl = requestUrl;
-
-                                // 1. FIRST: Cache request payload nếu có output cần Payload cho URL này
-                                // ⚠️ CRITICAL: Phải cache TRƯỚC KHI blocking/intercept để blocked requests cũng có payload
-                                if (node.ResponseOutputs != null && node.ResponseOutputs.Count > 0 && args.Request != null)
-                                {
-                                    try
-                                    {
-                                        // Helper inline: check if method matches
-                                        bool CheckMethodMatch(string? expectedMethod, string actualMethod)
-                                        {
-                                            var exp = expectedMethod?.Trim();
-                                            if (string.IsNullOrWhiteSpace(exp) || string.Equals(exp, "All", StringComparison.OrdinalIgnoreCase))
-                                                return true;
-                                            return string.Equals(actualMethod, exp, StringComparison.OrdinalIgnoreCase);
-                                        }
-
-                                        // Kiểm tra xem có output nào cần Payload cho URL này không
-                                        bool needsPayload = false;
-                                        // System.Diagnostics.Debug.WriteLine($"[Payload Check] Checking {node.ResponseOutputs.Count} outputs for {requestMethod} {requestUrl}");
-                                        
-                                        foreach (var ro in node.ResponseOutputs)
-                                        {
-                                            if (ro == null) continue;
-                                            var methodMatch = CheckMethodMatch(ro.RequestMethod, requestMethod);
-                                            var urlMatch = UrlMatchesPattern(requestUrl, ro.Url ?? ""); // Use proper UrlMatchesPattern
-                                            var et = (ro.ExtractType ?? "Response").Trim();
-                                            
-                                            // System.Diagnostics.Debug.WriteLine($"  Output: URL pattern='{ro.Url}', Method={ro.RequestMethod}, ExtractType={et}, UrlMatch={urlMatch}, MethodMatch={methodMatch}");
-                                            
-                                            // Cache payload if output needs Payload OR CurlCmd (cURL needs body too)
-                                            if (methodMatch && urlMatch && 
-                                                (string.Equals(et, "Payload", StringComparison.OrdinalIgnoreCase) ||
-                                                 string.Equals(et, "CurlCmd", StringComparison.OrdinalIgnoreCase) ||
-                                                 string.Equals(et, "CurlBash", StringComparison.OrdinalIgnoreCase)))
-                                            {
-                                                needsPayload = true;
-                                                System.Diagnostics.Debug.WriteLine($"  → Needs payload for {et}! Will try to cache.");
-                                                break;
-                                            }
-                                        }
-
-                                        if (needsPayload)
-                                        {
-                                            if (args.Request.Content == null)
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"[Payload Cache] Request has NO content/body for {requestMethod} {requestUrl}");
-                                            }
-                                            else
-                                            {
-                                                // Đọc request body và cache lại
-                                                try
-                                                {
-                                                    var content = args.Request.Content;
-                                                    using var reader = new StreamReader(content, Encoding.UTF8, false, 8192, leaveOpen: false);
-                                                    var payload = reader.ReadToEnd();
-                                                    
-                                                    System.Diagnostics.Debug.WriteLine($"[Payload Cache] Cached payload for {requestMethod} {requestUrl}: {payload.Length} bytes");
-                                                    if (payload.Length > 0 && payload.Length < 500)
-                                                        System.Diagnostics.Debug.WriteLine($"[Payload Cache] Content: {payload}");
-                                                    
-                                                    // Cache với key = requestUrl|requestMethod
-                                                    var cacheKey = $"{requestUrl}|{requestMethod}";
-                                                    _requestPayloadCache[cacheKey] = payload;
-
-                                                    // Recreate stream để request vẫn gửi được payload
-                                                    if (!string.IsNullOrEmpty(payload))
-                                                    {
-                                                        var bytes = Encoding.UTF8.GetBytes(payload);
-                                                        args.Request.Content = new MemoryStream(bytes);
-                                                    }
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    System.Diagnostics.Debug.WriteLine($"Cache payload error: {ex.Message}");
-                                                }
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"Payload caching outer error: {ex.Message}");
-                                    }
-                                }
-
-                                // 2. Xử lý chặn request: so sánh khớp URL pattern trong BlockingRules
-                                // ⚠️ CRITICAL: BlockingRules luôn ưu tiên. Dù output có cấu hình URL đó, vẫn chặn.
-                                if (node.BlockingRules != null && node.BlockingRules.Count > 0)
-                                {
-                                    // Nếu đã chặn ít nhất một request trước đó và cấu hình "chặn luôn các request phía sau" được bật
-                                    // thì chặn tất cả các request tiếp theo trong lần chạy node này.
-                                    if (node.BlockAllRequestsAfterFirstMatch && node.HasTriggeredBlockingChain)
-                                    {
-                                        if (core.Environment != null)
-                                        {
-                                            args.Response = core.Environment.CreateWebResourceResponse(null, 403, "Blocked", "");
-                                        }
-                                        var currentUrl = args.Request?.Uri ?? requestUrl;
-                                        ExtractFromBlockedRequest(node, args.Request, currentUrl, requestMethod);
-                                        return;
-                                    }
-
-                                    foreach (var rule in node.BlockingRules)
-                                    {
-                                        // 2.1. Nếu URL khớp với URL cha -> chặn như bình thường
-                                        if (!string.IsNullOrWhiteSpace(rule.UrlPattern) && UrlMatchesPattern(requestUrl, rule.UrlPattern))
-                                        {
-                                            // Check method: "All" hoặc exact match với requestMethod
-                                            var ruleMethod = rule.Method?.Trim() ?? "All";
-                                            var methodMatches = string.Equals(ruleMethod, "All", StringComparison.OrdinalIgnoreCase) ||
-                                                                string.Equals(ruleMethod, requestMethod, StringComparison.OrdinalIgnoreCase);
-                                            
-                                            if (methodMatches)
-                                            {
-                                                if (core.Environment != null)
-                                                {
-                                                    args.Response = core.Environment.CreateWebResourceResponse(null, 403, "Blocked", "");
-                                                }
-                                                // Nếu có output khớp URL này: vẫn lấy RequestHeaders, Params, Payload từ cache
-                                                var currentUrl = args.Request?.Uri ?? requestUrl;
-                                                ExtractFromBlockedRequest(node, args.Request, currentUrl, requestMethod);
-
-                                                // Đánh dấu rule cha đã từng bị chặn trong lần chạy này
-                                                rule.HasTriggeredParentInCurrentRun = true;
-
-                                                // Đánh dấu đã bắt đầu chuỗi chặn nếu user bật chế độ chặn các request phía sau (toàn cục)
-                                                if (node.BlockAllRequestsAfterFirstMatch)
-                                                {
-                                                    node.HasTriggeredBlockingChain = true;
-                                                }
-
-                                                return;
-                                            }
-                                        }
-
-                                        // 2.2. Nếu URL KHÔNG khớp URL cha, nhưng rule này đã từng chặn URL cha
-                                        //      và URL khớp một trong các URL con (có method riêng) -> chặn.
-                                        if (rule.HasTriggeredParentInCurrentRun && rule.ChildRules != null && rule.ChildRules.Count > 0)
-                                        {
-                                            foreach (var child in rule.ChildRules)
-                                            {
-                                                if (string.IsNullOrWhiteSpace(child.UrlPattern))
-                                                    continue;
-
-                                                if (!UrlMatchesPattern(requestUrl, child.UrlPattern))
-                                                    continue;
-
-                                                var childMethod = child.Method?.Trim() ?? "All";
-                                                var childMethodMatches =
-                                                    string.Equals(childMethod, "All", StringComparison.OrdinalIgnoreCase) ||
-                                                    string.Equals(childMethod, requestMethod, StringComparison.OrdinalIgnoreCase);
-
-                                                if (!childMethodMatches)
-                                                    continue;
-
-                                                if (core.Environment != null)
-                                                {
-                                                    args.Response = core.Environment.CreateWebResourceResponse(null, 403, "Blocked (child)", "");
-                                                }
-                                                var currentUrl = args.Request?.Uri ?? requestUrl;
-                                                ExtractFromBlockedRequest(node, args.Request, currentUrl, requestMethod);
-                                                return;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // 3. Xử lý thay request (intercept rules)
-                                foreach (var rule in node.RequestInterceptRules)
-                                {
-                                    if (UrlMatchesPattern(requestUrl, rule.MatchUrlPattern))
-                                    {
-                                        // Thay URL nếu cần
-                                        if (rule.ReplaceUrlWithNodeKey && !string.IsNullOrWhiteSpace(rule.ReplaceUrlSourceNodeId) && !string.IsNullOrWhiteSpace(rule.ReplaceUrlSourceOutputKey))
-                                        {
-                                            // Resolve value từ node+key (cURL) - real-time từ workflow
-                                            try
-                                            {
-                                                if (host?.ViewModel != null && host.ViewModel.Nodes != null && host.ViewModel.Connections != null)
-                                                {
-                                                    var sourceNode = host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, rule.ReplaceUrlSourceNodeId, StringComparison.OrdinalIgnoreCase));
-                                                    if (sourceNode != null)
-                                                    {
-                                                        // Resolve value từ source node
-                                                        var resolvedValue = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, rule.ReplaceUrlSourceOutputKey);
-                                                        if (!string.IsNullOrWhiteSpace(resolvedValue) && resolvedValue != "—" && args.Request != null)
-                                                        {
-                                                            // Parse cURL command để lấy URL
-                                                            // Format cURL: curl 'https://example.com/api' -H 'header: value' ...
-                                                            // Hoặc có thể là URL trực tiếp
-                                                            var urlFromCurl = ExtractUrlFromCurl(resolvedValue);
-                                                            if (!string.IsNullOrWhiteSpace(urlFromCurl))
-                                                            {
-                                                                args.Request.Uri = urlFromCurl;
-                                                            }
-                                                            else
-                                                            {
-                                                                // Nếu không phải cURL, dùng giá trị trực tiếp
-                                                                args.Request.Uri = resolvedValue;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"Lỗi thay request error: {ex.Message}");
-                                            }
-                                        }
-                                        else if (!string.IsNullOrWhiteSpace(rule.ReplaceUrlValue) && args.Request != null)
-                                        {
-                                            args.Request.Uri = rule.ReplaceUrlValue;
-                                        }
-
-                                        // Thay params/body nếu cần (tương tự)
-                                        // TODO: Implement replace params/body
-                                    }
-                                }
-
-                                // If URL was replaced, make sure subsequent matching/caching uses the final URL.
-                                // This prevents "CurlCmd" / "Payload" lookups using a stale pre-rewrite URL.
-                                if (args.Request != null)
-                                {
-                                    var finalUrl = args.Request.Uri ?? requestUrl;
-                                    if (!string.Equals(finalUrl, requestUrl, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        // Mirror cached payload entry (if any) to new URL key.
-                                        try
-                                        {
-                                            var oldKey = $"{requestUrl}|{requestMethod}";
-                                            var newKey = $"{finalUrl}|{requestMethod}";
-                                            if (_requestPayloadCache.TryGetValue(oldKey, out var payload) && !_requestPayloadCache.ContainsKey(newKey))
-                                            {
-                                                _requestPayloadCache[newKey] = payload;
-                                            }
-                                        }
-                                        catch { }
-
-                                        requestUrl = finalUrl;
-                                    }
-                                }
-
-
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"WebResourceRequested error: {ex.Message}");
-                            }
-                        };
-
-                        // Lấy response body cho outputs và xử lý real-time
-                        // ⚠️ CRITICAL: WebResourceResponseReceived sẽ nhận TẤT CẢ responses bao gồm cả XHR
-                        // (ResourceContext chỉ có trong WebResourceRequested, không có trong WebResourceResponseReceived)
-                        core.WebResourceResponseReceived += async (sender, args) =>
-                        {
-                            try
-                            {
-                                var requestUrl = args.Request?.Uri ?? "";
-                                if (string.IsNullOrEmpty(requestUrl)) return;
-
-                                var requestMethod = args.Request?.Method ?? string.Empty;
-                                bool shouldUpdateUI = false;
-
-
-
-                                // 2. Lấy cookie từ CookieManager của WebView2 (real-time, đầy đủ, chuẩn)
-                                var response = args.Response;
-                                if (response != null)
-                                {
-                                    // Lấy cookies từ CookieManager – chính xác, đầy đủ thông tin
-                                    try
-                                    {
-                                        var cookieManager = core?.CookieManager;
-                                        if (cookieManager != null && Uri.TryCreate(requestUrl, UriKind.Absolute, out var reqUri))
-                                        {
-                                            var cookies = await cookieManager.GetCookiesAsync(requestUrl);
-                                            if (cookies != null && cookies.Count > 0)
-                                            {
-                                                // Build JSON chuẩn: { url, cookies: [{name, value, domain, path, secure, httpOnly, expirationTime}] }
-                                                var cookieList = new System.Text.Json.Nodes.JsonArray();
-                                                foreach (var c in cookies)
-                                                {
-                                                    var obj = new System.Text.Json.Nodes.JsonObject
-                                                    {
-                                                        ["name"] = c.Name,
-                                                        ["value"] = c.Value,
-                                                        ["domain"] = c.Domain,
-                                                        ["path"] = c.Path,
-                                                        ["secure"] = c.IsSecure,
-                                                        ["httpOnly"] = c.IsHttpOnly,
-                                                        ["session"] = c.IsSession
-                                                    };
-                                                    if (!c.IsSession)
-                                                        obj["expirationTime"] = ((DateTimeOffset)c.Expires).ToUnixTimeSeconds();
-                                                    cookieList.Add(obj);
-                                                }
-                                                var cookieRoot = new System.Text.Json.Nodes.JsonObject
-                                                {
-                                                    ["url"] = $"{reqUri.Scheme}://{reqUri.Host}",
-                                                    ["cookies"] = cookieList
-                                                };
-                                                var cookieJson = cookieRoot.ToJsonString();
-                                                node.LastCookie = cookieJson;
-
-                                                // Cập nhật output "cookie" (DynamicOutput)
-                                                var cookieDynOut = node.DynamicOutputs?.FirstOrDefault(o =>
-                                                    string.Equals(o.Key, "cookie", StringComparison.OrdinalIgnoreCase));
-                                                if (cookieDynOut != null)
-                                                    cookieDynOut.UserValueOverride = cookieJson;
-
-                                                shouldUpdateUI = true;
-                                                // System.Diagnostics.Debug.WriteLine($"[Cookie] Captured {cookies.Count} cookies for {reqUri.Host} → JSON {cookieJson.Length} chars");
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"Lấy cookie từ CookieManager error: {ex.Message}");
-                                    }
-
-                                    // 3. Lấy response body cho outputs đã cấu hình (chỉ lấy từ key đã cấu hình)
-                                    // ⚠️ CRITICAL: Xử lý TẤT CẢ responses bao gồm cả XHR (resourceContext có thể là XmlHttpRequest)
-                                    if (node.ResponseOutputs != null && node.ResponseOutputs.Count > 0)
-                                    {
-                                        try
-                                        {
-                                            // Kiểm tra xem có output nào khớp với URL này không
-                                            bool hasMatchingOutput = false;
-                                            foreach (var responseOutput in node.ResponseOutputs)
-                                            {
-                                                var methodMatches = MethodMatches(responseOutput?.RequestMethod, requestMethod);
-                                                var outputUrlPattern = responseOutput?.Url ?? string.Empty;
-                                                if (UrlMatchesPattern(requestUrl, outputUrlPattern) && methodMatches)
-                                                {
-                                                    hasMatchingOutput = true;
-                                                    break;
-                                                }
-                                            }
-
-                                            // Xử lý từng output khớp theo ExtractType
-                                            if (hasMatchingOutput)
-                                            {
-                                                foreach (var responseOutput in node.ResponseOutputs)
-                                                {
-                                                    if (!MethodMatches(responseOutput?.RequestMethod, requestMethod)) continue;
-                                                    var outputUrlPattern = responseOutput?.Url ?? string.Empty;
-                                                    if (!UrlMatchesPattern(requestUrl, outputUrlPattern)) continue;
-
-                                                    var key = responseOutput?.Key?.Trim() ?? string.Empty;
-                                                    if (string.IsNullOrWhiteSpace(key)) continue;
-
-                                                    var extractType = (responseOutput?.ExtractType ?? "Response").Trim();
-                                                    if (string.IsNullOrEmpty(extractType)) extractType = "Response";
-
-                                                    string? extractedValue = null;
-
-                                                     // Cookie: lay toan bo cookies tu CookieManager -> JSON chuan
-                                                     // Format: {"url":"https://example.com","cookies":[{name,value,domain,path,secure,httpOnly,session,expirationTime}]}
-                                                     if (string.Equals(extractType, "Cookie", StringComparison.OrdinalIgnoreCase))
-                                                     {
-                                                         try
-                                                         {
-                                                             var cookieMgr = core?.CookieManager;
-                                                             if (cookieMgr != null && Uri.TryCreate(requestUrl, UriKind.Absolute, out var cookieUri))
-                                                             {
-                                                                 var allCookies = await cookieMgr.GetCookiesAsync(requestUrl);
-                                                                 if (allCookies != null && allCookies.Count > 0)
-                                                                 {
-                                                                     var cl = new System.Text.Json.Nodes.JsonArray();
-                                                                     foreach (var ck in allCookies)
-                                                                     {
-                                                                         var co = new System.Text.Json.Nodes.JsonObject
-                                                                         {
-                                                                             ["name"]     = ck.Name,
-                                                                             ["value"]    = ck.Value,
-                                                                             ["domain"]   = ck.Domain,
-                                                                             ["path"]     = ck.Path,
-                                                                             ["secure"]   = ck.IsSecure,
-                                                                             ["httpOnly"] = ck.IsHttpOnly,
-                                                                             ["session"]  = ck.IsSession
-                                                                         };
-                                                                         if (!ck.IsSession)
-                                                                             co["expirationTime"] = ((DateTimeOffset)ck.Expires).ToUnixTimeSeconds();
-                                                                         cl.Add(co);
-                                                                     }
-                                                                     var rootObj = new System.Text.Json.Nodes.JsonObject
-                                                                     {
-                                                                         ["url"]     = $"{cookieUri.Scheme}://{cookieUri.Host}",
-                                                                         ["cookies"] = cl
-                                                                     };
-                                                                     extractedValue = rootObj.ToJsonString();
-                                                                 }
-                                                                 else
-                                                                 {
-                                                                     extractedValue = $"{{\"url\":\"{cookieUri.Scheme}://{cookieUri.Host}\",\"cookies\":[]}}"; 
-                                                                 }
-                                                             }
-                                                         }
-                                                         catch (Exception ex)
-                                                         {
-                                                             System.Diagnostics.Debug.WriteLine($"Cookie ExtractType error: {ex.Message}");
-                                                             extractedValue = string.Empty;
-                                                         }
-                                                     }
-                                                     
-                                                    // Headers: response headers → JSON object { "key": "value" }
-                                                    else if (string.Equals(extractType, "Headers", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        try
-                                                        {
-                                                            var dict = new Dictionary<string, string>();
-                                                            if (response?.Headers != null)
-                                                            {
-                                                                foreach (var h in response.Headers)
-                                                                    dict[h.Key] = h.Value;
-                                                            }
-                                                            extractedValue = JsonSerializer.Serialize(dict);
-                                                        }
-                                                        catch (Exception ex)
-                                                        {
-                                                            System.Diagnostics.Debug.WriteLine($"Headers extraction error: {ex.Message}");
-                                                        }
-                                                    }
-                                                    // Params: query string từ URL
-                                                    else if (string.Equals(extractType, "Params", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        try
-                                                        {
-                                                            var idx = requestUrl.IndexOf('?');
-                                                            extractedValue = idx >= 0 ? requestUrl.Substring(idx + 1) : string.Empty;
-                                                        }
-                                                        catch { }
-                                                    }
-                                                    // RequestHeaders: request headers → JSON object { "key": "value" }
-                                                    else if (string.Equals(extractType, "RequestHeaders", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        try
-                                                        {
-                                                            var req = args.Request;
-                                                            if (req != null)
-                                                            {
-                                                                var dict = new Dictionary<string, string>();
-                                                                foreach (var h in req.Headers)
-                                                                    dict[h.Key] = h.Value;
-                                                                extractedValue = JsonSerializer.Serialize(dict);
-                                                            }
-                                                        }
-                                                        catch { }
-                                                    }
-                                                    // CurlCmd: generate complete cURL command for Windows CMD (like browser F12)
-                                                    else if (string.Equals(extractType, "CurlCmd", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        try
-                                                        {
-                                                            static string EscapeForCmdDoubleQuoted(string s)
-                                                            {
-                                                                if (string.IsNullOrEmpty(s)) return string.Empty;
-                                                                // Escape CMD metacharacters inside a double-quoted string.
-                                                                // DevTools style typically uses ^" ... ^" and escapes inner quotes as ^\^"
-                                                                return s
-                                                                    .Replace("^", "^^")
-                                                                    .Replace("%", "%%")
-                                                                    .Replace("&", "^&")
-                                                                    .Replace("|", "^|")
-                                                                    .Replace("<", "^<")
-                                                                    .Replace(">", "^>")
-                                                                    .Replace("\"", "^\\^\"");
-                                                            }
-
-                                                            static string WrapCmdQuoted(string s) => $"^\"{EscapeForCmdDoubleQuoted(s)}^\"";
-
-                                                            static Dictionary<string, string> GetHeadersSafe(Microsoft.Web.WebView2.Core.CoreWebView2HttpRequestHeaders? headers)
-                                                            {
-                                                                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                                                if (headers == null) return dict;
-                                                                try
-                                                                {
-                                                                    foreach (var h in headers)
-                                                                    {
-                                                                        var k = (h.Key ?? "").Trim();
-                                                                        if (k.Length == 0) continue;
-                                                                        // Keep last value for duplicate keys (DevTools typically shows one line per key anyway).
-                                                                        dict[k] = h.Value ?? "";
-                                                                    }
-                                                                }
-                                                                catch { }
-
-                                                                // Some "auto" headers are not always present in enumeration; try GetHeader for common ones.
-                                                                try
-                                                                {
-                                                                    var mustTry = new[]
-                                                                    {
-                                                                        "accept", "accept-language", "user-agent", "referer", "origin", "cookie"
-                                                                    };
-                                                                    foreach (var k in mustTry)
-                                                                    {
-                                                                        try
-                                                                        {
-                                                                            var v = headers.GetHeader(k);
-                                                                            if (!string.IsNullOrWhiteSpace(v) && !dict.ContainsKey(k))
-                                                                                dict[k] = v;
-                                                                        }
-                                                                        catch { }
-                                                                    }
-                                                                }
-                                                                catch { }
-
-                                                                return dict;
-                                                            }
-
-                                                            static string BuildCurlCmdForWindowsCmd(
-                                                                string url,
-                                                                string method,
-                                                                Dictionary<string, string> headers,
-                                                                string? payload)
-                                                            {
-                                                                var lines = new List<string>();
-
-                                                                lines.Add($"curl {WrapCmdQuoted(url)} ^");
-
-                                                                if (!string.IsNullOrWhiteSpace(method) &&
-                                                                    !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
-                                                                {
-                                                                    lines.Add($"  -X {method.ToUpperInvariant()} ^");
-                                                                }
-
-                                                                // Cookie: DevTools uses -b instead of -H "cookie: ..."
-                                                                if (headers.TryGetValue("cookie", out var cookieVal) && !string.IsNullOrWhiteSpace(cookieVal))
-                                                                {
-                                                                    lines.Add($"  -b {WrapCmdQuoted(cookieVal)} ^");
-                                                                }
-
-                                                                foreach (var kv in headers)
-                                                                {
-                                                                    var headerName = kv.Key ?? "";
-                                                                    if (headerName.Length == 0) continue;
-                                                                    if (string.Equals(headerName, "cookie", StringComparison.OrdinalIgnoreCase)) continue;
-
-                                                                    var headerValue = kv.Value ?? "";
-                                                                    lines.Add($"  -H {WrapCmdQuoted($"{headerName}: {headerValue}")} ^");
-                                                                }
-
-                                                                if (!string.IsNullOrWhiteSpace(payload))
-                                                                {
-                                                                    lines.Add($"  --data-raw {WrapCmdQuoted(payload)} ^");
-                                                                }
-
-                                                                lines.Add("  --compressed");
-
-                                                                if (!string.IsNullOrWhiteSpace(url) &&
-                                                                    url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                                                                {
-                                                                    lines.Add("  --insecure");
-                                                                }
-
-                                                                // Remove trailing caret from last line if present (we keep it only for line-continuation).
-                                                                for (var i = 0; i < lines.Count; i++)
-                                                                {
-                                                                    if (i == lines.Count - 1)
-                                                                    {
-                                                                        lines[i] = lines[i].TrimEnd();
-                                                                        if (lines[i].EndsWith(" ^", StringComparison.Ordinal))
-                                                                            lines[i] = lines[i].Substring(0, lines[i].Length - 2).TrimEnd();
-                                                                    }
-                                                                }
-
-                                                                return string.Join(Environment.NewLine, lines);
-                                                            }
-
-                                                            var req = args.Request;
-                                                            var hdrDict = GetHeadersSafe(req?.Headers);
-                                                            if (TryGetCdpRequestInfo(requestUrl, requestMethod, out var cdpHdr, out var cdpPostData))
-                                                            {
-                                                                if (cdpHdr.Count > hdrDict.Count)
-                                                                    hdrDict = cdpHdr;
-                                                            }
-
-                                                            // Ensure cookies are present (Cloudflare antibot often requires cf_clearance + __cf_bm).
-                                                            // CDP/Request headers can omit Cookie; CookieManager is the most reliable source.
-                                                            try
-                                                            {
-                                                                if (!hdrDict.ContainsKey("cookie"))
-                                                                {
-                                                                    var cookieMgr = core?.CookieManager;
-                                                                    if (cookieMgr != null && Uri.TryCreate(requestUrl, UriKind.Absolute, out _))
-                                                                    {
-                                                                        var cookies = await cookieMgr.GetCookiesAsync(requestUrl);
-                                                                        if (cookies != null && cookies.Count > 0)
-                                                                        {
-                                                                            var cookiePairs = new List<string>(cookies.Count);
-                                                                            foreach (var ck in cookies)
-                                                                            {
-                                                                                if (string.IsNullOrWhiteSpace(ck?.Name)) continue;
-                                                                                cookiePairs.Add($"{ck.Name}={ck.Value}");
-                                                                            }
-                                                                            if (cookiePairs.Count > 0)
-                                                                                hdrDict["cookie"] = string.Join("; ", cookiePairs);
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            catch { }
-
-                                                            // Add request body if available (from cache)
-                                                            var cacheKey = $"{requestUrl}|{requestMethod}";
-                                                            System.Diagnostics.Debug.WriteLine($"[CurlCmd] Looking for cached payload with key: {cacheKey}");
-                                                            System.Diagnostics.Debug.WriteLine($"[CurlCmd] Cache currently has {_requestPayloadCache.Count} entries");
-                                                            
-                                                            string? cachedPayloadOrNull = null;
-                                                            if (_requestPayloadCache.TryGetValue(cacheKey, out var cachedPayload) &&
-                                                                !string.IsNullOrWhiteSpace(cachedPayload))
-                                                            {
-                                                                System.Diagnostics.Debug.WriteLine($"[CurlCmd] Found cached payload: {cachedPayload.Length} bytes");
-                                                                cachedPayloadOrNull = cachedPayload;
-                                                            }
-                                                            else
-                                                            {
-                                                                System.Diagnostics.Debug.WriteLine($"[CurlCmd] No cached payload found for key: {cacheKey}");
-                                                            }
-                                                            if (string.IsNullOrWhiteSpace(cachedPayloadOrNull) &&
-                                                                TryGetCdpRequestInfo(requestUrl, requestMethod, out _, out var cdpPostData2) &&
-                                                                !string.IsNullOrWhiteSpace(cdpPostData2))
-                                                            {
-                                                                cachedPayloadOrNull = cdpPostData2;
-                                                            }
-
-                                                            extractedValue = BuildCurlCmdForWindowsCmd(
-                                                                requestUrl,
-                                                                requestMethod,
-                                                                hdrDict,
-                                                                cachedPayloadOrNull);
-                                                        }
-                                                        catch (Exception ex)
-                                                        {
-                                                            System.Diagnostics.Debug.WriteLine($"CurlCmd generation error: {ex.Message}");
-                                                            extractedValue = $"curl \"{requestUrl}\" # Error: {ex.Message}";
-                                                        }
-                                                    }
-                                                    // CurlBash: generate cURL for bash/Postman import (no CMD carets)
-                                                    else if (string.Equals(extractType, "CurlBash", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        try
-                                                        {
-                                                            static string EscapeBashSingleQuoted(string s)
-                                                            {
-                                                                if (string.IsNullOrEmpty(s)) return string.Empty;
-                                                                // Close/open single quotes around an escaped single quote: 'foo'\''bar'
-                                                                return s.Replace("'", "'\\''");
-                                                            }
-
-                                                            static Dictionary<string, string> GetHeadersSafe(Microsoft.Web.WebView2.Core.CoreWebView2HttpRequestHeaders? headers)
-                                                            {
-                                                                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                                                if (headers == null) return dict;
-                                                                try
-                                                                {
-                                                                    foreach (var h in headers)
-                                                                    {
-                                                                        var k = (h.Key ?? "").Trim();
-                                                                        if (k.Length == 0) continue;
-                                                                        dict[k] = h.Value ?? "";
-                                                                    }
-                                                                }
-                                                                catch { }
-
-                                                                try
-                                                                {
-                                                                    var mustTry = new[]
-                                                                    {
-                                                                        "accept", "accept-language", "user-agent", "referer", "origin", "cookie"
-                                                                    };
-                                                                    foreach (var k in mustTry)
-                                                                    {
-                                                                        try
-                                                                        {
-                                                                            var v = headers.GetHeader(k);
-                                                                            if (!string.IsNullOrWhiteSpace(v) && !dict.ContainsKey(k))
-                                                                                dict[k] = v;
-                                                                        }
-                                                                        catch { }
-                                                                    }
-                                                                }
-                                                                catch { }
-
-                                                                return dict;
-                                                            }
-
-                                                            static string BuildCurlForBash(string url, string method, Dictionary<string, string> headers, string? payload)
-                                                            {
-                                                                var lines = new List<string>();
-                                                                lines.Add($"curl --location --request {method.ToUpperInvariant()} '{EscapeBashSingleQuoted(url)}' \\");
-
-                                                                if (headers.TryGetValue("cookie", out var cookieVal) && !string.IsNullOrWhiteSpace(cookieVal))
-                                                                {
-                                                                    lines.Add($"  --cookie '{EscapeBashSingleQuoted(cookieVal)}' \\");
-                                                                }
-
-                                                                foreach (var kv in headers)
-                                                                {
-                                                                    var k = kv.Key ?? "";
-                                                                    if (k.Length == 0) continue;
-                                                                    if (string.Equals(k, "cookie", StringComparison.OrdinalIgnoreCase)) continue;
-                                                                    var v = kv.Value ?? "";
-                                                                    lines.Add($"  --header '{EscapeBashSingleQuoted($"{k}: {v}")}' \\");
-                                                                }
-
-                                                                if (!string.IsNullOrWhiteSpace(payload))
-                                                                {
-                                                                    lines.Add($"  --data-raw '{EscapeBashSingleQuoted(payload)}' \\");
-                                                                }
-
-                                                                // remove trailing backslash from last line
-                                                                if (lines.Count > 0)
-                                                                {
-                                                                    var last = lines[^1];
-                                                                    if (last.EndsWith(" \\", StringComparison.Ordinal))
-                                                                        lines[^1] = last.Substring(0, last.Length - 2);
-                                                                }
-
-                                                                return string.Join(Environment.NewLine, lines);
-                                                            }
-
-                                                            var req = args.Request;
-                                                            var hdrDict = GetHeadersSafe(req?.Headers);
-                                                            if (TryGetCdpRequestInfo(requestUrl, requestMethod, out var cdpHdr, out var cdpPostData))
-                                                            {
-                                                                if (cdpHdr.Count > hdrDict.Count)
-                                                                    hdrDict = cdpHdr;
-                                                            }
-
-                                                            // Ensure cookies from CookieManager if missing.
-                                                            try
-                                                            {
-                                                                if (!hdrDict.ContainsKey("cookie"))
-                                                                {
-                                                                    var cookieMgr = core?.CookieManager;
-                                                                    if (cookieMgr != null && Uri.TryCreate(requestUrl, UriKind.Absolute, out _))
-                                                                    {
-                                                                        var cookies = await cookieMgr.GetCookiesAsync(requestUrl);
-                                                                        if (cookies != null && cookies.Count > 0)
-                                                                        {
-                                                                            var cookiePairs = new List<string>(cookies.Count);
-                                                                            foreach (var ck in cookies)
-                                                                            {
-                                                                                if (string.IsNullOrWhiteSpace(ck?.Name)) continue;
-                                                                                cookiePairs.Add($"{ck.Name}={ck.Value}");
-                                                                            }
-                                                                            if (cookiePairs.Count > 0)
-                                                                                hdrDict["cookie"] = string.Join("; ", cookiePairs);
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            catch { }
-
-                                                            var cacheKey = $"{requestUrl}|{requestMethod}";
-                                                            string? cachedPayloadOrNull = null;
-                                                            if (_requestPayloadCache.TryGetValue(cacheKey, out var cachedPayload) &&
-                                                                !string.IsNullOrWhiteSpace(cachedPayload))
-                                                            {
-                                                                cachedPayloadOrNull = cachedPayload;
-                                                            }
-                                                            if (string.IsNullOrWhiteSpace(cachedPayloadOrNull) &&
-                                                                TryGetCdpRequestInfo(requestUrl, requestMethod, out _, out var cdpPostData2) &&
-                                                                !string.IsNullOrWhiteSpace(cdpPostData2))
-                                                            {
-                                                                cachedPayloadOrNull = cdpPostData2;
-                                                            }
-
-                                                            extractedValue = BuildCurlForBash(requestUrl, string.IsNullOrWhiteSpace(requestMethod) ? "GET" : requestMethod, hdrDict, cachedPayloadOrNull);
-                                                        }
-                                                        catch (Exception ex)
-                                                        {
-                                                            System.Diagnostics.Debug.WriteLine($"CurlBash generation error: {ex.Message}");
-                                                            extractedValue = $"curl '{requestUrl}' # Error: {ex.Message}";
-                                                        }
-                                                    }
-                                                    // Payload (request body): lấy từ cache đã lưu trong WebResourceRequested
-                                                    else if (string.Equals(extractType, "Payload", StringComparison.OrdinalIgnoreCase))
-                                                    {
-                                                        // Lấy từ cache - thử current method trước
-                                                        var cacheKey = $"{requestUrl}|{requestMethod}";
-                                                        if (_requestPayloadCache.TryGetValue(cacheKey, out var cachedPayload))
-                                                        {
-                                                            extractedValue = cachedPayload;
-                                                            System.Diagnostics.Debug.WriteLine($"[Payload Extract] Retrieved cached payload for {requestMethod} {requestUrl}: {cachedPayload.Length} bytes");
-                                                            // DON'T remove from cache - CurlCmd output may need it too!
-                                                        }
-                                                        else
-                                                        {
-                                                            // Fallback: nếu không tìm thấy (ví dụ OPTIONS không có body), thử tìm POST/PUT/PATCH cùng URL
-                                                            //System.Diagnostics.Debug.WriteLine($"[Payload Extract] No cached payload for {requestMethod} {requestUrl}, trying fallback methods...");
-                                                            
-                                                            string? fallbackPayload = null;
-                                                            string? fallbackMethod = null;
-                                                            
-                                                            // Thử các method thường có payload
-                                                            var methodsToTry = new[] { "POST", "PUT", "PATCH" };
-                                                            foreach (var method in methodsToTry)
-                                                            {
-                                                                if (string.Equals(method, requestMethod, StringComparison.OrdinalIgnoreCase))
-                                                                    continue; // Đã thử rồi
-                                                                    
-                                                                var fallbackKey = $"{requestUrl}|{method}";
-                                                                if (_requestPayloadCache.TryGetValue(fallbackKey, out fallbackPayload))
-                                                                {
-                                                                    fallbackMethod = method;
-                                                                    // DON'T remove - other outputs may need it
-                                                                    break;
-                                                                }
-                                                            }
-                                                            
-                                                            if (fallbackPayload != null)
-                                                            {
-                                                                extractedValue = fallbackPayload;
-                                                                //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✓ Found fallback payload from {fallbackMethod} {requestUrl}: {fallbackPayload.Length} bytes");
-                                                            }
-                                                            else
-                                                            {
-                                                                extractedValue = string.Empty;
-                                                                //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✗ No payload found even with fallback for {requestUrl}");
-                                                            }
-                                                        }
-                                                    }
-                                                    // Response (body): mặc định
-                                                    else
-                                                    {
-                                                        extractType = "Response";
-                                                    }
-
-                                                    if (!string.Equals(extractType, "Response", StringComparison.OrdinalIgnoreCase) && extractedValue != null)
-                                                    {
-                                                        node.UpdateResponseOutputValueForActiveRuns(key, extractedValue, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
-                                                        shouldUpdateUI = true;
-
-                                                        // Khi output được cập nhật (ví dụ CurlCmd), tự động trigger các node phụ thuộc
-                                                        TryTriggerDependentNodes(host, node, key);
-                                                    }
-                                                }
-
-                                                // Response (body): cần GetContentAsync
-                                                var needsBody = node.ResponseOutputs.Any(ro =>
-                                                {
-                                                    if (ro == null) return false;
-                                                    var m = MethodMatches(ro.RequestMethod, requestMethod);
-                                                    var u = UrlMatchesPattern(requestUrl, ro.Url ?? "");
-                                                    var et = (ro.ExtractType ?? "Response").Trim();
-                                                    if (string.IsNullOrEmpty(et)) et = "Response";
-                                                    return m && u && string.Equals(et, "Response", StringComparison.OrdinalIgnoreCase);
-                                                });
-
-                                                if (needsBody)
-                                                {
-                                                    string? contentType = null;
-                                                    try { if (response.Headers.Contains("Content-Type")) contentType = response.Headers.GetHeader("Content-Type"); } catch { }
-                                                    bool shouldGetContent = string.IsNullOrEmpty(contentType) ||
-                                                        contentType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
-                                                        contentType.Contains("text", StringComparison.OrdinalIgnoreCase) ||
-                                                        contentType.Contains("xml", StringComparison.OrdinalIgnoreCase) ||
-                                                        contentType.Contains("html", StringComparison.OrdinalIgnoreCase) ||
-                                                        contentType.Contains("protobuffer", StringComparison.OrdinalIgnoreCase) ||
-                                                        contentType.Contains("application", StringComparison.OrdinalIgnoreCase);
-
-                                                    if (shouldGetContent)
-                                                    {
-                                                        try
-                                                        {
-                                                            var body = await ReadResponseBodyAsync(response);
-                                                            if (!string.IsNullOrWhiteSpace(body))
-                                                            {
-                                                                foreach (var responseOutput in node.ResponseOutputs)
-                                                                {
-                                                                    if (!MethodMatches(responseOutput?.RequestMethod, requestMethod)) continue;
-                                                                    var outputUrlPattern = responseOutput?.Url ?? string.Empty;
-                                                                    var et = (responseOutput?.ExtractType ?? "Response").Trim();
-                                                                    if (string.IsNullOrEmpty(et)) et = "Response";
-                                                                    if (!UrlMatchesPattern(requestUrl, outputUrlPattern) ||
-                                                                        !string.Equals(et, "Response", StringComparison.OrdinalIgnoreCase)) continue;
-
-                                                                    var key = responseOutput?.Key?.Trim() ?? string.Empty;
-                                                                    if (string.IsNullOrWhiteSpace(key)) continue;
-
-                                                                    node.UpdateResponseOutputValueForActiveRuns(key, body, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
-                                                                    shouldUpdateUI = true;
-
-                                                                    // Khi output được cập nhật, tự động trigger các node phụ thuộc
-                                                                    TryTriggerDependentNodes(host, node, key);
-                                                                }
-                                                            }
-                                                        }
-                                                        catch (Exception ex)
-                                                        {
-                                                            System.Diagnostics.Debug.WriteLine($"Lỗi đọc response body: {ex.Message}");
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"Lấy content error: {ex.GetType().Name} - {ex.Message}");
-                                        }
-                                    }
-                                }
-
-                                // Trigger sync data panels để cập nhật output UI real-time
-                                if (shouldUpdateUI)
-                                {
-                                    if (host != null)
-                                    {
-                                        // 1) (hiện tại RequestSyncDataPanels là no-op, nhưng giữ lại cho tương lai)
-                                        try
-                                        {
-                                            if (webViewForInit.Dispatcher.CheckAccess())
-                                            {
-                                                host.RequestSyncDataPanels(immediate: false);
-                                            }
-                                            else
-                                            {
-                                                webViewForInit.Dispatcher.Invoke(() =>
-                                                {
-                                                    host.RequestSyncDataPanels(immediate: false);
-                                                });
-                                            }
-                                        }
-                                        catch { }
-
-                                        // 2) Nếu user bật SyncLiveOutputsToResults thì cập nhật luôn Execution Results cho node web này
-                                        if (node.SyncLiveOutputsToResults)
-                                        {
-                                            try
-                                            {
-                                                var vm = host.ViewModel;
-                                                if (vm != null)
-                                                {
-                                                    var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
-                                                        .GetField("_executionVisualizer",
-                                                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                                    if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
-                                                    {
-                                                        visualizer.RefreshSavedOutputs(new[] { node });
-                                                    }
-                                                }
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"SyncLiveOutputsToResults error: {ex.Message}");
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // 3) Nếu WebNodeExecutor đang chờ outputs (PendingOutputsTcs) thì khi đã có đủ
-                                //    ResponseOutputs cho active runs, signal TCS để cho phép workflow tiếp tục.
-                                try
-                                {
-                                    var activeRuns = node.GetActiveExecutionRuns();
-                                    var outputs = node.ResponseOutputs?.Where(ro => ro != null && !string.IsNullOrWhiteSpace(ro.Key)).ToList();
-
-                                    if (activeRuns.Count > 0 && outputs != null && outputs.Count > 0)
-                                    {
-                                        var explicitWaitKeys = outputs
-                                            .Where(ro => ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
-                                            .Select(ro => ro.Key!.Trim())
-                                            .ToList();
-
-                                        var waitKeys = explicitWaitKeys.Count > 0
-                                            ? explicitWaitKeys
-                                            : outputs.Select(ro => ro.Key!.Trim()).ToList();
-
-                                        if (waitKeys.Count > 0)
-                                        {
-                                            foreach (var run in activeRuns)
-                                            {
-                                                var tcs = run.PendingOutputsTcs;
-                                                if (tcs == null || tcs.Task.IsCompleted) continue;
-
-                                                bool ready;
-                                                lock (run.Lock)
-                                                {
-                                                    if (node.ResponseOutputsWaitMode == FlowMy.Models.Nodes.WebOutputsWaitMode.Any)
-                                                    {
-                                                        ready = waitKeys.Any(k => run.ResponseOutputValues.TryGetValue(k, out var val) && !string.IsNullOrEmpty(val));
-                                                    }
-                                                    else
-                                                    {
-                                                        ready = waitKeys.All(k => run.ResponseOutputValues.TryGetValue(k, out var val) && !string.IsNullOrEmpty(val));
-                                                    }
-                                                }
-
-                                                if (ready)
-                                                {
-                                                    bool hasListOutput = outputs.Any(ro => ro.IsList && waitKeys.Contains(ro.Key!.Trim(), StringComparer.OrdinalIgnoreCase));
-                                                    int debounceMs = hasListOutput ? 1500 : 300;
-                                                    System.Diagnostics.Debug.WriteLine($"[WebNodeControl] ✓ Required ResponseOutputs satisfied for run {run.ExecutionId}. Scheduling completion in {debounceMs}ms.");
-                                                    run.ScheduleDebounceCompletion(debounceMs);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"PendingOutputsTcs signal error: {ex.Message}");
-                                }
-
-                                // Clean up payload cache after all outputs have been processed for this request
-                                var cleanupKey = $"{requestUrl}|{requestMethod}";
-                                if (_requestPayloadCache.ContainsKey(cleanupKey))
-                                {
-                                    _requestPayloadCache.Remove(cleanupKey);
-                                    System.Diagnostics.Debug.WriteLine($"[Response] Cleaned up payload cache for: {cleanupKey}");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"WebResourceResponseReceived error: {ex.Message}");
-                            }
-                        };
-                    }
-
-                    // Helper functions (phải nằm trong Loaded handler để có closure host, node)
-                    bool MethodMatches(string? expectedMethod, string requestMethod)
-                    {
-                        var exp = expectedMethod?.Trim();
-                        if (string.IsNullOrWhiteSpace(exp) || string.Equals(exp, "All", StringComparison.OrdinalIgnoreCase))
-                            return true;
-                        return string.Equals(requestMethod, exp, StringComparison.OrdinalIgnoreCase);
-                    }
-
-                    void ExtractFromBlockedRequest(WebNode n, CoreWebView2WebResourceRequest? req, string reqUrl, string reqMethod)
-                    {
-                        if (n.ResponseOutputs == null || n.ResponseOutputs.Count == 0) return;
-                        foreach (var ro in n.ResponseOutputs)
-                        {
-                            if (!UrlMatchesPattern(reqUrl, ro?.Url ?? "")) continue;
-                            if (!MethodMatches(ro?.RequestMethod, reqMethod)) continue;
-                            var key = ro?.Key?.Trim() ?? "";
-                            if (string.IsNullOrWhiteSpace(key)) continue;
-                            var et = (ro?.ExtractType ?? "Response").Trim();
-                            if (string.IsNullOrEmpty(et)) et = "Response";
-                            string? val = null;
-                            if (string.Equals(et, "Response", StringComparison.OrdinalIgnoreCase) || string.Equals(et, "Headers", StringComparison.OrdinalIgnoreCase))
-                            {
-                                val = string.Empty;
-                            }
-                            else if (string.Equals(et, "RequestHeaders", StringComparison.OrdinalIgnoreCase) && req != null)
-                            {
-                                try
-                                {
-                                    var dict = new Dictionary<string, string>();
-                                    foreach (var h in req.Headers)
-                                        dict[h.Key] = h.Value;
-                                    val = JsonSerializer.Serialize(dict);
-                                }
-                                catch { val = "{}"; }
-                            }
-                            else if (string.Equals(et, "Params", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var idx = reqUrl.IndexOf('?');
-                                val = idx >= 0 ? reqUrl.Substring(idx + 1) : string.Empty;
-                            }
-                            else if (string.Equals(et, "Payload", StringComparison.OrdinalIgnoreCase) && req != null)
-                            {
-                                try
-                                {
-                                    // Thử lấy từ cache trước (stream đã được đọc trong WebResourceRequested)
-                                    var cacheKey = $"{reqUrl}|{reqMethod}";
-                                    if (_requestPayloadCache.TryGetValue(cacheKey, out var cachedPayload))
-                                    {
-                                        val = cachedPayload;
-                                        System.Diagnostics.Debug.WriteLine($"[Blocked Request Payload] Using cached payload: {cachedPayload.Length} bytes");
-                                        // DON'T remove from cache - other outputs (like CurlCmd) may need it too!
-                                    }
-                                    else
-                                    {
-                                        // Fallback: thử đọc trực tiếp từ stream (nếu chưa được cache)
-                                        var content = req.Content;
-                                        if (content != null)
-                                        {
-                                            using var reader = new StreamReader(content);
-                                            val = reader.ReadToEnd();
-                                            //System.Diagnostics.Debug.WriteLine($"[Blocked Request] Read payload from stream: {val.Length} bytes");
-                                        }
-                                        else
-                                        {
-                                            val = string.Empty;
-                                            //System.Diagnostics.Debug.WriteLine($"[Blocked Request] No payload content");
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Payload extraction error: {ex.Message}");
-                                    val = string.Empty;
-                                }
-                            }
-                            else if (string.Equals(et, "CurlCmd", StringComparison.OrdinalIgnoreCase) && req != null)
-                            {
-                                // Generate complete cURL command for blocked request (like browser F12)
-                                try
-                                {
-                                    static string EscapeForCmdDoubleQuoted(string s)
-                                    {
-                                        if (string.IsNullOrEmpty(s)) return string.Empty;
-                                        return s
-                                            .Replace("^", "^^")
-                                            .Replace("%", "%%")
-                                            .Replace("&", "^&")
-                                            .Replace("|", "^|")
-                                            .Replace("<", "^<")
-                                            .Replace(">", "^>")
-                                            .Replace("\"", "^\\^\"");
-                                    }
-
-                                    static string WrapCmdQuoted(string s) => $"^\"{EscapeForCmdDoubleQuoted(s)}^\"";
-
-                                    static Dictionary<string, string> GetHeadersSafe(Microsoft.Web.WebView2.Core.CoreWebView2HttpRequestHeaders? headers)
-                                    {
-                                        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                        if (headers == null) return dict;
-                                        try
-                                        {
-                                            foreach (var h in headers)
-                                            {
-                                                var k = (h.Key ?? "").Trim();
-                                                if (k.Length == 0) continue;
-                                                dict[k] = h.Value ?? "";
-                                            }
-                                        }
-                                        catch { }
-
-                                        try
-                                        {
-                                            var mustTry = new[]
-                                            {
-                                                "accept", "accept-language", "user-agent", "referer", "origin", "cookie"
-                                            };
-                                            foreach (var k in mustTry)
-                                            {
-                                                try
-                                                {
-                                                    var v = headers.GetHeader(k);
-                                                    if (!string.IsNullOrWhiteSpace(v) && !dict.ContainsKey(k))
-                                                        dict[k] = v;
-                                                }
-                                                catch { }
-                                            }
-                                        }
-                                        catch { }
-
-                                        return dict;
-                                    }
-
-                                    static string BuildCurlCmdForWindowsCmd(
-                                        string url,
-                                        string method,
-                                        Dictionary<string, string> headers,
-                                        string? payload)
-                                    {
-                                        var lines = new List<string>();
-
-                                        lines.Add($"curl {WrapCmdQuoted(url)} ^");
-
-                                        if (!string.IsNullOrWhiteSpace(method) &&
-                                            !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            lines.Add($"  -X {method.ToUpperInvariant()} ^");
-                                        }
-
-                                        if (headers.TryGetValue("cookie", out var cookieVal) && !string.IsNullOrWhiteSpace(cookieVal))
-                                        {
-                                            lines.Add($"  -b {WrapCmdQuoted(cookieVal)} ^");
-                                        }
-
-                                        foreach (var kv in headers)
-                                        {
-                                            var headerName = kv.Key ?? "";
-                                            if (headerName.Length == 0) continue;
-                                            if (string.Equals(headerName, "cookie", StringComparison.OrdinalIgnoreCase)) continue;
-
-                                            var headerValue = kv.Value ?? "";
-                                            lines.Add($"  -H {WrapCmdQuoted($"{headerName}: {headerValue}")} ^");
-                                        }
-
-                                        if (!string.IsNullOrWhiteSpace(payload))
-                                        {
-                                            lines.Add($"  --data-raw {WrapCmdQuoted(payload)} ^");
-                                        }
-
-                                        lines.Add("  --compressed");
-
-                                        if (!string.IsNullOrWhiteSpace(url) &&
-                                            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            lines.Add("  --insecure");
-                                        }
-
-                                        for (var i = 0; i < lines.Count; i++)
-                                        {
-                                            if (i == lines.Count - 1)
-                                            {
-                                                lines[i] = lines[i].TrimEnd();
-                                                if (lines[i].EndsWith(" ^", StringComparison.Ordinal))
-                                                    lines[i] = lines[i].Substring(0, lines[i].Length - 2).TrimEnd();
-                                            }
-                                        }
-
-                                        return string.Join(Environment.NewLine, lines);
-                                    }
-
-                                    var hdrDict = GetHeadersSafe(req.Headers);
-                                    if (TryGetCdpRequestInfo(reqUrl, reqMethod, out var cdpHdr, out var cdpPostData))
-                                    {
-                                        if (cdpHdr.Count > hdrDict.Count)
-                                            hdrDict = cdpHdr;
-                                    }
-
-                                    // Add request body if available (from cache)
-                                    var cacheKey = $"{reqUrl}|{reqMethod}";
-                                    System.Diagnostics.Debug.WriteLine($"[CurlCmd Blocked] Looking for cached payload with key: {cacheKey}");
-                                    
-                                    string? cachedPayloadOrNull = null;
-                                    if (_requestPayloadCache.TryGetValue(cacheKey, out var cachedPayload) &&
-                                        !string.IsNullOrWhiteSpace(cachedPayload))
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"[CurlCmd Blocked] Found cached payload: {cachedPayload.Length} bytes");
-                                        cachedPayloadOrNull = cachedPayload;
-                                    }
-                                    else
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"[CurlCmd Blocked] No cached payload found");
-                                    }
-                                    if (string.IsNullOrWhiteSpace(cachedPayloadOrNull) &&
-                                        TryGetCdpRequestInfo(reqUrl, reqMethod, out _, out var cdpPostData2) &&
-                                        !string.IsNullOrWhiteSpace(cdpPostData2))
-                                    {
-                                        cachedPayloadOrNull = cdpPostData2;
-                                    }
-
-                                    val = BuildCurlCmdForWindowsCmd(
-                                        reqUrl,
-                                        reqMethod,
-                                        hdrDict,
-                                        cachedPayloadOrNull);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"CurlCmd generation error for blocked request: {ex.Message}");
-                                    val = $"curl \"{reqUrl}\" # Error: {ex.Message}";
-                                }
-                            }
-                            else if (string.Equals(et, "CurlBash", StringComparison.OrdinalIgnoreCase) && req != null)
-                            {
-                                try
-                                {
-                                    static string EscapeBashSingleQuoted(string s)
-                                    {
-                                        if (string.IsNullOrEmpty(s)) return string.Empty;
-                                        return s.Replace("'", "'\\''");
-                                    }
-
-                                    static Dictionary<string, string> GetHeadersSafe(Microsoft.Web.WebView2.Core.CoreWebView2HttpRequestHeaders? headers)
-                                    {
-                                        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                        if (headers == null) return dict;
-                                        try
-                                        {
-                                            foreach (var h in headers)
-                                            {
-                                                var k = (h.Key ?? "").Trim();
-                                                if (k.Length == 0) continue;
-                                                dict[k] = h.Value ?? "";
-                                            }
-                                        }
-                                        catch { }
-
-                                        try
-                                        {
-                                            var mustTry = new[]
-                                            {
-                                                "accept", "accept-language", "user-agent", "referer", "origin", "cookie"
-                                            };
-                                            foreach (var k in mustTry)
-                                            {
-                                                try
-                                                {
-                                                    var v = headers.GetHeader(k);
-                                                    if (!string.IsNullOrWhiteSpace(v) && !dict.ContainsKey(k))
-                                                        dict[k] = v;
-                                                }
-                                                catch { }
-                                            }
-                                        }
-                                        catch { }
-
-                                        return dict;
-                                    }
-
-                                    static string BuildCurlForBash(string url, string method, Dictionary<string, string> headers, string? payload)
-                                    {
-                                        var lines = new List<string>();
-                                        lines.Add($"curl --location --request {method.ToUpperInvariant()} '{EscapeBashSingleQuoted(url)}' \\");
-
-                                        if (headers.TryGetValue("cookie", out var cookieVal) && !string.IsNullOrWhiteSpace(cookieVal))
-                                        {
-                                            lines.Add($"  --cookie '{EscapeBashSingleQuoted(cookieVal)}' \\");
-                                        }
-
-                                        foreach (var kv in headers)
-                                        {
-                                            var k = kv.Key ?? "";
-                                            if (k.Length == 0) continue;
-                                            if (string.Equals(k, "cookie", StringComparison.OrdinalIgnoreCase)) continue;
-                                            var v = kv.Value ?? "";
-                                            lines.Add($"  --header '{EscapeBashSingleQuoted($"{k}: {v}")}' \\");
-                                        }
-
-                                        if (!string.IsNullOrWhiteSpace(payload))
-                                        {
-                                            lines.Add($"  --data-raw '{EscapeBashSingleQuoted(payload)}' \\");
-                                        }
-
-                                        if (lines.Count > 0)
-                                        {
-                                            var last = lines[^1];
-                                            if (last.EndsWith(" \\", StringComparison.Ordinal))
-                                                lines[^1] = last.Substring(0, last.Length - 2);
-                                        }
-
-                                        return string.Join(Environment.NewLine, lines);
-                                    }
-
-                                    var hdrDict = GetHeadersSafe(req.Headers);
-                                    if (TryGetCdpRequestInfo(reqUrl, reqMethod, out var cdpHdr, out var cdpPostData))
-                                    {
-                                        if (cdpHdr.Count > hdrDict.Count)
-                                            hdrDict = cdpHdr;
-                                    }
-                                    var cacheKey = $"{reqUrl}|{reqMethod}";
-                                    string? cachedPayloadOrNull = null;
-                                    if (_requestPayloadCache.TryGetValue(cacheKey, out var cachedPayload) &&
-                                        !string.IsNullOrWhiteSpace(cachedPayload))
-                                    {
-                                        cachedPayloadOrNull = cachedPayload;
-                                    }
-                                    if (string.IsNullOrWhiteSpace(cachedPayloadOrNull) &&
-                                        TryGetCdpRequestInfo(reqUrl, reqMethod, out _, out var cdpPostData2) &&
-                                        !string.IsNullOrWhiteSpace(cdpPostData2))
-                                    {
-                                        cachedPayloadOrNull = cdpPostData2;
-                                    }
-
-                                    val = BuildCurlForBash(reqUrl, string.IsNullOrWhiteSpace(reqMethod) ? "GET" : reqMethod, hdrDict, cachedPayloadOrNull);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"CurlBash generation error for blocked request: {ex.Message}");
-                                    val = $"curl '{reqUrl}' # Error: {ex.Message}";
-                                }
-                            }
-                            else
-                                val = string.Empty;
-                            if (val != null)
-                            {
-                                n.UpdateResponseOutputValueForActiveRuns(key, val, ro?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
-                                if (host != null)
-                                    webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
-                                    {
-                                        host.RequestSyncDataPanels(immediate: false);
-                                        if (n.SyncLiveOutputsToResults)
-                                        {
-                                            try
-                                            {
-                                                var vm = host.ViewModel;
-                                                if (vm != null)
-                                                {
-                                                    var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
-                                                        .GetField("_executionVisualizer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                                    if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
-                                                        visualizer.RefreshSavedOutputs(new[] { n });
-                                                }
-                                            }
-                                            catch { }
-                                        }
-
-                                        // Nếu executor đang chờ outputs cho node bị chặn thì cũng signal PendingOutputsTcs
-                                        // khi tất cả ResponseOutputs đã được populate.
-                                        try
-                                        {
-                                            var tcs = n.PendingOutputsTcs;
-                                            if (tcs != null && !tcs.Task.IsCompleted && n.ResponseOutputs != null && n.ResponseOutputs.Count > 0)
-                                            {
-                                                var outputs = n.ResponseOutputs.Where(ro => ro != null).ToList();
-                                                var explicitWaitKeys = outputs
-                                                    .Where(ro => ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
-                                                    .Select(ro => ro.Key!.Trim())
-                                                    .ToList();
-
-                                                var waitKeys = explicitWaitKeys.Count > 0
-                                                    ? explicitWaitKeys
-                                                    : outputs.Select(ro => ro.Key?.Trim())
-                                                        .Where(k => !string.IsNullOrWhiteSpace(k))
-                                                        .Select(k => k!)
-                                                        .ToList();
-
-                                                bool ready;
-                                                if (waitKeys.Count == 0)
-                                                {
-                                                    ready = true;
-                                                }
-                                                else if (n.ResponseOutputsWaitMode == FlowMy.Models.Nodes.WebOutputsWaitMode.Any)
-                                                {
-                                                    ready = waitKeys.Any(k => n.ResponseOutputValues.ContainsKey(k));
-                                                }
-                                                else
-                                                {
-                                                    ready = waitKeys.All(k => n.ResponseOutputValues.ContainsKey(k));
-                                                }
-
-                                                if (ready)
-                                                {
-                                                    System.Diagnostics.Debug.WriteLine("[WebNodeControl] ✓ Required ResponseOutputs populated (blocked request), scheduling debounced PendingOutputsTcs completion.");
-                                                    n.SchedulePendingOutputsCompletion(800);
-                                                }
-                                            }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"PendingOutputsTcs signal (blocked) error: {ex.Message}");
-                                        }
-                                    }));
+                                }), DispatcherPriority.Background);
                             }
                         }
-                        
-                        // Clean up cache after all outputs have been processed for this request
-                        var cleanupKey = $"{reqUrl}|{reqMethod}";
-                        if (_requestPayloadCache.ContainsKey(cleanupKey))
-                        {
-                            _requestPayloadCache.Remove(cleanupKey);
-                            System.Diagnostics.Debug.WriteLine($"[Blocked Request] Cleaned up payload cache for: {cleanupKey}");
-                        }
-                    }
-                    }
+                    };
 
                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -4296,22 +2330,7 @@ if (window.__elementInspector) {
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"lỖI WEB NODE error: {ex.Message}");
-                }
-                finally
-                {
-                    // Hiển thị WebView2 sau khi khởi tạo xong (hoặc lỗi) để tránh block UI
-                    if (webViewForInit.Dispatcher.CheckAccess())
-                    {
-                        webViewForInit.Visibility = Visibility.Visible;
-                    }
-                    else
-                    {
-                        webViewForInit.Dispatcher.Invoke(() =>
-                        {
-                            webViewForInit.Visibility = Visibility.Visible;
-                        });
-                    }
+                    System.Diagnostics.Debug.WriteLine($"WEB NODE error: {ex.Message}");
                 }
             };
 
@@ -4324,7 +2343,7 @@ if (window.__elementInspector) {
                     webView = null!;
                 }
 
-                webView = new WebView2
+                webView = new ChromiumWebBrowser
                 {
                     Visibility = Visibility.Collapsed
                 };
@@ -4724,7 +2743,7 @@ if (window.__elementInspector) {
 
             var bottomText = new TextBlock
             {
-                Text = "WebView2  •  Chuột phải → cấu hình",
+                Text = "CefSharp  •  Chuột phải → cấu hình",
                 Foreground = new SolidColorBrush(Color.FromArgb(160, 0xB0, 0xBE, 0xC5)),
                 FontSize = 10,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -4920,8 +2939,8 @@ if (window.__elementInspector) {
                     // Đóng WebView2 khi node bị xóa: dừng media (nhạc, video) và giải phóng tài nguyên
                     try
                     {
-                        if (webView.CoreWebView2 != null)
-                            webView.CoreWebView2.Navigate("about:blank");
+                        if (webView != null)
+                            webView.LoadUrl("about:blank");
                     }
                     catch { }
                     try { webView.Dispose(); } catch { }

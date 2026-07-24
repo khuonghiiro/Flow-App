@@ -62,20 +62,15 @@ namespace FlowMy
 
                 ShowMainWindow();
 
-                // ✅ Warm-up WebView2 trên UI thread (STA) sau khi main window đã hiển thị
-                // Tránh gọi từ background thread để không bị lỗi RPC_E_CHANGED_MODE.
-                _ = this.Dispatcher.InvokeAsync(async () =>
+                try
                 {
-                    try
-                    {
-                        await WebView2EnvironmentManager.WarmUpAsync();
-                        _logger?.LogInformation("✅ WebView2 shared environment warmed up");
-                    }
-                    catch (Exception webViewEx)
-                    {
-                        _logger?.LogWarning(webViewEx, "⚠️ WebView2 warm-up failed, sẽ khởi tạo lazy khi cần");
-                    }
-                });
+                    CefSharpEnvironmentManager.Initialize();
+                    _logger?.LogInformation("✅ CefSharp environment initialized");
+                }
+                catch (Exception cefEx)
+                {
+                    _logger?.LogWarning(cefEx, "⚠️ CefSharp init warning");
+                }
 
                 // Không khởi tạo tray icon khi startup.
                 try
@@ -468,6 +463,8 @@ namespace FlowMy
                     disposableCache.Dispose();
                     _logger?.LogInformation("ViewCacheService disposed");
                 }
+
+                CefSharpEnvironmentManager.Shutdown();
 
                 _serviceProvider?.Dispose();
                 _serviceProvider = null;

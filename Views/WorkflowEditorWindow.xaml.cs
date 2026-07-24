@@ -6,7 +6,7 @@ using FlowMy.Services.Utilities;
 using FlowMy.ViewModels;
 using FlowMy.Views.NodeControls;
 using FlowMy.Workflow;
-using Microsoft.Web.WebView2.Wpf;
+using CefSharp.Wpf;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -1342,13 +1342,8 @@ namespace FlowMy.Views
             {
                 if (WorkflowCanvas == null) return;
 
-                foreach (var wv in FindVisualChildren<WebView2>(WorkflowCanvas))
+                foreach (var wv in FindVisualChildren<ChromiumWebBrowser>(WorkflowCanvas))
                 {
-                    // Clear any stale Win32 region (defensive)
-                    try { WebView2AirspaceClipper.ClearClipping(wv); } catch { }
-
-                    // If a WebView2 got stuck Collapsed during theme switch, show it back.
-                    // Parent containers can still keep it hidden if it's not the active tab.
                     if (wv.Visibility == Visibility.Collapsed)
                     {
                         wv.Visibility = Visibility.Visible;

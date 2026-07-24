@@ -132,7 +132,7 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.9" />
 		<PackageReference Include="Microsoft.Identity.Client" Version="4.74.1" />
 		<PackageReference Include="Markdig" Version="0.37.0" />
-		<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2651.64" />
+		<PackageReference Include="CefSharp.Wpf.NETCore" Version="131.3.50" />
 		<PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="OxyPlot.Core" Version="2.2.0" />

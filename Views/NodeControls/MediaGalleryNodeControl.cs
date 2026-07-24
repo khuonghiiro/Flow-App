@@ -7,6 +7,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Workflow;
+using CefSharp;
 using FlowMy.Views;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
@@ -20,8 +21,6 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 using System.Windows.Data;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -989,17 +988,8 @@ namespace FlowMy.Views.NodeControls
             // Áp dụng GPU optimization cho mainGrid
             GpuOptimizationHelper.ApplyToElement(mainGrid);
             
-            var webView = new WebView2();
+            var webView = new CefSharp.Wpf.ChromiumWebBrowser();
             Grid.SetRow(webView, 0);
-            
-            // Tối ưu WebView2 cho GPU: disable software rendering, enable hardware acceleration
-            if (GpuDetectionHelper.IsGpuAvailable)
-            {
-                // Áp dụng GPU-friendly render options cho WebView2 container
-                RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
-                RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
-                webView.CacheMode = null; // Tránh ghosting
-            }
             
             mainGrid.Children.Add(webView);
             var bottomBar = new Border
@@ -1015,50 +1005,22 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    webView.CoreWebView2?.Navigate("about:blank");
+                    webView.LoadUrl("about:blank");
                 }
                 catch { /* ignore */ }
             };
-            w.Loaded += async (_, _) =>
+            w.Loaded += (_, _) =>
             {
                 try
                 {
-                    // Cấu hình WebView2 với GPU acceleration
-                    CoreWebView2EnvironmentOptions? options = null;
-                    
-                    if (GpuDetectionHelper.IsGpuAvailable)
-                    {
-                        // Bật GPU acceleration và tối ưu render
-                        options = new CoreWebView2EnvironmentOptions();
-                        var gpuArgs = new StringBuilder();
-                        gpuArgs.Append("--enable-gpu-rasterization ");
-                        gpuArgs.Append("--enable-zero-copy ");
-                        gpuArgs.Append("--enable-features=VaapiVideoDecoder ");
-                        gpuArgs.Append("--ignore-gpu-blacklist ");
-                        gpuArgs.Append("--enable-accelerated-2d-canvas ");
-                        gpuArgs.Append("--enable-accelerated-video-decode ");
-                        
-                        options.AdditionalBrowserArguments = gpuArgs.ToString();
-                    }
-                    
-                    if (options != null)
-                    {
-                        var env = await CoreWebView2Environment.CreateAsync(null, null, options);
-                        await webView.EnsureCoreWebView2Async(env);
-                    }
-                    else
-                    {
-                        await webView.EnsureCoreWebView2Async(null);
-                    }
-                    
                     var escapedUrl = WebUtility.HtmlEncode(videoUrl);
                     var html = $"<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>html,body{{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#1e293b;box-sizing:border-box}}*{{box-sizing:inherit}}body{{display:flex;align-items:center;justify-content:center}}video{{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;display:block}}</style></head><body><video src=\"{escapedUrl}\" controls autoplay playsinline></video></body></html>";
-                    webView.NavigateToString(html);
+                    webView.LoadHtml(html, "https://videopopup.local");
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(
-                        "Không thể phát video trong app (thiếu WebView2 Runtime?). Dùng nút \"Mở trong trình duyệt\" bên dưới.\n\nChi tiết: " + ex.Message,
+                        "Không thể phát video trong app. Dùng nút \"Mở trong trình duyệt\" bên dưới.\n\nChi tiết: " + ex.Message,
                         "Video",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);

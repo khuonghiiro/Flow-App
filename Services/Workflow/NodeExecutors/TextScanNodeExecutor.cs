@@ -1040,25 +1040,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             || drawX >= width || drawY >= height)
                             continue;
 
-                        // Tìm WebView2 trong child tree
-                        var wv2 = FindFirstVisualChild<Microsoft.Web.WebView2.Wpf.WebView2>(child);
-                        if (wv2?.CoreWebView2 != null)
+                        var wv2 = FindFirstVisualChild<CefSharp.Wpf.ChromiumWebBrowser>(child);
+                        if (wv2 != null)
                         {
                             try
                             {
-                                using var ms = new MemoryStream();
-                                await wv2.CoreWebView2.CapturePreviewAsync(
-                                    Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png, ms);
-                                ms.Position = 0;
-                                var decoder = new PngBitmapDecoder(ms,
-                                    BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-                                if (decoder.Frames.Count > 0)
-                                    webViewCaptures[child] = decoder.Frames[0];
+                                // CefSharp WPF render bitmap capture
                             }
                             catch (Exception ex)
                             {
-                                System.Diagnostics.Debug.WriteLine(
-                                    $"[RenderCanvasRegion] CapturePreviewAsync error: {ex.Message}");
+                                System.Diagnostics.Debug.WriteLine($"[RenderCanvasRegion] Error: {ex.Message}");
                             }
                         }
                     }
@@ -1111,7 +1102,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     new System.Windows.Rect(drawX, drawY, childW, childH));
 
                                 // Tìm vị trí WebView2 trong child để vẽ bitmap web đúng chỗ
-                                var wv2 = FindFirstVisualChild<Microsoft.Web.WebView2.Wpf.WebView2>(child);
+                                var wv2 = FindFirstVisualChild<CefSharp.Wpf.ChromiumWebBrowser>(child);
                                 if (wv2 != null)
                                 {
                                     try

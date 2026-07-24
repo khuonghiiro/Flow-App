@@ -2,7 +2,7 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls;
-using Microsoft.Web.WebView2.Wpf;
+using CefSharp.Wpf;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -75,7 +75,6 @@ namespace FlowMy.Services.Rendering
 
                 if (port.PortUI == null)
                 {
-                    // Tạo port với margin khác nhau tùy vị trí để dễ nhìn khi bị khuất
                     var margin = GetPortMarginForPosition(port.Position);
                     port.PortUI = _portRenderer.CreateRectangularPortWithMargin(portColor, margin, width: 12, height: 25);
                     port.PortUI.Tag = port;
@@ -101,9 +100,8 @@ namespace FlowMy.Services.Rendering
             {
                 Canvas.SetLeft(node.Border, x);
                 Canvas.SetTop(node.Border, y);
-                // Ép WebView2 (HwndHost) đồng bộ vị trí khi kéo — không gọi UpdateLayout() để tránh block
                 node.Border.InvalidateArrange();
-                if (node is WebNode && TryGetWebView2FromBorder(node.Border, out var webView))
+                if (node is WebNode && TryGetChromiumWebBrowserFromBorder(node.Border, out var webView))
                 {
                     webView.InvalidateArrange();
                     webView.InvalidateVisual();
@@ -130,8 +128,7 @@ namespace FlowMy.Services.Rendering
                     Canvas.SetTop(tb, titleTop);
                 }
             }
-            // ✅ CRITICAL: Cleanup port cũ của node này trước khi render port mới
-            // Tránh port trùng khi save/load hoặc di chuyển node
+
             CleanupOrphanedPortsForNode(node, Host.WorkflowCanvas);
 
             foreach (var port in node.Ports.Where(p => p.IsVisible))
@@ -140,7 +137,6 @@ namespace FlowMy.Services.Rendering
 
                 if (port.PortUI == null)
                 {
-                    // Tạo port với margin khác nhau tùy vị trí để dễ nhìn khi bị khuất
                     var margin = GetPortMarginForPosition(port.Position);
                     port.PortUI = _portRenderer.CreateRectangularPortWithMargin(portColor, margin, width: 12, height: 25);
                     port.PortUI.Tag = port;
@@ -183,45 +179,35 @@ namespace FlowMy.Services.Rendering
             foreach (var border in borders)
                 canvas.Children.Remove(border);
 
-            // ✅ Tìm tất cả port UI: có thể là Shape (Ellipse/Rectangle) hoặc Border wrapper (FrameworkElement)
             var ports = new List<UIElement>();
 
-            // 1. Tìm Shape có Tag là NodePort hoặc có kích thước đặc biệt
             var shapePorts = canvas.Children.OfType<System.Windows.Shapes.Shape>()
                 .Where(e => e.Tag is NodePort || (e.Width == 18 && e.Height == 18) || (e.Width == 12 && e.Height == 25) ||
                     (e.Width == 12 && e.Height == 12) ||
                     (e.Width == 25 && e.Height == 25) ||
-                    // ✅ Thêm: Rectangle có Tag là Size (port chữ nhật đã được highlight, có thể có kích thước khác)
                     (e is Rectangle rect && rect.Tag is Size)
                 ).ToList();
             ports.AddRange(shapePorts);
 
-            // 2. ✅ Tìm Border/FrameworkElement có Tag là NodePort (port hình chữ nhật với margin wrapper)
             var frameworkElementPorts = canvas.Children.OfType<FrameworkElement>()
                 .Where(e => e.Tag is NodePort && !(e is Border border && border.Tag is WorkflowNode))
                 .ToList();
             ports.AddRange(frameworkElementPorts);
 
-            // 3. ✅ Tìm Border có child là Rectangle với kích thước port hoặc có Tag là Size
             var borderPorts = canvas.Children.OfType<Border>()
                 .Where(b =>
                 {
-                    // Nếu Border có Tag là NodePort, thêm vào
                     if (b.Tag is NodePort)
                         return true;
 
-                    // Nếu Border có child là Rectangle với kích thước port hoặc có Tag là Size
                     if (b.Child is Rectangle rect)
                     {
-                        // ✅ Kiểm tra kích thước port chuẩn
                         if ((rect.Width == 12 && rect.Height == 25) ||
                             (rect.Width == 10 && rect.Height == 18) ||
-                            // ✅ Kiểm tra kích thước port đã được highlight (phóng to +2px mỗi chiều)
                             (rect.Width == 14 && rect.Height == 27) ||
                             (rect.Width == 12 && rect.Height == 20))
                             return true;
                         
-                        // ✅ Kiểm tra Tag là Size (port chữ nhật luôn có Tag là Size)
                         if (rect.Tag is Size)
                             return true;
                     }
@@ -231,7 +217,6 @@ namespace FlowMy.Services.Rendering
                 .ToList();
             ports.AddRange(borderPorts);
 
-            // Xóa tất cả ports đã tìm thấy (loại bỏ duplicate)
             foreach (var port in ports.Distinct())
             {
                 if (port != null && canvas.Children.Contains(port))
@@ -241,7 +226,6 @@ namespace FlowMy.Services.Rendering
 
         private static Color ResolvePortColor(NodePort port)
         {
-            // Ưu tiên ColorKey của port nếu có
             if (!string.IsNullOrWhiteSpace(port.ColorKey))
             {
                 var colorFromKey = GetColorFromTheme($"{port.ColorKey}Brush")
@@ -250,7 +234,6 @@ namespace FlowMy.Services.Rendering
                     return colorFromKey.Value;
             }
 
-            // Fallback: IN = Info, OUT = SunsetOrange
             if (port.IsInput)
             {
                 return GetColorFromTheme("InfoBrush") ?? Colors.Orange;
@@ -269,13 +252,12 @@ namespace FlowMy.Services.Rendering
             catch { return null; }
         }
 
-        /// <summary>Lấy WebView2 từ Border của WebNode (border.Child = outerGrid → grid → grid.Children[1] = WebView2).</summary>
-        private static bool TryGetWebView2FromBorder(System.Windows.Controls.Border border, out WebView2? webView)
+        private static bool TryGetChromiumWebBrowserFromBorder(System.Windows.Controls.Border border, out ChromiumWebBrowser? webView)
         {
             webView = null;
             if (border?.Child is not Grid outerGrid || outerGrid.Children.Count == 0) return false;
             if (outerGrid.Children[0] is not Grid innerGrid || innerGrid.Children.Count <= 1) return false;
-            if (innerGrid.Children[1] is WebView2 wv) { webView = wv; return true; }
+            if (innerGrid.Children[1] is ChromiumWebBrowser wv) { webView = wv; return true; }
             return false;
         }
 
