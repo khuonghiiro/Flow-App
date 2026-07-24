@@ -57,6 +57,9 @@ namespace FlowMy.Views.NodeControls
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CdpRequestInfo> _cdpByUrlMethod
             = new(StringComparer.OrdinalIgnoreCase);
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Url, string Method)> _cdpRequestIdToUrlMethod
+            = new(StringComparer.OrdinalIgnoreCase);
+
         private static bool TryGetCdpRequestInfo(string url, string method, out Dictionary<string, string> headers, out string? postData)
         {
             headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -2566,6 +2569,12 @@ if (window.__elementInspector) {
                                     var url = reqEl.TryGetProperty("url", out var u) ? (u.GetString() ?? "") : "";
                                     var method = reqEl.TryGetProperty("method", out var m) ? (m.GetString() ?? "GET") : "GET";
                                     if (string.IsNullOrWhiteSpace(url)) return;
+
+                                    var reqId = root.TryGetProperty("requestId", out var rId) ? rId.GetString() : null;
+                                    if (!string.IsNullOrWhiteSpace(reqId))
+                                    {
+                                        _cdpRequestIdToUrlMethod[reqId] = (url, method);
+                                    }
 
                                     var key = $"{url}|{method}";
                                     var info = _cdpByUrlMethod.GetOrAdd(key, _ => new CdpRequestInfo());
@@ -5172,6 +5181,15 @@ if (window.__elementInspector) {
         {
             if (host?.ViewModel == null) return;
             var vm = host.ViewModel;
+
+            // ⚠️ QUAN TRỌNG: Khi Workflow đang trong quá trình chạy tự động (vm.IsExecuting == true),
+            // việc luân chuyển các node tiếp theo do WorkflowExecutionService quản lý theo đúng thứ tự.
+            // TUYỆT ĐỐI KHÔNG trigger RunSingleNode ở đây vì sẽ khiến node tiếp theo chạy vượt thứ tự trước khi WebNode kết thúc!
+            if (vm.IsExecuting)
+            {
+                return;
+            }
+
             var nodes = vm.Nodes;
             if (nodes == null || nodes.Count == 0) return;
 

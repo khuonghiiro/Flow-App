@@ -114,8 +114,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     webNode.PendingOutputsTcs = pendingOutputsTcs;
                 }
 
-                env.OnNodeCompleted?.Invoke(webNode, default);
-
                 // Chờ WebView2 populate các ResponseOutputs (nếu có) trước khi traverse các node sau.
                 // Tránh tình trạng node sau chạy quá sớm khi WebNode chưa kịp nhận dữ liệu từ WebView2.
                 if (pendingOutputsTcs != null)
@@ -167,6 +165,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 PublishScopedWebOutputs(env, webNode);
+                env.OnNodeCompleted?.Invoke(webNode, default);
             }
             finally
             {
