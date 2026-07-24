@@ -249,6 +249,22 @@ namespace FlowMy.Views.NodeControls
                                     System.Diagnostics.Debug.WriteLine($"[Cookie] Error parsing JSON cookie: {ex.Message}");
                                 }
                             }
+                            // Nếu chưa có URL từ text bên trên, tự tạo URL từ domain của cookie đầu tiên
+                            if (string.IsNullOrWhiteSpace(extractedUrl))
+                            {
+                                foreach (var cookieObj in cookiesJson.EnumerateArray())
+                                {
+                                    var domain = cookieObj.TryGetProperty("domain", out var dd) ? dd.GetString() : null;
+                                    if (!string.IsNullOrWhiteSpace(domain))
+                                    {
+                                        // Bỏ dấu chấm đầu (ví dụ ".labs.google" → "labs.google")
+                                        var cleanDomain = domain!.TrimStart('.');
+                                        extractedUrl = $"https://{cleanDomain}";
+                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Extracted URL from JSON array domain: {extractedUrl}");
+                                        break;
+                                    }
+                                }
+                            }
                             return extractedUrl;
                         }
                     }
@@ -1086,7 +1102,28 @@ namespace FlowMy.Views.NodeControls
                                 }
                                 else
                                 {
-                                    System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - cookies applied but no navigation");
+                                    // Không có URL trong cookie text → reload trang hiện tại để cookies có hiệu lực
+                                    System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - reloading current page to apply cookies");
+                                    try
+                                    {
+                                        var currentUrl = webView.CoreWebView2.Source;
+                                        if (!string.IsNullOrWhiteSpace(currentUrl) && 
+                                            !currentUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase) &&
+                                            currentUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            webView.CoreWebView2.Reload();
+                                        }
+                                        else if (!string.IsNullOrWhiteSpace(node.ExtractUrl) &&
+                                                 node.ExtractUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            // Nếu trang trống, navigate đến ExtractUrl
+                                            webView.CoreWebView2.Navigate(node.ExtractUrl);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Error reloading after cookie apply: {ex.Message}");
+                                    }
                                 }
                             }
                             RestartSleepModeTimer();
@@ -3681,8 +3718,11 @@ if (window.__elementInspector) {
                                                                         var key = responseOutput?.Key?.Trim() ?? string.Empty;
                                                                         if (string.IsNullOrWhiteSpace(key)) continue;
 
-                                                                        node.UpdateResponseOutputValue(key, body, responseOutput?.IsList ?? false);
+                                                                        node.UpdateResponseOutputValueForActiveRuns(key, body, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
                                                                         shouldUpdateUI = true;
+
+                                                                        // Khi output được cập nhật, tự động trigger các node phụ thuộc
+                                                                        TryTriggerDependentNodes(host, node, key);
                                                                     }
                                                                 }
                                                             }

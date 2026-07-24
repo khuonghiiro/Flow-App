@@ -879,7 +879,12 @@ namespace FlowMy.Models.Nodes
                 oldRun.CancelDebounce();
             }
 
-            ClearResponseOutputValues();
+            // Chỉ xóa data chung khi KHÔNG có run nào khác đang active
+            // (tránh xóa dữ liệu gom của flow khác đang chạy song song)
+            if (_activeExecutionRuns.IsEmpty)
+            {
+                ClearResponseOutputValues();
+            }
 
             var run = new WebNodeExecutionRun(executionId);
             _activeExecutionRuns[executionId] = run;
