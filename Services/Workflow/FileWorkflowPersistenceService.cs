@@ -156,12 +156,13 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             File.SetAttributes(filePath, FileAttributes.Normal);
             _workflowJsonCache[filePath] = new CachedWorkflowJson(File.GetLastWriteTimeUtc(filePath), json);
 
-            WebNodeCacheHelper.SaveWorkflowWebNodeCaches(_workflowsDir, workflowName, nodes);
+            // NOTE: WebView2 cache copy (SaveWorkflowWebNodeCaches) chỉ chạy khi Export,
+            // không chạy khi Save bình thường — cấu hình đã được lưu trong JSON.
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error saving workflow: {ex.Message}\n{ex.StackTrace}");
-            throw; // Re-throw Ã„â€˜Ã¡Â»Æ’ caller cÃƒÂ³ thÃ¡Â»Æ’ xÃ¡Â»Â­ lÃƒÂ½
+            throw; 
         }
     }
 

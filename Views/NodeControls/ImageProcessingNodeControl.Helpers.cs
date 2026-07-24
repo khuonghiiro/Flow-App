@@ -46,6 +46,16 @@ namespace FlowMy.Views.NodeControls
             return value;
         }
 
+        private static readonly System.Net.Http.HttpClient _imageHttpClient = CreateImageHttpClient();
+        private static System.Net.Http.HttpClient CreateImageHttpClient()
+        {
+            var handler = new System.Net.Http.HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+            };
+            return new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+        }
+
         private static BitmapImage? CreateBitmapFromUrlOrFile(string value)
         {
             try
@@ -59,30 +69,45 @@ namespace FlowMy.Views.NodeControls
                 if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
-                    var uri = new Uri(value, UriKind.Absolute);
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = uri;
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    return bitmap;
+                    // Dùng HttpClient tải ảnh thay vì BitmapImage.UriSource
+                    // vì UriSource có thể fail trên background thread (Task.Run)
+                    byte[] bytes;
+                    try
+                    {
+                        bytes = _imageHttpClient.GetByteArrayAsync(value).ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ImageProc] HTTP download failed for {value}: {ex.Message}");
+                        return null;
+                    }
+
+                    if (bytes == null || bytes.Length == 0) return null;
+
+                    using var ms = new MemoryStream(bytes);
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.StreamSource = ms;
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    return bmp;
                 }
 
                 // Assume local path
                 if (!File.Exists(value)) return null;
                 using var fs = File.OpenRead(value);
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.StreamSource = fs;
-                bmp.EndInit();
-                bmp.Freeze();
-                return bmp;
+                var bmpLocal = new BitmapImage();
+                bmpLocal.BeginInit();
+                bmpLocal.CacheOption = BitmapCacheOption.OnLoad;
+                bmpLocal.StreamSource = fs;
+                bmpLocal.EndInit();
+                bmpLocal.Freeze();
+                return bmpLocal;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ImageProc] CreateBitmapFromUrlOrFile error: {ex.Message}");
                 return null;
             }
         }
