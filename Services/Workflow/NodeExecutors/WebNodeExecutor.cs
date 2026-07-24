@@ -15,7 +15,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     /// </summary>
     internal sealed class WebNodeExecutor : INodeExecutor
     {
-        private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient = CreateHttpClient();
+
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+            var client = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "*/*");
+            return client;
+        }
 
         public bool CanExecute(WorkflowNode node) => node is WebNode;
 
@@ -87,152 +104,74 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var executionId = env.ExecutionId;
             var executionRun = webNode.StartExecutionRun(executionId);
 
-            // Nếu node có cấu hình ResponseOutputs thì chuẩn bị TCS để chờ WebView2 populate outputs.
-            if (webNode.ResponseOutputs != null && webNode.ResponseOutputs.Count > 0 && effectiveWaitTimeoutMs != 0)
-            {
-                pendingOutputsTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                executionRun.PendingOutputsTcs = pendingOutputsTcs;
-                webNode.PendingOutputsTcs = pendingOutputsTcs;
-            }
-
-            var cookie = ResolveCookie(webNode, connections, env);
-            var urlTemplate = webNode.ExtractUrl?.Trim() ?? string.Empty;
-            
-            // Thay thế các biến {variable} trong URL template bằng giá trị từ input mappings
-            var url = ResolveUrlTemplate(webNode, urlTemplate, connections, env);
-            
-            if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-            {
-                Debug.WriteLine($"[WebNodeExecutor] ❌ FAILED: ExtractUrl is empty or invalid: '{url}'");
-                env.OnNodeFailed?.Invoke(webNode, "ExtractUrl is empty or invalid.");
-                return;
-            }
-            
-            var methodStr = webNode.ExtractRequestMethod?.Trim();
-
-            if (string.IsNullOrWhiteSpace(methodStr)) methodStr = "GET";
-            var method = methodStr.ToUpperInvariant() switch
-            {
-                "POST" => System.Net.Http.HttpMethod.Post,
-                "PUT" => System.Net.Http.HttpMethod.Put,
-                "DELETE" => System.Net.Http.HttpMethod.Delete,
-                "PATCH" => new System.Net.Http.HttpMethod("PATCH"),
-                "HEAD" => System.Net.Http.HttpMethod.Head,
-                "OPTIONS" => System.Net.Http.HttpMethod.Options,
-                _ => System.Net.Http.HttpMethod.Get
-            };
-
-            if (!int.TryParse(webNode.ExtractStatusCode?.Trim(), out var expectedStatus))
-                expectedStatus = 200;
-
-            Debug.WriteLine($"[WebNodeExecutor] ✓ URL valid: {url}");
-            Debug.WriteLine($"[WebNodeExecutor] ✓ Method: {methodStr}, Expected status: {expectedStatus}");
-
             try
             {
-                using var request = new HttpRequestMessage(method, url);
-                if (!string.IsNullOrWhiteSpace(cookie))
-                    request.Headers.TryAddWithoutValidation("Cookie", cookie);
-
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(60));
-                using var response = await _httpClient.SendAsync(request, cts.Token);
-
-                if (response.StatusCode != (System.Net.HttpStatusCode)expectedStatus)
+                // Nếu node có cấu hình ResponseOutputs thì chuẩn bị TCS để chờ WebView2 populate outputs.
+                if (webNode.ResponseOutputs != null && webNode.ResponseOutputs.Count > 0 && effectiveWaitTimeoutMs != 0)
                 {
-                    Debug.WriteLine($"[WebNodeExecutor] ❌ FAILED: Status code mismatch. Expected {expectedStatus}, got {(int)response.StatusCode}");
-                    env.OnNodeFailed?.Invoke(webNode, $"Expected status {expectedStatus}, got {(int)response.StatusCode}");
-                    return;
-                }
-                
-                Debug.WriteLine($"[WebNodeExecutor] ✓ Status code matched: {(int)response.StatusCode}");
-
-                // Cookie: CHỈ ghi đè khi ExtractUrl response có Set-Cookie.
-                // Nếu không có, giữ nguyên LastCookie từ WebView2 (WebResourceResponseReceived).
-                var setCookie = response.Headers.TryGetValues("Set-Cookie", out var setCookies)
-                    ? string.Join("; ", setCookies) : null;
-                if (!string.IsNullOrWhiteSpace(setCookie))
-                    webNode.LastCookie = setCookie;
-
-                // Bearer: từ Authorization response header (một số API trả Bearer trong header)
-                if (response.Headers.TryGetValues("Authorization", out var authHeaders))
-                {
-                    var auth = authHeaders.FirstOrDefault();
-                    if (!string.IsNullOrWhiteSpace(auth) && auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                        webNode.LastBearer = auth.Substring(7).Trim();
+                    pendingOutputsTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    executionRun.PendingOutputsTcs = pendingOutputsTcs;
+                    webNode.PendingOutputsTcs = pendingOutputsTcs;
                 }
 
-                var body = await response.Content.ReadAsStringAsync(env.CancellationToken);
-                if (!string.IsNullOrWhiteSpace(body))
+                env.OnNodeCompleted?.Invoke(webNode, default);
+
+                // Chờ WebView2 populate các ResponseOutputs (nếu có) trước khi traverse các node sau.
+                // Tránh tình trạng node sau chạy quá sớm khi WebNode chưa kịp nhận dữ liệu từ WebView2.
+                if (pendingOutputsTcs != null)
                 {
                     try
                     {
-                        using var doc = JsonDocument.Parse(body);
-                        var root = doc.RootElement;
-                        if (root.TryGetProperty("access_token", out var at))
-                            webNode.LastAccessToken = at.GetString();
-                        else if (root.TryGetProperty("accessToken", out var at2))
-                            webNode.LastAccessToken = at2.GetString();
-                        else if (root.TryGetProperty("token", out var tok))
-                            webNode.LastAccessToken = tok.GetString();
+                        using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
+                        // Timeout bảo vệ để không bị treo workflow nếu vì lý do nào đó WebView2 không trả về.
+                        var waitMs = effectiveWaitTimeoutMs;
+                        if (waitMs <= 0)
+                        {
+                            // Không chờ nếu timeout = 0
+                            pendingOutputsTcs.TrySetResult(false);
+                        }
+                        else
+                        {
+                            waitCts.CancelAfter(TimeSpan.FromMilliseconds(waitMs));
+                            var _ = await Task.WhenAny(pendingOutputsTcs.Task, Task.Delay(Timeout.Infinite, waitCts.Token));
+                            // Nếu bị hủy / timeout thì vẫn tiếp tục workflow, chỉ là outputs có thể rỗng.
+                        }
                     }
-                    catch { }
-                }
-
-                // Không gọi lại các ResponseOutputs bằng HttpClient nữa.
-                // ResponseOutputs bây giờ được cập nhật real-time từ WebView2 (WebResourceResponseReceived).
-
-                Debug.WriteLine($"[WebNodeExecutor] ✓ Request successful, invoking OnNodeCompleted");
-                env.OnNodeCompleted?.Invoke(webNode, default);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[WebNodeExecutor] ❌ EXCEPTION: {ex.GetType().Name} - {ex.Message}");
-                Debug.WriteLine($"[WebNodeExecutor] Stack trace: {ex.StackTrace}");
-                env.OnNodeFailed?.Invoke(webNode, ex.Message);
-
-                // Nếu request thất bại thì không còn ý nghĩa chờ outputs nữa.
-                if (pendingOutputsTcs != null && !pendingOutputsTcs.Task.IsCompleted)
-                {
-                    try { pendingOutputsTcs.TrySetResult(false); } catch { }
-                }
-                return;
-            }
-
-            // Chờ WebView2 populate các ResponseOutputs (nếu có) trước khi traverse các node sau.
-            // Tránh tình trạng node sau chạy quá sớm khi WebNode chưa kịp nhận dữ liệu từ WebView2.
-            if (pendingOutputsTcs != null)
-            {
-                try
-                {
-                    using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
-                    // Timeout bảo vệ để không bị treo workflow nếu vì lý do nào đó WebView2 không trả về.
-                    var waitMs = effectiveWaitTimeoutMs;
-                    if (waitMs <= 0)
+                    catch (OperationCanceledException)
                     {
-                        // Không chờ nếu timeout = 0
-                        pendingOutputsTcs.TrySetResult(false);
+                        // Bị hủy do workflow cancel/timeout → tiếp tục thoát bình thường.
                     }
-                    else
+                    finally
                     {
-                        waitCts.CancelAfter(TimeSpan.FromMilliseconds(waitMs));
-                        var _ = await Task.WhenAny(pendingOutputsTcs.Task, Task.Delay(Timeout.Infinite, waitCts.Token));
-                        // Nếu bị hủy / timeout thì vẫn tiếp tục workflow, chỉ là outputs có thể rỗng.
+                        // Dọn state runtime
+                        webNode.CancelPendingOutputsDebounce();
+                        webNode.PendingOutputsTcs = null;
                     }
                 }
-                catch (OperationCanceledException)
-                {
-                    // Bị hủy do workflow cancel/timeout → tiếp tục thoát bình thường.
-                }
-                finally
-                {
-                    // Dọn state runtime
-                    webNode.CancelPendingOutputsDebounce();
-                    webNode.PendingOutputsTcs = null;
-                }
-            }
 
-            PublishScopedWebOutputs(env, webNode);
+                // Đảm bảo tất cả tác vụ đọc stream/content response ngầm cho run này được xử lý xong hoàn toàn
+                if (executionRun != null)
+                {
+                    try
+                    {
+                        var extractions = executionRun.PendingExtractions.ToArray();
+                        if (extractions.Length > 0)
+                        {
+                            await Task.WhenAll(extractions);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[WebNodeExecutor] Pending extractions await error: {ex.Message}");
+                    }
+                }
+
+                PublishScopedWebOutputs(env, webNode);
+            }
+            finally
+            {
+                webNode.FinishExecutionRun(executionId);
+            }
 
             Debug.WriteLine($"[WebNodeExecutor] Calling TraverseOutputsAsync...");
             await env.TraverseOutputsAsync(webNode);

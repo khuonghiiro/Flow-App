@@ -573,6 +573,19 @@
                                               Foreground="{DynamicResource TextBrush}" FontSize="11"
                                               IsChecked="{Binding SyncLiveOutputsToResults, Mode=TwoWay}"
                                               Margin="0,0,0,8"/>
+                                </StackPanel>
+                            </Border>
+
+
+
+                            <!-- 📊 Outputs list -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📊 Outputs (Lấy response từ URL - so sánh khớp URL pattern)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                                     <!-- Outputs (Response outputs) -->
                                     <StackPanel x:Name="ResponseOutputsPanel" Margin="0,0,0,8"/>

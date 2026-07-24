@@ -33,20 +33,20 @@ namespace FlowMy.ViewModels
         
         private static HttpClient CreateHttpClient()
         {
-            // Tạo HttpClientHandler với SSL validation bypass để xử lý các website không có SSL hợp lệ
             var handler = new HttpClientHandler
             {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-                {
-                    // Bỏ qua SSL validation errors để có thể tải ảnh từ các website không có SSL hợp lệ
-                    return true;
-                }
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
             };
             
-            return new HttpClient(handler)
+            var client = new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromMinutes(2)
             };
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "*/*");
+            return client;
         }
 
         [ObservableProperty] private string _imageBase64 = string.Empty;

@@ -335,6 +335,11 @@ namespace FlowMy.Models.Nodes
         private int _responseOutputsWaitTimeoutMs = 15000; // Thời gian chờ WebView2 populate các ResponseOutputs trước khi chạy node tiếp theo (ms). 0 = không chờ.
         private WebOutputsWaitMode _responseOutputsWaitMode = WebOutputsWaitMode.All;
 
+        // Checkpoint URL/Method: điểm tựa phân chia luồng workflow
+        private string? _checkpointUrlPattern; // URL pattern checkpoint
+        private string _checkpointMethod = "All"; // Method cho checkpoint
+        private int _collectionTimeoutMs = 5000; // Thời gian gom tối đa (ms)
+
         // Auto-reload timer: tự động load lại trang sau mỗi khoảng thời gian
         private bool _autoReloadEnabled;
         private double _autoReloadIntervalValue = 30;
@@ -579,6 +584,32 @@ namespace FlowMy.Models.Nodes
                     OnPropertyChanged();
                 }
             }
+        }
+
+        /// <summary>URL pattern checkpoint - khi request khớp URL+Method này xuất hiện,
+        /// đánh dấu ranh giới giữa các lần gom data cho từng luồng workflow.</summary>
+        public string? CheckpointUrlPattern
+        {
+            get => _checkpointUrlPattern;
+            set { if (_checkpointUrlPattern != value) { _checkpointUrlPattern = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Method cho checkpoint URL (GET, POST, All...).</summary>
+        public string CheckpointMethod
+        {
+            get => _checkpointMethod;
+            set
+            {
+                var v = string.IsNullOrWhiteSpace(value) ? "All" : value;
+                if (_checkpointMethod != v) { _checkpointMethod = v; OnPropertyChanged(); }
+            }
+        }
+
+        /// <summary>Thời gian gom tối đa (ms). Sau thời gian này dừng gom và trả data. 0 = không giới hạn.</summary>
+        public int CollectionTimeoutMs
+        {
+            get => _collectionTimeoutMs;
+            set { if (_collectionTimeoutMs != value) { _collectionTimeoutMs = value; OnPropertyChanged(); } }
         }
 
         #endregion
@@ -1130,6 +1161,18 @@ namespace FlowMy.Models.Nodes
         public TaskCompletionSource<bool>? PendingOutputsTcs { get; set; }
         public System.Threading.CancellationTokenSource? DebounceCts { get; set; }
         public object Lock { get; } = new();
+
+        // Checkpoint-based collection state
+        /// <summary>Checkpoint URL đã được phát hiện lần đầu → bắt đầu gom.</summary>
+        public bool CheckpointDetected { get; set; }
+        /// <summary>Đang trong trạng thái gom data (giữa checkpoint lần 1 và lần 2).</summary>
+        public bool IsCollecting { get; set; }
+        /// <summary>Thời điểm bắt đầu gom (để tính timeout).</summary>
+        public DateTime? CollectionStartTime { get; set; }
+        /// <summary>Số lần checkpoint URL xuất hiện trong run này.</summary>
+        public int CheckpointHitCount { get; set; }
+        /// <summary>Danh sách các Task trích xuất response content (GetContentAsync) đang chạy ngầm cho run này.</summary>
+        public System.Collections.Concurrent.ConcurrentBag<System.Threading.Tasks.Task> PendingExtractions { get; } = new();
 
         public WebNodeExecutionRun(string executionId)
         {

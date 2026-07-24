@@ -77,6 +77,31 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private static async Task<string> ReadResponseBodyAsync(Microsoft.Web.WebView2.Core.CoreWebView2WebResourceResponseView response)
+        {
+            if (response == null) return string.Empty;
+
+            try
+            {
+                using var rawStream = await response.GetContentAsync();
+                if (rawStream == null) return string.Empty;
+
+                using var reader = new System.IO.StreamReader(rawStream, System.Text.Encoding.UTF8);
+                return await reader.ReadToEndAsync();
+            }
+            catch (System.Runtime.InteropServices.COMException comEx)
+            {
+                if (comEx.HResult != unchecked((int)0x800700E8) && comEx.HResult != unchecked((int)0xFFFF8300))
+                    System.Diagnostics.Debug.WriteLine($"COMException khi lấy content: {comEx.HResult:X8} - {comEx.Message}");
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Lỗi khi lấy content: {ex.GetType().Name} - {ex.Message}");
+                return string.Empty;
+            }
+        }
+
         private static async Task EnsureCoreWebView2ThrottledAsync(WebView2 target, CoreWebView2Environment env)
         {
             await _webView2InitGate.WaitAsync();
@@ -3625,30 +3650,18 @@ if (window.__elementInspector) {
                                                             }
                                                             else
                                                             {
-                                                                // Cuối cùng: thử tìm bất kỳ method nào cùng URL
-                                                                var anyMatchingKey = _requestPayloadCache.Keys.FirstOrDefault(k => k.StartsWith(requestUrl + "|", StringComparison.OrdinalIgnoreCase));
-                                                                if (anyMatchingKey != null && _requestPayloadCache.TryGetValue(anyMatchingKey, out fallbackPayload))
-                                                                {
-                                                                    extractedValue = fallbackPayload;
-                                                                    //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✓ Found payload from any method for {requestUrl}: {fallbackPayload.Length} bytes");
-                                                                    _requestPayloadCache.Remove(anyMatchingKey);
-                                                                }
-                                                                else
-                                                                {
-                                                                    extractedValue = string.Empty;
-                                                                    //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✗ No payload found even with fallback for {requestUrl}");
-                                                                }
+                                                                extractedValue = string.Empty;
+                                                                //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✗ No payload found even with fallback for {requestUrl}");
                                                             }
                                                         }
                                                     }
                                                     // Response (body): mặc định
                                                     else
                                                     {
-                                                        // Sẽ xử lý bên dưới trong block GetContentAsync
                                                         extractType = "Response";
                                                     }
 
-                                                    if (extractedValue != null)
+                                                    if (!string.Equals(extractType, "Response", StringComparison.OrdinalIgnoreCase) && extractedValue != null)
                                                     {
                                                         node.UpdateResponseOutputValueForActiveRuns(key, extractedValue, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
                                                         shouldUpdateUI = true;
@@ -3683,70 +3696,42 @@ if (window.__elementInspector) {
 
                                                     if (shouldGetContent)
                                                     {
-                                                        System.IO.Stream? content = null;
-                                                        try { content = await response.GetContentAsync(); }
-                                                        catch (System.Runtime.InteropServices.COMException comEx)
+                                                        try
                                                         {
-                                                            if (comEx.HResult != unchecked((int)0x800700E8) && comEx.HResult != unchecked((int)0xFFFF8300))
-                                                                System.Diagnostics.Debug.WriteLine($"COMException khi lấy content: {comEx.HResult:X8} - {comEx.Message}");
-                                                            return;
+                                                            var body = await ReadResponseBodyAsync(response);
+                                                            if (!string.IsNullOrWhiteSpace(body))
+                                                            {
+                                                                foreach (var responseOutput in node.ResponseOutputs)
+                                                                {
+                                                                    if (!MethodMatches(responseOutput?.RequestMethod, requestMethod)) continue;
+                                                                    var outputUrlPattern = responseOutput?.Url ?? string.Empty;
+                                                                    var et = (responseOutput?.ExtractType ?? "Response").Trim();
+                                                                    if (string.IsNullOrEmpty(et)) et = "Response";
+                                                                    if (!UrlMatchesPattern(requestUrl, outputUrlPattern) ||
+                                                                        !string.Equals(et, "Response", StringComparison.OrdinalIgnoreCase)) continue;
+
+                                                                    var key = responseOutput?.Key?.Trim() ?? string.Empty;
+                                                                    if (string.IsNullOrWhiteSpace(key)) continue;
+
+                                                                    node.UpdateResponseOutputValueForActiveRuns(key, body, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
+                                                                    shouldUpdateUI = true;
+
+                                                                    // Khi output được cập nhật, tự động trigger các node phụ thuộc
+                                                                    TryTriggerDependentNodes(host, node, key);
+                                                                }
+                                                            }
                                                         }
                                                         catch (Exception ex)
                                                         {
-                                                            System.Diagnostics.Debug.WriteLine($"Lỗi khi lấy content: {ex.GetType().Name} - {ex.Message}");
-                                                            return;
-                                                        }
-
-                                                        if (content != null)
-                                                        {
-                                                            try
-                                                            {
-                                                                using var stream = content;
-                                                                using var reader = new System.IO.StreamReader(stream);
-                                                                var body = await reader.ReadToEndAsync();
-                                                                if (!string.IsNullOrWhiteSpace(body))
-                                                                {
-                                                                    foreach (var responseOutput in node.ResponseOutputs)
-                                                                    {
-                                                                        if (!MethodMatches(responseOutput?.RequestMethod, requestMethod)) continue;
-                                                                        var outputUrlPattern = responseOutput?.Url ?? string.Empty;
-                                                                        var et = (responseOutput?.ExtractType ?? "Response").Trim();
-                                                                        if (string.IsNullOrEmpty(et)) et = "Response";
-                                                                        if (!UrlMatchesPattern(requestUrl, outputUrlPattern) ||
-                                                                            !string.Equals(et, "Response", StringComparison.OrdinalIgnoreCase)) continue;
-
-                                                                        var key = responseOutput?.Key?.Trim() ?? string.Empty;
-                                                                        if (string.IsNullOrWhiteSpace(key)) continue;
-
-                                                                        node.UpdateResponseOutputValueForActiveRuns(key, body, responseOutput?.IsList ?? false, host?.ViewModel?.WorkflowExecutionService);
-                                                                        shouldUpdateUI = true;
-
-                                                                        // Khi output được cập nhật, tự động trigger các node phụ thuộc
-                                                                        TryTriggerDependentNodes(host, node, key);
-                                                                    }
-                                                                }
-                                                            }
-                                                            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Lỗi đọc stream: {ex.Message}"); }
+                                                            System.Diagnostics.Debug.WriteLine($"Lỗi đọc response body: {ex.Message}");
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                        catch (System.Runtime.InteropServices.COMException comEx)
-                                        {
-                                            // Pipe closed hoặc WebView2 đã bị dispose - bỏ qua, không log
-                                            if (comEx.HResult != unchecked((int)0x800700E8) && comEx.HResult != unchecked((int)0xFFFF8300))
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"COMException: {comEx.HResult:X8} - {comEx.Message}");
-                                            }
-                                        }
                                         catch (Exception ex)
                                         {
-                                            // Chỉ log các lỗi không phải COMException
-                                            if (!(ex is System.Runtime.InteropServices.COMException))
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"Lấy content error: {ex.GetType().Name} - {ex.Message}");
-                                            }
+                                            System.Diagnostics.Debug.WriteLine($"Lấy content error: {ex.GetType().Name} - {ex.Message}");
                                         }
                                     }
                                 }
@@ -3796,58 +3781,60 @@ if (window.__elementInspector) {
                                             }
                                         }
                                     }
+                                }
 
-                                    // 3) Nếu WebNodeExecutor đang chờ outputs (PendingOutputsTcs) thì khi đã có đủ
-                                    //    ResponseOutputs cho URL này, signal TCS để cho phép workflow tiếp tục.
-                                    try
+                                // 3) Nếu WebNodeExecutor đang chờ outputs (PendingOutputsTcs) thì khi đã có đủ
+                                //    ResponseOutputs cho active runs, signal TCS để cho phép workflow tiếp tục.
+                                try
+                                {
+                                    var activeRuns = node.GetActiveExecutionRuns();
+                                    var outputs = node.ResponseOutputs?.Where(ro => ro != null && !string.IsNullOrWhiteSpace(ro.Key)).ToList();
+
+                                    if (activeRuns.Count > 0 && outputs != null && outputs.Count > 0)
                                     {
-                                        var tcs = node.PendingOutputsTcs;
-                                        if (tcs != null && !tcs.Task.IsCompleted && node.ResponseOutputs != null && node.ResponseOutputs.Count > 0)
+                                        var explicitWaitKeys = outputs
+                                            .Where(ro => ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
+                                            .Select(ro => ro.Key!.Trim())
+                                            .ToList();
+
+                                        var waitKeys = explicitWaitKeys.Count > 0
+                                            ? explicitWaitKeys
+                                            : outputs.Select(ro => ro.Key!.Trim()).ToList();
+
+                                        if (waitKeys.Count > 0)
                                         {
-                                            // Nếu có ít nhất một output được đánh dấu WaitForCompletion → chỉ đợi các key đó.
-                                            // Ngược lại (không có flag) → giữ behavior cũ: đợi tất cả outputs có key.
-                                            // WaitMode:
-                                            // - All: đợi tất cả keys cần đợi
-                                            // - Any: chỉ cần 1 key cần đợi xuất hiện là chạy tiếp
-                                            var outputs = node.ResponseOutputs.Where(ro => ro != null).ToList();
-                                            var explicitWaitKeys = outputs
-                                                .Where(ro => ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
-                                                .Select(ro => ro.Key!.Trim())
-                                                .ToList();
+                                            foreach (var run in activeRuns)
+                                            {
+                                                var tcs = run.PendingOutputsTcs;
+                                                if (tcs == null || tcs.Task.IsCompleted) continue;
 
-                                            var waitKeys = explicitWaitKeys.Count > 0
-                                                ? explicitWaitKeys
-                                                : outputs.Select(ro => ro.Key?.Trim())
-                                                    .Where(k => !string.IsNullOrWhiteSpace(k))
-                                                    .Select(k => k!)
-                                                    .ToList();
+                                                bool ready;
+                                                lock (run.Lock)
+                                                {
+                                                    if (node.ResponseOutputsWaitMode == FlowMy.Models.Nodes.WebOutputsWaitMode.Any)
+                                                    {
+                                                        ready = waitKeys.Any(k => run.ResponseOutputValues.TryGetValue(k, out var val) && !string.IsNullOrEmpty(val));
+                                                    }
+                                                    else
+                                                    {
+                                                        ready = waitKeys.All(k => run.ResponseOutputValues.TryGetValue(k, out var val) && !string.IsNullOrEmpty(val));
+                                                    }
+                                                }
 
-                                            bool ready;
-                                            if (waitKeys.Count == 0)
-                                            {
-                                                // Không có key nào để đợi -> coi như xong ngay
-                                                ready = true;
-                                            }
-                                            else if (node.ResponseOutputsWaitMode == FlowMy.Models.Nodes.WebOutputsWaitMode.Any)
-                                            {
-                                                ready = waitKeys.Any(k => node.ResponseOutputValues.ContainsKey(k));
-                                            }
-                                            else
-                                            {
-                                                ready = waitKeys.All(k => node.ResponseOutputValues.ContainsKey(k));
-                                            }
-
-                                            if (ready)
-                                            {
-                                                System.Diagnostics.Debug.WriteLine("[WebNodeControl] ✓ Required ResponseOutputs populated, scheduling debounced PendingOutputsTcs completion.");
-                                                node.SchedulePendingOutputsCompletion(800);
+                                                if (ready)
+                                                {
+                                                    bool hasListOutput = outputs.Any(ro => ro.IsList && waitKeys.Contains(ro.Key!.Trim(), StringComparer.OrdinalIgnoreCase));
+                                                    int debounceMs = hasListOutput ? 1500 : 300;
+                                                    System.Diagnostics.Debug.WriteLine($"[WebNodeControl] ✓ Required ResponseOutputs satisfied for run {run.ExecutionId}. Scheduling completion in {debounceMs}ms.");
+                                                    run.ScheduleDebounceCompletion(debounceMs);
+                                                }
                                             }
                                         }
                                     }
-                                    catch (Exception ex)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"PendingOutputsTcs signal error: {ex.Message}");
-                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"PendingOutputsTcs signal error: {ex.Message}");
                                 }
 
                                 // Clean up payload cache after all outputs have been processed for this request

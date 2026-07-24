@@ -51,9 +51,14 @@ namespace FlowMy.Views.NodeControls
         {
             var handler = new System.Net.Http.HttpClientHandler
             {
-                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+                ServerCertificateCustomValidationCallback = System.Net.Http.HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
             };
-            return new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+            var client = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "*/*");
+            return client;
         }
 
         private static BitmapImage? CreateBitmapFromUrlOrFile(string value)
@@ -69,9 +74,7 @@ namespace FlowMy.Views.NodeControls
                 if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Dùng HttpClient tải ảnh thay vì BitmapImage.UriSource
-                    // vì UriSource có thể fail trên background thread (Task.Run)
-                    byte[] bytes;
+                    byte[]? bytes = null;
                     try
                     {
                         bytes = _imageHttpClient.GetByteArrayAsync(value).ConfigureAwait(false).GetAwaiter().GetResult();
@@ -79,19 +82,42 @@ namespace FlowMy.Views.NodeControls
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"[ImageProc] HTTP download failed for {value}: {ex.Message}");
-                        return null;
                     }
 
-                    if (bytes == null || bytes.Length == 0) return null;
+                    if (bytes != null && bytes.Length > 0)
+                    {
+                        using var ms = new MemoryStream(bytes);
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.StreamSource = ms;
+                        bmp.EndInit();
+                        bmp.Freeze();
+                        return bmp;
+                    }
 
-                    using var ms = new MemoryStream(bytes);
-                    var bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.StreamSource = ms;
-                    bmp.EndInit();
-                    bmp.Freeze();
-                    return bmp;
+                    // Fallback to UriSource via Dispatcher if HttpClient failed
+                    try
+                    {
+                        BitmapImage? fallbackBmp = null;
+                        System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.UriSource = new Uri(value, UriKind.Absolute);
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                            bmp.EndInit();
+                            bmp.Freeze();
+                            fallbackBmp = bmp;
+                        });
+                        return fallbackBmp;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ImageProc] UriSource fallback failed for {value}: {ex.Message}");
+                        return null;
+                    }
                 }
 
                 // Assume local path

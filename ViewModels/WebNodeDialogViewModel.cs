@@ -100,6 +100,8 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private WebOutputsWaitMode _responseOutputsWaitMode = WebOutputsWaitMode.All;
 
+
+
         [ObservableProperty]
         private bool _autoReloadEnabled;
 

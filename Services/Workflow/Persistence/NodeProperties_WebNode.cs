@@ -36,6 +36,7 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("ResponseOutputsWaitMode", out var rowmObj) && rowmObj != null &&
                 Enum.TryParse<FlowMy.Models.Nodes.WebOutputsWaitMode>(rowmObj.ToString(), out var rowm))
                 webNode.ResponseOutputsWaitMode = rowm;
+
             if (properties.TryGetValue("BlockingRules", out var brObj) && brObj != null)
             {
                 try
@@ -695,6 +696,8 @@ public sealed partial class FileWorkflowPersistenceService
                 // Output waiting behavior (timeout + mode)
                 dict["ResponseOutputsWaitTimeoutMs"] = webNode.ResponseOutputsWaitTimeoutMs;
                 dict["ResponseOutputsWaitMode"] = webNode.ResponseOutputsWaitMode.ToString();
+
+
 
                 // JS injection (nhiều Node+Key -> WebView2)
                 if (webNode.JsSources != null && webNode.JsSources.Count > 0)
