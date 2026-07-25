@@ -667,17 +667,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            // Đảm bảo cửa sổ chứa editor đang hiển thị (chỉ kích hoạt nếu không chạy ngầm/headless)
+            // Cho phép chạy ngầm ngay cả khi app/workflow window bị ẩn hoặc minimize
             if (dispatcher != null)
             {
                 await dispatcher.InvokeAsync(() =>
                 {
-                    var win = Window.GetWindow(macroNode.Border) as FlowMy.Views.WorkflowEditorWindow;
-                    if (win != null && !win.IsHeadlessMode)
-                    {
-                        if (win.WindowState == WindowState.Minimized) win.WindowState = WindowState.Normal;
-                        win.Activate();
-                    }
+                    // Giữ nguyên trạng thái hiển thị của cửa sổ (không tự ý Restore/Activate làm nảy màn hình)
                 }, DispatcherPriority.Normal);
             }
 
@@ -1496,16 +1491,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             double relativeX = canvasX - hostNode.X - webViewOffsetX;
                                             double relativeY = canvasY - hostNode.Y - webViewOffsetY;
 
-                                            if (isWidgetOpen || isDialogOpen)
-                                            {
-                                                wvPoint = new Point(relativeX, relativeY);
-                                            }
-                                            else
-                                            {
-                                                double webViewOffsetLogicalX = CanvasLayoutOffset.X + txVal + scale * (hostNode.X + webViewOffsetX);
-                                                double webViewOffsetLogicalY = CanvasLayoutOffset.Y + tyVal + scale * (hostNode.Y + webViewOffsetY);
-                                                wvPoint = new Point(wpfPoint.X - webViewOffsetLogicalX, wpfPoint.Y - webViewOffsetLogicalY);
-                                            }
+                                            // Bất kể đang mở Widget/Dialog hay trên Canvas, tọa độ tương đối vào CefSharp 
+                                            // luôn là (canvasX - hostNode.X - webViewOffsetX), độc lập hoàn toàn với zoom/pan của Canvas!
+                                            wvPoint = new Point(relativeX, relativeY);
                                         }
                                         else
                                         {
@@ -2102,12 +2090,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     var vm = host.ViewModel;
                     if (vm == null) return;
-                    // ── Tính canvas coords thủ công (không cần TranslatePoint) ──
+                    // ── Tính canvas coords thủ công (chuẩn hóa CanvasLayoutOffset & scale) ──
                     var scale = host.ScaleTransform?.ScaleX ?? 1.0;
                     var tx = host.TranslateTransform?.X ?? 0;
                     var ty = host.TranslateTransform?.Y ?? 0;
-                    double canvasX = (wpfPoint.X - tx) / scale;
-                    double canvasY = (wpfPoint.Y - ty) / scale;
+                    double canvasX = (wpfPoint.X - CanvasLayoutOffset.X - tx) / scale;
+                    double canvasY = (wpfPoint.Y - CanvasLayoutOffset.Y - ty) / scale;
 
                     if (actionType == "MouseDown" && buttonStr != "Right")
                     {
