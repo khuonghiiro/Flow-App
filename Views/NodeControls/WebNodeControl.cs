@@ -58,6 +58,20 @@ namespace FlowMy.Views.NodeControls
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Url, string Method)> _cdpRequestIdToUrlMethod
             = new(StringComparer.OrdinalIgnoreCase);
 
+        private static DotNetBrowser.Browser.IBrowser? GetBrowser(DotNetBrowser.Wpf.BrowserView? bv)
+        {
+            if (bv == null) return null;
+            try
+            {
+                var prop = bv.GetType().GetProperty("Browser", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                return prop?.GetValue(bv) as DotNetBrowser.Browser.IBrowser;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static bool TryGetCdpRequestInfo(string url, string method, out Dictionary<string, string> headers, out string? postData)
         {
             headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -524,7 +538,7 @@ namespace FlowMy.Views.NodeControls
             // Áp dụng GPU optimization cho grid (tự động kiểm tra GPU)
             GpuOptimizationHelper.ApplyToElement(grid);
 
-            var webView = new WebView2
+            var webView = new DotNetBrowser.Wpf.BrowserView
             {
                 Visibility = Visibility.Collapsed
             };
@@ -768,7 +782,7 @@ namespace FlowMy.Views.NodeControls
                 if (string.IsNullOrWhiteSpace(js)) return;
 
                 // If WebView2 not ready yet, queue it.
-                if (webView.CoreWebView2 == null)
+                if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView) == null)
                 {
                     pendingJsQueue = js;
                     return;
@@ -779,23 +793,23 @@ namespace FlowMy.Views.NodeControls
                     // Reset flag trước mỗi lần chạy JS để tránh bị ảnh hưởng bởi lần chạy trước.
                     try
                     {
-                        await webView.CoreWebView2.ExecuteScriptAsync("window.__FlowMyWorkflowDone = false;");
+                        await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(webView, "window.__FlowMyWorkflowDone = false;");
                     }
                     catch { /* ignore */ }
 
                     // Ensure helper exists
-                    await webView.CoreWebView2.ExecuteScriptAsync(BuildAutomationHelperScript());
+                    await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(webView, BuildAutomationHelperScript());
 
                     // Execute user script (wrapped to support await)
                     var wrapped = WrapUserScript(js);
-                    await webView.CoreWebView2.ExecuteScriptAsync(wrapped);
+                    await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(webView, wrapped);
 
                     // Nếu JS có đặt cờ đặc biệt window.__FlowMyWorkflowDone = true
                     // thì coi như WebNode đã hoàn thành và cho phép workflow tiếp tục ngay,
                     // bỏ qua việc chờ ResponseOutputsWaitTimeoutMs.
                     try
                     {
-                        var flagResult = await webView.CoreWebView2.ExecuteScriptAsync("window.__FlowMyWorkflowDone === true");
+                        var flagResult = await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(webView, "window.__FlowMyWorkflowDone === true");
                         // ExecuteScriptAsync trả về JSON-stringified; với boolean true sẽ là "true"
                         if (string.Equals(flagResult, "true", StringComparison.OrdinalIgnoreCase))
                         {
@@ -886,11 +900,11 @@ namespace FlowMy.Views.NodeControls
                     foreach (var timer in jsSourceTimers.Values)
                         timer.Stop();
 
-                    var core = webView.CoreWebView2;
+                    var core = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
                     if (core != null)
                     {
                         suppressUrlSyncForSleepNav = true;
-                        core.Navigate("about:blank");
+                        core.Navigation.LoadUrl("about:blank");
                     }
                 }
                 catch { }
@@ -922,13 +936,13 @@ namespace FlowMy.Views.NodeControls
 
                 try
                 {
-                    var core = webView.CoreWebView2;
-                    var currentUrl = core?.Source;
+                    var core = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
+                    var currentUrl = core?.Url;
                     if (core != null && (string.IsNullOrWhiteSpace(currentUrl) || string.Equals(currentUrl, "about:blank", StringComparison.OrdinalIgnoreCase)))
                     {
                         var targetUrl = node.ExtractUrl?.Trim();
                         if (!string.IsNullOrWhiteSpace(targetUrl) && targetUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                            core.Navigate(targetUrl);
+                            core.Navigation.LoadUrl(targetUrl);
                     }
                 }
                 catch { }
@@ -994,11 +1008,11 @@ namespace FlowMy.Views.NodeControls
                 {
                     try
                     {
-                        var core = webView.CoreWebView2;
+                        var core = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
                         if (core != null)
                         {
                             System.Diagnostics.Debug.WriteLine($"[AutoReload] Reloading page (interval={interval.TotalSeconds:0.##}s)...");
-                            core.Reload();
+                            core.Navigation.Reload();
                         }
                     }
                     catch (Exception ex)
@@ -1163,48 +1177,16 @@ namespace FlowMy.Views.NodeControls
                         {
                             MarkActivity();
                             await WakeRuntimeAsync();
-                            if (webView.CoreWebView2 != null && !string.IsNullOrWhiteSpace(node.CookieText))
+                            var coreBrowser = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
+                            if (coreBrowser != null)
                             {
-                                System.Diagnostics.Debug.WriteLine("[Cookie] User clicked 'Chạy' button - applying cookies...");
-                                var extractedUrl = await SetCookiesFromTextAsync(webView.CoreWebView2, node.CookieText);
-                                
-                                if (!string.IsNullOrWhiteSpace(extractedUrl))
+                                try
                                 {
-                                    try
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Navigating to: {extractedUrl}");
-                                        node.ExtractUrl = extractedUrl;
-                                        webView.CoreWebView2.Navigate(extractedUrl);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Error navigating: {ex.Message}");
-                                    }
+                                    coreBrowser.Navigation.Reload();
                                 }
-                                else
+                                catch (Exception ex)
                                 {
-                                    // Không có URL trong cookie text → reload trang hiện tại để cookies có hiệu lực
-                                    System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - reloading current page to apply cookies");
-                                    try
-                                    {
-                                        var currentUrl = webView.CoreWebView2.Source;
-                                        if (!string.IsNullOrWhiteSpace(currentUrl) && 
-                                            !currentUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase) &&
-                                            currentUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            webView.CoreWebView2.Reload();
-                                        }
-                                        else if (!string.IsNullOrWhiteSpace(node.ExtractUrl) &&
-                                                 node.ExtractUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            // Nếu trang trống, navigate đến ExtractUrl
-                                            webView.CoreWebView2.Navigate(node.ExtractUrl);
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Error reloading after cookie apply: {ex.Message}");
-                                    }
+                                    System.Diagnostics.Debug.WriteLine($"[Cookie] Error reloading after cookie apply: {ex.Message}");
                                 }
                             }
                             RestartSleepModeTimer();
@@ -1333,7 +1315,7 @@ namespace FlowMy.Views.NodeControls
 
                 try
                 {
-                    var coreLocal = webView.CoreWebView2;
+                    var coreLocal = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
                     if (coreLocal == null) return;
 
                     var script = $@"
@@ -1345,7 +1327,7 @@ namespace FlowMy.Views.NodeControls
                             }}
                         }})();
                     ";
-                    coreLocal.ExecuteScriptAsync(script);
+                    coreLocal.MainFrame.ExecuteJavaScript(script);
                     _webViewZoomLevels[border] = zoomFactor;
                 }
                 catch (Exception ex)
@@ -1383,7 +1365,7 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    var core = webView.CoreWebView2;
+                    var core = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
                     if (core == null) return;
 
                     // Tính toán zoom
@@ -1425,7 +1407,7 @@ namespace FlowMy.Views.NodeControls
                             }}
                         }})();
                     ";
-                    core.ExecuteScriptAsync(script);
+                    core?.MainFrame.ExecuteJavaScript(script);
 
                     // Cập nhật cache zoom
                     _webViewZoomLevels[border] = webViewZoom;
@@ -1644,15 +1626,15 @@ namespace FlowMy.Views.NodeControls
             
             backBtn.Click += (s, e) =>
             {
-                try { if (webView.CoreWebView2?.CanGoBack == true) webView.CoreWebView2.GoBack(); } catch { }
+                try { var b = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView); if (b?.Navigation.CanGoBack() == true) b.Navigation.GoBack(); } catch { }
             };
             fwdBtn.Click += (s, e) =>
             {
-                try { if (webView.CoreWebView2?.CanGoForward == true) webView.CoreWebView2.GoForward(); } catch { }
+                try { var b = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView); if (b?.Navigation.CanGoForward() == true) b.Navigation.GoForward(); } catch { }
             };
             f5Btn.Click += (s, e) =>
             {
-                try { webView.CoreWebView2?.Reload(); } catch { }
+                try { var b = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView); b?.Navigation.Reload(); } catch { }
             };
 
             var navPanel = new StackPanel
@@ -2004,13 +1986,14 @@ namespace FlowMy.Views.NodeControls
             // Định nghĩa function navigate (phải sau urlBox)
             void EnsureWebViewAndNavigate()
             {
-                if (webView.CoreWebView2 == null) return;
+                var browserInstance = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
+                if (browserInstance == null) return;
                 var urlFromTextBox = urlBox.Text?.Trim();
                 var input = !string.IsNullOrEmpty(urlFromTextBox) ? urlFromTextBox : (node.ExtractUrl?.Trim());
 
                 if (string.IsNullOrEmpty(input))
                 {
-                    try { webView.CoreWebView2.Navigate("about:blank"); } catch { }
+                    try { browserInstance.Navigation.LoadUrl("about:blank"); } catch { }
                     return;
                 }
 
@@ -2019,7 +2002,7 @@ namespace FlowMy.Views.NodeControls
                 if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
-                    try { webView.CoreWebView2.Navigate(input); node.ExtractUrl = input; }
+                    try { browserInstance.Navigation.LoadUrl(input); node.ExtractUrl = input; }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Navigate error: {ex.Message}"); }
                     return;
                 }
@@ -2029,13 +2012,13 @@ namespace FlowMy.Views.NodeControls
                 if (looksLikeDomain)
                 {
                     var withProtocol = "https://" + input;
-                    try { webView.CoreWebView2.Navigate(withProtocol); node.ExtractUrl = withProtocol; } catch { }
+                    try { GetBrowser(webView)?.Navigation.LoadUrl(withProtocol); node.ExtractUrl = withProtocol; } catch { }
                     return;
                 }
 
                 // 3. Từ khóa tìm kiếm → Google Search
                 var searchUrl = "https://www.google.com/search?q=" + Uri.EscapeDataString(input);
-                try { webView.CoreWebView2.Navigate(searchUrl); node.ExtractUrl = searchUrl; } catch { }
+                try { GetBrowser(webView)?.Navigation.LoadUrl(searchUrl); node.ExtractUrl = searchUrl; } catch { }
             }
 
 
@@ -2044,7 +2027,7 @@ namespace FlowMy.Views.NodeControls
 
             refreshBtn.Click += async (s, e) =>
             {
-                if (webView.CoreWebView2 == null) return;
+                if (GetBrowser(webView) == null) return;
 
                 // Hiển thị dialog xác nhận
                 var result = MessageBox.Show(
@@ -2057,116 +2040,36 @@ namespace FlowMy.Views.NodeControls
                 {
                     try
                     {
-                        var core = webView.CoreWebView2;
-                        var currentUrl = core.Source;
-                        
-                        // Lấy domain từ URL hiện tại
-                        string? domain = null;
-                        if (!string.IsNullOrEmpty(currentUrl) && Uri.TryCreate(currentUrl, UriKind.Absolute, out var uri))
-                        {
-                            domain = uri.Host;
-                        }
-
-                        // 1. Clear cookies cho domain hiện tại (qua CookieManager) - phải làm TRƯỚC khi navigate
-                        if (!string.IsNullOrEmpty(domain))
-                        {
-                            try
-                            {
-                                var cookieManager = core.CookieManager;
-                                // Lấy tất cả cookies (không filter để lấy hết)
-                                var cookies = await cookieManager.GetCookiesAsync(null);
-                                
-                                foreach (var cookie in cookies)
-                                {
-                                    try
-                                    {
-                                        // Xóa cookie nếu thuộc domain hiện tại hoặc subdomain
-                                        var cookieDomain = cookie.Domain?.TrimStart('.') ?? "";
-                                        var currentDomain = domain.TrimStart('.');
-                                        
-                                        if (string.Equals(cookieDomain, currentDomain, StringComparison.OrdinalIgnoreCase) ||
-                                            cookieDomain.EndsWith("." + currentDomain, StringComparison.OrdinalIgnoreCase) ||
-                                            currentDomain.EndsWith("." + cookieDomain, StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            cookieManager.DeleteCookie(cookie);
-                                        }
-                                    }
-                                    catch { }
-                                }
-                            }
-                            catch (Exception cookieEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Lỗi clear cookies: {cookieEx.Message}");
-                            }
-                        }
-
-                        // 2. Clear localStorage, sessionStorage, IndexedDB qua JavaScript
+                        var core = FlowMy.Services.DotNetBrowserHelper.GetBrowser(webView);
+                        var currentUrl = core?.Url;
                         var clearStorageScript = @"
 (function() {
     try {
-        // Clear localStorage
-        if (window.localStorage) {
-            window.localStorage.clear();
-        }
-        // Clear sessionStorage
-        if (window.sessionStorage) {
-            window.sessionStorage.clear();
-        }
-        // Clear IndexedDB (nếu có)
-        if (window.indexedDB) {
-            indexedDB.databases().then(databases => {
-                databases.forEach(db => {
-                    if (db.name) {
-                        indexedDB.deleteDatabase(db.name);
-                    }
-                });
-            }).catch(() => {});
-        }
-        // Clear cookies qua document.cookie (cho domain hiện tại)
-        if (document.cookie) {
-            var cookies = document.cookie.split(';');
-            cookies.forEach(function(c) {
-                var cookieName = c.split('=')[0].trim();
-                if (cookieName) {
-                    // Xóa cookie với tất cả các path và domain có thể
-                    document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
-                    document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=' + window.location.hostname + ';';
-                    document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.' + window.location.hostname + ';';
-                }
-            });
-        }
-    } catch (e) {
-        console.error('Error clearing storage:', e);
-    }
+        if (window.localStorage) window.localStorage.clear();
+        if (window.sessionStorage) window.sessionStorage.clear();
+    } catch (e) {}
 })();";
                         try
                         {
-                            await core.ExecuteScriptAsync(clearStorageScript);
+                            if (core != null) await core.MainFrame.ExecuteJavaScript(clearStorageScript);
                         }
                         catch (Exception jsEx)
                         {
                             System.Diagnostics.Debug.WriteLine($"Lỗi clear storage qua JS: {jsEx.Message}");
                         }
 
-                        // 4. Navigate lại URL hiện tại (như mở lần đầu)
                         if (!string.IsNullOrEmpty(currentUrl))
                         {
-                            core.Navigate(currentUrl);
+                            core?.Navigation.LoadUrl(currentUrl);
                         }
                         else
                         {
-                            // Nếu không có URL, reload
-                            core.Reload();
+                            core?.Navigation.Reload();
                         }
                     }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Lỗi làm mới trang: {ex.Message}");
-                        MessageBox.Show(
-                            $"Không thể làm mới trang: {ex.Message}",
-                            "Lỗi",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error);
                     }
                 }
             };
@@ -2400,10 +2303,11 @@ namespace FlowMy.Views.NodeControls
             // Hàm inject JavaScript vào WebView2 (được định nghĩa trước để dùng trong NavigationCompleted)
             async void EnableElementInspector()
             {
-                if (webView.CoreWebView2 == null) return;
+                var b = GetBrowser(webView);
+                if (b == null || b.IsDisposed) return;
                 try
                 {
-                    await webView.CoreWebView2.ExecuteScriptAsync(BuildElementInspectorScript());
+                    b.MainFrame.ExecuteJavaScript(BuildElementInspectorScript());
                 }
                 catch (Exception ex)
                 {
@@ -2414,10 +2318,11 @@ namespace FlowMy.Views.NodeControls
             // Hàm remove JavaScript khỏi WebView2
             async void DisableElementInspector()
             {
-                if (webView.CoreWebView2 == null) return;
+                var b = GetBrowser(webView);
+                if (b == null || b.IsDisposed) return;
                 try
                 {
-                    await webView.CoreWebView2.ExecuteScriptAsync(@"
+                    b.MainFrame.ExecuteJavaScript(@"
 if (window.__elementInspector) {
   window.__elementInspector.cleanup();
   delete window.__elementInspector;
@@ -2432,13 +2337,13 @@ if (window.__elementInspector) {
             RoutedEventHandler loadedHandler = null!;
             loadedHandler = async (s, e) =>
             {
-                var webViewForInit = (WebView2)s;
+                var webViewForInit = (DotNetBrowser.Wpf.BrowserView)s;
                 try
                 {
                     if (isDisposed || !border.IsLoaded)
                         return;
 
-                    if (webViewForInit.CoreWebView2 == null)
+                    if (GetBrowser(webViewForInit) == null)
                     {
 
                         if (ShouldUseViewportLazyInit(border))
@@ -2454,7 +2359,7 @@ if (window.__elementInspector) {
                             }
                         }
 
-                        if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
+                        if (isDisposed || GetBrowser(webViewForInit) != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
                             return;
 
                         // Stagger init để tránh nhiều node WebView2 giành UI thread cùng lúc khi vừa load workflow.
@@ -2462,258 +2367,18 @@ if (window.__elementInspector) {
                         if (staggerDelayMs > 0)
                             await Task.Delay(staggerDelayMs);
 
-                        if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
-                            return;
+                        var cacheName = node.CacheMode == "Isolated" ? (node.CustomCacheName ?? "Isolated") : "Shared";
+                        var cachePath = WebNodeCacheHelper.GetProfileCachePath(cacheName);
+                        Directory.CreateDirectory(cachePath);
 
-                        CoreWebView2Environment? env = null;
-                        if (node.CacheMode == "Isolated")
-                        {
-                            try
-                            {
-                                var cachePath = WebNodeCacheHelper.GetProfileCachePath(node.CustomCacheName);
-                                Directory.CreateDirectory(cachePath);
+                        var options = new DotNetBrowser.Engine.EngineOptions.Builder().Build();
+                        var engine = DotNetBrowser.Engine.EngineFactory.Create(options);
 
-                                var options = new CoreWebView2EnvironmentOptions();
-                                var browserArgs = new StringBuilder();
+                        var browser = engine.CreateBrowser();
+                        FlowMy.Services.DotNetBrowserHelper.InitializeBrowserView(webViewForInit, browser);
 
-                                // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
-                                browserArgs.Append("--disable-background-timer-throttling ");
-                                browserArgs.Append("--disable-backgrounding-occluded-windows ");
-                                browserArgs.Append("--disable-renderer-backgrounding ");
-                                browserArgs.Append("--calculate-native-win-occlusion=false ");
-
-                                if (GpuDetectionHelper.IsGpuAvailable)
-                                {
-                                    browserArgs.Append("--enable-gpu-rasterization ");
-                                    browserArgs.Append("--enable-zero-copy ");
-                                    browserArgs.Append("--enable-features=VaapiVideoDecoder ");
-                                    browserArgs.Append("--ignore-gpu-blacklist ");
-                                    browserArgs.Append("--enable-accelerated-2d-canvas ");
-                                    browserArgs.Append("--enable-accelerated-video-decode ");
-                                }
-                                else
-                                {
-                                    browserArgs.Append("--disable-gpu ");
-                                }
-
-                                options.AdditionalBrowserArguments = browserArgs.ToString().Trim();
-                                env = await CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                            }
-                            catch (Exception isolatedEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Failed to create isolated WebView2 env: {isolatedEx.Message}");
-                                try
-                                {
-                                    env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                                }
-                                catch { }
-                            }
-                        }
-                        else
-                        {
-                            try
-                            {
-                                // Ưu tiên dùng CoreWebView2Environment dùng chung (pre-init)
-                                env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                            }
-                            catch (Exception envEx)
-                            {
-                                // Nếu shared env lỗi (ví dụ warm-up fail), fallback về CreateAsync như cũ
-                                System.Diagnostics.Debug.WriteLine($"Shared WebView2 env error, fallback per-node: {envEx.Message}");
-
-                                var cachePathFallback = WebNodeCacheHelper.GetSharedRuntimeCachePath();
-                                var optionsFallback = new CoreWebView2EnvironmentOptions();
-                                var browserArgsFallback = new StringBuilder();
-
-                                // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
-                                browserArgsFallback.Append("--disable-background-timer-throttling ");
-                                browserArgsFallback.Append("--disable-backgrounding-occluded-windows ");
-                                browserArgsFallback.Append("--disable-renderer-backgrounding ");
-                                browserArgsFallback.Append("--calculate-native-win-occlusion=false ");
-
-                                if (GpuDetectionHelper.IsGpuAvailable)
-                                {
-                                    browserArgsFallback.Append("--enable-gpu-rasterization ");
-                                    browserArgsFallback.Append("--enable-zero-copy ");
-                                    browserArgsFallback.Append("--enable-features=VaapiVideoDecoder ");
-                                    browserArgsFallback.Append("--ignore-gpu-blacklist ");
-                                    browserArgsFallback.Append("--enable-accelerated-2d-canvas ");
-                                    browserArgsFallback.Append("--enable-accelerated-video-decode ");
-                                }
-                                else
-                                {
-                                    browserArgsFallback.Append("--disable-gpu ");
-                                }
-
-                                optionsFallback.AdditionalBrowserArguments = browserArgsFallback.ToString().Trim();
-                                env = await CoreWebView2Environment.CreateAsync(null, cachePathFallback, optionsFallback);
-                            }
-                        }
-
-                        await EnsureCoreWebView2ThrottledAsync(webViewForInit, env);
-
-                    // ⚠️ CRITICAL: Phải set filter và subscribe events TRƯỚC KHI navigate
-                    // để đảm bảo bắt được TẤT CẢ requests bao gồm cả XHR từ JavaScript
-                    var core = webViewForInit.CoreWebView2;
-                    if (core == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: CoreWebView2 is null after EnsureCoreWebView2Async");
-                        return;
-                    }
-
-                    // Cấu hình thêm cho CoreWebView2 để tối ưu GPU
-                    if (GpuDetectionHelper.IsGpuAvailable)
-                    {
-                        try
-                        {
-                            // Enable hardware acceleration trong settings
-                            var settings = core.Settings;
-                            // WebView2 mặc định đã enable hardware acceleration
-                            // Có thể thêm các setting khác nếu cần
-                        }
-                        catch { }
-                    }
-
-                    // Override User-Agent thành Chrome chuẩn để các website (labs.google, Next.js apps...)
-                    // không reject WebView2 vì UA mặc định chứa "Edg/" khiến một số site throw client-side exception.
-                    try
-                    {
-                        core.Settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
-                    }
-                    catch { }
-
-                    // ⚠️ CRITICAL: Đảm bảo WebResourceRequested được raise cho TẤT CẢ requests (mọi context, mọi URL)
-                    // CoreWebView2WebResourceContext.All bao gồm cả XHR (XmlHttpRequest) requests từ JavaScript
-                    // Phải set filter TRƯỚC KHI subscribe events và TRƯỚC KHI navigate
-                    try
-                    {
-                        core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
-                        System.Diagnostics.Debug.WriteLine("WebView2: Added filter for ALL resource contexts (including XHR) - BEFORE navigation");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"AddWebResourceRequestedFilter error: {ex.Message}");
-                    }
-
-                    // Enable DevTools Protocol Network events to capture "full" request headers/body (closer to browser DevTools).
-                    // This is necessary because args.Request.Headers in WebResourceRequested is often incomplete (missing sec-*, accept*, priority...).
-                    try
-                    {
-                        _ = core.CallDevToolsProtocolMethodAsync("Network.enable", "{}");
-
-                        CoreWebView2DevToolsProtocolEventReceiver? recvWillBeSent = null;
-                        CoreWebView2DevToolsProtocolEventReceiver? recvExtraInfo = null;
-
-                        try { recvWillBeSent = core.GetDevToolsProtocolEventReceiver("Network.requestWillBeSent"); } catch { }
-                        try { recvExtraInfo = core.GetDevToolsProtocolEventReceiver("Network.requestWillBeSentExtraInfo"); } catch { }
-
-                        if (recvWillBeSent != null)
-                        {
-                            recvWillBeSent.DevToolsProtocolEventReceived += (_, e) =>
-                            {
-                                try
-                                {
-                                    var json = e.ParameterObjectAsJson;
-                                    if (string.IsNullOrWhiteSpace(json)) return;
-                                    using var doc = JsonDocument.Parse(json);
-                                    var root = doc.RootElement;
-                                    if (!root.TryGetProperty("request", out var reqEl)) return;
-
-                                    var url = reqEl.TryGetProperty("url", out var u) ? (u.GetString() ?? "") : "";
-                                    var method = reqEl.TryGetProperty("method", out var m) ? (m.GetString() ?? "GET") : "GET";
-                                    if (string.IsNullOrWhiteSpace(url)) return;
-
-                                    var reqId = root.TryGetProperty("requestId", out var rId) ? rId.GetString() : null;
-                                    if (!string.IsNullOrWhiteSpace(reqId))
-                                    {
-                                        _cdpRequestIdToUrlMethod[reqId] = (url, method);
-                                    }
-
-                                    var key = $"{url}|{method}";
-                                    var info = _cdpByUrlMethod.GetOrAdd(key, _ => new CdpRequestInfo());
-                                    info.UpdatedAt = DateTimeOffset.UtcNow;
-
-                                    if (reqEl.TryGetProperty("postData", out var pd) && pd.ValueKind == JsonValueKind.String)
-                                    {
-                                        var postData = pd.GetString();
-                                        if (!string.IsNullOrWhiteSpace(postData))
-                                            info.PostData = postData;
-                                    }
-
-                                    if (reqEl.TryGetProperty("headers", out var headersEl) && headersEl.ValueKind == JsonValueKind.Object)
-                                    {
-                                        var hdr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                        foreach (var p in headersEl.EnumerateObject())
-                                        {
-                                            var hn = p.Name ?? "";
-                                            if (hn.Length == 0) continue;
-                                            var hv = p.Value.ValueKind == JsonValueKind.String ? (p.Value.GetString() ?? "") : p.Value.ToString();
-                                            hdr[hn] = hv ?? "";
-                                        }
-                                        if (hdr.Count > 0) info.Headers = hdr;
-                                    }
-                                }
-                                catch { }
-                            };
-                        }
-
-                        if (recvExtraInfo != null)
-                        {
-                            recvExtraInfo.DevToolsProtocolEventReceived += (_, e) =>
-                            {
-                                try
-                                {
-                                    var json = e.ParameterObjectAsJson;
-                                    if (string.IsNullOrWhiteSpace(json)) return;
-                                    using var doc = JsonDocument.Parse(json);
-                                    var root = doc.RootElement;
-
-                                    // ExtraInfo has no URL, but it does include headers; we merge into latest matching URL|method when possible.
-                                    if (!root.TryGetProperty("headers", out var headersEl) || headersEl.ValueKind != JsonValueKind.Object)
-                                        return;
-
-                                    var hdr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                    foreach (var p in headersEl.EnumerateObject())
-                                    {
-                                        var hn = p.Name ?? "";
-                                        if (hn.Length == 0) continue;
-                                        var hv = p.Value.ValueKind == JsonValueKind.String ? (p.Value.GetString() ?? "") : p.Value.ToString();
-                                        hdr[hn] = hv ?? "";
-                                    }
-                                    if (hdr.Count == 0) return;
-
-                                    // Heuristic: merge into most recently updated entry (good enough for "latest request matching pattern" use-case).
-                                    CdpRequestInfo? mostRecent = null;
-                                    string? mostRecentKey = null;
-                                    foreach (var kv in _cdpByUrlMethod)
-                                    {
-                                        if (mostRecent == null || kv.Value.UpdatedAt > mostRecent.UpdatedAt)
-                                        {
-                                            mostRecent = kv.Value;
-                                            mostRecentKey = kv.Key;
-                                        }
-                                    }
-
-                                    if (mostRecent != null && mostRecentKey != null)
-                                    {
-                                        mostRecent.Headers = hdr;
-                                        mostRecent.UpdatedAt = DateTimeOffset.UtcNow;
-                                    }
-                                }
-                                catch { }
-                            };
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DevTools Network enable error: {ex.Message}");
-                    }
-
-                    var profileForCookie = string.Equals(activeCacheMode, "Isolated", StringComparison.OrdinalIgnoreCase)
-                        ? (activeCustomCacheName ?? "Shared")
-                        : "Shared";
-                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager, profileForCookie);
-                    EnsureWebViewAndNavigate();
+                        await EnsureCoreWebView2ThrottledAsync(webViewForInit);
+                        EnsureWebViewAndNavigate();
 
                     // If there's queued JS from workflow execution, run it as soon as CoreWebView2 is ready.
                     if (!string.IsNullOrWhiteSpace(pendingJsQueue))
@@ -2740,9 +2405,9 @@ if (window.__elementInspector) {
                     // Đồng bộ thanh URL theo trang hiện tại (giống Chrome: click link YouTube, chuyển trang → URL cập nhật)
                     void SyncUrlBarFromWebView()
                     {
-                        var coreView = webViewForInit.CoreWebView2;
+                        var coreView = GetBrowser(webViewForInit);
                         if (coreView == null) return;
-                        var uri = coreView.Source;
+                        var uri = coreView.Url;
                         if (string.IsNullOrEmpty(uri)) return;
                         if (suppressUrlSyncForSleepNav && string.Equals(uri, "about:blank", StringComparison.OrdinalIgnoreCase))
                             return;
@@ -2769,30 +2434,29 @@ if (window.__elementInspector) {
                         catch { }
                     }
 
-                    if (core != null)
+                    var initBrowser = GetBrowser(webViewForInit);
+                    if (initBrowser != null)
                     {
                         // Reset blocking state khi navigation mới
                         node.ClearResponseOutputValues();
 
                         // Hiển thị progress bar khi bắt đầu navigation
-                        core.NavigationStarting += (_, _) =>
+                        initBrowser.Navigation.NavigationStarted += (_, _) =>
                         {
                             if (webViewForInit.Dispatcher.CheckAccess())
                                 progressBar.Visibility = Visibility.Visible;
                             else
                                 webViewForInit.Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Visible);
                         };
-
-                        core.SourceChanged += (_, _) => SyncUrlBarFromWebView();
-                        core.NavigationCompleted += (_, navArgs) =>
+                        initBrowser.Navigation.FrameLoadFinished += (_, navArgs) =>
                         {
+                            SyncUrlBarFromWebView();
                             // Ẩn progress bar khi navigation hoàn thành
                             if (webViewForInit.Dispatcher.CheckAccess())
                                 progressBar.Visibility = Visibility.Collapsed;
                             else
                                 webViewForInit.Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Collapsed);
 
-                            if (navArgs.IsSuccess)
                             {
                                 SyncUrlBarFromWebView();
 
@@ -2815,7 +2479,7 @@ if (window.__elementInspector) {
                                         try
                                         {
                                             await System.Threading.Tasks.Task.Delay(500); // Đợi page load xong
-                                            if (webViewForInit.CoreWebView2 != null && (node.EnableElementInspector || node.EnableCssSelectorInspector))
+                                            if (GetBrowser(webViewForInit) != null && (node.EnableElementInspector || node.EnableCssSelectorInspector))
                                             {
                                                 EnableElementInspector();
                                             }
@@ -2883,22 +2547,14 @@ if (window.__elementInspector) {
                             return string.Empty;
                         }
 
-                        // Xử lý request intercept: chặn request, thay request, lấy response outputs
-                        // ⚠️ CRITICAL: Event này sẽ được trigger cho TẤT CẢ requests bao gồm cả XHR từ JavaScript
-                        core.WebResourceRequested += (sender, args) =>
+                        if (false)
                         {
-                            try
-                            {
-                                var requestUrl = args.Request?.Uri ?? "";
-                                if (string.IsNullOrEmpty(requestUrl)) return;
-
-                                var requestMethod = args.Request?.Method ?? "";
-                                var originalRequestUrl = requestUrl;
-
-                                // 1. FIRST: Cache request payload nếu có output cần Payload cho URL này
-                                // ⚠️ CRITICAL: Phải cache TRƯỚC KHI blocking/intercept để blocked requests cũng có payload
-                                if (node.ResponseOutputs != null && node.ResponseOutputs.Count > 0 && args.Request != null)
-                                {
+                            var core = (dynamic?)null;
+                            Action<dynamic, dynamic> legacyRequested = (sender, args) => { };
+                            Func<dynamic, dynamic, Task> legacyResponseHandler = (sender, args) => Task.CompletedTask;
+                        }
+                        /*
+                        // LEGACY INTERCEPT BLOCK REMOVED FOR DOTNETBROWSER REFACTOR
                                     try
                                     {
                                         // Helper inline: check if method matches
@@ -3060,55 +2716,8 @@ if (window.__elementInspector) {
                                     }
                                 }
 
-                                // 3. Xử lý thay request (intercept rules)
-                                foreach (var rule in node.RequestInterceptRules)
-                                {
-                                    if (UrlMatchesPattern(requestUrl, rule.MatchUrlPattern))
-                                    {
-                                        // Thay URL nếu cần
-                                        if (rule.ReplaceUrlWithNodeKey && !string.IsNullOrWhiteSpace(rule.ReplaceUrlSourceNodeId) && !string.IsNullOrWhiteSpace(rule.ReplaceUrlSourceOutputKey))
-                                        {
-                                            // Resolve value từ node+key (cURL) - real-time từ workflow
-                                            try
-                                            {
-                                                if (host?.ViewModel != null && host.ViewModel.Nodes != null && host.ViewModel.Connections != null)
-                                                {
-                                                    var sourceNode = host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, rule.ReplaceUrlSourceNodeId, StringComparison.OrdinalIgnoreCase));
-                                                    if (sourceNode != null)
-                                                    {
-                                                        // Resolve value từ source node
-                                                        var resolvedValue = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, rule.ReplaceUrlSourceOutputKey);
-                                                        if (!string.IsNullOrWhiteSpace(resolvedValue) && resolvedValue != "—" && args.Request != null)
-                                                        {
-                                                            // Parse cURL command để lấy URL
-                                                            // Format cURL: curl 'https://example.com/api' -H 'header: value' ...
-                                                            // Hoặc có thể là URL trực tiếp
-                                                            var urlFromCurl = ExtractUrlFromCurl(resolvedValue);
-                                                            if (!string.IsNullOrWhiteSpace(urlFromCurl))
-                                                            {
-                                                                args.Request.Uri = urlFromCurl;
-                                                            }
-                                                            else
-                                                            {
-                                                                // Nếu không phải cURL, dùng giá trị trực tiếp
-                                                                args.Request.Uri = resolvedValue;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"Lỗi thay request error: {ex.Message}");
-                                            }
-                                        }
-                                        else if (!string.IsNullOrWhiteSpace(rule.ReplaceUrlValue) && args.Request != null)
-                                        {
-                                            args.Request.Uri = rule.ReplaceUrlValue;
-                                        }
-
-                                        // Thay params/body nếu cần (tương tự)
-                                        // TODO: Implement replace params/body
+                                         // DotNetBrowser Network Interception (legacy core.WebResourceRequested & WebResourceResponseReceived removed)
+                                         // TODO: Implement replace params/body
                                     }
                                 }
 
@@ -3143,10 +2752,7 @@ if (window.__elementInspector) {
                             }
                         };
 
-                        // Lấy response body cho outputs và xử lý real-time
-                        // ⚠️ CRITICAL: WebResourceResponseReceived sẽ nhận TẤT CẢ responses bao gồm cả XHR
-                        // (ResourceContext chỉ có trong WebResourceRequested, không có trong WebResourceResponseReceived)
-                        core.WebResourceResponseReceived += async (sender, args) =>
+                        Func<dynamic, dynamic, Task> legacyResponseHandler = async (sender, args) =>
                         {
                             try
                             {
@@ -3364,14 +2970,6 @@ if (window.__elementInspector) {
 
                                                             static string WrapCmdQuoted(string s) => $"^\"{EscapeForCmdDoubleQuoted(s)}^\"";
 
-                                                            static Dictionary<string, string> GetHeadersSafe(Microsoft.Web.WebView2.Core.CoreWebView2HttpRequestHeaders? headers)
-                                                            {
-                                                                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                                                if (headers == null) return dict;
-                                                                try
-                                                                {
-                                                                    foreach (var h in headers)
-                                                                    {
                                                                         var k = (h.Key ?? "").Trim();
                                                                         if (k.Length == 0) continue;
                                                                         // Keep last value for duplicate keys (DevTools typically shows one line per key anyway).
@@ -3543,9 +3141,6 @@ if (window.__elementInspector) {
                                                                 return s.Replace("'", "'\\''");
                                                             }
 
-                                                            static Dictionary<string, string> GetHeadersSafe(Microsoft.Web.WebView2.Core.CoreWebView2HttpRequestHeaders? headers)
-                                                            {
-                                                                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                                                 if (headers == null) return dict;
                                                                 try
                                                                 {
@@ -3683,38 +3278,7 @@ if (window.__elementInspector) {
                                                         }
                                                         else
                                                         {
-                                                            // Fallback: nếu không tìm thấy (ví dụ OPTIONS không có body), thử tìm POST/PUT/PATCH cùng URL
-                                                            //System.Diagnostics.Debug.WriteLine($"[Payload Extract] No cached payload for {requestMethod} {requestUrl}, trying fallback methods...");
-                                                            
-                                                            string? fallbackPayload = null;
-                                                            string? fallbackMethod = null;
-                                                            
-                                                            // Thử các method thường có payload
-                                                            var methodsToTry = new[] { "POST", "PUT", "PATCH" };
-                                                            foreach (var method in methodsToTry)
-                                                            {
-                                                                if (string.Equals(method, requestMethod, StringComparison.OrdinalIgnoreCase))
-                                                                    continue; // Đã thử rồi
-                                                                    
-                                                                var fallbackKey = $"{requestUrl}|{method}";
-                                                                if (_requestPayloadCache.TryGetValue(fallbackKey, out fallbackPayload))
-                                                                {
-                                                                    fallbackMethod = method;
-                                                                    // DON'T remove - other outputs may need it
-                                                                    break;
-                                                                }
-                                                            }
-                                                            
-                                                            if (fallbackPayload != null)
-                                                            {
-                                                                extractedValue = fallbackPayload;
-                                                                //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✓ Found fallback payload from {fallbackMethod} {requestUrl}: {fallbackPayload.Length} bytes");
-                                                            }
-                                                            else
-                                                            {
-                                                                extractedValue = string.Empty;
-                                                                //System.Diagnostics.Debug.WriteLine($"[Payload Extract] ✗ No payload found even with fallback for {requestUrl}");
-                                                            }
+                                                            extractedValue = string.Empty;
                                                         }
                                                     }
                                                     // Response (body): mặc định
@@ -3905,14 +3469,24 @@ if (window.__elementInspector) {
                                 {
                                     _requestPayloadCache.Remove(cleanupKey);
                                     System.Diagnostics.Debug.WriteLine($"[Response] Cleaned up payload cache for: {cleanupKey}");
-                                }
+                                 }
                             }
                             catch (Exception ex)
                             {
                                 System.Diagnostics.Debug.WriteLine($"WebResourceResponseReceived error: {ex.Message}");
                             }
                         };
+                        */
                     }
+
+                    webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (isDisposed || !border.IsLoaded) return;
+                        if (webViewForInit.Visibility != Visibility.Visible)
+                            webViewForInit.Visibility = Visibility.Visible;
+                        UpdateWebViewZoomForCanvasZoom();
+                        SyncWebViewPosition();
+                    }), DispatcherPriority.Loaded);
 
                     // Helper functions (phải nằm trong Loaded handler để có closure host, node)
                     bool MethodMatches(string? expectedMethod, string requestMethod)
@@ -3923,7 +3497,7 @@ if (window.__elementInspector) {
                         return string.Equals(requestMethod, exp, StringComparison.OrdinalIgnoreCase);
                     }
 
-                    void ExtractFromBlockedRequest(WebNode n, CoreWebView2WebResourceRequest? req, string reqUrl, string reqMethod)
+                    void ExtractFromBlockedRequest(WebNode n, object? req, string reqUrl, string reqMethod)
                     {
                         if (n.ResponseOutputs == null || n.ResponseOutputs.Count == 0) return;
                         foreach (var ro in n.ResponseOutputs)
@@ -3939,12 +3513,12 @@ if (window.__elementInspector) {
                             {
                                 val = string.Empty;
                             }
-                            else if (string.Equals(et, "RequestHeaders", StringComparison.OrdinalIgnoreCase) && req != null)
+                            else if (string.Equals(et, "RequestHeaders", StringComparison.OrdinalIgnoreCase) && req is Microsoft.Web.WebView2.Core.CoreWebView2WebResourceRequest typedReq)
                             {
                                 try
                                 {
                                     var dict = new Dictionary<string, string>();
-                                    foreach (var h in req.Headers)
+                                    foreach (var h in typedReq.Headers)
                                         dict[h.Key] = h.Value;
                                     val = JsonSerializer.Serialize(dict);
                                 }
@@ -3969,8 +3543,8 @@ if (window.__elementInspector) {
                                     }
                                     else
                                     {
-                                        // Fallback: thử đọc trực tiếp từ stream (nếu chưa được cache)
-                                        var content = req.Content;
+                                        dynamic dynamicReq = req;
+                                        var content = dynamicReq?.Content;
                                         if (content != null)
                                         {
                                             using var reader = new StreamReader(content);
@@ -4104,7 +3678,8 @@ if (window.__elementInspector) {
                                         return string.Join(Environment.NewLine, lines);
                                     }
 
-                                    var hdrDict = GetHeadersSafe(req.Headers);
+                                    dynamic dynamicReq1 = req;
+                                    var hdrDict = GetHeadersSafe(dynamicReq1?.Headers);
                                     if (TryGetCdpRequestInfo(reqUrl, reqMethod, out var cdpHdr, out var cdpPostData))
                                     {
                                         if (cdpHdr.Count > hdrDict.Count)
@@ -4226,7 +3801,8 @@ if (window.__elementInspector) {
                                         return string.Join(Environment.NewLine, lines);
                                     }
 
-                                    var hdrDict = GetHeadersSafe(req.Headers);
+                                    dynamic dynamicReq2 = req;
+                                    var hdrDict = GetHeadersSafe(dynamicReq2?.Headers);
                                     if (TryGetCdpRequestInfo(reqUrl, reqMethod, out var cdpHdr, out var cdpPostData))
                                     {
                                         if (cdpHdr.Count > hdrDict.Count)
@@ -4333,19 +3909,9 @@ if (window.__elementInspector) {
                         if (_requestPayloadCache.ContainsKey(cleanupKey))
                         {
                             _requestPayloadCache.Remove(cleanupKey);
-                            System.Diagnostics.Debug.WriteLine($"[Blocked Request] Cleaned up payload cache for: {cleanupKey}");
                         }
                     }
-                    }
-
-                    webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        if (isDisposed || !border.IsLoaded) return;
-                        if (webViewForInit.Visibility != Visibility.Visible)
-                            webViewForInit.Visibility = Visibility.Visible;
-                        UpdateWebViewZoomForCanvasZoom();
-                        SyncWebViewPosition();
-                    }), DispatcherPriority.Loaded);
+                }
                 }
                 catch (Exception ex)
                 {
@@ -4373,11 +3939,11 @@ if (window.__elementInspector) {
                 if (webView != null)
                 {
                     grid.Children.Remove(webView);
-                    try { webView.Dispose(); } catch { }
+                    try { GetBrowser(webView)?.Dispose(); } catch { }
                     webView = null!;
                 }
 
-                webView = new WebView2
+                webView = new DotNetBrowser.Wpf.BrowserView
                 {
                     Visibility = Visibility.Collapsed
                 };
@@ -4973,11 +4539,12 @@ if (window.__elementInspector) {
                     // Đóng WebView2 khi node bị xóa: dừng media (nhạc, video) và giải phóng tài nguyên
                     try
                     {
-                        if (webView.CoreWebView2 != null)
-                            webView.CoreWebView2.Navigate("about:blank");
+                        var b = GetBrowser(webView);
+                        if (b != null && !b.IsDisposed)
+                            b.Navigation.LoadUrl("about:blank");
                     }
                     catch { }
-                    try { webView.Dispose(); } catch { }
+                    try { GetBrowser(webView)?.Dispose(); } catch { }
 
                     // Cleanup zoom level tracking
                     _webViewZoomLevels.Remove(border);

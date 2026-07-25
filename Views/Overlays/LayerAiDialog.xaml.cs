@@ -828,16 +828,12 @@ namespace FlowMy.Views.Overlays
                 {
                     var cachePath = WebNodeCacheHelper.GetProfileCachePath("DynamicUi_" + _node.Id);
                     Directory.CreateDirectory(cachePath);
-                    var options = new DotNetBrowser.Engine.EngineOptions.Builder
-                    {
-                        UserDataDir = cachePath,
-                        RenderingMode = DotNetBrowser.Engine.RenderingMode.HardwareAccelerated
-                    }.Build();
-
+                    var options = new DotNetBrowser.Engine.EngineOptions.Builder().Build();
                     var engine = DotNetBrowser.Engine.EngineFactory.Create(options);
+
                     var browser = engine.CreateBrowser();
                     var browserView = new DotNetBrowser.Wpf.BrowserView();
-                    browserView.InitializeFrom(browser);
+                    FlowMy.Services.DotNetBrowserHelper.InitializeBrowserView(browserView, browser);
 
                     WebViewContainer.Child = browserView;
 
@@ -897,7 +893,7 @@ namespace FlowMy.Views.Overlays
                 builder.AppendLine("</html>");
 
                 var fullHtml = builder.ToString();
-                _dynamicBrowser.MainFrame.LoadHtml(fullHtml);
+                _dynamicBrowser?.Navigation.LoadUrl("data:text/html;charset=utf-8," + Uri.EscapeDataString(fullHtml));
             }
             catch (Exception ex)
             {
@@ -1054,16 +1050,11 @@ namespace FlowMy.Views.Overlays
                 var profileName = tab.ProfileName;
                 var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
                 Directory.CreateDirectory(cachePath);
-
-                var options = new DotNetBrowser.Engine.EngineOptions.Builder
-                {
-                    UserDataDir = cachePath,
-                    RenderingMode = DotNetBrowser.Engine.RenderingMode.HardwareAccelerated
-                }.Build();
-
+                var options = new DotNetBrowser.Engine.EngineOptions.Builder().Build();
                 var engine = DotNetBrowser.Engine.EngineFactory.Create(options);
+                
                 var browser = engine.CreateBrowser();
-                browserView.InitializeFrom(browser);
+                FlowMy.Services.DotNetBrowserHelper.InitializeBrowserView(browserView, browser);
 
                 tab.Engine = engine;
                 tab.Browser = browser;
@@ -1097,7 +1088,7 @@ namespace FlowMy.Views.Overlays
 
             browser.Navigation.FrameLoadFinished += (s, e) =>
             {
-                if (e.IsMainFrame)
+                if (e.Frame.IsMain)
                 {
                     tab.IsLoading = false;
                     Dispatcher.Invoke(() => {
@@ -5016,14 +5007,18 @@ namespace FlowMy.Views.Overlays
                     {
                         try
                         {
-                            var cookies = activeBrowser.Engine?.CookieStore?.Cookies;
-                            if (cookies != null)
+                            var cookieStoreProp = activeBrowser.Engine?.Profiles?.Default?.CookieStore;
+                            if (cookieStoreProp != null)
                             {
-                                var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
-                                string cookieHeaderValue = string.Join("; ", cookiePairs);
-                                if (!string.IsNullOrWhiteSpace(cookieHeaderValue))
+                                var cookies = cookieStoreProp.GetAllCookies().Result;
+                                if (cookies != null)
                                 {
-                                    client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                                    var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
+                                    string cookieHeaderValue = string.Join("; ", cookiePairs);
+                                    if (!string.IsNullOrWhiteSpace(cookieHeaderValue))
+                                    {
+                                        client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                                    }
                                 }
                             }
                         }

@@ -181,13 +181,13 @@
 		</ItemGroup>
 	
 		<ItemGroup>
+		  <Content Remove="public\libraries\teamdev.licenses" />
 		  <Content Remove="public\library\sciter.dll" />
-		  <Content Remove="public\library\teamdev.licenses" />
 		</ItemGroup>
 	
 		<ItemGroup>
+		  <EmbeddedResource Include="public\libraries\teamdev.licenses" />
 		  <EmbeddedResource Include="public\library\sciter.dll" />
-		  <EmbeddedResource Include="public\library\teamdev.licenses" />
 		</ItemGroup>
 	
 
@@ -222,7 +222,7 @@
 
 	<ItemGroup>
 	  <Reference Include="DotNetBrowserCrack">
-	    <HintPath>public\library\DotNetBrowserCrack.dll</HintPath>
+	    <HintPath>public\libraries\DotNetBrowserCrack.dll</HintPath>
 	  </Reference>
 	</ItemGroup>
 

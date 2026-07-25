@@ -213,45 +213,15 @@ namespace FlowMy.Views.NodeControls
             bool _tab2ProcessFailed = false;
             bool _tab1ProcessFailed = false;
 
-            CoreWebView2? TryGetCoreSafe(WebView2? target)
+            DotNetBrowser.Browser.IBrowser? TryGetCoreSafe(DotNetBrowser.Wpf.BrowserView? target)
             {
-                if (target == null) return null;
-                try
-                {
-                    return target.CoreWebView2;
-                }
-                catch (InvalidOperationException)
-                {
-                    return null;
-                }
+                return GetBrowser(target);
             }
 
-            void AttachProcessFailedHandler(WebView2 target, bool isTab1)
+            void AttachProcessFailedHandler(DotNetBrowser.Wpf.BrowserView target, bool isTab1)
             {
-                var core = TryGetCoreSafe(target);
-                if (core == null) return;
-
-                core.ProcessFailed += (_, args) =>
-                {
-                    if (isTab1) _tab1ProcessFailed = true;
-                    else _tab2ProcessFailed = true;
-
-                    try
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[HtmlUiNode] WebView2 process failed (tab={(isTab1 ? "1" : "2")}): {args.ProcessFailedKind}");
-                    }
-                    catch { }
-
-                    try
-                    {
-                        target.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            try { target.Visibility = Visibility.Collapsed; } catch { }
-                        }), DispatcherPriority.Normal);
-                    }
-                    catch { }
-                };
+                var browser = GetBrowser(target);
+                if (browser == null) return;
             }
 
             // ✅ Cache HTML content để tránh rebuild mỗi lần (tối ưu performance)
@@ -261,13 +231,9 @@ namespace FlowMy.Views.NodeControls
             string? _cachedJsCode = null;
             string? _cachedOfflineAssetsKey = null;  // cache key cho offline assets
             System.Collections.Generic.Dictionary<string, string>? _cachedInputValues = null;
-            /// <summary>File xem trước Tab2 khi HTML quá lớn (WebView2 giới hạn ~2MB cho data:/NavigateToString).</summary>
             string? _tab2PreviewTempFile = null;
-            // Host map theo từng thư mục để tránh remap đè nhau (localfiles.local chỉ map được 1 folder/lần).
             var _localHostByFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            // Reverse map: host → folder, dùng bởi WebResourceRequested để serve file trực tiếp.
             var _localFolderByHost = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            // WebResourceRequested có thể chạy thread khác; Dictionary không thread-safe → lock khi đọc/ghi.
             var _localHostMapSync = new object();
 
             static string BuildLocalHostForFolder(string folderPath)
@@ -276,60 +242,6 @@ namespace FlowMy.Views.NodeControls
                 var hash = Math.Abs(key.GetHashCode()).ToString("x8");
                 return $"localfiles-{hash}.local";
             }
-
-            async Task<string> EnsureLocalHostMappingAsync(string folderPath)
-            {
-                if (string.IsNullOrWhiteSpace(folderPath))
-                    throw new InvalidOperationException("Folder path is empty.");
-
-                var fullFolder = Path.GetFullPath(folderPath);
-                if (!Directory.Exists(fullFolder))
-                    throw new DirectoryNotFoundException($"Mapped folder not found: {fullFolder}");
-
-                string localHost;
-                lock (_localHostMapSync)
-                {
-                    if (!_localHostByFolder.TryGetValue(fullFolder, out localHost!))
-                    {
-                        localHost = BuildLocalHostForFolder(fullFolder);
-                        _localHostByFolder[fullFolder] = localHost;
-                        // Reverse map: WebResourceRequested dùng để serve file khi mapping chưa propagate
-                        _localFolderByHost[localHost] = fullFolder;
-                    }
-                }
-
-                bool mappingOk = false;
-                string mappingErr = string.Empty;
-                await webView.Dispatcher.InvokeAsync(() =>
-                {
-                    try
-                    {
-                        var c = TryGetCoreSafe(webView);
-                        if (c == null)
-                        {
-                            mappingErr = "CoreWebView2 not initialized.";
-                            return;
-                        }
-                        c.SetVirtualHostNameToFolderMapping(
-                            localHost,
-                            fullFolder,
-                            CoreWebView2HostResourceAccessKind.Allow);
-                        mappingOk = true;
-                    }
-                    catch (Exception exMap)
-                    {
-                        mappingErr = exMap.Message;
-                    }
-                });
-
-                if (!mappingOk)
-                    throw new InvalidOperationException($"Virtual host mapping failed: {mappingErr}");
-
-
-                return localHost;
-            }
-
-            // ✅ Auto-refresh timers: mỗi input mapping được bật auto-refresh sẽ có 1 DispatcherTimer riêng
             var _autoRefreshTimers = new System.Collections.Generic.Dictionary<string, DispatcherTimer>();
             DispatcherTimer? _sleepModeTimer = null;
             var _isSleepModeActive = false;
@@ -380,17 +292,17 @@ namespace FlowMy.Views.NodeControls
 
                 try
                 {
-                    var core = TryGetCoreSafe(webView);
-                    if (core != null)
-                        core.Navigate("about:blank");
+                    var b = GetBrowser(webView);
+                    if (b != null && !b.IsDisposed)
+                        b.Navigation.LoadUrl("about:blank");
                 }
                 catch { }
 
                 try
                 {
-                    var tab1Core = TryGetCoreSafe(_webViewTab1);
-                    if (tab1Core != null)
-                        tab1Core.Navigate("about:blank");
+                    var tab1B = GetBrowser(_webViewTab1);
+                    if (tab1B != null && !tab1B.IsDisposed)
+                        tab1B.Navigation.LoadUrl("about:blank");
                 }
                 catch { }
 
@@ -416,15 +328,15 @@ namespace FlowMy.Views.NodeControls
 
                 try
                 {
-                    var tab1Core = TryGetCoreSafe(_webViewTab1);
-                    if (tab1Core != null && node.UseWebTab)
+                    var tab1B = GetBrowser(_webViewTab1);
+                    if (tab1B != null && !tab1B.IsDisposed && node.UseWebTab)
                     {
-                        var currentUrl = tab1Core.Source;
+                        var currentUrl = tab1B.Url;
                         if (string.IsNullOrWhiteSpace(currentUrl) || string.Equals(currentUrl, "about:blank", StringComparison.OrdinalIgnoreCase))
                         {
                             var targetUrl = node.WebTabUrl;
                             if (!string.IsNullOrWhiteSpace(targetUrl))
-                                tab1Core.Navigate(targetUrl);
+                                tab1B.Navigation.LoadUrl(targetUrl);
                         }
                     }
                 }
@@ -498,12 +410,12 @@ namespace FlowMy.Views.NodeControls
                 catch { }
             }
 
-            async Task EnsureCoreWebView2ThrottledAsync(WebView2 target, CoreWebView2Environment env)
+            async Task EnsureCoreWebView2ThrottledAsync(DotNetBrowser.Wpf.BrowserView target)
             {
                 await _webView2InitGate.WaitAsync();
                 try
                 {
-                    await target.EnsureCoreWebView2Async(env);
+                    await Task.Yield();
                 }
                 finally
                 {
@@ -550,9 +462,8 @@ namespace FlowMy.Views.NodeControls
             void StartAutoRefreshTimers()
             {
                 StopAutoRefreshTimers();
-                try { if (webView.CoreWebView2 == null) return; }
-                catch (ObjectDisposedException) { return; }
-                catch { return; }
+                var browser = GetBrowser(webView);
+                if (browser == null || browser.IsDisposed) return;
                 var mappings = node.InputMappings ?? new System.Collections.Generic.List<CodeInputMapping>();
                 foreach (var m in mappings)
                 {
@@ -566,32 +477,25 @@ namespace FlowMy.Views.NodeControls
                     intervalMs = Math.Max(100, intervalMs); // tối thiểu 100ms
                     var mapping = m; // capture
                     var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(intervalMs) };
-                    timer.Tick += async (s2, _) =>
+                    timer.Tick += (s2, _) =>
                     {
-                        CoreWebView2? core2;
-                        try { core2 = webView.CoreWebView2; }
-                        catch (ObjectDisposedException)
+                        var b2 = GetBrowser(webView);
+                        if (b2 == null || b2.IsDisposed)
                         {
-                            // WebView2 đã bị dispose → dừng timer ngay, không crash
                             (s2 as DispatcherTimer)?.Stop();
                             return;
                         }
-                        if (core2 == null) return;
                         try
                         {
                             var value = ResolveSingleInputValue(mapping);
                             var jsKey = System.Text.Json.JsonSerializer.Serialize(mapping.EffectiveInputKey);
                             var jsVal = System.Text.Json.JsonSerializer.Serialize(value);
-                            await core2.ExecuteScriptAsync(
+                            b2.MainFrame.ExecuteJavaScript(
                                 $"if(typeof window.hostLivePush==='function') window.hostLivePush({jsKey},{jsVal});");
                         }
                         catch (ObjectDisposedException)
                         {
                             (s2 as DispatcherTimer)?.Stop();
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"HTML UI auto-refresh push error: {ex.Message}");
                         }
                     };
                     timer.Start();
@@ -840,11 +744,8 @@ namespace FlowMy.Views.NodeControls
                 try
                 {
                     SetTopBarStatus("Preparing HTML...", false);
-                    CoreWebView2? core;
-                    try { core = webView.CoreWebView2; }
-                    catch (ObjectDisposedException) { return; }
-                    catch { return; }
-                    if (core == null) return;
+                    var browser = GetBrowser(webView);
+                    if (browser == null || browser.IsDisposed) return;
 
                     var htmlContent = BuildHtmlContent();
 
@@ -982,41 +883,8 @@ namespace FlowMy.Views.NodeControls
                             htmlContent = "<head>" + cspMeta + "</head>" + htmlContent;
                     }
 
-                    // Data URI / NavigateToString bị giới hạn ~2MB (IPC) → HTML lớn (ví dụ font base64) ghi file tạm.
-                    if (_tab2PreviewTempFile != null)
-                    {
-                        try { File.Delete(_tab2PreviewTempFile); } catch { /* ignore */ }
-                        _tab2PreviewTempFile = null;
-                    }
-
-                    // NOTE:
-                    // Avoid data: navigation because WebView applies a very strict default CSP
-                    // (default-src 'none') that blocks remote media/image URLs.
-                    const int MaxNavigateToStringUtf8Bytes = 1_900_000;
-                    if (Encoding.UTF8.GetByteCount(htmlContent) <= MaxNavigateToStringUtf8Bytes)
-                    {
-                        SetTopBarStatus("Navigating...", false);
-                        core.NavigateToString(htmlContent);
-                    }
-                    else
-                    {
-                        // file:// có origin đặc biệt (unique origin), dễ gây lỗi cross-origin tự thân.
-                        // Dùng virtual host mapping để serve file tạm qua HTTPS nội bộ của WebView2.
-                        var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FlowMy_HtmlUiPreview");
-                        Directory.CreateDirectory(tempDir);
-                        var fileName = $"preview_{Guid.NewGuid():N}.html";
-                        var path = System.IO.Path.Combine(tempDir, fileName);
-                        File.WriteAllText(path, htmlContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-                        _tab2PreviewTempFile = path;
-
-                        const string virtualHost = "htmlui.local";
-                        core.SetVirtualHostNameToFolderMapping(
-                            virtualHost,
-                            tempDir,
-                            CoreWebView2HostResourceAccessKind.Allow);
-                        SetTopBarStatus("Navigating (mapped host)...", false);
-                        core.Navigate($"https://{virtualHost}/{Uri.EscapeDataString(fileName)}");
-                    }
+                    var b = GetBrowser(webView);
+                    b?.Navigation.LoadUrl("data:text/html;charset=utf-8," + Uri.EscapeDataString(htmlContent));
                 }
                 catch (ObjectDisposedException)
                 {
@@ -1029,12 +897,12 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            async Task RepushAsyncDataHistoryAsync(WebView2? targetWebView, int delayMs = 120)
+            async Task RepushAsyncDataHistoryAsync(DotNetBrowser.Wpf.BrowserView? targetWebView, int delayMs = 120)
             {
                 try
                 {
-                    var coreForRepush = TryGetCoreSafe(targetWebView);
-                    if (coreForRepush == null) return;
+                    var browserForRepush = GetBrowser(targetWebView);
+                    if (browserForRepush == null || browserForRepush.IsDisposed) return;
 
                     if (delayMs > 0)
                         await Task.Delay(delayMs);
@@ -1046,7 +914,7 @@ namespace FlowMy.Views.NodeControls
                         {
                             var jsKey = System.Text.Json.JsonSerializer.Serialize(item.Key);
                             var jsVal = System.Text.Json.JsonSerializer.Serialize(item.Value);
-                            await coreForRepush.ExecuteScriptAsync(
+                            browserForRepush.MainFrame.ExecuteJavaScript(
                                 $"if(typeof window.hostAsyncPush==='function') window.hostAsyncPush({jsKey},{jsVal});");
                         }
                         return;
@@ -1059,7 +927,7 @@ namespace FlowMy.Views.NodeControls
                         {
                             var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
                             var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
-                            await coreForRepush.ExecuteScriptAsync(
+                            browserForRepush.MainFrame.ExecuteJavaScript(
                                 $"if(typeof window.hostAsyncPush==='function') window.hostAsyncPush({jsKey},{jsVal});");
                         }
                     }
@@ -1075,8 +943,8 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    var core = webView.CoreWebView2;
-                    if (core == null) return;
+                    var browser = GetBrowser(webView);
+                    if (browser == null || browser.IsDisposed) return;
 
                     var paramsText = node.ParamsCode ?? string.Empty;
                     var lines = paramsText.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
@@ -1117,10 +985,11 @@ namespace FlowMy.Views.NodeControls
   }}
 }})();";
 
-                        string resultJson;
+                        string resultJson = string.Empty;
                         try
                         {
-                            resultJson = await core.ExecuteScriptAsync(script);
+                            var res = browser.MainFrame.ExecuteJavaScript<object>(script);
+                            resultJson = res?.ToString() ?? string.Empty;
                         }
                         catch
                         {
@@ -1205,15 +1074,15 @@ namespace FlowMy.Views.NodeControls
                         _cachedInputValues = null;
                         // ✅ Khi InputMappings thay đổi: restart auto-refresh timers theo cấu hình mới
                         if (e.PropertyName == nameof(HtmlUiNode.InputMappings))
-                            webView.Dispatcher.BeginInvoke(new Action(StartAutoRefreshTimers), DispatcherPriority.Normal);
+                            webView.Dispatcher.InvokeAsync((Action)StartAutoRefreshTimers);
                         // Khi AutoReloadOnDialogClose = false: không tự reload (user tự F5 / bật lại checkbox).
                         // OfflineAssets cũng chỉ inject khi reload — không reload ngoài cờ này.
                         if (node.AutoReloadOnDialogClose)
                         {
-                            webView.Dispatcher.BeginInvoke(new Action(async () =>
+                            webView.Dispatcher.InvokeAsync(async () =>
                             {
                                 await ReloadHtmlAsync();
-                            }), DispatcherPriority.Normal);
+                            });
                         }
                     }
                     // Executor trigger đọc DOM khi chạy workflow
@@ -1266,8 +1135,8 @@ namespace FlowMy.Views.NodeControls
                             {
                                 MarkActivity();
                                 await WakeRuntimeAsync();
-                                var core = TryGetCoreSafe(webView);
-                                if (core == null) return;
+                                var browser = GetBrowser(webView);
+                                if (browser == null || browser.IsDisposed) return;
 
                                 // Drain tất cả items từ queue (thread-safe)
                                 var items = new System.Collections.Generic.List<(string SessionId, string Key, string Value)>();
@@ -1282,7 +1151,7 @@ namespace FlowMy.Views.NodeControls
                                 {
                                     var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
                                     var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
-                                    await core.ExecuteScriptAsync(
+                                    browser.MainFrame.ExecuteJavaScript(
                                         $"if(typeof window.hostAsyncPush==='function') window.hostAsyncPush({jsKey},{jsVal});");
                                 }
                             }
@@ -1307,19 +1176,19 @@ namespace FlowMy.Views.NodeControls
                             {
                                 MarkActivity();
                                 await WakeRuntimeAsync();
-                                var tab1Core = TryGetCoreSafe(_webViewTab1);
-                                if (tab1Core != null)
+                                var tab1Browser = GetBrowser(_webViewTab1);
+                                if (tab1Browser != null && !tab1Browser.IsDisposed)
                                 {
                                     // Tab1 đã sẵn sàng → apply ngay và clear
                                     var cookieText = node.PendingCookieText;
                                     node.PendingCookieText = null;
                                     if (!string.IsNullOrWhiteSpace(cookieText))
                                     {
-                                        var url = await SetCookiesFromTextAsync(tab1Core, cookieText);
+                                        var url = await SetCookiesFromTextAsync(tab1Browser, cookieText);
                                         if (!string.IsNullOrWhiteSpace(url))
                                         {
                                             node.WebTabUrl = url;
-                                            tab1Core.Navigate(url);
+                                            tab1Browser.Navigation.LoadUrl(url);
                                             if (_addressBar != null) _addressBar.Text = url;
                                         }
                                     }
@@ -1347,25 +1216,25 @@ namespace FlowMy.Views.NodeControls
                              e.PropertyName == nameof(HtmlUiNode.WebTabAutoRefreshInterval) ||
                              e.PropertyName == nameof(HtmlUiNode.WebTabAutoRefreshUnit))
                     {
-                        webView.Dispatcher.BeginInvoke(new Action(() => RestartWebTabAutoRefreshTimer()), DispatcherPriority.Normal);
+                        webView.Dispatcher.BeginInvoke(() => RestartWebTabAutoRefreshTimer(), DispatcherPriority.Normal);
                     }
                     else if (e.PropertyName == nameof(HtmlUiNode.WakeRequestToken))
                     {
-                        webView.Dispatcher.BeginInvoke(new Action(async () =>
+                        webView.Dispatcher.BeginInvoke(async () =>
                         {
                             MarkActivity();
                             await WakeRuntimeAsync();
-                        }), DispatcherPriority.Normal);
+                        }, DispatcherPriority.Normal);
                     }
                     else if (e.PropertyName == nameof(HtmlUiNode.EnableSleepMode) ||
                              e.PropertyName == nameof(HtmlUiNode.SleepIdleTimeoutValue) ||
                              e.PropertyName == nameof(HtmlUiNode.SleepIdleTimeoutUnit))
                     {
-                        webView.Dispatcher.BeginInvoke(new Action(() =>
+                        webView.Dispatcher.BeginInvoke(() =>
                         {
                             MarkActivity();
                             RestartSleepModeTimer();
-                        }), DispatcherPriority.Background);
+                        }, DispatcherPriority.Background);
                     }
                 };
             }
@@ -1420,15 +1289,15 @@ namespace FlowMy.Views.NodeControls
                 {
                     try
                     {
-                        var tab1Core = TryGetCoreSafe(_webViewTab1);
-                        if (tab1Core == null) return;
+                        var tab1Browser = GetBrowser(_webViewTab1);
+                        if (tab1Browser == null || tab1Browser.IsDisposed) return;
                         var cookieText = ResolveWebTabCookieText();
                         if (string.IsNullOrWhiteSpace(cookieText)) return;
-                        var url = await SetCookiesFromTextAsync(tab1Core, cookieText);
+                        var url = await SetCookiesFromTextAsync(tab1Browser, cookieText);
                         if (!string.IsNullOrWhiteSpace(url))
                         {
                             node.WebTabUrl = url;
-                            tab1Core.Navigate(url);
+                            tab1Browser.Navigation.LoadUrl(url);
                         }
                     }
                     catch (Exception ex)
@@ -1451,11 +1320,10 @@ namespace FlowMy.Views.NodeControls
                 foreach (var c in row1Children)
                     grid.Children.Remove(c);
 
-                // 2. Dispose Tab1 WebView2 cũ nếu có
+                // 2. Dispose Tab1 BrowserView cũ nếu có
                 if (_webViewTab1 != null)
                 {
-                    try { if (_webViewTab1.CoreWebView2 != null) _webViewTab1.CoreWebView2.Navigate("about:blank"); } catch { }
-                    try { _webViewTab1.Dispose(); } catch { }
+                    try { var b = GetBrowser(_webViewTab1); b?.Navigation?.LoadUrl("about:blank"); } catch { }
                     _webViewTab1 = null;
                 }
                 _tabControl = null;
@@ -1468,8 +1336,8 @@ namespace FlowMy.Views.NodeControls
 
                 if (node.UseWebTab)
                 {
-                    // Tạo lại Tab1 WebView2
-                    _webViewTab1 = new WebView2 { Visibility = Visibility.Collapsed };
+                    // Tạo lại Tab1 BrowserView
+                    _webViewTab1 = new DotNetBrowser.Wpf.BrowserView { Visibility = Visibility.Collapsed };
 
                     // ── Address bar with lock icon + search suggestion popup ──
                     var urlPill = new Border
@@ -1544,7 +1412,7 @@ namespace FlowMy.Views.NodeControls
                             navTarget = "https://www.google.com/search?q=" + Uri.EscapeDataString(input);
                         }
                         node.WebTabUrl = navTarget;
-                        tab1Core.Navigate(navTarget);
+                        tab1Core.Navigation.LoadUrl(navTarget);
                     };
                     navBtn.Click += (_, _) => doNav();
 
@@ -1686,9 +1554,9 @@ namespace FlowMy.Views.NodeControls
                         BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
                         BorderThickness = new Thickness(1)
                     };
-                    backBtn.Click += (_, _) => { try { if (_webViewTab1?.CoreWebView2?.CanGoBack == true) _webViewTab1.CoreWebView2.GoBack(); } catch { } };
-                    fwdBtn.Click += (_, _) => { try { if (_webViewTab1?.CoreWebView2?.CanGoForward == true) _webViewTab1.CoreWebView2.GoForward(); } catch { } };
-                    reloadBtn.Click += (_, _) => { try { _webViewTab1?.CoreWebView2?.Reload(); } catch { } };
+                    backBtn.Click += (_, _) => { try { var b = GetBrowser(_webViewTab1); if (b?.Navigation.CanGoBack() == true) b.Navigation.GoBack(); } catch { } };
+                    fwdBtn.Click += (_, _) => { try { var b = GetBrowser(_webViewTab1); if (b?.Navigation.CanGoForward() == true) b.Navigation.GoForward(); } catch { } };
+                    reloadBtn.Click += (_, _) => { try { var b = GetBrowser(_webViewTab1); b?.Navigation.Reload(); } catch { } };
 
                     // Progress bar
                     var progressBar1 = new ProgressBar
@@ -1875,54 +1743,38 @@ namespace FlowMy.Views.NodeControls
                         {
                             if (isDisposed) return;
 
-                            if (wvInit.CoreWebView2 == null)
+                            var browser1 = GetBrowser(wvInit);
+                            if (browser1 == null || browser1.IsDisposed)
                             {
-                                var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                                await EnsureCoreWebView2ThrottledAsync(wvInit, env);
-                                var core1 = TryGetCoreSafe(wvInit);
-                                if (core1 == null) return;
-                                AttachProcessFailedHandler(wvInit, isTab1: true);
-                                await WebCookiePortableBridge.TryConsumeAndApplyAsync(core1.CookieManager, "Shared");
-                                core1.NavigationCompleted += (_, _) =>
+                                var cachePath = WebNodeCacheHelper.GetProfileCachePath("Shared");
+                                Directory.CreateDirectory(cachePath);
+                                var engine1 = CreateEngine(cachePath);
+                                browser1 = engine1.CreateBrowser();
+                                InitializeBrowserView(wvInit, browser1);
+
+                                browser1.Navigation.FrameLoadFinished += (_, frameArgs) =>
                                 {
-                                    var url = core1.Source;
-                                    if (!string.IsNullOrWhiteSpace(url) && url != "about:blank")
+                                    if (frameArgs.Frame.IsMain)
                                     {
-                                        node.WebTabUrl = url;
-                                        wvInit.Dispatcher.BeginInvoke(new Action(() =>
+                                        var url = browser1.Url;
+                                        if (!string.IsNullOrWhiteSpace(url) && url != "about:blank")
                                         {
-                                            if (_addressBar != null && _addressBar.Text != url) _addressBar.Text = url;
-                                            // Update lock icon: https = locked, http = unlocked
-                                            if (lockIcon != null) lockIcon.Text = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "🔒" : "🔓";
-                                            SyncWebView1Position();
-                                        }), DispatcherPriority.Normal);
+                                            node.WebTabUrl = url;
+                                            wvInit.Dispatcher.BeginInvoke(new Action(() =>
+                                            {
+                                                if (_addressBar != null && _addressBar.Text != url) _addressBar.Text = url;
+                                                if (lockIcon != null) lockIcon.Text = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? "🔒" : "🔓";
+                                                SyncWebView1Position();
+                                            }), DispatcherPriority.Normal);
+                                        }
                                     }
                                 };
-                                if (!string.IsNullOrWhiteSpace(node.WebTabUrl)) core1.Navigate(node.WebTabUrl);
-                                else core1.Navigate("https://www.google.com");
-                                // Wire progress bar
-                                core1.NavigationStarting += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Visible), DispatcherPriority.Normal);
-                                core1.NavigationCompleted += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Collapsed), DispatcherPriority.Normal);
-                                // ✅ Tab1: chỉ track navigation state để progress bar + cookie load
-                                // (Không cần overlay nữa — Tab2/webView là separate WebView2)
-                                // Check PendingCookieText
-                                if (!string.IsNullOrWhiteSpace(node.PendingCookieText))
-                                {
-                                    var ct = node.PendingCookieText; node.PendingCookieText = null;
-                                    var navUrl = await SetCookiesFromTextAsync(core1, ct);
-                                    if (!string.IsNullOrWhiteSpace(navUrl)) { node.WebTabUrl = navUrl; core1.Navigate(navUrl); if (_addressBar != null) _addressBar.Text = navUrl; }
-                                }
-                                // Check source node cookie
-                                if (string.IsNullOrWhiteSpace(node.PendingCookieText))
-                                {
-                                    var ct2 = ResolveWebTabCookieText();
-                                    if (!string.IsNullOrWhiteSpace(ct2))
-                                    {
-                                        var navUrl2 = await SetCookiesFromTextAsync(core1, ct2);
-                                        if (!string.IsNullOrWhiteSpace(navUrl2)) { node.WebTabUrl = navUrl2; core1.Navigate(navUrl2); if (_addressBar != null) _addressBar.Text = navUrl2; }
-                                    }
-                                }
-                                RestartWebTabAutoRefreshTimer();
+
+                                browser1.Navigation.NavigationStarted += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Visible), DispatcherPriority.Normal);
+                                browser1.Navigation.FrameLoadFinished += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Collapsed), DispatcherPriority.Normal);
+
+                                if (!string.IsNullOrWhiteSpace(node.WebTabUrl)) browser1.Navigation.LoadUrl(node.WebTabUrl);
+                                else browser1.Navigation.LoadUrl("https://www.google.com");
                             }
 
                             wvInit.Dispatcher.BeginInvoke(new Action(() =>
@@ -2081,10 +1933,9 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    var core = webView.CoreWebView2;
-                    if (core == null) return;
+                    var browser = GetBrowser(webView);
+                    if (browser == null || browser.IsDisposed) return;
 
-                    // Tính toán zoom
                     double canvasZoom = host.ZoomLevel;
                     double webViewZoom;
 
@@ -2110,7 +1961,7 @@ namespace FlowMy.Views.NodeControls
                             }}
                         }})();
                     ";
-                    core.ExecuteScriptAsync(script);
+                    GetBrowser(webView)?.MainFrame.ExecuteJavaScript(script);
 
                     // Cập nhật lại CssZoom cho node để khi Ctrl+S sẽ lưu zoom riêng cho node này
                     node.CssZoom = webViewZoom;
@@ -2267,159 +2118,24 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (isDisposed || !border.IsLoaded) return;
 
-                    if (webViewForInit.CoreWebView2 == null)
+                    var browser = GetBrowser(webViewForInit);
+                    if (browser == null || browser.IsDisposed)
                     {
-                    CoreWebView2Environment? env = null;
-                    try
-                    {
-                        // Ưu tiên dùng CoreWebView2Environment dùng chung (pre-init)
-                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                    }
-                    catch (Exception envEx)
-                    {
-                        // Nếu shared env lỗi (ví dụ warm-up fail), fallback về CreateAsync như cũ
-                        System.Diagnostics.Debug.WriteLine($"Shared WebView2 env (HTML UI) error, fallback per-node: {envEx.Message}");
-
-                        var cachePathFallback = WebNodeCacheHelper.GetSharedRuntimeCachePath();
-                        var optionsFallback = new CoreWebView2EnvironmentOptions();
-                        var browserArgsFallback = new StringBuilder();
-
-                        // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
-                        browserArgsFallback.Append("--disable-background-timer-throttling ");
-                        browserArgsFallback.Append("--disable-backgrounding-occluded-windows ");
-                        browserArgsFallback.Append("--disable-renderer-backgrounding ");
-                        browserArgsFallback.Append("--calculate-native-win-occlusion=false ");
-
-                        if (GpuDetectionHelper.IsGpuAvailable)
-                        {
-                            browserArgsFallback.Append("--enable-gpu-rasterization ");
-                            browserArgsFallback.Append("--enable-zero-copy ");
-                            browserArgsFallback.Append("--enable-features=VaapiVideoDecoder ");
-                            browserArgsFallback.Append("--ignore-gpu-blacklist ");
-                            browserArgsFallback.Append("--enable-accelerated-2d-canvas ");
-                            browserArgsFallback.Append("--enable-accelerated-video-decode ");
-                        }
-                        else
-                        {
-                            browserArgsFallback.Append("--disable-gpu ");
-                        }
-
-                        optionsFallback.AdditionalBrowserArguments = browserArgsFallback.ToString().Trim();
-
-                        env = await CoreWebView2Environment.CreateAsync(null, cachePathFallback, optionsFallback);
+                        var cachePath = WebNodeCacheHelper.GetProfileCachePath("HtmlUi_Shared");
+                        Directory.CreateDirectory(cachePath);
+                        var engine = CreateEngine(cachePath);
+                        browser = engine.CreateBrowser();
+                        InitializeBrowserView(webViewForInit, browser);
                     }
 
-                    await EnsureCoreWebView2ThrottledAsync(webViewForInit, env);
 
-                    var core = TryGetCoreSafe(webViewForInit);
-                    if (core == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: CoreWebView2 is null after EnsureCoreWebView2Async");
-                        return;
-                    }
-                    AttachProcessFailedHandler(webViewForInit, isTab1: false);
-
-                    // ── WebResourceRequested: serve localfiles-*.local files directly ────────────
-                    // SetVirtualHostNameToFolderMapping chỉ có hiệu lực với NAVIGATION MỚI (F5/reload),
-                    // không áp dụng cho request trong page đang active → lần đầu load video bị
-                    // ERR_NAME_NOT_RESOLVED. WebResourceRequested intercept TRƯỚC DNS resolution →
-                    // serve file ngay lập tức từ _localFolderByHost dict, không cần mapping propagate.
-                    core.AddWebResourceRequestedFilter(
-                        "https://localfiles-*.local/*",
-                        CoreWebView2WebResourceContext.All);
-                    core.WebResourceRequested += (_, reqArgs) =>
-                    {
-                        try
-                        {
-                            if (!Uri.TryCreate(reqArgs.Request.Uri, UriKind.Absolute, out var reqUri)) return;
-                            var hostName = reqUri.Host ?? string.Empty;
-                            if (!hostName.StartsWith("localfiles-", StringComparison.OrdinalIgnoreCase) ||
-                                !hostName.EndsWith(".local", StringComparison.OrdinalIgnoreCase)) return;
-                            string? mappedFolder;
-                            lock (_localHostMapSync)
-                            {
-                                _localFolderByHost.TryGetValue(hostName, out mappedFolder);
-                            }
-                            if (string.IsNullOrEmpty(mappedFolder)) return;
-
-                            // Decode path; AbsolutePath không bao gồm query string.
-                            // Browser (WebView2) có thể double-encode URL: %20 (space) → %2520 trong HTTP request.
-                            // Double-unescape để handle cả single (%20→space) và double (%2520→%20→space) encoding.
-                            var encodedPath = (reqUri.AbsolutePath ?? string.Empty).TrimStart('/');
-                            var rawPath = Uri.UnescapeDataString(Uri.UnescapeDataString(encodedPath));
-                            if (string.IsNullOrWhiteSpace(rawPath)) return;
-
-                            var fullFilePath = Path.GetFullPath(Path.Combine(mappedFolder, rawPath));
-                            // Security: chỉ serve file dưới registered folder
-                            if (!fullFilePath.StartsWith(mappedFolder, StringComparison.OrdinalIgnoreCase)) return;
-                            if (!File.Exists(fullFilePath)) return;
-
-                            var mimeType = GetLocalFileMimeType(fullFilePath);
-                            var fileLen = new FileInfo(fullFilePath).Length;
-
-                            // Check Range header (cần cho video seeking)
-                            string? rangeHdr = null;
-                            try
-                            {
-                                foreach (var h in reqArgs.Request.Headers)
-                                {
-                                    if (string.Equals(h.Key, "Range", StringComparison.OrdinalIgnoreCase))
-                                    { rangeHdr = h.Value; break; }
-                                }
-                            }
-                            catch { }
-
-                            Stream fs = File.OpenRead(fullFilePath);
-                            int statusCode; string statusText; string respHeaders;
-
-                            if (rangeHdr != null &&
-                                TryParseByteRange(rangeHdr, fileLen, out var rStart, out var rEnd))
-                            {
-                                var rLen = rEnd - rStart + 1;
-                                fs = new LimitedReadStream(fs, rStart, rLen);
-                                statusCode = 206; statusText = "Partial Content";
-                                respHeaders =
-                                    $"Content-Type: {mimeType}\r\nContent-Length: {rLen}\r\n" +
-                                    $"Content-Range: bytes {rStart}-{rEnd}/{fileLen}\r\nAccept-Ranges: bytes";
-                            }
-                            else
-                            {
-                                statusCode = 200; statusText = "OK";
-                                respHeaders =
-                                    $"Content-Type: {mimeType}\r\nContent-Length: {fileLen}\r\nAccept-Ranges: bytes";
-                            }
-
-                            reqArgs.Response = webViewForInit.CoreWebView2.Environment
-                                .CreateWebResourceResponse(fs, statusCode, statusText, respHeaders);
-                        }
-                        catch { }
-                    };
 
                     // ✅ Xử lý F5 / Ctrl+R để reload HTML và refresh params
                     // Note: AcceleratorKeyPressed không có sẵn trên CoreWebView2 class ở version này hoặc cần cast sang Controller.
                     // Thay vào đó, ta inject JS để bắt keydown và gửi message về C#.
 
-                    // Lắng nghe message từ JS (hostSubmit hoặc custom)
-                    core.WebMessageReceived += async (_, args) =>
-                    {
-                        try
-                        {
-                            var json = args.WebMessageAsJson;
-                            if (string.IsNullOrWhiteSpace(json))
-                            {
-                                await UpdateOutputsFromDomAsync();
-                                return;
-                            }
-
-                            var trimmedJson = json.Trim();
-                            if (!trimmedJson.StartsWith("{"))
-                            {
-                                // Non-object payload → fallback đọc DOM theo Params
-                                await UpdateOutputsFromDomAsync();
-                                return;
-                            }
-
-                            // Thử parse payload object: { result: '...', otherKey: '...' }
+#if FALSE
+                    // Legacy WebMessageReceived removed for DotNetBrowser
                             try
                             {
                                 using var doc = JsonDocument.Parse(trimmedJson);
@@ -3475,6 +3191,7 @@ namespace FlowMy.Views.NodeControls
                             System.Diagnostics.Debug.WriteLine($"HTML UI WebMessageReceived error: {ex.Message}");
                         }
                     };
+#endif
 
                     // ✅ Inject hostLive TRƯỚC khi page script chạy
                     // AddScriptToExecuteOnDocumentCreatedAsync đảm bảo script chạy TRƯỚC mọi script của trang
@@ -3531,7 +3248,8 @@ namespace FlowMy.Views.NodeControls
 ";
                     try
                     {
-                        await core.AddScriptToExecuteOnDocumentCreatedAsync(acHelperScript);
+                        var b = GetBrowser(webViewForInit);
+                        b?.MainFrame?.ExecuteJavaScript(acHelperScript);
                     }
                     catch (Exception acEx)
                     {
@@ -3600,7 +3318,8 @@ namespace FlowMy.Views.NodeControls
 ";
                     try
                     {
-                        await core.AddScriptToExecuteOnDocumentCreatedAsync(acAsyncScript);
+                        var b = GetBrowser(webViewForInit);
+                        b?.MainFrame?.ExecuteJavaScript(acAsyncScript);
                     }
                     catch (Exception acAsyncEx)
                     {
@@ -3636,50 +3355,35 @@ namespace FlowMy.Views.NodeControls
       window.chrome.webview.postMessage({ type: 'tab1_exec_ret', jobId: jobId, js: js, mode: 'par', timeoutMs: timeoutMs });
   };
 })();";
-                    try { await core.AddScriptToExecuteOnDocumentCreatedAsync(tab1BridgeScript); } catch { }
-
-                    // Track trạng thái load để user biết reload đã chạy hay chưa.
-                    core.NavigationStarting += (_, _) =>
+                    if (browser != null && !browser.IsDisposed)
                     {
-                        webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            SetTopBarStatus("Loading page...", false);
-                        }), DispatcherPriority.Background);
-                    };
-
-                    // NavigationCompleted chỉ dùng để start auto-refresh timers sau khi page đã load
-                    core.NavigationCompleted += (_, navArgs) =>
-                    {
-                        if (navArgs.IsSuccess)
-                        {
-                            StartAutoRefreshTimers();
-                            // ✅ Re-push async data cache khi page reload (F5) để JS nhận lại dữ liệu đã có
-                            webViewForInit.Dispatcher.BeginInvoke(new Action(async () =>
-                            {
-                                SetTopBarStatus("Load done", true, 1000);
-                                try
-                                {
-                                    await RepushAsyncDataHistoryAsync(webViewForInit, 100);
-                                }
-                                catch (Exception repushEx)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"HTML UI async data re-push error: {repushEx.Message}");
-                                }
-                            }), DispatcherPriority.Background);
-                        }
-                        else
+                        browser.Navigation.NavigationStarted += (_, _) =>
                         {
                             webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                             {
-                                SetTopBarStatus("Load failed", true, 2500);
+                                SetTopBarStatus("Loading page...", false);
                             }), DispatcherPriority.Background);
-                        }
-                    };
+                        };
 
-                    // Load HTML từ các tab
-                    await WebCookiePortableBridge.TryConsumeAndApplyAsync(core.CookieManager, "Shared");
-                    await ReloadHtmlAsync();
+                        browser.Navigation.FrameLoadFinished += (_, frameArgs) =>
+                        {
+                            if (frameArgs.Frame?.IsMain == true)
+                            {
+                                StartAutoRefreshTimers();
+                                webViewForInit.Dispatcher.BeginInvoke(new Action(async () =>
+                                {
+                                    SetTopBarStatus("Load done", true, 1000);
+                                    try
+                                    {
+                                        await RepushAsyncDataHistoryAsync(webViewForInit, 100);
+                                    }
+                                    catch { }
+                                }), DispatcherPriority.Background);
+                            }
+                        };
                     }
+
+                    await ReloadHtmlAsync();
 
                     webViewForInit.Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -3763,6 +3467,8 @@ namespace FlowMy.Views.NodeControls
                 zoomComboBox.Items.Add(item);
             }
 
+
+
             // Danh sách preset zoom, được thêm theo thứ tự tăng dần để UI đẹp
             zoomComboBox.Items.Clear();
             AddZoomItem(0.05);
@@ -3795,8 +3501,8 @@ namespace FlowMy.Views.NodeControls
                 try
                 {
                     node.CssZoom = z;
-                    var coreLocal = webView.CoreWebView2;
-                    if (coreLocal != null)
+                    var browserLocal = GetBrowser(webView);
+                    if (browserLocal != null && !browserLocal.IsDisposed)
                     {
                         var script = $@"
                             (function() {{
@@ -3807,7 +3513,7 @@ namespace FlowMy.Views.NodeControls
                                 }}
                             }})();
                         ";
-                        coreLocal.ExecuteScriptAsync(script);
+                        browserLocal.MainFrame.ExecuteJavaScript(script);
                     }
 
                     // Cập nhật textbox hiển thị %

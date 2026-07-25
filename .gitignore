@@ -17,6 +17,7 @@ x64/
 [Oo]bj/
 Library/
 Setup/
+temp/
 .vscode/
 bin*
 Assets/Icon*

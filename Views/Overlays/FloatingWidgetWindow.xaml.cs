@@ -5,8 +5,9 @@ using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.ViewModels;
 using FlowMy.Views.NodeControls;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
+using DotNetBrowser.Engine;
+using DotNetBrowser.Browser;
+using DotNetBrowser.Wpf;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -42,7 +43,7 @@ public partial class FloatingWidgetWindow : Window
     private FloatingWidgetConfig Config => _node.FloatingWidget!;
 
     public WorkflowNode Node => _node;
-    public WebView2? WidgetWebView => _webView;
+    public DotNetBrowser.Wpf.BrowserView? WidgetWebView => _webView;
 
     // ── State ──
     private bool _isExpanded;
@@ -76,8 +77,8 @@ public partial class FloatingWidgetWindow : Window
     private DispatcherTimer? _titleBarHideTimer;
     private DispatcherTimer? _activeMoveTimer;
 
-    // ── WebView2 ──
-    private WebView2? _webView;
+    // ── DotNetBrowser ──
+    private DotNetBrowser.Wpf.BrowserView? _webView;
     private bool _webViewInitialized;
     private bool _webViewContentLoaded;
     private VideoProcessingNodeContentControl? _videoNodeContent;
@@ -1945,10 +1946,9 @@ public partial class FloatingWidgetWindow : Window
 
         try
         {
-            _webView = new WebView2
+            _webView = new DotNetBrowser.Wpf.BrowserView
             {
-                Visibility = Visibility.Collapsed,
-                DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 24, 24, 27)
+                Visibility = Visibility.Collapsed
             };
 
             var contentGrid = ContentArea.Child as Grid;
@@ -1959,27 +1959,15 @@ public partial class FloatingWidgetWindow : Window
             }
             contentGrid.Children.Add(_webView);
 
-            // Get shared WebView2 environment
-            var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-            await _webView.EnsureCoreWebView2Async(env);
+            var options = new DotNetBrowser.Engine.EngineOptions.Builder().Build();
+            var engine = DotNetBrowser.Engine.EngineFactory.Create(options);
+            
+            var browser = engine.CreateBrowser();
+            FlowMy.Services.DotNetBrowserHelper.InitializeBrowserView(_webView, browser);
 
-            if (_webView.CoreWebView2 != null)
+            browser.Navigation.FrameLoadFinished += (_, e) =>
             {
-                _webView.CoreWebView2.Settings.IsScriptEnabled = true;
-                _webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
-                _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-                try
-                {
-                    // Inject runtime bridge ở document-start để luôn có hostLivePush/hostAsyncPush,
-                    // kể cả khi HTML widget có cấu trúc phức tạp hoặc nhiều tab JS con.
-                    await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BuildRuntimeBridgeBootstrapJs());
-                }
-                catch { }
-
-                // Handle web messages from HTML (hostSubmit, hostStart)
-                _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
-                _webView.CoreWebView2.NavigationCompleted += (_, _) =>
+                if (e.Frame.IsMain)
                 {
                     _ = Dispatcher.InvokeAsync(async () =>
                     {
@@ -1996,10 +1984,10 @@ public partial class FloatingWidgetWindow : Window
 #endif
                         }
                     }, DispatcherPriority.Background);
-                };
+                }
+            };
 
-                _webViewInitialized = true;
-            }
+            _webViewInitialized = true;
         }
         catch (Exception ex)
         {
@@ -2088,7 +2076,7 @@ public partial class FloatingWidgetWindow : Window
 
     private async Task ReloadContentAsync()
     {
-        if (!_webViewInitialized || _webView?.CoreWebView2 == null) return;
+        if (!_webViewInitialized || FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
 
         try
         {
@@ -2107,11 +2095,11 @@ public partial class FloatingWidgetWindow : Window
                     // Use temp file
                     var tmpFile = Path.Combine(Path.GetTempPath(), $"widget_{_node.Id}_{Guid.NewGuid():N}.html");
                     await File.WriteAllTextAsync(tmpFile, html, Encoding.UTF8);
-                    _webView.CoreWebView2.Navigate(new Uri(tmpFile).AbsoluteUri);
+                    FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView)?.Navigation.LoadUrl(new Uri(tmpFile).AbsoluteUri);
                 }
                 else
                 {
-                    _webView.CoreWebView2.NavigateToString(html);
+                    FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView)?.Navigation.LoadUrl("data:text/html;charset=utf-8," + Uri.EscapeDataString(html));
                 }
                 _lastContentSignature = signature;
                 _webViewContentLoaded = true;
@@ -2126,7 +2114,7 @@ public partial class FloatingWidgetWindow : Window
                 if (_webViewContentLoaded && string.Equals(_lastContentSignature, signature, StringComparison.Ordinal))
                     return;
 
-                _webView.CoreWebView2.Navigate(targetUrl);
+                FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView)?.Navigation.LoadUrl(targetUrl);
                 _lastContentSignature = signature;
                 _webViewContentLoaded = true;
             }
@@ -2268,7 +2256,7 @@ public partial class FloatingWidgetWindow : Window
 
     private async Task<int> FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
     {
-        if (_webView?.CoreWebView2 == null) return 0;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return 0;
         if (!_htmlRuntimeReady) return 0;
         if (_pendingAsyncBuffer.Count == 0) return 0;
 
@@ -2307,7 +2295,7 @@ public partial class FloatingWidgetWindow : Window
 
     private async Task PushKeyValueToWidgetRuntimeAsync(string key, string value, string nodeIdForLog)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
         if (!_htmlRuntimeReady)
         {
             var sessionId = _pendingAsyncBuffer.Count > 0
@@ -2323,7 +2311,7 @@ public partial class FloatingWidgetWindow : Window
 
         var jsKey = JsonSerializer.Serialize(key ?? string.Empty);
         var jsVal = JsonSerializer.Serialize(value ?? string.Empty);
-        var inspect = await _webView.CoreWebView2.ExecuteScriptAsync($@"
+        var inspect = await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(_webView, $@"
 (function() {{
   try {{
     // Ensure tối thiểu bridge runtime trước khi push data
@@ -2432,13 +2420,13 @@ public partial class FloatingWidgetWindow : Window
         IReadOnlyList<(string SessionId, string Key, string Value)> batch,
         string nodeIdForLog)
     {
-        if (_webView?.CoreWebView2 == null) return false;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return false;
         if (!_htmlRuntimeReady) return false;
         if (batch.Count == 0) return true;
 
         var payload = batch.Select(x => new[] { x.Key ?? string.Empty, x.Value ?? string.Empty }).ToList();
         var jsPayload = JsonSerializer.Serialize(payload);
-        var inspect = await _webView.CoreWebView2.ExecuteScriptAsync($@"
+        var inspect = await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(_webView, $@"
 (function() {{
   try {{
     window.hostLive = window.hostLive || {{}};
@@ -2792,11 +2780,11 @@ window.hostAsync.values = window.hostAsync.values || {};
         });
     }
 
-    private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    private void CoreWebView2_WebMessageReceived(object? sender, object? e)
     {
         try
         {
-            var json = e.WebMessageAsJson;
+            var json = e?.ToString() ?? string.Empty;
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
@@ -2883,7 +2871,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private async Task UpdateOutputsFromDomAsync(HtmlUiNode htmlNode)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
 
         var mappings = _viewModel.ParseParams(htmlNode);
         foreach (var (key, selector) in mappings)
@@ -2905,7 +2893,7 @@ window.hostAsync.values = window.hostAsync.values || {};
             string resultJson;
             try
             {
-                resultJson = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                resultJson = await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(_webView, script);
             }
             catch
             {
@@ -2957,7 +2945,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private async Task HandleResolveLocalPathAsync(JsonElement root)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
 
         var localPath = root.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String
             ? p.GetString()
@@ -3003,14 +2991,14 @@ window.hostAsync.values = window.hostAsync.values || {};
             "window.dispatchEvent(new CustomEvent('hostPathResolved',{detail:" + detailJson + "}));";
         try
         {
-            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(_webView, script);
         }
         catch { }
     }
 
     private async Task HandleDownloadByCurlAsync(JsonElement root)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
 
         var curlCmd = root.TryGetProperty("curl", out var curlProp) && curlProp.ValueKind == JsonValueKind.String
             ? curlProp.GetString()
@@ -3126,7 +3114,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private async Task HandlePickImageFilesAsync(JsonElement root)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
 
         var requestId = root.TryGetProperty("requestId", out var reqIdProp) && reqIdProp.ValueKind == JsonValueKind.String
             ? reqIdProp.GetString()
@@ -3186,7 +3174,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private async Task HandleResolvePlayableRefAsync(JsonElement root)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
 
         var refUrl = root.TryGetProperty("url", out var urlProp) && urlProp.ValueKind == JsonValueKind.String
             ? urlProp.GetString()
@@ -3273,11 +3261,11 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private async Task DispatchJsEventAsync(string eventName, string detailJson)
     {
-        if (_webView?.CoreWebView2 == null) return;
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null) return;
         var script = $"window.dispatchEvent(new CustomEvent('{eventName}',{{detail:{detailJson}}}));";
         try
         {
-            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            await FlowMy.Services.DotNetBrowserHelper.ExecuteJavaScriptAsync(_webView, script);
         }
         catch { }
     }
@@ -3337,8 +3325,8 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private async Task<string> EnsureLocalHostMappingAsync(string folderPath)
     {
-        if (_webView?.CoreWebView2 == null)
-            throw new InvalidOperationException("WebView2 not initialized.");
+        if (FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView) == null)
+            throw new InvalidOperationException("DotNetBrowser not initialized.");
         if (string.IsNullOrWhiteSpace(folderPath))
             throw new InvalidOperationException("Folder path is empty.");
 
@@ -3356,11 +3344,6 @@ window.hostAsync.values = window.hostAsync.values || {};
                 _localFolderByHost[localHost] = fullFolder;
             }
         }
-
-        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-            localHost,
-            fullFolder,
-            CoreWebView2HostResourceAccessKind.Allow);
 
         return localHost;
     }
@@ -4548,9 +4531,8 @@ window.hostAsync.values = window.hostAsync.values || {};
         // Cleanup WebView2
         try
         {
-            if (_webView?.CoreWebView2 != null)
-                _webView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
-            _webView?.Dispose();
+            var b = FlowMy.Services.DotNetBrowserHelper.GetBrowser(_webView);
+            b?.Dispose();
             _webView = null;
         }
         catch { }
