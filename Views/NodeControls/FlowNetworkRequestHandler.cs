@@ -420,48 +420,6 @@ namespace FlowMy.Views.NodeControls
                     }
                     return true;
                 }
-
-                // Ctrl+V (Paste)
-                if (ctrlPressed && windowsKeyCode == 86)
-                {
-                    browser.FocusedFrame?.Paste();
-                    return false;
-                }
-
-                // Ctrl+C (Copy)
-                if (ctrlPressed && windowsKeyCode == 67)
-                {
-                    browser.FocusedFrame?.Copy();
-                    return false;
-                }
-
-                // Ctrl+X (Cut)
-                if (ctrlPressed && windowsKeyCode == 88)
-                {
-                    browser.FocusedFrame?.Cut();
-                    return false;
-                }
-
-                // Ctrl+A (Select All)
-                if (ctrlPressed && windowsKeyCode == 65)
-                {
-                    browser.FocusedFrame?.SelectAll();
-                    return false;
-                }
-
-                // Ctrl+Z (Undo)
-                if (ctrlPressed && windowsKeyCode == 90)
-                {
-                    browser.FocusedFrame?.Undo();
-                    return false;
-                }
-
-                // Ctrl+Y (Redo)
-                if (ctrlPressed && windowsKeyCode == 89)
-                {
-                    browser.FocusedFrame?.Redo();
-                    return false;
-                }
             }
 
             return base.OnPreKeyEvent(chromiumWebBrowser, browser, type, windowsKeyCode, nativeKeyCode, modifiers, isSystemKey, ref isKeyboardShortcut);

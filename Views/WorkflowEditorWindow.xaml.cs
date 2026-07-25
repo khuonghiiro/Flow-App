@@ -1853,11 +1853,87 @@ namespace FlowMy.Views
             return null;
         }
 
+        private bool IsInteractingWithSpecialNode(KeyEventArgs e)
+        {
+            var focused = Keyboard.FocusedElement as DependencyObject;
+            if (focused != null && IsInsideSpecialNode(focused))
+            {
+                return true;
+            }
+
+            var hitSource = e.OriginalSource as DependencyObject;
+            if (hitSource != null && IsInsideSpecialNode(hitSource))
+            {
+                return true;
+            }
+
+            var mouseDirect = Mouse.DirectlyOver as DependencyObject;
+            if (mouseDirect != null && IsInsideSpecialNode(mouseDirect))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsInsideSpecialNode(DependencyObject? element)
+        {
+            var current = element;
+            int depth = 0;
+            while (current != null && depth < 40)
+            {
+                depth++;
+                if (current is CefSharp.Wpf.ChromiumWebBrowser ||
+                    current is FlowMy.Views.NodeControls.WebNodeControl ||
+                    current is FlowMy.Views.NodeControls.HtmlUiNodeControl ||
+                    current is FlowMy.Views.NodeControls.ImageProcessingNodeContentControl ||
+                    current is FlowMy.Views.NodeControls.ImageProcessingNodeControl ||
+                    current is FlowMy.Views.NodeControls.ImageEditorPanel ||
+                    current is FlowMy.Views.NodeControls.VideoProcessingNodeContentControl ||
+                    current is FlowMy.Views.NodeControls.VideoProcessingNodeControl)
+                {
+                    return true;
+                }
+
+                var typeName = current.GetType().Name;
+                if (typeName.Contains("WebNodeControl", StringComparison.OrdinalIgnoreCase) ||
+                    typeName.Contains("HtmlUiNodeControl", StringComparison.OrdinalIgnoreCase) ||
+                    typeName.Contains("ImageProcessing", StringComparison.OrdinalIgnoreCase) ||
+                    typeName.Contains("VideoProcessing", StringComparison.OrdinalIgnoreCase) ||
+                    typeName.Contains("ChromiumWebBrowser", StringComparison.OrdinalIgnoreCase) ||
+                    typeName.Contains("ImageEditor", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                DependencyObject? parent = null;
+                try
+                {
+                    parent = VisualTreeHelper.GetParent(current);
+                }
+                catch { }
+
+                if (parent == null && current is FrameworkElement fe)
+                {
+                    parent = fe.Parent;
+                }
+
+                current = parent;
+            }
+            return false;
+        }
+
         private void WorkflowEditorWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             // Do not intercept keystrokes if focused inside a TextBox or ComboBox to avoid breaking typing!
             if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox || 
                 Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+            {
+                return;
+            }
+
+            // Loại trừ phím tắt của Window khi đang thao tác trong WebNode, HtmlUiNode, ImageNode, VideoNode
+            if (IsInteractingWithSpecialNode(e))
             {
                 return;
             }
@@ -1893,6 +1969,11 @@ namespace FlowMy.Views
             // Do not intercept keystrokes if focused inside a TextBox or ComboBox to avoid breaking typing!
             if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox || 
                 Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+            {
+                return;
+            }
+
+            if (IsInteractingWithSpecialNode(e))
             {
                 return;
             }
