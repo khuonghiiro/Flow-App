@@ -3673,29 +3673,14 @@ namespace FlowMy.Views.Overlays
 
         private void SetButtonsLoading(bool isLoading)
         {
-            _isAiLoading = isLoading;
-            if (isLoading)
-            {
-                BtnSend.IsEnabled = false;
-                if (BtnSendWv != null) BtnSendWv.IsEnabled = false;
-                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = false;
-                BtnCancel.IsEnabled = false;
-                if (BtnApply != null) BtnApply.IsEnabled = false;
+            _isAiLoading = false;
+            BtnCancel.IsEnabled = true;
+            if (BtnApply != null) BtnApply.IsEnabled = true;
+            UpdateSendButtonsState();
 
-                BtnSend.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-                if (BtnSendWv != null) BtnSendWv.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-                if (BtnSendWeb != null) BtnSendWeb.Content = new TextBlock { Text = "⏳", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            }
-            else
-            {
-                BtnCancel.IsEnabled = true;
-                if (BtnApply != null) BtnApply.IsEnabled = true;
-                UpdateSendButtonsState();
-
-                BtnSend.Content = CreatePlayIconPath();
-                if (BtnSendWv != null) BtnSendWv.Content = CreatePlayIconPath();
-                if (BtnSendWeb != null) BtnSendWeb.Content = CreatePlayIconPath();
-            }
+            BtnSend.Content = CreatePlayIconPath();
+            if (BtnSendWv != null) BtnSendWv.Content = CreatePlayIconPath();
+            if (BtnSendWeb != null) BtnSendWeb.Content = CreatePlayIconPath();
         }
 
         private System.Windows.Shapes.Path CreatePlayIconPath()
@@ -3735,22 +3720,9 @@ namespace FlowMy.Views.Overlays
 
         private void UpdateSendButtonsState()
         {
-            if (_isAiLoading) return;
-
-            bool hasText = TxtPrompt != null && !string.IsNullOrWhiteSpace(TxtPrompt.Text);
-
-            if (_sendModeOn)
-            {
-                BtnSend.IsEnabled = hasText;
-                if (BtnSendWv != null) BtnSendWv.IsEnabled = hasText;
-                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = hasText;
-            }
-            else
-            {
-                BtnSend.IsEnabled = false;
-                if (BtnSendWv != null) BtnSendWv.IsEnabled = false;
-                if (BtnSendWeb != null) BtnSendWeb.IsEnabled = false;
-            }
+            BtnSend.IsEnabled = true;
+            if (BtnSendWv != null) BtnSendWv.IsEnabled = true;
+            if (BtnSendWeb != null) BtnSendWeb.IsEnabled = true;
         }
 
         private void ApplySendModeUi()

@@ -581,39 +581,23 @@ namespace FlowMy.ViewModels
         /// Refresh danh sách nodes có thể chọn cho JS Source ComboBox.
         /// ⚠️ CRITICAL: Collection riêng để tránh conflict với Input mappings ComboBox.
         /// </summary>
+        /// <summary>
+        /// Refresh danh sách nodes có thể chọn cho JS Source ComboBox.
+        /// ⚠️ CRITICAL: Collection riêng để tránh conflict với Input mappings ComboBox.
+        /// </summary>
         private void RefreshJsAvailableNodes()
         {
             var vm = _host.ViewModel;
             if (vm?.Nodes == null || vm.Connections == null) return;
 
-            // Build danh sách mới
-            var newOptions = new List<WorkflowDataSourceOption>();
+            var producerNodes = GetUpstreamProducerNodes(_webNode);
+            var newOptions = producerNodes.Select(n => CreateDataSourceOption(n)).ToList();
 
-            var inputPort = _webNode.Ports?.FirstOrDefault(p => p.IsInput);
-            var connectedNodeIds = vm.Connections
-                .Where(c => c.ToNode == _webNode && c.FromNode != null &&
-                            (inputPort == null || c.ToPort == inputPort || (c.ToPort != null && c.ToPort.IsInput)))
-                .Select(c => c.FromNode!.Id)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            // 1. Thêm các node có connection
-            foreach (var n in vm.Nodes)
-            {
-                if (ReferenceEquals(n, _webNode)) continue;
-                if (!connectedNodeIds.Contains(n.Id)) continue;
-
-                if (n is not InputNode && (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0))
-                    continue;
-
-                newOptions.Add(CreateDataSourceOption(n));
-            }
-
-            // 2. ⚠️ CRITICAL: Đảm bảo các JS source nodes cũng có trong danh sách
             var jsSourceNodeIds = (_webNode.JsSources ?? new List<WebJsSourceMapping>())
                 .Where(m => !string.IsNullOrWhiteSpace(m.SourceNodeId))
                 .Select(m => m.SourceNodeId!)
                 .Distinct(StringComparer.OrdinalIgnoreCase);
+
             foreach (var nodeId in jsSourceNodeIds)
             {
                 if (newOptions.Any(o => string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase)))
@@ -625,7 +609,6 @@ namespace FlowMy.ViewModels
                 }
             }
 
-            // 3. Replace collection một lần
             JsAvailableNodeOptions.Clear();
             foreach (var option in newOptions)
             {
@@ -677,80 +660,37 @@ namespace FlowMy.ViewModels
         protected override string GetDefaultTitle() => "Web";
 
         /// <summary>
-        /// Chỉ hiển thị các node đã kết nối đến port IN của Web node (không lấy node từ port OUT).
-        /// - Cho phép InputNode luôn xuất hiện nếu có connection, kể cả khi DynamicOutputs trống (backward compatible).
-        /// - ⚠️ CRITICAL: Đảm bảo các node đã được chọn trong InputMappings CÀ JsSourceNodeId cũng được thêm vào danh sách,
-        ///   ngay cả khi không có connection, để tránh ComboBox set SourceNodeId = null khi không tìm thấy item.
-        /// - ⚠️ CRITICAL: Build danh sách mới trước, rồi replace collection một lần để tránh ComboBox mất ItemsSource
-        ///   trong lúc Clear() → gây ra SelectedValue bị set null.
+        /// Chỉ hiển thị các node nằm phía trước (upstream) trong luồng kết nối của Web node.
+        /// Duyệt ngược chuỗi kết nối: A -> B -> C (Web) thì C hiển thị cả A và B.
         /// </summary>
         public void RefreshAvailableNodes()
         {
             var vm = _host.ViewModel;
             if (vm?.Nodes == null || vm.Connections == null) return;
 
-            // Build danh sách mới trước (không clear collection cũ ngay)
-            var newOptions = new List<WorkflowDataSourceOption>();
+            var producerNodes = GetUpstreamProducerNodes(_webNode);
+            var newOptions = producerNodes.Select(n => CreateDataSourceOption(n)).ToList();
 
-            var inputPort = _webNode.Ports?.FirstOrDefault(p => p.IsInput);
-            var connectedNodeIds = vm.Connections
-                .Where(c => c.ToNode == _webNode && c.FromNode != null &&
-                            (inputPort == null || c.ToPort == inputPort || (c.ToPort != null && c.ToPort.IsInput)))
-                .Select(c => c.FromNode!.Id)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            // 1. Thêm các node có connection vào WebNode
-            foreach (var n in vm.Nodes)
-            {
-                if (ReferenceEquals(n, _webNode)) continue;
-                if (!connectedNodeIds.Contains(n.Id)) continue;
-
-                // Với InputNode, luôn cho phép xuất hiện (DynamicOutputs có thể được build lại sau khi load workflow)
-                if (n is not InputNode && (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0))
-                    continue;
-
-                newOptions.Add(CreateDataSourceOption(n));
-            }
-
-            // 2. ⚠️ CRITICAL: Đảm bảo các node đã được chọn trong InputMappings cũng có trong danh sách
-            //    (ngay cả khi không có connection) để tránh ComboBox set SourceNodeId = null
             var mappedNodeIds = (_webNode.InputMappings ?? new List<WebInputMapping>())
                 .Where(m => !string.IsNullOrWhiteSpace(m.SourceNodeId))
                 .Select(m => m.SourceNodeId!)
+                .Concat((_webNode.JsSources ?? new List<WebJsSourceMapping>())
+                    .Where(j => !string.IsNullOrWhiteSpace(j.SourceNodeId))
+                    .Select(j => j.SourceNodeId!))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            // ✅ CRITICAL: Include JS source node ids as well (so JS combobox doesn't lose SelectedValue)
-            foreach (var js in _webNode.JsSources ?? new List<WebJsSourceMapping>())
-            {
-                if (!string.IsNullOrWhiteSpace(js.SourceNodeId) &&
-                    !mappedNodeIds.Any(id => string.Equals(id, js.SourceNodeId, StringComparison.OrdinalIgnoreCase)))
-                {
-                    mappedNodeIds.Add(js.SourceNodeId);
-                }
-            }
-
             foreach (var nodeId in mappedNodeIds)
             {
-                // Nếu đã có trong newOptions thì bỏ qua
-                if (newOptions.Any(o =>
-                        string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase)))
+                if (newOptions.Any(o => string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                // Tìm node tương ứng trong workflow
-                var node = vm.Nodes.FirstOrDefault(n =>
-                    string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+                var node = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+                if (node == null) continue;
 
-                if (node == null)
-                    continue; // node thực sự không còn tồn tại
-
-                // Thêm node vào danh sách (ngay cả khi không có connection)
                 newOptions.Add(CreateDataSourceOption(node));
             }
 
-            // 3. ⚠️ CRITICAL: Replace collection một lần để tránh ComboBox mất ItemsSource trong lúc Clear()
-            //    Sử dụng Clear() + Add() thay vì tạo collection mới để giữ reference
             AvailableNodeOptions.Clear();
             foreach (var option in newOptions)
             {

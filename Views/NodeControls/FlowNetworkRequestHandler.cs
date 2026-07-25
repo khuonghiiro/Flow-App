@@ -183,7 +183,8 @@ namespace FlowMy.Views.NodeControls
                             postData,
                             bodyText,
                             response != null ? (int)response.StatusCode : 200,
-                            targetExecutionId);
+                            targetExecutionId,
+                            _host);
 
                         if (_host != null)
                         {

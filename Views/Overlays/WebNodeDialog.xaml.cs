@@ -745,7 +745,8 @@ namespace FlowMy.Views.Overlays
             waitCheckBox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.WaitForCompletion))
             {
                 Source = output,
-                Mode = System.Windows.Data.BindingMode.TwoWay
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
             });
             Grid.SetColumn(waitCheckBox, 0);
             waitRowGrid.Children.Add(waitCheckBox);
@@ -810,9 +811,119 @@ namespace FlowMy.Views.Overlays
             isListCheckBox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.IsList))
             {
                 Source = output,
-                Mode = System.Windows.Data.BindingMode.TwoWay
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
             });
             stack.Children.Add(isListCheckBox);
+
+            // Grid 3 cột cấu hình số lượng cần lấy khi IsList = true:
+            // Cột 1: Textbox nhập số cố định (ListTargetCount)
+            // Cột 2: ComboBox chọn Node nguồn (ListTargetNodeId)
+            // Cột 3: ComboBox chọn Key nguồn (ListTargetOutputKey)
+            var listTargetGrid = new Grid { Margin = new Thickness(0, 4, 0, 4) };
+            listTargetGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            listTargetGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            listTargetGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            listTargetGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            listTargetGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var listCountTb = new TextBox
+            {
+                Height = 28,
+                Style = Application.Current.TryFindResource("BaseTextBoxV2") as Style,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                ToolTip = "Số lượng item tối đa cần gom (Mặc định: 1 nếu không chọn Node+Key nguồn)"
+            };
+            listCountTb.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.ListTargetCount))
+            {
+                Source = output,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
+            Grid.SetColumn(listCountTb, 0);
+            listTargetGrid.Children.Add(listCountTb);
+
+            var keyCombo = new ComboBox
+            {
+                Height = 28,
+                Style = Application.Current.TryFindResource("BaseComboBox") as Style,
+                DisplayMemberPath = "DisplayName",
+                SelectedValuePath = "Key",
+                ToolTip = "Chọn Output Key của Node nguồn chứa số lượng cần gom"
+            };
+            keyCombo.SetBinding(ComboBox.SelectedValueProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.ListTargetOutputKey))
+            {
+                Source = output,
+                Mode = System.Windows.Data.BindingMode.TwoWay
+            });
+            Grid.SetColumn(keyCombo, 4);
+            listTargetGrid.Children.Add(keyCombo);
+
+            void PopulateOutputKeysForTargetNode(string? nodeId)
+            {
+                var currentVm = ViewModel as WebNodeDialogViewModel;
+                if (string.IsNullOrWhiteSpace(nodeId) || currentVm == null)
+                {
+                    keyCombo.ItemsSource = null;
+                    return;
+                }
+                var keys = currentVm.GetOutputKeysForNode(nodeId);
+                keyCombo.ItemsSource = keys;
+            }
+
+            var nodeSearchCombo = new FlowMy.Controls.NodeSearchComboBoxUserControl
+            {
+                Height = 28,
+                DisplayMemberPath = nameof(WorkflowDataSourceOption.Title),
+                SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
+                ToolTip = "Chọn Node nguồn để đọc động số lượng cần gom lúc runtime"
+            };
+            var webVm = ViewModel as WebNodeDialogViewModel;
+            if (webVm != null)
+            {
+                nodeSearchCombo.ItemsSource = webVm.AvailableNodeOptions;
+            }
+            if (!string.IsNullOrEmpty(output.ListTargetNodeId))
+            {
+                nodeSearchCombo.SelectedValue = output.ListTargetNodeId;
+            }
+            var nodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                FlowMy.Controls.NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(FlowMy.Controls.NodeSearchComboBoxUserControl));
+            nodeDp?.AddValueChanged(nodeSearchCombo, (s, e) =>
+            {
+                if (nodeSearchCombo.SelectedValue is string selectedNodeId)
+                {
+                    output.ListTargetNodeId = selectedNodeId;
+                    PopulateOutputKeysForTargetNode(selectedNodeId);
+                }
+                else
+                {
+                    output.ListTargetNodeId = null;
+                    keyCombo.ItemsSource = null;
+                }
+            });
+            Grid.SetColumn(nodeSearchCombo, 2);
+            listTargetGrid.Children.Add(nodeSearchCombo);
+
+            if (!string.IsNullOrWhiteSpace(output.ListTargetNodeId))
+            {
+                PopulateOutputKeysForTargetNode(output.ListTargetNodeId);
+            }
+
+            void UpdateListTargetGridVisibility()
+            {
+                listTargetGrid.Visibility = output.IsList ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            output.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(WebResponseOutput.IsList))
+                    UpdateListTargetGridVisibility();
+            };
+            UpdateListTargetGridVisibility();
+
+            stack.Children.Add(listTargetGrid);
 
             // Border bao ngoài mỗi output, có margin bottom để tạo khoảng cách với output kế tiếp
             var border = new Border

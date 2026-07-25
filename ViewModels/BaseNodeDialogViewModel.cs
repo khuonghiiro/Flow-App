@@ -1104,6 +1104,85 @@ namespace FlowMy.ViewModels
                 target.Add(CreateDataSourceOption(n));
             }
         }
+
+        /// <summary>
+        /// Tìm và trả về tất cả các node nằm PHÍA TRƯỚC (upstream) của targetNode trong luồng thực thi,
+        /// ngoại trừ chính targetNode và dừng lại ở các ListOutNode barrier nếu có.
+        /// Cho phép duyệt qua tất cả các nấc trung gian (ví dụ: A -> B -> C -> D thì C thấy cả A và B).
+        /// </summary>
+        public List<WorkflowNode> GetUpstreamProducerNodes(WorkflowNode targetNode)
+        {
+            var vm = _host.ViewModel;
+            if (vm?.Nodes == null || vm.Connections == null) return new List<WorkflowNode>();
+
+            var connections = vm.Connections;
+            var upstream = new HashSet<WorkflowNode>();
+            var listOutBarriers = new HashSet<ListOutNode>();
+            var stack = new Stack<WorkflowNode>();
+            stack.Push(targetNode);
+            var parentLoops = new HashSet<LoopNode>();
+
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                var incoming = connections
+                    .Where(c => c.ToNode == current && c.FromNode != null)
+                    .Where(c => !(current is LoopBodyNode &&
+                                  c.ToPort != null &&
+                                  string.Equals(c.ToPort.Id, "LoopBodyRight", StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                foreach (var conn in incoming)
+                {
+                    var src = conn.FromNode;
+                    if (src == null) continue;
+
+                    if (src is ListOutNode listOutNode)
+                    {
+                        if (upstream.Add(src)) listOutBarriers.Add(listOutNode);
+                        continue;
+                    }
+
+                    if (src is LoopBodyNode body &&
+                        conn.FromPort != null &&
+                        string.Equals(conn.FromPort.Id, "LoopBodyLeft", StringComparison.OrdinalIgnoreCase) &&
+                        body.ParentLoopNode != null)
+                    {
+                        parentLoops.Add(body.ParentLoopNode);
+                    }
+
+                    if (upstream.Add(src)) stack.Push(src);
+                }
+            }
+
+            var producerNodes = upstream
+                .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
+                .ToList();
+
+            if (listOutBarriers.Count > 0)
+            {
+                producerNodes = producerNodes.Where(n => n is ListOutNode).ToList();
+            }
+
+            foreach (var loop in parentLoops)
+            {
+                if (loop.DynamicOutputs != null && loop.DynamicOutputs.Count > 0 && !producerNodes.Contains(loop) && listOutBarriers.Count == 0)
+                    producerNodes.Add(loop);
+            }
+
+            producerNodes = producerNodes.Where(n => !ReferenceEquals(n, targetNode)).ToList();
+
+            foreach (var n in upstream)
+            {
+                if (ReferenceEquals(n, targetNode)) continue;
+                if (n is not InputNode) continue;
+                if (producerNodes.Any(p => string.Equals(p.Id, n.Id, StringComparison.OrdinalIgnoreCase))) continue;
+                if (listOutBarriers.Count > 0) continue;
+                producerNodes.Add(n);
+            }
+
+            return producerNodes;
+        }
     }
 }
 

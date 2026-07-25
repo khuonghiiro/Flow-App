@@ -249,14 +249,35 @@ namespace FlowMy.ViewModels
 
         public void RefreshAvailableNodes()
         {
-            AvailableNodeOptions.Clear();
-            if (_host.ViewModel?.Nodes == null) return;
-            foreach (var n in _host.ViewModel.Nodes)
+            var vm = _host.ViewModel;
+            if (vm?.Nodes == null) return;
+
+            var producerNodes = GetUpstreamProducerNodes(_fd);
+            var newOptions = producerNodes.Select(n => CreateDataSourceOption(n)).ToList();
+
+            var mappedNodeIds = new List<string?>
             {
-                if (string.Equals(n.Id, _fd.Id, StringComparison.OrdinalIgnoreCase)) continue;
-                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-                AvailableNodeOptions.Add(CreateDataSourceOption(n));
+                UrlSourceNodeId, CurlSourceNodeId, FolderSourceNodeId, FileNameSourceNodeId
+            }.Concat(AdditionalSaveRows.Select(r => r.SourceNodeId))
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var nodeId in mappedNodeIds)
+            {
+                if (newOptions.Any(o => string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                var n = vm.Nodes.FirstOrDefault(x => string.Equals(x.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+                if (n != null)
+                    newOptions.Add(CreateDataSourceOption(n));
             }
+
+            AvailableNodeOptions.Clear();
+            foreach (var option in newOptions)
+            {
+                AvailableNodeOptions.Add(option);
+            }
+
             foreach (var row in AdditionalSaveRows)
                 RefreshOutputKeyOptionsFor(row);
         }

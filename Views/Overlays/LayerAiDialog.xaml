@@ -431,7 +431,7 @@
                                     <TextBox x:Name="TxtPrompt" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                              Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
                                              VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
-                                    <Button x:Name="BtnSend" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="False">
+                                    <Button x:Name="BtnSend" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="True">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Background" Value="#4fffb0"/>
@@ -495,7 +495,7 @@
                                         <TextBox x:Name="TxtPromptWv" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                                  Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
-                                        <Button x:Name="BtnSendWv" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="False">
+                                        <Button x:Name="BtnSendWv" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="True">
                                             <Button.Style>
                                                 <Style TargetType="Button">
                                                     <Setter Property="Background" Value="#4fffb0"/>

@@ -759,13 +759,20 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Tìm tất cả Start nodes trong workflow
+        /// Tìm tất cả Start nodes thích hợp để khởi chạy workflow.
+        /// Ưu tiên các node có RunMode = MainFlow. Nếu không có MainFlow nào, fallback lấy các Start node khác ngoại trừ AutoScheduled.
         /// </summary>
         public List<WorkflowNode> FindStartNodes(IEnumerable<WorkflowNode> nodes)
         {
-            return nodes
+            var nonAutoStarts = nodes
                 .Where(n => n.Type == NodeType.Start && n.RunMode != FlowRunMode.AutoScheduled)
                 .ToList();
+
+            var mainStarts = nonAutoStarts
+                .Where(n => n.RunMode == FlowRunMode.MainFlow)
+                .ToList();
+
+            return mainStarts.Count > 0 ? mainStarts : nonAutoStarts;
         }
 
         /// <summary>

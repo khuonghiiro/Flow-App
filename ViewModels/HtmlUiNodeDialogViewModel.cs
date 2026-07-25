@@ -490,24 +490,32 @@ namespace FlowMy.ViewModels
 
         public void RefreshAvailableNodes()
         {
-            AvailableNodeOptions.Clear();
             var vm = _host.ViewModel;
             if (vm?.Nodes == null || vm.Connections == null) return;
 
-            var inputPort = _node.Ports?.FirstOrDefault(p => p.IsInput);
-            var connectedNodeIds = vm.Connections
-                .Where(c => c.ToNode == _node && c.FromNode != null &&
-                            (inputPort == null || c.ToPort == inputPort || (c.ToPort != null && c.ToPort.IsInput)))
-                .Select(c => c.FromNode!.Id)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var producerNodes = GetUpstreamProducerNodes(_node);
+            var newOptions = producerNodes.Select(n => CreateDataSourceOption(n)).ToList();
 
-            foreach (var n in vm.Nodes)
+            var mappedNodeIds = (_node.InputMappings ?? new List<CodeInputMapping>())
+                .Where(m => !string.IsNullOrWhiteSpace(m.SourceNodeId))
+                .Select(m => m.SourceNodeId!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var nodeId in mappedNodeIds)
             {
-                if (ReferenceEquals(n, _node)) continue;
-                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-                if (!connectedNodeIds.Contains(n.Id)) continue;
-                AvailableNodeOptions.Add(CreateDataSourceOption(n));
+                if (newOptions.Any(o => string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                var n = vm.Nodes.FirstOrDefault(x => string.Equals(x.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+                if (n != null)
+                    newOptions.Add(CreateDataSourceOption(n));
+            }
+
+            AvailableNodeOptions.Clear();
+            foreach (var option in newOptions)
+            {
+                AvailableNodeOptions.Add(option);
             }
         }
 

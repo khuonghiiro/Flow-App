@@ -111,7 +111,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
                     .ToList() ?? new List<WebResponseOutput>();
 
-                if (waitKeys.Count > 0 && effectiveWaitTimeoutMs != 0)
+                if (waitKeys.Count > 0)
                 {
                     using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
                     var waitTasks = new List<Task>();
@@ -120,11 +120,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         var keyTask = executionRun.GetWaitTaskForKey(keyConfig.Key);
                         var timeoutMs = keyConfig.TimeoutMs;
+                        var effectiveKeyTimeoutMs = timeoutMs > 0 ? timeoutMs : effectiveWaitTimeoutMs;
 
-                        if (timeoutMs > 0)
+                        if (effectiveKeyTimeoutMs > 0)
                         {
-                            // Timeout riêng cho key này
-                            var keyTimeoutTask = Task.WhenAny(keyTask, Task.Delay(timeoutMs, waitCts.Token));
+                            // Timeout riêng cho key này (hoặc fallback theo effectiveWaitTimeoutMs)
+                            var keyTimeoutTask = Task.WhenAny(keyTask, Task.Delay(effectiveKeyTimeoutMs, waitCts.Token));
                             waitTasks.Add(keyTimeoutTask);
                         }
                         else
@@ -136,7 +137,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                     try
                     {
-                        Debug.WriteLine($"[WebNodeExecutor] Awaiting {waitTasks.Count} per-key output completion tasks...");
+                        var keyNames = string.Join(", ", waitKeys.Select(k => $"'{k.Key}'"));
+                        Debug.WriteLine($"[WebNodeExecutor] Awaiting {waitTasks.Count} checked key output completion tasks: {keyNames}");
                         await Task.WhenAll(waitTasks);
                     }
                     catch (OperationCanceledException)
@@ -146,6 +148,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     catch (Exception waitEx)
                     {
                         Debug.WriteLine($"[WebNodeExecutor] Per-key wait error: {waitEx.Message}");
+                    }
+                    finally
+                    {
+                        try { waitCts.Cancel(); } catch { }
                     }
                 }
 
@@ -200,7 +206,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     foreach (var kv in sourceOutputs)
                     {
                         if (string.IsNullOrWhiteSpace(kv.Key)) continue;
-                        service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, kv.Key.Trim(), kv.Value ?? string.Empty);
+                        var key = kv.Key.Trim();
+                        var val = kv.Value ?? string.Empty;
+
+                        service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, key, val);
+
+                        if (webNode.DynamicOutputs != null)
+                        {
+                            var dyn = webNode.DynamicOutputs.FirstOrDefault(o =>
+                                string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                            if (dyn != null) dyn.UserValueOverride = val;
+                        }
                     }
                 }
             }
