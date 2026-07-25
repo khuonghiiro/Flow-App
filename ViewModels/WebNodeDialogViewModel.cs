@@ -271,6 +271,15 @@ namespace FlowMy.ViewModels
             }
         }
 
+        partial void OnSyncLiveOutputsToResultsChanged(bool value)
+        {
+            _webNode.SyncLiveOutputsToResults = value;
+            if (value && !string.IsNullOrWhiteSpace(_webNode.LastCookie))
+            {
+                _webNode.UpdateResponseOutputValue("cookie", _webNode.LastCookie, isList: false);
+            }
+        }
+
         public WebNodeDialogViewModel(WebNode node, IWorkflowEditorHost host)
             : base(node, host)
         {
@@ -279,7 +288,11 @@ namespace FlowMy.ViewModels
             ExtractRequestMethod = _webNode.ExtractRequestMethod ?? "GET";
             ExtractStatusCode = _webNode.ExtractStatusCode ?? "200";
             SyncLiveOutputsToResults = _webNode.SyncLiveOutputsToResults;
-            CookieText = _webNode.CookieText;
+            CookieText = !string.IsNullOrWhiteSpace(_webNode.CookieText) ? _webNode.CookieText : _webNode.LastCookie;
+            if (!string.IsNullOrWhiteSpace(_webNode.LastCookie))
+            {
+                _webNode.UpdateResponseOutputValue("cookie", _webNode.LastCookie, isList: false);
+            }
             ResponseOutputsWaitTimeoutMs = _webNode.ResponseOutputsWaitTimeoutMs;
             ResponseOutputsWaitMode = _webNode.ResponseOutputsWaitMode;
             BlockAllRequestsAfterFirstMatch = _webNode.BlockAllRequestsAfterFirstMatch;

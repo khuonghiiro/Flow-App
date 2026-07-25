@@ -2270,7 +2270,9 @@ if (window.__elementInspector) {
                     if (isDisposed || !border.IsLoaded)
                         return;
 
-                    webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node);
+                    webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node, host);
+                    webViewForInit.KeyboardHandler = new FlowKeyboardHandler();
+                    webViewForInit.MenuHandler = new FlowContextMenuHandler();
                     EnsureWebViewAndNavigate();
 
                     if (!string.IsNullOrWhiteSpace(pendingJsQueue))

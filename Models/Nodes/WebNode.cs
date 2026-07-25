@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Controls;
@@ -1044,6 +1045,8 @@ namespace FlowMy.Models.Nodes
                     }
                 }
             }
+            OnPropertyChanged(nameof(ResponseOutputValues));
+            OnPropertyChanged(nameof(DynamicOutputs));
         }
 
         public void AppendResponseOutputValue(string key, string value)
@@ -1155,7 +1158,19 @@ namespace FlowMy.Models.Nodes
             string bodyText,
             int statusCode)
         {
-            if (ResponseOutputs == null || ResponseOutputs.Count == 0) return;
+            ProcessInterceptedNetworkResponse(url, method, headers, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), postData, bodyText, statusCode);
+        }
+
+        public void ProcessInterceptedNetworkResponse(
+            string url,
+            string method,
+            Dictionary<string, string> requestHeaders,
+            Dictionary<string, string> responseHeaders,
+            string? postData,
+            string bodyText,
+            int statusCode)
+        {
+            if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
 
             foreach (var ro in ResponseOutputs)
             {
@@ -1171,12 +1186,107 @@ namespace FlowMy.Models.Nodes
                     continue;
                 }
 
-                if (url.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                if (UrlMatchesPattern(url, pattern))
                 {
-                    string val = bodyText;
+                    string val = ExtractValueByOutputType(ro.ExtractType, url, method, requestHeaders, responseHeaders, postData, bodyText);
                     UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null);
                 }
             }
+        }
+
+        private static bool UrlMatchesPattern(string url, string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(pattern)) return false;
+            pattern = pattern.Trim();
+
+            // 1. Direct contains check
+            if (url.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            // 2. Variable template matching like https://example.com/api/{id}
+            if (pattern.Contains("{") && pattern.Contains("}"))
+            {
+                try
+                {
+                    var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+                        .Replace(@"\{", "(?<")
+                        .Replace(@"\}", @">[^\/\?\#]+)") + "$";
+                    regexPattern = regexPattern.Replace(@"\*", ".*");
+                    if (System.Text.RegularExpressions.Regex.IsMatch(url, regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                        return true;
+                }
+                catch { }
+            }
+
+            return false;
+        }
+
+        private static string ExtractValueByOutputType(
+            string? extractType,
+            string url,
+            string method,
+            Dictionary<string, string> requestHeaders,
+            Dictionary<string, string> responseHeaders,
+            string? postData,
+            string bodyText)
+        {
+            var type = extractType?.Trim() ?? "Response";
+
+            if (string.Equals(type, "Headers", StringComparison.OrdinalIgnoreCase))
+            {
+                return responseHeaders != null && responseHeaders.Count > 0
+                    ? System.Text.Json.JsonSerializer.Serialize(responseHeaders)
+                    : string.Empty;
+            }
+            if (string.Equals(type, "RequestHeaders", StringComparison.OrdinalIgnoreCase))
+            {
+                return requestHeaders != null && requestHeaders.Count > 0
+                    ? System.Text.Json.JsonSerializer.Serialize(requestHeaders)
+                    : string.Empty;
+            }
+            if (string.Equals(type, "Params", StringComparison.OrdinalIgnoreCase))
+            {
+                int qIdx = url.IndexOf('?');
+                return (qIdx >= 0 && qIdx < url.Length - 1) ? url.Substring(qIdx + 1) : string.Empty;
+            }
+            if (string.Equals(type, "Payload", StringComparison.OrdinalIgnoreCase))
+            {
+                return postData ?? string.Empty;
+            }
+            if (string.Equals(type, "CurlCmd", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(type, "CurlBash", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(type, "Curl", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(type, "cURL", StringComparison.OrdinalIgnoreCase))
+            {
+                var sb = new StringBuilder();
+                sb.Append($"curl \"{url}\"");
+
+                if (!string.IsNullOrWhiteSpace(method) && !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.Append($" -X {method.ToUpperInvariant()}");
+                }
+
+                if (requestHeaders != null)
+                {
+                    foreach (var kvp in requestHeaders)
+                    {
+                        if (string.Equals(kvp.Key, "Host", StringComparison.OrdinalIgnoreCase)) continue;
+                        var safeVal = kvp.Value.Replace("\"", "\\\"");
+                        sb.Append($" -H \"{kvp.Key}: {safeVal}\"");
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(postData))
+                {
+                    var safeData = postData.Replace("\"", "\\\"").Replace("\r\n", "\\n").Replace("\n", "\\n");
+                    sb.Append($" --data-raw \"{safeData}\"");
+                }
+
+                return sb.ToString();
+            }
+
+            // Default: Response (body)
+            return bodyText ?? string.Empty;
         }
 
         #endregion

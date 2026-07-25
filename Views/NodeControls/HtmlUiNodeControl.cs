@@ -1742,7 +1742,9 @@ namespace FlowMy.Views.NodeControls
                         {
                             if (isDisposed) return;
 
-                            wvInit.RequestHandler = new FlowNetworkRequestHandler(node);
+                            wvInit.RequestHandler = new FlowNetworkRequestHandler(node, host);
+                            wvInit.KeyboardHandler = new FlowKeyboardHandler();
+                            wvInit.MenuHandler = new FlowContextMenuHandler();
                             AttachProcessFailedHandler(wvInit, isTab1: true);
                             await WebCookiePortableBridge.TryConsumeAndApplyAsync(Cef.GetGlobalCookieManager(), "Shared");
                             wvInit.FrameLoadStart += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Visible), DispatcherPriority.Normal);
@@ -2126,7 +2128,9 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (isDisposed || !border.IsLoaded) return;
 
-                    webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node);
+                    webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node, host);
+                    webViewForInit.KeyboardHandler = new FlowKeyboardHandler();
+                    webViewForInit.MenuHandler = new FlowContextMenuHandler();
                     AttachProcessFailedHandler(webViewForInit, isTab1: false);
 
                     webViewForInit.JavascriptMessageReceived += async (_, args) =>
