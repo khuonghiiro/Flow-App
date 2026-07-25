@@ -280,6 +280,14 @@ namespace FlowMy.Services.Interaction
                     }
                 }
 
+                // Nếu gặp ChromiumWebBrowser hoặc Web/HTML Node UI nội bộ -> Cho phép web tự scroll, không zoom canvas
+                if (element is CefSharp.Wpf.ChromiumWebBrowser ||
+                    element is FlowMy.Views.NodeControls.WebNodeControl ||
+                    element is FlowMy.Views.NodeControls.HtmlUiNodeControl)
+                {
+                    return true;
+                }
+
                 // Lấy parent - xử lý cả Visual và non-Visual elements (như Run, Inline, etc.)
                 element = GetParentSafe(element);
             }

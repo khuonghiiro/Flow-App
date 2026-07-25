@@ -1165,16 +1165,32 @@ namespace FlowMy.Views.NodeControls
             border.MouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
             webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
             webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
-
-            // Tối ưu WebView2 cho GPU: disable software rendering, enable hardware acceleration
-            // WebView2 mặc định đã dùng GPU nhưng có thể tối ưu thêm
-            if (GpuDetectionHelper.IsGpuAvailable)
+            webView.PreviewKeyDown += (s, e) =>
             {
-                // Áp dụng GPU-friendly render options cho WebView2 container
-                RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
-                RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
-                webView.CacheMode = null; // Tránh ghosting
-            }
+                if (e.Key == System.Windows.Input.Key.F12)
+                {
+                    e.Handled = true;
+                    FlowNetworkRequestHandler.ToggleDevTools(webView, webView.GetBrowser());
+                }
+            };
+
+            // Tối ưu CefSharp ChromiumWebBrowser: sắc nét 100%, không bị nhoè mờ dù bật hay tắt GPU
+            RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.LowQuality);
+            RenderOptions.SetEdgeMode(webView, EdgeMode.Unspecified);
+            webView.UseLayoutRounding = true;
+            webView.SnapsToDevicePixels = true;
+            webView.CacheMode = null; // Tránh ghosting
+
+            // Đồng bộ kích thước web UI theo thời gian thực khi co dãn node
+            border.SizeChanged += (s, e) =>
+            {
+                if (webView != null)
+                {
+                    webView.InvalidateMeasure();
+                    webView.InvalidateArrange();
+                    webView.InvalidateVisual();
+                }
+            };
 
             // Đồng bộ WebView2 (HwndHost) với node: khi zoom hoặc pan canvas ép WebView2 cập nhật vị trí theo thời gian thực
             void SyncWebViewPosition()
@@ -1229,16 +1245,19 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (webView == null) return;
 
-                    var script = $@"
-                        (function() {{
-                            document.body.style.zoom = '{zoomFactor.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
-                            if (!document.body.style.zoom) {{
-                                document.body.style.transform = 'scale({zoomFactor.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
-                                document.body.style.transformOrigin = 'top left';
-                            }}
-                        }})();
-                    ";
-                    webView.EvaluateScriptAsync(script);
+                    if (webView.CanExecuteJavascriptInMainFrame)
+                    {
+                        var script = $@"
+                            (function() {{
+                                document.body.style.zoom = '{zoomFactor.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
+                                if (!document.body.style.zoom) {{
+                                    document.body.style.transform = 'scale({zoomFactor.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
+                                    document.body.style.transformOrigin = 'top left';
+                                }}
+                            }})();
+                        ";
+                        webView.EvaluateScriptAsync(script);
+                    }
                     _webViewZoomLevels[border] = zoomFactor;
                 }
                 catch (Exception ex)
@@ -1306,18 +1325,20 @@ namespace FlowMy.Views.NodeControls
                         }
                     }
                     
-                    // Set zoom qua CSS
-                    var script = $@"
-                        (function() {{
-                            document.body.style.zoom = '{webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
-                            if (!document.body.style.zoom) {{
-                                // Fallback: dùng transform scale nếu zoom không được hỗ trợ
-                                document.body.style.transform = 'scale({webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
-                                document.body.style.transformOrigin = 'top left';
-                            }}
-                        }})();
-                    ";
-                    webView.EvaluateScriptAsync(script);
+                    if (webView.CanExecuteJavascriptInMainFrame)
+                    {
+                        var script = $@"
+                            (function() {{
+                                document.body.style.zoom = '{webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
+                                if (!document.body.style.zoom) {{
+                                    // Fallback: dùng transform scale nếu zoom không được hỗ trợ
+                                    document.body.style.transform = 'scale({webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
+                                    document.body.style.transformOrigin = 'top left';
+                                }}
+                            }})();
+                        ";
+                        webView.EvaluateScriptAsync(script);
+                    }
 
                     // Cập nhật cache zoom
                     _webViewZoomLevels[border] = webViewZoom;
@@ -2273,6 +2294,26 @@ if (window.__elementInspector) {
                     webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node, host);
                     webViewForInit.KeyboardHandler = new FlowKeyboardHandler();
                     webViewForInit.MenuHandler = new FlowContextMenuHandler();
+
+                    webViewForInit.MouseEnter += (sf, ef) =>
+                    {
+                        try { webViewForInit.Focus(); } catch { }
+                    };
+
+                    webViewForInit.PreviewMouseWheel += (sf, ef) =>
+                    {
+                        if (System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control))
+                        {
+                            ef.Handled = true;
+                            try { webViewForInit.ZoomLevel += ef.Delta > 0 ? 0.1 : -0.1; } catch { }
+                        }
+                    };
+
+                    webViewForInit.MouseWheel += (sf, ef) =>
+                    {
+                        // Stop mouse wheel bubbling to parent WPF canvas after CefSharp has scrolled web page
+                        ef.Handled = true;
+                    };
                     EnsureWebViewAndNavigate();
 
                     if (!string.IsNullOrWhiteSpace(pendingJsQueue))
@@ -2372,12 +2413,11 @@ if (window.__elementInspector) {
                 webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
                 webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
 
-                if (GpuDetectionHelper.IsGpuAvailable)
-                {
-                    RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
-                    RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
-                    webView.CacheMode = null; // Tránh ghosting
-                }
+                RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.LowQuality);
+                RenderOptions.SetEdgeMode(webView, EdgeMode.Unspecified);
+                webView.UseLayoutRounding = true;
+                webView.SnapsToDevicePixels = true;
+                webView.CacheMode = null;
 
                 webView.Loaded += loadedHandler;
             };

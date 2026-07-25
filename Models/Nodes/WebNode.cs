@@ -1194,7 +1194,56 @@ namespace FlowMy.Models.Nodes
             }
         }
 
-        private static bool UrlMatchesPattern(string url, string pattern)
+        public bool ShouldBlockRequest(string url, string method)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+
+            if (BlockAllRequestsAfterFirstMatch && HasTriggeredBlockingChain)
+            {
+                return true;
+            }
+
+            if (BlockingRules == null || BlockingRules.Count == 0) return false;
+
+            foreach (var rule in BlockingRules)
+            {
+                if (rule == null) continue;
+
+                if (!string.IsNullOrWhiteSpace(rule.UrlPattern) &&
+                    UrlMatchesPattern(url, rule.UrlPattern) &&
+                    MethodMatches(method, rule.Method))
+                {
+                    HasTriggeredBlockingChain = true;
+                    rule.HasTriggeredParentInCurrentRun = true;
+                    return true;
+                }
+
+                if (rule.ChildRules != null && rule.ChildRules.Count > 0)
+                {
+                    foreach (var child in rule.ChildRules)
+                    {
+                        if (child != null && !string.IsNullOrWhiteSpace(child.UrlPattern) &&
+                            UrlMatchesPattern(url, child.UrlPattern) &&
+                            MethodMatches(method, child.Method))
+                        {
+                            HasTriggeredBlockingChain = true;
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool MethodMatches(string requestMethod, string? ruleMethod)
+        {
+            if (string.IsNullOrWhiteSpace(ruleMethod) || string.Equals(ruleMethod, "All", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return string.Equals(requestMethod, ruleMethod, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool UrlMatchesPattern(string url, string pattern)
         {
             if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(pattern)) return false;
             pattern = pattern.Trim();

@@ -1239,12 +1239,30 @@ namespace FlowMy.Views.NodeControls
             }
 
 
-            if (GpuDetectionHelper.IsGpuAvailable)
+            webView.PreviewKeyDown += (s, e) =>
             {
-                RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.Unspecified);
-                RenderOptions.SetCachingHint(webView, CachingHint.Unspecified);
-                webView.CacheMode = null;
-            }
+                if (e.Key == System.Windows.Input.Key.F12)
+                {
+                    e.Handled = true;
+                    FlowNetworkRequestHandler.ToggleDevTools(webView, webView.GetBrowser());
+                }
+            };
+
+            RenderOptions.SetBitmapScalingMode(webView, BitmapScalingMode.LowQuality);
+            RenderOptions.SetEdgeMode(webView, EdgeMode.Unspecified);
+            webView.UseLayoutRounding = true;
+            webView.SnapsToDevicePixels = true;
+            webView.CacheMode = null;
+
+            border.SizeChanged += (s, e) =>
+            {
+                if (webView != null)
+                {
+                    webView.InvalidateMeasure();
+                    webView.InvalidateArrange();
+                    webView.InvalidateVisual();
+                }
+            };
 
             // Helper: resolve cookie text từ WebTabCookieSource node
             string ResolveWebTabCookieText()
@@ -1745,6 +1763,25 @@ namespace FlowMy.Views.NodeControls
                             wvInit.RequestHandler = new FlowNetworkRequestHandler(node, host);
                             wvInit.KeyboardHandler = new FlowKeyboardHandler();
                             wvInit.MenuHandler = new FlowContextMenuHandler();
+
+                            wvInit.MouseEnter += (sf, ef) =>
+                            {
+                                try { wvInit.Focus(); } catch { }
+                            };
+
+                            wvInit.PreviewMouseWheel += (sf, ef) =>
+                            {
+                                if (System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control))
+                                {
+                                    ef.Handled = true;
+                                    try { wvInit.ZoomLevel += ef.Delta > 0 ? 0.1 : -0.1; } catch { }
+                                }
+                            };
+
+                            wvInit.MouseWheel += (sf, ef) =>
+                            {
+                                ef.Handled = true;
+                            };
                             AttachProcessFailedHandler(wvInit, isTab1: true);
                             await WebCookiePortableBridge.TryConsumeAndApplyAsync(Cef.GetGlobalCookieManager(), "Shared");
                             wvInit.FrameLoadStart += (_, _) => wvInit.Dispatcher.BeginInvoke(new Action(() => progressBar1.Visibility = Visibility.Visible), DispatcherPriority.Normal);
@@ -2131,6 +2168,25 @@ namespace FlowMy.Views.NodeControls
                     webViewForInit.RequestHandler = new FlowNetworkRequestHandler(node, host);
                     webViewForInit.KeyboardHandler = new FlowKeyboardHandler();
                     webViewForInit.MenuHandler = new FlowContextMenuHandler();
+
+                    webViewForInit.MouseEnter += (sf, ef) =>
+                    {
+                        try { webViewForInit.Focus(); } catch { }
+                    };
+
+                    webViewForInit.PreviewMouseWheel += (sf, ef) =>
+                    {
+                        if (System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control))
+                        {
+                            ef.Handled = true;
+                            try { webViewForInit.ZoomLevel += ef.Delta > 0 ? 0.1 : -0.1; } catch { }
+                        }
+                    };
+
+                    webViewForInit.MouseWheel += (sf, ef) =>
+                    {
+                        ef.Handled = true;
+                    };
                     AttachProcessFailedHandler(webViewForInit, isTab1: false);
 
                     webViewForInit.JavascriptMessageReceived += async (_, args) =>
@@ -3269,16 +3325,19 @@ namespace FlowMy.Views.NodeControls
                 try
                 {
                     node.CssZoom = z;
-                    var script = $@"
-                        (function() {{
-                            document.body.style.zoom = '{z.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
-                            if (!document.body.style.zoom) {{
-                                document.body.style.transform = 'scale({z.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
-                                document.body.style.transformOrigin = 'top left';
-                            }}
-                        }})();
-                    ";
-                    webView.ExecuteScriptAsync(script);
+                    if (webView != null && webView.CanExecuteJavascriptInMainFrame)
+                    {
+                        var script = $@"
+                            (function() {{
+                                document.body.style.zoom = '{z.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
+                                if (!document.body.style.zoom) {{
+                                    document.body.style.transform = 'scale({z.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
+                                    document.body.style.transformOrigin = 'top left';
+                                }}
+                            }})();
+                        ";
+                        webView.ExecuteScriptAsync(script);
+                    }
 
                     // Cập nhật textbox hiển thị %
                     zoomTextBox.Text = $"{z * 100:0.#}%";

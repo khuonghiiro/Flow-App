@@ -60,7 +60,23 @@ namespace FlowMy.Services.Workflow
                     settings.CefCommandLineArgs.Add("disable-gpu", "1");
                 }
 
-                // Cấu hình mã hóa / cookies / remote debugging nếu cần
+                // Cấu hình mã hóa / cookies / High DPI crisp rendering / DevTools Resources
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var nativeDir = Path.Combine(baseDir, "runtimes", Environment.Is64BitProcess ? "win-x64" : "win-x86", "native");
+                if (Directory.Exists(nativeDir) && File.Exists(Path.Combine(nativeDir, "resources.pak")))
+                {
+                    settings.ResourcesDirPath = nativeDir;
+                    settings.LocalesDirPath = Path.Combine(nativeDir, "locales");
+                    var subProcessPath = Path.Combine(nativeDir, "CefSharp.BrowserSubprocess.exe");
+                    if (File.Exists(subProcessPath))
+                    {
+                        settings.BrowserSubprocessPath = subProcessPath;
+                    }
+                }
+
+                settings.RemoteDebuggingPort = 8088;
+                settings.CefCommandLineArgs.Add("remote-allow-origins", "*");
+                settings.CefCommandLineArgs.Add("enable-high-dpi-support", "1");
                 settings.PersistSessionCookies = true;
                 settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
