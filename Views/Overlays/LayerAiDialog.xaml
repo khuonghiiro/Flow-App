@@ -277,7 +277,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </ScrollViewer.Style>
-                                <Grid x:Name="SecondaryImagesGrid">
+                                <Grid x:Name="SecondaryImagesGrid" Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
                                     <!-- Dynamically built in code-behind via RebuildSecondaryGrid() -->
                                 </Grid>
                             </ScrollViewer>
@@ -374,7 +374,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </ScrollViewer.Style>
-                                <Grid x:Name="SecondaryImagesGridWv">
+                                <Grid x:Name="SecondaryImagesGridWv" Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
                                     <!-- Dynamically built in code-behind via RebuildSecondaryGridWv() -->
                                 </Grid>
                             </ScrollViewer>

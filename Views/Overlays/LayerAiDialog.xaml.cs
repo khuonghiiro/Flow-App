@@ -796,7 +796,173 @@ namespace FlowMy.Views.Overlays
             {
                 if (e.Frame.IsMain)
                 {
-                    try { e.Frame.ExecuteJavaScriptAsync("window.resetDragState = function() { };"); } catch { }
+                    try
+                    {
+                        string script = @"
+                            (function() {
+                                window._isMouseDownOnImage = false;
+                                
+                                window.resetDragState = function() {
+                                    window._isMouseDownOnImage = false;
+                                    const lastEl = document.activeElement || document.body;
+                                    const eventOptions = { bubbles: true, cancelable: true, view: window };
+                                    
+                                    const mouseUpEv = new MouseEvent('mouseup', eventOptions);
+                                    const pointerUpEv = new PointerEvent('pointerup', eventOptions);
+                                    const dragEndEv = new DragEvent('dragend', eventOptions);
+                                    const dragLeaveEv = new DragEvent('dragleave', eventOptions);
+                                    
+                                    if (lastEl) {
+                                        lastEl.dispatchEvent(mouseUpEv);
+                                        lastEl.dispatchEvent(pointerUpEv);
+                                        lastEl.dispatchEvent(dragLeaveEv);
+                                        lastEl.dispatchEvent(dragEndEv);
+                                    }
+                                    
+                                    document.dispatchEvent(mouseUpEv);
+                                    document.dispatchEvent(pointerUpEv);
+                                    document.dispatchEvent(dragLeaveEv);
+                                    document.dispatchEvent(dragEndEv);
+                                    
+                                    window.dispatchEvent(mouseUpEv);
+                                    window.dispatchEvent(pointerUpEv);
+                                    
+                                    const escDown = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
+                                    const escUp = new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
+                                    
+                                    if (lastEl) {
+                                        lastEl.dispatchEvent(escDown);
+                                        lastEl.dispatchEvent(escUp);
+                                    }
+                                    document.dispatchEvent(escDown);
+                                    document.dispatchEvent(escUp);
+                                    window.dispatchEvent(escDown);
+                                    window.dispatchEvent(escUp);
+                                };
+
+                                function findTargetImage(el) {
+                                    let curr = el;
+                                    while (curr && curr !== document.body) {
+                                        if (curr.tagName === 'IMG') return curr;
+                                        if (curr.tagName === 'A') return curr;
+                                        try {
+                                            let bg = window.getComputedStyle(curr).backgroundImage;
+                                            if (bg && bg !== 'none' && bg.includes('url')) return curr;
+                                        } catch(err) {}
+                                        curr = curr.parentNode;
+                                    }
+                                    return null;
+                                }
+
+                                function getImageUrl(target) {
+                                    if (!target) return null;
+                                    if (target.tagName === 'IMG') {
+                                        return target.getAttribute('data-src') || target.getAttribute('data-original') || target.getAttribute('data-srcset') || target.src;
+                                    }
+                                    if (target.tagName === 'A') {
+                                        return target.href;
+                                    }
+                                    try {
+                                        let bg = window.getComputedStyle(target).backgroundImage;
+                                        if (bg && bg !== 'none') {
+                                            let m = bg.match(/url\((.*?)\)/i);
+                                            if (m && m[1]) return m[1].replace(/['']/g, '');
+                                        }
+                                    } catch(err) {}
+                                    return null;
+                                }
+
+                                function convertTargetToBase64(target) {
+                                    try {
+                                        if (target.tagName === 'IMG' && target.complete && target.naturalWidth > 0) {
+                                            let canvas = document.createElement('canvas');
+                                            canvas.width = target.naturalWidth;
+                                            canvas.height = target.naturalHeight;
+                                            let ctx = canvas.getContext('2d');
+                                            ctx.drawImage(target, 0, 0);
+                                            let dataUrl = canvas.toDataURL('image/png');
+                                            if (dataUrl && dataUrl.startsWith('data:image')) {
+                                                window.__lastDraggedBase64 = dataUrl;
+                                                return dataUrl;
+                                            }
+                                        }
+                                    } catch(err) {}
+                                    return null;
+                                }
+
+                                document.addEventListener('mousedown', function(e) {
+                                    let target = findTargetImage(e.target);
+                                    if (target) {
+                                        window._isMouseDownOnImage = true;
+                                        if (target.tagName === 'IMG' && target.getAttribute('draggable') !== 'true') {
+                                            target.setAttribute('draggable', 'true');
+                                        } else if (target.tagName === 'A') {
+                                            target.setAttribute('draggable', 'true');
+                                        } else {
+                                            target.setAttribute('draggable', 'true');
+                                        }
+                                        if (target.style.pointerEvents === 'none') {
+                                            target.style.pointerEvents = 'auto';
+                                        }
+                                    }
+                                }, true);
+
+                                const resetFlag = function() {
+                                    window._isMouseDownOnImage = false;
+                                };
+                                document.addEventListener('mouseup', resetFlag, true);
+                                document.addEventListener('pointerup', resetFlag, true);
+                                document.addEventListener('dragend', resetFlag, true);
+
+                                const blockMoveEvents = function(e) {
+                                    if (window._isMouseDownOnImage) {
+                                        e.stopImmediatePropagation();
+                                    }
+                                };
+                                document.addEventListener('mousemove', blockMoveEvents, true);
+                                document.addEventListener('pointermove', blockMoveEvents, true);
+
+                                document.addEventListener('dragstart', function(e) {
+                                    let target = findTargetImage(e.target);
+                                    if (target) {
+                                        e.stopImmediatePropagation();
+                                        
+                                        let dataUrl = convertTargetToBase64(target);
+                                        let imageUrl = getImageUrl(target);
+                                        if (imageUrl) {
+                                            try {
+                                                let absoluteUrl = new URL(imageUrl, window.location.href).href;
+                                                if (e.dataTransfer) {
+                                                    e.dataTransfer.effectAllowed = 'copyLink';
+                                                    e.dataTransfer.setData('text/plain', absoluteUrl);
+                                                    e.dataTransfer.setData('text/uri-list', absoluteUrl);
+                                                    e.dataTransfer.setData('URL', absoluteUrl);
+                                                    if (dataUrl) {
+                                                        e.dataTransfer.setData('text/html', '<img src=\'' + dataUrl + '\'/>');
+                                                    }
+                                                    e.preventDefault = function() {};
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to resolve URL on dragstart:', err);
+                                            }
+                                        }
+                                    }
+                                }, true);
+
+                                document.addEventListener('drag', function(e) {
+                                    let target = findTargetImage(e.target);
+                                    if (target) {
+                                        e.stopImmediatePropagation();
+                                    }
+                                }, true);
+                            })();
+                        ";
+                        e.Frame.ExecuteJavaScriptAsync(script);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to inject drag-drop interceptor script: {ex.Message}");
+                    }
                 }
             };
         }
