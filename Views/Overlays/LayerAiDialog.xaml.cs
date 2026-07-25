@@ -31,7 +31,7 @@ namespace FlowMy.Views.Overlays
         private readonly ImageProcessingNode _node;
         private readonly IWorkflowEditorHost _host;
         private readonly EditorDocument _doc;
-        private readonly Window? _ownerWindow;
+        private Window? _ownerWindow;
 
         // Secondary images management
         private class SecondaryImageItem
@@ -120,9 +120,18 @@ namespace FlowMy.Views.Overlays
                 }
                 try
                 {
-                    LayerAiWebViewCache.ReleaseToSleep(_node.Id);
+                    LayerAiWebViewCache.DisposeAll(_node.Id);
                 }
                 catch { }
+            };
+
+            this.Loaded += (s, e) => ReactivateActiveWebBrowsers();
+            this.IsVisibleChanged += (s, e) =>
+            {
+                if (this.IsVisible)
+                {
+                    ReactivateActiveWebBrowsers();
+                }
             };
 
             _node = node ?? throw new ArgumentNullException(nameof(node));
@@ -172,6 +181,71 @@ namespace FlowMy.Views.Overlays
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
             : this(new System.Collections.Generic.List<EditorLayer> { activeLayer }, activeLayer, node, host, doc, owner)
         {
+        }
+
+        private bool _isForceClosing = false;
+
+        public void ForceClose()
+        {
+            _isForceClosing = true;
+            try { Close(); } catch { }
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (!_isForceClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                SaveActiveLayerState();
+                if (_ownerWindow != null)
+                {
+                    _ownerWindow.Activate();
+                    _ownerWindow.Topmost = false;
+                }
+                LayerAiDialogManager.OnDialogHidden(_node.Id);
+                return;
+            }
+            base.OnClosing(e);
+        }
+
+        public void ReinitializeSession(System.Collections.Generic.List<EditorLayer> selectedLayers, EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
+        {
+            Owner = owner;
+            _ownerWindow = owner;
+
+            _selectedLayers.Clear();
+            if (selectedLayers != null && selectedLayers.Count > 0)
+            {
+                _selectedLayers.AddRange(selectedLayers);
+            }
+            else if (activeLayer != null)
+            {
+                _selectedLayers.Add(activeLayer);
+            }
+
+            _activeLayer = activeLayer ?? _selectedLayers[0];
+
+            foreach (var layer in _selectedLayers)
+            {
+                if (!_layerStates.ContainsKey(layer))
+                {
+                    _layerStates[layer] = CreateStateForLayer(layer);
+                }
+            }
+
+            _secondarySlotCount = _activeLayer.LayerAiSecondarySlotCount > 0 ? _activeLayer.LayerAiSecondarySlotCount : 4;
+            RebuildSecondaryGrid(_secondarySlotCount);
+            RebuildSecondaryGridWv(_secondarySlotCount);
+            UpdateSlotCountUI(_secondarySlotCount);
+
+            LoadActiveLayerState();
+            UpdateSelectedLayersLists();
+
+            if (_activeTab == ActiveTab.WebBrowser || _activeTab == ActiveTab.WebView)
+            {
+                ReactivateActiveWebBrowsers();
+            }
         }
 
         private LayerAiState CreateStateForLayer(EditorLayer layer)
@@ -533,13 +607,13 @@ namespace FlowMy.Views.Overlays
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
+            try { DialogResult = false; } catch { }
             Close();
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
+            try { DialogResult = false; } catch { }
             Close();
         }
 
@@ -734,10 +808,80 @@ namespace FlowMy.Views.Overlays
                 InitWebBrowserAsync();
             }
 
-            // Lazy-init/refresh Dynamic UI when tab activated
-            if (newTab == ActiveTab.WebView)
+            if (newTab == ActiveTab.WebBrowser || newTab == ActiveTab.WebView)
             {
-                InitDynamicWebViewAsync();
+                ReactivateActiveWebBrowsers();
+            }
+        }
+
+        private void ReactivateActiveWebBrowsers()
+        {
+            Dispatcher.InvokeAsync(async () =>
+            {
+                await System.Threading.Tasks.Task.Delay(50);
+                try
+                {
+                    if (_dynamicWebView != null)
+                    {
+                        ReactivateChromiumBrowser(_dynamicWebView);
+                    }
+                    foreach (var tab in _webTabs)
+                    {
+                        if (tab.WebView != null)
+                        {
+                            ReactivateChromiumBrowser(tab.WebView);
+                        }
+                    }
+                }
+                catch { }
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private static void ReactivateChromiumBrowser(ChromiumWebBrowser? webView)
+        {
+            if (webView == null) return;
+            try
+            {
+                void ApplyReactivation()
+                {
+                    try
+                    {
+                        var host = webView.GetBrowser()?.GetHost();
+                        if (host != null)
+                        {
+                            host.WasHidden(false);
+                            host.SendFocusEvent(true);
+                            host.Invalidate(CefSharp.PaintElementType.View);
+                        }
+                        webView.EvaluateScriptAsync(@"
+                            if (window.resetDragState) window.resetDragState();
+                            window._isMouseDownOnImage = false;
+                        ");
+                    }
+                    catch { }
+                }
+
+                if (webView.IsBrowserInitialized)
+                {
+                    ApplyReactivation();
+                }
+                else
+                {
+                    DependencyPropertyChangedEventHandler? handler = null;
+                    handler = (s, e) =>
+                    {
+                        if (webView.IsBrowserInitialized)
+                        {
+                            webView.IsBrowserInitializedChanged -= handler;
+                            ApplyReactivation();
+                        }
+                    };
+                    webView.IsBrowserInitializedChanged += handler;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to reactivate CefSharp browser: {ex.Message}");
             }
         }
 
@@ -5414,6 +5558,119 @@ namespace FlowMy.Views.Overlays
                 foreach (var key in keys)
                 {
                     DisposeAll(key);
+                }
+            }
+        }
+    }
+
+    public static class LayerAiDialogManager
+    {
+        private class DialogCacheItem
+        {
+            public LayerAiDialog Dialog { get; set; }
+            public System.Threading.Timer? IdleTimer { get; set; }
+            public string NodeId { get; set; }
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<string, DialogCacheItem> _cache = new();
+        private static readonly object _lock = new();
+
+        public static LayerAiDialog OpenDialog(System.Collections.Generic.List<EditorLayer> selectedLayers, EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
+        {
+            lock (_lock)
+            {
+                string nodeId = node.Id;
+                if (_cache.TryGetValue(nodeId, out var item) && item.Dialog != null)
+                {
+                    // Cancel 3-minute idle timer
+                    item.IdleTimer?.Dispose();
+                    item.IdleTimer = null;
+
+                    item.Dialog.Dispatcher.Invoke(() =>
+                    {
+                        item.Dialog.ReinitializeSession(selectedLayers, activeLayer, node, host, doc, owner);
+                        if (!item.Dialog.IsVisible)
+                        {
+                            item.Dialog.Show();
+                        }
+                        item.Dialog.Activate();
+                        item.Dialog.Topmost = true;
+                    });
+                    return item.Dialog;
+                }
+
+                // Create a fresh dialog instance
+                var newDialog = new LayerAiDialog(selectedLayers, activeLayer, node, host, doc, owner);
+                var newItem = new DialogCacheItem
+                {
+                    Dialog = newDialog,
+                    NodeId = nodeId
+                };
+                _cache[nodeId] = newItem;
+
+                newDialog.Show();
+                newDialog.Activate();
+                return newDialog;
+            }
+        }
+
+        public static void OnDialogHidden(string nodeId)
+        {
+            lock (_lock)
+            {
+                if (_cache.TryGetValue(nodeId, out var item))
+                {
+                    // Start or reset 3-minute (180,000 ms) idle timer
+                    item.IdleTimer?.Dispose();
+                    item.IdleTimer = new System.Threading.Timer(OnIdleTimerExpired, nodeId, TimeSpan.FromMinutes(3), System.Threading.Timeout.InfiniteTimeSpan);
+                }
+            }
+        }
+
+        private static void OnIdleTimerExpired(object? state)
+        {
+            if (state is string nodeId)
+            {
+                CloseAndDisposeDialog(nodeId);
+            }
+        }
+
+        public static void CloseAndDisposeDialog(string nodeId)
+        {
+            lock (_lock)
+            {
+                if (_cache.TryGetValue(nodeId, out var item))
+                {
+                    item.IdleTimer?.Dispose();
+                    item.IdleTimer = null;
+
+                    try
+                    {
+                        item.Dialog?.Dispatcher.Invoke(() =>
+                        {
+                            item.Dialog.ForceClose();
+                        });
+                    }
+                    catch { }
+
+                    _cache.Remove(nodeId);
+                }
+                try
+                {
+                    LayerAiWebViewCache.DisposeAll(nodeId);
+                }
+                catch { }
+            }
+        }
+
+        public static void CloseAll()
+        {
+            lock (_lock)
+            {
+                var keys = System.Linq.Enumerable.ToList(_cache.Keys);
+                foreach (var key in keys)
+                {
+                    CloseAndDisposeDialog(key);
                 }
             }
         }

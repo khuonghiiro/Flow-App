@@ -1523,14 +1523,11 @@ namespace FlowMy.Views.NodeControls
             }
 
             var ownerWindow = Window.GetWindow(this);
-            var dialog = new Views.Overlays.LayerAiDialog(selected, active, _node, _host, _doc, ownerWindow);
-            if (dialog.ShowDialog() == true)
-            {
-                var parentControl = FindParentControl();
-                parentControl?.ClearSelection();
-                RefreshLayersList();
-                OnDocumentModified();
-            }
+            Views.Overlays.LayerAiDialogManager.OpenDialog(selected, active, _node, _host, _doc, ownerWindow);
+            var parentControl = FindParentControl();
+            parentControl?.ClearSelection();
+            RefreshLayersList();
+            OnDocumentModified();
             e.Handled = true;
         }
 
