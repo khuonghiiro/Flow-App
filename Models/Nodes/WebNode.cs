@@ -103,6 +103,17 @@ namespace FlowMy.Models.Nodes
             set { if (_waitForCompletion != value) { _waitForCompletion = value; OnPropertyChanged(); } }
         }
 
+        private int _timeoutMs = 0;
+        /// <summary>
+        /// Thời gian chờ cho key này (ms). Mặc định 0 = chờ cho tới khi request/response xong.
+        /// > 0: Chờ tối đa số ms này. Nếu xong trước timeout thì ngắt chờ ngay lập tức; nếu quá timeout thì tiếp tục workflow.
+        /// </summary>
+        public int TimeoutMs
+        {
+            get => _timeoutMs;
+            set { if (_timeoutMs != value) { _timeoutMs = value; OnPropertyChanged(); } }
+        }
+
         private bool _isList;
         /// <summary>
         /// Nếu true: gom tất cả response khớp vào mảng JSON ["item1", "item2"].
@@ -1161,20 +1172,21 @@ namespace FlowMy.Models.Nodes
             ProcessInterceptedNetworkResponse(url, method, headers, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), postData, bodyText, statusCode);
         }
 
-        public void ProcessInterceptedNetworkResponse(
+        public void ProcessInterceptedNetworkRequest(
             string url,
             string method,
             Dictionary<string, string> requestHeaders,
-            Dictionary<string, string> responseHeaders,
             string? postData,
-            string bodyText,
-            int statusCode)
+            string? targetExecutionId = null)
         {
             if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
 
             foreach (var ro in ResponseOutputs)
             {
                 if (ro == null || string.IsNullOrWhiteSpace(ro.Key)) continue;
+
+                string extractType = ro.ExtractType?.Trim() ?? "Response";
+                if (!IsImmediateExtractType(extractType)) continue;
 
                 string pattern = ro.Url?.Trim() ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(pattern)) continue;
@@ -1188,9 +1200,129 @@ namespace FlowMy.Models.Nodes
 
                 if (UrlMatchesPattern(url, pattern))
                 {
-                    string val = ExtractValueByOutputType(ro.ExtractType, url, method, requestHeaders, responseHeaders, postData, bodyText);
-                    UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null);
+                    string val = ExtractValueByOutputType(extractType, url, method, requestHeaders, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), postData, string.Empty);
+                    if (!string.IsNullOrEmpty(targetExecutionId))
+                    {
+                        UpdateResponseOutputValueForExecutionRun(targetExecutionId, ro.Key.Trim(), val, ro.IsList, null);
+                    }
+                    else
+                    {
+                        UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null);
+                    }
                 }
+            }
+        }
+
+        public void ProcessInterceptedNetworkResponse(
+            string url,
+            string method,
+            Dictionary<string, string> requestHeaders,
+            Dictionary<string, string> responseHeaders,
+            string? postData,
+            string bodyText,
+            int statusCode,
+            string? targetExecutionId = null)
+        {
+            if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
+
+            foreach (var ro in ResponseOutputs)
+            {
+                if (ro == null || string.IsNullOrWhiteSpace(ro.Key)) continue;
+
+                string extractType = ro.ExtractType?.Trim() ?? "Response";
+                // Skip immediate types if already processed during request init
+                if (IsImmediateExtractType(extractType)) continue;
+
+                string pattern = ro.Url?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(pattern)) continue;
+
+                if (!string.IsNullOrWhiteSpace(ro.RequestMethod) &&
+                    !string.Equals(ro.RequestMethod, "ALL", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(ro.RequestMethod, method, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (UrlMatchesPattern(url, pattern))
+                {
+                    string val = ExtractValueByOutputType(extractType, url, method, requestHeaders, responseHeaders, postData, bodyText);
+                    if (!string.IsNullOrEmpty(targetExecutionId))
+                    {
+                        UpdateResponseOutputValueForExecutionRun(targetExecutionId, ro.Key.Trim(), val, ro.IsList, null);
+                    }
+                    else
+                    {
+                        UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null);
+                    }
+                }
+            }
+        }
+
+        public static bool IsImmediateExtractType(string extractType)
+        {
+            if (string.IsNullOrWhiteSpace(extractType)) return false;
+            var t = extractType.Trim();
+            return string.Equals(t, "CurlCmd", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(t, "CurlBash", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(t, "RequestHeaders", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(t, "Params", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(t, "Payload", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(t, "RequestUrl", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public void UpdateResponseOutputValueForExecutionRun(string executionId, string key, string value, bool isList, object? executionServiceObj)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var trimmedKey = key.Trim();
+            var valStr = value ?? string.Empty;
+
+            UpdateResponseOutputValue(trimmedKey, valStr, isList);
+            SchedulePendingOutputsCompletion(800);
+
+            var run = GetExecutionRun(executionId);
+            if (run != null)
+            {
+                string jsonOrVal;
+                lock (run.Lock)
+                {
+                    if (isList)
+                    {
+                        if (!run.ResponseOutputLists.TryGetValue(trimmedKey, out var list))
+                        {
+                            list = new List<string>();
+                            run.ResponseOutputLists[trimmedKey] = list;
+                        }
+                        list.Add(valStr);
+                        jsonOrVal = System.Text.Json.JsonSerializer.Serialize(list);
+                        run.ResponseOutputValues[trimmedKey] = jsonOrVal;
+                    }
+                    else
+                    {
+                        jsonOrVal = valStr;
+                        run.ResponseOutputValues[trimmedKey] = jsonOrVal;
+                    }
+                }
+
+                run.SignalKeyCompleted(trimmedKey);
+
+                var execService = executionServiceObj as FlowMy.Services.Workflow.WorkflowExecutionService;
+                if (execService != null && !string.IsNullOrEmpty(run.ExecutionId))
+                {
+                    try
+                    {
+                        execService.SetScopedNodeStringOutput(run.ExecutionId, Id, trimmedKey, jsonOrVal);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNode] Real-time sync error: {ex.Message}");
+                    }
+                }
+
+                run.ScheduleDebounceCompletion(800);
+            }
+            else
+            {
+                UpdateResponseOutputValueForActiveRuns(trimmedKey, valStr, isList, executionServiceObj);
             }
         }
 
@@ -1365,9 +1497,36 @@ namespace FlowMy.Models.Nodes
         /// <summary>Danh sách các Task trích xuất response content (GetContentAsync) đang chạy ngầm cho run này.</summary>
         public System.Collections.Concurrent.ConcurrentBag<System.Threading.Tasks.Task> PendingExtractions { get; } = new();
 
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource<bool>> _keyTcsMap = new(StringComparer.OrdinalIgnoreCase);
+
         public WebNodeExecutionRun(string executionId)
         {
             ExecutionId = executionId;
+        }
+
+        public System.Threading.Tasks.Task<bool> GetWaitTaskForKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return System.Threading.Tasks.Task.FromResult(true);
+            var trimmedKey = key.Trim();
+            lock (Lock)
+            {
+                if (ResponseOutputValues.ContainsKey(trimmedKey) && !string.IsNullOrEmpty(ResponseOutputValues[trimmedKey]))
+                {
+                    return System.Threading.Tasks.Task.FromResult(true);
+                }
+                var tcs = _keyTcsMap.GetOrAdd(trimmedKey, _ => new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously));
+                return tcs.Task;
+            }
+        }
+
+        public void SignalKeyCompleted(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var trimmedKey = key.Trim();
+            if (_keyTcsMap.TryGetValue(trimmedKey, out var tcs))
+            {
+                tcs.TrySetResult(true);
+            }
         }
 
         public void CancelDebounce()

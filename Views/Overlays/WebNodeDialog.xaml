@@ -591,30 +591,6 @@
                                     <StackPanel x:Name="ResponseOutputsPanel" Margin="0,0,0,8"/>
                                     <Button x:Name="AddResponseOutputButton" Content="+ Thêm output" Height="32"
                                             Style="{DynamicResource PrimaryButton}" Click="AddResponseOutputButton_Click"/>
-
-                                    <!-- Timeout chờ outputs -->
-                                    <TextBlock Text="Timeout đợi outputs (ms, 0 = không chờ)" 
-                                               Foreground="{DynamicResource TextMuted}" 
-                                               FontSize="10" Margin="0,8,0,4"/>
-                                    <TextBox Text="{Binding ResponseOutputsWaitTimeoutMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             Height="32"
-                                             Width="160"
-                                             HorizontalAlignment="Left"
-                                             ToolTip="Thời gian tối đa WebNodeExecutor chờ cho các outputs được đánh dấu 'Đợi key này' trước khi chạy node tiếp theo. 0 = không chờ."/>
-
-                                    <!-- Wait mode: ALL vs ANY -->
-                                    <TextBlock Text="Chế độ đợi key" 
-                                               Foreground="{DynamicResource TextMuted}" 
-                                               FontSize="10" Margin="0,8,0,4"/>
-                                    <ComboBox Height="32"
-                                              Width="320"
-                                              HorizontalAlignment="Left"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding ResponseOutputsWaitModeOptions}"
-                                              SelectedValuePath="Value"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding ResponseOutputsWaitMode, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Border>
 

@@ -725,12 +725,21 @@ namespace FlowMy.Views.Overlays
 
             stack.Children.Add(comboGrid);
 
-            // Checkbox: có đợi key này trước khi chạy node tiếp theo hay không
+            // Checkbox & TimeoutMs riêng cho key này
+            var waitRowGrid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+            waitRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
             var waitCheckBox = new CheckBox
             {
                 Content = "Đợi key này trước khi chạy node tiếp theo",
                 FontSize = 11,
-                Margin = new Thickness(0, 0, 0, 4)
+                VerticalAlignment = VerticalAlignment.Center
             };
             BindThemeResource(waitCheckBox, Control.ForegroundProperty, "TextBrush");
             waitCheckBox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.WaitForCompletion))
@@ -738,7 +747,57 @@ namespace FlowMy.Views.Overlays
                 Source = output,
                 Mode = System.Windows.Data.BindingMode.TwoWay
             });
-            stack.Children.Add(waitCheckBox);
+            Grid.SetColumn(waitCheckBox, 0);
+            waitRowGrid.Children.Add(waitCheckBox);
+
+            var timeoutLabel = new TextBlock
+            {
+                Text = "Timeout:",
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            BindThemeResource(timeoutLabel, TextBlock.ForegroundProperty, "TextMuted");
+            Grid.SetColumn(timeoutLabel, 2);
+            waitRowGrid.Children.Add(timeoutLabel);
+
+            var timeoutTb = new TextBox
+            {
+                Height = 28,
+                Style = Application.Current.TryFindResource("BaseTextBoxV2") as Style,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                ToolTip = "Thời gian chờ tối đa cho key này (ms). 0 = chờ cho tới khi hoàn thành xử lý."
+            };
+            timeoutTb.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.TimeoutMs))
+            {
+                Source = output,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
+            Grid.SetColumn(timeoutTb, 4);
+            waitRowGrid.Children.Add(timeoutTb);
+
+            var msLabel = new TextBlock
+            {
+                Text = "ms",
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            BindThemeResource(msLabel, TextBlock.ForegroundProperty, "TextMuted");
+            Grid.SetColumn(msLabel, 6);
+            waitRowGrid.Children.Add(msLabel);
+
+            void UpdateTimeoutTbEnabled()
+            {
+                timeoutTb.IsEnabled = output.WaitForCompletion;
+            }
+            output.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(WebResponseOutput.WaitForCompletion))
+                    UpdateTimeoutTbEnabled();
+            };
+            UpdateTimeoutTbEnabled();
+
+            stack.Children.Add(waitRowGrid);
 
             // Checkbox: Gom list dữ liệu (chỉ trả về mảng JSON khi checked, mặc định unchecked)
             var isListCheckBox = new CheckBox

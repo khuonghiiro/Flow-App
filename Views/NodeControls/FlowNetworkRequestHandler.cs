@@ -85,6 +85,10 @@ namespace FlowMy.Views.NodeControls
             _host = host;
         }
 
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, string> _requestExecutionMap = new();
+
+
+
         protected override IResponseFilter? GetResourceResponseFilter(
             IWebBrowser chromiumWebBrowser,
             IBrowser browser,
@@ -163,6 +167,12 @@ namespace FlowMy.Views.NodeControls
                     string targetUrl = request.Url ?? string.Empty;
                     string requestMethod = request.Method ?? "GET";
 
+                    string? targetExecutionId = null;
+                    if (_requestExecutionMap.TryRemove(request.Identifier, out var mappedExecId))
+                    {
+                        targetExecutionId = mappedExecId;
+                    }
+
                     if (_node is FlowMy.Models.Nodes.WebNode webNode)
                     {
                         webNode.ProcessInterceptedNetworkResponse(
@@ -172,7 +182,8 @@ namespace FlowMy.Views.NodeControls
                             responseHeaders,
                             postData,
                             bodyText,
-                            response != null ? (int)response.StatusCode : 200);
+                            response != null ? (int)response.StatusCode : 200,
+                            targetExecutionId);
 
                         if (_host != null)
                         {
@@ -290,6 +301,50 @@ namespace FlowMy.Views.NodeControls
             {
                 string targetUrl = request.Url ?? string.Empty;
                 string requestMethod = request.Method ?? "GET";
+
+                string? activeExecutionId = null;
+                var activeRuns = webNode.GetActiveExecutionRuns();
+                if (activeRuns.Count > 0)
+                {
+                    activeExecutionId = activeRuns.LastOrDefault()?.ExecutionId;
+                }
+
+                if (!string.IsNullOrEmpty(activeExecutionId))
+                {
+                    _requestExecutionMap[request.Identifier] = activeExecutionId;
+                }
+
+                var requestHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (request.Headers != null)
+                {
+                    foreach (string key in request.Headers.AllKeys)
+                    {
+                        if (!string.IsNullOrEmpty(key))
+                            requestHeaders[key] = request.Headers[key] ?? string.Empty;
+                    }
+                }
+
+                string? postDataText = null;
+                if (request.PostData != null && request.PostData.Elements.Count > 0)
+                {
+                    var sb = new StringBuilder();
+                    foreach (var el in request.PostData.Elements)
+                    {
+                        if (el.Type == PostDataElementType.Bytes && el.Bytes != null)
+                        {
+                            sb.Append(Encoding.UTF8.GetString(el.Bytes));
+                        }
+                    }
+                    postDataText = sb.ToString();
+                }
+
+                // Trích xuất tức thì (Immediate extraction) ngay khi khởi tạo request cho cURL/Headers/Params/Payload
+                webNode.ProcessInterceptedNetworkRequest(
+                    targetUrl,
+                    requestMethod,
+                    requestHeaders,
+                    postDataText,
+                    activeExecutionId);
 
                 // 1. Chặn request nếu khớp BlockingRules
                 if (webNode.ShouldBlockRequest(targetUrl, requestMethod))

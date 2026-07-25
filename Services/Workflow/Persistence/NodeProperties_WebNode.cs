@@ -554,6 +554,13 @@ public sealed partial class FileWorkflowPersistenceService
                                         if (bool.TryParse(wfcStr, out var wfcBool))
                                             ro.WaitForCompletion = wfcBool;
                                     }
+                                    // TimeoutMs (optional, backward compatible)
+                                    if (e.TryGetProperty("TimeoutMs", out var tmo))
+                                    {
+                                        var tmoStr = GetStringFromJsonValue(tmo);
+                                        if (int.TryParse(tmoStr, out var tmoInt))
+                                            ro.TimeoutMs = tmoInt;
+                                    }
                                     // IsList (optional, backward compatible)
                                     if (e.TryGetProperty("IsList", out var isl))
                                     {
@@ -853,10 +860,11 @@ public sealed partial class FileWorkflowPersistenceService
                             var method = ro?.RequestMethod ?? "GET";
                             var extractType = ro?.ExtractType ?? "Response";
                             var waitForCompletion = ro?.WaitForCompletion ?? false;
+                            var timeoutMs = ro?.TimeoutMs ?? 0;
                             var isList = ro?.IsList ?? false;
 
                             // Debug log để kiểm tra giá trị
-                            System.Diagnostics.Debug.WriteLine($"[{index}] ResponseOutput - Key='{key}', Url='{url}', Method='{method}', ExtractType='{extractType}'");
+                            System.Diagnostics.Debug.WriteLine($"[{index}] ResponseOutput - Key='{key}', Url='{url}', Method='{method}', ExtractType='{extractType}', TimeoutMs={timeoutMs}");
 
                             // Serialize tất cả items, kể cả khi Key hoặc Url rỗng (để user có thể chỉnh sửa sau)
                             var itemDict = new Dictionary<string, string>
@@ -866,6 +874,7 @@ public sealed partial class FileWorkflowPersistenceService
                                 ["RequestMethod"] = method,
                                 ["ExtractType"] = extractType,
                                 ["WaitForCompletion"] = waitForCompletion ? "true" : "false",
+                                ["TimeoutMs"] = timeoutMs.ToString(),
                                 ["IsList"] = isList ? "true" : "false"
                             };
                             responseOutputsArr.Add(itemDict);

@@ -106,44 +106,46 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                // Nếu node có cấu hình ResponseOutputs thì chuẩn bị TCS để chờ WebView2 populate outputs.
-                if (webNode.ResponseOutputs != null && webNode.ResponseOutputs.Count > 0 && effectiveWaitTimeoutMs != 0)
-                {
-                    pendingOutputsTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    executionRun.PendingOutputsTcs = pendingOutputsTcs;
-                    webNode.PendingOutputsTcs = pendingOutputsTcs;
-                }
+                // Xử lý logic CHỜ ĐỢI THEO TỪNG KEY (Per-Key Timeout & Wait)
+                var waitKeys = webNode.ResponseOutputs?
+                    .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
+                    .ToList() ?? new List<WebResponseOutput>();
 
-                // Chờ WebView2 populate các ResponseOutputs (nếu có) trước khi traverse các node sau.
-                // Tránh tình trạng node sau chạy quá sớm khi WebNode chưa kịp nhận dữ liệu từ WebView2.
-                if (pendingOutputsTcs != null)
+                if (waitKeys.Count > 0 && effectiveWaitTimeoutMs != 0)
                 {
-                    try
+                    using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
+                    var waitTasks = new List<Task>();
+
+                    foreach (var keyConfig in waitKeys)
                     {
-                        using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(env.CancellationToken);
-                        // Timeout bảo vệ để không bị treo workflow nếu vì lý do nào đó WebView2 không trả về.
-                        var waitMs = effectiveWaitTimeoutMs;
-                        if (waitMs <= 0)
+                        var keyTask = executionRun.GetWaitTaskForKey(keyConfig.Key);
+                        var timeoutMs = keyConfig.TimeoutMs;
+
+                        if (timeoutMs > 0)
                         {
-                            // Không chờ nếu timeout = 0
-                            pendingOutputsTcs.TrySetResult(false);
+                            // Timeout riêng cho key này
+                            var keyTimeoutTask = Task.WhenAny(keyTask, Task.Delay(timeoutMs, waitCts.Token));
+                            waitTasks.Add(keyTimeoutTask);
                         }
                         else
                         {
-                            waitCts.CancelAfter(TimeSpan.FromMilliseconds(waitMs));
-                            var _ = await Task.WhenAny(pendingOutputsTcs.Task, Task.Delay(Timeout.Infinite, waitCts.Token));
-                            // Nếu bị hủy / timeout thì vẫn tiếp tục workflow, chỉ là outputs có thể rỗng.
+                            // Timeout = 0: chờ tới khi hoàn thành (hoặc bị cancel flow)
+                            waitTasks.Add(keyTask);
                         }
+                    }
+
+                    try
+                    {
+                        Debug.WriteLine($"[WebNodeExecutor] Awaiting {waitTasks.Count} per-key output completion tasks...");
+                        await Task.WhenAll(waitTasks);
                     }
                     catch (OperationCanceledException)
                     {
-                        // Bị hủy do workflow cancel/timeout → tiếp tục thoát bình thường.
+                        // Flow cancellation
                     }
-                    finally
+                    catch (Exception waitEx)
                     {
-                        // Dọn state runtime
-                        webNode.CancelPendingOutputsDebounce();
-                        webNode.PendingOutputsTcs = null;
+                        Debug.WriteLine($"[WebNodeExecutor] Per-key wait error: {waitEx.Message}");
                     }
                 }
 
