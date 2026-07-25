@@ -602,7 +602,8 @@ namespace FlowMy.ViewModels
                     IncomingPortId = routeVm.IncomingPortId,
                     OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
                     LineStyleKey = lineStyleKey,
-                    FunctionType = routeVm.SelectedFunctionType
+                    FunctionType = routeVm.SelectedFunctionType,
+                    MacroActionId = string.IsNullOrWhiteSpace(routeVm.SelectedMacroActionId) ? null : routeVm.SelectedMacroActionId
                 });
             }
         }
@@ -699,7 +700,8 @@ namespace FlowMy.ViewModels
                         IncomingPortId = routeVm.IncomingPortId,
                         OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
                         LineStyleKey = lineStyleKey,
-                        FunctionType = string.IsNullOrWhiteSpace(routeVm.SelectedFunctionType) ? null : routeVm.SelectedFunctionType
+                        FunctionType = string.IsNullOrWhiteSpace(routeVm.SelectedFunctionType) ? null : routeVm.SelectedFunctionType,
+                        MacroActionId = string.IsNullOrWhiteSpace(routeVm.SelectedMacroActionId) ? null : routeVm.SelectedMacroActionId
                     });
 
                     System.Diagnostics.Debug.WriteLine($"SaveTitle: IncomingNodeId={routeVm.IncomingNodeId}, FunctionType={routeVm.SelectedFunctionType}, FunctionTypeItem={routeVm.SelectedFunctionTypeItem?.DisplayName}");

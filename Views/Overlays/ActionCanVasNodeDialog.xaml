@@ -694,7 +694,7 @@
 
                             <TextBlock Text="Tái sử dụng flow" Foreground="{DynamicResource TextBrush}"
                                        FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                            <ItemsControl x:Name="ReuseRoutesItemsControl" ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,12"
@@ -738,7 +738,7 @@
                                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                               ItemsSource="{Binding DataContext.MacroActions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               SelectedValuePath="Id" DisplayMemberPath="Name"
-                                                              SelectedValue="{Binding SelectedMacroActionId, Mode=TwoWay}"/>
+                                                              SelectedValue="{Binding SelectedMacroActionId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>

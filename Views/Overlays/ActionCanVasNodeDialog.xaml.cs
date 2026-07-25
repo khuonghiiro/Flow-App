@@ -82,6 +82,7 @@ namespace FlowMy.Views.Overlays
         protected override void BeforeSaveOnClose()
         {
             FlushEditorsToViewModel();
+            FlushReuseRoutesComboBoxBindings();
         }
 
         private void FlushEditorsToViewModel()
@@ -95,6 +96,36 @@ namespace FlowMy.Views.Overlays
             BorderDashSpacingSlider?.GetBindingExpression(Slider.ValueProperty)?.UpdateSource();
             TitleTextBox?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
             System.Windows.Data.BindingOperations.GetBindingExpressionBase(this, DataContextProperty)?.UpdateSource();
+            FlushReuseRoutesComboBoxBindings();
+        }
+
+        private void FlushReuseRoutesComboBoxBindings()
+        {
+            if (ReuseRoutesItemsControl == null) return;
+            for (int i = 0; i < ReuseRoutesItemsControl.Items.Count; i++)
+            {
+                var container = ReuseRoutesItemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                if (container == null) continue;
+                var cbList = FindVisualChildren<ComboBox>(container);
+                foreach (var cb in cbList)
+                {
+                    cb.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
+                }
+            }
+        }
+
+        private static System.Collections.Generic.List<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            var list = new System.Collections.Generic.List<T>();
+            if (depObj == null) return list;
+            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
+                if (child is T t) list.Add(t);
+                list.AddRange(FindVisualChildren<T>(child));
+            }
+            return list;
         }
 
         private void PickBodyBackgroundColor_Click(object sender, RoutedEventArgs e)

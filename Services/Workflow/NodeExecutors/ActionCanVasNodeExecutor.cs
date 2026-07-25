@@ -1953,22 +1953,75 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 {
                                     if (cleanKey.Equals("V", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { webView.ExecuteScriptAsync("document.execCommand('paste')"); } catch { }
+                                        try { webView.Paste(); } catch { }
+                                        tcs.TrySetResult(true);
+                                        return;
                                     }
                                     else if (cleanKey.Equals("C", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { webView.ExecuteScriptAsync("document.execCommand('copy')"); } catch { }
+                                        try { webView.Copy(); } catch { }
+                                        tcs.TrySetResult(true);
+                                        return;
                                     }
                                     else if (cleanKey.Equals("A", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { webView.ExecuteScriptAsync("document.execCommand('selectAll')"); } catch { }
+                                        try { webView.SelectAll(); } catch { }
+                                        tcs.TrySetResult(true);
+                                        return;
                                     }
                                     else if (cleanKey.Equals("X", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        try { webView.ExecuteScriptAsync("document.execCommand('cut')"); } catch { }
+                                        try { webView.Cut(); } catch { }
+                                        tcs.TrySetResult(true);
+                                        return;
                                     }
-                                    tcs.TrySetResult(true);
-                                    return;
+                                }
+
+                                // ── Mô phỏng Bàn Phím Ảo (Virtual Keyboard) hoàn toàn cho CefSharp ──
+                                // Gửi tín hiệu bàn phím ảo trực tiếp vào CefSharp, không làm ảnh hưởng bàn phím thật của người dùng!
+                                try
+                                {
+                                    var host = webView.GetBrowser()?.GetHost();
+                                    if (host != null)
+                                    {
+                                        CefSharp.CefEventFlags flags = CefSharp.CefEventFlags.None;
+                                        if (ctrl) flags |= CefSharp.CefEventFlags.ControlDown;
+                                        if (shift) flags |= CefSharp.CefEventFlags.ShiftDown;
+                                        if (alt) flags |= CefSharp.CefEventFlags.AltDown;
+
+                                        var (key, code, vk, text) = GetCdpKeyDetails(cleanKey);
+
+                                        // 1. Send RawKeyDown
+                                        host.SendKeyEvent(new CefSharp.KeyEvent
+                                        {
+                                            Type = CefSharp.KeyEventType.RawKeyDown,
+                                            WindowsKeyCode = vk > 0 ? vk : 0,
+                                            Modifiers = flags
+                                        });
+
+                                        // 2. Send Char (cho các phím ký tự, Enter, Tab, Space khi không giữ Ctrl/Alt)
+                                        if (!string.IsNullOrEmpty(text) && text.Length > 0 && !ctrl && !alt)
+                                        {
+                                            host.SendKeyEvent(new CefSharp.KeyEvent
+                                            {
+                                                Type = CefSharp.KeyEventType.Char,
+                                                WindowsKeyCode = (int)text[0],
+                                                Modifiers = flags
+                                            });
+                                        }
+
+                                        // 3. Send KeyUp
+                                        host.SendKeyEvent(new CefSharp.KeyEvent
+                                        {
+                                            Type = CefSharp.KeyEventType.KeyUp,
+                                            WindowsKeyCode = vk > 0 ? vk : 0,
+                                            Modifiers = flags
+                                        });
+                                    }
+                                }
+                                catch (Exception virtKeyEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Virtual CefSharp key error: {virtKeyEx.Message}");
                                 }
 
                                 tcs.TrySetResult(true);

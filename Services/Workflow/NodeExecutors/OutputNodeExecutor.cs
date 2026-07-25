@@ -181,8 +181,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 outputNode.OutputText = outputText;
 
-                // Copy to clipboard if SaveToClipboard is enabled
-                if (outputNode.SaveToClipboard && !string.IsNullOrWhiteSpace(outputText))
+                bool hasImageClipboard = false;
+
+                // ── Tự động xử lý Copy ảnh / dữ liệu vào Clipboard với đa định dạng (CF_DIB, HTML, FileDrop, Bitmap, Text) ──
+                if (outputNode.CopyImagesToClipboard || outputNode.SaveToClipboard)
+                {
+                    try
+                    {
+                        var base64List = ExtractBase64Images(outputNode, variableValues, variableArrays, variableObjects);
+                        var cleanedOutput = CleanBase64(outputText);
+                        if (IsLikelyBase64Image(cleanedOutput) && !base64List.Contains(cleanedOutput))
+                        {
+                            base64List.Insert(0, cleanedOutput);
+                        }
+
+                        if (base64List.Count > 0)
+                        {
+                            string? textToSave = outputNode.SaveToClipboard ? outputText : null;
+                            CopyBase64ImagesToClipboard(base64List, textToSave);
+                            hasImageClipboard = true;
+                            System.Diagnostics.Debug.WriteLine($"OutputNode: Copied {base64List.Count} image(s) and multi-format data to clipboard");
+                        }
+                    }
+                    catch (Exception imgEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy images to clipboard: {imgEx.Message}");
+                    }
+                }
+
+                // Fallback: Copy to clipboard as plain text if SaveToClipboard is enabled and images were not processed
+                if (outputNode.SaveToClipboard && !hasImageClipboard && !string.IsNullOrWhiteSpace(outputText))
                 {
                     try
                     {
@@ -190,32 +218,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             Clipboard.SetText(outputText);
                         });
-                        System.Diagnostics.Debug.WriteLine($"OutputNode: Copied to clipboard");
+                        System.Diagnostics.Debug.WriteLine($"OutputNode: Copied plain text to clipboard");
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy to clipboard: {ex.Message}");
-                    }
-                }
-                // Copy images to clipboard if CopyImagesToClipboard is enabled
-                if (outputNode.CopyImagesToClipboard)
-                {
-                    try
-                    {
-                        var base64List = ExtractBase64Images(outputNode, variableValues, variableArrays, variableObjects);
-                        if (base64List.Count > 0)
-                        {
-                            CopyBase64ImagesToClipboard(base64List);
-                            System.Diagnostics.Debug.WriteLine($"OutputNode: Copied {base64List.Count} image(s) to clipboard");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"OutputNode: CopyImagesToClipboard enabled but no base64 images found");
-                        }
-                    }
-                    catch (Exception imgEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy images to clipboard: {imgEx.Message}");
+                        System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy text to clipboard: {ex.Message}");
                     }
                 }
 
@@ -922,12 +929,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         /// <summary>
-        /// Decode base64 images, save as temp PNG files, and copy to clipboard.
-        /// Supports both folder paste (FileDrop) and web paste (BitmapImage).
+        /// Decode base64 images, save as temp PNG files, and copy to clipboard with multi-format support
+        /// (FileDrop, Bitmap, CF_DIB for Chromium/CefSharp, HTML format, and Text).
         /// </summary>
-        private void CopyBase64ImagesToClipboard(List<string> base64List)
+        private void CopyBase64ImagesToClipboard(List<string> base64List, string? textToInclude = null)
         {
-            if (base64List.Count == 0) return;
+            if (base64List.Count == 0 && string.IsNullOrWhiteSpace(textToInclude)) return;
 
             var tempDir = Path.Combine(Path.GetTempPath(), "FlowMy_ClipboardImages");
             Directory.CreateDirectory(tempDir);
@@ -944,20 +951,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             var tempFiles = new StringCollection();
             BitmapImage? firstBitmap = null;
+            byte[]? firstImageBytes = null;
+            string? firstBase64 = null;
 
             for (int i = 0; i < base64List.Count; i++)
             {
                 try
                 {
-                    var bytes = Convert.FromBase64String(base64List[i]);
+                    var rawBase64 = CleanBase64(base64List[i]);
+                    if (string.IsNullOrWhiteSpace(rawBase64)) continue;
+
+                    var bytes = Convert.FromBase64String(rawBase64);
                     var fileName = $"image_{i + 1}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
                     var filePath = Path.Combine(tempDir, fileName);
                     File.WriteAllBytes(filePath, bytes);
                     tempFiles.Add(filePath);
 
-                    // Keep first image as BitmapImage for web paste support
                     if (firstBitmap == null)
                     {
+                        firstBase64 = rawBase64;
+                        firstImageBytes = bytes;
                         firstBitmap = new BitmapImage();
                         firstBitmap.BeginInit();
                         firstBitmap.StreamSource = new MemoryStream(bytes);
@@ -972,23 +985,104 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            if (tempFiles.Count == 0) return;
-
             Application.Current?.Dispatcher.Invoke(() =>
             {
                 var dataObject = new DataObject();
 
-                // FileDrop: cho phép Ctrl+V vào folder
-                dataObject.SetFileDropList(tempFiles);
+                // 1. FileDrop: cho phép Ctrl+V vào folder / desktop / chat app
+                if (tempFiles.Count > 0)
+                {
+                    dataObject.SetFileDropList(tempFiles);
+                }
 
-                // Bitmap: cho phép Ctrl+V vào web/app hỗ trợ paste ảnh
-                if (firstBitmap != null)
+                // 2. Bitmap & CF_DIB & HTML Format: cho phép Ctrl+V vào web CefSharp / Chromium / Web UI
+                if (firstBitmap != null && firstImageBytes != null)
                 {
                     dataObject.SetImage(firstBitmap);
+
+                    // CF_DIB (Device Independent Bitmap) - lõi Chromium/CefSharp đọc định dạng này cho e.clipboardData.files
+                    var dibStream = CreateDibStreamFromPngBytes(firstImageBytes);
+                    if (dibStream != null)
+                    {
+                        dataObject.SetData("DeviceIndependentBitmap", dibStream);
+                    }
+
+                    // HTML format - cho phép Chromium web paste nhận diện tag <img src="...">
+                    if (!string.IsNullOrWhiteSpace(firstBase64))
+                    {
+                        try
+                        {
+                            string htmlData = BuildHtmlClipboardFormat(firstBase64);
+                            dataObject.SetData(DataFormats.Html, htmlData);
+                        }
+                        catch { }
+                    }
+                }
+
+                // 3. Text format: nếu có text cần lưu cùng lúc
+                if (!string.IsNullOrWhiteSpace(textToInclude))
+                {
+                    dataObject.SetText(textToInclude);
                 }
 
                 Clipboard.SetDataObject(dataObject, true);
             });
+        }
+
+        private static MemoryStream? CreateDibStreamFromPngBytes(byte[] imageBytes)
+        {
+            try
+            {
+                using var ms = new MemoryStream(imageBytes);
+                var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                if (decoder.Frames.Count > 0)
+                {
+                    var frame = decoder.Frames[0];
+                    var encoder = new BmpBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(frame));
+                    using var bmpMs = new MemoryStream();
+                    encoder.Save(bmpMs);
+                    var bmpBytes = bmpMs.ToArray();
+
+                    if (bmpBytes.Length > 14 && bmpBytes[0] == 'B' && bmpBytes[1] == 'M')
+                    {
+                        byte[] dibBytes = new byte[bmpBytes.Length - 14];
+                        Buffer.BlockCopy(bmpBytes, 14, dibBytes, 0, dibBytes.Length);
+                        return new MemoryStream(dibBytes);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateDibStreamFromPngBytes error: {ex.Message}");
+            }
+            return null;
+        }
+
+        private static string BuildHtmlClipboardFormat(string base64Data)
+        {
+            string src = base64Data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                ? base64Data
+                : $"data:image/png;base64,{base64Data}";
+
+            string fragment = $"<!--StartFragment--><img src=\"{src}\" alt=\"image\"/><!--EndFragment-->";
+            string html = $"<!DOCTYPE html><html><body>{fragment}</body></html>";
+
+            string headerTemplate =
+                "Version:0.9\r\n" +
+                "StartHTML:{0:D10}\r\n" +
+                "EndHTML:{1:D10}\r\n" +
+                "StartFragment:{2:D10}\r\n" +
+                "EndFragment:{3:D10}\r\n";
+
+            string dummyHeader = string.Format(headerTemplate, 0, 0, 0, 0);
+            int startHtml = System.Text.Encoding.UTF8.GetByteCount(dummyHeader);
+            int startFragment = startHtml + System.Text.Encoding.UTF8.GetByteCount("<!DOCTYPE html><html><body>");
+            int endFragment = startFragment + System.Text.Encoding.UTF8.GetByteCount(fragment);
+            int endHtml = startHtml + System.Text.Encoding.UTF8.GetByteCount(html);
+
+            string header = string.Format(headerTemplate, startHtml, endHtml, startFragment, endFragment);
+            return header + html;
         }
 
         /// <summary>
