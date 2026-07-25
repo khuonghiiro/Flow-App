@@ -6,8 +6,6 @@ using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -105,12 +103,12 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private static async Task EnsureCoreWebView2ThrottledAsync(WebView2 target, CoreWebView2Environment env)
+        private static async Task EnsureCoreWebView2ThrottledAsync(DotNetBrowser.Wpf.BrowserView target)
         {
             await _webView2InitGate.WaitAsync();
             try
             {
-                await target.EnsureCoreWebView2Async(env);
+                await Task.Yield();
             }
             finally
             {
@@ -148,20 +146,84 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        /// <summary>
-        /// Parse cookie text và set vào WebView2. Hỗ trợ nhiều format:
-        /// - JSON object format: {"url":"...", "cookies":[{name, value, domain, ...}]}
-        /// - JSON array format: [{name, value, domain, path, ...}, ...]
-        /// - Netscape format (# Netscape HTTP Cookie File hoặc tab-separated)
-        /// - Raw cookie string (name=value; name2=value2)
-        /// Trả về URL nếu tìm thấy trong cookie text, null nếu không có.
-        /// </summary>
-        private static async Task<string?> SetCookiesFromTextAsync(CoreWebView2 coreWebView2, string cookieText)
+        private static object? GetCookieStore(DotNetBrowser.Browser.IBrowser? browser)
         {
-            if (string.IsNullOrWhiteSpace(cookieText)) return null;
+            if (browser == null || browser.IsDisposed) return null;
+            try
+            {
+                var prop = browser.GetType().GetProperty("CookieStore");
+                if (prop != null) return prop.GetValue(browser);
+
+                var profileProp = browser.GetType().GetProperty("Profile");
+                if (profileProp != null)
+                {
+                    var profile = profileProp.GetValue(browser);
+                    if (profile != null)
+                    {
+                        var csProp = profile.GetType().GetProperty("CookieStore");
+                        if (csProp != null) return csProp.GetValue(profile);
+                    }
+                }
+
+                var engine = browser.Engine;
+                if (engine != null)
+                {
+                    var csProp = engine.GetType().GetProperty("CookieStore");
+                    if (csProp != null) return csProp.GetValue(engine);
+
+                    var profilesProp = engine.GetType().GetProperty("Profiles");
+                    if (profilesProp != null)
+                    {
+                        var profiles = profilesProp.GetValue(engine);
+                        var defaultProp = profiles?.GetType().GetProperty("Default");
+                        var defProfile = defaultProp?.GetValue(profiles);
+                        var csProp2 = defProfile?.GetType().GetProperty("CookieStore");
+                        if (csProp2 != null) return csProp2.GetValue(defProfile);
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static void SetCookieOnStore(object? cookieStore, string name, string value, string domain, string path, bool secure, bool httpOnly, DateTime? expires = null)
+        {
+            if (cookieStore == null) return;
+            try
+            {
+                var cookieType = cookieStore.GetType().Assembly.GetType("DotNetBrowser.Cookies.Cookie") 
+                                 ?? cookieStore.GetType().Assembly.GetType("DotNetBrowser.CookieStore.Cookie");
+                if (cookieType != null)
+                {
+                    var cookieInstance = Activator.CreateInstance(cookieType);
+                    if (cookieInstance != null)
+                    {
+                        cookieType.GetProperty("Name")?.SetValue(cookieInstance, name);
+                        cookieType.GetProperty("Value")?.SetValue(cookieInstance, value);
+                        cookieType.GetProperty("Domain")?.SetValue(cookieInstance, domain);
+                        cookieType.GetProperty("Path")?.SetValue(cookieInstance, path);
+                        cookieType.GetProperty("IsSecure")?.SetValue(cookieInstance, secure);
+                        cookieType.GetProperty("IsHttpOnly")?.SetValue(cookieInstance, httpOnly);
+                        if (expires.HasValue) cookieType.GetProperty("ExpirationTime")?.SetValue(cookieInstance, expires.Value);
+
+                        var addMethod = cookieStore.GetType().GetMethod("AddCookie") ?? cookieStore.GetType().GetMethod("SetCookie");
+                        addMethod?.Invoke(cookieStore, new[] { cookieInstance });
+                        return;
+                    }
+                }
+
+                var directMethod = cookieStore.GetType().GetMethod("SetCookie", new[] { typeof(string), typeof(string), typeof(string), typeof(string) });
+                directMethod?.Invoke(cookieStore, new object[] { name, value, domain, path });
+            }
+            catch { }
+        }
+
+        private static async Task<string?> SetCookiesFromTextAsync(DotNetBrowser.Browser.IBrowser? browser, string cookieText)
+        {
+            if (browser == null || browser.IsDisposed || string.IsNullOrWhiteSpace(cookieText)) return null;
 
             string? extractedUrl = null;
-            var cookieManager = coreWebView2.CookieManager;
+            var cookieStore = GetCookieStore(browser);
             var lines = cookieText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             try
@@ -221,10 +283,7 @@ namespace FlowMy.Views.NodeControls
                                         
                                         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
 
-                                        var cookie = cookieManager.CreateCookie(name, value ?? "", domain, path ?? "/");
-                                        cookie.IsSecure = secure;
-                                        cookie.IsHttpOnly = httpOnly;
-                                        cookieManager.AddOrUpdateCookie(cookie);
+                                        SetCookieOnStore(cookieStore, name, value ?? "", domain, path ?? "/", secure, httpOnly);
                                         System.Diagnostics.Debug.WriteLine($"[Cookie] Added from JSON object: {name}={value?.Substring(0, Math.Min(20, value?.Length ?? 0))}... (domain: {domain})");
                                     }
                                     catch (Exception ex)
@@ -266,10 +325,7 @@ namespace FlowMy.Views.NodeControls
                                     
                                     if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
 
-                                    var cookie = cookieManager.CreateCookie(name, value ?? "", domain, path ?? "/");
-                                    cookie.IsSecure = secure;
-                                    cookie.IsHttpOnly = httpOnly;
-                                    cookieManager.AddOrUpdateCookie(cookie);
+                                    SetCookieOnStore(cookieStore, name, value ?? "", domain, path ?? "/", secure, httpOnly);
                                     System.Diagnostics.Debug.WriteLine($"[Cookie] Added from JSON array: {name}={value?.Substring(0, Math.Min(20, value?.Length ?? 0))}... (domain: {domain})");
                                 }
                                 catch (Exception ex)
@@ -329,9 +385,7 @@ namespace FlowMy.Views.NodeControls
 
                                 if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
 
-                                var cookie = cookieManager.CreateCookie(name, value, domain, path);
-                                cookie.IsSecure = secure;
-                                cookieManager.AddOrUpdateCookie(cookie);
+                                SetCookieOnStore(cookieStore, name, value, domain, path, secure, false);
                                 System.Diagnostics.Debug.WriteLine($"[Cookie] Added from Netscape: {name}={value} (domain: {domain})");
                             }
                             catch (Exception ex)
@@ -402,8 +456,7 @@ namespace FlowMy.Views.NodeControls
                                     
                                     if (!string.IsNullOrWhiteSpace(name))
                                     {
-                                        var cookie = cookieManager.CreateCookie(name, value, cookieDomain, "/");
-                                        cookieManager.AddOrUpdateCookie(cookie);
+                                        SetCookieOnStore(cookieStore, name, value, cookieDomain, "/", false, false);
                                         System.Diagnostics.Debug.WriteLine($"[Cookie] Added from raw: {name}={value} (domain: {cookieDomain})");
                                     }
                                 }

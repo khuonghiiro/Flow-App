@@ -6,8 +6,10 @@ using FlowMy.Services.Utils;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
+using DotNetBrowser.Engine;
+using DotNetBrowser.Browser;
+using DotNetBrowser.Wpf;
+using BrowserView = DotNetBrowser.Wpf.BrowserView;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -107,6 +109,51 @@ namespace FlowMy.Views.NodeControls
                 _ => "image/jpeg"
             };
         }
+        private static DotNetBrowser.Engine.IEngine CreateEngine(string cachePath)
+        {
+            var builder = new DotNetBrowser.Engine.EngineOptions.Builder();
+            var userDirMethod = builder.GetType().GetMethod("UserDataDir", new[] { typeof(string) }) 
+                                ?? builder.GetType().GetMethod("UserDataDirectory", new[] { typeof(string) });
+            if (userDirMethod != null)
+            {
+                userDirMethod.Invoke(builder, new object[] { cachePath });
+            }
+            else
+            {
+                var prop = builder.GetType().GetProperty("UserDataDir") ?? builder.GetType().GetProperty("UserDataDirectory");
+                prop?.SetValue(builder, cachePath);
+            }
+
+            var options = builder.Build();
+            return DotNetBrowser.Engine.EngineFactory.Create(options);
+        }
+
+        private static void InitializeBrowserView(DotNetBrowser.Wpf.BrowserView bv, DotNetBrowser.Browser.IBrowser browser)
+        {
+            var method = bv.GetType().GetMethod("InitializeFrom", new[] { typeof(DotNetBrowser.Browser.IBrowser) }) 
+                         ?? bv.GetType().GetMethod("Initialize", new[] { typeof(DotNetBrowser.Browser.IBrowser) });
+            if (method != null)
+            {
+                method.Invoke(bv, new object[] { browser });
+            }
+            else
+            {
+                var prop = bv.GetType().GetProperty("Browser");
+                prop?.SetValue(bv, browser);
+            }
+        }
+
+        private static DotNetBrowser.Browser.IBrowser? GetBrowser(DotNetBrowser.Wpf.BrowserView? bv)
+        {
+            if (bv == null) return null;
+            try
+            {
+                var prop = bv.GetType().GetProperty("Browser");
+                if (prop != null) return prop.GetValue(bv) as DotNetBrowser.Browser.IBrowser;
+            }
+            catch { }
+            return null;
+        }
 
         public static Border CreateBorder(HtmlUiNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
@@ -146,7 +193,7 @@ namespace FlowMy.Views.NodeControls
 
             GpuOptimizationHelper.ApplyToElement(grid);
 
-            var webView = new WebView2
+            var webView = new BrowserView
             {
                 Visibility = Visibility.Collapsed
             };
@@ -154,7 +201,7 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRow(webView, 1);
 
             // ✅ Khai báo sớm để các lambda/closure trong PropertyChanged có thể capture
-            WebView2? _webViewTab1 = null;
+            BrowserView? _webViewTab1 = null;
             bool _isTab1WebViewVisible = false; // track whether Tab1 WebView2 should be showing
             TabControl? _tabControl = null;
             TextBox? _addressBar = null;
@@ -2087,15 +2134,12 @@ namespace FlowMy.Views.NodeControls
                 }
                 else
                 {
-                    // Hiển thị lại và sync WebView2 sau khi zoom xong
                     if (webView.Visibility != Visibility.Visible)
                         webView.Visibility = Visibility.Visible;
 
-                    // ✅ Update WebView2 zoom để giữ tỉ lệ với canvas zoom
                     UpdateWebViewZoomForCanvasZoom();
 
                     SyncWebViewPosition();
-                    // Restore Tab1 WebView2 visible after zoom (only if Tab1 was selected)
                     if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
                         _webViewTab1.Visibility = Visibility.Visible;
                     SyncWebView1Position();
@@ -2117,7 +2161,6 @@ namespace FlowMy.Views.NodeControls
                 }
                 else
                 {
-                    // Hiển thị lại và sync WebView2 sau khi pan xong
                     if (webView.Visibility != Visibility.Visible)
                         webView.Visibility = Visibility.Visible;
                     SyncWebViewPosition();
@@ -2149,7 +2192,6 @@ namespace FlowMy.Views.NodeControls
                 }
                 else
                 {
-                    // Hiển thị lại và sync WebView2 sau khi dừng pan/drag
                     if (webView.Visibility != Visibility.Visible)
                     {
                         webView.Visibility = Visibility.Visible;
@@ -4132,11 +4174,11 @@ namespace FlowMy.Views.NodeControls
 
                     try
                     {
-                        if (webView.CoreWebView2 != null)
-                            webView.CoreWebView2.Navigate("about:blank");
+                        var b = GetBrowser(webView);
+                        if (b != null && !b.IsDisposed)
+                            b.Navigation.LoadUrl("about:blank");
                     }
                     catch { }
-                    try { webView.Dispose(); } catch { }
 
                     if (_titleUpdateTimers.TryGetValue(border, out var t)) { t.Stop(); _titleUpdateTimers.Remove(border); }
                     _titleUpdatedAfterZoom.Remove(border);
@@ -4147,8 +4189,8 @@ namespace FlowMy.Views.NodeControls
                     StopWebTabAutoRefreshTimer();
                     if (_webViewTab1 != null)
                     {
-                        try { if (_webViewTab1.CoreWebView2 != null) _webViewTab1.CoreWebView2.Navigate("about:blank"); } catch { }
-                        try { _webViewTab1.Dispose(); } catch { }
+                        try { GetBrowser(_webViewTab1)?.Dispose(); } catch { }
+                        _webViewTab1 = null;
                     }
                     scaleDescriptor?.RemoveValueChanged(host.ScaleTransform, scaleChangedHandler);
                     translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
@@ -4406,12 +4448,84 @@ namespace FlowMy.Views.NodeControls
         /// - Netscape format
         /// Trả về URL (http/https) nếu tìm thấy trong cookie text, null nếu không có.
         /// </summary>
-        private static async Task<string?> SetCookiesFromTextAsync(CoreWebView2 coreWebView2, string cookieText)
+        private static object? GetCookieStore(DotNetBrowser.Browser.IBrowser? browser)
         {
-            if (string.IsNullOrWhiteSpace(cookieText)) return null;
+            if (browser == null || browser.IsDisposed) return null;
+            try
+            {
+                var prop = browser.GetType().GetProperty("CookieStore");
+                if (prop != null) return prop.GetValue(browser);
+
+                var profileProp = browser.GetType().GetProperty("Profile");
+                if (profileProp != null)
+                {
+                    var profile = profileProp.GetValue(browser);
+                    if (profile != null)
+                    {
+                        var csProp = profile.GetType().GetProperty("CookieStore");
+                        if (csProp != null) return csProp.GetValue(profile);
+                    }
+                }
+
+                var engine = browser.Engine;
+                if (engine != null)
+                {
+                    var csProp = engine.GetType().GetProperty("CookieStore");
+                    if (csProp != null) return csProp.GetValue(engine);
+
+                    var profilesProp = engine.GetType().GetProperty("Profiles");
+                    if (profilesProp != null)
+                    {
+                        var profiles = profilesProp.GetValue(engine);
+                        var defaultProp = profiles?.GetType().GetProperty("Default");
+                        var defProfile = defaultProp?.GetValue(profiles);
+                        var csProp2 = defProfile?.GetType().GetProperty("CookieStore");
+                        if (csProp2 != null) return csProp2.GetValue(defProfile);
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static void SetCookieOnStore(object? cookieStore, string name, string value, string domain, string path, bool secure, bool httpOnly, DateTime? expires = null)
+        {
+            if (cookieStore == null) return;
+            try
+            {
+                var cookieType = cookieStore.GetType().Assembly.GetType("DotNetBrowser.Cookies.Cookie") 
+                                 ?? cookieStore.GetType().Assembly.GetType("DotNetBrowser.CookieStore.Cookie");
+                if (cookieType != null)
+                {
+                    var cookieInstance = Activator.CreateInstance(cookieType);
+                    if (cookieInstance != null)
+                    {
+                        cookieType.GetProperty("Name")?.SetValue(cookieInstance, name);
+                        cookieType.GetProperty("Value")?.SetValue(cookieInstance, value);
+                        cookieType.GetProperty("Domain")?.SetValue(cookieInstance, domain);
+                        cookieType.GetProperty("Path")?.SetValue(cookieInstance, path);
+                        cookieType.GetProperty("IsSecure")?.SetValue(cookieInstance, secure);
+                        cookieType.GetProperty("IsHttpOnly")?.SetValue(cookieInstance, httpOnly);
+                        if (expires.HasValue) cookieType.GetProperty("ExpirationTime")?.SetValue(cookieInstance, expires.Value);
+
+                        var addMethod = cookieStore.GetType().GetMethod("AddCookie") ?? cookieStore.GetType().GetMethod("SetCookie");
+                        addMethod?.Invoke(cookieStore, new[] { cookieInstance });
+                        return;
+                    }
+                }
+
+                var directMethod = cookieStore.GetType().GetMethod("SetCookie", new[] { typeof(string), typeof(string), typeof(string), typeof(string) });
+                directMethod?.Invoke(cookieStore, new object[] { name, value, domain, path });
+            }
+            catch { }
+        }
+
+        private static async Task<string?> SetCookiesFromTextAsync(DotNetBrowser.Browser.IBrowser? browser, string cookieText)
+        {
+            if (browser == null || browser.IsDisposed || string.IsNullOrWhiteSpace(cookieText)) return null;
 
             string? extractedUrl = null;
-            var cookieManager = coreWebView2.CookieManager;
+            var cookieStore = GetCookieStore(browser);
             var lines = cookieText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             try
@@ -4460,14 +4574,12 @@ namespace FlowMy.Views.NodeControls
                                         var secure = cookieObj.TryGetProperty("secure", out var s) && s.GetBoolean();
                                         var httpOnly = cookieObj.TryGetProperty("httpOnly", out var h) && h.GetBoolean();
                                         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
-                                        var cookie = cookieManager.CreateCookie(name, value ?? "", domain, path ?? "/");
-                                        cookie.IsSecure = secure;
-                                        cookie.IsHttpOnly = httpOnly;
-                                        // session=false → persistent cookie; set Expires tu expirationTime (unix seconds)
+                                        DateTime? expDate = null;
                                         var isSession = !cookieObj.TryGetProperty("session", out var sess) || sess.GetBoolean();
                                         if (!isSession && cookieObj.TryGetProperty("expirationTime", out var exp) && exp.TryGetInt64(out var expSecs))
-                                            cookie.Expires = DateTimeOffset.FromUnixTimeSeconds(expSecs).UtcDateTime;
-                                        cookieManager.AddOrUpdateCookie(cookie);
+                                            expDate = DateTimeOffset.FromUnixTimeSeconds(expSecs).UtcDateTime;
+
+                                        SetCookieOnStore(cookieStore, name, value ?? "", domain, path ?? "/", secure, httpOnly, expDate);
                                     }
                                     catch { }
                                 }
@@ -4497,14 +4609,12 @@ namespace FlowMy.Views.NodeControls
                                     var secure = cookieObj.TryGetProperty("secure", out var s) && s.GetBoolean();
                                     var httpOnly = cookieObj.TryGetProperty("httpOnly", out var h) && h.GetBoolean();
                                     if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
-                                    var cookie = cookieManager.CreateCookie(name, value ?? "", domain, path ?? "/");
-                                    cookie.IsSecure = secure;
-                                    cookie.IsHttpOnly = httpOnly;
-                                    // session=false → persistent cookie; set Expires tu expirationTime (unix seconds)
+                                    DateTime? expDate2 = null;
                                     var isSession2 = !cookieObj.TryGetProperty("session", out var sess2) || sess2.GetBoolean();
                                     if (!isSession2 && cookieObj.TryGetProperty("expirationTime", out var exp2) && exp2.TryGetInt64(out var expSecs2))
-                                        cookie.Expires = DateTimeOffset.FromUnixTimeSeconds(expSecs2).UtcDateTime;
-                                    cookieManager.AddOrUpdateCookie(cookie);
+                                        expDate2 = DateTimeOffset.FromUnixTimeSeconds(expSecs2).UtcDateTime;
+
+                                    SetCookieOnStore(cookieStore, name, value ?? "", domain, path ?? "/", secure, httpOnly, expDate2);
                                 }
                                 catch { }
                             }
@@ -4532,9 +4642,7 @@ namespace FlowMy.Views.NodeControls
                             var name = parts[5];
                             var value = parts.Length > 6 ? parts[6] : string.Empty;
                             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
-                            var cookie = cookieManager.CreateCookie(name, value, domain, path);
-                            cookie.IsSecure = secure;
-                            cookieManager.AddOrUpdateCookie(cookie);
+                            SetCookieOnStore(cookieStore, name, value, domain, path, secure, false);
                         }
                         catch { }
                     }
@@ -4561,8 +4669,7 @@ namespace FlowMy.Views.NodeControls
                         if (string.IsNullOrWhiteSpace(name)) continue;
                         try
                         {
-                            var cookie = cookieManager.CreateCookie(name, value, domain, "/");
-                            cookieManager.AddOrUpdateCookie(cookie);
+                            SetCookieOnStore(cookieStore, name, value, domain, "/", false, false);
                         }
                         catch { }
                     }

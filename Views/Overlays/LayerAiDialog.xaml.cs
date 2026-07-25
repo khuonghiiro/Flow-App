@@ -591,10 +591,12 @@ namespace FlowMy.Views.Overlays
         private enum ActiveTab { Prompt, WebView, WebBrowser }
         private ActiveTab _activeTab = ActiveTab.Prompt;
 
-        // WebView2 browser (lazy init)
+        // DotNetBrowser (lazy init)
         public class WebTabItem
         {
-            public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; set; }
+            public DotNetBrowser.Wpf.BrowserView? BrowserView { get; set; }
+            public DotNetBrowser.Browser.IBrowser? Browser { get; set; }
+            public DotNetBrowser.Engine.IEngine? Engine { get; set; }
             public string Url { get; set; } = "https://google.com";
             public string Title { get; set; } = "New Tab";
             public string ProfileName { get; set; } = "Shared";
@@ -612,7 +614,9 @@ namespace FlowMy.Views.Overlays
         private int _activeTabIdx = -1;
         private string _splitMode = "Single";
         private bool _webBrowserInitialized = false;
-        private Microsoft.Web.WebView2.Wpf.WebView2? _dynamicWebView;
+        private DotNetBrowser.Wpf.BrowserView? _dynamicBrowserView;
+        private DotNetBrowser.Browser.IBrowser? _dynamicBrowser;
+        private DotNetBrowser.Engine.IEngine? _dynamicEngine;
         private System.Windows.Controls.Primitives.Popup? _suggestPopup;
         private ListBox? _suggestListBox;
         private System.Windows.Threading.DispatcherTimer? _suggestDebounceTimer;
@@ -815,40 +819,47 @@ namespace FlowMy.Views.Overlays
             return options;
         }
 
-        private async void InitDynamicWebViewAsync()
+        private void InitDynamicWebViewAsync()
         {
             try
             {
                 var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
-                if (cacheState.DynamicWebView == null)
+                if (cacheState.DynamicBrowserView == null || cacheState.DynamicBrowser == null)
                 {
-                    var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
-                    
-                    // Add WebView2 to container FIRST so it's in the visual tree!
-                    WebViewContainer.Child = webView;
-
                     var cachePath = WebNodeCacheHelper.GetProfileCachePath("DynamicUi_" + _node.Id);
                     Directory.CreateDirectory(cachePath);
-                    var options = GetBrowserEnvironmentOptions();
-                    var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
+                    var options = new DotNetBrowser.Engine.EngineOptions.Builder
+                    {
+                        UserDataDir = cachePath,
+                        RenderingMode = DotNetBrowser.Engine.RenderingMode.HardwareAccelerated
+                    }.Build();
 
-                    await webView.EnsureCoreWebView2Async(env);
-                    await InjectDragDropInterceptorScriptAsync(webView);
-                    cacheState.DynamicWebView = webView;
+                    var engine = DotNetBrowser.Engine.EngineFactory.Create(options);
+                    var browser = engine.CreateBrowser();
+                    var browserView = new DotNetBrowser.Wpf.BrowserView();
+                    browserView.InitializeFrom(browser);
+
+                    WebViewContainer.Child = browserView;
+
+                    InjectDragDropInterceptorScriptAsync(browser);
+                    cacheState.DynamicEngine = engine;
+                    cacheState.DynamicBrowser = browser;
+                    cacheState.DynamicBrowserView = browserView;
                 }
                 else
                 {
-                    var webView = cacheState.DynamicWebView;
-                    if (webView.Parent is Border parentBorder)
+                    var browserView = cacheState.DynamicBrowserView;
+                    if (browserView.Parent is Border parentBorder)
                     {
                         parentBorder.Child = null;
                     }
-                    WebViewContainer.Child = webView;
-                    try { webView.CoreWebView2?.Resume(); } catch { }
+                    WebViewContainer.Child = browserView;
                 }
 
-                _dynamicWebView = cacheState.DynamicWebView;
-                HookActivityEvents(_dynamicWebView);
+                _dynamicBrowserView = cacheState.DynamicBrowserView;
+                _dynamicBrowser = cacheState.DynamicBrowser;
+                _dynamicEngine = cacheState.DynamicEngine;
+                HookActivityEvents(_dynamicBrowserView);
                 RenderDynamicUi();
             }
             catch (Exception ex)
@@ -859,7 +870,7 @@ namespace FlowMy.Views.Overlays
 
         private void RenderDynamicUi()
         {
-            if (_dynamicWebView?.CoreWebView2 == null) return;
+            if (_dynamicBrowser == null || _dynamicBrowser.IsDisposed) return;
 
             try
             {
@@ -886,7 +897,7 @@ namespace FlowMy.Views.Overlays
                 builder.AppendLine("</html>");
 
                 var fullHtml = builder.ToString();
-                _dynamicWebView.CoreWebView2.NavigateToString(fullHtml);
+                _dynamicBrowser.MainFrame.LoadHtml(fullHtml);
             }
             catch (Exception ex)
             {
@@ -938,14 +949,16 @@ namespace FlowMy.Views.Overlays
                 {
                     var tab = new WebTabItem
                     {
-                        WebView = cachedTab.WebView,
+                        BrowserView = cachedTab.BrowserView,
+                        Browser = cachedTab.Browser,
+                        Engine = cachedTab.Engine,
                         Url = cachedTab.Url,
                         Title = cachedTab.Title,
                         ProfileName = cachedTab.ProfileName
                     };
-                    if (tab.WebView != null)
+                    if (tab.Browser != null && tab.BrowserView != null)
                     {
-                        BindWebViewEvents(tab, tab.WebView);
+                        BindWebViewEvents(tab, tab.Browser, tab.BrowserView);
                     }
                     _webTabs.Add(tab);
                 }
@@ -1024,7 +1037,9 @@ namespace FlowMy.Views.Overlays
             {
                 cacheState.WebBrowsers.Add(new LayerAiWebViewCache.CachedTabState
                 {
-                    WebView = tab.WebView,
+                    BrowserView = tab.BrowserView,
+                    Browser = tab.Browser,
+                    Engine = tab.Engine,
                     Url = tab.Url,
                     Title = tab.Title,
                     ProfileName = tab.ProfileName
@@ -1032,58 +1047,43 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void InitializeWebViewAfterLoading(WebTabItem tab, Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        private void InitializeWebViewAfterLoading(WebTabItem tab, DotNetBrowser.Wpf.BrowserView browserView)
         {
-            _ = Task.Run(async () =>
+            try
             {
-                await Dispatcher.InvokeAsync(async () =>
+                var profileName = tab.ProfileName;
+                var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                Directory.CreateDirectory(cachePath);
+
+                var options = new DotNetBrowser.Engine.EngineOptions.Builder
                 {
-                    try
-                    {
-                        var profileName = tab.ProfileName;
-                        Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
+                    UserDataDir = cachePath,
+                    RenderingMode = DotNetBrowser.Engine.RenderingMode.HardwareAccelerated
+                }.Build();
 
-                        if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
-                        {
-                            try
-                            {
-                                env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                            }
-                            catch (Exception exShared)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Shared env failed fallback: {exShared.Message}");
-                                var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
-                                Directory.CreateDirectory(cachePath);
-                                var options = GetBrowserEnvironmentOptions();
-                                env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                            }
-                        }
-                        else
-                        {
-                            var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                            Directory.CreateDirectory(cachePath);
-                            var options = GetBrowserEnvironmentOptions();
-                            env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, options);
-                        }
+                var engine = DotNetBrowser.Engine.EngineFactory.Create(options);
+                var browser = engine.CreateBrowser();
+                browserView.InitializeFrom(browser);
 
-                        await webView.EnsureCoreWebView2Async(env);
-                        await InjectDragDropInterceptorScriptAsync(webView);
+                tab.Engine = engine;
+                tab.Browser = browser;
 
-                        var url = tab.Url;
-                        if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
-                        webView.CoreWebView2.Navigate(url);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Deferred WebView2 initialization failed: {ex.Message}");
-                    }
-                });
-            });
+                InjectDragDropInterceptorScriptAsync(browser);
+                BindWebViewEvents(tab, browser, browserView);
+
+                var url = tab.Url;
+                if (string.IsNullOrWhiteSpace(url)) url = "https://google.com";
+                browser.Navigation.LoadUrl(url);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DotNetBrowser initialization failed: {ex.Message}");
+            }
         }
 
-        private void BindWebViewEvents(WebTabItem tab, Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        private void BindWebViewEvents(WebTabItem tab, DotNetBrowser.Browser.IBrowser browser, DotNetBrowser.Wpf.BrowserView browserView)
         {
-            webView.NavigationStarting += (s, e) =>
+            browser.Navigation.NavigationStarted += (s, e) =>
             {
                 tab.IsLoading = true;
                 Dispatcher.Invoke(() => {
@@ -1095,48 +1095,35 @@ namespace FlowMy.Views.Overlays
                 });
             };
 
-            webView.NavigationCompleted += (s, e) =>
+            browser.Navigation.FrameLoadFinished += (s, e) =>
             {
-                tab.IsLoading = false;
-                Dispatcher.Invoke(() => {
-                    try
-                    {
-                        if (webView.CoreWebView2 != null)
+                if (e.IsMainFrame)
+                {
+                    tab.IsLoading = false;
+                    Dispatcher.Invoke(() => {
+                        try
                         {
-                            tab.Url = webView.CoreWebView2.Source;
-                            tab.Title = webView.CoreWebView2.DocumentTitle;
-                            if (string.IsNullOrWhiteSpace(tab.Title)) tab.Title = "New Tab";
+                            if (browser != null && !browser.IsDisposed)
+                            {
+                                tab.Url = browser.Url;
+                                tab.Title = browser.Title;
+                                if (string.IsNullOrWhiteSpace(tab.Title)) tab.Title = "New Tab";
+                            }
                         }
-                    }
-                    catch { }
-                    RefreshWebTabStrip();
-                    UpdateNavigationButtons();
-                    if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
-                    {
-                        UrlLoadingIndicator.Visibility = Visibility.Collapsed;
-                        TxtWebUrl.Text = tab.Url;
-                    }
-                });
-            };
-
-            webView.SourceChanged += (s, e) =>
-            {
-                Dispatcher.Invoke(() => {
-                    try
-                    {
-                        tab.Url = webView.Source?.ToString() ?? tab.Url;
+                        catch { }
+                        RefreshWebTabStrip();
+                        UpdateNavigationButtons();
                         if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tab)
                         {
+                            UrlLoadingIndicator.Visibility = Visibility.Collapsed;
                             TxtWebUrl.Text = tab.Url;
-                            _node.LayerAiWebUrl = tab.Url;
                         }
-                    }
-                    catch { }
-                    SaveWebTabsState();
-                });
+                        SaveWebTabsState();
+                    });
+                }
             };
 
-            webView.MouseEnter += (s, e) =>
+            browserView.MouseEnter += (s, e) =>
             {
                 Dispatcher.Invoke(() => {
                     int idx = _webTabs.IndexOf(tab);
@@ -1147,7 +1134,7 @@ namespace FlowMy.Views.Overlays
                 });
             };
 
-            webView.GotFocus += (s, e) =>
+            browserView.GotFocus += (s, e) =>
             {
                 Dispatcher.Invoke(() => {
                     int idx = _webTabs.IndexOf(tab);
@@ -1200,36 +1187,35 @@ namespace FlowMy.Views.Overlays
                 if (tabIdx >= 0 && tabIdx < _webTabs.Count)
                 {
                     var tab = _webTabs[tabIdx];
-                    bool needsInitialization = (tab.WebView == null);
+                    bool needsInitialization = (tab.BrowserView == null || tab.Browser == null);
 
                     if (needsInitialization)
                     {
-                        var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
-                        tab.WebView = webView;
+                        var browserView = new DotNetBrowser.Wpf.BrowserView();
+                        tab.BrowserView = browserView;
                         
-                        HookActivityEvents(webView);
-                        BindWebViewEvents(tab, webView);
+                        HookActivityEvents(browserView);
                     }
 
-                    if (tab.WebView!.Parent is Panel parentPanel)
+                    if (tab.BrowserView!.Parent is Panel parentPanel)
                     {
-                        parentPanel.Children.Remove(tab.WebView);
+                        parentPanel.Children.Remove(tab.BrowserView);
                     }
-                    else if (tab.WebView.Parent is Decorator parentDecorator)
+                    else if (tab.BrowserView.Parent is Decorator parentDecorator)
                     {
                         parentDecorator.Child = null;
                     }
-                    else if (tab.WebView.Parent is ContentControl cc)
+                    else if (tab.BrowserView.Parent is ContentControl cc)
                     {
                         cc.Content = null;
                     }
 
-                    content = tab.WebView;
+                    content = tab.BrowserView;
                     isThisSlotActive = (tabIdx == _activeTabIdx);
 
                     if (needsInitialization)
                     {
-                        InitializeWebViewAfterLoading(tab, tab.WebView);
+                        InitializeWebViewAfterLoading(tab, tab.BrowserView);
                     }
                 }
                 else
@@ -1356,7 +1342,8 @@ namespace FlowMy.Views.Overlays
             var tab = _webTabs[idx];
             try
             {
-                tab.WebView?.Dispose();
+                tab.Browser?.Dispose();
+                tab.Engine?.Dispose();
             }
             catch { }
 
@@ -1593,9 +1580,9 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                if (tab.WebView?.CoreWebView2 != null && tab.WebView.CanGoBack)
+                if (tab.Browser != null && !tab.Browser.IsDisposed && tab.Browser.Navigation.CanGoBack())
                 {
-                    tab.WebView.GoBack();
+                    tab.Browser.Navigation.GoBack();
                 }
             }
         }
@@ -1605,9 +1592,9 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                if (tab.WebView?.CoreWebView2 != null && tab.WebView.CanGoForward)
+                if (tab.Browser != null && !tab.Browser.IsDisposed && tab.Browser.Navigation.CanGoForward())
                 {
-                    tab.WebView.GoForward();
+                    tab.Browser.Navigation.GoForward();
                 }
             }
         }
@@ -1617,9 +1604,9 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                if (tab.WebView?.CoreWebView2 != null)
+                if (tab.Browser != null && !tab.Browser.IsDisposed)
                 {
-                    tab.WebView.Reload();
+                    tab.Browser.Navigation.Reload();
                 }
             }
         }
@@ -1629,8 +1616,8 @@ namespace FlowMy.Views.Overlays
             if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
                 var tab = _webTabs[_activeTabIdx];
-                BtnWebBack.IsEnabled = tab.WebView != null && tab.WebView.CanGoBack;
-                BtnWebForward.IsEnabled = tab.WebView != null && tab.WebView.CanGoForward;
+                BtnWebBack.IsEnabled = tab.Browser != null && !tab.Browser.IsDisposed && tab.Browser.Navigation.CanGoBack();
+                BtnWebForward.IsEnabled = tab.Browser != null && !tab.Browser.IsDisposed && tab.Browser.Navigation.CanGoForward();
             }
             else
             {
@@ -1697,13 +1684,16 @@ namespace FlowMy.Views.Overlays
                 if (tab.ProfileName == profileName) return;
                 tab.ProfileName = profileName;
 
-                if (tab.WebView != null)
+                if (tab.Browser != null || tab.Engine != null)
                 {
                     try
                     {
-                        var oldUrl = tab.WebView.CoreWebView2?.Source ?? tab.Url;
-                        tab.WebView.Dispose();
-                        tab.WebView = null;
+                        var oldUrl = (tab.Browser != null && !tab.Browser.IsDisposed) ? tab.Browser.Url : tab.Url;
+                        try { tab.Browser?.Dispose(); } catch { }
+                        try { tab.Engine?.Dispose(); } catch { }
+                        tab.BrowserView = null;
+                        tab.Browser = null;
+                        tab.Engine = null;
 
                         tab.Url = oldUrl;
                         UpdateWebBrowserLayout();
@@ -1711,7 +1701,7 @@ namespace FlowMy.Views.Overlays
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Profile switch failed: {ex.Message}");
-                        MessageBox.Show($"Lỗi chuyển đổi Profile trình duyệt: {ex.Message}", "Lỗi WebView2", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show($"Lỗi chuyển đổi Profile trình duyệt: {ex.Message}", "Lỗi DotNetBrowser", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -1777,7 +1767,7 @@ namespace FlowMy.Views.Overlays
         {
             if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) return;
             var tab = _webTabs[_activeTabIdx];
-            if (tab.WebView?.CoreWebView2 == null) return;
+            if (tab.Browser == null || tab.Browser.IsDisposed) return;
 
             var trimmed = input?.Trim() ?? "";
             if (string.IsNullOrEmpty(trimmed)) return;
@@ -1797,7 +1787,7 @@ namespace FlowMy.Views.Overlays
             }
 
             TxtWebUrl.Text = url;
-            tab.WebView.CoreWebView2.Navigate(url);
+            tab.Browser.Navigation.LoadUrl(url);
         }
 
         private void BtnWebGo_Click(object sender, RoutedEventArgs e) => NavigateWebBrowser(TxtWebUrl.Text);
@@ -2702,12 +2692,12 @@ namespace FlowMy.Views.Overlays
                         string? pageUrl = sourcePageUrl;
                         if (string.IsNullOrWhiteSpace(pageUrl))
                         {
-                            Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
-                            if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
-                            else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
-                            if (activeWv?.Source != null)
+                            DotNetBrowser.Browser.IBrowser? activeBrowser = null;
+                            if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeBrowser = _webTabs[_activeTabIdx].Browser;
+                            else if (_activeTab == ActiveTab.WebView) activeBrowser = _dynamicBrowser;
+                            if (activeBrowser != null && !activeBrowser.IsDisposed && !string.IsNullOrWhiteSpace(activeBrowser.Url))
                             {
-                                pageUrl = activeWv.Source.ToString();
+                                pageUrl = activeBrowser.Url;
                             }
                         }
                         if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = _node?.LayerAiWebUrl;
@@ -4493,16 +4483,16 @@ namespace FlowMy.Views.Overlays
                 var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
                 foreach (var cachedTab in cacheState.WebBrowsers)
                 {
-                    var activeWv = cachedTab.WebView;
-                    if (activeWv != null && activeWv.CoreWebView2 != null)
+                    var activeBrowser = cachedTab.Browser;
+                    if (activeBrowser != null && !activeBrowser.IsDisposed)
                     {
-                        try { await activeWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();"); } catch { }
+                        try { activeBrowser.MainFrame.ExecuteJavaScript("if (window.resetDragState) window.resetDragState();"); } catch { }
                     }
                 }
-                var dynamicWv = cacheState.DynamicWebView;
-                if (dynamicWv != null && dynamicWv.CoreWebView2 != null)
+                var dynamicBrowser = cacheState.DynamicBrowser;
+                if (dynamicBrowser != null && !dynamicBrowser.IsDisposed)
                 {
-                    await dynamicWv.ExecuteScriptAsync("if (window.resetDragState) window.resetDragState();");
+                    try { dynamicBrowser.MainFrame.ExecuteJavaScript("if (window.resetDragState) window.resetDragState();"); } catch { }
                 }
             }
             catch (Exception ex)
@@ -4689,12 +4679,12 @@ namespace FlowMy.Views.Overlays
                     string? pageUrl = sourcePageUrl;
                     if (string.IsNullOrWhiteSpace(pageUrl))
                     {
-                        Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
-                        if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
-                        else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
-                        if (activeWv?.Source != null)
+                        DotNetBrowser.Browser.IBrowser? activeBrowser = null;
+                        if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeBrowser = _webTabs[_activeTabIdx].Browser;
+                        else if (_activeTab == ActiveTab.WebView) activeBrowser = _dynamicBrowser;
+                        if (activeBrowser != null && !activeBrowser.IsDisposed && !string.IsNullOrWhiteSpace(activeBrowser.Url))
                         {
-                            pageUrl = activeWv.Source.ToString();
+                            pageUrl = activeBrowser.Url;
                         }
                     }
                     if (string.IsNullOrWhiteSpace(pageUrl)) pageUrl = _node?.LayerAiWebUrl;
@@ -4992,9 +4982,9 @@ namespace FlowMy.Views.Overlays
             try
             {
                 // Find the active WebView2 instance to extract session cookies
-                Microsoft.Web.WebView2.Wpf.WebView2? activeWv = null;
-                if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
-                else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
+                DotNetBrowser.Browser.IBrowser? activeBrowser = null;
+                if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeBrowser = _webTabs[_activeTabIdx].Browser;
+                else if (_activeTab == ActiveTab.WebView) activeBrowser = _dynamicBrowser;
 
                 using (var client = new System.Net.Http.HttpClient())
                 {
@@ -5003,9 +4993,9 @@ namespace FlowMy.Views.Overlays
 
                     // Set Referer to the current page URL
                     string? pageUrl = null;
-                    if (activeWv?.Source != null)
+                    if (activeBrowser != null && !activeBrowser.IsDisposed && !string.IsNullOrWhiteSpace(activeBrowser.Url))
                     {
-                        pageUrl = activeWv.Source.ToString();
+                        pageUrl = activeBrowser.Url;
                     }
                     if (string.IsNullOrWhiteSpace(pageUrl))
                     {
@@ -5021,24 +5011,23 @@ namespace FlowMy.Views.Overlays
                         client.DefaultRequestHeaders.Referrer = new Uri(pageUrl);
                     }
 
-                    // Extract and add cookies as raw header string (avoids CookieContainer exceptions)
-                    if (activeWv?.CoreWebView2 != null)
+                    // Extract and add cookies
+                    if (activeBrowser != null && !activeBrowser.IsDisposed)
                     {
                         try
                         {
-                            var cookieManager = activeWv.CoreWebView2.CookieManager;
-                            var cookies = await cookieManager.GetCookiesAsync(uri.ToString());
-                            if (cookies != null && cookies.Count > 0)
+                            var cookies = activeBrowser.Engine?.CookieStore?.Cookies;
+                            if (cookies != null)
                             {
                                 var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
                                 string cookieHeaderValue = string.Join("; ", cookiePairs);
-                                client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                                if (!string.IsNullOrWhiteSpace(cookieHeaderValue))
+                                {
+                                    client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                                }
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Failed to get WebView2 cookies: {ex.Message}");
-                        }
+                        catch { }
                     }
 
                     var data = await client.GetByteArrayAsync(uri);
@@ -5164,9 +5153,9 @@ namespace FlowMy.Views.Overlays
         [System.Runtime.InteropServices.DllImport("kernel32.dll")]
         private static extern int GlobalSize(IntPtr hMem);
 
-        private async System.Threading.Tasks.Task InjectDragDropInterceptorScriptAsync(Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        private void InjectDragDropInterceptorScriptAsync(DotNetBrowser.Browser.IBrowser browser)
         {
-            if (webView?.CoreWebView2 == null) return;
+            if (browser == null || browser.IsDisposed) return;
             try
             {
                 // Inject the JS script to run on every page load
@@ -5301,16 +5290,16 @@ namespace FlowMy.Views.Overlays
                         }, true);
                     })();
                 ";
-                await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+                browser.MainFrame.ExecuteJavaScript(script);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to inject drag-drop interceptor script: {ex.Message}");
             }
         }
- 
+
         #endregion
- 
+
         #endregion
     }
 
@@ -5320,7 +5309,9 @@ namespace FlowMy.Views.Overlays
 
         public class CachedTabState
         {
-            public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; set; }
+            public DotNetBrowser.Wpf.BrowserView? BrowserView { get; set; }
+            public DotNetBrowser.Browser.IBrowser? Browser { get; set; }
+            public DotNetBrowser.Engine.IEngine? Engine { get; set; }
             public string Url { get; set; } = "https://google.com";
             public string Title { get; set; } = "New Tab";
             public string ProfileName { get; set; } = "Shared";
@@ -5328,7 +5319,9 @@ namespace FlowMy.Views.Overlays
 
         public class CachedWebViewState
         {
-            public Microsoft.Web.WebView2.Wpf.WebView2? DynamicWebView { get; set; }
+            public DotNetBrowser.Wpf.BrowserView? DynamicBrowserView { get; set; }
+            public DotNetBrowser.Browser.IBrowser? DynamicBrowser { get; set; }
+            public DotNetBrowser.Engine.IEngine? DynamicEngine { get; set; }
             public System.Collections.Generic.List<CachedTabState> WebBrowsers { get; set; } = new();
             public string SplitMode { get; set; } = "Single";
             public int ActiveTabIdx { get; set; } = 0;
@@ -5367,7 +5360,6 @@ namespace FlowMy.Views.Overlays
                 {
                     state.LastUsed = DateTime.Now;
 
-                    // Set a timer to put WebView2s to sleep after 10 minutes (600,000 ms)
                     state.SleepTimer?.Stop();
                     state.SleepTimer?.Dispose();
 
@@ -5386,32 +5378,7 @@ namespace FlowMy.Views.Overlays
         {
             lock (_cache)
             {
-                if (_cache.TryGetValue(nodeId, out var state))
-                {
-                    System.Windows.Application.Current.Dispatcher.Invoke(async () =>
-                    {
-                        try
-                        {
-                            if (state.DynamicWebView?.CoreWebView2 != null)
-                            {
-                                await state.DynamicWebView.CoreWebView2.TrySuspendAsync();
-                                System.Diagnostics.Debug.WriteLine($"WebView2 Dynamic UI suspended for node {nodeId}");
-                            }
-                            foreach (var tabState in state.WebBrowsers)
-                            {
-                                if (tabState.WebView?.CoreWebView2 != null)
-                                {
-                                    await tabState.WebView.CoreWebView2.TrySuspendAsync();
-                                    System.Diagnostics.Debug.WriteLine($"WebView2 WebBrowser (profile: {tabState.ProfileName}) suspended for node {nodeId}");
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error suspending WebView2: {ex.Message}");
-                        }
-                    });
-                }
+                // DotNetBrowser handles background memory automatically
             }
         }
 
@@ -5428,10 +5395,12 @@ namespace FlowMy.Views.Overlays
                     {
                         try
                         {
-                            state.DynamicWebView?.Dispose();
+                            state.DynamicBrowser?.Dispose();
+                            state.DynamicEngine?.Dispose();
                             foreach (var tabState in state.WebBrowsers)
                             {
-                                tabState.WebView?.Dispose();
+                                tabState.Browser?.Dispose();
+                                tabState.Engine?.Dispose();
                             }
                         }
                         catch { }

@@ -101,6 +101,8 @@
 		<PackageReference Include="AvalonEdit" Version="6.3.1.120" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="CurlThin" Version="0.0.7" />
+		<PackageReference Include="DotNetBrowser" Version="4.2.1" />
+		<PackageReference Include="DotNetBrowser.Wpf" Version="4.2.1" />
 		<PackageReference Include="EmptyFlow.SciterAPI" Version="1.2.8" />
 		<PackageReference Include="ExcelDataReader" Version="3.7.0" />
 		<PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
@@ -177,11 +179,18 @@
 		  <None Remove="Icons_All\**\*" />
 		  <Content Remove="Icons_All\**\*" />
 		</ItemGroup>
+	
+		<ItemGroup>
+		  <Content Remove="public\library\sciter.dll" />
+		  <Content Remove="public\library\teamdev.licenses" />
+		</ItemGroup>
+	
+		<ItemGroup>
+		  <EmbeddedResource Include="public\library\sciter.dll" />
+		  <EmbeddedResource Include="public\library\teamdev.licenses" />
+		</ItemGroup>
+	
 
-
-
-
-  
 	<ItemGroup>
 		<Resource Include="Effects\video_eq.ps" />
 		<Resource Include="Assets\Fonts\fa-solid-900.ttf">
@@ -209,6 +218,12 @@
 
 	<ItemGroup>
 	  <Folder Include="Assets\Icons\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Reference Include="DotNetBrowserCrack">
+	    <HintPath>public\library\DotNetBrowserCrack.dll</HintPath>
+	  </Reference>
 	</ItemGroup>
 
 	<!-- Đảm bảo Themes/Controls/Borders.xaml luôn được MarkupCompile → BAML (tránh lỗi runtime Cannot locate resource 'themes/controls/borders.xaml'). -->

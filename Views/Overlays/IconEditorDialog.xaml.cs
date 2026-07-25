@@ -65,12 +65,16 @@ namespace FlowMy.Views.Overlays
         private readonly List<System.Windows.UIElement> _svgPreviewShapes = new();
         private string? _svgTempFilePath;
 
-        // WebView2 variables
-        private Microsoft.Web.WebView2.Wpf.WebView2? _webView;
+        // DotNetBrowser variables
+        private DotNetBrowser.Wpf.BrowserView? _browserView;
+        private DotNetBrowser.Browser.IBrowser? _browser;
+        private DotNetBrowser.Engine.IEngine? _engine;
         private string _activeProfileName = "Shared";
 
-        // Static cache to keep WebView2 alive across dialog reopenings
-        private static Microsoft.Web.WebView2.Wpf.WebView2? _cachedWebView;
+        // Static cache to keep DotNetBrowser alive across dialog reopenings
+        private static DotNetBrowser.Wpf.BrowserView? _cachedBrowserView;
+        private static DotNetBrowser.Browser.IBrowser? _cachedBrowser;
+        private static DotNetBrowser.Engine.IEngine? _cachedEngine;
         private static string? _cachedProfileName;
         private static System.Threading.CancellationTokenSource? _disposeCts;
 
@@ -1397,20 +1401,54 @@ namespace FlowMy.Views.Overlays
             catch { }
         }
 
-        private void OnWebViewNavigationStarting(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+        private static DotNetBrowser.Engine.IEngine CreateEngine(string cachePath)
+        {
+            var builder = new DotNetBrowser.Engine.EngineOptions.Builder();
+            var userDirMethod = builder.GetType().GetMethod("UserDataDir", new[] { typeof(string) }) 
+                                ?? builder.GetType().GetMethod("UserDataDirectory", new[] { typeof(string) });
+            if (userDirMethod != null)
+            {
+                userDirMethod.Invoke(builder, new object[] { cachePath });
+            }
+            else
+            {
+                var prop = builder.GetType().GetProperty("UserDataDir") ?? builder.GetType().GetProperty("UserDataDirectory");
+                prop?.SetValue(builder, cachePath);
+            }
+
+            var options = builder.Build();
+            return DotNetBrowser.Engine.EngineFactory.Create(options);
+        }
+
+        private static void InitializeBrowserView(DotNetBrowser.Wpf.BrowserView bv, DotNetBrowser.Browser.IBrowser browser)
+        {
+            var method = bv.GetType().GetMethod("InitializeFrom", new[] { typeof(DotNetBrowser.Browser.IBrowser) }) 
+                         ?? bv.GetType().GetMethod("Initialize", new[] { typeof(DotNetBrowser.Browser.IBrowser) });
+            if (method != null)
+            {
+                method.Invoke(bv, new object[] { browser });
+            }
+            else
+            {
+                var prop = bv.GetType().GetProperty("Browser");
+                prop?.SetValue(bv, browser);
+            }
+        }
+
+        private void OnNavigationStarted(object? sender, DotNetBrowser.Navigation.Events.NavigationStartedEventArgs e)
         {
             Dispatcher.Invoke(() => UrlLoadingIndicator.Visibility = Visibility.Visible);
         }
 
-        private void OnWebViewNavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+        private void OnFrameLoadFinished(object? sender, DotNetBrowser.Navigation.Events.FrameLoadFinishedEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
                 UrlLoadingIndicator.Visibility = Visibility.Collapsed;
-                if (_webView?.CoreWebView2 != null)
+                if (_browser != null && !_browser.IsDisposed)
                 {
-                    TxtWebUrl.Text = _webView.CoreWebView2.Source;
-                    SaveLastUrl(_webView.CoreWebView2.Source);
+                    TxtWebUrl.Text = _browser.Url;
+                    SaveLastUrl(_browser.Url);
                 }
             });
         }
@@ -1426,10 +1464,13 @@ namespace FlowMy.Views.Overlays
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        if (_cachedWebView != null)
+                        if (_cachedBrowserView != null || _cachedBrowser != null || _cachedEngine != null)
                         {
-                            try { _cachedWebView.Dispose(); } catch { }
-                            _cachedWebView = null;
+                            try { _cachedBrowser?.Dispose(); } catch { }
+                            try { _cachedEngine?.Dispose(); } catch { }
+                            _cachedBrowserView = null;
+                            _cachedBrowser = null;
+                            _cachedEngine = null;
                             _cachedProfileName = null;
                         }
                     });
@@ -1439,28 +1480,32 @@ namespace FlowMy.Views.Overlays
 
         private void DetachAndCacheWebView()
         {
-            if (_webView != null)
+            if (_browserView != null && _browser != null)
             {
                 // Unhook event handlers to prevent leaks
-                _webView.NavigationStarting -= OnWebViewNavigationStarting;
-                _webView.NavigationCompleted -= OnWebViewNavigationCompleted;
+                _browser.Navigation.NavigationStarted -= OnNavigationStarted;
+                _browser.Navigation.FrameLoadFinished -= OnFrameLoadFinished;
 
                 // Detach from current parent
-                if (WebBrowserContainer != null && WebBrowserContainer.Children.Contains(_webView))
+                if (WebBrowserContainer != null && WebBrowserContainer.Children.Contains(_browserView))
                 {
-                    WebBrowserContainer.Children.Remove(_webView);
+                    WebBrowserContainer.Children.Remove(_browserView);
                 }
 
-                _cachedWebView = _webView;
+                _cachedBrowserView = _browserView;
+                _cachedBrowser = _browser;
+                _cachedEngine = _engine;
                 _cachedProfileName = _activeProfileName;
-                _webView = null;
+                _browserView = null;
+                _browser = null;
+                _engine = null;
 
                 // Start 3-minute delayed disposal timer
                 StartCacheExpiryTimer();
             }
         }
 
-        private async void InitializeWebView(string profileName)
+        private void InitializeWebView(string profileName)
         {
             // Cancel active cache timer
             _disposeCts?.Cancel();
@@ -1468,87 +1513,78 @@ namespace FlowMy.Views.Overlays
 
             WebBrowserContainer.Children.Clear();
             
-            // Reuse cached WebView2 if profile matches
-            if (_cachedWebView != null && string.Equals(_cachedProfileName, profileName, StringComparison.OrdinalIgnoreCase))
+            // Reuse cached DotNetBrowser if profile matches
+            if (_cachedBrowserView != null && _cachedBrowser != null && string.Equals(_cachedProfileName, profileName, StringComparison.OrdinalIgnoreCase))
             {
-                _webView = _cachedWebView;
-                _cachedWebView = null;
+                _browserView = _cachedBrowserView;
+                _browser = _cachedBrowser;
+                _engine = _cachedEngine;
+                _cachedBrowserView = null;
+                _cachedBrowser = null;
+                _cachedEngine = null;
                 _cachedProfileName = null;
 
-                if (_webView.Parent is Panel p)
+                if (_browserView.Parent is Panel p)
                 {
-                    p.Children.Remove(_webView);
+                    p.Children.Remove(_browserView);
                 }
 
-                WebBrowserContainer.Children.Add(_webView);
-                _webView.NavigationStarting += OnWebViewNavigationStarting;
-                _webView.NavigationCompleted += OnWebViewNavigationCompleted;
+                WebBrowserContainer.Children.Add(_browserView);
+                _browser.Navigation.NavigationStarted += OnNavigationStarted;
+                _browser.Navigation.FrameLoadFinished += OnFrameLoadFinished;
 
-                if (_webView.CoreWebView2 != null)
+                if (!_browser.IsDisposed)
                 {
-                    TxtWebUrl.Text = _webView.CoreWebView2.Source;
+                    TxtWebUrl.Text = _browser.Url;
                 }
                 return;
             }
 
-            // Dispose old mismatching WebView2
-            if (_cachedWebView != null)
+            // Dispose old mismatching DotNetBrowser
+            if (_cachedBrowser != null || _cachedEngine != null)
             {
-                try { _cachedWebView.Dispose(); } catch { }
-                _cachedWebView = null;
+                try { _cachedBrowser?.Dispose(); } catch { }
+                try { _cachedEngine?.Dispose(); } catch { }
+                _cachedBrowserView = null;
+                _cachedBrowser = null;
+                _cachedEngine = null;
                 _cachedProfileName = null;
             }
-            if (_webView != null)
+            if (_browser != null || _engine != null)
             {
-                try { _webView.Dispose(); } catch { }
-                _webView = null;
+                try { _browser?.Dispose(); } catch { }
+                try { _engine?.Dispose(); } catch { }
+                _browserView = null;
+                _browser = null;
+                _engine = null;
             }
-
-            _webView = new Microsoft.Web.WebView2.Wpf.WebView2();
-            WebBrowserContainer.Children.Add(_webView);
 
             try
             {
-                Microsoft.Web.WebView2.Core.CoreWebView2Environment env;
-                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-                    }
-                    catch (Exception exShared)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Shared env failed fallback in IconEditor: {exShared.Message}");
-                        var cachePath = WebNodeCacheHelper.GetProfileCachePath("SharedFallback");
-                        Directory.CreateDirectory(cachePath);
-                        env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions());
-                    }
-                }
-                else
-                {
-                    var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-                    Directory.CreateDirectory(cachePath);
-                    env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, cachePath, new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions());
-                }
+                var cachePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
+                Directory.CreateDirectory(cachePath);
 
-                if (_webView == null) return;
-                await _webView.EnsureCoreWebView2Async(env);
+                _engine = CreateEngine(cachePath);
+                _browser = _engine.CreateBrowser();
+                _browserView = new DotNetBrowser.Wpf.BrowserView();
+                InitializeBrowserView(_browserView, _browser);
+                WebBrowserContainer.Children.Add(_browserView);
 
                 // Bind events
-                _webView.NavigationStarting += OnWebViewNavigationStarting;
-                _webView.NavigationCompleted += OnWebViewNavigationCompleted;
+                _browser.Navigation.NavigationStarted += OnNavigationStarted;
+                _browser.Navigation.FrameLoadFinished += OnFrameLoadFinished;
 
                 // Navigate to the last used URL
                 string lastUrl = LoadLastUrl();
                 TxtWebUrl.Text = lastUrl;
-                _webView.CoreWebView2.Navigate(lastUrl);
+                _browser.Navigation.LoadUrl(lastUrl);
             }
             catch (Exception ex)
             {
                 WebBrowserContainer.Children.Clear();
                 var errTb = new TextBlock
                 {
-                    Text = $"❌ Lỗi khởi tạo WebView2:\n{ex.Message}",
+                    Text = $"❌ Lỗi khởi tạo DotNetBrowser:\n{ex.Message}",
                     Foreground = Brushes.Tomato,
                     FontSize = 11,
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -1649,7 +1685,7 @@ namespace FlowMy.Views.Overlays
 
         private void NavigateWebBrowser()
         {
-            if (_webView?.CoreWebView2 == null) return;
+            if (_browser == null || _browser.IsDisposed) return;
             string input = TxtWebUrl.Text.Trim();
             if (string.IsNullOrEmpty(input)) return;
 
@@ -1668,7 +1704,7 @@ namespace FlowMy.Views.Overlays
             }
 
             TxtWebUrl.Text = url;
-            _webView.CoreWebView2.Navigate(url);
+            _browser.Navigation.LoadUrl(url);
         }
 
         private void BtnWebGo_Click(object sender, RoutedEventArgs e) => NavigateWebBrowser();
@@ -1681,9 +1717,9 @@ namespace FlowMy.Views.Overlays
             }
         }
         private void TxtWebUrl_GotFocus(object sender, RoutedEventArgs e) => TxtWebUrl.SelectAll();
-        private void BtnWebBack_Click(object sender, RoutedEventArgs e) { if (_webView?.CoreWebView2 != null && _webView.CanGoBack) _webView.GoBack(); }
-        private void BtnWebForward_Click(object sender, RoutedEventArgs e) { if (_webView?.CoreWebView2 != null && _webView.CanGoForward) _webView.GoForward(); }
-        private void BtnWebRefresh_Click(object sender, RoutedEventArgs e) { if (_webView?.CoreWebView2 != null) _webView.Reload(); }
+        private void BtnWebBack_Click(object sender, RoutedEventArgs e) { if (_browser != null && !_browser.IsDisposed && _browser.Navigation.CanGoBack()) _browser.Navigation.GoBack(); }
+        private void BtnWebForward_Click(object sender, RoutedEventArgs e) { if (_browser != null && !_browser.IsDisposed && _browser.Navigation.CanGoForward()) _browser.Navigation.GoForward(); }
+        private void BtnWebRefresh_Click(object sender, RoutedEventArgs e) { if (_browser != null && !_browser.IsDisposed) _browser.Navigation.Reload(); }
         #endregion
 
         #region Save SVG & Update Manifest
