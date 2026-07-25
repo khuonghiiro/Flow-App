@@ -4394,15 +4394,16 @@ namespace FlowMy.Views.Overlays
 
                 BitmapSource? droppedBitmap = await GetImageFromDragEventArgsAsync(e);
 
-                // Reset WebView2 drag state in web pages to clear any stuck UI overlays
-                await ResetWebView2DragStateAsync();
-
-                if (droppedBitmap == null) return;
-
-                Dispatcher.Invoke(() =>
+                if (droppedBitmap != null)
                 {
-                    ProcessDroppedImage(sender, droppedBitmap);
-                });
+                    Dispatcher.Invoke(() =>
+                    {
+                        ProcessDroppedImage(sender, droppedBitmap);
+                    });
+                }
+
+                // Reset CefSharp drag state asynchronously without blocking UI updates
+                _ = Task.Run(() => ResetWebView2DragStateAsync());
             }
             catch (Exception ex)
             {
@@ -4440,8 +4441,38 @@ namespace FlowMy.Views.Overlays
             // 0a. Check FileContents (direct original compressed file data from Chrome/Edge)
             if (e.Data.GetDataPresent("FileContents"))
             {
-                var bmp = GetImageFromFileContentsCOM(e.Data);
-                if (bmp != null) return bmp;
+                try
+                {
+                    var raw = e.Data.GetData("FileContents");
+                    if (raw is MemoryStream ms)
+                    {
+                        ms.Position = 0;
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.StreamSource = ms;
+                        bmp.EndInit();
+                        bmp.Freeze();
+                        return bmp;
+                    }
+                    else if (raw is Stream stm)
+                    {
+                        using var msCopy = new MemoryStream();
+                        stm.CopyTo(msCopy);
+                        msCopy.Position = 0;
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.StreamSource = msCopy;
+                        bmp.EndInit();
+                        bmp.Freeze();
+                        return bmp;
+                    }
+                }
+                catch { }
+
+                var comBmp = GetImageFromFileContentsCOM(e.Data);
+                if (comBmp != null) return comBmp;
             }
 
             // 0. Check DeviceIndependentBitmap / DeviceIndependentBitmapV5 (direct raw pixels from Chrome/Edge)
@@ -4920,7 +4951,7 @@ namespace FlowMy.Views.Overlays
                 if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                 else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
 
-                using (var client = new System.Net.Http.HttpClient())
+                using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
                 {
                     client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
@@ -4948,12 +4979,16 @@ namespace FlowMy.Views.Overlays
                         try
                         {
                             var cookieManager = Cef.GetGlobalCookieManager();
-                            var cookies = await cookieManager.VisitUrlCookiesAsync(uri.ToString(), true);
-                            if (cookies != null && cookies.Count > 0)
+                            var cookieTask = cookieManager.VisitUrlCookiesAsync(uri.ToString(), true);
+                            if (await System.Threading.Tasks.Task.WhenAny(cookieTask, System.Threading.Tasks.Task.Delay(150)) == cookieTask)
                             {
-                                var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
-                                string cookieHeaderValue = string.Join("; ", cookiePairs);
-                                client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                                var cookies = await cookieTask;
+                                if (cookies != null && cookies.Count > 0)
+                                {
+                                    var cookiePairs = cookies.Select(c => $"{c.Name}={c.Value}");
+                                    string cookieHeaderValue = string.Join("; ", cookiePairs);
+                                    client.DefaultRequestHeaders.Add("Cookie", cookieHeaderValue);
+                                }
                             }
                         }
                         catch (Exception ex)

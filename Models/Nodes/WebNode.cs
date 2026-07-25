@@ -1147,6 +1147,38 @@ namespace FlowMy.Models.Nodes
         }
         public void RequestWake() => WakeRequestToken++;
 
+        public void ProcessInterceptedNetworkResponse(
+            string url,
+            string method,
+            Dictionary<string, string> headers,
+            string? postData,
+            string bodyText,
+            int statusCode)
+        {
+            if (ResponseOutputs == null || ResponseOutputs.Count == 0) return;
+
+            foreach (var ro in ResponseOutputs)
+            {
+                if (ro == null || string.IsNullOrWhiteSpace(ro.Key)) continue;
+
+                string pattern = ro.Url?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(pattern)) continue;
+
+                if (!string.IsNullOrWhiteSpace(ro.RequestMethod) &&
+                    !string.Equals(ro.RequestMethod, "ALL", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(ro.RequestMethod, method, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (url.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    string val = bodyText;
+                    UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null);
+                }
+            }
+        }
+
         #endregion
     }
 

@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Tesseract;
+using CefSharp;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -1045,11 +1046,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             try
                             {
-                                // CefSharp WPF render bitmap capture
+                                var devTools = wv2.GetBrowser()?.GetDevToolsClient();
+                                if (devTools != null)
+                                {
+                                    var screenshot = await devTools.Page.CaptureScreenshotAsync();
+                                    if (screenshot?.Data != null && screenshot.Data.Length > 0)
+                                    {
+                                        using var ms = new MemoryStream(screenshot.Data);
+                                        var decoder = new PngBitmapDecoder(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                        if (decoder.Frames.Count > 0)
+                                        {
+                                            webViewCaptures[child] = decoder.Frames[0];
+                                        }
+                                    }
+                                }
                             }
                             catch (Exception ex)
                             {
-                                System.Diagnostics.Debug.WriteLine($"[RenderCanvasRegion] Error: {ex.Message}");
+                                System.Diagnostics.Debug.WriteLine($"[RenderCanvasRegion] CaptureScreenshotAsync error: {ex.Message}");
                             }
                         }
                     }

@@ -2296,6 +2296,23 @@ if (window.__elementInspector) {
                     {
                         if (ef.Frame.IsMain)
                         {
+                            try
+                            {
+                                const string dragDropScript = @"
+(function() {
+    if (window.__dragDropInterceptorInjected) return;
+    window.__dragDropInterceptorInjected = true;
+    const resetFlag = function() {
+        if (window.resetDragState) window.resetDragState();
+    };
+    document.addEventListener('mouseup', resetFlag, true);
+    document.addEventListener('pointerup', resetFlag, true);
+    document.addEventListener('dragend', resetFlag, true);
+})();";
+                                ef.Frame.ExecuteJavaScriptAsync(dragDropScript);
+                            }
+                            catch { }
+
                             if (webViewForInit.Dispatcher.CheckAccess())
                                 progressBar.Visibility = Visibility.Collapsed;
                             else

@@ -1552,21 +1552,39 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         ActiveVirtualCdpWebView = webView;
                                     }
 
-                                     if (actionType == "MouseDown")
+                                     var host = webView.GetBrowserHost();
+                                     if (host != null)
                                      {
-                                         var hoverJs = $"document.elementFromPoint({wvPoint.X}, {wvPoint.Y})?.focus();";
-                                         webView.ExecuteScriptAsync(hoverJs);
-                                     }
+                                         int wx = (int)Math.Round(wvPoint.X);
+                                         int wy = (int)Math.Round(wvPoint.Y);
+                                         CefSharp.CefEventFlags cefFlags = (CefSharp.CefEventFlags)modifiers;
 
-                                     if (actionType == "MouseScroll")
-                                     {
-                                         var scrollJs = $"window.scrollBy(0, {-scrollDelta * 120});";
-                                         webView.ExecuteScriptAsync(scrollJs);
-                                     }
-                                     else
-                                     {
-                                         var clickJs = $"var el = document.elementFromPoint({wvPoint.X}, {wvPoint.Y}); if(el) el.click();";
-                                         webView.ExecuteScriptAsync(clickJs);
+                                         if (actionType == "MouseMove")
+                                         {
+                                             host.SendMouseMoveEvent(wx, wy, mouseLeave: false, cefFlags);
+                                         }
+                                         else if (actionType == "MouseDown")
+                                         {
+                                             var btn = cdpButton == "right" ? CefSharp.MouseButtonType.Right : CefSharp.MouseButtonType.Left;
+                                             host.SendMouseMoveEvent(wx, wy, mouseLeave: false, cefFlags);
+                                             host.SendMouseClickEvent(wx, wy, btn, mouseUp: false, clickCount: 1, cefFlags);
+                                         }
+                                         else if (actionType == "MouseUp")
+                                         {
+                                             var btn = cdpButton == "right" ? CefSharp.MouseButtonType.Right : CefSharp.MouseButtonType.Left;
+                                             host.SendMouseClickEvent(wx, wy, btn, mouseUp: true, clickCount: 1, cefFlags);
+                                         }
+                                         else if (actionType == "MouseClick")
+                                         {
+                                             var btn = cdpButton == "right" ? CefSharp.MouseButtonType.Right : CefSharp.MouseButtonType.Left;
+                                             host.SendMouseMoveEvent(wx, wy, mouseLeave: false, cefFlags);
+                                             host.SendMouseClickEvent(wx, wy, btn, mouseUp: false, clickCount: 1, cefFlags);
+                                             System.Threading.Tasks.Task.Delay(30).ContinueWith(_ => host.SendMouseClickEvent(wx, wy, btn, mouseUp: true, clickCount: 1, cefFlags));
+                                         }
+                                         else if (actionType == "MouseScroll")
+                                         {
+                                             host.SendMouseWheelEvent(wx, wy, deltaX: 0, deltaY: scrollDelta * 120, cefFlags);
+                                         }
                                      }
 
                                     // Always bubble up MouseUp to WPF to clear any stuck DragDropHandler state
@@ -2245,6 +2263,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static void EnsureWebViewActiveInBackground(ChromiumWebBrowser webView)
         {
+            try
+            {
+                var host = webView.GetBrowserHost();
+                if (host != null)
+                {
+                    host.WasHidden(false);
+                    host.SendFocusEvent(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Failed to force ChromiumWebBrowser active: {ex.Message}");
+            }
         }
     }
 }
