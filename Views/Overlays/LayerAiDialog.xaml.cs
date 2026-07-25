@@ -118,6 +118,7 @@ namespace FlowMy.Views.Overlays
                     _ownerWindow.Activate();
                     _ownerWindow.Topmost = false;
                 }
+                UnsubscribeFromViewModelEvents();
                 try
                 {
                     LayerAiWebViewCache.DisposeAll(_node.Id);
@@ -173,6 +174,8 @@ namespace FlowMy.Views.Overlays
 
             // Hook activity events to reset the owner FloatingWidgetWindow's idle timer upon interaction
             HookActivityEvents(this);
+
+            SubscribeToViewModelEvents();
 
             // Populate horizontal and vertical lists of selected layers
             UpdateSelectedLayersLists();
@@ -246,6 +249,8 @@ namespace FlowMy.Views.Overlays
             {
                 ReactivateActiveWebBrowsers();
             }
+
+            SubscribeToViewModelEvents();
         }
 
         private LayerAiState CreateStateForLayer(EditorLayer layer)
@@ -3370,7 +3375,7 @@ namespace FlowMy.Views.Overlays
                 editorPanel?.RefreshLayersList();
 
                 // Close dialog immediately — workflow runs in background, results applied to placeholders
-                DialogResult = true;
+                try { DialogResult = true; } catch { }
                 Close();
 
                 // Capture references needed for background processing
@@ -3617,6 +3622,48 @@ namespace FlowMy.Views.Overlays
                 var panel = FindVisualChild<ImageEditorPanel>(owner);
                 panel?.RefreshLayersList();
             }
+        }
+
+        private FlowMy.ViewModels.WorkflowEditorViewModel? _subscribedVm;
+
+        private void SubscribeToViewModelEvents()
+        {
+            UnsubscribeFromViewModelEvents();
+            if (_host?.ViewModel is FlowMy.ViewModels.WorkflowEditorViewModel vm)
+            {
+                _subscribedVm = vm;
+                vm.PropertyChanged += HostViewModel_PropertyChanged;
+                CheckWorkflowExecutionState();
+            }
+        }
+
+        private void UnsubscribeFromViewModelEvents()
+        {
+            if (_subscribedVm != null)
+            {
+                _subscribedVm.PropertyChanged -= HostViewModel_PropertyChanged;
+                _subscribedVm = null;
+            }
+        }
+
+        private void HostViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(FlowMy.ViewModels.WorkflowEditorViewModel.IsExecuting) ||
+                e.PropertyName == nameof(FlowMy.ViewModels.WorkflowEditorViewModel.HasRunningNodes))
+            {
+                CheckWorkflowExecutionState();
+            }
+        }
+
+        private void CheckWorkflowExecutionState()
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_subscribedVm != null && !_subscribedVm.IsExecuting && !_subscribedVm.HasRunningNodes)
+                {
+                    SetButtonsLoading(false);
+                }
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void ResetButtons()
@@ -3936,7 +3983,7 @@ namespace FlowMy.Views.Overlays
                 }
             }
 
-            DialogResult = true;
+            try { DialogResult = true; } catch { }
             Close();
         }
 
