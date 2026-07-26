@@ -1861,7 +1861,7 @@ namespace FlowMy.ViewModels
         }
 
         [RelayCommand(AllowConcurrentExecutions = true)]
-        private async Task StartTest()
+        public async Task StartTest(string? presetExecutionId = null)
         {
             var validation = _workflowExecutionService.ValidateWorkflow(Nodes, Connections);
             if (!validation.IsValid)
@@ -1949,7 +1949,7 @@ namespace FlowMy.ViewModels
                         {
                             if (sessionToken.IsCancellationRequested)
                                 break;
-                            var runId = Guid.NewGuid().ToString("N");
+                            var runId = !string.IsNullOrWhiteSpace(presetExecutionId) ? presetExecutionId : Guid.NewGuid().ToString("N");
                             try
                             {
                                 await _workflowExecutionService.ExecuteNodeAsync(
@@ -2012,7 +2012,7 @@ namespace FlowMy.ViewModels
         /// Chạy workflow bắt đầu từ một node cụ thể (thay vì từ Start node).
         /// Logic traversal, visualize, cancel... giữ nguyên như StartTest, chỉ khác điểm xuất phát.
         /// </summary>
-        public async Task RunWorkflowFromNodeAsync(WorkflowNode startNode)
+        public async Task RunWorkflowFromNodeAsync(WorkflowNode startNode, string? presetExecutionId = null)
         {
             if (startNode == null) return;
 
@@ -2092,7 +2092,7 @@ namespace FlowMy.ViewModels
                     _executionVisualizer.OnNodeFailed(node, errorMessage);
                 }
 
-                var runId = Guid.NewGuid().ToString("N");
+                var runId = !string.IsNullOrWhiteSpace(presetExecutionId) ? presetExecutionId : Guid.NewGuid().ToString("N");
                 await Task.Run(
                     async () =>
                     {

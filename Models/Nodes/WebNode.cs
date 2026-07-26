@@ -509,6 +509,12 @@ namespace FlowMy.Models.Nodes
             set { if (_pendingJavaScript != value) { _pendingJavaScript = value; OnPropertyChanged(); } }
         }
 
+        /// <summary>
+        /// Runtime-only: ExecutionId của lần chạy đang thực thi trực tiếp trên WebNode.
+        /// </summary>
+        [JsonIgnore]
+        public string? CurrentExecutingExecutionId { get; set; }
+
         #endregion
 
         #region Size (resizable)
@@ -1037,11 +1043,11 @@ namespace FlowMy.Models.Nodes
             UpdateResponseOutputValue(trimmedKey, valStr, isList, statusCode);
             SchedulePendingOutputsCompletion(800);
 
-            // 2. Cập nhật luồng ExecutionRun active mới nhất (luồng vừa vào WebNode)
+            // 2. Cập nhật cho luồng ExecutionRun active ĐẦU TIÊN còn đang CHỜ key này (chưa completed)
             var activeRuns = GetActiveExecutionRuns();
             if (activeRuns.Count > 0)
             {
-                var targetRun = activeRuns.LastOrDefault();
+                var targetRun = activeRuns.FirstOrDefault(r => r != null && !r.IsKeyCompleted(trimmedKey)) ?? activeRuns.LastOrDefault();
                 if (targetRun != null)
                 {
                     UpdateResponseOutputValueForExecutionRun(targetRun.ExecutionId, trimmedKey, valStr, isList, executionServiceObj, roConfig, statusCode, host);
@@ -1794,6 +1800,27 @@ namespace FlowMy.Models.Nodes
         }
 
         public WebNode? OwnerNode { get; set; }
+
+        public bool IsKeyCompleted(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return true;
+            lock (Lock)
+            {
+                return _completedKeys.Contains(key.Trim());
+            }
+        }
+
+        public bool IsAllKeysCompleted()
+        {
+            lock (Lock)
+            {
+                if (OwnerNode?.ResponseOutputs == null || OwnerNode.ResponseOutputs.Count == 0) return true;
+                var waitKeys = OwnerNode.ResponseOutputs
+                    .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
+                    .Select(ro => ro.Key.Trim());
+                return waitKeys.All(k => _completedKeys.Contains(k));
+            }
+        }
 
         public System.Threading.Tasks.Task<bool> GetWaitTaskForKey(string key)
         {

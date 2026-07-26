@@ -51,27 +51,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // Lưu ExecutionId của lần chạy workflow hiện tại vào node ảnh
                 // để UI/logic khác có thể biết kết quả nào thuộc lần chạy nào.
                 imageNode.LastExecutionId = env.ExecutionId;
-
-                // Ánh xạ dialog-generated executionId (execId) sang actual runId (env.ExecutionId) để định tuyến kết quả xử lý ảnh chính xác.
-                // Chỉ thực hiện map ở lần chạy đầu tiên của lượt chạy này (tránh việc lặp lại trong vòng lặp quay lui cướp hàng đợi)
-                if (!WorkflowExecutionService.ExecutionIdMapping.Values.Contains(env.ExecutionId))
-                {
-                    string? dialogExecId = null;
-                    if (FlowMy.Views.Overlays.LayerAiDialog.PendingExecutionIds.TryDequeue(out var dequeuedId))
-                    {
-                        dialogExecId = dequeuedId;
-                    }
-                    else
-                    {
-                        var execIdPort = imageNode.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "executionId", StringComparison.OrdinalIgnoreCase));
-                        dialogExecId = execIdPort?.UserValueOverride;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(dialogExecId))
-                    {
-                        WorkflowExecutionService.ExecutionIdMapping[dialogExecId] = env.ExecutionId;
-                    }
-                }
+                WorkflowExecutionService.ExecutionIdMapping[env.ExecutionId] = env.ExecutionId;
 
                 // Clear UserValueOverride cho các key bị skip để tránh giá trị cũ từ lần chạy trước
                 // vẫn bị resolve bởi NodeDataPanelService/downstream nodes.

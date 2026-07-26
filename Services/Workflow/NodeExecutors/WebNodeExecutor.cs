@@ -103,6 +103,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             catch { /* ignore */ }
 
             var executionId = env.ExecutionId;
+            webNode.CurrentExecutingExecutionId = executionId;
             var executionRun = webNode.StartExecutionRun(executionId);
 
             try
@@ -225,20 +226,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (!string.IsNullOrWhiteSpace(webNode.LastAccessToken))
                 service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "access_token", webNode.LastAccessToken);
 
-            // Gom tất cả outputs từ master webNode (bao gồm non-wait keys) và run hiện tại
+            // Gom tất cả outputs: Lấy từ luồng run hiện tại trước (độc lập 100%), chỉ fallback master cho non-wait keys
             var mergedOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            if (webNode.ResponseOutputValues != null)
-            {
-                webNode.TryGetMasterResponseOutputValue("", out _); // lock touch
-                foreach (var kv in webNode.ResponseOutputValues)
-                {
-                    if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
-                    {
-                        mergedOutputs[kv.Key.Trim()] = kv.Value;
-                    }
-                }
-            }
 
             var run = webNode.GetExecutionRun(env.ExecutionId);
             if (run != null)
@@ -250,6 +239,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
                         {
                             mergedOutputs[kv.Key.Trim()] = kv.Value;
+                        }
+                    }
+                }
+            }
+
+            if (webNode.ResponseOutputValues != null)
+            {
+                webNode.TryGetMasterResponseOutputValue("", out _); // lock touch
+                foreach (var kv in webNode.ResponseOutputValues)
+                {
+                    var k = kv.Key.Trim();
+                    if (!string.IsNullOrWhiteSpace(k) && !string.IsNullOrWhiteSpace(kv.Value) && !mergedOutputs.ContainsKey(k))
+                    {
+                        var isWaitKey = webNode.ResponseOutputs?.Any(ro => ro != null && ro.WaitForCompletion && string.Equals(ro.Key, k, StringComparison.OrdinalIgnoreCase)) ?? false;
+                        if (!isWaitKey)
+                        {
+                            mergedOutputs[k] = kv.Value;
                         }
                     }
                 }

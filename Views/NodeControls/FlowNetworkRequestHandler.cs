@@ -305,10 +305,17 @@ namespace FlowMy.Views.NodeControls
                 string requestMethod = request.Method ?? "GET";
 
                 string? activeExecutionId = null;
-                var activeRuns = webNode.GetActiveExecutionRuns();
-                if (activeRuns.Count > 0)
+                if (!string.IsNullOrEmpty(webNode.CurrentExecutingExecutionId) && webNode.GetExecutionRun(webNode.CurrentExecutingExecutionId) != null)
                 {
-                    activeExecutionId = activeRuns.LastOrDefault()?.ExecutionId;
+                    activeExecutionId = webNode.CurrentExecutingExecutionId;
+                }
+                else
+                {
+                    var activeRuns = webNode.GetActiveExecutionRuns();
+                    if (activeRuns.Count > 0)
+                    {
+                        activeExecutionId = activeRuns.FirstOrDefault(r => r != null && !r.IsAllKeysCompleted())?.ExecutionId ?? activeRuns.FirstOrDefault()?.ExecutionId;
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(activeExecutionId))
@@ -368,7 +375,7 @@ namespace FlowMy.Views.NodeControls
                             string? newUrl = null;
                             if (rule.ReplaceUrlWithNodeKey)
                             {
-                                var resolved = ResolveNodeOutputString(rule.ReplaceUrlSourceNodeId, rule.ReplaceUrlSourceOutputKey);
+                                var resolved = ResolveNodeOutputString(rule.ReplaceUrlSourceNodeId, rule.ReplaceUrlSourceOutputKey, activeExecutionId);
                                 if (!string.IsNullOrWhiteSpace(resolved) && resolved != "—")
                                     newUrl = resolved;
                             }
@@ -383,7 +390,7 @@ namespace FlowMy.Views.NodeControls
                                 System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler] 🔄 Replaced URL: {targetUrl} -> {newUrl}");
                             }
 
-                            string? newBody = ResolveNodeOutputString(rule.ReplaceBodySourceNodeId, rule.ReplaceBodySourceOutputKey);
+                            string? newBody = ResolveNodeOutputString(rule.ReplaceBodySourceNodeId, rule.ReplaceBodySourceOutputKey, activeExecutionId);
                             if (string.IsNullOrWhiteSpace(newBody) && !string.IsNullOrWhiteSpace(rule.ReplaceBodyValue))
                             {
                                 newBody = rule.ReplaceBodyValue;
@@ -407,7 +414,7 @@ namespace FlowMy.Views.NodeControls
             return base.OnBeforeResourceLoad(chromiumWebBrowser, browser, frame, request, callback);
         }
 
-        private string? ResolveNodeOutputString(string? nodeId, string? key)
+        private string? ResolveNodeOutputString(string? nodeId, string? key, string? executionId = null)
         {
             if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key)) return null;
             try
@@ -415,7 +422,7 @@ namespace FlowMy.Views.NodeControls
                 if (_host?.ViewModel?.WorkflowExecutionService != null)
                 {
                     var service = _host.ViewModel.WorkflowExecutionService;
-                    if (service.TryGetScopedNodeStringOutputForLookupChain(null, nodeId, key, out var val) &&
+                    if (service.TryGetScopedNodeStringOutputForLookupChain(executionId, nodeId, key, out var val) &&
                         !string.IsNullOrWhiteSpace(val) && val != "—")
                     {
                         return val;
@@ -451,6 +458,19 @@ namespace FlowMy.Views.NodeControls
             bool isSystemKey,
             ref bool isKeyboardShortcut)
         {
+            // Cách ly phím thật của người dùng khi ActionCanVas đang tự động chạy thao tác phím/chuột ảo:
+            // Phím ảo (vừa được phát trong khoảnh khắc IsVirtualEventDispatching hoặc < 500ms) ĐƯỢC PHÉP nạp vào CefSharp DOM.
+            // Phím bấm vật lý ngoài lề của người dùng sẽ bị chặn không tác động vào Web control đang chạy tự động.
+            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
+            {
+                bool isVirtual = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualEventDispatching ||
+                                 (Environment.TickCount64 - FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.LastVirtualKeyTimeMs < 500);
+                if (!isVirtual)
+                {
+                    return true; // Chặn phím bấm vật lý thật
+                }
+            }
+
             if (type == KeyType.RawKeyDown || type == KeyType.KeyDown)
             {
                 bool ctrlPressed = modifiers.HasFlag(CefEventFlags.ControlDown);

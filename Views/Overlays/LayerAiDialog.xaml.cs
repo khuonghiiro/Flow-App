@@ -3334,24 +3334,37 @@ namespace FlowMy.Views.Overlays
                 PendingExecutionIds.Enqueue(execId);
 
                 _node.IsVerticalMode = (selectedIndex == 4 || selectedIndex == 5);
+                string aspectStr = selectedIndex switch
+                {
+                    1 => "16:9",
+                    2 => "4:3",
+                    3 => "1:1",
+                    4 => "3:4",
+                    5 => "9:16",
+                    6 => "Free",
+                    _ => "Default"
+                };
                 var aspectPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "aspectRatio", StringComparison.OrdinalIgnoreCase));
                 if (aspectPort != null)
                 {
-                    string aspectStr = selectedIndex switch
-                    {
-                        1 => "16:9",
-                        2 => "4:3",
-                        3 => "1:1",
-                        4 => "3:4",
-                        5 => "9:16",
-                        6 => "Free",
-                        _ => "Default"
-                    };
                     aspectPort.UserValueOverride = aspectStr;
                 }
 
+                var execSvc = _host?.ViewModel?.WorkflowExecutionService;
+                if (execSvc != null)
+                {
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropBase64", b64);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "prompt", activePromptText);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptSize", batchSize.ToString());
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropWidth", processedImg.PixelWidth.ToString());
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropHeight", processedImg.PixelHeight.ToString());
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "aspectRatio", aspectStr);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "isCombinedImage", _isCombinedMode.ToString().ToLowerInvariant());
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "executionId", execId);
+                }
+
                 // *** NEW: Collect secondary images base64 and set listBase64 output ***
-                await CollectAndSetListBase64Async();
+                await CollectAndSetListBase64Async(execId);
 
                 // Refresh outputs list in node dialog immediately to reflect the generated overrides
                 RefreshRelatedNodeDialogs();
@@ -3397,10 +3410,12 @@ namespace FlowMy.Views.Overlays
                             if (vm != null)
                             {
                                 var vmType = vm.GetType();
-                                var startTestMethod = vmType.GetMethod("StartTest", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                var startTestMethod = vmType.GetMethod("StartTest", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                                 if (startTestMethod != null)
                                 {
-                                    if (startTestMethod.Invoke(vm, null) is Task t)
+                                    var parameters = startTestMethod.GetParameters();
+                                    object?[] args = parameters.Length > 0 ? new object?[] { execId } : null;
+                                    if (startTestMethod.Invoke(vm, args) is Task t)
                                     {
                                         await t;
                                     }
@@ -3575,32 +3590,37 @@ namespace FlowMy.Views.Overlays
         /// <summary>
         /// Collect selected secondary images, convert to base64, and set the listBase64 output.
         /// </summary>
-        private async Task CollectAndSetListBase64Async()
+        private async Task CollectAndSetListBase64Async(string? execId = null)
         {
             var selectedImages = _secondaryImages
                 .Where(s => s.HasImage && s.IsSelected && s.Bitmap != null)
                 .Select(s => s.Bitmap!)
                 .ToList();
 
-            if (selectedImages.Count == 0)
+            string jsonArray = "[]";
+
+            if (selectedImages.Count > 0)
             {
-                // Set empty array
-                var listBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "listBase64", StringComparison.OrdinalIgnoreCase));
-                if (listBase64Port != null) listBase64Port.UserValueOverride = "[]";
-                return;
+                var base64List = new List<string>();
+                foreach (var bmp in selectedImages)
+                {
+                    var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(bmp));
+                    base64List.Add(b64);
+                }
+                jsonArray = System.Text.Json.JsonSerializer.Serialize(base64List);
             }
 
-            var base64List = new List<string>();
-            foreach (var bmp in selectedImages)
-            {
-                var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(bmp));
-                base64List.Add(b64);
-            }
-
-            // Serialize as JSON array
-            var jsonArray = System.Text.Json.JsonSerializer.Serialize(base64List);
             var port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "listBase64", StringComparison.OrdinalIgnoreCase));
             if (port != null) port.UserValueOverride = jsonArray;
+
+            if (!string.IsNullOrEmpty(execId))
+            {
+                var execSvc = _host?.ViewModel?.WorkflowExecutionService;
+                if (execSvc != null)
+                {
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "listBase64", jsonArray);
+                }
+            }
         }
 
         #endregion
@@ -4325,10 +4345,18 @@ namespace FlowMy.Views.Overlays
             // Calculate parent positioning
             double parentX = 0;
             double parentY = 0;
-            if (activeLayer.OriginalTransformBitmap != null)
+            if (activeLayer != null)
             {
-                parentX = activeLayer.ContentBounds.X;
-                parentY = activeLayer.ContentBounds.Y;
+                if (!activeLayer.ContentBounds.IsEmpty)
+                {
+                    parentX = activeLayer.ContentBounds.X;
+                    parentY = activeLayer.ContentBounds.Y;
+                }
+                else
+                {
+                    parentX = activeLayer.OffsetX;
+                    parentY = activeLayer.OffsetY;
+                }
             }
             int posX = (int)Math.Clamp(parentX + originalBounds.X, 0, childLayer.Width - 1);
             int posY = (int)Math.Clamp(parentY + originalBounds.Y, 0, childLayer.Height - 1);

@@ -27,6 +27,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         public static bool IsPlaybackActive { get; set; }
         public static ChromiumWebBrowser? ActiveVirtualCdpWebView { get; set; }
         public static bool IsVirtualEventDispatching { get; set; }
+        public static long LastVirtualKeyTimeMs { get; set; }
         public static Point CanvasLayoutOffset { get; set; } = new Point(250, 60);
 
         // ─── Direct drag state — track internally, không phụ thuộc mouse capture ───
@@ -1930,7 +1931,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             if (webView != null)
                             {
                                 EnsureWebViewActiveInBackground(webView);
-                                try { webView.Focus(); } catch { }
+                                // KHÔNG gọi webView.Focus() để tránh làm WPF tự động dịch chuyển/cuộn Canvas tới vị trí node Web
+                                // CefSharp được kích hoạt focus ngầm 100% qua EnsureWebViewActiveInBackground (host.SendFocusEvent)
 
                                 string keyStr = action.Key;
                                 bool ctrl = action.CtrlHeld || keyStr.StartsWith("Ctrl+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Ctrl");
@@ -1978,9 +1980,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
 
                                 // ── Mô phỏng Bàn Phím Ảo (Virtual Keyboard) hoàn toàn cho CefSharp ──
-                                // Gửi tín hiệu bàn phím ảo trực tiếp vào CefSharp, không làm ảnh hưởng bàn phím thật của người dùng!
+                                // Gửi tín hiệu bàn phím ảo trực tiếp vào CefSharp, cách ly hoàn toàn với bàn phím thật của người dùng!
                                 try
                                 {
+                                    IsVirtualEventDispatching = true;
+                                    LastVirtualKeyTimeMs = Environment.TickCount64;
                                     var host = webView.GetBrowser()?.GetHost();
                                     if (host != null)
                                     {
@@ -2022,6 +2026,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 catch (Exception virtKeyEx)
                                 {
                                     System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Virtual CefSharp key error: {virtKeyEx.Message}");
+                                }
+                                finally
+                                {
+                                    IsVirtualEventDispatching = false;
                                 }
 
                                 tcs.TrySetResult(true);

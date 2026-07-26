@@ -666,30 +666,12 @@ namespace FlowMy.ViewModels
         public void RefreshAvailableNodes()
         {
             var vm = _host.ViewModel;
-            if (vm?.Nodes == null || vm.Connections == null) return;
+            if (vm?.Nodes == null) return;
 
-            var producerNodes = GetUpstreamProducerNodes(_webNode);
-            var newOptions = producerNodes.Select(n => CreateDataSourceOption(n)).ToList();
-
-            var mappedNodeIds = (_webNode.InputMappings ?? new List<WebInputMapping>())
-                .Where(m => !string.IsNullOrWhiteSpace(m.SourceNodeId))
-                .Select(m => m.SourceNodeId!)
-                .Concat((_webNode.JsSources ?? new List<WebJsSourceMapping>())
-                    .Where(j => !string.IsNullOrWhiteSpace(j.SourceNodeId))
-                    .Select(j => j.SourceNodeId!))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+            var newOptions = vm.Nodes
+                .Where(n => n != null && !string.Equals(n.Id, _webNode.Id, StringComparison.OrdinalIgnoreCase))
+                .Select(n => CreateDataSourceOption(n))
                 .ToList();
-
-            foreach (var nodeId in mappedNodeIds)
-            {
-                if (newOptions.Any(o => string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase)))
-                    continue;
-
-                var node = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
-                if (node == null) continue;
-
-                newOptions.Add(CreateDataSourceOption(node));
-            }
 
             AvailableNodeOptions.Clear();
             foreach (var option in newOptions)

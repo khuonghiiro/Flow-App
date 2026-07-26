@@ -97,24 +97,44 @@ namespace FlowMy.Services.Workflow
             }
         }
 
-        internal bool TryGetScopedNodeStringOutput(string executionId, string nodeId, string key, out string? value)
+        internal bool TryGetScopedNodeStringOutput(string executionId, string? nodeId, string key, out string? value)
         {
             value = null;
-            if (string.IsNullOrWhiteSpace(executionId) || string.IsNullOrWhiteSpace(nodeId)) return false;
+            if (string.IsNullOrWhiteSpace(executionId)) return false;
             var k = (key ?? string.Empty).Trim();
             if (k.Length == 0) return false;
 
             // 1) Primary scoped store.
-            if (_scopedStringOutputsByRun.TryGetValue(executionId, out var byNode) &&
-                byNode.TryGetValue(nodeId, out var byKey))
+            if (_scopedStringOutputsByRun.TryGetValue(executionId, out var byNode))
             {
-                if (byKey.TryGetValue(k, out value)) return true;
-                foreach (var kv in byKey)
+                if (!string.IsNullOrWhiteSpace(nodeId))
                 {
-                    if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                    if (byNode.TryGetValue(nodeId, out var byKey))
                     {
-                        value = kv.Value;
-                        return true;
+                        if (byKey.TryGetValue(k, out value)) return true;
+                        foreach (var kv in byKey)
+                        {
+                            if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = kv.Value;
+                                return true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var byKey in byNode.Values)
+                    {
+                        if (byKey.TryGetValue(k, out value)) return true;
+                        foreach (var kv in byKey)
+                        {
+                            if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = kv.Value;
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -123,16 +143,36 @@ namespace FlowMy.Services.Workflow
             var rootId = NormalizeToRootRunId(executionId);
             if (!string.IsNullOrWhiteSpace(rootId) &&
                 _stickyScopedStringOutputsByRoot.TryGetValue(rootId, out var stickyByExec) &&
-                stickyByExec.TryGetValue(executionId, out var stickyByNode) &&
-                stickyByNode.TryGetValue(nodeId, out var stickyByKey))
+                stickyByExec.TryGetValue(executionId, out var stickyByNode))
             {
-                if (stickyByKey.TryGetValue(k, out value)) return true;
-                foreach (var kv in stickyByKey)
+                if (!string.IsNullOrWhiteSpace(nodeId))
                 {
-                    if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                    if (stickyByNode.TryGetValue(nodeId, out var stickyByKey))
                     {
-                        value = kv.Value;
-                        return true;
+                        if (stickyByKey.TryGetValue(k, out value)) return true;
+                        foreach (var kv in stickyByKey)
+                        {
+                            if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = kv.Value;
+                                return true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var stickyByKey in stickyByNode.Values)
+                    {
+                        if (stickyByKey.TryGetValue(k, out value)) return true;
+                        foreach (var kv in stickyByKey)
+                        {
+                            if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = kv.Value;
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -146,10 +186,9 @@ namespace FlowMy.Services.Workflow
         /// Dùng khi node downstream (FlowOverwrite, v.v.) chạy với id khác id lúc producer ghi snapshot.
         /// Không đi ngang sang nhánh song song khác — chỉ đi lên cha.
         /// </summary>
-        internal bool TryGetScopedNodeStringOutputForLookupChain(string? executionId, string nodeId, string key, out string? value)
+        internal bool TryGetScopedNodeStringOutputForLookupChain(string? executionId, string? nodeId, string key, out string? value)
         {
             value = null;
-            if (string.IsNullOrWhiteSpace(nodeId)) return false;
             var k = (key ?? string.Empty).Trim();
             if (k.Length == 0) return false;
             foreach (var runId in WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(executionId))
