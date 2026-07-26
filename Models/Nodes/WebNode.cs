@@ -1037,13 +1037,14 @@ namespace FlowMy.Models.Nodes
             UpdateResponseOutputValue(trimmedKey, valStr, isList, statusCode);
             SchedulePendingOutputsCompletion(800);
 
-            // 2. Cập nhật từng luồng ExecutionRun độc lập
+            // 2. Cập nhật luồng ExecutionRun active mới nhất (luồng vừa vào WebNode)
             var activeRuns = GetActiveExecutionRuns();
             if (activeRuns.Count > 0)
             {
-                foreach (var run in activeRuns)
+                var targetRun = activeRuns.LastOrDefault();
+                if (targetRun != null)
                 {
-                    UpdateResponseOutputValueForExecutionRun(run.ExecutionId, trimmedKey, valStr, isList, executionServiceObj, roConfig, statusCode, host);
+                    UpdateResponseOutputValueForExecutionRun(targetRun.ExecutionId, trimmedKey, valStr, isList, executionServiceObj, roConfig, statusCode, host);
                 }
             }
         }
@@ -1853,17 +1854,6 @@ namespace FlowMy.Models.Nodes
                         catch { }
                     }
 
-                    // Fallback sang dữ liệu đã trích xuất ở WebNode chính (nếu response về trước khi run được tạo)
-                    if (currentCount < targetCount && node != null)
-                    {
-                        if (node.TryGetMasterResponseOutputList(trimmedKey, out var masterList) && masterList != null && masterList.Count > currentCount)
-                        {
-                            currentCount = masterList.Count;
-                            ResponseOutputLists[trimmedKey] = new List<string>(masterList);
-                            ResponseOutputValues[trimmedKey] = System.Text.Json.JsonSerializer.Serialize(masterList);
-                        }
-                    }
-
                     if (currentCount >= targetCount)
                     {
                         System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' LIST target count reached: Current={currentCount} >= Target={targetCount}. Signalling completed.");
@@ -1878,14 +1868,6 @@ namespace FlowMy.Models.Nodes
                 else
                 {
                     bool hasValue = ResponseOutputValues.TryGetValue(trimmedKey, out var valStr) && !string.IsNullOrWhiteSpace(valStr);
-                    if (!hasValue && node != null)
-                    {
-                        if (node.TryGetMasterResponseOutputValue(trimmedKey, out var masterVal) && !string.IsNullOrWhiteSpace(masterVal))
-                        {
-                            ResponseOutputValues[trimmedKey] = masterVal;
-                            hasValue = true;
-                        }
-                    }
 
                     if (hasValue)
                     {

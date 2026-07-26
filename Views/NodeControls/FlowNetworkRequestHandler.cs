@@ -171,6 +171,7 @@ namespace FlowMy.Views.NodeControls
                     if (_requestExecutionMap.TryRemove(request.Identifier, out var mappedExecId))
                     {
                         targetExecutionId = mappedExecId;
+                        System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler][DIAG] Response [{request.Identifier}] '{targetUrl}' matched tagged execution '{targetExecutionId}'");
                     }
 
                     if (_node is FlowMy.Models.Nodes.WebNode webNode)
@@ -313,6 +314,7 @@ namespace FlowMy.Views.NodeControls
                 if (!string.IsNullOrEmpty(activeExecutionId))
                 {
                     _requestExecutionMap[request.Identifier] = activeExecutionId;
+                    System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler][DIAG] Request [{request.Identifier}] '{targetUrl}' tagged with execution '{activeExecutionId}'");
                 }
 
                 var requestHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
