@@ -586,9 +586,10 @@ namespace FlowMy.Views.NodeControls
                 {
                     for (int i = 0; i < list.Count; i++)
                     {
-                        var entry = list[i];
+                        var rawEntry = list[i];
+                        if (string.IsNullOrWhiteSpace(rawEntry)) continue;
+                        var entry = CleanImageUrl(rawEntry);
                         if (string.IsNullOrWhiteSpace(entry)) continue;
-                        entry = entry.Trim();
 
                         // Thử load như URL/path trước, nếu fail thì thử base64
                         BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry);

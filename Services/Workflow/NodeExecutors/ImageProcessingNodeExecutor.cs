@@ -233,7 +233,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             resolved = ResolveFromNodeIfAny(env, node.ImageUrlSourceNodeId, node.ImageUrlSourceOutputKey)
                        ?? node.ImageUrl;
-            resolved = (resolved ?? string.Empty).Trim();
+            resolved = CleanImageUrl(resolved);
             if (string.IsNullOrWhiteSpace(resolved))
                 return result;
 
@@ -279,6 +279,40 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var value = env.Service.ResolveDynamicValueForExecution(src, key, env);
             if (string.IsNullOrWhiteSpace(value) || value == "—") return null;
             return value;
+        }
+
+        private static string CleanImageUrl(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            var str = raw.Trim();
+
+            if (str.StartsWith(@"\/") || str.Contains(@"\/"))
+                str = str.Replace(@"\/", "/");
+
+            str = str.Trim().Trim('"').Trim('\'');
+
+            if (str.StartsWith("[") && str.EndsWith("]"))
+            {
+                try
+                {
+                    var list = JsonSerializer.Deserialize<List<string>>(str);
+                    if (list != null && list.Count > 0)
+                    {
+                        var first = list.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                        if (!string.IsNullOrWhiteSpace(first))
+                            return CleanImageUrl(first);
+                    }
+                }
+                catch
+                {
+                    var inner = str.Trim('[', ']').Trim();
+                    var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 0)
+                        return CleanImageUrl(parts[0]);
+                }
+            }
+
+            return str.Trim().Trim('"').Trim('\'');
         }
 
         private static byte[] DecodeBase64Image(string? base64)

@@ -932,6 +932,28 @@ namespace FlowMy.Models.Nodes
         private readonly Dictionary<string, List<string>> _responseOutputLists = new(StringComparer.OrdinalIgnoreCase);
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, WebNodeExecutionRun> _activeExecutionRuns = new(StringComparer.OrdinalIgnoreCase);
 
+        public bool TryGetMasterResponseOutputList(string key, out List<string>? list)
+        {
+            lock (_responseOutputLock)
+            {
+                if (_responseOutputLists.TryGetValue(key, out var masterList) && masterList != null)
+                {
+                    list = new List<string>(masterList);
+                    return true;
+                }
+                list = null;
+                return false;
+            }
+        }
+
+        public bool TryGetMasterResponseOutputValue(string key, out string? value)
+        {
+            lock (_responseOutputLock)
+            {
+                return ResponseOutputValues.TryGetValue(key, out value);
+            }
+        }
+
         /// <summary>
         /// Bắt đầu một luồng thực thi workflow mới (ExecutionId).
         /// Đảm bảo xóa sạch 100% dữ liệu mảng cũ của luồng đó trước khi nhận các request mới.
@@ -950,10 +972,25 @@ namespace FlowMy.Models.Nodes
                 oldRun.CancelDebounce();
             }
 
-            // Xóa sạch response outputs tích lũy của node cho lần chạy mới này để cách ly luồng tuyệt đối
-            ClearResponseOutputValues();
+            // Chỉ xóa bớt response outputs của các key CẦN ĐỢI (WaitForCompletion == true).
+            // Giữ nguyên các key KHÔNG CẦN ĐỢI để dùng chung qua mọi luồng và node downstream.
+            ClearResponseOutputValues(onlyWaitKeys: true);
 
-            var run = new WebNodeExecutionRun(executionId);
+            var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
+
+            // Seed các key không cần chờ hiện có từ node chính vào luồng mới
+            lock (_responseOutputLock)
+            {
+                foreach (var kv in ResponseOutputValues)
+                {
+                    run.ResponseOutputValues[kv.Key] = kv.Value;
+                }
+                foreach (var kv in _responseOutputLists)
+                {
+                    run.ResponseOutputLists[kv.Key] = new List<string>(kv.Value);
+                }
+            }
+
             _activeExecutionRuns[executionId] = run;
             return run;
         }
@@ -1074,20 +1111,56 @@ namespace FlowMy.Models.Nodes
         private readonly object _pendingOutputsDebounceLock = new object();
 
         /// <summary>
-        /// Xóa sạch các mảng kết quả output tích lũy của lần chạy trước để chuẩn bị cho luồng execution mới.
+        /// Xóa các mảng kết quả output tích lũy của lần chạy trước.
+        /// - Nếu onlyWaitKeys = true: chỉ xóa các key được checked WaitForCompletion = true (dữ liệu cách ly theo luồng), giữ nguyên các key không chờ.
+        /// - Nếu onlyWaitKeys = false: xóa sạch toàn bộ outputs.
         /// </summary>
-        public void ClearResponseOutputValues()
+        public void ClearResponseOutputValues(bool onlyWaitKeys = false)
         {
             CancelPendingOutputsDebounce();
             lock (_responseOutputLock)
             {
-                _responseOutputLists.Clear();
-                ResponseOutputValues.Clear();
-                if (DynamicOutputs != null)
+                if (onlyWaitKeys && ResponseOutputs != null && ResponseOutputs.Count > 0)
                 {
-                    foreach (var dyn in DynamicOutputs)
+                    var waitKeySet = new HashSet<string>(
+                        ResponseOutputs
+                            .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
+                            .Select(ro => ro.Key.Trim()),
+                        StringComparer.OrdinalIgnoreCase);
+
+                    var listKeysToRemove = _responseOutputLists.Keys.Where(k => waitKeySet.Contains(k)).ToList();
+                    foreach (var k in listKeysToRemove)
                     {
-                        dyn.UserValueOverride = null;
+                        _responseOutputLists.Remove(k);
+                    }
+
+                    var valKeysToRemove = ResponseOutputValues.Keys.Where(k => waitKeySet.Contains(k)).ToList();
+                    foreach (var k in valKeysToRemove)
+                    {
+                        ResponseOutputValues.Remove(k);
+                    }
+
+                    if (DynamicOutputs != null)
+                    {
+                        foreach (var dyn in DynamicOutputs)
+                        {
+                            if (!string.IsNullOrWhiteSpace(dyn.Key) && waitKeySet.Contains(dyn.Key.Trim()))
+                            {
+                                dyn.UserValueOverride = null;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    _responseOutputLists.Clear();
+                    ResponseOutputValues.Clear();
+                    if (DynamicOutputs != null)
+                    {
+                        foreach (var dyn in DynamicOutputs)
+                        {
+                            dyn.UserValueOverride = null;
+                        }
                     }
                 }
             }
@@ -1331,16 +1404,45 @@ namespace FlowMy.Models.Nodes
 
                         if (isSuccess && !string.IsNullOrEmpty(valStr))
                         {
-                            list.Add(valStr);
+                            var trimmedVal = valStr.Trim();
+                            if (trimmedVal.StartsWith("[") && trimmedVal.EndsWith("]"))
+                            {
+                                try
+                                {
+                                    var parsedList = System.Text.Json.JsonSerializer.Deserialize<List<object>>(trimmedVal);
+                                    if (parsedList != null && parsedList.Count > 0)
+                                    {
+                                        foreach (var item in parsedList)
+                                        {
+                                            var itemStr = item?.ToString() ?? string.Empty;
+                                            if (!string.IsNullOrEmpty(itemStr))
+                                                list.Add(itemStr);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        list.Add(valStr);
+                                    }
+                                }
+                                catch
+                                {
+                                    list.Add(valStr);
+                                }
+                            }
+                            else
+                            {
+                                list.Add(valStr);
+                            }
                         }
 
                         jsonOrVal = System.Text.Json.JsonSerializer.Serialize(list);
                         run.ResponseOutputValues[trimmedKey] = jsonOrVal;
 
-                        if (list.Count >= targetCount || attempts >= targetCount)
+                        if (list.Count >= targetCount || attempts >= targetCount || !isSuccess)
                         {
                             isTargetReached = true;
                         }
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' received response data: isList=true, list.Count={list.Count}, targetCount={targetCount}, attempts={attempts}, isTargetReached={isTargetReached}");
                     }
                     else
                     {
@@ -1354,11 +1456,13 @@ namespace FlowMy.Models.Nodes
                             jsonOrVal = run.ResponseOutputValues.TryGetValue(trimmedKey, out var existing) ? existing : string.Empty;
                         }
                         isTargetReached = true;
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' received SINGLE response data, isTargetReached=true");
                     }
                 }
 
                 if (isTargetReached)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] SignalKeyCompleted for key '{trimmedKey}' in execution '{run.ExecutionId}'");
                     run.SignalKeyCompleted(trimmedKey);
                 }
 
@@ -1375,7 +1479,7 @@ namespace FlowMy.Models.Nodes
                     }
                 }
 
-                run.ScheduleDebounceCompletion(800);
+                run.ScheduleDebounceCompletion(300);
             }
             else
             {
@@ -1543,51 +1647,129 @@ namespace FlowMy.Models.Nodes
         public System.Threading.CancellationTokenSource? DebounceCts { get; set; }
         public object Lock { get; } = new();
 
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _cachedTargetCounts = new(StringComparer.OrdinalIgnoreCase);
+
         public int ResolveTargetCount(WebNode node, WebResponseOutput outputConfig, object? executionServiceObj, FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
         {
-            if (outputConfig == null) return 1;
+            if (outputConfig == null || string.IsNullOrWhiteSpace(outputConfig.Key)) return 1;
+            var trimmedKey = outputConfig.Key.Trim();
+
+            int resolvedCount = 0;
 
             if (!string.IsNullOrWhiteSpace(outputConfig.ListTargetNodeId) &&
                 !string.IsNullOrWhiteSpace(outputConfig.ListTargetOutputKey))
             {
                 string? val = null;
                 var execService = executionServiceObj as FlowMy.Services.Workflow.WorkflowExecutionService;
-                if (execService == null && host?.ViewModel != null)
-                {
-                    var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
-                        .GetField("_workflowExecutionService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    execService = field?.GetValue(host.ViewModel) as FlowMy.Services.Workflow.WorkflowExecutionService;
-                }
 
-                if (execService != null)
+                var dispatcher = System.Windows.Application.Current?.Dispatcher;
+                if (dispatcher != null && !dispatcher.CheckAccess())
                 {
-                    if (execService.TryGetScopedNodeStringOutputForLookupChain(ExecutionId, outputConfig.ListTargetNodeId, outputConfig.ListTargetOutputKey, out var scopedVal) && !string.IsNullOrWhiteSpace(scopedVal))
+                    try
                     {
-                        val = scopedVal;
+                        val = dispatcher.Invoke(() =>
+                        {
+                            if (execService == null && host?.ViewModel != null)
+                            {
+                                var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                                    .GetField("_workflowExecutionService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                execService = field?.GetValue(host.ViewModel) as FlowMy.Services.Workflow.WorkflowExecutionService;
+                            }
+
+                            string? res = null;
+                            if (execService != null)
+                            {
+                                if (execService.TryGetScopedNodeStringOutputForLookupChain(ExecutionId, outputConfig.ListTargetNodeId, outputConfig.ListTargetOutputKey, out var scopedVal) && !string.IsNullOrWhiteSpace(scopedVal))
+                                {
+                                    res = scopedVal;
+                                }
+                            }
+
+                            if (string.IsNullOrWhiteSpace(res) && host?.ViewModel?.Nodes != null)
+                            {
+                                var srcNode = host.ViewModel.Nodes.FirstOrDefault(n => n.Id == outputConfig.ListTargetNodeId);
+                                if (srcNode != null)
+                                {
+                                    res = FlowMy.Services.Rendering.NodeDataPanelService.ResolveDynamicValueByKey(srcNode, outputConfig.ListTargetOutputKey);
+                                }
+                            }
+
+                            return res;
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun] ResolveTargetCount Dispatcher error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    if (execService == null && host?.ViewModel != null)
+                    {
+                        var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                            .GetField("_workflowExecutionService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        execService = field?.GetValue(host.ViewModel) as FlowMy.Services.Workflow.WorkflowExecutionService;
+                    }
+
+                    if (execService != null)
+                    {
+                        if (execService.TryGetScopedNodeStringOutputForLookupChain(ExecutionId, outputConfig.ListTargetNodeId, outputConfig.ListTargetOutputKey, out var scopedVal) && !string.IsNullOrWhiteSpace(scopedVal))
+                        {
+                            val = scopedVal;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(val) && host?.ViewModel?.Nodes != null)
+                    {
+                        var srcNode = host.ViewModel.Nodes.FirstOrDefault(n => n.Id == outputConfig.ListTargetNodeId);
+                        if (srcNode != null)
+                        {
+                            val = FlowMy.Services.Rendering.NodeDataPanelService.ResolveDynamicValueByKey(srcNode, outputConfig.ListTargetOutputKey);
+                        }
                     }
                 }
 
-                if (string.IsNullOrWhiteSpace(val) && host?.ViewModel?.Nodes != null)
-                {
-                    var srcNode = host.ViewModel.Nodes.FirstOrDefault(n => n.Id == outputConfig.ListTargetNodeId);
-                    if (srcNode != null)
-                    {
-                        val = FlowMy.Services.Rendering.NodeDataPanelService.ResolveDynamicValueByKey(srcNode, outputConfig.ListTargetOutputKey);
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(val) && node.ResponseOutputValues.TryGetValue(outputConfig.ListTargetOutputKey, out var fallbackVal))
+                if (string.IsNullOrWhiteSpace(val) && node != null && node.ResponseOutputValues.TryGetValue(outputConfig.ListTargetOutputKey, out var fallbackVal))
                 {
                     val = fallbackVal;
                 }
 
-                if (!string.IsNullOrWhiteSpace(val) && int.TryParse(val.Trim(), out var parsedInt) && parsedInt > 0)
+                if (!string.IsNullOrWhiteSpace(val))
                 {
-                    return parsedInt;
+                    var trimmedVal = val.Trim();
+                    if (int.TryParse(trimmedVal, out var parsedInt) && parsedInt > 0)
+                    {
+                        resolvedCount = parsedInt;
+                    }
+                    else if (trimmedVal.StartsWith("[") && trimmedVal.EndsWith("]"))
+                    {
+                        try
+                        {
+                            var listObj = System.Text.Json.JsonSerializer.Deserialize<List<object>>(trimmedVal);
+                            if (listObj != null && listObj.Count > 0)
+                            {
+                                resolvedCount = listObj.Count;
+                            }
+                        }
+                        catch { }
+                    }
                 }
             }
 
-            return outputConfig.ListTargetCount > 0 ? outputConfig.ListTargetCount : 1;
+            if (resolvedCount > 0)
+            {
+                _cachedTargetCounts[trimmedKey] = resolvedCount;
+                return resolvedCount;
+            }
+
+            if (_cachedTargetCounts.TryGetValue(trimmedKey, out var cached) && cached > 0)
+            {
+                return cached;
+            }
+
+            resolvedCount = outputConfig.ListTargetCount > 0 ? outputConfig.ListTargetCount : 1;
+            _cachedTargetCounts[trimmedKey] = resolvedCount;
+            return resolvedCount;
         }
 
         // Checkpoint-based collection state
@@ -1602,6 +1784,7 @@ namespace FlowMy.Models.Nodes
         /// <summary>Danh sách các Task trích xuất response content (GetContentAsync) đang chạy ngầm cho run này.</summary>
         public System.Collections.Concurrent.ConcurrentBag<System.Threading.Tasks.Task> PendingExtractions { get; } = new();
 
+        private readonly System.Collections.Generic.HashSet<string> _completedKeys = new(StringComparer.OrdinalIgnoreCase);
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource<bool>> _keyTcsMap = new(StringComparer.OrdinalIgnoreCase);
 
         public WebNodeExecutionRun(string executionId)
@@ -1609,23 +1792,125 @@ namespace FlowMy.Models.Nodes
             ExecutionId = executionId;
         }
 
+        public WebNode? OwnerNode { get; set; }
+
         public System.Threading.Tasks.Task<bool> GetWaitTaskForKey(string key)
         {
             if (string.IsNullOrWhiteSpace(key)) return System.Threading.Tasks.Task.FromResult(true);
             var trimmedKey = key.Trim();
             lock (Lock)
             {
+                if (_completedKeys.Contains(trimmedKey))
+                {
+                    return System.Threading.Tasks.Task.FromResult(true);
+                }
+
                 var tcs = _keyTcsMap.GetOrAdd(trimmedKey, _ => new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously));
+                if (_completedKeys.Contains(trimmedKey))
+                {
+                    tcs.TrySetResult(true);
+                }
                 return tcs.Task;
             }
+        }
+
+        /// <summary>
+        /// Chủ động kiểm tra xem dữ liệu tích lũy đã đáp ứng đủ số lượng (targetCount) của outputConfig hay chưa.
+        /// Nếu đã đủ, lập tức gọi SignalKeyCompleted(key) để unblock keyTask trong 0ms.
+        /// </summary>
+        public bool CheckAndSignalIfKeyCompleted(
+            WebNode node,
+            WebResponseOutput outputConfig,
+            object? executionServiceObj = null,
+            FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
+        {
+            if (outputConfig == null || string.IsNullOrWhiteSpace(outputConfig.Key)) return true;
+            var trimmedKey = outputConfig.Key.Trim();
+
+            lock (Lock)
+            {
+                if (_completedKeys.Contains(trimmedKey))
+                {
+                    return true;
+                }
+
+                int targetCount = ResolveTargetCount(node, outputConfig, executionServiceObj, host);
+
+                if (outputConfig.IsList)
+                {
+                    int currentCount = 0;
+                    if (ResponseOutputLists.TryGetValue(trimmedKey, out var list) && list != null)
+                    {
+                        currentCount = list.Count;
+                    }
+                    else if (ResponseOutputValues.TryGetValue(trimmedKey, out var valStr) && !string.IsNullOrWhiteSpace(valStr) && valStr != "[]")
+                    {
+                        try
+                        {
+                            var items = System.Text.Json.JsonSerializer.Deserialize<List<object>>(valStr);
+                            currentCount = items?.Count ?? 0;
+                        }
+                        catch { }
+                    }
+
+                    // Fallback sang dữ liệu đã trích xuất ở WebNode chính (nếu response về trước khi run được tạo)
+                    if (currentCount < targetCount && node != null)
+                    {
+                        if (node.TryGetMasterResponseOutputList(trimmedKey, out var masterList) && masterList != null && masterList.Count > currentCount)
+                        {
+                            currentCount = masterList.Count;
+                            ResponseOutputLists[trimmedKey] = new List<string>(masterList);
+                            ResponseOutputValues[trimmedKey] = System.Text.Json.JsonSerializer.Serialize(masterList);
+                        }
+                    }
+
+                    if (currentCount >= targetCount)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' LIST target count reached: Current={currentCount} >= Target={targetCount}. Signalling completed.");
+                        SignalKeyCompleted(trimmedKey);
+                        return true;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' LIST target count NOT reached: Current={currentCount} < Target={targetCount}.");
+                    }
+                }
+                else
+                {
+                    bool hasValue = ResponseOutputValues.TryGetValue(trimmedKey, out var valStr) && !string.IsNullOrWhiteSpace(valStr);
+                    if (!hasValue && node != null)
+                    {
+                        if (node.TryGetMasterResponseOutputValue(trimmedKey, out var masterVal) && !string.IsNullOrWhiteSpace(masterVal))
+                        {
+                            ResponseOutputValues[trimmedKey] = masterVal;
+                            hasValue = true;
+                        }
+                    }
+
+                    if (hasValue)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' SINGLE value available. Signalling completed.");
+                        SignalKeyCompleted(trimmedKey);
+                        return true;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Key '{trimmedKey}' SINGLE value NOT available yet.");
+                    }
+                }
+            }
+
+            return false;
         }
 
         public void SignalKeyCompleted(string key)
         {
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
-            if (_keyTcsMap.TryGetValue(trimmedKey, out var tcs))
+            lock (Lock)
             {
+                _completedKeys.Add(trimmedKey);
+                var tcs = _keyTcsMap.GetOrAdd(trimmedKey, _ => new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously));
                 tcs.TrySetResult(true);
             }
         }
@@ -1644,7 +1929,7 @@ namespace FlowMy.Models.Nodes
             }
         }
 
-        public void ScheduleDebounceCompletion(int debounceMs = 800)
+        public void ScheduleDebounceCompletion(int debounceMs = 300)
         {
             lock (Lock)
             {
@@ -1662,6 +1947,52 @@ namespace FlowMy.Models.Nodes
                 {
                     if (t.IsCompletedSuccessfully && !cts.IsCancellationRequested)
                     {
+                        lock (Lock)
+                        {
+                            if (OwnerNode?.ResponseOutputs != null)
+                            {
+                                foreach (var ro in OwnerNode.ResponseOutputs)
+                                {
+                                    if (ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
+                                    {
+                                        var k = ro.Key.Trim();
+                                        int targetCount = ResolveTargetCount(OwnerNode, ro, null, null);
+                                        int currentCount = 0;
+
+                                        if (ResponseOutputLists.TryGetValue(k, out var list) && list != null)
+                                        {
+                                            currentCount = list.Count;
+                                        }
+                                        else if (OwnerNode.TryGetMasterResponseOutputList(k, out var mList) && mList != null)
+                                        {
+                                            currentCount = mList.Count;
+                                        }
+                                        else if (ResponseOutputValues.TryGetValue(k, out var val) && !string.IsNullOrWhiteSpace(val) && val != "[]")
+                                        {
+                                            currentCount = 1;
+                                        }
+
+                                        if (ro.IsList && targetCount > 1)
+                                        {
+                                            if (currentCount >= targetCount)
+                                            {
+                                                System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Debounce completed key '{k}': Current={currentCount} >= Target={targetCount}");
+                                                SignalKeyCompleted(k);
+                                            }
+                                            else
+                                            {
+                                                System.Diagnostics.Debug.WriteLine($"[WebNodeExecutionRun][DIAG] Debounce STILL WAITING for list key '{k}': Current={currentCount} < Target={targetCount}");
+                                            }
+                                        }
+                                        else if (currentCount > 0)
+                                        {
+                                            SignalKeyCompleted(k);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         var curTcs = PendingOutputsTcs;
                         if (curTcs != null && !curTcs.Task.IsCompleted)
                         {

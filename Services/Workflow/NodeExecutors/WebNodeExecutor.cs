@@ -38,6 +38,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
         {
+            var sw = Stopwatch.StartNew();
             Debug.WriteLine($"[WebNodeExecutor] ===== STARTING EXECUTION for node {node.Id} ({node.Title}) =====");
             var webNode = (WebNode)node;
             var connections = env.Connections;
@@ -106,10 +107,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
+                // LOG CHI TIẾT TẤT CẢ CÁC OUTPUTS TRONG DIALOG
+                var allOutputsLog = webNode.ResponseOutputs != null
+                    ? string.Join("; ", webNode.ResponseOutputs.Select(o => $"[Key='{o.Key}', Wait={o.WaitForCompletion}, IsList={o.IsList}, TargetCount={o.ListTargetCount}, Timeout={o.TimeoutMs}ms]"))
+                    : "None";
+                Debug.WriteLine($"[WebNodeExecutor][DIAG] Node '{webNode.Title}' ({webNode.Id}) All Configured Outputs ({webNode.ResponseOutputs?.Count ?? 0}): {allOutputsLog}");
+
                 // Xử lý logic CHỜ ĐỢI THEO TỪNG KEY (Per-Key Timeout & Wait)
                 var waitKeys = webNode.ResponseOutputs?
                     .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
                     .ToList() ?? new List<WebResponseOutput>();
+
+                Debug.WriteLine($"[WebNodeExecutor][DIAG] Checked WAIT keys count: {waitKeys.Count}");
 
                 if (waitKeys.Count > 0)
                 {
@@ -118,13 +127,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                     foreach (var keyConfig in waitKeys)
                     {
+                        // Kiểm tra dữ liệu hiện có để unblock keyTask trong 0ms nếu đã đủ targetCount / có value
+                        bool alreadyCompleted = executionRun.CheckAndSignalIfKeyCompleted(webNode, keyConfig, env.Service, null);
+
                         var keyTask = executionRun.GetWaitTaskForKey(keyConfig.Key);
                         var timeoutMs = keyConfig.TimeoutMs;
                         var effectiveKeyTimeoutMs = timeoutMs > 0 ? timeoutMs : effectiveWaitTimeoutMs;
 
+                        Debug.WriteLine($"[WebNodeExecutor][DIAG] Wait key '{keyConfig.Key}': IsCompletedImmediately={alreadyCompleted}, EffectiveTimeout={effectiveKeyTimeoutMs}ms");
+
                         if (effectiveKeyTimeoutMs > 0)
                         {
-                            // Timeout riêng cho key này (hoặc fallback theo effectiveWaitTimeoutMs)
+                            // Timeout riêng cho key này (hoặc fallback theo effectiveWaitTimeoutMs).
                             var keyTimeoutTask = Task.WhenAny(keyTask, Task.Delay(effectiveKeyTimeoutMs, waitCts.Token));
                             waitTasks.Add(keyTimeoutTask);
                         }
@@ -135,25 +149,35 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                     }
 
+                    // Lên lịch fallback debounce (2500ms): cho phép các response trong mảng truyền đủ 3 item trước khi ngắt chờ ngầm
+                    executionRun.ScheduleDebounceCompletion(2500);
+
+                    var waitSw = Stopwatch.StartNew();
                     try
                     {
                         var keyNames = string.Join(", ", waitKeys.Select(k => $"'{k.Key}'"));
-                        Debug.WriteLine($"[WebNodeExecutor] Awaiting {waitTasks.Count} checked key output completion tasks: {keyNames}");
+                        Debug.WriteLine($"[WebNodeExecutor][DIAG] >>> START AWAITING {waitTasks.Count} wait tasks: {keyNames} at {DateTime.Now:HH:mm:ss.fff}");
                         await Task.WhenAll(waitTasks);
+                        waitSw.Stop();
+                        Debug.WriteLine($"[WebNodeExecutor][DIAG] <<< FINISHED AWAITING wait tasks in {waitSw.ElapsedMilliseconds}ms at {DateTime.Now:HH:mm:ss.fff}");
                     }
                     catch (OperationCanceledException)
                     {
-                        // Flow cancellation
+                        Debug.WriteLine($"[WebNodeExecutor][DIAG] Await cancelled after {waitSw.ElapsedMilliseconds}ms");
                     }
                     catch (Exception waitEx)
                     {
-                        Debug.WriteLine($"[WebNodeExecutor] Per-key wait error: {waitEx.Message}");
+                        Debug.WriteLine($"[WebNodeExecutor][DIAG] Per-key wait error after {waitSw.ElapsedMilliseconds}ms: {waitEx.Message}");
                     }
                     finally
                     {
                         try { waitCts.Cancel(); } catch { }
                     }
                 }
+
+                // Xả chờ cho PendingOutputsTcs lập tức sau khi các checked key đã gom xong (tránh kẹt DataFetcherNode / downstream nodes)
+                webNode.CancelPendingOutputsDebounce();
+                webNode.PendingOutputsTcs?.TrySetResult(true);
 
                 // Đảm bảo tất cả tác vụ đọc stream/content response ngầm cho run này được xử lý xong hoàn toàn
                 if (executionRun != null)
@@ -173,7 +197,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 PublishScopedWebOutputs(env, webNode);
-                env.OnNodeCompleted?.Invoke(webNode, default);
+                sw.Stop();
+                env.OnNodeCompleted?.Invoke(webNode, sw.Elapsed);
             }
             finally
             {
@@ -182,7 +207,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             Debug.WriteLine($"[WebNodeExecutor] Calling TraverseOutputsAsync...");
             await env.TraverseOutputsAsync(webNode);
-            Debug.WriteLine($"[WebNodeExecutor] ===== COMPLETED EXECUTION for node {node.Id} =====");
+            Debug.WriteLine($"[WebNodeExecutor] ===== COMPLETED EXECUTION for node {node.Id} in {sw.Elapsed.TotalSeconds:0.00}s =====");
         }
 
         private static void PublishScopedWebOutputs(NodeExecutionEnvironment env, WebNode webNode)
@@ -191,33 +216,54 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
 
             var service = env.Service;
-            service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "cookie", webNode.LastCookie ?? string.Empty);
-            service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "bearer", webNode.LastBearer ?? string.Empty);
-            service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "access_token", webNode.LastAccessToken ?? string.Empty);
+
+            // Chỉ publish cookie, bearer, access_token khi có giá trị thực sự (tránh ghi đè "" rỗng làm mất cookie)
+            if (!string.IsNullOrWhiteSpace(webNode.LastCookie))
+                service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "cookie", webNode.LastCookie);
+            if (!string.IsNullOrWhiteSpace(webNode.LastBearer))
+                service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "bearer", webNode.LastBearer);
+            if (!string.IsNullOrWhiteSpace(webNode.LastAccessToken))
+                service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "access_token", webNode.LastAccessToken);
+
+            // Gom tất cả outputs từ master webNode (bao gồm non-wait keys) và run hiện tại
+            var mergedOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (webNode.ResponseOutputValues != null)
+            {
+                webNode.TryGetMasterResponseOutputValue("", out _); // lock touch
+                foreach (var kv in webNode.ResponseOutputValues)
+                {
+                    if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
+                    {
+                        mergedOutputs[kv.Key.Trim()] = kv.Value;
+                    }
+                }
+            }
 
             var run = webNode.GetExecutionRun(env.ExecutionId);
-            var sourceOutputs = run != null ? run.ResponseOutputValues : webNode.ResponseOutputValues;
-
-            if (sourceOutputs != null)
+            if (run != null)
             {
-                var lockObj = run?.Lock ?? new object();
-                lock (lockObj)
+                lock (run.Lock)
                 {
-                    foreach (var kv in sourceOutputs)
+                    foreach (var kv in run.ResponseOutputValues)
                     {
-                        if (string.IsNullOrWhiteSpace(kv.Key)) continue;
-                        var key = kv.Key.Trim();
-                        var val = kv.Value ?? string.Empty;
-
-                        service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, key, val);
-
-                        if (webNode.DynamicOutputs != null)
+                        if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
                         {
-                            var dyn = webNode.DynamicOutputs.FirstOrDefault(o =>
-                                string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
-                            if (dyn != null) dyn.UserValueOverride = val;
+                            mergedOutputs[kv.Key.Trim()] = kv.Value;
                         }
                     }
+                }
+            }
+
+            foreach (var kv in mergedOutputs)
+            {
+                service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, kv.Key, kv.Value);
+
+                if (webNode.DynamicOutputs != null)
+                {
+                    var dyn = webNode.DynamicOutputs.FirstOrDefault(o =>
+                        string.Equals(o.Key, kv.Key, StringComparison.OrdinalIgnoreCase));
+                    if (dyn != null) dyn.UserValueOverride = kv.Value;
                 }
             }
         }

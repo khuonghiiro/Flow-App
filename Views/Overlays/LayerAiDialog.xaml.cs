@@ -4028,38 +4028,7 @@ namespace FlowMy.Views.Overlays
 
         private static BitmapImage? CreateBitmapFromUrlOrFile(string value)
         {
-            try
-            {
-                value = value.Trim();
-                if (value.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
-                {
-                    value = new Uri(value).LocalPath;
-                }
-
-                if (File.Exists(value))
-                {
-                    var bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.UriSource = new Uri(value);
-                    bmp.EndInit();
-                    bmp.Freeze();
-                    return bmp;
-                }
-                else if (Uri.TryCreate(value, UriKind.Absolute, out var uriResult) &&
-                         (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
-                {
-                    var bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.UriSource = uriResult;
-                    bmp.EndInit();
-                    bmp.Freeze();
-                    return bmp;
-                }
-            }
-            catch { }
-            return null;
+            return ImageProcessingNodeControl.CreateBitmapFromUrlOrFile(value);
         }
 
         private static BitmapImage? CreateBitmapFromBase64(string base64)

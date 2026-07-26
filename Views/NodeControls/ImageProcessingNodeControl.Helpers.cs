@@ -61,11 +61,47 @@ namespace FlowMy.Views.NodeControls
             return client;
         }
 
-        private static BitmapImage? CreateBitmapFromUrlOrFile(string value)
+        internal static string CleanImageUrl(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            var str = raw.Trim();
+
+            if (str.StartsWith(@"\/") || str.Contains(@"\/"))
+                str = str.Replace(@"\/", "/");
+
+            str = str.Trim().Trim('"').Trim('\'');
+
+            if (str.StartsWith("[") && str.EndsWith("]"))
+            {
+                try
+                {
+                    var list = System.Text.Json.JsonSerializer.Deserialize<List<string>>(str);
+                    if (list != null && list.Count > 0)
+                    {
+                        var first = list.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                        if (!string.IsNullOrWhiteSpace(first))
+                            return CleanImageUrl(first);
+                    }
+                }
+                catch
+                {
+                    var inner = str.Trim('[', ']').Trim();
+                    var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 0)
+                        return CleanImageUrl(parts[0]);
+                }
+            }
+
+            return str.Trim().Trim('"').Trim('\'');
+        }
+
+        internal static BitmapImage? CreateBitmapFromUrlOrFile(string value)
         {
             try
             {
-                value = value.Trim();
+                value = CleanImageUrl(value);
+                if (string.IsNullOrWhiteSpace(value)) return null;
+
                 if (value.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
                 {
                     value = new Uri(value).LocalPath;

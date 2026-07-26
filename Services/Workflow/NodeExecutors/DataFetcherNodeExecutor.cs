@@ -228,11 +228,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static async Task WaitForWebNodeLoadAsync(WebNode webNode, CancellationToken cancellationToken)
         {
             var tcs = webNode.PendingOutputsTcs;
-            if (tcs == null)
+            if (tcs == null || tcs.Task.IsCompleted)
             {
-                tcs = new System.Threading.Tasks.TaskCompletionSource<bool>(
-                    System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
-                webNode.PendingOutputsTcs = tcs;
+                // WebNode đã hoàn thành load/gom dữ liệu hoặc không trong trạng thái đứng chờ -> Không block!
+                return;
             }
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -241,18 +240,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             try
             {
                 await tcs.Task.WaitAsync(linked.Token).ConfigureAwait(false);
-                // Debug.WriteLine("[DataFetcherNodeExecutor] WebNode trang đã load xong.");
             }
             catch (OperationCanceledException)
             {
-                // Debug.WriteLine("[DataFetcherNodeExecutor] Timeout chờ WebNode load trang.");
-            }
-            finally
-            {
-                // Tránh giữ PendingOutputsTcs treo khiến WebNode bị coi là "đang bận" mãi
-                // và không thể vào sleep.
-                if (ReferenceEquals(webNode.PendingOutputsTcs, tcs))
-                    webNode.PendingOutputsTcs = null;
             }
         }
     }
