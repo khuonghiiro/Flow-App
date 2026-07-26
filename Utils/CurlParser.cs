@@ -125,8 +125,32 @@ namespace FlowMy.Utils
                             ParseHeader(tokens[i], result);
                         }
                     }
+                    else if (token == "-A" || token == "--user-agent")
+                    {
+                        if (i + 1 < tokens.Count)
+                        {
+                            i++;
+                            result.Headers.Add(new HttpKeyValuePair { Key = "User-Agent", Value = tokens[i].Trim('\'', '"'), IsEnabled = true });
+                        }
+                    }
+                    else if (token == "-e" || token == "--referer")
+                    {
+                        if (i + 1 < tokens.Count)
+                        {
+                            i++;
+                            result.Headers.Add(new HttpKeyValuePair { Key = "Referer", Value = tokens[i].Trim('\'', '"'), IsEnabled = true });
+                        }
+                    }
+                    else if (token == "--url")
+                    {
+                        if (i + 1 < tokens.Count)
+                        {
+                            i++;
+                            ParseUrl(tokens[i].Trim('\'', '"'), result);
+                        }
+                    }
                     else if (token == "-d" || token == "--data" || token == "--data-raw" ||
-                             token == "--data-binary" || token == "--data-urlencode")
+                             token == "--data-binary" || token == "--data-urlencode" || token == "--data-ascii")
                     {
                         if (i + 1 < tokens.Count)
                         {
@@ -134,7 +158,7 @@ namespace FlowMy.Utils
                             ParseData(tokens[i], token, result);
                         }
                     }
-                    else if (token == "-F" || token == "--form")
+                    else if (token == "-F" || token == "--form" || token == "--form-string")
                     {
                         if (i + 1 < tokens.Count)
                         {
@@ -151,28 +175,12 @@ namespace FlowMy.Utils
                             ParseBasicAuth(tokens[i], result);
                         }
                     }
-                    else if (!token.StartsWith("-"))
-                    {
-                        var cleanedToken = token.Trim('\'', '"');
-                        if (cleanedToken.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                            cleanedToken.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                        {
-                            ParseUrl(cleanedToken, result);
-                        }
-                        else if (string.IsNullOrEmpty(result.Url) &&
-                                 (cleanedToken.Contains(".") || cleanedToken.StartsWith("localhost", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            ParseUrl("https://" + cleanedToken, result);
-                        }
-                    }
                     else if (token == "-b" || token == "--cookie")
                     {
                         if (i + 1 < tokens.Count)
                         {
                             i++;
                             var cookieValue = tokens[i];
-
-                            // ===== CRITICAL FIX: Proper Cookie processing =====
 
                             // Step 1: Clean CMD escape sequences
                             for (int pass = 0; pass < 3; pass++)
@@ -182,14 +190,6 @@ namespace FlowMy.Utils
                             }
                             cookieValue = Regex.Replace(cookieValue, @"\^([^\s%])", "$1");
                             cookieValue = cookieValue.Trim('"', '\'');
-
-                            // CRITICAL FIX: DO NOT decode URL-encoded cookie values!
-                            // Cookie values are sent AS-IS (URL-encoded) in HTTP headers
-                            // Only CMD escapes need to be cleaned (done above)
-                            // 
-                            // Postman exports cookies as: %22%257B%2522isOpen...
-                            // Chrome browser sends: %22%257B%2522isOpen...
-                            // Our code should match Postman/Browser behavior!
 
                             var existingCookieHeader = result.Headers.FirstOrDefault(h =>
                                 h.Key.Equals("Cookie", StringComparison.OrdinalIgnoreCase));
@@ -215,25 +215,48 @@ namespace FlowMy.Utils
                         }
                     }
                     else if (token == "-c" || token == "--cookie-jar" ||
-                             token == "-o" || token == "--output")
+                             token == "-o" || token == "--output" ||
+                             token == "-m" || token == "--max-time" ||
+                             token == "--connect-timeout" || token == "--retry" ||
+                             token == "-x" || token == "--proxy" ||
+                             token == "-U" || token == "--proxy-user" ||
+                             token == "-E" || token == "--cert" ||
+                             token == "--cacert" || token == "--key")
                     {
                         if (i + 1 < tokens.Count)
                         {
                             i++;
                         }
                     }
-                    else if (token == "--compressed" || token == "-k" || token == "--insecure" ||
-                             token == "-L" || token == "--location" || token == "-s" || token == "--silent" ||
-                             token == "-v" || token == "--verbose" || token == "-i" || token == "--include" ||
-                             token == "-I" || token == "--head" || token == "-G" || token == "--get" ||
-                             token == "-f" || token == "--fail" || token == "-S" || token == "--show-error" ||
-                             token == "-#" || token == "--progress-bar" || token == "-N" || token == "--no-buffer")
+                    else if (IsKnownBooleanFlag(token) || IsCombinedShortBooleanFlags(token))
                     {
                         continue;
                     }
-                    else if (token.StartsWith("-") && i + 1 < tokens.Count && !tokens[i + 1].StartsWith("-"))
+                    else if (!token.StartsWith("-"))
                     {
-                        i++;
+                        var cleanedToken = token.Trim('\'', '"');
+                        if (cleanedToken.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                            cleanedToken.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ParseUrl(cleanedToken, result);
+                        }
+                        else if (string.IsNullOrEmpty(result.Url) &&
+                                 (cleanedToken.Contains(".") || cleanedToken.StartsWith("localhost", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            ParseUrl("https://" + cleanedToken, result);
+                        }
+                    }
+                    else if (token.StartsWith("-") && i + 1 < tokens.Count)
+                    {
+                        var nextToken = tokens[i + 1];
+                        var isNextUrl = nextToken.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                                        nextToken.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                                        (string.IsNullOrEmpty(result.Url) && (nextToken.Contains(".") || nextToken.StartsWith("localhost", StringComparison.OrdinalIgnoreCase)));
+
+                        if (!nextToken.StartsWith("-") && !isNextUrl)
+                        {
+                            i++;
+                        }
                     }
                 }
 
@@ -614,6 +637,32 @@ namespace FlowMy.Utils
                     }
                 }
             }
+        }
+
+        private static bool IsKnownBooleanFlag(string token)
+        {
+            if (string.IsNullOrEmpty(token) || !token.StartsWith("-")) return false;
+
+            return token is "--compressed" or "-k" or "--insecure" or "-L" or "--location" or
+                            "-s" or "--silent" or "-v" or "--verbose" or "-i" or "--include" or
+                            "-I" or "--head" or "-G" or "--get" or "-f" or "--fail" or
+                            "-S" or "--show-error" or "-#" or "--progress-bar" or "-N" or "--no-buffer" or
+                            "--raw" or "--path-as-is" or "--proxy-insecure" or
+                            "--http1.0" or "--http1.1" or "--http2" or "--http3" or "-0";
+        }
+
+        private static bool IsCombinedShortBooleanFlags(string token)
+        {
+            if (string.IsNullOrEmpty(token) || !token.StartsWith("-") || token.StartsWith("--"))
+                return false;
+
+            const string shortBoolChars = "sSkLviIGfN#0";
+            for (int j = 1; j < token.Length; j++)
+            {
+                if (shortBoolChars.IndexOf(token[j]) < 0)
+                    return false;
+            }
+            return token.Length > 1;
         }
     }
 }

@@ -377,7 +377,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
                 var toggle = new ToggleButton
                 {
-                    Content = $"- {result.Key}: [{result.ArrayItems.Count} item]",
+                    Content = $"- {result.Key.Replace("_", "__")}: [{result.ArrayItems.Count} item]",
                     FontSize = 11,
                     FontWeight = FontWeights.SemiBold,
                     HorizontalAlignment = HorizontalAlignment.Left,

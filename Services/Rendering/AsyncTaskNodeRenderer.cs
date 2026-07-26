@@ -1,6 +1,7 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Views;
 using FlowMy.Views.NodeControls;
 using System.Linq;
 using System.Windows;
@@ -754,6 +755,19 @@ namespace FlowMy.Services.Rendering
             {
                 if (e.OriginalSource is Ellipse) return;
 
+                // ✅ Right click on body background opens output configuration dialog
+                if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
+                {
+                    if (e.OriginalSource is DependencyObject depObj && IsInnerChildNodeElement(depObj, body))
+                    {
+                        return; // Let inner node handle its own right click
+                    }
+
+                    OpenAsyncTaskBodyDialog(body);
+                    e.Handled = true;
+                    return;
+                }
+
                 // ✅ Đóng dialog đang mở khi click vào body (giống click canvas)
                 CloseNodeDialogIfOpen();
 
@@ -890,13 +904,57 @@ namespace FlowMy.Services.Rendering
             };
         }
 
+        private static bool IsInnerChildNodeElement(DependencyObject? obj, AsyncTaskBodyNode bodyNode)
+        {
+            var current = obj;
+            while (current != null)
+            {
+                if (current is Border b && b.Tag is WorkflowNode n)
+                {
+                    if (n != bodyNode && n != bodyNode.ParentAsyncTaskNode)
+                        return true;
+                }
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return false;
+        }
+
+        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
+        {
+            var window = (host.OwnerWindow as WorkflowEditorWindow) ?? (host as WorkflowEditorWindow);
+            if (window != null)
+            {
+                var fieldInfo = typeof(WorkflowEditorWindow).GetField(
+                    "_nodeDialogManager",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (fieldInfo != null && fieldInfo.GetValue(window) is NodeDialogManager dialogManager)
+                {
+                    return dialogManager;
+                }
+            }
+            return new NodeDialogManager();
+        }
+
+        private void OpenAsyncTaskBodyDialog(AsyncTaskBodyNode body)
+        {
+            var dialogManager = GetOrCreateDialogManager(_host);
+
+            if (body.Border?.IsMouseCaptured == true)
+                body.Border.ReleaseMouseCapture();
+            _host.DraggedNode = null;
+            if (_host.ViewModel != null) _host.ViewModel.SelectedNode = null;
+
+            if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == body) return;
+            if (dialogManager.IsDialogOpen) dialogManager.CloseCurrentDialog();
+
+            var dialog = new FlowMy.Views.Overlays.AsyncTaskBodyDialog(body, _host, _host.OwnerWindow ?? Application.Current?.MainWindow);
+            dialogManager.OpenDialog(body, dialog, _host);
+        }
+
         private void CloseNodeDialogIfOpen()
         {
-            if (_host is not Window window) return;
-            var field = window.GetType().GetField(
-                "_nodeDialogManager",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (field?.GetValue(window) is NodeDialogManager manager)
+            var manager = GetOrCreateDialogManager(_host);
+            if (manager.IsDialogOpen)
             {
                 manager.CloseCurrentDialog();
             }

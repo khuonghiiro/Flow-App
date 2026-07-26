@@ -82,8 +82,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             if (ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
                             {
                                 httpNode.IsStream = true;
-                                // Clear boundRawCurlCommand to prevent executing as raw non-stream cURL
                                 boundRawCurlCommand = null;
+                                lock (httpNode)
+                                {
+                                    headersSnapshot = httpNode.Headers.ToList();
+                                    queryParamsSnapshot = httpNode.QueryParams.ToList();
+                                    formDataSnapshot = httpNode.FormData.ToList();
+                                }
                             }
                             else
                             {
@@ -92,10 +97,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                         else
                         {
-                            // Raw-curl mode sẽ chạy trực tiếp command đã bind, không mutate node config
-                            // để tránh race khi AsyncTask dispatch song song nhiều iteration.
                             var willRunRawCurl = httpNode.UseCurl && httpNode.AutoAppendCurlWriteOut;
-                            if (!willRunRawCurl && !ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
+                            if (ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
+                            {
+                                lock (httpNode)
+                                {
+                                    headersSnapshot = httpNode.Headers.ToList();
+                                    queryParamsSnapshot = httpNode.QueryParams.ToList();
+                                    formDataSnapshot = httpNode.FormData.ToList();
+                                }
+                            }
+                            else
                             {
                                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound cURL: {errorMsg}");
                             }
@@ -742,15 +754,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (string.IsNullOrWhiteSpace(input)) return string.Empty;
             var text = input.Trim();
 
-            // If value comes from KeyValueBridge snapshot JSON:
-            // { "channelKey": ["curl ..."] } or { "channelKey": "curl ..." }
+            // If value comes from KeyValueBridge or JSON snapshot
             var extracted = TryExtractFirstStringFromJsonContainer(text);
             if (!string.IsNullOrWhiteSpace(extracted))
                 text = extracted.Trim();
 
-            // Decode escaped JSON string artifacts (\" \\r\\n \\uXXXX ...)
-            text = DecodeJsonEscapes(text);
-            return text.Trim();
+            // Decode escaped JSON string artifacts (\" \r\n \uXXXX ...)
+            text = DecodeJsonEscapes(text).Trim();
+
+            // Strip enclosing quotes (single, double, or backticks)
+            if ((text.StartsWith("\"") && text.EndsWith("\"")) ||
+                (text.StartsWith("'") && text.EndsWith("'")) ||
+                (text.StartsWith("`") && text.EndsWith("`")))
+            {
+                text = text.Substring(1, text.Length - 2).Trim();
+            }
+
+            return text;
         }
 
         private static string? TryExtractFirstStringFromJsonContainer(string text)
@@ -867,9 +887,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         /// <summary>
         /// Check if text is a cURL command.
         /// </summary>
-        private bool IsCurlCommand(string text)
+        private bool IsCurlCommand(string? text)
         {
-            return text?.TrimStart().StartsWith("curl ", StringComparison.OrdinalIgnoreCase) == true;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            var trimmed = text.Trim().Trim('"', '\'', '`', '\r', '\n');
+            if (trimmed.StartsWith("curl", StringComparison.OrdinalIgnoreCase))
+            {
+                if (trimmed.Length == 4) return true;
+                char next = trimmed[4];
+                if (char.IsWhiteSpace(next) || next == '.' || next == '-' || next == '\r' || next == '\n')
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -992,6 +1021,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             try
             {
                 var curlResult = await CurlNativeExecutor.ExecuteRawCommandAsync(httpNode, rawCurlCommand, env.CancellationToken);
+
+                // If raw execution resulted in HTTP 0 (connection error or execution failure), try fallback via ParseAndApply execute
+                if (curlResult.StatusCode == 0 && IsCurlCommand(rawCurlCommand))
+                {
+                    var parsed = CurlParser.Parse(rawCurlCommand);
+                    if (parsed.IsValid)
+                    {
+                        Debug.WriteLine($"[HttpNode-CurlRaw] Raw command returned HTTP 0, trying fallback parsed execution to {parsed.Url}");
+                        var parsedHeaders = parsed.Headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.OrdinalIgnoreCase);
+                        await ExecuteViaCurlAsync(httpNode, parsed.Url, parsedHeaders, parsed.RawBody, connections, env, sw);
+                        return;
+                    }
+                }
+
                 sw.Stop();
 
                 httpNode.LastCurlCommand = rawCurlCommand;

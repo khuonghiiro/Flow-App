@@ -252,11 +252,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     var k = kv.Key.Trim();
                     if (!string.IsNullOrWhiteSpace(k) && !string.IsNullOrWhiteSpace(kv.Value) && !mergedOutputs.ContainsKey(k))
                     {
-                        var isWaitKey = webNode.ResponseOutputs?.Any(ro => ro != null && ro.WaitForCompletion && string.Equals(ro.Key, k, StringComparison.OrdinalIgnoreCase)) ?? false;
-                        if (!isWaitKey)
-                        {
-                            mergedOutputs[k] = kv.Value;
-                        }
+                        mergedOutputs[k] = kv.Value;
                     }
                 }
             }

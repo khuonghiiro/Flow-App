@@ -65,7 +65,14 @@ namespace FlowMy.ViewModels
         private bool _showDispatchForEachPanel;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(WaitForAllThreads))]
         private bool _readResultsInBody = true;
+
+        public bool WaitForAllThreads
+        {
+            get => !ReadResultsInBody;
+            set => ReadResultsInBody = !value;
+        }
 
         public AsyncTaskNodeDialogViewModel(WorkflowNode node, IWorkflowEditorHost host)
             : base(node, host)

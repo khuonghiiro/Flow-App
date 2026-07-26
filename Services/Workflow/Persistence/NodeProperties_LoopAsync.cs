@@ -223,6 +223,27 @@ public sealed partial class FileWorkflowPersistenceService
                 }
             }
         }
+
+        // Deserialize BodyOutputMappings
+        if (properties.TryGetValue("BodyOutputMappings", out var bomObj) && bomObj != null)
+        {
+            try
+            {
+                var json = bomObj is string s ? s : (bomObj is JsonElement je ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText()) : null);
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    var mappings = JsonSerializer.Deserialize<List<AsyncTaskBodyOutputMapping>>(json);
+                    if (mappings != null)
+                    {
+                        asyncTaskNode.BodyOutputMappings.Clear();
+                        foreach (var m in mappings)
+                            asyncTaskNode.BodyOutputMappings.Add(m);
+                        asyncTaskNode.SyncBodyOutputDynamicPorts();
+                    }
+                }
+            }
+            catch { }
+        }
     }
 
     private static void RestoreAsyncTaskBodyNodeProperties(AsyncTaskBodyNode asyncTaskBodyPersist, Dictionary<string, object> properties)
@@ -290,6 +311,11 @@ public sealed partial class FileWorkflowPersistenceService
         dict["StartIndex"] = asyncTaskNode.StartIndex;
         dict["EndIndex"] = asyncTaskNode.EndIndex;
         dict["ReadResultsInBody"] = asyncTaskNode.ReadResultsInBody;
+
+        if (asyncTaskNode.BodyOutputMappings != null && asyncTaskNode.BodyOutputMappings.Count > 0)
+        {
+            dict["BodyOutputMappings"] = JsonSerializer.Serialize(asyncTaskNode.BodyOutputMappings);
+        }
 
         if (asyncTaskNode.UiPresentationMode == AsyncTaskUiPresentationMode.ManualBranches
             && asyncTaskNode.AsyncTaskBranches != null && asyncTaskNode.AsyncTaskBranches.Count > 0)

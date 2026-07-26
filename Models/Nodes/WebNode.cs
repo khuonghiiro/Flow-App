@@ -978,25 +978,12 @@ namespace FlowMy.Models.Nodes
                 oldRun.CancelDebounce();
             }
 
-            // Chỉ xóa bớt response outputs của các key CẦN ĐỢI (WaitForCompletion == true).
-            // Giữ nguyên các key KHÔNG CẦN ĐỢI để dùng chung qua mọi luồng và node downstream.
-            ClearResponseOutputValues(onlyWaitKeys: true);
-
+            // Giữ nguyên master response outputs và DynamicOutputs.UserValueOverride để UI canvas không bị clear mất dữ liệu (cURL, responses...)
+            // ngoại trừ việc mỗi ExecutionRun tạo bản sao độc lập theo từng luồng chạy.
             var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
 
-            // Seed các key không cần chờ hiện có từ node chính vào luồng mới
-            lock (_responseOutputLock)
-            {
-                foreach (var kv in ResponseOutputValues)
-                {
-                    run.ResponseOutputValues[kv.Key] = kv.Value;
-                }
-                foreach (var kv in _responseOutputLists)
-                {
-                    run.ResponseOutputLists[kv.Key] = new List<string>(kv.Value);
-                }
-            }
-
+            // Mỗi ExecutionRun khởi tạo sạch 100% để gom dữ liệu tươi của riêng lượt chạy này (executionId),
+            // tránh bị nạp lại cURL/responses cũ từ các lượt chạy trước.
             _activeExecutionRuns[executionId] = run;
             return run;
         }
@@ -1043,14 +1030,22 @@ namespace FlowMy.Models.Nodes
             UpdateResponseOutputValue(trimmedKey, valStr, isList, statusCode);
             SchedulePendingOutputsCompletion(800);
 
-            // 2. Cập nhật cho luồng ExecutionRun active ĐẦU TIÊN còn đang CHỜ key này (chưa completed)
+            // 2. Cập nhật cho TẤT CẢ luồng ExecutionRun active còn đang CHỜ key này
             var activeRuns = GetActiveExecutionRuns();
             if (activeRuns.Count > 0)
             {
-                var targetRun = activeRuns.FirstOrDefault(r => r != null && !r.IsKeyCompleted(trimmedKey)) ?? activeRuns.LastOrDefault();
-                if (targetRun != null)
+                var targetRuns = activeRuns.Where(r => r != null && !r.IsKeyCompleted(trimmedKey)).ToList();
+                if (targetRuns.Count == 0)
                 {
-                    UpdateResponseOutputValueForExecutionRun(targetRun.ExecutionId, trimmedKey, valStr, isList, executionServiceObj, roConfig, statusCode, host);
+                    targetRuns = activeRuns.ToList();
+                }
+
+                foreach (var run in targetRuns)
+                {
+                    if (run != null)
+                    {
+                        UpdateResponseOutputValueForExecutionRun(run.ExecutionId, trimmedKey, valStr, isList, executionServiceObj, roConfig, statusCode, host);
+                    }
                 }
             }
         }
@@ -1295,13 +1290,13 @@ namespace FlowMy.Models.Nodes
                 if (UrlMatchesPattern(url, pattern))
                 {
                     string val = ExtractValueByOutputType(extractType, url, method, requestHeaders, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), postData, string.Empty);
-                    if (!string.IsNullOrEmpty(targetExecutionId))
+                    if (!string.IsNullOrEmpty(targetExecutionId) && GetExecutionRun(targetExecutionId) != null)
                     {
                         UpdateResponseOutputValueForExecutionRun(targetExecutionId, ro.Key.Trim(), val, ro.IsList, null, ro, 200);
                     }
                     else
                     {
-                        UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null);
+                        UpdateResponseOutputValueForActiveRuns(ro.Key.Trim(), val, ro.IsList, null, ro, 200);
                     }
                 }
             }
@@ -1341,7 +1336,7 @@ namespace FlowMy.Models.Nodes
                 if (UrlMatchesPattern(url, pattern))
                 {
                     string val = ExtractValueByOutputType(extractType, url, method, requestHeaders, responseHeaders, postData, bodyText);
-                    if (!string.IsNullOrEmpty(targetExecutionId))
+                    if (!string.IsNullOrEmpty(targetExecutionId) && GetExecutionRun(targetExecutionId) != null)
                     {
                         UpdateResponseOutputValueForExecutionRun(targetExecutionId, ro.Key.Trim(), val, ro.IsList, null, ro, statusCode, host);
                     }

@@ -305,16 +305,22 @@ namespace FlowMy.Views.NodeControls
                 string requestMethod = request.Method ?? "GET";
 
                 string? activeExecutionId = null;
-                if (!string.IsNullOrEmpty(webNode.CurrentExecutingExecutionId) && webNode.GetExecutionRun(webNode.CurrentExecutingExecutionId) != null)
+                var activeRuns = webNode.GetActiveExecutionRuns();
+                if (activeRuns.Count == 1)
                 {
-                    activeExecutionId = webNode.CurrentExecutingExecutionId;
+                    activeExecutionId = activeRuns.First().ExecutionId;
                 }
-                else
+                else if (activeRuns.Count > 1)
                 {
-                    var activeRuns = webNode.GetActiveExecutionRuns();
-                    if (activeRuns.Count > 0)
+                    if (!string.IsNullOrEmpty(webNode.CurrentExecutingExecutionId) &&
+                        webNode.GetExecutionRun(webNode.CurrentExecutingExecutionId) is { } curRun &&
+                        !curRun.IsAllKeysCompleted())
                     {
-                        activeExecutionId = activeRuns.FirstOrDefault(r => r != null && !r.IsAllKeysCompleted())?.ExecutionId ?? activeRuns.FirstOrDefault()?.ExecutionId;
+                        activeExecutionId = webNode.CurrentExecutingExecutionId;
+                    }
+                    else
+                    {
+                        activeExecutionId = null;
                     }
                 }
 

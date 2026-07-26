@@ -90,6 +90,11 @@ namespace FlowMy.Models
         /// <summary>Wire mặc định AsyncTask bottom → body top (chế độ Loop-like).</summary>
         public WorkflowConnection? DefaultConnection { get; set; }
 
+        /// <summary>
+        /// Output mappings configured for inner nodes inside AsyncTaskBody.
+        /// </summary>
+        public System.Collections.Generic.List<AsyncTaskBodyOutputMapping> BodyOutputMappings { get; set; } = new();
+
         /// <summary>Đảm bảo DynamicInputs/Outputs cho dispatch giống Loop (loopCount, loopArray, index, item).</summary>
         public void EnsureDispatchDynamicPorts()
         {
@@ -130,6 +135,48 @@ namespace FlowMy.Models
                     IsMultiple = false,
                     OutputType = WorkflowDataType.Integer
                 });
+            }
+
+            SyncBodyOutputDynamicPorts();
+        }
+
+        /// <summary>Synchronize DynamicOutputs based on configured BodyOutputMappings.</summary>
+        public void SyncBodyOutputDynamicPorts()
+        {
+            if (BodyOutputMappings == null) return;
+
+            // Clean up old user-added ports that are no longer in BodyOutputMappings
+            var configuredKeys = BodyOutputMappings
+                .Where(m => !string.IsNullOrWhiteSpace(m.OutputKey))
+                .Select(m => m.OutputKey!.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var toRemove = DynamicOutputs
+                .Where(o => o.IsUserAdded && !configuredKeys.Contains(o.Key?.Trim() ?? string.Empty))
+                .ToList();
+
+            foreach (var port in toRemove)
+            {
+                DynamicOutputs.Remove(port);
+            }
+
+            // Ensure ports exist for configured mappings
+            foreach (var mapping in BodyOutputMappings)
+            {
+                if (string.IsNullOrWhiteSpace(mapping.OutputKey)) continue;
+                var key = mapping.OutputKey.Trim();
+
+                if (!DynamicOutputs.Any(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase)))
+                {
+                    DynamicOutputs.Add(new WorkflowDynamicDataPort
+                    {
+                        Key = key,
+                        DisplayName = key,
+                        ConvertType = WorkflowDataType.String,
+                        OutputType = WorkflowDataType.String,
+                        IsUserAdded = true
+                    });
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.AsyncTaskNodeDialog"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.AsyncTaskNodeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
@@ -146,12 +146,12 @@
                                              Text="{Binding DispatchEndIndex, Mode=TwoWay}"/>
                                 </StackPanel>
 
-                                <CheckBox x:Name="ReadResultsInBodyCheckBox"
-                                          Content="Đọc kết quả trong body (mặc định)"
-                                          IsChecked="{Binding ReadResultsInBody, Mode=TwoWay}"
+                                <CheckBox x:Name="WaitForAllThreadsCheckBox"
+                                          Content="Đợi tất cả luồng trong async task body chạy xong mới chạy node tiếp theo"
+                                          IsChecked="{Binding WaitForAllThreads, Mode=TwoWay}"
                                           Foreground="{DynamicResource TextBrush}"
                                           FontSize="11"
-                                          Margin="8,0,0,0"/>
+                                          Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

@@ -183,6 +183,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var service = env.Service;
             var cancellationToken = env.CancellationToken;
             var bodyNode = asyncTaskNode.AsyncTaskBodyNode!;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
 
             WorkflowExecutionService.EnsureAsyncTaskBodyPortsExist(bodyNode);
 
@@ -241,6 +242,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     .Where(c => c.ToNode != null)
                     .ToList()
                 : new List<WorkflowConnection>();
+
+            var bodyMappings = asyncTaskNode.BodyOutputMappings ?? new List<AsyncTaskBodyOutputMapping>();
+            var collectedResultsByMapping = new ConcurrentDictionary<string, ConcurrentDictionary<int, string>>(StringComparer.OrdinalIgnoreCase);
 
             // When RunInParallel is enabled, multiple dispatch iterations run concurrently.
             // They share the same default connection (diamond -> body), so we keep it
@@ -369,6 +373,44 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     throw new InvalidOperationException(
                         "Async Task body chưa có đường return về port 'Port Body Right'. " +
                         "Hãy nối node kết thúc trong body vào 'Port Body Right'.");
+                }
+
+                // ── Extract body outputs configured in BodyOutputMappings ──
+                if (bodyMappings.Count > 0)
+                {
+                    foreach (var mapping in bodyMappings)
+                    {
+                        if (string.IsNullOrWhiteSpace(mapping.SourceNodeId) ||
+                            string.IsNullOrWhiteSpace(mapping.SourceOutputKey) ||
+                            string.IsNullOrWhiteSpace(mapping.OutputKey))
+                            continue;
+
+                        var srcNodeId = mapping.SourceNodeId.Trim();
+                        var srcKey = mapping.SourceOutputKey.Trim();
+                        var outKey = mapping.OutputKey.Trim();
+
+                        string? outVal = null;
+                        if (service.TryGetScopedNodeStringOutput(iterationExecutionId, srcNodeId, srcKey, out var scopedVal))
+                        {
+                            outVal = scopedVal;
+                        }
+                        else
+                        {
+                            var srcNode = connections
+                                .SelectMany(c => new[] { c.FromNode, c.ToNode })
+                                .FirstOrDefault(n => n != null && string.Equals(n.Id, srcNodeId, StringComparison.OrdinalIgnoreCase));
+                            if (srcNode != null)
+                            {
+                                outVal = service.ResolveDynamicValueForRun(srcNode, srcKey, iterationExecutionId);
+                            }
+                        }
+
+                        outVal ??= string.Empty;
+
+                        var dict = collectedResultsByMapping.GetOrAdd(outKey, _ => new ConcurrentDictionary<int, string>());
+                        dict[index] = outVal;
+                        service.SetScopedNodeStringOutput(iterationExecutionId, asyncTaskNode.Id, outKey, outVal);
+                    }
                 }
 
                 // ── Push async data to HtmlUi nodes after each iteration ──
@@ -504,7 +546,58 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
-                // sau dispatch
+                // Serialize & Sync output results across all iterations for asyncTaskNode
+                if (bodyMappings.Count > 0)
+                {
+                    foreach (var mapping in bodyMappings)
+                    {
+                        if (!string.IsNullOrWhiteSpace(mapping.OutputKey))
+                        {
+                            var targetKey = mapping.OutputKey.Trim();
+                            if (collectedResultsByMapping.TryGetValue(targetKey, out var dict))
+                            {
+                                var sortedList = iterations
+                                    .Select(p => dict.TryGetValue(p.index, out var v) ? v : string.Empty)
+                                    .ToList();
+
+                                string finalVal;
+                                if (mapping.IsCollectArray)
+                                {
+                                    finalVal = System.Text.Json.JsonSerializer.Serialize(sortedList);
+                                }
+                                else
+                                {
+                                    finalVal = sortedList.LastOrDefault(v => !string.IsNullOrWhiteSpace(v))
+                                               ?? (sortedList.Count > 0 ? sortedList.Last() : string.Empty);
+                                }
+
+                                service.SetScopedNodeStringOutput(env.ExecutionId, asyncTaskNode.Id, targetKey, finalVal);
+                                foreach (var runId in iterationExecutionIds)
+                                {
+                                    service.SetScopedNodeStringOutput(runId, asyncTaskNode.Id, targetKey, finalVal);
+                                }
+
+                                if (asyncTaskNode.DynamicOutputs != null)
+                                {
+                                    var port = asyncTaskNode.DynamicOutputs.FirstOrDefault(p => string.Equals(p.Key, targetKey, StringComparison.OrdinalIgnoreCase));
+                                    if (port == null)
+                                    {
+                                        port = new WorkflowDynamicDataPort
+                                        {
+                                            Key = targetKey,
+                                            DisplayName = targetKey,
+                                            OutputType = WorkflowDataType.String,
+                                            ConvertType = WorkflowDataType.String,
+                                            IsUserAdded = true
+                                        };
+                                        asyncTaskNode.DynamicOutputs.Add(port);
+                                    }
+                                    port.UserValueOverride = finalVal;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if (!readResultsInBody && loopOutPort != null && !cancellationToken.IsCancellationRequested)
@@ -589,7 +682,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            env.OnNodeCompleted?.Invoke(asyncTaskNode, TimeSpan.Zero);
+            sw.Stop();
+            env.OnNodeCompleted?.Invoke(asyncTaskNode, sw.Elapsed);
         }
 
         /// <summary>

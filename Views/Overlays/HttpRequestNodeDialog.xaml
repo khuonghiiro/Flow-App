@@ -73,55 +73,110 @@
 
                 <!-- 🌐 Request URL Panel (Persistent at the top) -->
                 <Border Grid.Row="0" Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/> <!-- Method dropdown -->
-                            <ColumnDefinition Width="*"/>    <!-- URL Textbox -->
-                            <ColumnDefinition Width="Auto"/> <!-- Action Buttons -->
-                        </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
-                                   Text="🌐 Request Configuration" 
-                                   Style="{DynamicResource DialogLabelText}"
-                                   Margin="0,0,0,8"/>
+                            <TextBlock Grid.Column="0" Text="🌐 Request Configuration" 
+                                       Style="{DynamicResource DialogLabelText}"
+                                       VerticalAlignment="Center"/>
 
-                        <!-- Method Selector -->
-                        <ComboBox Grid.Row="1" Grid.Column="0"
-                                  Height="32" Width="90"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  Margin="0,0,8,0"
-                                  ItemsSource="{Binding HttpMethodOptions}"
-                                  SelectedItem="{Binding HttpMethod, Mode=TwoWay}"/>
+                            <!-- cURL Utilities -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="📥 Import cURL" 
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Height="28" Padding="10,0" Margin="0,0,6,0" FontSize="11.5"
+                                        Click="ImportCurl_Click"
+                                        ToolTip="Paste cURL command từ clipboard (Ctrl+V)"/>
+                                <Button Content="📤 Copy cURL" 
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Height="28" Padding="10,0" FontSize="11.5"
+                                        Click="CopyCurl_Click"
+                                        ToolTip="Copy cURL command vào clipboard"/>
+                            </StackPanel>
+                        </Grid>
 
-                        <!-- URL Input -->
-                        <TextBox Grid.Row="1" Grid.Column="1"
-                                 x:Name="UrlTextBox"
-                                 Text="{Binding Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{DynamicResource BaseTextBoxV2}"
-                                 Height="32"
-                                 VerticalContentAlignment="Center"
-                                 ToolTip="Nhập URL hoặc paste cURL command (tự động parse)"
-                                 PreviewKeyDown="UrlTextBox_PreviewKeyDown"
-                                 TextChanged="UrlTextBox_TextChanged"/>
+                        <!-- Method & URL Input Row -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/> <!-- Method dropdown -->
+                                <ColumnDefinition Width="*"/>    <!-- URL Textbox -->
+                            </Grid.ColumnDefinitions>
 
-                        <!-- cURL Utilities -->
-                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
-                            <Button Content="📥 Import cURL" 
-                                    Style="{DynamicResource PrimaryButton}"
-                                    Height="32" Padding="12,0" Margin="0,0,6,0"
-                                    Click="ImportCurl_Click"
-                                    ToolTip="Paste cURL command từ clipboard (Ctrl+V)"/>
-                            <Button Content="📤 Copy cURL" 
-                                    Style="{DynamicResource SecondaryButton}"
-                                    Height="32" Padding="12,0"
-                                    Click="CopyCurl_Click"
-                                    ToolTip="Copy cURL command vào clipboard"/>
-                        </StackPanel>
-                    </Grid>
+                            <!-- Method Selector -->
+                            <ComboBox Grid.Column="0"
+                                      Height="32" Width="95"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,8,0"
+                                      ItemsSource="{Binding HttpMethodOptions}"
+                                      SelectedItem="{Binding HttpMethod, Mode=TwoWay}"/>
+
+                            <!-- URL Input -->
+                            <TextBox Grid.Column="1"
+                                     x:Name="UrlTextBox"
+                                     Text="{Binding Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     Height="32"
+                                     VerticalContentAlignment="Center"
+                                     ToolTip="Nhập URL hoặc paste cURL command (tự động parse)"
+                                     PreviewKeyDown="UrlTextBox_PreviewKeyDown"
+                                     TextChanged="UrlTextBox_TextChanged"/>
+                        </Grid>
+
+                        <!-- Dynamic cURL & URL Binding Panel (Below Request Config) -->
+                        <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10,8" Margin="0,2,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/> <!-- Label -->
+                                    <ColumnDefinition Width="*"/>   <!-- Nguồn Node -->
+                                    <ColumnDefinition Width="*"/>   <!-- Khóa Output -->
+                                </Grid.ColumnDefinitions>
+
+                                <!-- cURL Command Binding -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="⚡ Bind cURL Động:" 
+                                           Style="{DynamicResource DialogLabelText}" FontSize="11.5" 
+                                           Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,8,6"
+                                           ToolTip="Liên kết cURL command động từ node đứng trước"/>
+
+                                <controls:NodeSearchComboBoxUserControl Grid.Row="0" Grid.Column="1" x:Name="CurlSourceNodeComboBox"
+                                          Height="30" Margin="0,0,8,6" ItemsSource="{Binding AvailableSources}"
+                                          SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                          SelectedValue="{Binding CurlSourceNodeId, Mode=TwoWay}"
+                                          PlaceholderText="Chọn node nguồn cURL..."/>
+
+                                <ComboBox Grid.Row="0" Grid.Column="2" x:Name="CurlSourceKeyComboBox"
+                                          Height="30" Margin="0,0,0,6" Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding CurlAvailableOutputKeys}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding CurlSourceOutputKey, Mode=TwoWay}"/>
+
+                                <!-- URL Binding -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="🔗 Bind URL Động:" 
+                                           Style="{DynamicResource DialogMutedText}" FontSize="11" 
+                                           VerticalAlignment="Center" Margin="0,0,8,0"
+                                           ToolTip="Liên kết URL động từ node đứng trước"/>
+
+                                <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="1" x:Name="UrlSourceNodeComboBox"
+                                          Height="30" Margin="0,0,8,0" ItemsSource="{Binding AvailableSources}"
+                                          SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                          SelectedValue="{Binding UrlSourceNodeId, Mode=TwoWay}"
+                                          PlaceholderText="Chọn node nguồn URL..."/>
+
+                                <ComboBox Grid.Row="1" Grid.Column="2" x:Name="UrlSourceKeyComboBox"
+                                          Height="30" Margin="0,0,0,0" Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding UrlAvailableOutputKeys}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding UrlSourceOutputKey, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
                 </Border>
 
                 <!-- Flat Main TabControl -->
@@ -724,73 +779,6 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </Border>
-
-                                <!-- Dynamic URL/cURL bindings -->
-                                <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="🔗 Liên kết URL / cURL động (từ node khác)" Style="{DynamicResource DialogLabelText}"/>
-                                        
-                                        <!-- Dynamic URL Binding -->
-                                        <Expander Header="Bind URL từ node khác" Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,8">
-                                            <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" MinWidth="120"/>
-                                                        <ColumnDefinition Width="*" MinWidth="120"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
-                                                    
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
-                                                    
-                                                    <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="UrlSourceNodeComboBox"
-                                                              Height="32" MinWidth="120" ItemsSource="{Binding AvailableSources}"
-                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                              SelectedValue="{Binding UrlSourceNodeId, Mode=TwoWay}"/>
-                                                    
-                                                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="UrlSourceKeyComboBox"
-                                                              Height="32" MinWidth="120" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0"
-                                                              ItemsSource="{Binding UrlAvailableOutputKeys}"
-                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                                              SelectedValue="{Binding UrlSourceOutputKey, Mode=TwoWay}"/>
-                                                </Grid>
-                                            </Border>
-                                        </Expander>
-
-                                        <!-- cURL Command Binding -->
-                                        <Expander Header="Bind cURL command từ node khác" Foreground="{DynamicResource TextBrush}" FontSize="11">
-                                            <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,4,0,0">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" MinWidth="120"/>
-                                                        <ColumnDefinition Width="*" MinWidth="120"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
-                                                    
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Nguồn Node" Style="{DynamicResource DialogMutedText}" Margin="0,0,0,4"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Khóa Output" Style="{DynamicResource DialogMutedText}" Margin="8,0,0,4"/>
-                                                    
-                                                    <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="CurlSourceNodeComboBox"
-                                                              Height="32" MinWidth="120" ItemsSource="{Binding AvailableSources}"
-                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                              SelectedValue="{Binding CurlSourceNodeId, Mode=TwoWay}"/>
-                                                    
-                                                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="CurlSourceKeyComboBox"
-                                                              Height="32" MinWidth="120" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0"
-                                                              ItemsSource="{Binding CurlAvailableOutputKeys}"
-                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                                              SelectedValue="{Binding CurlSourceOutputKey, Mode=TwoWay}"/>
-                                                </Grid>
-                                            </Border>
-                                        </Expander>
-                                    </StackPanel>
                                 </Border>
 
                                 <!-- Inputs (hidden container needed by base class) -->

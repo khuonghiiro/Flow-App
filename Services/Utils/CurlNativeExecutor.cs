@@ -97,6 +97,9 @@ namespace FlowMy.Services.Utils
         /// <summary>
         /// Execute a raw cURL command as-is (best fidelity with copied cURL from browser/Postman).
         /// Uses cmd.exe + temp .cmd file to preserve caret escaping and multiline continuation.
+        /// <summary>
+        /// Execute a raw cURL command as-is (best fidelity with copied cURL from browser/Postman).
+        /// Uses cmd.exe + temp .cmd file to preserve caret escaping and multiline continuation.
         /// </summary>
         public static async Task<CurlResult> ExecuteRawCommandAsync(
             HttpRequestNode node,
@@ -127,8 +130,8 @@ namespace FlowMy.Services.Utils
                     return result;
                 }
 
-                // Ensure response can be parsed into status/body consistently.
-                var commandForExec = rawCurlCommand.Trim();
+                // Sanitize raw curl command for CMD execution (flatten multiline, convert single quotes to double quotes, set executable path)
+                var commandForExec = SanitizeRawCurlForCmd(rawCurlCommand, curlPath);
                 if (node.AutoAppendCurlWriteOut)
                 {
                     tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_rawcurl_headers_{Guid.NewGuid():N}.txt");
@@ -184,18 +187,25 @@ namespace FlowMy.Services.Utils
                 finally
                 {
                     KillProcessTreeSafe(process);
-                    try
+                    TryDeleteFile(tempCmdPath);
+                    TryDeleteFile(tempHeaderPath);
+                    TryDeleteFile(tempBodyPath);
+                }
+
+                // Fallback: If status is 0 (raw command failed or returned no response), try parsing and executing via ExecuteAsync
+                if (result.StatusCode == 0 && FlowMy.Utils.CurlParser.IsCurlCommand(rawCurlCommand))
+                {
+                    var parsed = FlowMy.Utils.CurlParser.Parse(rawCurlCommand);
+                    if (parsed.IsValid)
                     {
-                        if (!string.IsNullOrWhiteSpace(tempCmdPath) && File.Exists(tempCmdPath))
-                            File.Delete(tempCmdPath);
-                        if (!string.IsNullOrWhiteSpace(tempHeaderPath) && File.Exists(tempHeaderPath))
-                            File.Delete(tempHeaderPath);
-                        if (!string.IsNullOrWhiteSpace(tempBodyPath) && File.Exists(tempBodyPath))
-                            File.Delete(tempBodyPath);
-                    }
-                    catch
-                    {
-                        // Best effort cleanup.
+                        Debug.WriteLine($"[CurlNative] Raw command returned status 0 ({result.ErrorMessage}), falling back to parsed execution for {parsed.Url}");
+                        var parsedHeaders = parsed.Headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.OrdinalIgnoreCase);
+                        var fallbackResult = await ExecuteAsync(node, parsed.Url, parsedHeaders, parsed.RawBody, ct);
+                        if (fallbackResult.StatusCode != 0)
+                        {
+                            fallbackResult.Backend = "curl.exe raw command (parsed fallback)";
+                            return fallbackResult;
+                        }
                     }
                 }
             }
@@ -735,6 +745,123 @@ namespace FlowMy.Services.Utils
             }
 
             return dict;
+        }
+
+        public static string SanitizeRawCurlForCmd(string rawCurlCommand, string curlPath)
+        {
+            if (string.IsNullOrWhiteSpace(rawCurlCommand)) return string.Empty;
+
+            var cmd = rawCurlCommand.Trim();
+
+            // 1. Convert CMD escape sequences (^", ^%, caret newline) if present
+            if (cmd.Contains("^\"") || System.Text.RegularExpressions.Regex.IsMatch(cmd, @"\^%\^[0-9A-Fa-f]{2}") || System.Text.RegularExpressions.Regex.IsMatch(cmd, @"\^\s*\r?\n"))
+            {
+                cmd = ConvertCmdToBashFormat(cmd);
+            }
+
+            // 2. Flatten multiline commands (strip \ or ^ at line ends, strip \r\n)
+            cmd = System.Text.RegularExpressions.Regex.Replace(cmd, @"\\\s*\r?\n\s*", " ");
+            cmd = System.Text.RegularExpressions.Regex.Replace(cmd, @"\^\s*\r?\n\s*", " ");
+            cmd = cmd.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ");
+            cmd = System.Text.RegularExpressions.Regex.Replace(cmd, @"\s+", " ").Trim();
+
+            // 3. Replace leading "curl" or "curl.exe" with actual curlPath
+            var exeToken = $"\"{curlPath.Replace("\"", "\\\"")}\"";
+            if (cmd.StartsWith("curl.exe ", StringComparison.OrdinalIgnoreCase))
+            {
+                cmd = exeToken + cmd.Substring(8);
+            }
+            else if (cmd.StartsWith("curl ", StringComparison.OrdinalIgnoreCase))
+            {
+                cmd = exeToken + cmd.Substring(4);
+            }
+            else if (string.Equals(cmd, "curl", StringComparison.OrdinalIgnoreCase) || string.Equals(cmd, "curl.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                cmd = exeToken;
+            }
+            else if (!cmd.StartsWith("\"") && !cmd.StartsWith("'"))
+            {
+                var firstSpace = cmd.IndexOf(' ');
+                if (firstSpace > 0 && cmd.Substring(0, firstSpace).EndsWith("curl", StringComparison.OrdinalIgnoreCase))
+                {
+                    cmd = exeToken + cmd.Substring(firstSpace);
+                }
+            }
+
+            // 4. Convert single-quoted arguments '...' to double-quoted "..." for Windows CMD compatibility
+            cmd = ConvertSingleQuotesToDoubleQuotesForCmd(cmd);
+
+            return cmd;
+        }
+
+        private static string ConvertCmdToBashFormat(string cmdCurl)
+        {
+            var bash = cmdCurl;
+
+            bash = System.Text.RegularExpressions.Regex.Replace(bash, @"\^\s*\r?\n\s*", " \\\n", System.Text.RegularExpressions.RegexOptions.Multiline);
+            bash = System.Text.RegularExpressions.Regex.Replace(bash, @"\^\^", "\x00CARET\x00");
+            bash = bash.Replace("^\"", "\"");
+            bash = bash.Replace("\x00CARET\x00", "^");
+
+            for (int i = 0; i < 5; i++)
+            {
+                bash = System.Text.RegularExpressions.Regex.Replace(bash, @"\^%\^([0-9A-Fa-f]{2})", "%$1");
+                bash = System.Text.RegularExpressions.Regex.Replace(bash, @"%\^([0-9A-Fa-f]{2})", "%$1");
+                bash = System.Text.RegularExpressions.Regex.Replace(bash, @"\^%([0-9A-Fa-f]{2})", "%$1");
+            }
+
+            bash = System.Text.RegularExpressions.Regex.Replace(bash, @"\^([&|<>()@^""'%])", "$1");
+            bash = System.Text.RegularExpressions.Regex.Replace(bash, @"\^(?=[a-zA-Z0-9;,=\$\.\-_])", "");
+            bash = bash.Replace("%%", "%");
+
+            return bash;
+        }
+
+        private static string ConvertSingleQuotesToDoubleQuotesForCmd(string command)
+        {
+            if (string.IsNullOrEmpty(command) || command.IndexOf('\'') < 0)
+                return command;
+
+            var sb = new StringBuilder();
+            bool inSingle = false;
+            bool inDouble = false;
+
+            for (int i = 0; i < command.Length; i++)
+            {
+                char c = command[i];
+
+                if (c == '\'' && !inDouble)
+                {
+                    inSingle = !inSingle;
+                    sb.Append('"');
+                    continue;
+                }
+
+                if (c == '"' && !inSingle)
+                {
+                    inDouble = !inDouble;
+                    sb.Append('"');
+                    continue;
+                }
+
+                if (inSingle)
+                {
+                    if (c == '"')
+                    {
+                        sb.Append("\\\"");
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return sb.ToString();
         }
 
         private static string EnsureOutputMarkers(string command, string? headerOutputPath = null, string? bodyOutputPath = null)

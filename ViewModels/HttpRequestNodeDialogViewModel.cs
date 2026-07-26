@@ -446,6 +446,37 @@ namespace FlowMy.ViewModels
         {
             _httpRequestNode.NotifyTitleChanged();
 
+            // Save scalar properties directly from ViewModel
+            _httpRequestNode.Url = Url;
+            _httpRequestNode.HttpMethod = HttpMethod;
+            _httpRequestNode.AuthType = AuthType;
+            _httpRequestNode.BodyType = BodyType;
+            _httpRequestNode.RawBody = RawBody;
+            _httpRequestNode.AuthUsername = AuthUsername;
+            _httpRequestNode.AuthPassword = AuthPassword;
+            _httpRequestNode.AuthToken = AuthToken;
+            _httpRequestNode.ApiKeyName = ApiKeyName;
+            _httpRequestNode.ApiKeyValue = ApiKeyValue;
+            _httpRequestNode.ApiKeyInHeader = ApiKeyInHeader;
+            _httpRequestNode.TimeoutSeconds = TimeoutSeconds;
+
+            // Save dynamic binding properties directly
+            _httpRequestNode.UrlSourceNodeId = UrlSourceNodeId;
+            _httpRequestNode.UrlSourceOutputKey = UrlSourceOutputKey;
+            _httpRequestNode.BodySourceNodeId = BodySourceNodeId;
+            _httpRequestNode.BodySourceOutputKey = BodySourceOutputKey;
+            _httpRequestNode.TokenSourceNodeId = TokenSourceNodeId;
+            _httpRequestNode.TokenSourceOutputKey = TokenSourceOutputKey;
+            _httpRequestNode.ApiKeyValueSourceNodeId = ApiKeyValueSourceNodeId;
+            _httpRequestNode.ApiKeyValueSourceOutputKey = ApiKeyValueSourceOutputKey;
+            _httpRequestNode.CurlSourceNodeId = CurlSourceNodeId;
+            _httpRequestNode.CurlSourceOutputKey = CurlSourceOutputKey;
+
+            _httpRequestNode.UseCurl = UseCurl;
+            _httpRequestNode.CurlPath = CurlPath;
+            _httpRequestNode.ImpersonateBrowser = ImpersonateBrowser;
+            _httpRequestNode.AutoAppendCurlWriteOut = AutoAppendCurlWriteOut;
+
             // Save headers
             _httpRequestNode.Headers.Clear();
             foreach (var item in HeaderItems)
@@ -531,114 +562,97 @@ namespace FlowMy.ViewModels
                 }
             }
 
-            var producerNodes = upstream
-                .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
-                .ToList();
-
-            foreach (var node in producerNodes)
+            foreach (var node in upstream)
             {
                 AvailableSources.Add(CreateDataSourceOption(node));
             }
         }
 
+        private static void PopulateOutputKeys(WorkflowNode? sourceNode, ObservableCollection<WorkflowOutputKeyOption> collection)
+        {
+            collection.Clear();
+            if (sourceNode == null) return;
+
+            var keysAdded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (sourceNode.DynamicOutputs != null)
+            {
+                foreach (var output in sourceNode.DynamicOutputs)
+                {
+                    if (keysAdded.Add(output.Key))
+                    {
+                        collection.Add(new WorkflowOutputKeyOption
+                        {
+                            Key = output.Key,
+                            DisplayName = output.DisplayName ?? output.Key,
+                            Type = output.OutputType
+                        });
+                    }
+                }
+            }
+
+            List<string> standardKeys = sourceNode switch
+            {
+                HttpRequestNode => new() { "cURL", "responsebody", "statuscode", "responseheaders", "issuccess", "errormessage", "responsetimems" },
+                WebNode => new() { "cURL", "url", "statusCode", "responseBody", "responseHeaders", "html", "text", "cookies" },
+                FileDownloadNode => new() { "filePath", "fileName", "fileSize", "cURL", "statusCode", "isSuccess" },
+                CodeNode => new() { "output", "result", "text", "cURL" },
+                HtmlUiNode => new() { "output", "text", "json", "cURL" },
+                _ => new() { "cURL", "output", "result", "text", "value" }
+            };
+
+            foreach (var key in standardKeys)
+            {
+                if (keysAdded.Add(key))
+                {
+                    collection.Add(new WorkflowOutputKeyOption
+                    {
+                        Key = key,
+                        DisplayName = key,
+                        Type = WorkflowDataType.String
+                    });
+                }
+            }
+        }
+
         private void RefreshUrlOutputKeys()
         {
-            UrlAvailableOutputKeys.Clear();
-
-            if (string.IsNullOrWhiteSpace(UrlSourceNodeId) || _host.ViewModel == null) return;
-
-            var sourceNode = _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == UrlSourceNodeId);
-            if (sourceNode?.DynamicOutputs == null) return;
-
-            foreach (var output in sourceNode.DynamicOutputs)
-            {
-                UrlAvailableOutputKeys.Add(new WorkflowOutputKeyOption
-                {
-                    Key = output.Key,
-                    DisplayName = output.DisplayName ?? output.Key,
-                    Type = output.OutputType
-                });
-            }
+            var sourceNode = string.IsNullOrWhiteSpace(UrlSourceNodeId) || _host.ViewModel == null
+                ? null
+                : _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == UrlSourceNodeId);
+            PopulateOutputKeys(sourceNode, UrlAvailableOutputKeys);
         }
 
         private void RefreshBodyOutputKeys()
         {
-            BodyAvailableOutputKeys.Clear();
-
-            if (string.IsNullOrWhiteSpace(BodySourceNodeId) || _host.ViewModel == null) return;
-
-            var sourceNode = _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == BodySourceNodeId);
-            if (sourceNode?.DynamicOutputs == null) return;
-
-            foreach (var output in sourceNode.DynamicOutputs)
-            {
-                BodyAvailableOutputKeys.Add(new WorkflowOutputKeyOption
-                {
-                    Key = output.Key,
-                    DisplayName = output.DisplayName ?? output.Key,
-                    Type = output.OutputType
-                });
-            }
+            var sourceNode = string.IsNullOrWhiteSpace(BodySourceNodeId) || _host.ViewModel == null
+                ? null
+                : _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == BodySourceNodeId);
+            PopulateOutputKeys(sourceNode, BodyAvailableOutputKeys);
         }
 
         private void RefreshTokenOutputKeys()
         {
-            TokenAvailableOutputKeys.Clear();
-
-            if (string.IsNullOrWhiteSpace(TokenSourceNodeId) || _host.ViewModel == null) return;
-
-            var sourceNode = _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == TokenSourceNodeId);
-            if (sourceNode?.DynamicOutputs == null) return;
-
-            foreach (var output in sourceNode.DynamicOutputs)
-            {
-                TokenAvailableOutputKeys.Add(new WorkflowOutputKeyOption
-                {
-                    Key = output.Key,
-                    DisplayName = output.DisplayName ?? output.Key,
-                    Type = output.OutputType
-                });
-            }
+            var sourceNode = string.IsNullOrWhiteSpace(TokenSourceNodeId) || _host.ViewModel == null
+                ? null
+                : _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == TokenSourceNodeId);
+            PopulateOutputKeys(sourceNode, TokenAvailableOutputKeys);
         }
 
         private void RefreshApiKeyValueOutputKeys()
         {
-            ApiKeyValueAvailableOutputKeys.Clear();
-
-            if (string.IsNullOrWhiteSpace(ApiKeyValueSourceNodeId) || _host.ViewModel == null) return;
-
-            var sourceNode = _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == ApiKeyValueSourceNodeId);
-            if (sourceNode?.DynamicOutputs == null) return;
-
-            foreach (var output in sourceNode.DynamicOutputs)
-            {
-                ApiKeyValueAvailableOutputKeys.Add(new WorkflowOutputKeyOption
-                {
-                    Key = output.Key,
-                    DisplayName = output.DisplayName ?? output.Key,
-                    Type = output.OutputType
-                });
-            }
+            var sourceNode = string.IsNullOrWhiteSpace(ApiKeyValueSourceNodeId) || _host.ViewModel == null
+                ? null
+                : _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == ApiKeyValueSourceNodeId);
+            PopulateOutputKeys(sourceNode, ApiKeyValueAvailableOutputKeys);
         }
 
         private void RefreshCurlOutputKeys()
         {
-            CurlAvailableOutputKeys.Clear();
-
-            if (string.IsNullOrWhiteSpace(CurlSourceNodeId) || _host.ViewModel == null) return;
-
-            var sourceNode = _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == CurlSourceNodeId);
-            if (sourceNode?.DynamicOutputs == null) return;
-
-            foreach (var output in sourceNode.DynamicOutputs)
-            {
-                CurlAvailableOutputKeys.Add(new WorkflowOutputKeyOption
-                {
-                    Key = output.Key,
-                    DisplayName = output.DisplayName ?? output.Key,
-                    Type = output.OutputType
-                });
-            }
+            var sourceNode = string.IsNullOrWhiteSpace(CurlSourceNodeId) || _host.ViewModel == null
+                ? null
+                : _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == CurlSourceNodeId);
+            PopulateOutputKeys(sourceNode, CurlAvailableOutputKeys);
         }
 
         /// <summary>
