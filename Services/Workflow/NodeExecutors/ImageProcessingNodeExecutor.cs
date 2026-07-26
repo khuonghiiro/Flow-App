@@ -155,6 +155,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 // executionId: id duy nhất cho lần chạy này, dùng để map ảnh render về đúng crop
                 SetOutput(imageNode, "executionId", env.ExecutionId, env);
+
+                // ── Dynamic accumulation for sub-flow dispatches & array images ──
+                // Tự động tích lũy các ảnh render từ các luồng con (dispatch-0, dispatch-1, dispatch-2...)
+                // vào targetCrop.RenderedImages để hiển thị đầy đủ danh sách radio/bộ chọn trên UI thay vì bị ghi đè.
+                var bmpSource = CreateFrozenBitmapFromBytes(outBytes);
+                if (bmpSource != null && System.Windows.Application.Current != null)
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        int iterationIdx = TryGetIterationIndex(env);
+                        if (imageNode.Crops != null && imageNode.Crops.Count > 0)
+                        {
+                            if (iterationIdx == 0)
+                            {
+                                foreach (var crop in imageNode.Crops)
+                                    crop.RenderedImages.Clear();
+                            }
+
+                            var targetCrop = imageNode.Crops.FirstOrDefault(c => string.Equals(c.LastExecutionId, env.ExecutionId, StringComparison.OrdinalIgnoreCase))
+                                             ?? imageNode.Crops[0];
+                            targetCrop.RenderedImages.Add(bmpSource);
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -213,7 +237,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             resolved = ResolveFromNodeIfAny(env, node.ImageUrlSourceNodeId, node.ImageUrlSourceOutputKey)
                        ?? node.ImageUrl;
-            resolved = CleanImageUrl(resolved);
+            resolved = CleanImageUrl(resolved, env);
             if (string.IsNullOrWhiteSpace(resolved))
                 return result;
 
@@ -261,7 +285,60 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return value;
         }
 
-        private static string CleanImageUrl(string? raw)
+        private static System.Windows.Media.Imaging.BitmapSource? CreateFrozenBitmapFromBytes(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return null;
+            try
+            {
+                using var ms = new MemoryStream(bytes);
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.StreamSource = ms;
+                bmp.EndInit();
+                bmp.Freeze();
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static int TryGetIterationIndex(NodeExecutionEnvironment? env, string? executionId = null)
+        {
+            var execId = executionId ?? env?.ExecutionId;
+            if (string.IsNullOrWhiteSpace(execId)) return 0;
+
+            if (env?.Service != null)
+            {
+                if (env.Service.TryGetScopedNodeStringOutput(execId, "", "index", out var idxStr) &&
+                    int.TryParse(idxStr, out var parsedIndex) && parsedIndex >= 0)
+                {
+                    return parsedIndex;
+                }
+            }
+
+            try
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(execId, @"(?:dispatch|iteration|branch|loop)[-_:](\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var matchIndex) && matchIndex >= 0)
+                {
+                    return matchIndex;
+                }
+
+                var endMatch = System.Text.RegularExpressions.Regex.Match(execId, @":(\d+)$");
+                if (endMatch.Success && int.TryParse(endMatch.Groups[1].Value, out var endIdx) && endIdx >= 0)
+                {
+                    return endIdx;
+                }
+            }
+            catch { }
+
+            return 0;
+        }
+
+        private static string CleanImageUrl(string? raw, NodeExecutionEnvironment? env = null, string? executionId = null)
         {
             if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
             var str = raw.Trim();
@@ -278,9 +355,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     var list = JsonSerializer.Deserialize<List<string>>(str);
                     if (list != null && list.Count > 0)
                     {
+                        int targetIndex = TryGetIterationIndex(env, executionId);
+                        if (targetIndex >= 0 && targetIndex < list.Count)
+                        {
+                            var selected = list[targetIndex];
+                            if (!string.IsNullOrWhiteSpace(selected))
+                                return CleanImageUrl(selected, env, executionId);
+                        }
+
                         var first = list.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
                         if (!string.IsNullOrWhiteSpace(first))
-                            return CleanImageUrl(first);
+                            return CleanImageUrl(first, env, executionId);
                     }
                 }
                 catch
@@ -288,7 +373,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     var inner = str.Trim('[', ']').Trim();
                     var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length > 0)
-                        return CleanImageUrl(parts[0]);
+                    {
+                        int targetIndex = TryGetIterationIndex(env, executionId);
+                        if (targetIndex >= 0 && targetIndex < parts.Length)
+                        {
+                            var selected = parts[targetIndex];
+                            if (!string.IsNullOrWhiteSpace(selected))
+                                return CleanImageUrl(selected, env, executionId);
+                        }
+
+                        return CleanImageUrl(parts[0], env, executionId);
+                    }
                 }
             }
 

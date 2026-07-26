@@ -12,6 +12,7 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
+using FlowMy.Services.Workflow;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using Microsoft.Win32;
@@ -497,40 +498,98 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                var raw = ResolveFromNodeIfAny(host, node.RenderNodeId, node.RenderNodeOutputKey);
-                if (string.IsNullOrWhiteSpace(raw))
+                var execId = node.LastExecutionId;
+                var list = new List<string>();
+
+                // 1. Quét tìm tất cả dữ liệu output của RenderNode trong ScopedOutputsHistoricalCache
+                // bao gồm cả các luồng con (dispatch-0, dispatch-1, dispatch-2...) thuộc về lần chạy này
+                if (!string.IsNullOrWhiteSpace(execId) &&
+                    !string.IsNullOrWhiteSpace(node.RenderNodeId) &&
+                    !string.IsNullOrWhiteSpace(node.RenderNodeOutputKey))
                 {
-                    MessageBox.Show("Node render ảnh chưa có dữ liệu output (hoặc không đọc được).",
-                        "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
+                    foreach (var kv in WorkflowExecutionService.ScopedOutputsHistoricalCache)
+                    {
+                        if (string.Equals(kv.Key, execId, StringComparison.OrdinalIgnoreCase) ||
+                            kv.Key.StartsWith(execId + ":", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (kv.Value.TryGetValue(node.RenderNodeId, out var nodeOutputs) &&
+                                nodeOutputs.TryGetValue(node.RenderNodeOutputKey, out var valStr) &&
+                                !string.IsNullOrWhiteSpace(valStr) && valStr != "—")
+                            {
+                                valStr = valStr.Trim();
+                                if (valStr.StartsWith("["))
+                                {
+                                    try
+                                    {
+                                        var parsedList = JsonSerializer.Deserialize<List<string>>(valStr);
+                                        if (parsedList != null)
+                                        {
+                                            foreach (var item in parsedList)
+                                            {
+                                                var clean = CleanImageUrl(item);
+                                                if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
+                                                    list.Add(clean);
+                                            }
+                                        }
+                                    }
+                                    catch { }
+                                }
+                                else
+                                {
+                                    var clean = CleanImageUrl(valStr);
+                                    if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
+                                        list.Add(clean);
+                                }
+                            }
+                        }
+                    }
                 }
 
-                raw = raw.Trim();
-                List<string> list;
-
-                // Thử parse JSON array chuẩn trước, fallback sang chuỗi đơn hoặc array không có dấu nháy
-                if (raw.StartsWith("["))
+                // 2. Fallback: Nếu trong HistoricalCache chưa thấy, dùng ResolveFromNodeIfAny
+                if (list.Count == 0)
                 {
-                    try
+                    var raw = ResolveFromNodeIfAny(host, node.RenderNodeId, node.RenderNodeOutputKey);
+                    if (!string.IsNullOrWhiteSpace(raw))
                     {
-                        list = JsonSerializer.Deserialize<List<string>>(raw) ?? new List<string>();
+                        raw = raw.Trim();
+                        if (raw.StartsWith("["))
+                        {
+                            try
+                            {
+                                var parsedList = JsonSerializer.Deserialize<List<string>>(raw);
+                                if (parsedList != null)
+                                {
+                                    foreach (var item in parsedList)
+                                    {
+                                        var clean = CleanImageUrl(item);
+                                        if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
+                                            list.Add(clean);
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                var inner = raw.Trim();
+                                if (inner.StartsWith("[")) inner = inner.Substring(1);
+                                if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
+                                var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                                 .Select(p => p.Trim().Trim('"'))
+                                                 .Where(p => !string.IsNullOrWhiteSpace(p));
+                                foreach (var p in parts)
+                                {
+                                    var clean = CleanImageUrl(p);
+                                    if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
+                                        list.Add(clean);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var clean = CleanImageUrl(raw);
+                            if (!string.IsNullOrWhiteSpace(clean))
+                                list.Add(clean);
+                        }
                     }
-                    catch
-                    {
-                        // Fallback: thử parse theo format [path1, path2, ...] không có dấu nháy
-                        var inner = raw.Trim();
-                        if (inner.StartsWith("[")) inner = inner.Substring(1);
-                        if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
-                        var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                         .Select(p => p.Trim().Trim('"'))
-                                         .Where(p => !string.IsNullOrWhiteSpace(p))
-                                         .ToList();
-                        list = parts.Count > 0 ? parts : new List<string> { raw };
-                    }
-                }
-                else
-                {
-                    list = new List<string> { raw };
                 }
 
                 if (list.Count == 0)
@@ -539,9 +598,6 @@ namespace FlowMy.Views.NodeControls
                         "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
-
-                // Lấy executionId từ node để map đúng ảnh về crop
-                var execId = node.LastExecutionId;
                 
                 // Lấy danh sách crops có LastExecutionId khớp với executionId hiện tại
                 // Đây là các crops đã được xử lý trong lần chạy workflow này
@@ -576,19 +632,12 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                // Map ảnh render vào crops theo thứ tự:
-                // - Nếu có 1 ảnh: gán vào crop đầu tiên
-                // - Nếu có nhiều ảnh: map theo thứ tự crop (ảnh 0 → crop 0, ảnh 1 → crop 1, ...)
-                // - Nếu số ảnh > số crop: ảnh thừa gán vào crop cuối
-                // - Nếu số ảnh < số crop: chỉ gán vào các crop đầu
-                
+                // Map ảnh render vào crops và tạo radio variant child layers nếu ở EditorDoc:
                 await System.Threading.Tasks.Task.Run(() =>
                 {
                     for (int i = 0; i < list.Count; i++)
                     {
-                        var rawEntry = list[i];
-                        if (string.IsNullOrWhiteSpace(rawEntry)) continue;
-                        var entry = CleanImageUrl(rawEntry);
+                        var entry = list[i];
                         if (string.IsNullOrWhiteSpace(entry)) continue;
 
                         // Thử load như URL/path trước, nếu fail thì thử base64
@@ -600,15 +649,34 @@ namespace FlowMy.Views.NodeControls
 
                         if (bmp == null) continue;
 
-                        // Xác định crop target cho ảnh này:
-                        // - Nếu i < số crop: gán vào crop thứ i
-                        // - Nếu i >= số crop: gán vào crop cuối (tích luỹ ảnh thừa)
                         var cropIndex = Math.Min(i, targetCrops.Count - 1);
                         var targetCrop = targetCrops[cropIndex];
 
                         Application.Current.Dispatcher.Invoke(() =>
                         {
-                            targetCrop.RenderedImages.Add(bmp);
+                            if (!targetCrop.RenderedImages.Contains(bmp))
+                            {
+                                targetCrop.RenderedImages.Add(bmp);
+                            }
+
+                            // Tạo child variant layer cho Layer AI / EditorPanel nếu có EditorDoc
+                            if (node.EditorDoc != null && node.EditorDoc.Layers.Count > 0)
+                            {
+                                var parentLayer = node.EditorDoc.ActiveLayer?.ParentLayer ?? node.EditorDoc.ActiveLayer ?? node.EditorDoc.Layers[0];
+                                var existingVariant = parentLayer.ChildLayers.FirstOrDefault(c => c.Name == $"Layer AI {i + 1}");
+                                if (existingVariant == null)
+                                {
+                                    var childLayer = new FlowMy.Models.ImageEditor.EditorLayer(parentLayer.Width, parentLayer.Height, $"Layer AI {parentLayer.ChildLayers.Count + 1}");
+                                    childLayer.ParentLayer = parentLayer;
+                                    childLayer.CopyFrom(bmp);
+                                    parentLayer.ChildLayers.Add(childLayer);
+
+                                    if (parentLayer.ActiveChildLayer == null)
+                                    {
+                                        parentLayer.ActiveChildLayer = childLayer;
+                                    }
+                                }
+                            }
                         });
                     }
                 });

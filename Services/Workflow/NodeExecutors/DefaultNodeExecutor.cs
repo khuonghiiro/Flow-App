@@ -14,10 +14,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // Default/local work: hiện chưa có action riêng => coi như 0ms.
             env.OnNodeCompleted?.Invoke(node, TimeSpan.Zero);
 
-            // End node là điểm chốt flow; không tiếp tục traverse xuống dưới.
-            if (node.Type == NodeType.End)
-                return;
-
+            // Let TraverseOutputsAsync handle EndNode behavior & LoopBodyReturn signaling
             await env.TraverseOutputsAsync(node);
         }
     }

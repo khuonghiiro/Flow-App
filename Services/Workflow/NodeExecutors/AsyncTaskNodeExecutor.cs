@@ -290,7 +290,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     bodyNode,
                     iterationExecutionId,
                     cancellationToken,
-                    hardStopCts: iterationCts,
+                    hardStopCts: null,
                     branchScope: iterationBranchScope);
 
                 try
@@ -368,7 +368,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                 }
 
-                if (!returnTask.IsCompletedSuccessfully)
+                if (!returnTask.IsCompletedSuccessfully && !cancellationToken.IsCancellationRequested)
+                {
+                    var loopRightPort = bodyNode.Ports.FirstOrDefault(p => string.Equals(p.Id, "LoopBodyRight", StringComparison.OrdinalIgnoreCase));
+                    if (loopRightPort != null)
+                    {
+                        var dummyReturnConn = new WorkflowConnection
+                        {
+                            FromNode = bodyNode,
+                            ToNode = bodyNode,
+                            ToPort = loopRightPort
+                        };
+                        service.SignalLoopBodyReturn(dummyReturnConn, iterationExecutionId, iterationBranchScope);
+                    }
+                }
+
+                if (!returnTask.IsCompletedSuccessfully && !cancellationToken.IsCancellationRequested)
                 {
                     throw new InvalidOperationException(
                         "Async Task body chưa có đường return về port 'Port Body Right'. " +

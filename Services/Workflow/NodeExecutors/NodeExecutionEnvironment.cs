@@ -205,6 +205,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (node.Type == NodeType.End &&
                 (node.EndBehavior == EndNodeBehavior.StopCurrentFlow || node.EndBehavior == EndNodeBehavior.EmitResultOnly))
             {
+                if (Service != null && Connections != null)
+                {
+                    var returnConn = Connections.FirstOrDefault(c => c != null && c.FromNode == node && WorkflowExecutionService.IsLoopBodyReturnConnection(c));
+                    if (returnConn != null)
+                    {
+                        Service.SignalLoopBodyReturn(returnConn, ExecutionId, BranchId);
+                    }
+                }
                 return;
             }
 

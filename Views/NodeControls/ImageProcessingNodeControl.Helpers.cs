@@ -61,7 +61,29 @@ namespace FlowMy.Views.NodeControls
             return client;
         }
 
-        internal static string CleanImageUrl(string? raw)
+        private static int TryGetIterationIndex(string? executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId)) return 0;
+            try
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(executionId, @"(?:dispatch|iteration|branch|loop)[-_:](\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var matchIndex) && matchIndex >= 0)
+                {
+                    return matchIndex;
+                }
+
+                var endMatch = System.Text.RegularExpressions.Regex.Match(executionId, @":(\d+)$");
+                if (endMatch.Success && int.TryParse(endMatch.Groups[1].Value, out var endIdx) && endIdx >= 0)
+                {
+                    return endIdx;
+                }
+            }
+            catch { }
+
+            return 0;
+        }
+
+        internal static string CleanImageUrl(string? raw, string? executionId = null)
         {
             if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
             var str = raw.Trim();
@@ -78,9 +100,17 @@ namespace FlowMy.Views.NodeControls
                     var list = System.Text.Json.JsonSerializer.Deserialize<List<string>>(str);
                     if (list != null && list.Count > 0)
                     {
+                        int targetIndex = TryGetIterationIndex(executionId);
+                        if (targetIndex >= 0 && targetIndex < list.Count)
+                        {
+                            var selected = list[targetIndex];
+                            if (!string.IsNullOrWhiteSpace(selected))
+                                return CleanImageUrl(selected, executionId);
+                        }
+
                         var first = list.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
                         if (!string.IsNullOrWhiteSpace(first))
-                            return CleanImageUrl(first);
+                            return CleanImageUrl(first, executionId);
                     }
                 }
                 catch
@@ -88,7 +118,17 @@ namespace FlowMy.Views.NodeControls
                     var inner = str.Trim('[', ']').Trim();
                     var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length > 0)
-                        return CleanImageUrl(parts[0]);
+                    {
+                        int targetIndex = TryGetIterationIndex(executionId);
+                        if (targetIndex >= 0 && targetIndex < parts.Length)
+                        {
+                            var selected = parts[targetIndex];
+                            if (!string.IsNullOrWhiteSpace(selected))
+                                return CleanImageUrl(selected, executionId);
+                        }
+
+                        return CleanImageUrl(parts[0], executionId);
+                    }
                 }
             }
 
