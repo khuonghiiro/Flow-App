@@ -973,17 +973,40 @@ namespace FlowMy.Models.Nodes
             if (string.IsNullOrWhiteSpace(executionId))
                 executionId = "default";
 
-            if (_activeExecutionRuns.TryRemove(executionId, out var oldRun))
+            CurrentExecutingExecutionId = executionId;
+
+            // Xóa sạch mảng dữ liệu master cũ của các key output trên WebNode trước khi chạy lượt mới
+            ClearConfiguredResponseOutputValues();
+
+            // Khi có 1 luồng workflow mới chạy tới WebNode này, ngừng gom item ở luồng workflow cũ để luồng workflow mới bắt đầu gom
+            var existingRuns = _activeExecutionRuns.Values.ToList();
+            foreach (var oldRun in existingRuns)
             {
-                oldRun.CancelDebounce();
+                if (oldRun != null && !string.Equals(oldRun.ExecutionId, executionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[WebNode] Workflow run mới '{executionId}' đến WebNode '{Title}'. Ngừng gom item cho luồng cũ '{oldRun.ExecutionId}'.");
+                    oldRun.CancelDebounce();
+                    if (ResponseOutputs != null)
+                    {
+                        foreach (var ro in ResponseOutputs)
+                        {
+                            if (ro != null && !string.IsNullOrWhiteSpace(ro.Key))
+                            {
+                                oldRun.SignalKeyCompleted(ro.Key.Trim());
+                            }
+                        }
+                    }
+                    oldRun.PendingOutputsTcs?.TrySetResult(true);
+                    _activeExecutionRuns.TryRemove(oldRun.ExecutionId, out _);
+                }
             }
 
-            // Giữ nguyên master response outputs và DynamicOutputs.UserValueOverride để UI canvas không bị clear mất dữ liệu (cURL, responses...)
-            // ngoại trừ việc mỗi ExecutionRun tạo bản sao độc lập theo từng luồng chạy.
-            var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
+            if (_activeExecutionRuns.TryRemove(executionId, out var oldRunSameId))
+            {
+                oldRunSameId.CancelDebounce();
+            }
 
-            // Mỗi ExecutionRun khởi tạo sạch 100% để gom dữ liệu tươi của riêng lượt chạy này (executionId),
-            // tránh bị nạp lại cURL/responses cũ từ các lượt chạy trước.
+            var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
             _activeExecutionRuns[executionId] = run;
             return run;
         }
@@ -1147,6 +1170,63 @@ namespace FlowMy.Models.Nodes
                         foreach (var dyn in DynamicOutputs)
                         {
                             if (!string.IsNullOrWhiteSpace(dyn.Key) && waitKeySet.Contains(dyn.Key.Trim()))
+                            {
+                                dyn.UserValueOverride = null;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    _responseOutputLists.Clear();
+                    ResponseOutputValues.Clear();
+                    if (DynamicOutputs != null)
+                    {
+                        foreach (var dyn in DynamicOutputs)
+                        {
+                            dyn.UserValueOverride = null;
+                        }
+                    }
+                }
+            }
+            OnPropertyChanged(nameof(ResponseOutputValues));
+            OnPropertyChanged(nameof(DynamicOutputs));
+        }
+
+        /// <summary>
+        /// Xóa sạch các mảng kết quả tích lũy cũ của tất cả output keys đã cấu hình.
+        /// Được gọi tự động mỗi khi một luồng workflow mới bắt đầu để làm mới dữ liệu.
+        /// </summary>
+        public void ClearConfiguredResponseOutputValues()
+        {
+            CancelPendingOutputsDebounce();
+            lock (_responseOutputLock)
+            {
+                if (ResponseOutputs != null && ResponseOutputs.Count > 0)
+                {
+                    var outputKeySet = new HashSet<string>(
+                        ResponseOutputs
+                            .Where(ro => ro != null && !string.IsNullOrWhiteSpace(ro.Key))
+                            .Select(ro => ro.Key.Trim()),
+                        StringComparer.OrdinalIgnoreCase);
+
+                    var listKeysToRemove = _responseOutputLists.Keys.Where(k => outputKeySet.Contains(k)).ToList();
+                    foreach (var k in listKeysToRemove)
+                    {
+                        _responseOutputLists.Remove(k);
+                    }
+
+                    var valKeysToRemove = ResponseOutputValues.Keys.Where(k => outputKeySet.Contains(k)).ToList();
+                    foreach (var k in valKeysToRemove)
+                    {
+                        ResponseOutputValues.Remove(k);
+                    }
+
+                    if (DynamicOutputs != null)
+                    {
+                        foreach (var dyn in DynamicOutputs)
+                        {
+                            if (!string.IsNullOrWhiteSpace(dyn.Key) && outputKeySet.Contains(dyn.Key.Trim()))
                             {
                                 dyn.UserValueOverride = null;
                             }
@@ -1352,12 +1432,14 @@ namespace FlowMy.Models.Nodes
         {
             if (string.IsNullOrWhiteSpace(extractType)) return false;
             var t = extractType.Trim();
-            return string.Equals(t, "CurlCmd", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(t, "CurlBash", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(t, "RequestHeaders", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(t, "Params", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(t, "Payload", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(t, "RequestUrl", StringComparison.OrdinalIgnoreCase);
+            // Kiểu dữ liệu lấy từ response (Response body, response Headers) thì cần đợi response trả về hoặc lỗi
+            if (string.Equals(t, "Response", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(t, "Headers", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            // Tất cả kiểu lấy dữ liệu request (cURL, Params, Payload, RequestHeaders, RequestUrl...) được trích xuất tức thì qua CefSharp
+            return true;
         }
 
         public void UpdateResponseOutputValueForExecutionRun(
@@ -1480,6 +1562,27 @@ namespace FlowMy.Models.Nodes
                         System.Diagnostics.Debug.WriteLine($"[WebNode] Real-time sync error: {ex.Message}");
                     }
                 }
+
+                // Cập nhật UI display master của node để phản ánh đúng danh sách tươi của lượt chạy hiện tại
+                lock (_responseOutputLock)
+                {
+                    if (isList && run.ResponseOutputLists.TryGetValue(trimmedKey, out var runList) && runList != null)
+                    {
+                        _responseOutputLists[trimmedKey] = new List<string>(runList);
+                    }
+                    if (!string.IsNullOrEmpty(jsonOrVal))
+                    {
+                        ResponseOutputValues[trimmedKey] = jsonOrVal;
+                        if (DynamicOutputs != null)
+                        {
+                            var dyn = DynamicOutputs.FirstOrDefault(o =>
+                                string.Equals(o.Key, trimmedKey, StringComparison.OrdinalIgnoreCase));
+                            if (dyn != null) dyn.UserValueOverride = jsonOrVal;
+                        }
+                    }
+                }
+                OnPropertyChanged(nameof(ResponseOutputValues));
+                OnPropertyChanged(nameof(DynamicOutputs));
 
                 run.ScheduleDebounceCompletion(300);
             }

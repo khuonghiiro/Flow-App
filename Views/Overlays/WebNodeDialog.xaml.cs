@@ -789,11 +789,12 @@ namespace FlowMy.Views.Overlays
 
             void UpdateTimeoutTbEnabled()
             {
-                timeoutTb.IsEnabled = output.WaitForCompletion;
+                timeoutTb.IsEnabled = output.WaitForCompletion || output.IsList;
             }
             output.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(WebResponseOutput.WaitForCompletion))
+                if (e.PropertyName == nameof(WebResponseOutput.WaitForCompletion) ||
+                    e.PropertyName == nameof(WebResponseOutput.IsList))
                     UpdateTimeoutTbEnabled();
             };
             UpdateTimeoutTbEnabled();

@@ -135,11 +135,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var timeoutMs = keyConfig.TimeoutMs;
                         var effectiveKeyTimeoutMs = timeoutMs > 0 ? timeoutMs : effectiveWaitTimeoutMs;
 
+                        // Nếu không cài TimeoutMs cụ thể (>0) và node không có global timeout, dùng mặc định 30000ms (30s) safety timeout để tránh chờ vô hạn
+                        if (effectiveKeyTimeoutMs <= 0 && (keyConfig.WaitForCompletion || keyConfig.IsList))
+                        {
+                            effectiveKeyTimeoutMs = 30000;
+                        }
+
                         Debug.WriteLine($"[WebNodeExecutor][DIAG] Wait key '{keyConfig.Key}': IsCompletedImmediately={alreadyCompleted}, EffectiveTimeout={effectiveKeyTimeoutMs}ms");
 
                         if (effectiveKeyTimeoutMs > 0)
                         {
-                            // Timeout riêng cho key này (hoặc fallback theo effectiveWaitTimeoutMs).
+                            // Timeout riêng cho key này (hoặc fallback 30s safety timeout).
                             var keyTimeoutTask = Task.WhenAny(keyTask, Task.Delay(effectiveKeyTimeoutMs, waitCts.Token));
                             waitTasks.Add(keyTimeoutTask);
                         }
@@ -226,7 +232,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (!string.IsNullOrWhiteSpace(webNode.LastAccessToken))
                 service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "access_token", webNode.LastAccessToken);
 
-            // Gom tất cả outputs: Lấy từ luồng run hiện tại trước (độc lập 100%), chỉ fallback master cho non-wait keys
+            // Gom tất cả outputs: Lấy từ luồng run hiện tại (độc lập 100% cho từng lượt chạy)
             var mergedOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var run = webNode.GetExecutionRun(env.ExecutionId);
@@ -240,19 +246,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             mergedOutputs[kv.Key.Trim()] = kv.Value;
                         }
-                    }
-                }
-            }
-
-            if (webNode.ResponseOutputValues != null)
-            {
-                webNode.TryGetMasterResponseOutputValue("", out _); // lock touch
-                foreach (var kv in webNode.ResponseOutputValues)
-                {
-                    var k = kv.Key.Trim();
-                    if (!string.IsNullOrWhiteSpace(k) && !string.IsNullOrWhiteSpace(kv.Value) && !mergedOutputs.ContainsKey(k))
-                    {
-                        mergedOutputs[k] = kv.Value;
                     }
                 }
             }
