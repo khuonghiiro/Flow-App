@@ -102,6 +102,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch { /* ignore */ }
 
+            webNode.RebuildResponseOutputs();
             var executionId = env.ExecutionId;
             webNode.CurrentExecutingExecutionId = executionId;
             var executionRun = webNode.StartExecutionRun(executionId);
@@ -110,7 +111,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 // LOG CHI TIẾT TẤT CẢ CÁC OUTPUTS TRONG DIALOG
                 var allOutputsLog = webNode.ResponseOutputs != null
-                    ? string.Join("; ", webNode.ResponseOutputs.Select(o => $"[Key='{o.Key}', Wait={o.WaitForCompletion}, IsList={o.IsList}, TargetCount={o.ListTargetCount}, Timeout={o.TimeoutMs}ms]"))
+                    ? string.Join("; ", webNode.ResponseOutputs.Select(o => $"[Key='{o.Key}', Wait={o.WaitForCompletion}, IsList={o.IsList}, Timeout={o.TimeoutMs}ms]"))
                     : "None";
                 Debug.WriteLine($"[WebNodeExecutor][DIAG] Node '{webNode.Title}' ({webNode.Id}) All Configured Outputs ({webNode.ResponseOutputs?.Count ?? 0}): {allOutputsLog}");
 
@@ -224,7 +225,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             var service = env.Service;
 
-            // Chỉ publish cookie, bearer, access_token khi có giá trị thực sự (tránh ghi đè "" rỗng làm mất cookie)
+            // 1. Publish cookie, bearer, access_token khi có giá trị thực sự
             if (!string.IsNullOrWhiteSpace(webNode.LastCookie))
                 service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "cookie", webNode.LastCookie);
             if (!string.IsNullOrWhiteSpace(webNode.LastBearer))
@@ -232,7 +233,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (!string.IsNullOrWhiteSpace(webNode.LastAccessToken))
                 service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, "access_token", webNode.LastAccessToken);
 
-            // Gom tất cả outputs: Lấy từ luồng run hiện tại (độc lập 100% cho từng lượt chạy)
+            // 2. Gom tất cả outputs: Ưu tiên lấy từ luồng run hiện tại (độc lập 100% cho từng lượt chạy executionId)
             var mergedOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var run = webNode.GetExecutionRun(env.ExecutionId);
@@ -242,7 +243,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     foreach (var kv in run.ResponseOutputValues)
                     {
-                        if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
+                        if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value) && kv.Value != "[]")
                         {
                             mergedOutputs[kv.Key.Trim()] = kv.Value;
                         }
@@ -250,6 +251,33 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
+            // Fallback sang master ResponseOutputValues nếu luồng run chưa có key đó
+            lock (webNode.ResponseOutputValues)
+            {
+                foreach (var kv in webNode.ResponseOutputValues)
+                {
+                    if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value) && kv.Value != "[]" && !mergedOutputs.ContainsKey(kv.Key.Trim()))
+                    {
+                        mergedOutputs[kv.Key.Trim()] = kv.Value;
+                    }
+                }
+            }
+
+            // 3. Khởi tạo giá trị mặc định cho tất cả các key đã cấu hình trong ResponseOutputs
+            if (webNode.ResponseOutputs != null)
+            {
+                foreach (var ro in webNode.ResponseOutputs)
+                {
+                    if (ro == null || string.IsNullOrWhiteSpace(ro.Key)) continue;
+                    var k = ro.Key.Trim();
+                    if (!mergedOutputs.ContainsKey(k))
+                    {
+                        mergedOutputs[k] = ro.IsList ? "[]" : string.Empty;
+                    }
+                }
+            }
+
+            // 4. Lưu toàn bộ dữ liệu output key vào WorkflowExecutionService theo ExecutionId của luồng (biến tạm theo luồng)
             foreach (var kv in mergedOutputs)
             {
                 service.SetScopedNodeStringOutput(env.ExecutionId, webNode.Id, kv.Key, kv.Value);

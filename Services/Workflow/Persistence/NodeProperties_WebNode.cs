@@ -568,23 +568,7 @@ public sealed partial class FileWorkflowPersistenceService
                                         if (bool.TryParse(islStr, out var islBool))
                                             ro.IsList = islBool;
                                     }
-                                    // ListTargetCount (optional)
-                                    if (e.TryGetProperty("ListTargetCount", out var ltc))
-                                    {
-                                        var ltcStr = GetStringFromJsonValue(ltc);
-                                        if (int.TryParse(ltcStr, out var ltcInt))
-                                            ro.ListTargetCount = ltcInt;
-                                    }
-                                    // ListTargetNodeId (optional)
-                                    if (e.TryGetProperty("ListTargetNodeId", out var ltni))
-                                    {
-                                        ro.ListTargetNodeId = GetStringFromJsonValue(ltni);
-                                    }
-                                    // ListTargetOutputKey (optional)
-                                    if (e.TryGetProperty("ListTargetOutputKey", out var ltok))
-                                    {
-                                        ro.ListTargetOutputKey = GetStringFromJsonValue(ltok);
-                                    }
+
 
                                     System.Diagnostics.Debug.WriteLine($"Deserialized ResponseOutput [{count}]: Key='{ro.Key}', Url='{ro.Url}', Method='{ro.RequestMethod}', ExtractType='{ro.ExtractType}'");
                                     webNode.ResponseOutputs.Add(ro);
@@ -879,9 +863,6 @@ public sealed partial class FileWorkflowPersistenceService
                             var waitForCompletion = ro?.WaitForCompletion ?? false;
                             var timeoutMs = ro?.TimeoutMs ?? 0;
                             var isList = ro?.IsList ?? false;
-                            var listTargetCount = ro?.ListTargetCount ?? 1;
-                            var listTargetNodeId = ro?.ListTargetNodeId ?? "";
-                            var listTargetOutputKey = ro?.ListTargetOutputKey ?? "";
 
                             // Debug log để kiểm tra giá trị
                             System.Diagnostics.Debug.WriteLine($"[{index}] ResponseOutput - Key='{key}', Url='{url}', Method='{method}', ExtractType='{extractType}', TimeoutMs={timeoutMs}");
@@ -895,10 +876,7 @@ public sealed partial class FileWorkflowPersistenceService
                                 ["ExtractType"] = extractType,
                                 ["WaitForCompletion"] = waitForCompletion ? "true" : "false",
                                 ["TimeoutMs"] = timeoutMs.ToString(),
-                                ["IsList"] = isList ? "true" : "false",
-                                ["ListTargetCount"] = listTargetCount.ToString(),
-                                ["ListTargetNodeId"] = listTargetNodeId,
-                                ["ListTargetOutputKey"] = listTargetOutputKey
+                                ["IsList"] = isList ? "true" : "false"
                             };
                             responseOutputsArr.Add(itemDict);
                             index++;

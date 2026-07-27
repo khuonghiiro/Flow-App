@@ -5,6 +5,7 @@ using System.Text;
 using CefSharp;
 using CefSharp.Handler;
 using CefSharp.ResponseFilter;
+using FlowMy.Services.Interaction;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -320,7 +321,8 @@ namespace FlowMy.Views.NodeControls
                     }
                     else
                     {
-                        activeExecutionId = null;
+                        var waitingRun = activeRuns.FirstOrDefault(r => r != null && !r.IsAllKeysCompleted());
+                        activeExecutionId = waitingRun?.ExecutionId;
                     }
                 }
 
@@ -360,7 +362,8 @@ namespace FlowMy.Views.NodeControls
                     requestMethod,
                     requestHeaders,
                     postDataText,
-                    activeExecutionId);
+                    activeExecutionId,
+                    _host);
 
                 // 1. Chặn request nếu khớp BlockingRules
                 if (webNode.ShouldBlockRequest(targetUrl, requestMethod))
@@ -425,18 +428,19 @@ namespace FlowMy.Views.NodeControls
             if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key)) return null;
             try
             {
-                if (_host?.ViewModel?.WorkflowExecutionService != null)
+                var vm = _host.GetViewModelSafely();
+                if (vm?.WorkflowExecutionService != null)
                 {
-                    var service = _host.ViewModel.WorkflowExecutionService;
+                    var service = vm.WorkflowExecutionService;
                     if (service.TryGetScopedNodeStringOutputForLookupChain(executionId, nodeId, key, out var val) &&
                         !string.IsNullOrWhiteSpace(val) && val != "—")
                     {
                         return val;
                     }
                 }
-                if (_host?.ViewModel?.Nodes != null)
+                if (vm?.Nodes != null)
                 {
-                    var srcNode = _host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+                    var srcNode = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
                     if (srcNode is FlowMy.Models.Nodes.WebNode wn && wn.ResponseOutputValues.TryGetValue(key, out var wVal))
                         return wVal;
                     if (srcNode?.DynamicOutputs != null)

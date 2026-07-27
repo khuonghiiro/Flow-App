@@ -169,5 +169,30 @@ namespace FlowMy.Services.Interaction
         /// <summary>Chụp snapshot trạng thái hiện tại vào undo stack (cho Ctrl+Z).</summary>
         void PushUndoSnapshot();
     }
+
+    public static class WorkflowEditorHostExtensions
+    {
+        public static WorkflowEditorViewModel? GetViewModelSafely(this IWorkflowEditorHost? host)
+        {
+            if (host == null) return null;
+            if (host.Dispatcher != null && !host.Dispatcher.CheckAccess())
+            {
+                try
+                {
+                    return host.Dispatcher.Invoke(() => host.ViewModel);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return host.ViewModel;
+        }
+
+        public static FlowMy.Services.Workflow.WorkflowExecutionService? GetExecutionServiceSafely(this IWorkflowEditorHost? host)
+        {
+            return host.GetViewModelSafely()?.WorkflowExecutionService;
+        }
+    }
 }
 

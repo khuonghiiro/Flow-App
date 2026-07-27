@@ -480,10 +480,7 @@ namespace FlowMy.Views
                         ExtractType = ro.ExtractType,
                         WaitForCompletion = ro.WaitForCompletion,
                         TimeoutMs = ro.TimeoutMs,
-                        IsList = ro.IsList,
-                        ListTargetCount = ro.ListTargetCount,
-                        ListTargetNodeId = ro.ListTargetNodeId,
-                        ListTargetOutputKey = ro.ListTargetOutputKey
+                        IsList = ro.IsList
                     });
                 }
                 dstWeb.RebuildResponseOutputs();
