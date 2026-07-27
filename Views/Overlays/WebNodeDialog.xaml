@@ -128,6 +128,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBox Text="{Binding NewProfileNameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}" Height="32"
@@ -135,6 +137,10 @@
                                     <Button Grid.Column="2" Content="Tạo mới" Width="80" Height="32"
                                             Style="{DynamicResource PrimaryButton}"
                                             Command="{Binding CreateNewProfileCommand}"/>
+                                    <Button Grid.Column="4" Content="Xóa Profile"  Height="32"
+                                            Style="{DynamicResource DangerButton}"
+                                            Command="{Binding DeleteProfileCommand}"
+                                            ToolTip="Xóa vĩnh viễn profile đang chọn khỏi đĩa"/>
                                 </Grid>
                             </StackPanel>
                         </StackPanel>

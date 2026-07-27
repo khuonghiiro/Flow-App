@@ -179,6 +179,16 @@ namespace FlowMy.Views.Overlays
 
             // Populate horizontal and vertical lists of selected layers
             UpdateSelectedLayersLists();
+
+            EventHandler onProfilesChanged = (s, e) =>
+            {
+                Dispatcher.BeginInvoke(new Action(() => LoadWebProfiles()), System.Windows.Threading.DispatcherPriority.Normal);
+            };
+            WebNodeCacheHelper.ProfilesChanged += onProfilesChanged;
+            Unloaded += (s, e) =>
+            {
+                WebNodeCacheHelper.ProfilesChanged -= onProfilesChanged;
+            };
         }
 
         public LayerAiDialog(EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
@@ -2011,6 +2021,26 @@ namespace FlowMy.Views.Overlays
                             break;
                         }
                     }
+                    WebNodeCacheHelper.NotifyProfilesChanged();
+                }
+            }
+        }
+
+        private void BtnDeleteProfile_Click(object sender, RoutedEventArgs e)
+        {
+            if (CmbWebProfile.SelectedItem is ComboBoxItem item && item.Tag is string current)
+            {
+                if (string.IsNullOrWhiteSpace(current) || current.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show("Không thể xóa profile 'Shared' dùng chung.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var confirm = MessageBox.Show($"Bạn có chắc chắn muốn xóa vĩnh viễn profile '{current}' khỏi đĩa không?",
+                    "Xác nhận xóa Profile", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (confirm == MessageBoxResult.Yes)
+                {
+                    WebNodeCacheHelper.DeleteProfileCache(current);
                 }
             }
         }

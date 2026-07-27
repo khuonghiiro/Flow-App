@@ -453,6 +453,7 @@
                             <ColumnDefinition Width="6"/>
                             <ColumnDefinition Width="Auto"/> <!-- Profile Combo -->
                             <ColumnDefinition Width="Auto"/> <!-- New Profile -->
+                            <ColumnDefinition Width="Auto"/> <!-- Delete Profile -->
                             <ColumnDefinition Width="6"/>
                             <ColumnDefinition Width="*"/>    <!-- URL bar -->
                             <ColumnDefinition Width="Auto"/> <!-- Go -->
@@ -473,8 +474,13 @@
                                 FontSize="14" FontWeight="Bold" ToolTip="Tạo profile mới"
                                 Style="{DynamicResource ToolButtonStyle}" Click="BtnNewProfile_Click"/>
 
+                        <!-- Delete Profile button -->
+                        <Button x:Name="BtnDeleteProfile" Grid.Column="6" Content="✕" Width="28" Height="30" Padding="0" Margin="3,0,0,0"
+                                FontSize="12" FontWeight="Bold" ToolTip="Xóa profile đã chọn"
+                                Style="{DynamicResource ToolButtonStyle}" Click="BtnDeleteProfile_Click"/>
+
                         <!-- URL / Search TextBox -->
-                        <Border Grid.Column="7" Background="#1e222d" BorderBrush="#2a2e3d" BorderThickness="1.2" CornerRadius="6" Padding="0">
+                        <Border Grid.Column="8" Background="#1e222d" BorderBrush="#2a2e3d" BorderThickness="1.2" CornerRadius="6" Padding="0">
                             <Grid>
                                 <TextBox x:Name="TxtWebUrl" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
                                          Padding="8,4,30,4" FontSize="11" VerticalContentAlignment="Center" CaretBrush="{StaticResource AccentColor}"

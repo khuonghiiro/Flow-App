@@ -84,6 +84,44 @@ public static class WebNodeCacheHelper
         return profiles;
     }
 
+    /// <summary>Sự kiện được phát khi danh sách Profile thay đổi (thêm/xóa profile).</summary>
+    public static event EventHandler? ProfilesChanged;
+
+    /// <summary>Phát thông báo cập nhật danh sách Profile cho tất cả control/dialog đang mở.</summary>
+    public static void NotifyProfilesChanged()
+    {
+        try
+        {
+            ProfilesChanged?.Invoke(null, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"NotifyProfilesChanged error: {ex.Message}");
+        }
+    }
+
+    /// <summary>Xóa hoàn toàn thư mục profile cache của profile được chỉ định (trừ 'Shared').</summary>
+    public static bool DeleteProfileCache(string profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName) || profileName.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+            return false;
+        try
+        {
+            var path = GetProfileCachePath(profileName);
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+                NotifyProfilesChanged();
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Lỗi xóa profile {profileName}: {ex.Message}");
+        }
+        return false;
+    }
+
     /// <summary>
     /// Tạo đường dẫn cache tương ứng với tên profile
     /// </summary>

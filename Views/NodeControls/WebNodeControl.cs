@@ -1485,11 +1485,12 @@ namespace FlowMy.Views.NodeControls
             topBarGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             topBarGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             
-            // Columns: [navPanel] [urlPill] [viewportExpandBtn] [refreshBtn]
+            // Columns: [0: navPanel] [1: urlPill] [2: profilePanel] [3: viewportExpandBtn] [4: refreshBtn]
             topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 0: navPanel (◀ ▶ ⟳)
             topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });   // 1: url address bar
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 2: phóng to vừa khung
-            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 3: làm mới/xóa cache (🗑)
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 2: profilePanel (Profile ComboBox + New + Delete)
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 3: phóng to vừa khung
+            topBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                     // 4: làm mới/xóa cache (🗑)
 
             // Slim gradient progress bar (row 1, spans all)
             var progressBar = new ProgressBar
@@ -1502,7 +1503,7 @@ namespace FlowMy.Views.NodeControls
                                                  ?? Application.Current.TryFindResource("BurgundyWineBrush") as Brush)
             };
             Grid.SetRow(progressBar, 1);
-            Grid.SetColumnSpan(progressBar, 4);
+            Grid.SetColumnSpan(progressBar, 5);
             topBarGrid.Children.Add(progressBar);
 
             // Helper to create circular toolbar buttons with custom hover states
@@ -1571,7 +1572,7 @@ namespace FlowMy.Views.NodeControls
             var navPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 0, 6, 0),
+                Margin = new Thickness(0, 0, 4, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
             navPanel.Children.Add(backBtn);
@@ -1589,14 +1590,15 @@ namespace FlowMy.Views.NodeControls
                 BorderBrush = new SolidColorBrush(pillBorder),
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(8, 0, 4, 0),
-                Margin = new Thickness(6, 0, 6, 0),
+                Margin = new Thickness(4, 0, 4, 0),
                 Height = 28,
                 VerticalAlignment = VerticalAlignment.Center
             };
             var urlPillInner = new Grid();
             urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // 0: lock
             urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // 1: urlBox
-            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // 2: goBtn
+            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // 2: spinner
+            urlPillInner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // 3: goBtn
 
             var lockIcon = new TextBlock
             {
@@ -1627,8 +1629,26 @@ namespace FlowMy.Views.NodeControls
             Grid.SetColumn(urlBox, 1);
             urlPillInner.Children.Add(urlBox);
 
+            var urlLoadingSpinner = new Border
+            {
+                Width = 14,
+                Height = 14,
+                Margin = new Thickness(0, 0, 4, 0),
+                Visibility = Visibility.Collapsed,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "⏳",
+                    FontSize = 10,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                }
+            };
+            Grid.SetColumn(urlLoadingSpinner, 2);
+            urlPillInner.Children.Add(urlLoadingSpinner);
+
             var goBtn = CreateToolbarButton("→", "Đi tới (Enter)", 22, 22, 13);
-            Grid.SetColumn(goBtn, 2);
+            Grid.SetColumn(goBtn, 3);
             urlPillInner.Children.Add(goBtn);
 
             urlPill.Child = urlPillInner;
@@ -1636,13 +1656,155 @@ namespace FlowMy.Views.NodeControls
             Grid.SetColumn(urlPill, 1);
             topBarGrid.Children.Add(urlPill);
 
-            // ── Viewport Expand button (col 2) ──────────────────────────────
+            // ── Profile Selector & Management (col 2) ─────────────────────────
+            var profilePanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(2, 0, 2, 0)
+            };
+
+            var cmbWebProfile = new ComboBox
+            {
+                Height = 26,
+                Width = 95,
+                FontSize = 10,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 3, 0),
+                ToolTip = "Chọn profile trình duyệt độc lập hoặc dùng chung (Shared)"
+            };
+
+            bool isUpdatingProfileCombo = false;
+            void LoadProfileComboItems()
+            {
+                isUpdatingProfileCombo = true;
+                try
+                {
+                    cmbWebProfile.Items.Clear();
+                    var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+                    var activeProfile = string.Equals(node.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) 
+                        ? (node.CustomCacheName ?? "Shared") 
+                        : "Shared";
+
+                    foreach (var p in profiles)
+                    {
+                        cmbWebProfile.Items.Add(p);
+                    }
+
+                    if (!profiles.Contains(activeProfile))
+                    {
+                        cmbWebProfile.Items.Add(activeProfile);
+                    }
+
+                    cmbWebProfile.SelectedItem = activeProfile;
+                }
+                finally
+                {
+                    isUpdatingProfileCombo = false;
+                }
+            }
+
+            LoadProfileComboItems();
+
+            cmbWebProfile.SelectionChanged += (s, e) =>
+            {
+                if (isUpdatingProfileCombo) return;
+                if (cmbWebProfile.SelectedItem is string selected)
+                {
+                    var targetMode = selected.Equals("Shared", StringComparison.OrdinalIgnoreCase) ? "Shared" : "Isolated";
+                    var targetName = selected;
+
+                    if (!string.Equals(node.CacheMode, targetMode, StringComparison.Ordinal) ||
+                        !string.Equals(node.CustomCacheName, targetName, StringComparison.Ordinal))
+                    {
+                        node.CacheMode = targetMode;
+                        node.CustomCacheName = targetName;
+                        activeCacheMode = targetMode;
+                        activeCustomCacheName = targetName;
+                        recreateWebView?.Invoke();
+                    }
+                }
+            };
+
+            var btnNewProfile = CreateToolbarButton("＋", "Tạo profile mới", 24, 24, 12);
+            btnNewProfile.Click += (s, e) =>
+            {
+                var input = Microsoft.VisualBasic.Interaction.InputBox("Nhập tên profile mới (ví dụ: Acc_Gmail_1):", "Tạo Profile Mới", "");
+                var name = input?.Trim();
+                if (string.IsNullOrWhiteSpace(name)) return;
+
+                var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+                foreach (var c in invalidChars) name = name.Replace(c, '_');
+                name = name.Replace(' ', '_');
+
+                if (name.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show("Không thể tạo profile trùng tên 'Shared'.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var profilePath = WebNodeCacheHelper.GetProfileCachePath(name);
+                Directory.CreateDirectory(profilePath);
+                
+                node.CacheMode = "Isolated";
+                node.CustomCacheName = name;
+                activeCacheMode = "Isolated";
+                activeCustomCacheName = name;
+                
+                WebNodeCacheHelper.NotifyProfilesChanged();
+                recreateWebView?.Invoke();
+            };
+
+            var btnDeleteProfile = CreateToolbarButton("✕", "Xóa profile đã chọn", 24, 24, 10);
+            btnDeleteProfile.Click += (s, e) =>
+            {
+                var current = cmbWebProfile.SelectedItem as string;
+                if (string.IsNullOrWhiteSpace(current) || current.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show("Không thể xóa profile 'Shared' dùng chung.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var confirm = MessageBox.Show($"Bạn có chắc chắn muốn xóa vĩnh viễn profile '{current}' khỏi đĩa không?",
+                    "Xác nhận xóa Profile", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (confirm == MessageBoxResult.Yes)
+                {
+                    node.CacheMode = "Shared";
+                    node.CustomCacheName = "Shared";
+                    activeCacheMode = "Shared";
+                    activeCustomCacheName = "Shared";
+
+                    WebNodeCacheHelper.DeleteProfileCache(current);
+                    recreateWebView?.Invoke();
+                }
+            };
+
+            profilePanel.Children.Add(cmbWebProfile);
+            profilePanel.Children.Add(btnNewProfile);
+            profilePanel.Children.Add(btnDeleteProfile);
+
+            Grid.SetRow(profilePanel, 0);
+            Grid.SetColumn(profilePanel, 2);
+            topBarGrid.Children.Add(profilePanel);
+
+            // Đăng ký sự kiện lắng nghe khi danh sách Profile thay đổi ứng dụng toàn hệ thống
+            EventHandler onProfilesChanged = (s, e) =>
+            {
+                border.Dispatcher.BeginInvoke(new Action(() => LoadProfileComboItems()), DispatcherPriority.Normal);
+            };
+            WebNodeCacheHelper.ProfilesChanged += onProfilesChanged;
+            border.Unloaded += (_, _) =>
+            {
+                WebNodeCacheHelper.ProfilesChanged -= onProfilesChanged;
+            };
+
+            // ── Viewport Expand button (col 3) ──────────────────────────────
             var viewportExpandBtn = CreateToolbarButton("\uE740", "Phóng to vừa khung nhìn", 26, 26, 13, ViewportExpandIconFont);
             Grid.SetRow(viewportExpandBtn, 0);
-            Grid.SetColumn(viewportExpandBtn, 2);
+            Grid.SetColumn(viewportExpandBtn, 3);
             topBarGrid.Children.Add(viewportExpandBtn);
 
-            // ── Clear-cache Refresh button (col 3) ──────────────────────────
+            // ── Clear-cache Refresh button (col 4) ──────────────────────────
             var refreshBtn = CreateToolbarButton("", "Làm mới (xóa cookies + cache + storage rồi load lại)", 26, 26, 12, cornerRadius: new CornerRadius(5));
             refreshBtn.BorderThickness = new Thickness(1);
             refreshBtn.BorderBrush = new SolidColorBrush(textBrush == Brushes.White ? Color.FromArgb(80, 255, 255, 255) : Color.FromArgb(80, 0, 0, 0));
@@ -1662,7 +1824,7 @@ namespace FlowMy.Views.NodeControls
             refreshBtn.Content = trashIcon;
 
             Grid.SetRow(refreshBtn, 0);
-            Grid.SetColumn(refreshBtn, 3);
+            Grid.SetColumn(refreshBtn, 4);
             topBarGrid.Children.Add(refreshBtn);
 
             // ── Google Suggest Autocomplete Popup (khai báo trước để dùng trong event handlers) ──
@@ -2322,6 +2484,23 @@ if (window.__elementInspector) {
                         pendingJsQueue = null;
                         await TryExecutePendingJsAsync(js);
                     }
+
+                    webViewForInit.LoadingStateChanged += (sf, ef) =>
+                    {
+                        if (webViewForInit.Dispatcher.CheckAccess())
+                        {
+                            progressBar.Visibility = ef.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+                            urlLoadingSpinner.Visibility = ef.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+                        }
+                        else
+                        {
+                            webViewForInit.Dispatcher.Invoke(() =>
+                            {
+                                progressBar.Visibility = ef.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+                                urlLoadingSpinner.Visibility = ef.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+                            });
+                        }
+                    };
 
                     webViewForInit.AddressChanged += (sf, ef) =>
                     {

@@ -197,6 +197,27 @@ namespace FlowMy.ViewModels
             AvailableProfiles.Add(name);
             CustomCacheName = name;
             NewProfileNameInput = string.Empty;
+            WebNodeCacheHelper.NotifyProfilesChanged();
+        }
+
+        [RelayCommand]
+        private void DeleteProfile()
+        {
+            if (string.IsNullOrWhiteSpace(CustomCacheName) || CustomCacheName.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                System.Windows.MessageBox.Show("Không thể xóa profile 'Shared' dùng chung.", "Thông báo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            var confirm = System.Windows.MessageBox.Show($"Bạn có chắc chắn muốn xóa vĩnh viễn profile '{CustomCacheName}' khỏi đĩa không?",
+                "Xác nhận xóa Profile", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+            if (confirm == System.Windows.MessageBoxResult.Yes)
+            {
+                var target = CustomCacheName;
+                CacheMode = "Shared";
+                CustomCacheName = "Shared";
+                WebNodeCacheHelper.DeleteProfileCache(target);
+            }
         }
 
         // Sync ngay về node khi user thay đổi (không cần chờ OnSaveTitle / dialog đóng)
@@ -214,10 +235,14 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void ApplyCookie()
         {
-            // Trigger event để WebNodeControl apply cookie
-            _webNode.CookieText = CookieText;
-            // Set flag để WebNodeControl biết cần apply cookie ngay
+            if (string.IsNullOrWhiteSpace(CookieText)) return;
+            var textToApply = CookieText;
+            _webNode.CookieText = textToApply;
             _webNode.RaisePropertyChanged(nameof(WebNode.CookieText));
+
+            // Xóa text tĩnh khỏi ô nhập để trình duyệt giữ cookie động theo phiên làm việc thực tế
+            CookieText = string.Empty;
+            _webNode.CookieText = null;
         }
 
         // JS injection: danh sách (Node+Key) – khi node đó chạy đến Web thì chạy JS
@@ -288,7 +313,7 @@ namespace FlowMy.ViewModels
             ExtractRequestMethod = _webNode.ExtractRequestMethod ?? "GET";
             ExtractStatusCode = _webNode.ExtractStatusCode ?? "200";
             SyncLiveOutputsToResults = _webNode.SyncLiveOutputsToResults;
-            CookieText = !string.IsNullOrWhiteSpace(_webNode.CookieText) ? _webNode.CookieText : _webNode.LastCookie;
+            CookieText = string.Empty;
             if (!string.IsNullOrWhiteSpace(_webNode.LastCookie))
             {
                 _webNode.UpdateResponseOutputValue("cookie", _webNode.LastCookie, isList: false);
@@ -304,12 +329,8 @@ namespace FlowMy.ViewModels
             AutoReloadIntervalUnit = _webNode.AutoReloadIntervalUnit;
 
             // Load available profiles
-            var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
-            AvailableProfiles.Clear();
-            foreach (var p in profiles)
-            {
-                AvailableProfiles.Add(p);
-            }
+            RefreshAvailableProfiles();
+            WebNodeCacheHelper.ProfilesChanged += OnProfilesChangedHandler;
 
             CacheMode = _webNode.CacheMode ?? "Shared";
             CustomCacheName = _webNode.CustomCacheName ?? "Shared";
@@ -577,10 +598,25 @@ namespace FlowMy.ViewModels
             }
         }
 
-        /// <summary>
-        /// Refresh danh sách nodes có thể chọn cho JS Source ComboBox.
-        /// ⚠️ CRITICAL: Collection riêng để tránh conflict với Input mappings ComboBox.
-        /// </summary>
+        private void OnProfilesChangedHandler(object? sender, EventArgs e)
+        {
+            System.Windows.Application.Current?.Dispatcher?.BeginInvoke(new Action(() => RefreshAvailableProfiles()));
+        }
+
+        public void RefreshAvailableProfiles()
+        {
+            var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+            AvailableProfiles.Clear();
+            foreach (var p in profiles)
+            {
+                AvailableProfiles.Add(p);
+            }
+            if (!string.IsNullOrEmpty(CustomCacheName) && !AvailableProfiles.Contains(CustomCacheName))
+            {
+                AvailableProfiles.Add(CustomCacheName);
+            }
+        }
+
         /// <summary>
         /// Refresh danh sách nodes có thể chọn cho JS Source ComboBox.
         /// ⚠️ CRITICAL: Collection riêng để tránh conflict với Input mappings ComboBox.
