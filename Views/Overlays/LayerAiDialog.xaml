@@ -477,7 +477,7 @@
                                     <Border VerticalAlignment="Top" HorizontalAlignment="Left" Background="#0d0f14" CornerRadius="0,0,6,0" Padding="8,4" Opacity="0.85">
                                         <TextBlock Text="🌐 UI động" Foreground="{StaticResource AccentColor}" FontSize="10" FontWeight="Bold"/>
                                     </Border>
-                                    <Border x:Name="WebViewContainer" CornerRadius="4" ClipToBounds="True" Margin="0,24,0,0">
+                                    <Border x:Name="WebViewContainer" AllowDrop="True" CornerRadius="4" ClipToBounds="True" Margin="0,24,0,0">
                                         <TextBlock Text="🌐 UI động sẽ được render ở đây&#x0a;(Cấu hình trong tab 'Layer AI'&#x0a;của dialog Xử lý ảnh)"
                                                    Foreground="{StaticResource TextMuted}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" LineHeight="20"/>
                                     </Border>
@@ -672,7 +672,7 @@
 
                             <!-- Row 2: WebView2 Browser container -->
                             <Border Grid.Row="2" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
-                                <Grid x:Name="WebBrowserContainer">
+                                <Grid x:Name="WebBrowserContainer" AllowDrop="True">
                                     <TextBlock Text="🌍 Nhấn Enter hoặc → để mở trang web&#x0a;Gõ URL hoặc từ khóa tìm kiếm ở thanh trên"
                                                Foreground="{StaticResource TextMuted}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" LineHeight="20"/>
                                 </Grid>

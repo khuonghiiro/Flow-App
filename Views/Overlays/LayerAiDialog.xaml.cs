@@ -1125,7 +1125,8 @@ namespace FlowMy.Views.Overlays
                 {
                     var webView = new ChromiumWebBrowser
                     {
-                        RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext("DynamicUi_" + _node.Id)
+                        RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext("DynamicUi_" + _node.Id),
+                        AllowDrop = true
                     };
                     
                     WebViewContainer.Child = webView;
@@ -1331,6 +1332,7 @@ namespace FlowMy.Views.Overlays
         {
             try
             {
+                webView.AllowDrop = true;
                 webView.RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext(tab.ProfileName);
                 InjectDragDropInterceptorScriptAsync(webView);
 
@@ -1483,6 +1485,7 @@ namespace FlowMy.Views.Overlays
                     CornerRadius = new CornerRadius(6),
                     Margin = new Thickness(3),
                     Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#15171e")),
+                    AllowDrop = true,
                     Child = content
                 };
 
@@ -4679,28 +4682,14 @@ namespace FlowMy.Views.Overlays
             foreach (var src in dragSources)
             {
                 if (src == null) continue;
-                src.PreviewMouseLeftButtonDown += (s, e) =>
-                {
-                    _dragStartPoint = e.GetPosition(null);
-                    _isMouseDownOnImage = true;
-                };
-                src.PreviewMouseLeftButtonUp += (s, e) =>
-                {
-                    _isMouseDownOnImage = false;
-                };
-                src.MouseMove += (s, e) =>
-                {
-                    if (_isMouseDownOnImage && e.LeftButton == MouseButtonState.Pressed)
-                    {
-                        var currentPosition = e.GetPosition(null);
-                        if (Math.Abs(currentPosition.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                            Math.Abs(currentPosition.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
-                        {
-                            _isMouseDownOnImage = false;
-                            StartDragDrop(s);
-                        }
-                    }
-                };
+
+                src.PreviewMouseLeftButtonDown -= Src_PreviewMouseLeftButtonDown;
+                src.PreviewMouseLeftButtonUp -= Src_PreviewMouseLeftButtonUp;
+                src.PreviewMouseMove -= Src_PreviewMouseMove;
+
+                src.PreviewMouseLeftButtonDown += Src_PreviewMouseLeftButtonDown;
+                src.PreviewMouseLeftButtonUp += Src_PreviewMouseLeftButtonUp;
+                src.PreviewMouseMove += Src_PreviewMouseMove;
             }
 
             // --- WebView-to-WPF Drop Target Setup ---
@@ -4723,6 +4712,43 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        private void Src_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+            _isMouseDownOnImage = true;
+        }
+
+        private void Src_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _isMouseDownOnImage = false;
+        }
+
+        private void Src_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isMouseDownOnImage && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentPosition = e.GetPosition(null);
+                if (Math.Abs(currentPosition.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(currentPosition.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    _isMouseDownOnImage = false;
+                    StartDragDrop(sender);
+                }
+            }
+        }
+
+        private static TParent? FindParentBorderOrTarget<TParent>(DependencyObject? child) where TParent : DependencyObject
+        {
+            if (child == null) return null;
+            var parent = VisualTreeHelper.GetParent(child);
+            while (parent != null)
+            {
+                if (parent is TParent target) return target;
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            return null;
+        }
+
         private void StartDragDrop(object sender)
         {
             try
@@ -4730,35 +4756,37 @@ namespace FlowMy.Views.Overlays
                 BitmapSource? bitmap = null;
                 string tempFileName = "dragged_image";
 
-                if (sender is Image img)
+                FrameworkElement? element = sender as FrameworkElement;
+                if (element != null)
                 {
-                    bitmap = img.Source as BitmapSource;
-                    if (img.Name == "ImgPreview" || img.Name == "ImgPreviewWv")
+                    if (element.Name == "ImgPreview" || element.Name == "ImgPreviewWv")
                     {
+                        bitmap = _activeLayer?.OriginalTransformBitmap ?? _activeLayer?.Bitmap ?? (ImgPreview?.Source as BitmapSource) ?? (ImgPreviewWv?.Source as BitmapSource);
+                        tempFileName = "Main";
+                    }
+                    else if (element is Image img && (img.Name == "ImgPreview" || img.Name == "ImgPreviewWv"))
+                    {
+                        bitmap = _activeLayer?.OriginalTransformBitmap ?? _activeLayer?.Bitmap ?? (img.Source as BitmapSource);
                         tempFileName = "Main";
                     }
                     else
                     {
-                        var name = img.Name ?? "";
-                        int slotNum = 1;
-                        if (name.EndsWith("0")) slotNum = 1;
-                        else if (name.EndsWith("1")) slotNum = 2;
-                        else if (name.EndsWith("2")) slotNum = 3;
-                        else if (name.EndsWith("3")) slotNum = 4;
-                        tempFileName = $"{slotNum}.Slot";
-                    }
-                }
-                else if (sender is Border border)
-                {
-                    if (border.Name == "ImgPreview" || border.Name == "ImgPreviewWv")
-                    {
-                        bitmap = _activeLayer.OriginalTransformBitmap ?? _activeLayer.Bitmap;
-                        tempFileName = "Main";
-                    }
-                    else if (border.Tag is string tagStr && int.TryParse(tagStr, out int idx) && idx >= 0 && idx < _secondaryImages.Count)
-                    {
-                        bitmap = _secondaryImages[idx].Bitmap;
-                        tempFileName = $"{idx + 1}.Slot";
+                        Border? border = element as Border ?? FindParentBorderOrTarget<Border>(element);
+                        if (border != null && (border.Name == "ImgPreview" || border.Name == "ImgPreviewWv"))
+                        {
+                            bitmap = _activeLayer?.OriginalTransformBitmap ?? _activeLayer?.Bitmap ?? (ImgPreview?.Source as BitmapSource) ?? (ImgPreviewWv?.Source as BitmapSource);
+                            tempFileName = "Main";
+                        }
+                        else if (border != null && border.Tag is string tagStr && int.TryParse(tagStr, out int idx) && idx >= 0 && idx < _secondaryImages.Count)
+                        {
+                            bitmap = _secondaryImages[idx].Bitmap;
+                            tempFileName = $"{idx + 1}.Slot";
+                        }
+                        else if (element is Image slotImg && slotImg.Source is BitmapSource srcBmp)
+                        {
+                            bitmap = srcBmp;
+                            tempFileName = "Slot";
+                        }
                     }
                 }
 
@@ -4774,12 +4802,43 @@ namespace FlowMy.Views.Overlays
                     encoder.Save(fileStream);
                 }
 
-                // Create DataObject
+                var fileUri = new Uri(tempPath).AbsoluteUri;
+
+                // Create DataObject supporting all standard WPF, Windows OLE, CefSharp, and Web Browser formats
                 var data = new DataObject();
+
+                // 1. FileDrop (CF_HDROP)
                 var fileList = new System.Collections.Specialized.StringCollection { tempPath };
                 data.SetFileDropList(fileList);
 
-                // Set beautiful drag ghost image!
+                // 2. Text & UnicodeText formats (file path + file URL for web drag handlers)
+                data.SetData(DataFormats.Text, tempPath);
+                data.SetData(DataFormats.UnicodeText, tempPath);
+
+                // 3. Standard Web URI List format (text/uri-list)
+                data.SetData("text/uri-list", fileUri);
+
+                // 4. HTML format for web drop targets
+                string htmlContent = $"<img src=\"{fileUri}\"/>";
+                data.SetData(DataFormats.Html, GetHtmlDataFormatString(htmlContent));
+
+                // 5. Raw Bitmap format
+                try
+                {
+                    using (var ms = new MemoryStream())
+                    {
+                        var enc = new PngBitmapEncoder();
+                        enc.Frames.Add(BitmapFrame.Create(bitmap));
+                        enc.Save(ms);
+                        using (var sysBmp = new System.Drawing.Bitmap(ms))
+                        {
+                            data.SetData(DataFormats.Bitmap, sysBmp, true);
+                        }
+                    }
+                }
+                catch { }
+
+                // Set drag ghost image
                 SetDragImage(data, bitmap);
 
                 // Execute drag drop
@@ -4789,6 +4848,34 @@ namespace FlowMy.Views.Overlays
             {
                 System.Diagnostics.Debug.WriteLine($"Error starting drag drop: {ex.Message}");
             }
+        }
+
+        private static string GetHtmlDataFormatString(string html)
+        {
+            string header =
+                "Version:0.9\r\n" +
+                "StartHTML:0000000000\r\n" +
+                "EndHTML:0000000000\r\n" +
+                "StartFragment:0000000000\r\n" +
+                "EndFragment:0000000000\r\n";
+            string fragmentStart = "<!--StartFragment-->";
+            string fragmentEnd = "<!--EndFragment-->";
+
+            string fullHtml = "<html><body>" + fragmentStart + html + fragmentEnd + "</body></html>";
+
+            int startHtml = header.Length;
+            int startFragment = startHtml + "<html><body>".Length + fragmentStart.Length;
+            int endFragment = startFragment + System.Text.Encoding.UTF8.GetByteCount(html);
+            int endHtml = startFragment + System.Text.Encoding.UTF8.GetByteCount(html + fragmentEnd + "</body></html>");
+
+            string formattedHeader =
+                $"Version:0.9\r\n" +
+                $"StartHTML:{startHtml:D10}\r\n" +
+                $"EndHTML:{endHtml:D10}\r\n" +
+                $"StartFragment:{startFragment:D10}\r\n" +
+                $"EndFragment:{endFragment:D10}\r\n";
+
+            return formattedHeader + fullHtml;
         }
 
         private void SlotBorder_KeyDown(object sender, KeyEventArgs e)
