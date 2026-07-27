@@ -71,7 +71,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 bool isUrlInput = inputResult.IsUrlInput;
                 
                 if (inputBytes.Length == 0)
-                    throw new InvalidOperationException("Không có dữ liệu ảnh để xử lý.");
+                {
+                    // Nếu không có dữ liệu ảnh đầu vào -> khởi tạo mặc định 1 ảnh trắng 720x1080
+                    inputBytes = CreateBlankWhiteImagePngBytes(720, 1080);
+                    isUrlInput = false;
+                }
 
                 // Temp files
                 var tempDir = Path.Combine(Path.GetTempPath(), "FlowMy_ImageProcessing");
@@ -594,6 +598,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 Debug.WriteLine("ffmpeg exception: " + ex.Message);
                 return false;
             }
+        }
+
+        private static byte[] CreateBlankWhiteImagePngBytes(int width = 720, int height = 1080)
+        {
+            using var bmp = new Bitmap(width, height);
+            using var g = Graphics.FromImage(bmp);
+            g.Clear(Color.White);
+            using var ms = new MemoryStream();
+            bmp.Save(ms, ImageFormat.Png);
+            return ms.ToArray();
         }
     }
 }

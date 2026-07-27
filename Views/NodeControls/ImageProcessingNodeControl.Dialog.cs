@@ -353,31 +353,39 @@ namespace FlowMy.Views.NodeControls
                 {
                     resolved = ResolveFromNodeIfAny(host, node.ImageBase64SourceNodeId, node.ImageBase64SourceOutputKey)
                                ?? node.ImageBase64;
-                    bitmap = await System.Threading.Tasks.Task.Run(() => CreateBitmapFromBase64(resolved));
-                    if (bitmap == null) throw new InvalidOperationException("Base64 không hợp lệ hoặc không decode được.");
+                    if (!string.IsNullOrWhiteSpace(resolved))
+                    {
+                        bitmap = await System.Threading.Tasks.Task.Run(() => CreateBitmapFromBase64(resolved));
+                    }
                 }
                 else
                 {
                     resolved = ResolveFromNodeIfAny(host, node.ImageUrlSourceNodeId, node.ImageUrlSourceOutputKey)
                                ?? node.ImageUrl;
                     resolved = resolved?.Trim() ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(resolved))
-                        throw new InvalidOperationException("Chưa có link/file ảnh.");
-
-                    // Nếu là URL online thì cập nhật placeholder để hiển thị đang tải
-                    bool isUrl = resolved.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                                 resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-                    if (isUrl)
+                    if (!string.IsNullOrWhiteSpace(resolved))
                     {
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        // Nếu là URL online thì cập nhật placeholder để hiển thị đang tải
+                        bool isUrl = resolved.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                                     resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+                        if (isUrl)
                         {
-                            placeholder.Text = "Đang tải ảnh từ URL...";
-                            placeholder.Visibility = Visibility.Visible;
-                        });
-                    }
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                placeholder.Text = "Đang tải ảnh từ URL...";
+                                placeholder.Visibility = Visibility.Visible;
+                            });
+                        }
 
-                    bitmap = await System.Threading.Tasks.Task.Run(() => CreateBitmapFromUrlOrFile(resolved));
-                    if (bitmap == null) throw new InvalidOperationException("Không tải được ảnh từ link/file.");
+                        bitmap = await System.Threading.Tasks.Task.Run(() => CreateBitmapFromUrlOrFile(resolved));
+                    }
+                }
+
+                // Nếu chưa có ảnh hoặc nạp lỗi -> mặc định tạo ảnh trắng 720x1080
+                if (bitmap == null)
+                {
+                    bitmap = CreateBlankWhiteBitmap(720, 1080);
+                    resolved = "Ảnh trắng (720x1080)";
                 }
 
                 // Cập nhật title với tên file hoặc URL

@@ -239,6 +239,24 @@ namespace FlowMy.Views.NodeControls
             return bmp;
         }
 
+        internal static BitmapSource CreateBlankWhiteBitmap(int width = 720, int height = 1080)
+        {
+            int stride = width * 4;
+            byte[] pixels = new byte[height * stride];
+            Array.Fill(pixels, (byte)255);
+
+            var bitmap = BitmapSource.Create(
+                width, height,
+                96, 96,
+                PixelFormats.Bgra32,
+                null,
+                pixels,
+                stride
+            );
+            bitmap.Freeze();
+            return bitmap;
+        }
+
         private static int NextPreviewVersion(ImageProcessingNode node)
         {
             lock (_previewVersion)

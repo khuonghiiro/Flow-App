@@ -96,7 +96,7 @@ namespace FlowMy.Views.NodeControls
             }
             else
             {
-                _node.EditorDoc = Models.ImageEditor.EditorDocument.CreateBlank(800, 600);
+                _node.EditorDoc = Models.ImageEditor.EditorDocument.CreateBlank(720, 1080);
             }
 
             EditorPanel.SetDocument(_node.EditorDoc);

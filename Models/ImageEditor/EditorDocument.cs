@@ -118,9 +118,9 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>
-        /// Tạo document trống (canvas trắng).
+        /// Tạo document trống (canvas trắng, mặc định 720x1080).
         /// </summary>
-        public static EditorDocument CreateBlank(int width, int height)
+        public static EditorDocument CreateBlank(int width = 720, int height = 1080)
         {
             var doc = new EditorDocument(width, height);
             var bgLayer = new EditorLayer(width, height, "layer 0");
