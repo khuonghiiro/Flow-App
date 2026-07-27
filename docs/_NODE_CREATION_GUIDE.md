@@ -1631,14 +1631,15 @@ Nhiều workflow có thể chạy **đồng thời**. Nếu executor đọc outp
 | `env.Service.ResolveDynamicValueForExecution(sourceNode, key, env)` | Đọc output node khác trong executor |
 | `env.Service.ResolveValueByNodeIdAndKeyForExecution(connections, nodeId, key, env)` | Đọc theo nodeId + key |
 | `env.TraverseOutputsAsync(node)` | Chuyển sang node tiếp theo — **LUÔN gọi ở cuối** |
+| `WorkflowExecutionService.OnScopedOutputSetGlobal` | Sự kiện real-time phát ra ngay khi bất kỳ node nào ghi output (dùng cho progressive UI rendering "xong sớm trả về hiện sớm") |
 | `MirrorRuntimeOutputsToScopedStore(node, executionId)` | Tự động gọi bởi service sau executor — không cần gọi thủ công |
 | `PublishStorageOutputsToScoped(storage, executionId)` | StorageNode: gọi **trước** `TraverseOutputsAsync` |
 | `IWorkflowScopedOutputContributor` | Implement trên node model nếu output không nằm trong switch mirror |
 
-**Quy tắc:**
-- Trong Executor: **LUÔN** dùng `*ForExecution` APIs có `env`
-- **KHÔNG** dùng `NodeDataPanelService.ResolveDynamicValueByKey` trong executor
-- Output mới sau khi node chạy → đảm bảo có trong `MirrorRuntimeOutputsToScopedStore` hoặc `IWorkflowScopedOutputContributor`
+**Quy tắc xử lý luồng con (`ExecutionId` & Sub-branches):**
+- **Real-time Event Streaming**: Đăng ký `WorkflowExecutionService.OnScopedOutputSetGlobal` khi muốn nhận dữ liệu đầu ra ngay khi mỗi luồng con hoàn thành (nút End ở chế độ `EmitResultOnly` / `StopCurrentFlow`).
+- **Child ExecutionId Prefix**: Các luồng con (tạo từ Async Task, Loop, hay rẽ nhánh song song) lưu output dưới định dạng `rootExecId:dispatch-*` hoặc `actualRunId:*`.
+- **Duyệt Historical Cache**: Khi khôi phục hoặc quét cache, kiểm tra cả `execId`, `actualRunId` (từ `ExecutionIdMapping`) và tất cả key bắt đầu bằng `execId + ":"` / `actualRunId + ":"`. KHÔNG dùng `return` dừng ở ngay nhánh con đầu tiên mà hãy tổng hợp mảng/tất cả các link trả về.
 
 **Checklist nhanh khi thêm Executor:**
 ```yaml
@@ -1647,7 +1648,8 @@ Nhiều workflow có thể chạy **đồng thời**. Nếu executor đọc outp
 - [ ] Gọi env.OnNodeCompleted?.Invoke() sau khi xong
 - [ ] Gọi env.OnNodeFailed?.Invoke() + throw khi có lỗi
 - [ ] Nếu node có output chuỗi mới → đảm bảo có trong MirrorRuntimeOutputsToScopedStore
-- [ ] Nếu là StorageNode → PublishStorageOutputsToScoped trước TraverseOutputsAsync
+- [ ] Nếu cần progressive UI ("xong sớm trả về hiện sớm") → Đăng ký WorkflowExecutionService.OnScopedOutputSetGlobal
+- [ ] Nếu đọc cache kết quả luồng con → Duyệt toàn bộ keys dạng execId + ":" và actualRunId + ":"
 ```
 
 ---

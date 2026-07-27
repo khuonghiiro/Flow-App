@@ -3401,8 +3401,76 @@ namespace FlowMy.Views.Overlays
                 // Fire-and-forget: run workflow, then process results on UI thread
                 _ = Task.Run(async () =>
                 {
+                    var filledPlaceholders = new HashSet<EditorLayer>();
+                    Action<string, string, string, string?> realtimeHandler = (runId, targetNodeId, targetKey, valStr) =>
+                    {
+                        if (string.IsNullOrWhiteSpace(valStr) || valStr == "—") return;
+                        if (!string.Equals(targetNodeId, nodeRef.RenderNodeId, StringComparison.OrdinalIgnoreCase) ||
+                            !string.Equals(targetKey, nodeRef.RenderNodeOutputKey, StringComparison.OrdinalIgnoreCase)) return;
+
+                        string actualRunId = execId;
+                        if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
+                        {
+                            actualRunId = mappedRunId;
+                        }
+
+                        bool isMatch = string.Equals(runId, execId, StringComparison.OrdinalIgnoreCase) ||
+                                       string.Equals(runId, actualRunId, StringComparison.OrdinalIgnoreCase) ||
+                                       runId.StartsWith(execId + ":", StringComparison.OrdinalIgnoreCase) ||
+                                       runId.StartsWith(actualRunId + ":", StringComparison.OrdinalIgnoreCase);
+
+                        if (!isMatch) return;
+
+                        var links = ParseImageLinksFromOutput(valStr);
+                        if (links.Count == 0) return;
+
+                        Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            foreach (var entry in links)
+                            {
+                                if (string.IsNullOrWhiteSpace(entry)) continue;
+
+                                EditorLayer? placeholder = null;
+                                lock (placeholders)
+                                {
+                                    placeholder = placeholders.FirstOrDefault(p => !filledPlaceholders.Contains(p));
+                                    if (placeholder != null)
+                                    {
+                                        filledPlaceholders.Add(placeholder);
+                                    }
+                                }
+
+                                if (placeholder != null)
+                                {
+                                    BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry.Trim()) ?? CreateBitmapFromBase64(entry.Trim());
+                                    if (bmp != null)
+                                    {
+                                        placeholder.IsLoading = false;
+                                        placeholder.StopLoadingTimer();
+                                        ProcessAndApplyAiImage(placeholder, bmp, activeLayerRef, bounds, targetRatio, customW, customH);
+
+                                        destinationParent.ActiveChildLayer = placeholder;
+                                        docRef.ActiveLayer = placeholder;
+
+                                        foreach (var child in destinationParent.ChildLayers)
+                                        {
+                                            child.IsActive = (child == placeholder);
+                                            child.IsSelected = (child == placeholder);
+                                        }
+
+                                        var panel = FindVisualChild<ImageEditorPanel>(ownerRef);
+                                        panel?.RefreshLayersList();
+                                        panel?.OnDocumentModified();
+                                    }
+                                }
+                            }
+                        });
+                    };
+
                     try
                     {
+                        WorkflowExecutionService.OnScopedOutputSetGlobal += realtimeHandler;
+
                         // Run workflow on background thread via reflection
                         await Application.Current.Dispatcher.InvokeAsync(async () =>
                         {
@@ -3423,11 +3491,13 @@ namespace FlowMy.Views.Overlays
                             }
                         }).Task.Unwrap();
 
-                        // Process results on UI thread
+                        // Process results on UI thread (fallback for any remaining unfilled placeholders)
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
                             try
                             {
+                                WorkflowExecutionService.OnScopedOutputSetGlobal -= realtimeHandler;
+
                                 // Refresh outputs list again to show final outputs/execution IDs
                                 RefreshRelatedNodeDialogs();
 
@@ -3438,17 +3508,66 @@ namespace FlowMy.Views.Overlays
                                     return;
                                 }
 
-                                // Tìm executionId thực tế được chạy trong workflow
                                 string actualRunId = execId;
                                 if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
                                 {
                                     actualRunId = mappedRunId;
                                 }
 
-                                var raw = ResolveFromHistoricalCache(nodeRef.RenderNodeId, nodeRef.RenderNodeOutputKey, actualRunId);
-                                if (string.IsNullOrWhiteSpace(raw))
+                                var allLinks = ResolveAllFromHistoricalCache(nodeRef.RenderNodeId, nodeRef.RenderNodeOutputKey, actualRunId);
+                                if (allLinks.Count == 0)
                                 {
-                                    raw = ResolveFromNodeIfAny(hostRef, nodeRef.RenderNodeId, nodeRef.RenderNodeOutputKey);
+                                    var rawFallback = ResolveFromNodeIfAny(hostRef, nodeRef.RenderNodeId, nodeRef.RenderNodeOutputKey);
+                                    allLinks = ParseImageLinksFromOutput(rawFallback);
+                                }
+
+                                // Fill any remaining unfilled placeholders from fallback
+                                foreach (var entry in allLinks)
+                                {
+                                    if (string.IsNullOrWhiteSpace(entry)) continue;
+
+                                    EditorLayer? placeholder = null;
+                                    lock (placeholders)
+                                    {
+                                        placeholder = placeholders.FirstOrDefault(p => !filledPlaceholders.Contains(p));
+                                        if (placeholder != null)
+                                        {
+                                            filledPlaceholders.Add(placeholder);
+                                        }
+                                    }
+
+                                    if (placeholder != null)
+                                    {
+                                        BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry.Trim()) ?? CreateBitmapFromBase64(entry.Trim());
+                                        if (bmp != null)
+                                        {
+                                            placeholder.IsLoading = false;
+                                            placeholder.StopLoadingTimer();
+                                            ProcessAndApplyAiImage(placeholder, bmp, activeLayerRef, bounds, targetRatio, customW, customH);
+                                        }
+                                    }
+                                }
+
+                                // Dọn dẹp các placeholders chưa được dùng
+                                var unfilledList = placeholders.Where(p => !filledPlaceholders.Contains(p)).ToList();
+                                foreach (var p in unfilledList)
+                                {
+                                    p.StopLoadingTimer();
+                                    destinationParent.ChildLayers.Remove(p);
+                                }
+
+                                if (destinationParent.ChildLayers.Count > 0)
+                                {
+                                    destinationParent.ActiveChildLayer = destinationParent.ChildLayers.Last();
+                                    docRef.ActiveLayer = destinationParent.ActiveChildLayer;
+
+                                    foreach (var child in destinationParent.ChildLayers)
+                                    {
+                                        child.IsActive = (child == destinationParent.ActiveChildLayer);
+                                        child.IsSelected = (child == destinationParent.ActiveChildLayer);
+                                    }
+                                    destinationParent.IsActive = false;
+                                    destinationParent.IsSelected = false;
                                 }
 
                                 // Dọn dẹp cache của lần chạy này để tránh rò rỉ RAM
@@ -3464,98 +3583,6 @@ namespace FlowMy.Views.Overlays
                                     WorkflowExecutionService.ScopedOutputsHistoricalCache.TryRemove(childKey, out _);
                                 }
 
-                                if (string.IsNullOrWhiteSpace(raw))
-                                {
-                                    CleanupPlaceholders(placeholders, destinationParent, ownerRef);
-                                    return;
-                                }
-
-                                raw = raw.Trim();
-                                List<string> list = new List<string>();
-                                if (raw.StartsWith("["))
-                                {
-                                    try
-                                    {
-                                        list = System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw) ?? new List<string>();
-                                    }
-                                    catch
-                                    {
-                                        var inner = raw.Trim();
-                                        if (inner.StartsWith("[")) inner = inner.Substring(1);
-                                        if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
-                                        var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                                         .Select(p => p.Trim().Trim('"'))
-                                                         .Where(p => !string.IsNullOrWhiteSpace(p))
-                                                         .ToList();
-                                        list = parts.Count > 0 ? parts : new List<string> { raw };
-                                    }
-                                }
-                                else
-                                {
-                                    list = new List<string> { raw };
-                                }
-
-                                if (list.Count == 0)
-                                {
-                                    CleanupPlaceholders(placeholders, destinationParent, ownerRef);
-                                    return;
-                                }
-
-                                int countAdded = 0;
-                                int placeholderIndex = 0;
-                                foreach (var entry in list)
-                                {
-                                    if (string.IsNullOrWhiteSpace(entry)) continue;
-
-                                    BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry.Trim());
-                                    if (bmp == null)
-                                    {
-                                        bmp = CreateBitmapFromBase64(entry.Trim());
-                                    }
-
-                                    if (bmp != null)
-                                    {
-                                        EditorLayer childLayer;
-                                        if (placeholderIndex < placeholders.Count)
-                                        {
-                                            childLayer = placeholders[placeholderIndex];
-                                            childLayer.IsLoading = false;
-                                            childLayer.StopLoadingTimer();
-                                        }
-                                        else
-                                        {
-                                            childLayer = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
-                                            childLayer.ParentLayer = destinationParent;
-                                            destinationParent.ChildLayers.Add(childLayer);
-                                        }
-
-                                        ProcessAndApplyAiImage(childLayer, bmp, activeLayerRef, bounds, targetRatio, customW, customH);
-                                        countAdded++;
-                                        placeholderIndex++;
-                                    }
-                                }
-
-                                // Remove any unused placeholders
-                                for (int i = placeholders.Count - 1; i >= placeholderIndex; i--)
-                                {
-                                    destinationParent.ChildLayers.Remove(placeholders[i]);
-                                }
-
-                                if (countAdded > 0)
-                                {
-                                    destinationParent.ActiveChildLayer = destinationParent.ChildLayers.Last();
-                                    docRef.ActiveLayer = destinationParent.ActiveChildLayer;
-
-                                    foreach (var child in destinationParent.ChildLayers)
-                                    {
-                                        child.IsActive = (child == destinationParent.ActiveChildLayer);
-                                        child.IsSelected = (child == destinationParent.ActiveChildLayer);
-                                    }
-                                    destinationParent.IsActive = false;
-                                    destinationParent.IsSelected = false;
-                                }
-
-                                // Refresh panel to show AI results and trigger re-composite
                                 var panel = FindVisualChild<ImageEditorPanel>(ownerRef);
                                 panel?.RefreshLayersList();
                                 panel?.OnDocumentModified();
@@ -3569,8 +3596,9 @@ namespace FlowMy.Views.Overlays
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine("AI workflow error: " + ex.Message);
-                        Application.Current?.Dispatcher?.Invoke(() =>
+                        WorkflowExecutionService.OnScopedOutputSetGlobal -= realtimeHandler;
+                        System.Diagnostics.Debug.WriteLine("AI execution error: " + ex.Message);
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
                             CleanupPlaceholders(placeholders, destinationParent, ownerRef);
                         });
@@ -4072,33 +4100,105 @@ namespace FlowMy.Views.Overlays
             return null;
         }
 
+        private static List<string> ParseImageLinksFromOutput(string? raw)
+        {
+            var list = new List<string>();
+            if (string.IsNullOrWhiteSpace(raw) || raw == "—") return list;
+
+            raw = raw.Trim();
+            if (raw.StartsWith("["))
+            {
+                try
+                {
+                    var deserialized = System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw);
+                    if (deserialized != null)
+                    {
+                        foreach (var item in deserialized)
+                        {
+                            if (!string.IsNullOrWhiteSpace(item))
+                                list.Add(item.Trim());
+                        }
+                    }
+                }
+                catch
+                {
+                    var inner = raw.Trim();
+                    if (inner.StartsWith("[")) inner = inner.Substring(1);
+                    if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
+                    var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                     .Select(p => p.Trim().Trim('"'))
+                                     .Where(p => !string.IsNullOrWhiteSpace(p));
+                    foreach (var p in parts)
+                    {
+                        list.Add(p);
+                    }
+                }
+            }
+            else
+            {
+                list.Add(raw);
+            }
+            return list;
+        }
+
         private static string? ResolveFromHistoricalCache(string nodeId, string key, string executionId)
         {
-            if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(executionId)) return null;
+            var list = ResolveAllFromHistoricalCache(nodeId, key, executionId);
+            return list.Count > 0 ? list[0] : null;
+        }
 
-            // 1. Thử lấy trực tiếp bằng executionId chính xác
-            if (WorkflowExecutionService.ScopedOutputsHistoricalCache.TryGetValue(executionId, out var byNode) &&
-                byNode.TryGetValue(nodeId, out var byKey) &&
-                byKey.TryGetValue(key, out var value))
+        private static List<string> ResolveAllFromHistoricalCache(string nodeId, string key, string executionId)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(executionId)) return result;
+
+            string actualRunId = executionId;
+            if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(executionId, out var mapped))
+                actualRunId = mapped;
+
+            void AddValue(string? val)
             {
-                if (value != "—" && !string.IsNullOrWhiteSpace(value)) return value;
+                var links = ParseImageLinksFromOutput(val);
+                foreach (var link in links)
+                {
+                    if (!string.IsNullOrWhiteSpace(link) && !result.Contains(link, StringComparer.OrdinalIgnoreCase))
+                        result.Add(link);
+                }
             }
 
-            // 2. Nếu không thấy, duyệt qua cache tìm các run con (ví dụ: executionId + ":dispatch-..." hoặc executionId + ":at-manual-...")
-            var prefix = executionId + ":";
+            // 1. Root runId & actualRunId
+            if (WorkflowExecutionService.ScopedOutputsHistoricalCache.TryGetValue(executionId, out var byNode1) &&
+                byNode1.TryGetValue(nodeId, out var byKey1) &&
+                byKey1.TryGetValue(key, out var val1))
+            {
+                AddValue(val1);
+            }
+
+            if (!string.Equals(actualRunId, executionId, StringComparison.OrdinalIgnoreCase) &&
+                WorkflowExecutionService.ScopedOutputsHistoricalCache.TryGetValue(actualRunId, out var byNode2) &&
+                byNode2.TryGetValue(nodeId, out var byKey2) &&
+                byKey2.TryGetValue(key, out var val2))
+            {
+                AddValue(val2);
+            }
+
+            // 2. Child runs (executionId:* hoặc actualRunId:*)
+            var prefix1 = executionId + ":";
+            var prefix2 = actualRunId + ":";
             foreach (var kv in WorkflowExecutionService.ScopedOutputsHistoricalCache)
             {
-                if (kv.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                if (kv.Key.StartsWith(prefix1, StringComparison.OrdinalIgnoreCase) ||
+                    kv.Key.StartsWith(prefix2, StringComparison.OrdinalIgnoreCase))
                 {
                     if (kv.Value.TryGetValue(nodeId, out var childKey) &&
                         childKey.TryGetValue(key, out var childVal))
                     {
-                        if (childVal != "—" && !string.IsNullOrWhiteSpace(childVal)) return childVal;
+                        AddValue(childVal);
                     }
                 }
             }
 
-            return null;
+            return result;
         }
 
         private void LoadSavedSettings()

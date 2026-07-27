@@ -507,10 +507,21 @@ namespace FlowMy.Views.NodeControls
                     !string.IsNullOrWhiteSpace(node.RenderNodeId) &&
                     !string.IsNullOrWhiteSpace(node.RenderNodeOutputKey))
                 {
+                    string actualRunId = execId;
+                    if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
+                    {
+                        actualRunId = mappedRunId;
+                    }
+
+                    var prefix1 = execId + ":";
+                    var prefix2 = actualRunId + ":";
+
                     foreach (var kv in WorkflowExecutionService.ScopedOutputsHistoricalCache)
                     {
                         if (string.Equals(kv.Key, execId, StringComparison.OrdinalIgnoreCase) ||
-                            kv.Key.StartsWith(execId + ":", StringComparison.OrdinalIgnoreCase))
+                            string.Equals(kv.Key, actualRunId, StringComparison.OrdinalIgnoreCase) ||
+                            kv.Key.StartsWith(prefix1, StringComparison.OrdinalIgnoreCase) ||
+                            kv.Key.StartsWith(prefix2, StringComparison.OrdinalIgnoreCase))
                         {
                             if (kv.Value.TryGetValue(node.RenderNodeId, out var nodeOutputs) &&
                                 nodeOutputs.TryGetValue(node.RenderNodeOutputKey, out var valStr) &&

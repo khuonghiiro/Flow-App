@@ -64,6 +64,10 @@ namespace FlowMy.Services.Workflow
         internal FlowMy.Services.Interaction.KeyboardInputService KeyboardInput => _keyboardInput;
         internal GlobalKeyboardHookService GlobalKeyboardHook => _keyboardHook;
 
+        // Event cho phép các component/dialog lắng nghe real-time khi có bất kỳ node nào ghi output
+        public static event Action<string, string, string, string?>? OnScopedOutputSetGlobal;
+        public event Action<string, string, string, string?>? OnScopedOutputSet;
+
         internal void SetScopedNodeStringOutput(string executionId, string nodeId, string key, string? value)
         {
             if (string.IsNullOrWhiteSpace(executionId) || string.IsNullOrWhiteSpace(nodeId)) return;
@@ -95,6 +99,14 @@ namespace FlowMy.Services.Workflow
                     static _ => new ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
                 stickyByKey[k] = value;
             }
+
+            // Phát sự kiện real-time cho các listener (như LayerAiDialog / ImageProcessor)
+            try
+            {
+                OnScopedOutputSet?.Invoke(executionId, nodeId, k, value);
+                OnScopedOutputSetGlobal?.Invoke(executionId, nodeId, k, value);
+            }
+            catch { /* best-effort notification */ }
         }
 
         internal bool TryGetScopedNodeStringOutput(string executionId, string? nodeId, string key, out string? value)
