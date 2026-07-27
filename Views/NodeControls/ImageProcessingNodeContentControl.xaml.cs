@@ -554,8 +554,8 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            // LeftMenuViewbox.StretchDirection = StretchDirection.Both;
-            RootLayout.ColumnDefinitions[0].Width = new GridLength(0.6, GridUnitType.Star);
+            // EditorToolbox tự co dãn vừa đủ chiều rộng theo icon (GridLength.Auto)
+            RootLayout.ColumnDefinitions[0].Width = GridLength.Auto;
 
             PutFontResource(Resources, "WidgetCropOrderFontSize", 10);
             PutFontResource(Resources, "WidgetCropCheckFontSize", 8);
