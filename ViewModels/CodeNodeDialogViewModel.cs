@@ -99,6 +99,8 @@ namespace FlowMy.ViewModels
 
             RefreshAvailableNodes();
 
+            UpdateAiPromptGuidance();
+
             if (node is INotifyPropertyChanged npc)
             {
                 npc.PropertyChanged += (s, e) =>
@@ -120,6 +122,7 @@ namespace FlowMy.ViewModels
                 SyncInputMappingsToNode();
                 OnPropertyChanged(nameof(EffectiveInputKeyDisplay));
                 OnPropertyChanged(nameof(FirstInputVariableName));
+                UpdateAiPromptGuidance();
                 return;
             }
             if (e.PropertyName == nameof(CodeInputMappingItemViewModel.SourceOutputKey))
@@ -129,6 +132,7 @@ namespace FlowMy.ViewModels
                 SyncInputMappingsToNode();
                 OnPropertyChanged(nameof(EffectiveInputKeyDisplay));
                 OnPropertyChanged(nameof(FirstInputVariableName));
+                UpdateAiPromptGuidance();
                 return;
             }
             if (e.PropertyName == nameof(CodeInputMappingItemViewModel.InputKeyOverride) ||
@@ -137,6 +141,7 @@ namespace FlowMy.ViewModels
                 SyncInputMappingsToNode();
                 OnPropertyChanged(nameof(EffectiveInputKeyDisplay));
                 OnPropertyChanged(nameof(FirstInputVariableName));
+                UpdateAiPromptGuidance();
             }
         }
 
@@ -216,6 +221,7 @@ namespace FlowMy.ViewModels
                         }
                     }
                     OnPropertyChanged(nameof(EffectiveInputKeyDisplay));
+                    UpdateAiPromptGuidance();
                 }
                 finally
                 {
@@ -356,7 +362,7 @@ namespace FlowMy.ViewModels
         public string EffectiveInputKeyDisplay => string.Join(", ", InputMappingsList.Select(x => x.EffectiveInputKeyDisplay));
 
         /// <summary>Tên biến đầu tiên (dùng cho hint output js).</summary>
-        public string FirstInputVariableName => InputMappingsList.Count > 0 ? InputMappingsList[0].EffectiveInputKeyDisplay : "prompt";
+        public string FirstInputVariableName => InputMappingsList.Count > 0 ? InputMappingsList[0].EffectiveInputKeyDisplay : "input";
 
         [RelayCommand]
         private void AddInputMapping()
@@ -367,6 +373,7 @@ namespace FlowMy.ViewModels
             SyncInputMappingsToNode();
             OnPropertyChanged(nameof(EffectiveInputKeyDisplay));
             OnPropertyChanged(nameof(FirstInputVariableName));
+            UpdateAiPromptGuidance();
         }
 
         [RelayCommand]
@@ -379,6 +386,7 @@ namespace FlowMy.ViewModels
                 SyncInputMappingsToNode();
                 OnPropertyChanged(nameof(EffectiveInputKeyDisplay));
                 OnPropertyChanged(nameof(FirstInputVariableName));
+                UpdateAiPromptGuidance();
             }
         }
 
@@ -400,20 +408,241 @@ namespace FlowMy.ViewModels
         }
 
         [RelayCommand]
+        private void SyncOutputKeysFromCode()
+        {
+            var script = ScriptCode;
+            if (string.IsNullOrWhiteSpace(script)) return;
+
+            var extractedKeys = ExtractOutputKeysFromScript(script);
+            if (extractedKeys.Count == 0) return;
+
+            if (OutputKeysList.Count == 1 && string.Equals(OutputKeysList[0].Key, "result", StringComparison.OrdinalIgnoreCase)
+                && !extractedKeys.Contains("result", StringComparer.OrdinalIgnoreCase))
+            {
+                OutputKeysList.Clear();
+            }
+
+            var existingKeys = new HashSet<string>(OutputKeysList.Select(x => x.Key.Trim()), StringComparer.OrdinalIgnoreCase);
+            bool addedAny = false;
+
+            foreach (var key in extractedKeys)
+            {
+                if (!existingKeys.Contains(key))
+                {
+                    OutputKeysList.Add(new OutputKeyItemViewModel { Key = key });
+                    existingKeys.Add(key);
+                    addedAny = true;
+                }
+            }
+
+            if (addedAny || OutputKeysList.Count == 0)
+            {
+                SyncOutputKeysToNode();
+            }
+        }
+
+        public static System.Collections.Generic.List<string> ExtractOutputKeysFromScript(string script)
+        {
+            var resultKeys = new System.Collections.Generic.List<string>();
+            if (string.IsNullOrWhiteSpace(script)) return resultKeys;
+
+            var cleanScript = RemoveComments(script);
+
+            int pos = 0;
+            while (pos < cleanScript.Length)
+            {
+                int returnIdx = cleanScript.IndexOf("return", pos, StringComparison.OrdinalIgnoreCase);
+                if (returnIdx < 0) break;
+
+                bool isValidPrefix = returnIdx == 0 || (!char.IsLetterOrDigit(cleanScript[returnIdx - 1]) && cleanScript[returnIdx - 1] != '_');
+                pos = returnIdx + 6;
+                bool isValidSuffix = pos >= cleanScript.Length || (!char.IsLetterOrDigit(cleanScript[pos]) && cleanScript[pos] != '_');
+
+                if (!isValidPrefix || !isValidSuffix) continue;
+
+                while (pos < cleanScript.Length && char.IsWhiteSpace(cleanScript[pos])) pos++;
+
+                if (pos < cleanScript.Length && cleanScript[pos] == '{')
+                {
+                    int startObj = pos;
+                    int depth = 0;
+                    bool inString = false;
+                    char stringChar = '\0';
+                    int endObj = -1;
+
+                    for (int i = startObj; i < cleanScript.Length; i++)
+                    {
+                        char c = cleanScript[i];
+                        if (inString)
+                        {
+                            if (c == '\\') { i++; continue; }
+                            if (c == stringChar) inString = false;
+                        }
+                        else
+                        {
+                            if (c == '\'' || c == '"' || c == '`')
+                            {
+                                inString = true;
+                                stringChar = c;
+                            }
+                            else if (c == '{') depth++;
+                            else if (c == '}')
+                            {
+                                depth--;
+                                if (depth == 0)
+                                {
+                                    endObj = i;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (endObj > startObj)
+                    {
+                        var objBody = cleanScript.Substring(startObj, endObj - startObj + 1);
+                        ExtractKeysFromObjectString(objBody, resultKeys);
+                        pos = endObj + 1;
+                    }
+                }
+            }
+
+            return resultKeys.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static string RemoveComments(string code)
+        {
+            if (string.IsNullOrEmpty(code)) return string.Empty;
+            var blockComments = @"/\*[\s\S]*?\*/";
+            var lineComments = @"//[^\r\n]*";
+            var strings = @"""(?:\\.|[^""\\])*""" + "|" + @"'(?:\\.|[^'\\])*'" + "|" + @"`(?:\\.|[^`\\])*`";
+
+            return System.Text.RegularExpressions.Regex.Replace(
+                code,
+                blockComments + "|" + lineComments + "|" + strings,
+                me =>
+                {
+                    if (me.Value.StartsWith("/*") || me.Value.StartsWith("//"))
+                        return " ";
+                    return me.Value;
+                });
+        }
+
+        private static void ExtractKeysFromObjectString(string objectString, System.Collections.Generic.List<string> targetList)
+        {
+            var propMatches = System.Text.RegularExpressions.Regex.Matches(
+                objectString,
+                @"(?:(?<key>[a-zA-Z_$][a-zA-Z0-9_$]*)|[""'](?<key>[^""']+)[""'])\s*:",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+            foreach (System.Text.RegularExpressions.Match m in propMatches)
+            {
+                var key = m.Groups["key"].Value;
+                if (!string.IsNullOrWhiteSpace(key) && IsValidOutputKey(key))
+                {
+                    if (!targetList.Contains(key, StringComparer.OrdinalIgnoreCase))
+                    {
+                        targetList.Add(key);
+                    }
+                }
+            }
+
+            if (propMatches.Count == 0)
+            {
+                var trimmed = objectString.Trim();
+                if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+                {
+                    trimmed = trimmed.Substring(1, trimmed.Length - 2).Trim();
+                    var tokens = trimmed.Split(new[] { ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var tok in tokens)
+                    {
+                        var key = tok.Trim();
+                        if (IsValidOutputKey(key) && !targetList.Contains(key, StringComparer.OrdinalIgnoreCase))
+                        {
+                            targetList.Add(key);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool IsValidOutputKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return false;
+            var invalid = new[] { "function", "var", "let", "const", "return", "if", "else", "for", "while", "try", "catch", "true", "false", "null", "undefined" };
+            if (invalid.Contains(key, StringComparer.OrdinalIgnoreCase)) return false;
+            return System.Text.RegularExpressions.Regex.IsMatch(key, @"^[a-zA-Z_$][a-zA-Z0-9_$]*$");
+        }
+
+        [RelayCommand]
         private void IncreaseCodeFontSize()
         {
             if (CodeFontSize < 24) CodeFontSize++;
         }
 
         [ObservableProperty]
-        private string _aiPromptGuidance = @"Bối cảnh: Code chạy trong JS engine nhúng (embedded JS engine trong ứng dụng .NET, tương tác qua WebView2). Dữ liệu từ C# truyền sang JS (ví dụ List<string>, string[], mảng object...) thường bị marshal thành ""array-like object"" — có .length và truy cập được theo index (obj[0], obj[1]...) nhưng KHÔNG phải instance thật của Array.
+        private string _aiPromptGuidance = string.Empty;
 
-Yêu cầu viết code:
-1. KHÔNG được dùng Array.isArray(x) để kiểm tra một biến có phải danh sách/mảng hay không, vì nó sẽ trả về false sai với các array-like object đến từ interop .NET.
-2. Thay vào đó, kiểm tra bằng: typeof x === 'object' && x !== null && typeof x.length === 'number'.
-3. Khi loop qua mảng/danh sách, dùng vòng lặp `for (let i = 0; i < x.length; i++)` thay vì các method Array-only như .map(), .filter(), .forEach(), .reduce(), .find().
-4. Nếu phần tử trong danh sách là chuỗi JSON (string) thay vì object, phải bọc JSON.parse() trong try/catch để bỏ qua phần tử lỗi mà không làm crash toàn bộ vòng lặp.
-5. Luôn trả về object kết quả: return { outputKey1: result1, outputKey2: result2 }; hoặc dùng function main() { return { ... }; }";
+        private void UpdateAiPromptGuidance()
+        {
+            var varList = EffectiveInputKeyDisplay;
+            if (string.IsNullOrWhiteSpace(varList)) varList = "input";
+
+            AiPromptGuidance =
+$@"[YÊU CẦU VIẾT CODE JAVASCRIPT CHO CODE NODE TRONG FLOW-APP]
+
+1. Môi trường & Động cơ thực thi:
+- Code chạy trong C# bằng JINT JavaScript Engine (Embedded ECMAScript 5/6).
+- ĐỒNG BỘ hoàn toàn: KHÔNG dùng fetch(), XMLHttpRequest, async/await mạng, window, document, require. Mọi thao tác HTTP Request/Upload/Web phải được thực hiện ở node HttpRequest/WebNode trước.
+- Node Code CHỈ thực hiện: xử lý logic, parse JSON, tính toán, định dạng chuỗi, lọc/gộp mảng dữ liệu.
+
+2. Cấu hình Biến Đầu Vào (Input Variables):
+- Các input từ node trước được tự động nạp thành các BIẾN TOÀN CỤC (Global Variables) trước khi script chạy.
+- Tên các biến toàn cục hiện tại đang có sẵn trong scope: {varList}
+- Trong script, dùng trực tiếp các biến toàn cục này, KHÔNG khai báo lại var/let/const trùng tên và KHÔNG truyền qua tham số hàm main.
+
+3. Quy tắc Trả về (Return Output):
+- Script BẮT BUỘC phải return về 1 JS Object: return {{ key1: value1, key2: value2 }};
+- Các key trong object trả về sẽ tương ứng với danh sách Output keys của node.
+- Nếu viết theo kiểu hàm main():
+  + Cú pháp: function main() {{ return {{ key1: value1, key2: value2 }}; }}
+  + QUAN TRỌNG: Hệ thống gọi main() KHÔNG TRUYỀN THAM SỐ. Viết `function main()` KHÔNG khai báo tham số trong ngoặc đơn (để tránh bị undefined đè lên biến toàn cục). Đọc trực tiếp các biến toàn cục bên trong body của main().
+  + Hàm main() LÀ HÀM ĐỒNG BỘ (không dùng `async function main()`).
+
+4. Xử lý Mảng & Dữ liệu .NET Interop (Array-like Object):
+- Mảng truyền từ C# sang JS là Array-like object (có .length và truy cập [i]):
+  + KHÔNG dùng Array.isArray(x) (sẽ trả về false). Dùng: typeof x === 'object' && x !== null && typeof x.length === 'number'
+  + Dùng vòng lặp `for (var i = 0; i < x.length; i++)` truyền thống (KHÔNG dùng .map(), .forEach(), .filter()).
+  + Nếu phần tử là chuỗi JSON, bọc JSON.parse() trong try/catch.
+
+Ví dụ Mẫu Script Chuẩn:
+function main() {{
+    var inputData = {FirstInputVariableName};
+    var rawData = typeof inputData === 'string' ? (function() {{ try {{ return JSON.parse(inputData); }} catch(e) {{ return inputData; }} }})() : inputData;
+    var results = [];
+    var isArray = typeof rawData === 'object' && rawData !== null && typeof rawData.length === 'number';
+
+    if (isArray) {{
+        for (var i = 0; i < rawData.length; i++) {{
+            var item = rawData[i];
+            try {{
+                var obj = typeof item === 'string' ? JSON.parse(item) : item;
+                if (obj) results.push(obj);
+            }} catch(e) {{}}
+        }}
+    }} else if (rawData) {{
+        results.push(rawData);
+    }}
+
+    return {{
+        success: true,
+        count: results.length,
+        items: results
+    }};
+}}
+
+Hãy viết code JavaScript đáp ứng đúng các quy tắc môi trường trên.";
+        }
 
         [RelayCommand]
         private void CopyAiPromptGuidance()
@@ -434,30 +663,36 @@ Yêu cầu viết code:
         [RelayCommand]
         private void InsertExampleSnippet()
         {
-            var varName = EffectiveInputKeyDisplay;
-            ScriptCode = "// Biến từ input: " + varName + " (chuỗi JSON hoặc mảng từ .NET interop)\n" +
-                "var inputData = " + varName + ";\n\n" +
-                "// 1. Kiểm tra mảng an toàn (Hỗ trợ Array-like từ .NET interop, KHÔNG dùng Array.isArray)\n" +
-                "var isArrayLike = typeof inputData === 'object' && inputData !== null && typeof inputData.length === 'number';\n\n" +
-                "var results = [];\n" +
-                "var errorCount = 0;\n\n" +
-                "if (isArrayLike) {\n" +
-                "    // 2. Duyệt bằng vòng lặp for truyền thống (tránh .forEach / .map / .filter)\n" +
-                "    for (var i = 0; i < inputData.length; i++) {\n" +
-                "        var item = inputData[i];\n" +
-                "        try {\n" +
-                "            // 3. Nếu phần tử là chuỗi JSON, parse an toàn bằng try/catch\n" +
-                "            var obj = (typeof item === 'string') ? JSON.parse(item) : item;\n" +
-                "            if (obj) {\n" +
-                "                results.push(obj);\n" +
+            var varName = FirstInputVariableName;
+            ScriptCode =
+                "// Biến toàn cục từ input: " + varName + "\n" +
+                "function main() {\n" +
+                "    var inputData = " + varName + ";\n" +
+                "    // 1. Kiểm tra Array-like từ .NET interop (KHÔNG dùng Array.isArray)\n" +
+                "    var isArray = typeof inputData === 'object' && inputData !== null && typeof inputData.length === 'number';\n" +
+                "    var results = [];\n" +
+                "    var errorCount = 0;\n\n" +
+                "    if (isArray) {\n" +
+                "        // 2. Duyệt bằng vòng lặp for truyền thống (tránh .map / .forEach)\n" +
+                "        for (var i = 0; i < inputData.length; i++) {\n" +
+                "            var item = inputData[i];\n" +
+                "            try {\n" +
+                "                var obj = (typeof item === 'string') ? JSON.parse(item) : item;\n" +
+                "                if (obj) results.push(obj);\n" +
+                "            } catch(e) {\n" +
+                "                errorCount++;\n" +
                 "            }\n" +
-                "        } catch (e) {\n" +
-                "            errorCount++;\n" +
                 "        }\n" +
-                "    }\n" +
-                "}\n\n" +
-                "// 4. Trả về object kết quả trùng tên với Output keys\n" +
-                "return { count: results.length, items: results, errorCount: errorCount };";
+                "    } else if (inputData) {\n" +
+                "        results.push(inputData);\n" +
+                "    }\n\n" +
+                "    // 3. Trả về object kết quả (Nhấn nút '⚡ Đồng bộ key từ Code' ở tab Output keys để tự động cập nhật)\n" +
+                "    return {\n" +
+                "        count: results.length,\n" +
+                "        items: results,\n" +
+                "        errorCount: errorCount\n" +
+                "    };\n" +
+                "}\n";
         }
     }
 }

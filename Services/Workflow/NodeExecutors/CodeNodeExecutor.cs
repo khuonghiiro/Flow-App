@@ -363,6 +363,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                 }
             }
+            catch (Jint.Runtime.JavaScriptException jsEx)
+            {
+                var lineInfo = jsEx.Location.Start.Line > 0 ? $" (Dòng {jsEx.Location.Start.Line}, Cột {jsEx.Location.Start.Column})" : "";
+                var errorMsg = $"Lỗi Script JS{lineInfo}: {jsEx.Message}";
+                System.Diagnostics.Debug.WriteLine($"CodeNode error: {errorMsg}");
+                batchOutputs["error"] = errorMsg;
+                if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
+                    env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, codeNode.Id, batchOutputs);
+                lock (codeNode.ResolvedOutputsSyncRoot)
+                {
+                    codeNode.ResolvedOutputs.Clear();
+                    foreach (var kv in batchOutputs)
+                        codeNode.ResolvedOutputs[kv.Key] = kv.Value;
+                }
+                env.OnNodeFailed?.Invoke(codeNode, errorMsg);
+                throw new Exception(errorMsg, jsEx);
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"CodeNode error: {ex.Message}");

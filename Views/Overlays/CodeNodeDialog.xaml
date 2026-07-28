@@ -215,7 +215,7 @@
                                 <Run Text="  (chờ tối đa 3000ms, nếu không ghi dòng này thì dùng timeout mặc định của WebNode)."/>
                             </TextBlock>
                             <controls:SyntaxHighlightCodeEditor x:Name="CodeEditor"
-                                     Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
                                      IsAutoHighlightEnabled="False"
                                      MinHeight="140" MaxHeight="320" Margin="0,0,0,0"/>
@@ -225,9 +225,19 @@
                         <!-- Tab 2: Output keys -->
                         <TabItem Header="📊 Output keys" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
                             <StackPanel Margin="0,4,0,4">
-                                <TextBlock Text="Output keys (trùng với key trong object return)" 
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Output keys (trùng với key trong object return)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="⚡ Đồng bộ key từ Code" Height="28" Padding="10,0"
+                                            Command="{Binding SyncOutputKeysFromCodeCommand}"
+                                            Style="{DynamicResource PrimaryButton}" FontSize="11" Cursor="Hand"
+                                            ToolTip="Tự động trích xuất các key từ câu lệnh return { key1: ..., key2: ... } trong script code vào danh sách Output keys"/>
+                                </Grid>
                                 <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="280">
                                         <ItemsControl x:Name="OutputKeysItemsControl" ItemsSource="{Binding OutputKeysList}">
@@ -261,22 +271,31 @@
                         <!-- Tab 3: Ví dụ & Gợi ý -->
                         <TabItem Header="📖 Ví dụ" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
                             <StackPanel Margin="0,4,0,4">
-                                <!-- 🚨 QUY TẮC QUAN TRỌNG DỮ LIỆU INTEROP .NET -->
+                                <!-- 🚨 QUY TẮC MÔI TRƯỜNG & DỮ LIỆU CODE NODE -->
                                 <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource WarningColor}" BorderThickness="1" Padding="12" CornerRadius="8" Margin="0,0,0,12">
                                     <StackPanel>
-                                        <TextBlock Text="🚨 QUY TẮC XỬ LÝ MẢNG TỪ .NET (INTEROP / WEBVIEW2)" 
+                                        <TextBlock Text="🚨 QUY TẮC MÔI TRƯỜNG &amp; DỮ LIỆU CODE NODE (JINT C# ENGINE)" 
                                                    Foreground="{DynamicResource WarningColor}" FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
                                         <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
-                                            <Run Text="Dữ liệu từ .NET truyền sang JS (vd: List&lt;string&gt;, string[], mảng object...) là "/>
-                                            <Run Text="Array-like object" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text=" (có .length và truy cập được x[i], nhưng KHÔNG phải instance thật của Array)."/>
+                                            <Run Text="1. "/>
+                                            <Run Text="Môi trường đồng bộ:" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" Code chạy bằng Jint C# Engine. KHÔNG dùng fetch(), async/await mạng, window/document. HTTP Request/Upload hãy dùng node HttpRequest/WebNode trước."/>
                                         </TextBlock>
-
-                                        <TextBlock Text="1. KHÔNG dùng Array.isArray(x) -> luôn trả về false sai với interop array-like." Foreground="{DynamicResource DangerColor}" FontSize="11" Margin="0,2,0,2"/>
-                                        <TextBlock Text="2. Thay vào đó kiểm tra: typeof x === 'object' &amp;&amp; x !== null &amp;&amp; typeof x.length === 'number'" Foreground="{DynamicResource SuccessColor}" FontSize="11" Margin="0,2,0,2"/>
-                                        <TextBlock Text="3. Dùng vòng lặp truyền thống: for (let i = 0; i &lt; x.length; i++) { const item = x[i]; }" Foreground="{DynamicResource SuccessColor}" FontSize="11" Margin="0,2,0,2"/>
-                                        <TextBlock Text="   (Tránh dùng .map(), .filter(), .forEach() vì có thể bị lỗi 'not a function')." Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="12,0,0,4"/>
-                                        <TextBlock Text="4. Bọc JSON.parse(item) trong try/catch nếu phần tử là chuỗi JSON để bỏ qua item lỗi." Foreground="{DynamicResource PrimaryBrush}" FontSize="11" Margin="0,2,0,2"/>
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
+                                            <Run Text="2. "/>
+                                            <Run Text="Biến đầu vào toàn cục (Global):" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" Tự động nạp thành biến toàn cục. Trong code đọc trực tiếp tên biến (không khai báo lại trùng tên)." />
+                                        </TextBlock>
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
+                                            <Run Text="3. "/>
+                                            <Run Text="Hàm main() không tham số:" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" Định nghĩa function main() { ... } KHÔNG khai báo tham số trong ngoặc đơn (hệ thống gọi main() không truyền tham số, khai báo tham số sẽ đè biến toàn cục thành undefined)."/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
+                                            <Run Text="4. "/>
+                                            <Run Text="Dữ liệu .NET Interop (Array-like):" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" Mảng từ C# truyền sang là Array-like (có .length, index [i]). KHÔNG dùng Array.isArray(x) -> luôn trả về false. Kiểm tra: typeof x === 'object' &amp;&amp; x !== null &amp;&amp; typeof x.length === 'number', và duyệt bằng vòng for."/>
+                                        </TextBlock>
                                     </StackPanel>
                                 </Border>
 
@@ -288,7 +307,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="🤖 Prompt cho AI (Nhấn nút bên phải để Copy)" 
+                                            <TextBlock Grid.Column="0" Text="🤖 Prompt cho AI (Nhấn nút bên phải để Copy gửi cho ChatGPT/Claude)" 
                                                        Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                                             <Button Grid.Column="1" Content="📋 Copy Prompt cho AI" 
                                                     Command="{Binding CopyAiPromptGuidanceCommand}"
@@ -307,9 +326,9 @@
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
                                     <Run Text="1) Chọn Node + Key làm input (ví dụ node HttpRequest, key responseBody)."/>
                                     <LineBreak/>
-                                    <Run Text="2) Biến trong code = tên key (hoặc key tùy chỉnh). Chạy workflow → node Code lấy data từ node nguồn, gán vào biến rồi chạy script."/>
+                                    <Run Text="2) Biến trong code = tên biến (được tự động nạp thành biến toàn cục). Chạy workflow → node Code lấy data từ node nguồn, gán vào biến rồi chạy script."/>
                                     <LineBreak/>
-                                    <Run Text="3) Script phải trả về object { key: value }. Các key trùng với Output keys sẽ được đưa ra node."/>
+                                    <Run Text="3) Script phải trả về object { key: value }. Các key trùng với Output keys sẽ được đưa ra node (dùng nút '⚡ Đồng bộ key từ Code' ở tab Output keys để tự động thêm key)."/>
                                 </TextBlock>
                                 <TextBlock Text="Nhiều input cùng tên biến:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
@@ -319,26 +338,24 @@
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
                                     <Run Text="Khi bạn viết nhiều hàm (ví dụ processOrder, helper...) mà không có biểu thức return ở cuối script, hệ thống sẽ tự tìm và gọi "/>
                                     <Run Text="function main()" FontWeight="SemiBold" Foreground="{DynamicResource SuccessColor}"/>
-                                    <Run Text=". Bạn chỉ cần định nghĩa main() và trong đó return object kết quả."/>
+                                    <Run Text=". Không khai báo tham số trong main(), đọc trực tiếp các biến toàn cục bên trong."/>
                                 </TextBlock>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
-                                        <TextBlock Text="• Cách 1 (khuyến nghị): Định nghĩa function main() và return object trong main." Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock Text="• Cách 1 (khuyến nghị): Định nghĩa function main() KHÔNG tham số và return object trong main." Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run Text="function processOrder(order) { ... }"/>
-                                            <LineBreak/>
-                                            <Run Text="function main() { return processOrder("/>
+                                            <Run Text="function main() {&#10;    var data = "/>
                                             <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="); }"/>
+                                            <Run Text=";&#10;    return { count: data ? data.length : 0 };&#10;}"/>
                                         </TextBlock>
-                                        <TextBlock Text="• Cách 2: Viết biểu thức cuối cùng là lời gọi hàm trả object (ví dụ processOrder(input);)." Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBlock Text="• Cách 2: Viết biểu thức cuối cùng là lời gọi hàm trả object (ví dụ processOrder(input);) hoặc return { key: value }; cuối script." Foreground="{DynamicResource TextSecondary}"/>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Biến &amp; hàm gợi ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Margin="0,0,0,4">
-                                            <Run Text="• Biến input: " Foreground="{DynamicResource TextSecondary}"/>
+                                            <Run Text="• Biến input toàn cục: " Foreground="{DynamicResource TextSecondary}"/>
                                             <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
                                             <Run Text=" (chuỗi hoặc mảng từ node nguồn)" Foreground="{DynamicResource TextSecondary}"/>
                                         </TextBlock>
@@ -350,27 +367,9 @@
                                 <TextBlock Text="Ví dụ (xử lý an toàn mảng Array-like từ .NET interop):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6">
                                     <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                        <Run Text="var inputData = "/>
+                                        <Run Text="function main() {&#10;    var inputData = "/>
                                         <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
-                                        <Run Text=";"/>
-                                        <LineBreak/>
-                                        <Run Text="// 1. Check array-like an toàn"/>
-                                        <LineBreak/>
-                                        <Run Text="var isArray = typeof inputData === 'object' &amp;&amp; inputData !== null &amp;&amp; typeof inputData.length === 'number';"/>
-                                        <LineBreak/>
-                                        <Run Text="var results = [];"/>
-                                        <LineBreak/>
-                                        <Run Text="if (isArray) {"/>
-                                        <LineBreak/>
-                                        <Run Text="    for (var i = 0; i &lt; inputData.length; i++) {"/>
-                                        <LineBreak/>
-                                        <Run Text="        try { var item = (typeof inputData[i] === 'string') ? JSON.parse(inputData[i]) : inputData[i]; if(item) results.push(item); } catch(e) {}"/>
-                                        <LineBreak/>
-                                        <Run Text="    }"/>
-                                        <LineBreak/>
-                                        <Run Text="}"/>
-                                        <LineBreak/>
-                                        <Run Text="return { count: results.length, items: results };"/>
+                                        <Run Text=";&#10;    var isArray = typeof inputData === 'object' &amp;&amp; inputData !== null &amp;&amp; typeof inputData.length === 'number';&#10;    var results = [];&#10;    if (isArray) {&#10;        for (var i = 0; i &lt; inputData.length; i++) {&#10;            try { var item = (typeof inputData[i] === 'string') ? JSON.parse(inputData[i]) : inputData[i]; if(item) results.push(item); } catch(e) {}&#10;        }&#10;    }&#10;    return { count: results.length, items: results };&#10;}"/>
                                     </TextBlock>
                                 </Border>
                                 <Button Content="Chèn mẫu cơ bản" Command="{Binding InsertExampleSnippetCommand}"

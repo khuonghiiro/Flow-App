@@ -128,7 +128,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         finalImagePath = inputPath;
                     }
                 }
-                var outBase64 = Convert.ToBase64String(outBytes);
+                var pngBytes = EnsurePngBytes(outBytes);
+                var outBase64 = Convert.ToBase64String(pngBytes);
 
                 SetOutput(imageNode, "imagePath", finalImagePath, env);
                 SetOutput(imageNode, "imageBase64", outBase64, env);
@@ -405,6 +406,31 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             base64 = new string(base64.Where(c => !char.IsWhiteSpace(c)).ToArray());
             try { return Convert.FromBase64String(base64); }
             catch { return Array.Empty<byte>(); }
+        }
+
+        private static byte[] EnsurePngBytes(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return Array.Empty<byte>();
+
+            if (bytes.Length >= 8 &&
+                bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 &&
+                bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A)
+            {
+                return bytes;
+            }
+
+            try
+            {
+                using var msIn = new MemoryStream(bytes);
+                using var bmp = new Bitmap(msIn);
+                using var msOut = new MemoryStream();
+                bmp.Save(msOut, ImageFormat.Png);
+                return msOut.ToArray();
+            }
+            catch
+            {
+                return bytes;
+            }
         }
 
         /// <summary>
