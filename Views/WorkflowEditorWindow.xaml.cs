@@ -10,6 +10,7 @@ using CefSharp.Wpf;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Interop;
@@ -1428,9 +1429,9 @@ namespace FlowMy.Views
                 WorkflowLabel.Visibility = isVerySmallScreen ? Visibility.Collapsed : Visibility.Visible;
             }
 
-            if (WorkflowSelector != null)
+            if (WorkflowSelectorButton != null)
             {
-                WorkflowSelector.Width = isVerySmallScreen ? 150 : (isSmallScreen ? 180 : 220);
+                WorkflowSelectorButton.Width = isVerySmallScreen ? 150 : (isSmallScreen ? 180 : 220);
             }
 
             // Execution Panel
@@ -2799,5 +2800,128 @@ namespace FlowMy.Views
         // - MinimapManager.cs: Minimap
         // - GridManager.cs: Grid Manager
         // - TemplateNodeHandler.cs: Template Node Handler
+        private void WorkflowSelectorButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            if (WorkflowListPopup != null)
+            {
+                if (WorkflowListPopup.IsOpen)
+                {
+                    WorkflowListPopup.IsOpen = false;
+                }
+                else
+                {
+                    WorkflowListPopup.IsOpen = true;
+                    this.PreviewMouseDown -= WorkflowWindow_PreviewMouseDown;
+                    this.PreviewMouseDown += WorkflowWindow_PreviewMouseDown;
+                }
+            }
+        }
+
+        private void WorkflowWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (WorkflowListPopup == null || !WorkflowListPopup.IsOpen) return;
+
+            var child = WorkflowListPopup.Child as FrameworkElement;
+            if (child != null)
+            {
+                var clickedElement = e.OriginalSource as DependencyObject;
+                if (IsClickInsideWorkflowPopup(clickedElement, child))
+                {
+                    return; // Nhấp vào bên trong Popup, giữ nguyên không đóng
+                }
+
+                var mousePosBtn = e.GetPosition(WorkflowSelectorButton);
+                var btnRect = new Rect(0, 0, WorkflowSelectorButton.ActualWidth, WorkflowSelectorButton.ActualHeight);
+
+                if (!btnRect.Contains(mousePosBtn))
+                {
+                    WorkflowListPopup.IsOpen = false;
+                    this.PreviewMouseDown -= WorkflowWindow_PreviewMouseDown;
+                }
+            }
+        }
+
+        private bool IsClickInsideWorkflowPopup(DependencyObject clickedElement, DependencyObject popupChild)
+        {
+            if (clickedElement == null || popupChild == null) return false;
+
+            DependencyObject current = clickedElement;
+            while (current != null)
+            {
+                if (current == popupChild || current == WorkflowSelectorButton)
+                    return true;
+
+                DependencyObject next = null;
+                if (current is Visual)
+                {
+                    next = VisualTreeHelper.GetParent(current);
+                }
+                
+                if (next == null && current is FrameworkElement fe)
+                {
+                    next = fe.Parent ?? fe.TemplatedParent;
+                }
+
+                current = next;
+            }
+            return false;
+        }
+
+        private void WorkflowListPopup_Closed(object sender, EventArgs e)
+        {
+            this.PreviewMouseDown -= WorkflowWindow_PreviewMouseDown;
+        }
+
+        private void WorkflowGridScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (WorkflowGridScrollViewer != null)
+            {
+                WorkflowGridScrollViewer.ScrollToVerticalOffset(WorkflowGridScrollViewer.VerticalOffset - (e.Delta / 3.0));
+                e.Handled = true;
+            }
+        }
+
+        private void WorkflowGridListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (WorkflowGridListBox?.SelectedItem is FlowMy.Models.WorkflowItemInfo selectedItem)
+            {
+                if (ViewModel != null && !string.IsNullOrWhiteSpace(selectedItem.Name))
+                {
+                    ViewModel.CurrentWorkflowName = selectedItem.Name;
+                }
+                if (WorkflowListPopup != null)
+                {
+                    WorkflowListPopup.IsOpen = false;
+                }
+            }
+        }
+
+        private void TxtWorkflowSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (WorkflowGridListBox != null)
+            {
+                var filterText = TxtWorkflowSearch?.Text?.Trim();
+                var view = CollectionViewSource.GetDefaultView(WorkflowGridListBox.ItemsSource);
+                if (view != null)
+                {
+                    if (string.IsNullOrWhiteSpace(filterText))
+                    {
+                        view.Filter = null;
+                    }
+                    else
+                    {
+                        view.Filter = obj =>
+                        {
+                            if (obj is FlowMy.Models.WorkflowItemInfo item)
+                            {
+                                return item.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase);
+                            }
+                            return false;
+                        };
+                    }
+                }
+            }
+        }
     }
 }

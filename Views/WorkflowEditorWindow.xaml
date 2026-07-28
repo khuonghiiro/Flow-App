@@ -82,16 +82,180 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock x:Name="WorkflowLabel" Text="Workflow:" VerticalAlignment="Center" Margin="0,0,10,0" 
                                    Foreground="White" Opacity="0.6" FontSize="11" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="WorkflowSelector"
-                                  ItemsSource="{Binding SavedWorkflows}"
-                                  SelectedItem="{Binding CurrentWorkflowName}"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  MinWidth="150"
-                                  MaxWidth="300"
-                                  Width="220"
-                                  Height="32"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,8,0"/>
+                        <Grid VerticalAlignment="Center">
+                            <!-- Workflow Selector Dropdown Button -->
+                            <Border x:Name="WorkflowSelectorButton"
+                                    MinWidth="150"
+                                    MaxWidth="300"
+                                    Width="220"
+                                    Height="32"
+                                    CornerRadius="4"
+                                    Padding="10,0,8,0"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    PreviewMouseLeftButtonDown="WorkflowSelectorButton_PreviewMouseLeftButtonDown"
+                                    ToolTip="Click để xem &amp; chọn Workflow">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource ComboBoxFieldBackground}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ComboBoxFieldBorderBrush}"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource ComboBoxFieldHoverBackground}"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding CurrentWorkflowName, TargetNullValue='(Chưa chọn workflow)'}"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                    <controls:SvgViewboxEx Grid.Column="1"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, 
+                                                                    Converter={StaticResource IconKeyToPathConverter}, 
+                                                                    ConverterParameter='chevron-down regular'}"
+                                                           Width="12" Height="12"
+                                                           Fill="{DynamicResource ComboBoxGlyphBrush}"
+                                                           Margin="6,0,0,0"
+                                                           VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Popup Workflow Grid -->
+                            <Popup x:Name="WorkflowListPopup"
+                                   PlacementTarget="{Binding ElementName=WorkflowSelectorButton}"
+                                   Placement="Bottom"
+                                   StaysOpen="True"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Fade"
+                                   Closed="WorkflowListPopup_Closed">
+                                <Border Background="{DynamicResource ComboBoxPopupBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12"
+                                        MinWidth="420" MaxWidth="640" MaxHeight="460"
+                                        Margin="0,4,0,0">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{DynamicResource ShadowColor}" Direction="270" ShadowDepth="4" BlurRadius="12" Opacity="0.3"/>
+                                    </Border.Effect>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/> <!-- Header -->
+                                            <RowDefinition Height="Auto"/> <!-- Search -->
+                                            <RowDefinition Height="*"/>    <!-- Grid List -->
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Header -->
+                                        <DockPanel Grid.Row="0" Margin="2,0,2,8">
+                                            <TextBlock Text="DANH SÁCH WORKFLOW" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding SavedWorkflowItems.Count, StringFormat='({0} items)'}" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                        </DockPanel>
+
+                                        <!-- Search Input -->
+                                        <Border Grid.Row="1" Background="{DynamicResource TextBoxBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6,4" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <controls:SvgViewboxEx Grid.Column="0" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass regular'}"
+                                                                       Width="12" Height="12" Fill="{DynamicResource TextMuted}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBox x:Name="TxtWorkflowSearch" Grid.Column="1" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimary}"
+                                                         FontSize="11" VerticalAlignment="Center" TextChanged="TxtWorkflowSearch_TextChanged"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- ListBox in WrapPanel Grid layout -->
+                                        <ScrollViewer x:Name="WorkflowGridScrollViewer" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="360" PreviewMouseWheel="WorkflowGridScrollViewer_PreviewMouseWheel">
+                                            <ListBox x:Name="WorkflowGridListBox"
+                                                     ItemsSource="{Binding SavedWorkflowItems}"
+                                                     SelectionChanged="WorkflowGridListBox_SelectionChanged"
+                                                     Background="Transparent" BorderThickness="0" Padding="0"
+                                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                <ListBox.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ListBox.ItemsPanel>
+                                                <ListBox.ItemContainerStyle>
+                                                    <Style TargetType="ListBoxItem">
+                                                        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Setter Property="Padding" Value="8"/>
+                                                        <Setter Property="Margin" Value="4"/>
+                                                        <Setter Property="Width" Value="180"/>
+                                                        <Setter Property="Height" Value="75"/>
+                                                        <Setter Property="Cursor" Value="Hand"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="ListBoxItem">
+                                                                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                                            CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                        <Grid>
+                                                                            <!-- Name of Flow (Wrapped with Ellipsis) -->
+                                                                            <TextBlock x:Name="TxtWorkflowName"
+                                                                                       Text="{Binding Name}"
+                                                                                       Foreground="{DynamicResource TextPrimary}"
+                                                                                       FontSize="12" FontWeight="SemiBold"
+                                                                                       TextWrapping="Wrap"
+                                                                                       TextTrimming="CharacterEllipsis"
+                                                                                       LineHeight="16"
+                                                                                       LineStackingStrategy="BlockLineHeight"
+                                                                                       MaxHeight="34"
+                                                                                       VerticalAlignment="Top"
+                                                                                       HorizontalAlignment="Left"
+                                                                                       Margin="0,0,0,16"/>
+
+                                                                            <!-- Last modified time in bottom-left corner -->
+                                                                            <StackPanel x:Name="PnlLastModified" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                                                                                <controls:SvgViewboxEx x:Name="IconClock" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='clock regular'}"
+                                                                                                       Width="10" Height="10" Fill="{DynamicResource TextMuted}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                                                <TextBlock x:Name="TxtLastModified" Text="{Binding LastModifiedText}"
+                                                                                           Foreground="{DynamicResource TextMuted}"
+                                                                                           FontSize="10"
+                                                                                           VerticalAlignment="Center"/>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CardHoverBackground}"/>
+                                                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
+                                                                        </Trigger>
+                                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ListItemSelectedBackground}"/>
+                                                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                                            <Setter TargetName="Bd" Property="BorderThickness" Value="1.5"/>
+                                                                            <Setter TargetName="TxtWorkflowName" Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                                                            <Setter TargetName="IconClock" Property="Fill" Value="{DynamicResource PrimaryBrush}"/>
+                                                                            <Setter TargetName="TxtLastModified" Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                                                        </DataTrigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </ListBox.ItemContainerStyle>
+                                            </ListBox>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <Button x:Name="ReloadWorkflowButton"
                                 Click="ReloadWorkflowButton_Click"
                                 Style="{DynamicResource TransparentButtonStyle}"

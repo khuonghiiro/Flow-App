@@ -62,7 +62,7 @@ namespace FlowMy
 
                 ShowMainWindow();
 
-                System.Threading.Tasks.Task.Run(() =>
+                Dispatcher.BeginInvoke(new Action(() =>
                 {
                     try
                     {
@@ -73,7 +73,7 @@ namespace FlowMy
                     {
                         _logger?.LogWarning(cefEx, "⚠️ CefSharp init warning");
                     }
-                });
+                }));
 
                 // Không khởi tạo tray icon khi startup.
                 try

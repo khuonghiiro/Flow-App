@@ -23,6 +23,12 @@ namespace FlowMy.Services.Workflow
         /// </summary>
         public static void Initialize()
         {
+            if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(Initialize);
+                return;
+            }
+
             lock (_lock)
             {
                 if (_isInitialized || Cef.IsInitialized == true)
@@ -96,6 +102,12 @@ namespace FlowMy.Services.Workflow
         /// </summary>
         public static void Shutdown()
         {
+            if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(Shutdown);
+                return;
+            }
+
             lock (_lock)
             {
                 if (Cef.IsInitialized == true)

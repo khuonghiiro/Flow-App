@@ -76,14 +76,27 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private ObservableCollection<string> savedWorkflows = new();
 
+        [ObservableProperty]
+        private ObservableCollection<WorkflowItemInfo> savedWorkflowItems = new();
+
         private bool _isRefreshingAfterSave;
         private string? _loadedWorkflowName;
 
         partial void OnCurrentWorkflowNameChanged(string value)
         {
+            UpdateWorkflowItemsSelection(value);
             if (IsLoading || string.IsNullOrEmpty(value)) return;
             if (_isRefreshingAfterSave) return; // Save vừa xong, chỉ refresh ComboBox, không reload
             _ = LoadWorkflowAsync(value);
+        }
+
+        private void UpdateWorkflowItemsSelection(string currentName)
+        {
+            if (SavedWorkflowItems == null) return;
+            foreach (var item in SavedWorkflowItems)
+            {
+                item.IsSelected = string.Equals(item.Name, currentName, StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         partial void OnIsDebugReadOnlyModeChanged(bool value)
@@ -3709,6 +3722,41 @@ namespace FlowMy.ViewModels
                 SavedWorkflows.Clear();
                 foreach (var name in names) SavedWorkflows.Add(name);
                 OnPropertyChanged(nameof(SavedWorkflows));
+
+                var workflowsDir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
+                var rawItems = new List<WorkflowItemInfo>();
+                foreach (var name in names)
+                {
+                    DateTime lastMod = DateTime.MinValue;
+                    try
+                    {
+                        var filePath = Path.Combine(workflowsDir, $"{name}.json");
+                        if (File.Exists(filePath))
+                        {
+                            lastMod = File.GetLastWriteTime(filePath);
+                        }
+                    }
+                    catch { }
+
+                    rawItems.Add(new WorkflowItemInfo
+                    {
+                        Name = name,
+                        LastModified = lastMod,
+                        IsSelected = string.Equals(name, currentName, StringComparison.OrdinalIgnoreCase)
+                    });
+                }
+
+                var sortedItems = rawItems
+                    .OrderByDescending(i => i.LastModified)
+                    .ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                SavedWorkflowItems.Clear();
+                foreach (var item in sortedItems)
+                {
+                    SavedWorkflowItems.Add(item);
+                }
+                OnPropertyChanged(nameof(SavedWorkflowItems));
 
                 // Ensure CurrentWorkflowName still selected (khi _isRefreshingAfterSave=true thì không trigger LoadWorkflow)
                 if (!string.IsNullOrWhiteSpace(currentName))

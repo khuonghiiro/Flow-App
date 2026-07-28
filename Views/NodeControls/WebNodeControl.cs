@@ -2094,6 +2094,12 @@ namespace FlowMy.Views.NodeControls
 
             async void FetchSuggestionsAsync(string query)
             {
+                if (!urlBox.IsFocused)
+                {
+                    suggestPopup.IsOpen = false;
+                    return;
+                }
+
                 query = query.Trim();
                 if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
                 {
@@ -2154,9 +2160,11 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            // TextChanged → khởi động debounce 350ms
+            // TextChanged → khởi động debounce 350ms (chỉ chạy khi user chủ động focus gõ text)
             urlBox.TextChanged += (s, e) =>
             {
+                if (!urlBox.IsFocused) return;
+
                 suggestDebounce?.Stop();
                 suggestDebounce = new DispatcherTimer(DispatcherPriority.Background, webView.Dispatcher)
                 {
