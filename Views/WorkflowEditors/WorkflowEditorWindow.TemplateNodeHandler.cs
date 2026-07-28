@@ -1,4 +1,4 @@
-using FlowMy.Controls;
+﻿using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -385,6 +385,7 @@ namespace FlowMy.Views
                 "ShowInputMsgNode" => "user-message regular",
                 "DynamicUi" => "desktop-designer Custom-icons.color",
                 "DynamicUiNode" => "desktop-designer Custom-icons.color",
+                                "DataConvertNode" => "conveyor-belt-arm duotone-light",
                 _ => "circle duotone"
             };
         }

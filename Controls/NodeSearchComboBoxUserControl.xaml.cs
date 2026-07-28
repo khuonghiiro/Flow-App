@@ -1,4 +1,4 @@
-using FlowMy.Models;
+﻿using FlowMy.Models;
 using System;
 using System.Collections;
 using System.Collections.ObjectModel;
@@ -341,6 +341,7 @@ namespace FlowMy.Controls
                 "ActionCanVas" => "display regular",
                 "DynamicUi" => "desktop-designer Custom-icons.color",
                 "DynamicUiNode" => "desktop-designer Custom-icons.color",
+                "DataConvert" => "conveyor-belt-arm duotone-light",
                 _ => "cog"
             };
         }

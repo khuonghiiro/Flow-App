@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -933,6 +933,7 @@ namespace FlowMy.ViewModels
                 NodeType.ShowInputMsg => "Nhập dữ liệu",
                 NodeType.BorderHighlight => "Border Highlight",
                 NodeType.ActionCanVas => "Action Canvas",
+                NodeType.DataConvert => "Data Converter / Object Mapper",
                 _ => type.ToString()
             };
         }

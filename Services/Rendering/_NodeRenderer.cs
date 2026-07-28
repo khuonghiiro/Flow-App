@@ -1,4 +1,4 @@
-using FlowMy.Models;
+﻿using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using System.Windows;
@@ -51,6 +51,7 @@ namespace FlowMy.Services.Rendering
         private readonly BorderHighlightNodeRenderer _borderHighlightNodeRenderer;
         private readonly ActionCanVasNodeRenderer _actionCanVasNodeRenderer;
         private readonly ShowInputMsgNodeRenderer _showInputMsgNodeRenderer;
+        private readonly DataConvertNodeRenderer _dataConvertNodeRenderer;
         private readonly EmbedApplicationNodeRenderer _embedApplicationNodeRenderer;
         private readonly DynamicUiNodeRenderer _dynamicUiNodeRenderer;
 
@@ -100,6 +101,7 @@ namespace FlowMy.Services.Rendering
             BorderHighlightNodeRenderer borderHighlightNodeRenderer,
             ActionCanVasNodeRenderer actionCanVasNodeRenderer,
             ShowInputMsgNodeRenderer showInputMsgNodeRenderer,
+            DataConvertNodeRenderer dataConvertNodeRenderer,
             EmbedApplicationNodeRenderer embedApplicationNodeRenderer,
             DynamicUiNodeRenderer dynamicUiNodeRenderer
             )
@@ -143,6 +145,7 @@ namespace FlowMy.Services.Rendering
             _borderHighlightNodeRenderer = borderHighlightNodeRenderer ?? throw new ArgumentNullException(nameof(borderHighlightNodeRenderer));
             _actionCanVasNodeRenderer = actionCanVasNodeRenderer ?? throw new ArgumentNullException(nameof(actionCanVasNodeRenderer));
             _showInputMsgNodeRenderer = showInputMsgNodeRenderer ?? throw new ArgumentNullException(nameof(showInputMsgNodeRenderer));
+            _dataConvertNodeRenderer = dataConvertNodeRenderer ?? throw new ArgumentNullException(nameof(dataConvertNodeRenderer));
             _embedApplicationNodeRenderer = embedApplicationNodeRenderer ?? throw new ArgumentNullException(nameof(embedApplicationNodeRenderer));
             _dynamicUiNodeRenderer = dynamicUiNodeRenderer ?? throw new ArgumentNullException(nameof(dynamicUiNodeRenderer));
 
@@ -194,6 +197,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(BorderHighlightNode)]   = _borderHighlightNodeRenderer,
                 [typeof(FlowMy.Models.Nodes.ActionCanVasNode)] = _actionCanVasNodeRenderer,
                 [typeof(FlowMy.Models.Nodes.ShowInputMsgNode)] = _showInputMsgNodeRenderer,
+                [typeof(FlowMy.Models.Nodes.DataConvertNode)] = _dataConvertNodeRenderer,
                 [typeof(EmbedApplicationNode)]  = _embedApplicationNodeRenderer,
                 [typeof(FlowMy.Models.Nodes.DynamicUiNode)] = _dynamicUiNodeRenderer,
             };
