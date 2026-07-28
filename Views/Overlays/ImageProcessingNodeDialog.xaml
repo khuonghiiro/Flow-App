@@ -232,6 +232,73 @@ Height="32"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
+                            <!-- 📖 Hướng dẫn liên kết ID & codeId với Layer AI -->
+                            <Border Background="#161b26"
+                                    BorderBrush="#2e384e"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📖 Hướng dẫn liên kết ID &amp; codeId với Layer AI" 
+                                               Foreground="#4fffb0"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10.5" LineHeight="18" TextWrapping="Wrap">
+                                        <Run Text="Node Xử lý ảnh hỗ trợ tự động trao đổi và tái sử dụng ID hình ảnh với dialog Layer AI theo luồng song song:"/><LineBreak/>
+                                        <Run Text="• " FontWeight="Bold"/><Run Text="Cổng Output truyền Object chứa codeId từ Layer AI: " FontWeight="Bold"/><LineBreak/>
+                                        <Run Text="  - "/><Run Text="cropObject" Foreground="#4fffb0"/><Run Text=": JSON Object ảnh chính dạng "/><Run Text="{}{ &quot;codeId&quot;: &quot;...&quot;, &quot;base64&quot;: &quot;...&quot;, &quot;id&quot;: null }" Foreground="#e3b341"/><Run Text=" (nếu chưa có ID thì "/><Run Text="&quot;id&quot;: null" Foreground="#e3b341"/><Run Text=")."/><LineBreak/>
+                                        <Run Text="  - "/><Run Text="cropListObjects" Foreground="#4fffb0"/><Run Text=": JSON Array ảnh phụ dạng "/><Run Text="[ { &quot;codeId&quot;: &quot;...&quot;, &quot;base64&quot;: &quot;...&quot;, &quot;id&quot;: null } ]" Foreground="#e3b341"/><LineBreak/>
+                                        <Run Text="• " FontWeight="Bold"/><Run Text="Cổng Output trả lại ID về cho Layer AI (Luồng song song): " FontWeight="Bold"/><LineBreak/>
+                                        <Run Text="  - Trả về JSON Object dạng "/><Run Text="{}{ &quot;codeId&quot;: &quot;...&quot;, &quot;id&quot;: &quot;media_123&quot;, &quot;linkImage&quot;: &quot;https://...&quot; }" Foreground="#4fffb0"/><Run Text=" hoặc JSON Array. Dialog Layer AI sẽ tự động map chính xác "/><Run Text="codeId" Foreground="#4fffb0"/><Run Text=" để lưu "/><Run Text="id" Foreground="#4fffb0"/><Run Text=" về đúng Layer và tỉ lệ tương ứng."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🔗 Node nhận lại ID ảnh (Luồng song song Layer AI) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🔗 Node nhận lại ID ảnh (Luồng song song Layer AI)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Chọn node &amp; key trả về JSON chứa codeId và id/linkImage để tự động lưu ID về cho Layer tương ứng"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl x:Name="ReturnIdNodeComboBox"
+                                                       Height="32"
+                                                       ItemsSource="{Binding ReturnIdNodeOptions}"
+                                                       SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                       SelectedValue="{Binding ReturnIdNodeId, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="ReturnIdKeyComboBox"
+                                                       Height="32"
+                                                       Style="{DynamicResource BaseComboBox}"
+                                                       SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                       SelectedValue="{Binding ReturnIdOutputKey, Mode=TwoWay}"
+                                                       ItemsSource="{Binding ReturnIdKeyOptions, Mode=OneWay}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Cấu hình tên trường JSON linh hoạt -->
+                                    <TextBlock Text="Tên trường Code ID trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,4"/>
+                                    <TextBox Text="{Binding ReturnCodeIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Cách nhau bởi dấu phẩy hoặc dấu chấm phẩy, ví dụ: codeId, CodeId, code_id"/>
+
+                                    <TextBlock Text="Tên trường ID ảnh trả về trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding ReturnImageIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Cách nhau bởi dấu phẩy hoặc dấu chấm phẩy, ví dụ: id, Id, ID, mediaId, imageId"/>
+
+                                    <TextBlock Text="Tên trường Link ảnh trả về trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding ReturnImageLinkKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Cách nhau bởi dấu phẩy hoặc dấu chấm phẩy, ví dụ: linkImage, linkImg, imageUrl, url"/>
+                                </StackPanel>
+                            </Border>
+
                             <!-- 🎬 Node render ảnh -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
@@ -267,6 +334,15 @@ Height="32"/>
        ItemsSource="{Binding RenderNodeKeyOptions, Mode=OneWay}"/>
                                         </StackPanel>
                                     </Grid>
+                                    <!-- Cấu hình tên trường JSON linh hoạt khi render ảnh -->
+                                    <TextBlock Text="Tên trường Code ID trong JSON (Render)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,4"/>
+                                    <TextBox Text="{Binding RenderCodeIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Cách nhau bởi dấu phẩy hoặc dấu chấm phẩy, ví dụ: codeId, CodeId, code_id"/>
+
+                                    <TextBlock Text="Tên trường ID ảnh trả về trong JSON (Render)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding RenderImageIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Cách nhau bởi dấu phẩy hoặc dấu chấm phẩy, ví dụ: id, Id, ID, mediaId, imageId"/>
+
+                                    <TextBlock Text="Tên trường Link ảnh trả về trong JSON (Render)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding RenderImageLinkKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Cách nhau bởi dấu phẩy hoặc dấu chấm phẩy, ví dụ: linkImage, linkImg, imageUrl, url"/>
                                 </StackPanel>
                             </Border>
 

@@ -65,11 +65,24 @@ namespace FlowMy.ViewModels
 
         [ObservableProperty] private string? _renderNodeId;
         [ObservableProperty] private string? _renderNodeOutputKey;
+        [ObservableProperty] private string? _returnIdNodeId;
+        [ObservableProperty] private string? _returnIdOutputKey;
+
+        [ObservableProperty] private string _renderCodeIdKeys = "codeId, CodeId, code_id";
+        [ObservableProperty] private string _renderImageIdKeys = "id, Id, ID, mediaId, imageId, assetId";
+        [ObservableProperty] private string _renderImageLinkKeys = "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
+
+        [ObservableProperty] private string _returnCodeIdKeys = "codeId, CodeId, code_id";
+        [ObservableProperty] private string _returnImageIdKeys = "id, Id, ID, mediaId, imageId, assetId";
+        [ObservableProperty] private string _returnImageLinkKeys = "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
+
         public ObservableCollection<WorkflowOutputKeyOption> RenderNodeKeyOptions { get; } = new();
+        public ObservableCollection<WorkflowOutputKeyOption> ReturnIdKeyOptions { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> CroppedFolderKeyOptions { get; } = new();
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
         public ObservableCollection<WorkflowDataSourceOption> RenderNodeOptions { get; } = new();
+        public ObservableCollection<WorkflowDataSourceOption> ReturnIdNodeOptions { get; } = new();
 
         // ═══════ Layer AI: Dynamic UI Configuration ═══════
         [ObservableProperty] private string _layerAiHtmlCode = string.Empty;
@@ -105,6 +118,17 @@ namespace FlowMy.ViewModels
             RenderNodeId = _imageNode.RenderNodeId;
             RenderNodeOutputKey = _imageNode.RenderNodeOutputKey;
 
+            RenderCodeIdKeys = _imageNode.RenderCodeIdKeys;
+            RenderImageIdKeys = _imageNode.RenderImageIdKeys;
+            RenderImageLinkKeys = _imageNode.RenderImageLinkKeys;
+
+            ReturnIdNodeId = _imageNode.ReturnIdNodeId;
+            ReturnIdOutputKey = _imageNode.ReturnIdOutputKey;
+
+            ReturnCodeIdKeys = _imageNode.ReturnCodeIdKeys;
+            ReturnImageIdKeys = _imageNode.ReturnImageIdKeys;
+            ReturnImageLinkKeys = _imageNode.ReturnImageLinkKeys;
+
             // Layer AI code
             LayerAiHtmlCode = _imageNode.LayerAiHtmlCode ?? string.Empty;
             LayerAiCssCode = _imageNode.LayerAiCssCode ?? string.Empty;
@@ -129,6 +153,8 @@ namespace FlowMy.ViewModels
                     RefreshBase64KeyOptions();
                 else if (e.PropertyName == nameof(RenderNodeId))
                     RefreshRenderNodeKeyOptions();
+                else if (e.PropertyName == nameof(ReturnIdNodeId))
+                    RefreshReturnIdKeyOptions();
                 else if (e.PropertyName == nameof(CroppedFolderSourceNodeId))
                     RefreshCroppedFolderKeyOptions();
             };
@@ -151,7 +177,29 @@ namespace FlowMy.ViewModels
             RefreshUrlKeyOptions();
             RefreshBase64KeyOptions();
             RefreshRenderNodeKeyOptions();
+            RefreshReturnIdNodeOptions();
             RefreshCroppedFolderKeyOptions();
+        }
+
+        public void RefreshReturnIdNodeOptions()
+        {
+            ReturnIdNodeOptions.Clear();
+            if (_host.ViewModel?.Nodes == null) return;
+            foreach (var n in _host.ViewModel.Nodes)
+            {
+                if (ReferenceEquals(n, _imageNode)) continue;
+                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                ReturnIdNodeOptions.Add(CreateDataSourceOption(n));
+            }
+            RefreshReturnIdKeyOptions();
+        }
+
+        public void RefreshReturnIdKeyOptions()
+        {
+            ReturnIdKeyOptions.Clear();
+            var options = GetOutputKeysForNode(ReturnIdNodeId);
+            foreach (var o in options)
+                ReturnIdKeyOptions.Add(o);
         }
 
         public void RefreshRenderNodeOptions()
@@ -361,6 +409,17 @@ namespace FlowMy.ViewModels
 
             _imageNode.RenderNodeId = string.IsNullOrWhiteSpace(RenderNodeId) ? null : RenderNodeId;
             _imageNode.RenderNodeOutputKey = string.IsNullOrWhiteSpace(RenderNodeOutputKey) ? null : RenderNodeOutputKey;
+
+            _imageNode.RenderCodeIdKeys = RenderCodeIdKeys;
+            _imageNode.RenderImageIdKeys = RenderImageIdKeys;
+            _imageNode.RenderImageLinkKeys = RenderImageLinkKeys;
+
+            _imageNode.ReturnIdNodeId = string.IsNullOrWhiteSpace(ReturnIdNodeId) ? null : ReturnIdNodeId;
+            _imageNode.ReturnIdOutputKey = string.IsNullOrWhiteSpace(ReturnIdOutputKey) ? null : ReturnIdOutputKey;
+
+            _imageNode.ReturnCodeIdKeys = ReturnCodeIdKeys;
+            _imageNode.ReturnImageIdKeys = ReturnImageIdKeys;
+            _imageNode.ReturnImageLinkKeys = ReturnImageLinkKeys;
 
             if (previewRefresh)
             {

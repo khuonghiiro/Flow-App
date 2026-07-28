@@ -261,6 +261,48 @@
                         <!-- Tab 3: Ví dụ & Gợi ý -->
                         <TabItem Header="📖 Ví dụ" Style="{DynamicResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
                             <StackPanel Margin="0,4,0,4">
+                                <!-- 🚨 QUY TẮC QUAN TRỌNG DỮ LIỆU INTEROP .NET -->
+                                <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource WarningColor}" BorderThickness="1" Padding="12" CornerRadius="8" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="🚨 QUY TẮC XỬ LÝ MẢNG TỪ .NET (INTEROP / WEBVIEW2)" 
+                                                   Foreground="{DynamicResource WarningColor}" FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
+                                            <Run Text="Dữ liệu từ .NET truyền sang JS (vd: List&lt;string&gt;, string[], mảng object...) là "/>
+                                            <Run Text="Array-like object" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" (có .length và truy cập được x[i], nhưng KHÔNG phải instance thật của Array)."/>
+                                        </TextBlock>
+
+                                        <TextBlock Text="1. KHÔNG dùng Array.isArray(x) -> luôn trả về false sai với interop array-like." Foreground="{DynamicResource DangerColor}" FontSize="11" Margin="0,2,0,2"/>
+                                        <TextBlock Text="2. Thay vào đó kiểm tra: typeof x === 'object' &amp;&amp; x !== null &amp;&amp; typeof x.length === 'number'" Foreground="{DynamicResource SuccessColor}" FontSize="11" Margin="0,2,0,2"/>
+                                        <TextBlock Text="3. Dùng vòng lặp truyền thống: for (let i = 0; i &lt; x.length; i++) { const item = x[i]; }" Foreground="{DynamicResource SuccessColor}" FontSize="11" Margin="0,2,0,2"/>
+                                        <TextBlock Text="   (Tránh dùng .map(), .filter(), .forEach() vì có thể bị lỗi 'not a function')." Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="12,0,0,4"/>
+                                        <TextBlock Text="4. Bọc JSON.parse(item) trong try/catch nếu phần tử là chuỗi JSON để bỏ qua item lỗi." Foreground="{DynamicResource PrimaryBrush}" FontSize="11" Margin="0,2,0,2"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 🤖 PROMPT MẪU CHO AI -->
+                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" Padding="12" CornerRadius="8" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="🤖 Prompt cho AI (Nhấn nút bên phải để Copy)" 
+                                                       Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Content="📋 Copy Prompt cho AI" 
+                                                    Command="{Binding CopyAiPromptGuidanceCommand}"
+                                                    Style="{DynamicResource PrimaryButton}" Height="28" Padding="10,0" FontSize="11" Cursor="Hand"/>
+                                        </Grid>
+                                        <TextBox Text="{Binding AiPromptGuidance, Mode=OneWay}"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                                                 FontFamily="Consolas" FontSize="11" Height="110"
+                                                 Background="{DynamicResource CardColor}" Foreground="{DynamicResource TextSecondary}"
+                                                 ToolTip="Bấm Ctrl+A rồi Ctrl+C hoặc nhấn nút Copy ở trên để gửi cho AI."/>
+                                    </StackPanel>
+                                </Border>
+
                                 <TextBlock Text="Cách chạy:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
                                     <Run Text="1) Chọn Node + Key làm input (ví dụ node HttpRequest, key responseBody)."/>
@@ -298,39 +340,37 @@
                                         <TextBlock Margin="0,0,0,4">
                                             <Run Text="• Biến input: " Foreground="{DynamicResource TextSecondary}"/>
                                             <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
-                                            <Run Text=" (chuỗi từ node nguồn)" Foreground="{DynamicResource TextSecondary}"/>
+                                            <Run Text=" (chuỗi hoặc mảng từ node nguồn)" Foreground="{DynamicResource TextSecondary}"/>
                                         </TextBlock>
                                         <TextBlock Text="• JSON.parse(str) — chuyển chuỗi JSON thành object" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
                                         <TextBlock Text="• JSON.stringify(obj) — chuyển object thành chuỗi JSON" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
                                         <TextBlock Text="• return { key1: value1, key2: value2 }; — bắt buộc để trả output" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="• Output 'js' chạy trong WebView2 (không có biến từ input): nhúng giá trị bằng string concatenation:" Foreground="{DynamicResource WarningColor}" Margin="0,4,0,2"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,4">
-                                            <Run Text="const textToInput = JSON.stringify("/>
-                                            <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text=");"/>
-                                            <LineBreak/>
-                                            <Run Text="return { js: 'const textToInput = ' + textToInput + '; ...' };"/>
-                                        </TextBlock>
-                                        <TextBlock Text="Hoặc dùng template literal (nếu Jint hỗ trợ):" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,4,0,2"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="return { js: `const textToInput = ${JSON.stringify("/>
-                                            <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text=")}; ...` };"/>
-                                        </TextBlock>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Ví dụ (input là chuỗi JSON có mảng items):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Text="Ví dụ (xử lý an toàn mảng Array-like từ .NET interop):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6">
-                                    <TextBlock FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                        <Run Text="var data = JSON.parse("/>
+                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                        <Run Text="var inputData = "/>
                                         <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
-                                        <Run Text=");"/>
+                                        <Run Text=";"/>
                                         <LineBreak/>
-                                        <Run Text="var count = data.items ? data.items.length : 0;"/>
+                                        <Run Text="// 1. Check array-like an toàn"/>
                                         <LineBreak/>
-                                        <Run Text="var first = data.items &amp;&amp; data.items[0] ? data.items[0] : '';"/>
+                                        <Run Text="var isArray = typeof inputData === 'object' &amp;&amp; inputData !== null &amp;&amp; typeof inputData.length === 'number';"/>
                                         <LineBreak/>
-                                        <Run Text="return { count: count, first: first };"/>
+                                        <Run Text="var results = [];"/>
+                                        <LineBreak/>
+                                        <Run Text="if (isArray) {"/>
+                                        <LineBreak/>
+                                        <Run Text="    for (var i = 0; i &lt; inputData.length; i++) {"/>
+                                        <LineBreak/>
+                                        <Run Text="        try { var item = (typeof inputData[i] === 'string') ? JSON.parse(inputData[i]) : inputData[i]; if(item) results.push(item); } catch(e) {}"/>
+                                        <LineBreak/>
+                                        <Run Text="    }"/>
+                                        <LineBreak/>
+                                        <Run Text="}"/>
+                                        <LineBreak/>
+                                        <Run Text="return { count: results.length, items: results };"/>
                                     </TextBlock>
                                 </Border>
                                 <Button Content="Chèn mẫu cơ bản" Command="{Binding InsertExampleSnippetCommand}"

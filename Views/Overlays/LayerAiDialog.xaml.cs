@@ -23,6 +23,28 @@ namespace FlowMy.Views.Overlays
     {
         public static readonly ConcurrentQueue<string> PendingExecutionIds = new ConcurrentQueue<string>();
 
+        public class LayerAiExecutionScope
+        {
+            public string ExecutionId { get; set; } = string.Empty;
+            public EditorLayer MainLayer { get; set; } = null!;
+            public int AspectRatioIndex { get; set; }
+            public List<SecondaryImageItem> SecondaryImages { get; set; } = new();
+            public List<EditorLayer> Placeholders { get; set; } = new();
+        }
+
+        public static readonly ConcurrentDictionary<string, LayerAiExecutionScope> ActiveExecutionScopes = new();
+
+        public class CodeCropMappingInfo
+        {
+            public string CodeId { get; set; } = string.Empty;
+            public EditorLayer TargetLayer { get; set; } = null!;
+            public SecondaryImageItem? SecondaryImage { get; set; }
+            public int AspectRatioIndex { get; set; }
+            public string ExecutionId { get; set; } = string.Empty;
+        }
+
+        public static readonly ConcurrentDictionary<string, CodeCropMappingInfo> CropGuidRegistry = new();
+
         private EditorLayer _activeLayer;
         private readonly System.Collections.Generic.List<EditorLayer> _selectedLayers;
         private readonly System.Collections.Generic.Dictionary<EditorLayer, LayerAiState> _layerStates = new();
@@ -34,12 +56,33 @@ namespace FlowMy.Views.Overlays
         private Window? _ownerWindow;
 
         // Secondary images management
-        private class SecondaryImageItem
+        public class SecondaryImageItem
         {
+            public string CodeId { get; set; } = Guid.NewGuid().ToString("N");
             public BitmapSource? Bitmap { get; set; }
             public string? FilePath { get; set; }
             public bool IsSelected { get; set; } = true;
             public bool HasImage => Bitmap != null;
+            public System.Collections.Generic.Dictionary<int, string> AspectRatioIds { get; } = new System.Collections.Generic.Dictionary<int, string>();
+
+            public string? GetImageId(int aspectIndex)
+            {
+                if (AspectRatioIds.TryGetValue(aspectIndex, out var id) && !string.IsNullOrWhiteSpace(id))
+                    return id;
+                return null;
+            }
+
+            public void SetImageId(int aspectIndex, string? id)
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    AspectRatioIds.Remove(aspectIndex);
+                }
+                else
+                {
+                    AspectRatioIds[aspectIndex] = id.Trim();
+                }
+            }
         }
 
         private class LayerAiState
@@ -279,12 +322,17 @@ namespace FlowMy.Views.Overlays
                 state.SecondaryImages.Clear();
                 foreach (var src in layer.LayerAiSecondaryImages)
                 {
-                    state.SecondaryImages.Add(new SecondaryImageItem
+                    var secItem = new SecondaryImageItem
                     {
                         FilePath = src.FilePath,
                         IsSelected = src.IsSelected,
                         Bitmap = src.Bitmap
-                    });
+                    };
+                    foreach (var kvp in src.AspectRatioIds)
+                    {
+                        secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                    }
+                    state.SecondaryImages.Add(secItem);
                 }
                 // Ensure at least slotCount items
                 while (state.SecondaryImages.Count < state.SlotCount)
@@ -354,12 +402,17 @@ namespace FlowMy.Views.Overlays
             state.SecondaryImages.Clear();
             foreach (var img in _secondaryImages)
             {
-                state.SecondaryImages.Add(new SecondaryImageItem
+                var secItem = new SecondaryImageItem
                 {
                     Bitmap = img.Bitmap,
                     FilePath = img.FilePath,
                     IsSelected = img.IsSelected
-                });
+                };
+                foreach (var kvp in img.AspectRatioIds)
+                {
+                    secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                }
+                state.SecondaryImages.Add(secItem);
             }
 
             // Sync to the EditorLayer properties!
@@ -379,6 +432,10 @@ namespace FlowMy.Views.Overlays
                     IsSelected = img.IsSelected,
                     Bitmap = img.Bitmap
                 };
+                foreach (var kvp in img.AspectRatioIds)
+                {
+                    layerImg.AspectRatioIds[kvp.Key] = kvp.Value;
+                }
 
                 // Sync PNG bytes
                 if (img.Bitmap is BitmapSource bmp)
@@ -436,12 +493,17 @@ namespace FlowMy.Views.Overlays
                 _secondaryImages.Clear();
                 foreach (var src in state.SecondaryImages)
                 {
-                    _secondaryImages.Add(new SecondaryImageItem
+                    var secItem = new SecondaryImageItem
                     {
                         Bitmap = src.Bitmap,
                         FilePath = src.FilePath,
                         IsSelected = src.IsSelected
-                    });
+                    };
+                    foreach (var kvp in src.AspectRatioIds)
+                    {
+                        secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                    }
+                    _secondaryImages.Add(secItem);
                 }
                 // Ensure at least slotCount items
                 while (_secondaryImages.Count < _secondarySlotCount)
@@ -3098,6 +3160,10 @@ namespace FlowMy.Views.Overlays
         {
             if (_isSyncingUI) return;
             if (PanelCustomSize == null) return;
+            if (_activeLayer != null)
+            {
+                _activeLayer.LayerAiAspectRatioIndex = CmbAspectRatio.SelectedIndex;
+            }
             PanelCustomSize.Visibility = (CmbAspectRatio.SelectedIndex == 6) ? Visibility.Visible : Visibility.Collapsed;
             UpdatePreviewImage();
         }
@@ -3384,9 +3450,34 @@ namespace FlowMy.Views.Overlays
                 }
 
                 var execSvc = _host?.ViewModel?.WorkflowExecutionService;
+                string? existingMainId = _activeLayer.GetImageId(selectedIndex);
+                var selectedSecItems = _secondaryImages.Where(s => s.HasImage && s.IsSelected).ToList();
+                var existingSecIds = selectedSecItems.Select(s => s.GetImageId(selectedIndex)).Where(id => !string.IsNullOrEmpty(id)).ToList();
+
+                string mainCodeId = string.IsNullOrWhiteSpace(_activeLayer.CodeId) ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : _activeLayer.CodeId;
+                CropGuidRegistry[mainCodeId] = new CodeCropMappingInfo
+                {
+                    CodeId = mainCodeId,
+                    TargetLayer = _activeLayer,
+                    AspectRatioIndex = selectedIndex,
+                    ExecutionId = execId
+                };
+
+                var mainCropPayload = new
+                {
+                    codeId = mainCodeId,
+                    base64 = b64,
+                    id = string.IsNullOrWhiteSpace(existingMainId) ? (string?)null : existingMainId
+                };
+                string cropObjectJson = System.Text.Json.JsonSerializer.Serialize(mainCropPayload);
+
+                GetOrAddDynamicOutputPort("cropObject", "Layer AI - Crop Object {codeId, base64, id}").UserValueOverride = cropObjectJson;
+                GetOrAddDynamicOutputPort("mainCodeId", "Layer AI - Main Code ID").UserValueOverride = mainCodeId;
+
                 if (execSvc != null)
                 {
-                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropBase64", b64);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropObject", cropObjectJson);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "mainCodeId", mainCodeId);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "prompt", activePromptText);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptSize", batchSize.ToString());
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropWidth", processedImg.PixelWidth.ToString());
@@ -3396,8 +3487,8 @@ namespace FlowMy.Views.Overlays
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "executionId", execId);
                 }
 
-                // *** NEW: Collect secondary images base64 and set listBase64 output ***
-                await CollectAndSetListBase64Async(execId);
+                // *** NEW: Collect secondary images base64 and set listBase64/cropListObjects outputs ***
+                await CollectAndSetListBase64Async(execId, selectedIndex);
 
                 // Refresh outputs list in node dialog immediately to reflect the generated overrides
                 RefreshRelatedNodeDialogs();
@@ -3412,6 +3503,17 @@ namespace FlowMy.Views.Overlays
                     destinationParent.ChildLayers.Add(placeholder);
                     placeholders.Add(placeholder);
                 }
+
+                // Register execution scope for thread-safe multi-execution mapping
+                var scope = new LayerAiExecutionScope
+                {
+                    ExecutionId = execId,
+                    MainLayer = _activeLayer,
+                    AspectRatioIndex = selectedIndex,
+                    SecondaryImages = selectedSecItems,
+                    Placeholders = placeholders
+                };
+                ActiveExecutionScopes[execId] = scope;
 
                 // Notify HasChildren changed on parent so collapse toggle appears
                 destinationParent.OnPropertyChanged(nameof(EditorLayer.HasChildren));
@@ -3438,8 +3540,24 @@ namespace FlowMy.Views.Overlays
                     Action<string, string, string, string?> realtimeHandler = (runId, targetNodeId, targetKey, valStr) =>
                     {
                         if (string.IsNullOrWhiteSpace(valStr) || valStr == "—") return;
-                        if (!string.Equals(targetNodeId, nodeRef.RenderNodeId, StringComparison.OrdinalIgnoreCase) ||
-                            !string.Equals(targetKey, nodeRef.RenderNodeOutputKey, StringComparison.OrdinalIgnoreCase)) return;
+                        
+                        // Check if payload contains codeId and return ID object/array
+                        ProcessCodeIdResult(valStr, nodeRef.ReturnCodeIdKeys, nodeRef.ReturnImageIdKeys, nodeRef.ReturnImageLinkKeys);
+                        if (!string.IsNullOrWhiteSpace(nodeRef.RenderNodeId))
+                        {
+                            ProcessCodeIdResult(valStr, nodeRef.RenderCodeIdKeys, nodeRef.RenderImageIdKeys, nodeRef.RenderImageLinkKeys);
+                        }
+
+                        bool isIdOutput = string.Equals(targetKey, "mainImageId", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(targetKey, "imageId", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(targetKey, "mediaId", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(targetKey, "uploadedId", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(targetKey, "listImageIds", StringComparison.OrdinalIgnoreCase);
+
+                        bool isRenderOutput = string.Equals(targetNodeId, nodeRef.RenderNodeId, StringComparison.OrdinalIgnoreCase) &&
+                                              string.Equals(targetKey, nodeRef.RenderNodeOutputKey, StringComparison.OrdinalIgnoreCase);
+
+                        if (!isIdOutput && !isRenderOutput) return;
 
                         string actualRunId = execId;
                         if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
@@ -3453,6 +3571,36 @@ namespace FlowMy.Views.Overlays
                                        runId.StartsWith(actualRunId + ":", StringComparison.OrdinalIgnoreCase);
 
                         if (!isMatch) return;
+
+                        if (isIdOutput)
+                        {
+                            Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                if (ActiveExecutionScopes.TryGetValue(execId, out var execScope) && execScope != null)
+                                {
+                                    if (string.Equals(targetKey, "listImageIds", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        try
+                                        {
+                                            var idList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(valStr);
+                                            if (idList != null)
+                                            {
+                                                for (int i = 0; i < idList.Count && i < execScope.SecondaryImages.Count; i++)
+                                                {
+                                                    execScope.SecondaryImages[i].SetImageId(execScope.AspectRatioIndex, idList[i]);
+                                                }
+                                            }
+                                        }
+                                        catch { }
+                                    }
+                                    else
+                                    {
+                                        execScope.MainLayer.SetImageId(execScope.AspectRatioIndex, valStr);
+                                    }
+                                }
+                            });
+                            return;
+                        }
 
                         var links = ParseImageLinksFromOutput(valStr);
                         if (links.Count == 0) return;
@@ -3481,6 +3629,14 @@ namespace FlowMy.Views.Overlays
                                         placeholder.IsLoading = false;
                                         placeholder.StopLoadingTimer();
                                         ProcessAndApplyAiImage(placeholder, bmp, activeLayerRef, bounds, targetRatio, customW, customH);
+
+                                        // Extract returned ID and assign to placeholder & main layer for this aspect ratio
+                                        string returnedId = ExtractOrGenerateImageId(entry);
+                                        placeholder.SetImageId(selectedIndex, returnedId);
+                                        if (activeLayerRef != null)
+                                        {
+                                            activeLayerRef.SetImageId(selectedIndex, returnedId);
+                                        }
 
                                         destinationParent.ActiveChildLayer = placeholder;
                                         docRef.ActiveLayer = placeholder;
@@ -3649,39 +3805,201 @@ namespace FlowMy.Views.Overlays
         }
 
         /// <summary>
-        /// Collect selected secondary images, convert to base64, and set the listBase64 output.
+        /// Collect selected secondary images, convert to base64, and set the listBase64 and cropListObjects outputs.
         /// </summary>
-        private async Task CollectAndSetListBase64Async(string? execId = null)
+        private async Task CollectAndSetListBase64Async(string? execId = null, int aspectRatioIndex = 3)
         {
-            var selectedImages = _secondaryImages
+            var selectedSecItems = _secondaryImages
                 .Where(s => s.HasImage && s.IsSelected && s.Bitmap != null)
-                .Select(s => s.Bitmap!)
                 .ToList();
 
             string jsonArray = "[]";
+            string cropListObjectsJson = "[]";
 
-            if (selectedImages.Count > 0)
+            if (selectedSecItems.Count > 0)
             {
                 var base64List = new List<string>();
-                foreach (var bmp in selectedImages)
+                var cropListObjects = new List<object>();
+
+                foreach (var secItem in selectedSecItems)
                 {
-                    var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(bmp));
+                    var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(secItem.Bitmap!));
                     base64List.Add(b64);
+
+                    string secCodeId = string.IsNullOrWhiteSpace(secItem.CodeId) ? (secItem.CodeId = Guid.NewGuid().ToString("N")) : secItem.CodeId;
+                    string? existingId = secItem.GetImageId(aspectRatioIndex);
+
+                    if (!string.IsNullOrEmpty(execId))
+                    {
+                        CropGuidRegistry[secCodeId] = new CodeCropMappingInfo
+                        {
+                            CodeId = secCodeId,
+                            TargetLayer = _activeLayer,
+                            SecondaryImage = secItem,
+                            AspectRatioIndex = aspectRatioIndex,
+                            ExecutionId = execId
+                        };
+                    }
+
+                    cropListObjects.Add(new
+                    {
+                        codeId = secCodeId,
+                        base64 = b64,
+                        id = string.IsNullOrWhiteSpace(existingId) ? (string?)null : existingId
+                    });
                 }
                 jsonArray = System.Text.Json.JsonSerializer.Serialize(base64List);
+                cropListObjectsJson = System.Text.Json.JsonSerializer.Serialize(cropListObjects);
             }
 
-            var port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "listBase64", StringComparison.OrdinalIgnoreCase));
-            if (port != null) port.UserValueOverride = jsonArray;
+            GetOrAddDynamicOutputPort("cropListObjects", "Layer AI - Crops List Objects (JSON)").UserValueOverride = cropListObjectsJson;
 
             if (!string.IsNullOrEmpty(execId))
             {
                 var execSvc = _host?.ViewModel?.WorkflowExecutionService;
                 if (execSvc != null)
                 {
-                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "listBase64", jsonArray);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropListObjects", cropListObjectsJson);
                 }
             }
+        }
+
+        private FlowMy.Models.WorkflowDynamicDataPort GetOrAddDynamicOutputPort(string key, string displayName, FlowMy.Models.WorkflowDataType dataType = FlowMy.Models.WorkflowDataType.String)
+        {
+            if (_node.DynamicOutputs == null)
+            {
+                _node.DynamicOutputs = new System.Collections.Generic.List<FlowMy.Models.WorkflowDynamicDataPort>();
+            }
+            var port = _node.DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (port == null)
+            {
+                port = new FlowMy.Models.WorkflowDynamicDataPort
+                {
+                    Key = key,
+                    DisplayName = displayName,
+                    OutputType = dataType,
+                    IsMultiple = false
+                };
+                _node.DynamicOutputs.Add(port);
+            }
+            return port;
+        }
+
+        private static string ExtractOrGenerateImageId(string entry)
+        {
+            if (string.IsNullOrWhiteSpace(entry)) return Guid.NewGuid().ToString("N");
+            var trimmed = entry.Trim();
+            if (trimmed.Length > 200 || trimmed.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+            {
+                using (var md5 = System.Security.Cryptography.MD5.Create())
+                {
+                    byte[] hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(trimmed.Substring(0, Math.Min(trimmed.Length, 1000))));
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+            if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                if (!string.IsNullOrEmpty(query["id"])) return query["id"]!;
+                if (!string.IsNullOrEmpty(query["media_id"])) return query["media_id"]!;
+                var fileName = System.IO.Path.GetFileNameWithoutExtension(uri.LocalPath);
+                if (!string.IsNullOrWhiteSpace(fileName)) return fileName;
+            }
+            return trimmed;
+        }
+
+        private static HashSet<string> ParseKeySet(string? input, string defaultKeys)
+        {
+            var raw = string.IsNullOrWhiteSpace(input) ? defaultKeys : input;
+            var keys = raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static bool ProcessCodeIdResult(string valStr, string? codeIdKeys = null, string? imageIdKeys = null, string? imageLinkKeys = null)
+        {
+            if (string.IsNullOrWhiteSpace(valStr)) return false;
+
+            var codeIdSet = ParseKeySet(codeIdKeys, "codeId, CodeId, code_id");
+            var imageIdSet = ParseKeySet(imageIdKeys, "id, Id, ID, mediaId, imageId, assetId");
+            var imageLinkSet = ParseKeySet(imageLinkKeys, "linkImage, linkImg, link_image, imageUrl, url, src, link, path");
+
+            try
+            {
+                using (var doc = System.Text.Json.JsonDocument.Parse(valStr))
+                {
+                    var root = doc.RootElement;
+                    if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        return TryApplyCodeIdObject(root, codeIdSet, imageIdSet, imageLinkSet);
+                    }
+                    else if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        bool anyApplied = false;
+                        foreach (var element in root.EnumerateArray())
+                        {
+                            if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+                            {
+                                if (TryApplyCodeIdObject(element, codeIdSet, imageIdSet, imageLinkSet)) anyApplied = true;
+                            }
+                        }
+                        return anyApplied;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static bool TryApplyCodeIdObject(System.Text.Json.JsonElement element, HashSet<string> codeIdSet, HashSet<string> imageIdSet, HashSet<string> imageLinkSet)
+        {
+            if (element.ValueKind != System.Text.Json.JsonValueKind.Object) return false;
+
+            string? codeId = null;
+            string? returnedId = null;
+            string? returnedLink = null;
+
+            foreach (var prop in element.EnumerateObject())
+            {
+                var name = prop.Name;
+                var val = prop.Value.ValueKind == System.Text.Json.JsonValueKind.String ? prop.Value.GetString() : prop.Value.ToString();
+                if (string.IsNullOrWhiteSpace(val)) continue;
+
+                if (codeIdSet.Contains(name))
+                {
+                    codeId = val;
+                }
+                else if (imageIdSet.Contains(name))
+                {
+                    returnedId = val;
+                }
+                else if (imageLinkSet.Contains(name))
+                {
+                    returnedLink = val;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(codeId))
+            {
+                if (CropGuidRegistry.TryGetValue(codeId, out var info) && info != null)
+                {
+                    System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(returnedId))
+                        {
+                            if (info.SecondaryImage != null)
+                            {
+                                info.SecondaryImage.SetImageId(info.AspectRatioIndex, returnedId);
+                            }
+                            else if (info.TargetLayer != null)
+                            {
+                                info.TargetLayer.SetImageId(info.AspectRatioIndex, returnedId);
+                            }
+                        }
+                    });
+                    return true;
+                }
+            }
+            return false;
         }
 
         #endregion

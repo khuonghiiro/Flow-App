@@ -23,6 +23,14 @@ namespace FlowMy.Models.ImageEditor
         private int _offsetX;
         private int _offsetY;
         private WriteableBitmap? _thumbnailCache;
+        private string _codeId = Guid.NewGuid().ToString("N");
+
+        /// <summary>Mã định danh duy nhất (GUID) của layer để map kết quả AI từ workflow về đúng layer root.</summary>
+        public string CodeId
+        {
+            get => _codeId;
+            set => SetField(ref _codeId, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value);
+        }
 
         // Parent/Child/Variant hierarchy for AI edits
         private EditorLayer? _parentLayer;
@@ -540,6 +548,7 @@ namespace FlowMy.Models.ImageEditor
             copy.IsVisible = _isVisible;
             copy.BlendMode = _blendMode;
             copy.IsLocked = false; // copy luôn unlocked
+            copy.CodeId = Guid.NewGuid().ToString("N");
 
             copy.IsTextLayer = IsTextLayer;
             copy.TextContent = TextContent;
@@ -573,16 +582,28 @@ namespace FlowMy.Models.ImageEditor
             copy.LayerAiCustomWidth = LayerAiCustomWidth;
             copy.LayerAiCustomHeight = LayerAiCustomHeight;
             copy.LayerAiSecondarySlotCount = LayerAiSecondarySlotCount;
+            
+            // Copy main layer aspect-ratio IDs
+            foreach (var kvp in AspectRatioImageIds)
+            {
+                copy.AspectRatioImageIds[kvp.Key] = kvp.Value;
+            }
+
             copy.LayerAiSecondaryImages.Clear();
             foreach (var src in LayerAiSecondaryImages)
             {
-                copy.LayerAiSecondaryImages.Add(new LayerAiSecondaryImage
+                var secCopy = new LayerAiSecondaryImage
                 {
                     PngBytes = src.PngBytes,
                     FilePath = src.FilePath,
                     IsSelected = src.IsSelected,
                     Bitmap = src.Bitmap
-                });
+                };
+                foreach (var kvp in src.AspectRatioIds)
+                {
+                    secCopy.AspectRatioIds[kvp.Key] = kvp.Value;
+                }
+                copy.LayerAiSecondaryImages.Add(secCopy);
             }
             
             if (ParentLayer != null && ParentLayer.ContentGeometry != null)
@@ -830,7 +851,7 @@ namespace FlowMy.Models.ImageEditor
             InvalidateThumbnail();
         }
 
-        // Layer AI settings specific to this layer
+            // Layer AI settings specific to this layer
         public byte[]? PngBytes { get; set; }
         public string LayerAiPrompt { get; set; } = string.Empty;
         public int LayerAiBatchSizeIndex { get; set; } = 2; // Default size index (usually 3)
@@ -839,12 +860,72 @@ namespace FlowMy.Models.ImageEditor
         public string LayerAiCustomHeight { get; set; } = string.Empty;
         public int LayerAiSecondarySlotCount { get; set; } = 4;
 
+        /// <summary>Bảng lưu trữ ID tương ứng với từng tỉ lệ ảnh (Key = AspectRatioIndex [0..6]).</summary>
+        public System.Collections.Generic.Dictionary<int, string> AspectRatioImageIds { get; } = new System.Collections.Generic.Dictionary<int, string>();
+
+        public string? GetImageId(int aspectIndex)
+        {
+            if (AspectRatioImageIds.TryGetValue(aspectIndex, out var id) && !string.IsNullOrWhiteSpace(id))
+                return id;
+            return null;
+        }
+
+        public void SetImageId(int aspectIndex, string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                AspectRatioImageIds.Remove(aspectIndex);
+            }
+            else
+            {
+                AspectRatioImageIds[aspectIndex] = id.Trim();
+            }
+            OnPropertyChanged(nameof(CurrentImageId));
+            OnPropertyChanged(nameof(HasImageId));
+            OnPropertyChanged(nameof(ShortImageId));
+        }
+
+        /// <summary>ID của ảnh ở tỉ lệ hiện tại.</summary>
+        public string? CurrentImageId => GetImageId(LayerAiAspectRatioIndex);
+        public bool HasImageId => !string.IsNullOrEmpty(CurrentImageId);
+
+        /// <summary>Hiển thị ID vắn tắt trên UI (ví dụ `#ID: 8a7f9b...`).</summary>
+        public string ShortImageId
+        {
+            get
+            {
+                var id = CurrentImageId;
+                if (string.IsNullOrEmpty(id)) return string.Empty;
+                return id.Length > 10 ? $"#ID: {id.Substring(0, 8)}…" : $"#ID: {id}";
+            }
+        }
+
         public class LayerAiSecondaryImage
         {
             public byte[]? PngBytes { get; set; }
             public string? FilePath { get; set; }
             public bool IsSelected { get; set; } = true;
             public BitmapSource? Bitmap { get; set; }
+            public System.Collections.Generic.Dictionary<int, string> AspectRatioIds { get; } = new System.Collections.Generic.Dictionary<int, string>();
+
+            public string? GetImageId(int aspectIndex)
+            {
+                if (AspectRatioIds.TryGetValue(aspectIndex, out var id) && !string.IsNullOrWhiteSpace(id))
+                    return id;
+                return null;
+            }
+
+            public void SetImageId(int aspectIndex, string? id)
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    AspectRatioIds.Remove(aspectIndex);
+                }
+                else
+                {
+                    AspectRatioIds[aspectIndex] = id.Trim();
+                }
+            }
         }
 
         public List<LayerAiSecondaryImage> LayerAiSecondaryImages { get; } = new List<LayerAiSecondaryImage>

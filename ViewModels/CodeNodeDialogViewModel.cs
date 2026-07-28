@@ -405,6 +405,26 @@ namespace FlowMy.ViewModels
             if (CodeFontSize < 24) CodeFontSize++;
         }
 
+        [ObservableProperty]
+        private string _aiPromptGuidance = @"Bối cảnh: Code chạy trong JS engine nhúng (embedded JS engine trong ứng dụng .NET, tương tác qua WebView2). Dữ liệu từ C# truyền sang JS (ví dụ List<string>, string[], mảng object...) thường bị marshal thành ""array-like object"" — có .length và truy cập được theo index (obj[0], obj[1]...) nhưng KHÔNG phải instance thật của Array.
+
+Yêu cầu viết code:
+1. KHÔNG được dùng Array.isArray(x) để kiểm tra một biến có phải danh sách/mảng hay không, vì nó sẽ trả về false sai với các array-like object đến từ interop .NET.
+2. Thay vào đó, kiểm tra bằng: typeof x === 'object' && x !== null && typeof x.length === 'number'.
+3. Khi loop qua mảng/danh sách, dùng vòng lặp `for (let i = 0; i < x.length; i++)` thay vì các method Array-only như .map(), .filter(), .forEach(), .reduce(), .find().
+4. Nếu phần tử trong danh sách là chuỗi JSON (string) thay vì object, phải bọc JSON.parse() trong try/catch để bỏ qua phần tử lỗi mà không làm crash toàn bộ vòng lặp.
+5. Luôn trả về object kết quả: return { outputKey1: result1, outputKey2: result2 }; hoặc dùng function main() { return { ... }; }";
+
+        [RelayCommand]
+        private void CopyAiPromptGuidance()
+        {
+            try
+            {
+                System.Windows.Clipboard.SetText(AiPromptGuidance);
+            }
+            catch { }
+        }
+
         [RelayCommand]
         private void DecreaseCodeFontSize()
         {
@@ -415,11 +435,29 @@ namespace FlowMy.ViewModels
         private void InsertExampleSnippet()
         {
             var varName = EffectiveInputKeyDisplay;
-            ScriptCode = "// Biến từ input: " + varName + " (chuỗi từ node nguồn)\n" +
-                "var data = JSON.parse(" + varName + ");\n" +
-                "var count = data.items ? data.items.length : 0;\n" +
-                "var first = (data.items && data.items[0]) ? data.items[0] : '';\n" +
-                "return { count: count, first: first };";
+            ScriptCode = "// Biến từ input: " + varName + " (chuỗi JSON hoặc mảng từ .NET interop)\n" +
+                "var inputData = " + varName + ";\n\n" +
+                "// 1. Kiểm tra mảng an toàn (Hỗ trợ Array-like từ .NET interop, KHÔNG dùng Array.isArray)\n" +
+                "var isArrayLike = typeof inputData === 'object' && inputData !== null && typeof inputData.length === 'number';\n\n" +
+                "var results = [];\n" +
+                "var errorCount = 0;\n\n" +
+                "if (isArrayLike) {\n" +
+                "    // 2. Duyệt bằng vòng lặp for truyền thống (tránh .forEach / .map / .filter)\n" +
+                "    for (var i = 0; i < inputData.length; i++) {\n" +
+                "        var item = inputData[i];\n" +
+                "        try {\n" +
+                "            // 3. Nếu phần tử là chuỗi JSON, parse an toàn bằng try/catch\n" +
+                "            var obj = (typeof item === 'string') ? JSON.parse(item) : item;\n" +
+                "            if (obj) {\n" +
+                "                results.push(obj);\n" +
+                "            }\n" +
+                "        } catch (e) {\n" +
+                "            errorCount++;\n" +
+                "        }\n" +
+                "    }\n" +
+                "}\n\n" +
+                "// 4. Trả về object kết quả trùng tên với Output keys\n" +
+                "return { count: results.length, items: results, errorCount: errorCount };";
         }
     }
 }

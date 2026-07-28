@@ -475,6 +475,9 @@ namespace FlowMy.Models.Nodes
             set { if (_isVerticalMode != value) { _isVerticalMode = value; OnPropertyChanged(); } }
         }
 
+        private string? _returnIdNodeId;
+        private string? _returnIdOutputKey;
+
         /// <summary>Id node render ảnh (được chọn trong tab Cấu hình). Dùng để biết ảnh render thuộc crop nào qua ExecutionId.</summary>
         public string? RenderNodeId
         {
@@ -487,6 +490,70 @@ namespace FlowMy.Models.Nodes
         {
             get => _renderNodeOutputKey;
             set { if (_renderNodeOutputKey != value) { _renderNodeOutputKey = value; OnPropertyChanged(); } }
+        }
+
+        private string _renderCodeIdKeys = "codeId, CodeId, code_id";
+        private string _renderImageIdKeys = "id, Id, ID, mediaId, imageId, assetId";
+        private string _renderImageLinkKeys = "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
+
+        /// <summary>Các tên trường đại diện cho Code ID khi render ảnh trong JSON (cách nhau bởi dấu , hoặc ;).</summary>
+        public string RenderCodeIdKeys
+        {
+            get => _renderCodeIdKeys;
+            set { if (_renderCodeIdKeys != value) { _renderCodeIdKeys = value ?? "codeId, CodeId, code_id"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Các tên trường đại diện cho ID ảnh khi render trong JSON (cách nhau bởi dấu , hoặc ;).</summary>
+        public string RenderImageIdKeys
+        {
+            get => _renderImageIdKeys;
+            set { if (_renderImageIdKeys != value) { _renderImageIdKeys = value ?? "id, Id, ID, mediaId, imageId, assetId"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Các tên trường đại diện cho Link/URL ảnh khi render trong JSON (cách nhau bởi dấu , hoặc ;).</summary>
+        public string RenderImageLinkKeys
+        {
+            get => _renderImageLinkKeys;
+            set { if (_renderImageLinkKeys != value) { _renderImageLinkKeys = value ?? "linkImage, linkImg, link_image, imageUrl, url, src, link, path"; OnPropertyChanged(); } }
+        }
+
+        private string _returnCodeIdKeys = "codeId, CodeId, code_id";
+        private string _returnImageIdKeys = "id, Id, ID, mediaId, imageId, assetId";
+        private string _returnImageLinkKeys = "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
+
+        /// <summary>Các tên trường đại diện cho Code ID trong kết quả JSON (cách nhau bởi dấu , hoặc ;).</summary>
+        public string ReturnCodeIdKeys
+        {
+            get => _returnCodeIdKeys;
+            set { if (_returnCodeIdKeys != value) { _returnCodeIdKeys = value ?? "codeId, CodeId, code_id"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Các tên trường đại diện cho ID ảnh trả về trong kết quả JSON (cách nhau bởi dấu , hoặc ;).</summary>
+        public string ReturnImageIdKeys
+        {
+            get => _returnImageIdKeys;
+            set { if (_returnImageIdKeys != value) { _returnImageIdKeys = value ?? "id, Id, ID, mediaId, imageId, assetId"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Các tên trường đại diện cho Link/URL ảnh trả về trong kết quả JSON (cách nhau bởi dấu , hoặc ;).</summary>
+        public string ReturnImageLinkKeys
+        {
+            get => _returnImageLinkKeys;
+            set { if (_returnImageLinkKeys != value) { _returnImageLinkKeys = value ?? "linkImage, linkImg, link_image, imageUrl, url, src, link, path"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Id node chọn luồng nhận lại ID ảnh (trả về JSON chứa codeId và id/linkImage).</summary>
+        public string? ReturnIdNodeId
+        {
+            get => _returnIdNodeId;
+            set { if (_returnIdNodeId != value) { _returnIdNodeId = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Output key của node chọn luồng nhận lại ID ảnh.</summary>
+        public string? ReturnIdOutputKey
+        {
+            get => _returnIdOutputKey;
+            set { if (_returnIdOutputKey != value) { _returnIdOutputKey = value; OnPropertyChanged(); } }
         }
 
         /// <summary>
