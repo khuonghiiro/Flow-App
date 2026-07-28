@@ -85,6 +85,7 @@ public sealed partial class FileWorkflowPersistenceService
                 if (d.TryGetValue("LeftSourceNodeId", out v)) branch.LeftSourceNodeId = GetStringFromJsonValue(v);
                 if (d.TryGetValue("LeftKey", out v)) branch.LeftKey = GetStringFromJsonValue(v);
                 if (d.TryGetValue("Operator", out v) && Enum.TryParse<ConditionOperator>(GetStringFromJsonValue(v), out var op)) branch.Operator = op;
+                if (d.TryGetValue("IsInverted", out v) && bool.TryParse(GetStringFromJsonValue(v), out var inv)) branch.IsInverted = inv;
                 if (d.TryGetValue("RightUseLiteralValue", out v) && bool.TryParse(GetStringFromJsonValue(v), out var ruv)) branch.RightUseLiteralValue = ruv;
                 if (d.TryGetValue("RightLiteralValue", out v)) branch.RightLiteralValue = GetStringFromJsonValue(v);
                 if (d.TryGetValue("RightSourceNodeId", out v)) branch.RightSourceNodeId = GetStringFromJsonValue(v);
@@ -105,6 +106,7 @@ public sealed partial class FileWorkflowPersistenceService
                                 if (x.TryGetValue("LeftSourceNodeId", out var vx)) expr.LeftSourceNodeId = GetStringFromJsonValue(vx);
                                 if (x.TryGetValue("LeftKey", out vx)) expr.LeftKey = GetStringFromJsonValue(vx);
                                 if (x.TryGetValue("Operator", out vx) && Enum.TryParse<ConditionOperator>(GetStringFromJsonValue(vx), out var opx)) expr.Operator = opx;
+                                if (x.TryGetValue("IsInverted", out vx) && bool.TryParse(GetStringFromJsonValue(vx), out var invx)) expr.IsInverted = invx;
                                 if (x.TryGetValue("RightUseLiteralValue", out vx) && bool.TryParse(GetStringFromJsonValue(vx), out var ruvx)) expr.RightUseLiteralValue = ruvx;
                                 if (x.TryGetValue("RightLiteralValue", out vx)) expr.RightLiteralValue = GetStringFromJsonValue(vx);
                                 if (x.TryGetValue("RightSourceNodeId", out vx)) expr.RightSourceNodeId = GetStringFromJsonValue(vx);
@@ -146,6 +148,7 @@ public sealed partial class FileWorkflowPersistenceService
             LeftSourceNodeId = b.LeftSourceNodeId,
             LeftKey = b.LeftKey,
             Operator = b.Operator.ToString(),
+            IsInverted = b.IsInverted,
             RightUseLiteralValue = b.RightUseLiteralValue,
             RightLiteralValue = b.RightLiteralValue,
             RightSourceNodeId = b.RightSourceNodeId,
@@ -158,6 +161,7 @@ public sealed partial class FileWorkflowPersistenceService
                 LeftSourceNodeId = expr.LeftSourceNodeId,
                 LeftKey = expr.LeftKey,
                 Operator = expr.Operator.ToString(),
+                IsInverted = expr.IsInverted,
                 RightUseLiteralValue = expr.RightUseLiteralValue,
                 RightLiteralValue = expr.RightLiteralValue,
                 RightSourceNodeId = expr.RightSourceNodeId,

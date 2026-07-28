@@ -40,23 +40,14 @@ namespace FlowMy.ViewModels
         public ObservableCollection<ConditionOperatorOption> OperatorOptions { get; } = new()
         {
             new ConditionOperatorOption(ConditionOperator.Equal, "Bằng (==)"),
-            new ConditionOperatorOption(ConditionOperator.NotEqual, "Khác (!=)"),
             new ConditionOperatorOption(ConditionOperator.GreaterThan, "Lớn hơn (>)"),
             new ConditionOperatorOption(ConditionOperator.GreaterThanOrEqual, "Lớn hơn hoặc bằng (>=)"),
-            new ConditionOperatorOption(ConditionOperator.LessThan, "Nhỏ hơn (<)"),
-            new ConditionOperatorOption(ConditionOperator.LessThanOrEqual, "Nhỏ hơn hoặc bằng (<=)"),
             new ConditionOperatorOption(ConditionOperator.Contains, "Chuỗi chứa"),
-            new ConditionOperatorOption(ConditionOperator.NotContains, "Chuỗi không chứa"),
             new ConditionOperatorOption(ConditionOperator.TextEquals, "So sánh text (không phân biệt hoa thường)"),
-            new ConditionOperatorOption(ConditionOperator.TextNotEquals, "So sánh text khác"),
-            new ConditionOperatorOption(ConditionOperator.Empty, "Rỗng"),
-            new ConditionOperatorOption(ConditionOperator.NotEmpty, "Không rỗng"),
+            new ConditionOperatorOption(ConditionOperator.Empty, "Null"),
             new ConditionOperatorOption(ConditionOperator.True, "Giá trị là TRUE"),
-            new ConditionOperatorOption(ConditionOperator.False, "Giá trị là FALSE"),
             new ConditionOperatorOption(ConditionOperator.ImageSimilarityGte, "🖼️ Ảnh khớp >= %"),
-            new ConditionOperatorOption(ConditionOperator.ImageSimilarityLte, "🖼️ Ảnh khớp <= %"),
-            new ConditionOperatorOption(ConditionOperator.ImageSimilarityGt, "🖼️ Ảnh khớp > %"),
-            new ConditionOperatorOption(ConditionOperator.ImageSimilarityLt, "🖼️ Ảnh khớp < %")
+            new ConditionOperatorOption(ConditionOperator.ImageSimilarityGt, "🖼️ Ảnh khớp > %")
         };
 
         public ConditionalNodeDialogViewModel(WorkflowNode node, IWorkflowEditorHost host)

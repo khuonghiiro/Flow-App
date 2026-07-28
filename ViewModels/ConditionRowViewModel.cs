@@ -37,6 +37,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private ConditionOperator _operator;
 
+        [ObservableProperty]
+        private bool _isInverted;
+
         /// <summary>True = bên phải dùng giá trị nhập (TextBox); False = chọn node + key.</summary>
         [ObservableProperty]
         private bool _rightUseLiteralValue;
@@ -100,7 +103,9 @@ namespace FlowMy.ViewModels
 
             _leftSourceNodeId = branch.LeftSourceNodeId;
             _leftKey = branch.LeftKey;
-            _operator = branch.Operator;
+            var (normOp, normInv) = SubConditionViewModel.NormalizeOperator(branch.Operator, branch.IsInverted);
+            _operator = normOp;
+            _isInverted = normInv;
             _rightUseLiteralValue = branch.RightUseLiteralValue;
             _rightLiteralValue = branch.RightLiteralValue ?? string.Empty;
             _rightSourceNodeId = branch.RightSourceNodeId;
@@ -167,6 +172,33 @@ namespace FlowMy.ViewModels
         {
             OnPropertyChanged(nameof(IsRightSideVisible));
             OnPropertyChanged(nameof(IsImageSimilarityMode));
+            OnPropertyChanged(nameof(EffectiveConditionDescription));
+        }
+
+        partial void OnIsInvertedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(EffectiveConditionDescription));
+        }
+
+        public string EffectiveConditionDescription
+        {
+            get
+            {
+                if (!IsInverted) return string.Empty;
+                return Operator switch
+                {
+                    ConditionOperator.Equal => "➔ Khác (!=)",
+                    ConditionOperator.GreaterThan => "➔ Nhỏ hơn (<)",
+                    ConditionOperator.GreaterThanOrEqual => "➔ Nhỏ hơn hoặc bằng (<=)",
+                    ConditionOperator.Contains => "➔ Chuỗi không chứa",
+                    ConditionOperator.TextEquals => "➔ So sánh text khác",
+                    ConditionOperator.Empty => "➔ Not Null",
+                    ConditionOperator.True => "➔ Giá trị là FALSE",
+                    ConditionOperator.ImageSimilarityGte => "➔ 🖼️ Ảnh khớp <= %",
+                    ConditionOperator.ImageSimilarityGt => "➔ 🖼️ Ảnh khớp < %",
+                    _ => "➔ [Phủ định (!)]"
+                };
+            }
         }
 
         private void LoadSubConditions(ObservableCollection<WorkflowDataSourceOption> availableSourceNodes)
@@ -249,6 +281,7 @@ namespace FlowMy.ViewModels
                 Branch.LeftSourceNodeId = Branch.SubConditions?[0]?.LeftSourceNodeId;
                 Branch.LeftKey = Branch.SubConditions?[0]?.LeftKey;
                 Branch.Operator = Branch.SubConditions?[0]?.Operator ?? Operator;
+                Branch.IsInverted = Branch.SubConditions?[0]?.IsInverted ?? IsInverted;
                 Branch.RightUseLiteralValue = Branch.SubConditions?[0]?.RightUseLiteralValue ?? RightUseLiteralValue;
                 Branch.RightLiteralValue = Branch.SubConditions?[0]?.RightLiteralValue;
                 Branch.RightSourceNodeId = Branch.SubConditions?[0]?.RightSourceNodeId;
@@ -262,6 +295,7 @@ namespace FlowMy.ViewModels
                 Branch.LeftSourceNodeId = LeftSourceNodeId;
                 Branch.LeftKey = LeftKey;
                 Branch.Operator = Operator;
+                Branch.IsInverted = IsInverted;
                 Branch.RightUseLiteralValue = RightUseLiteralValue;
                 Branch.RightLiteralValue = string.IsNullOrWhiteSpace(RightLiteralValue) ? null : RightLiteralValue.Trim();
                 Branch.RightSourceNodeId = RightSourceNodeId;

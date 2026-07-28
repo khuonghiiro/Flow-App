@@ -9,6 +9,8 @@ namespace FlowMy.Models
         public string? LeftSourceNodeId { get; set; }
         public string? LeftKey { get; set; }
         public ConditionOperator Operator { get; set; } = ConditionOperator.Equal;
+        /// <summary>True = Đảo ngược (phủ định) kết quả điều kiện (!result).</summary>
+        public bool IsInverted { get; set; } = false;
         public bool RightUseLiteralValue { get; set; }
         public string? RightLiteralValue { get; set; }
         public string? RightSourceNodeId { get; set; }

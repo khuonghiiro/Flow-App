@@ -692,7 +692,11 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     Foreground = keyRun.Foreground
                 };
 
-                var fullValueRun = new Run($" {result.RawValue}");
+                var displayFullValue = NodeDataPanelService.IsBase64Value(result.Key, result.RawValue)
+                    ? NodeDataPanelService.TruncateBase64ForDisplay(result.RawValue, 300)
+                    : (result.RawValue.Length > 2000 ? result.RawValue.Substring(0, 2000) + "..." : result.RawValue);
+
+                var fullValueRun = new Run($" {displayFullValue}");
 
                 var fullTextBlock = new TextBlock
                 {

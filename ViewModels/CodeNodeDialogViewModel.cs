@@ -416,29 +416,14 @@ namespace FlowMy.ViewModels
             var extractedKeys = ExtractOutputKeysFromScript(script);
             if (extractedKeys.Count == 0) return;
 
-            if (OutputKeysList.Count == 1 && string.Equals(OutputKeysList[0].Key, "result", StringComparison.OrdinalIgnoreCase)
-                && !extractedKeys.Contains("result", StringComparer.OrdinalIgnoreCase))
-            {
-                OutputKeysList.Clear();
-            }
-
-            var existingKeys = new HashSet<string>(OutputKeysList.Select(x => x.Key.Trim()), StringComparer.OrdinalIgnoreCase);
-            bool addedAny = false;
-
+            // Xóa các key cũ và thay thế hoàn toàn bằng danh sách key mới từ code
+            OutputKeysList.Clear();
             foreach (var key in extractedKeys)
             {
-                if (!existingKeys.Contains(key))
-                {
-                    OutputKeysList.Add(new OutputKeyItemViewModel { Key = key });
-                    existingKeys.Add(key);
-                    addedAny = true;
-                }
+                OutputKeysList.Add(new OutputKeyItemViewModel { Key = key });
             }
 
-            if (addedAny || OutputKeysList.Count == 0)
-            {
-                SyncOutputKeysToNode();
-            }
+            SyncOutputKeysToNode();
         }
 
         public static System.Collections.Generic.List<string> ExtractOutputKeysFromScript(string script)
@@ -665,34 +650,42 @@ Hãy viết code JavaScript đáp ứng đúng các quy tắc môi trường tr�
         {
             var varName = FirstInputVariableName;
             ScriptCode =
-                "// Biến toàn cục từ input: " + varName + "\n" +
-                "function main() {\n" +
-                "    var inputData = " + varName + ";\n" +
-                "    // 1. Kiểm tra Array-like từ .NET interop (KHÔNG dùng Array.isArray)\n" +
-                "    var isArray = typeof inputData === 'object' && inputData !== null && typeof inputData.length === 'number';\n" +
-                "    var results = [];\n" +
-                "    var errorCount = 0;\n\n" +
-                "    if (isArray) {\n" +
-                "        // 2. Duyệt bằng vòng lặp for truyền thống (tránh .map / .forEach)\n" +
-                "        for (var i = 0; i < inputData.length; i++) {\n" +
-                "            var item = inputData[i];\n" +
-                "            try {\n" +
-                "                var obj = (typeof item === 'string') ? JSON.parse(item) : item;\n" +
-                "                if (obj) results.push(obj);\n" +
-                "            } catch(e) {\n" +
-                "                errorCount++;\n" +
-                "            }\n" +
-                "        }\n" +
-                "    } else if (inputData) {\n" +
-                "        results.push(inputData);\n" +
-                "    }\n\n" +
-                "    // 3. Trả về object kết quả (Nhấn nút '⚡ Đồng bộ key từ Code' ở tab Output keys để tự động cập nhật)\n" +
-                "    return {\n" +
-                "        count: results.length,\n" +
-                "        items: results,\n" +
-                "        errorCount: errorCount\n" +
-                "    };\n" +
-                "}\n";
+$@"// =========================================================================
+// VÍ DỤ MẪU: CHUYỂN ĐỔI 1 OBJECT INPUT THÀNH CÁC KEY RIÊNG BIỆT
+// =========================================================================
+
+function main() {{
+    // 1. DỮ LIỆU MẪU BAN ĐẦU (Demo mẫu bên trong để chạy thử ngay):
+    var demoObject = {{
+        id: 101,
+        name: ""Nguyen Van A"",
+        email: ""demo@example.com"",
+        status: ""active"",
+        message: ""Xử lý thành công""
+    }};
+
+    // ---------------------------------------------------------------------
+    // 2. TRUYỀN PARAMETER VÀO ĐỂ THAY THẾ DỮ LIỆU MẪU:
+    // Khi kết nối Node nguồn và dùng biến input ({varName}):
+    // Bỏ comment 3 dòng bên dưới để thay thế demoObject bằng biến {varName}:
+    //
+    // var rawParam = typeof {varName} !== 'undefined' ? {varName} : null;
+    // var inputObj = typeof rawParam === 'string' ? JSON.parse(rawParam) : rawParam;
+    // var targetObj = inputObj || demoObject;
+    // ---------------------------------------------------------------------
+
+    // Mặc định đang dùng ví dụ mẫu bên trong:
+    var targetObj = demoObject;
+
+    // 3. TÁCH THÀNH CÁC KEY RIÊNG BIỆT ĐỂ TRẢ VỀ OUTPUTS:
+    return {{
+        id: targetObj.id,
+        name: targetObj.name,
+        email: targetObj.email,
+        status: targetObj.status,
+        message: targetObj.message
+    }};
+}}";
         }
     }
 }

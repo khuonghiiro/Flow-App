@@ -1312,7 +1312,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             HttpRequestNode node,
             string url,
             Dictionary<string, string> headers,
-            string? body,
+            string? bodyInputFilePath,
             string headerOutputPath)
         {
             var sb = new StringBuilder();
@@ -1334,12 +1334,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 sb.Append($" -H \"{h.Key}: {escaped}\"");
             }
 
-            if (!string.IsNullOrEmpty(body) &&
-                node.HttpMethod != Models.Nodes.HttpMethod.GET &&
-                node.HttpMethod != Models.Nodes.HttpMethod.HEAD)
+            if (!string.IsNullOrEmpty(bodyInputFilePath) && File.Exists(bodyInputFilePath))
             {
-                var escapedBody = body.Replace("\\", "\\\\").Replace("\"", "\\\"");
-                sb.Append($" --data \"{escapedBody}\"");
+                sb.Append($" --data-binary \"@{bodyInputFilePath.Replace("\"", "\\\"")}\"");
             }
 
             sb.Append($" -D \"{headerOutputPath.Replace("\"", "\\\"")}\"");
@@ -1361,6 +1358,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var service = env.Service;
             Process? process = null;
             string? tempHeaderPath = null;
+            string? tempBodyInputPath = null;
 
             try
             {
@@ -1372,8 +1370,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_curl_headers_{Guid.NewGuid():N}.txt");
 
-                var args = BuildCurlStreamArgs(httpNode, url, resolvedHeaders, resolvedBody, tempHeaderPath);
-                Debug.WriteLine($"[CurlExe-Stream] {curlPath} {args}");
+                if (!string.IsNullOrEmpty(resolvedBody) &&
+                    httpNode.HttpMethod != Models.Nodes.HttpMethod.GET &&
+                    httpNode.HttpMethod != Models.Nodes.HttpMethod.HEAD)
+                {
+                    tempBodyInputPath = Path.Combine(Path.GetTempPath(), $"ac_curl_input_{Guid.NewGuid():N}.tmp");
+                    await File.WriteAllTextAsync(tempBodyInputPath, resolvedBody, Encoding.UTF8, env.CancellationToken);
+                }
+
+                var args = BuildCurlStreamArgs(httpNode, url, resolvedHeaders, tempBodyInputPath, tempHeaderPath);
+                Debug.WriteLine($"[CurlExe-Stream] {curlPath} {args.Substring(0, Math.Min(200, args.Length))}...");
 
                 process = new Process();
                 process.StartInfo = new ProcessStartInfo
@@ -1504,6 +1510,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 CurlNativeExecutor.KillProcessTreeSafe(process);
                 CurlNativeExecutor.TryDeleteFile(tempHeaderPath);
+                CurlNativeExecutor.TryDeleteFile(tempBodyInputPath);
                 env.OnNodeCompleted?.Invoke(httpNode, sw.Elapsed);
             }
         }

@@ -1915,8 +1915,8 @@ namespace FlowMy.Services.Workflow
                 case ConditionOperator.NotContains: return left.IndexOf(right, StringComparison.OrdinalIgnoreCase) < 0;
                 case ConditionOperator.TextEquals: return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
                 case ConditionOperator.TextNotEquals: return !string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
-                case ConditionOperator.Empty: return string.IsNullOrEmpty(left);
-                case ConditionOperator.NotEmpty: return !string.IsNullOrEmpty(left);
+                case ConditionOperator.Empty: return IsNullOrEmptyOrNullString(left);
+                case ConditionOperator.NotEmpty: return !IsNullOrEmptyOrNullString(left);
                 case ConditionOperator.True: return ConditionValueToBool(left);
                 case ConditionOperator.False: return !ConditionValueToBool(left);
                 default: return false;
@@ -2048,15 +2048,26 @@ namespace FlowMy.Services.Workflow
             return true;
         }
 
+        internal static bool IsNullOrEmptyOrNullString(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return true;
+            var v = value.Trim();
+            return string.Equals(v, "null", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(v, "undefined", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(v, "none", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(v, "—", StringComparison.Ordinal) ||
+                   string.Equals(v, "[]", StringComparison.Ordinal) ||
+                   string.Equals(v, "{}", StringComparison.Ordinal);
+        }
+
         /// <summary>
         /// Chuyển giá trị string thành bool cho điều kiện if/else if.
-        /// true: "true", "1", "yes", số khác 0; false: "false", "0", "no", empty.
+        /// true: "true", "1", "yes", số khác 0; false: "false", "0", "no", empty, null, undefined, [], {}.
         /// </summary>
         internal static bool ConditionValueToBool(string? value)
         {
-            if (value == null) return false;
-            var v = value.Trim();
-            if (string.IsNullOrEmpty(v)) return false;
+            if (IsNullOrEmptyOrNullString(value)) return false;
+            var v = value!.Trim();
             if (string.Equals(v, "true", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(v, "1", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(v, "yes", StringComparison.OrdinalIgnoreCase))

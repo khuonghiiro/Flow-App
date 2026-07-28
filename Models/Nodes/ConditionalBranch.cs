@@ -24,6 +24,8 @@ namespace FlowMy.Models
         public string? LeftSourceNodeId { get; set; }
         public string? LeftKey { get; set; }
         public ConditionOperator Operator { get; set; } = ConditionOperator.Equal;
+        /// <summary>True = Đảo ngược (phủ định) kết quả điều kiện (!result).</summary>
+        public bool IsInverted { get; set; } = false;
         /// <summary>True = bên phải dùng giá trị nhập (RightLiteralValue); False = lấy từ node (RightSourceNodeId + RightKey).</summary>
         public bool RightUseLiteralValue { get; set; }
         /// <summary>Giá trị so sánh bên phải khi RightUseLiteralValue = true.</summary>

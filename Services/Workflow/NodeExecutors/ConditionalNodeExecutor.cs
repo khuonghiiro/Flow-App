@@ -119,7 +119,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     else
                         rightVal = service.ResolveValueByNodeIdAndKeyForExecution(connections, branch.RightSourceNodeId, branch.RightKey, env);
                 }
-                return WorkflowExecutionService.EvaluateCondition(leftVal, rightVal, branch.Operator, branch.SimilarityThreshold);
+                var effectiveOp = ViewModels.SubConditionViewModel.GetEffectiveOperator(branch.Operator, branch.IsInverted);
+                return WorkflowExecutionService.EvaluateCondition(leftVal, rightVal, effectiveOp, branch.SimilarityThreshold);
             }
 
             return null;
@@ -142,7 +143,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 else
                     rightVal = service.ResolveValueByNodeIdAndKeyForExecution(connections, expr.RightSourceNodeId, expr.RightKey, env);
             }
-            return WorkflowExecutionService.EvaluateCondition(leftVal, rightVal, expr.Operator, expr.SimilarityThreshold);
+            var effectiveOp = ViewModels.SubConditionViewModel.GetEffectiveOperator(expr.Operator, expr.IsInverted);
+            return WorkflowExecutionService.EvaluateCondition(leftVal, rightVal, effectiveOp, expr.SimilarityThreshold);
         }
     }
 }

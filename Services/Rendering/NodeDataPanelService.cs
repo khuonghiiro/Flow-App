@@ -689,8 +689,12 @@ namespace FlowMy.Services.Rendering
             if (string.IsNullOrWhiteSpace(value) || value == "—") return false;
             var trimmed = value.Trim();
 
-            if (!string.IsNullOrWhiteSpace(key) && key.Contains("Base64", StringComparison.OrdinalIgnoreCase))
-                return true;
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                var k = key.ToLowerInvariant();
+                if (k.Contains("base64") || k.Contains("crop") || k.Contains("image") || k.Contains("avatar") || k.Contains("photo") || k.Contains("thumb"))
+                    return true;
+            }
 
             if (trimmed.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("data:application/", StringComparison.OrdinalIgnoreCase) ||
@@ -704,12 +708,13 @@ namespace FlowMy.Services.Rendering
                 trimmed.StartsWith("[\"UklGR", StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            if (trimmed.Length > 100 && (
+            if (trimmed.Length > 80 && (
                 trimmed.StartsWith("iVBORw0", StringComparison.Ordinal) ||
                 trimmed.StartsWith("/9j/", StringComparison.Ordinal) ||
                 trimmed.StartsWith("UklGR", StringComparison.Ordinal) ||
                 trimmed.StartsWith("R0lGOD", StringComparison.Ordinal) ||
-                trimmed.StartsWith("Qk0", StringComparison.Ordinal)))
+                trimmed.StartsWith("Qk0", StringComparison.Ordinal) ||
+                trimmed.StartsWith("JVBERi", StringComparison.Ordinal)))
             {
                 return true;
             }
@@ -798,14 +803,17 @@ namespace FlowMy.Services.Rendering
                 {
                     var prefix = trimmed.Substring(0, commaIdx + 1);
                     var payload = trimmed.Substring(commaIdx + 1);
-                    var shortPayload = payload.Length > 20 ? payload.Substring(0, 20) + "..." : payload;
-                    return $"{prefix}{shortPayload}";
+                    var payloadKb = (payload.Length * 3 / 4) / 1024.0;
+                    var shortPayload = payload.Length > 16 ? payload.Substring(0, 16) + "…" : payload;
+                    return $"{prefix}{shortPayload} ({payloadKb:0.0} KB)";
                 }
             }
 
             if (trimmed.Length > maxChars)
             {
-                return trimmed.Substring(0, maxChars) + "...";
+                var approxKb = (trimmed.Length * 3 / 4) / 1024.0;
+                var shortPart = trimmed.Substring(0, Math.Min(25, trimmed.Length));
+                return $"{shortPart}… ({approxKb:0.0} KB)";
             }
 
             return trimmed;

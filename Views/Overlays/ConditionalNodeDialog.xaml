@@ -163,6 +163,7 @@
                                                                     <RowDefinition Height="Auto"/>
                                                                     <RowDefinition Height="Auto"/>
                                                                     <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
                                                                 </Grid.RowDefinitions>
                                                                 <!-- Badge OR/AND + nút xóa (ẩn khi IsFirst) -->
                                                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6"
@@ -198,14 +199,26 @@
                                                                 </Grid>
                                                                 <!-- Toán tử -->
                                                                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
-                                                                    <TextBlock Text="Điều kiện" Foreground="{DynamicResource TextMuted}" FontSize="10" Width="80" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="Toán tử" Foreground="{DynamicResource TextMuted}" FontSize="10" Width="80" VerticalAlignment="Center"/>
                                                                     <ComboBox Height="32" MinWidth="220" Style="{DynamicResource BaseComboBox}"
                                                                               ItemsSource="{Binding DataContext.OperatorOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                               SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                                                               SelectedValue="{Binding Operator, Mode=TwoWay}"/>
                                                                 </StackPanel>
+                                                                <!-- Phủ định điều kiện (Dòng riêng) -->
+                                                                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="80,0,0,8">
+                                                                    <CheckBox Content="Đảo ngược (!)" IsChecked="{Binding IsInverted, Mode=TwoWay}"
+                                                                              Foreground="{DynamicResource TextBrush}" FontSize="12"
+                                                                              VerticalAlignment="Center"
+                                                                              ToolTip="Đảo ngược (phủ định) kết quả của điều kiện này (!result)"/>
+                                                                    <Border Background="#20FF9800" CornerRadius="4" Padding="8,3" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                                            Visibility="{Binding IsInverted, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                        <TextBlock Text="{Binding EffectiveConditionDescription}"
+                                                                                   Foreground="#FFFF9800" FontSize="11" FontWeight="Bold"/>
+                                                                    </Border>
+                                                                </StackPanel>
                                                                 <!-- Bên phải -->
-                                                                <StackPanel Grid.Row="3" Orientation="Vertical" Margin="0,0,0,0"
+                                                                <StackPanel Grid.Row="4" Orientation="Vertical" Margin="0,0,0,0"
                                                                             Visibility="{Binding IsRightSideVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                                                                     <!-- CheckBox dùng giá trị nhập (ẩn khi so sánh ảnh) -->
                                                                     <CheckBox Content="Dùng giá trị nhập (so sánh với text bên dưới)"

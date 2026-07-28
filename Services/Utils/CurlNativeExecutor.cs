@@ -112,6 +112,7 @@ namespace FlowMy.Services.Utils
             string? tempCmdPath = null;
             string? tempHeaderPath = null;
             string? tempBodyPath = null;
+            string? tempBodyInputPath = null;
 
             try
             {
@@ -132,6 +133,11 @@ namespace FlowMy.Services.Utils
 
                 // Sanitize raw curl command for CMD execution (flatten multiline, convert single quotes to double quotes, set executable path)
                 var commandForExec = SanitizeRawCurlForCmd(rawCurlCommand, curlPath);
+                if (commandForExec.Length > 1500)
+                {
+                    commandForExec = ExtractLargeDataPayloadToTempFile(commandForExec, out tempBodyInputPath);
+                }
+
                 if (node.AutoAppendCurlWriteOut)
                 {
                     tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_rawcurl_headers_{Guid.NewGuid():N}.txt");
@@ -190,6 +196,7 @@ namespace FlowMy.Services.Utils
                     TryDeleteFile(tempCmdPath);
                     TryDeleteFile(tempHeaderPath);
                     TryDeleteFile(tempBodyPath);
+                    TryDeleteFile(tempBodyInputPath);
                 }
 
                 // Fallback: If status is 0 (raw command failed or returned no response), try parsing and executing via ExecuteAsync
@@ -407,6 +414,7 @@ namespace FlowMy.Services.Utils
             Process? process = null;
             string? tempHeaderPath = null;
             string? tempBodyPath = null;
+            string? tempBodyInputPath = null;
 
             try
             {
@@ -420,7 +428,16 @@ namespace FlowMy.Services.Utils
 
                 tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_curl_headers_{Guid.NewGuid():N}.txt");
                 tempBodyPath = Path.Combine(Path.GetTempPath(), $"ac_curl_body_{Guid.NewGuid():N}.bin");
-                var args = BuildCurlArgs(node, url, headers, body, tempHeaderPath, tempBodyPath);
+
+                if (!string.IsNullOrEmpty(body) &&
+                    node.HttpMethod != Models.Nodes.HttpMethod.GET &&
+                    node.HttpMethod != Models.Nodes.HttpMethod.HEAD)
+                {
+                    tempBodyInputPath = Path.Combine(Path.GetTempPath(), $"ac_curl_input_{Guid.NewGuid():N}.tmp");
+                    await File.WriteAllTextAsync(tempBodyInputPath, body, Encoding.UTF8, ct);
+                }
+
+                var args = BuildCurlArgs(node, url, headers, tempBodyInputPath, tempHeaderPath, tempBodyPath);
                 Debug.WriteLine($"[CurlExe] {curlPath} {args.Substring(0, Math.Min(200, args.Length))}...");
 
                 process = new Process();
@@ -472,9 +489,34 @@ namespace FlowMy.Services.Utils
                 KillProcessTreeSafe(process);
                 TryDeleteFile(tempHeaderPath);
                 TryDeleteFile(tempBodyPath);
+                TryDeleteFile(tempBodyInputPath);
             }
 
             return result;
+        }
+
+        private static string ExtractLargeDataPayloadToTempFile(string cmd, out string? tempInputFilePath)
+        {
+            tempInputFilePath = null;
+            try
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(cmd, @"--(data|data-raw|data-binary|-d)\s+""([^""]{800,})""");
+                if (match.Success)
+                {
+                    var dataContent = match.Groups[2].Value;
+                    var unescapedData = dataContent.Replace("\\\"", "\"").Replace("\\\\", "\\");
+                    tempInputFilePath = Path.Combine(Path.GetTempPath(), $"ac_curl_raw_input_{Guid.NewGuid():N}.tmp");
+                    File.WriteAllText(tempInputFilePath, unescapedData, Encoding.UTF8);
+
+                    var replacement = $"--data-binary \"@{tempInputFilePath.Replace("\"", "\\\"")}\"";
+                    return cmd.Substring(0, match.Index) + replacement + cmd.Substring(match.Index + match.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CurlNative] ExtractLargeDataPayloadToTempFile failed: {ex.Message}");
+            }
+            return cmd;
         }
 
         internal static void KillProcessTreeSafe(Process? process)
@@ -499,7 +541,7 @@ namespace FlowMy.Services.Utils
             HttpRequestNode node,
             string url,
             Dictionary<string, string> headers,
-            string? body,
+            string? bodyInputFilePath,
             string headerOutputPath,
             string bodyOutputPath)
         {
@@ -525,13 +567,10 @@ namespace FlowMy.Services.Utils
                 sb.Append($" -H \"{h.Key}: {escaped}\"");
             }
 
-            // Body
-            if (!string.IsNullOrEmpty(body) &&
-                node.HttpMethod != Models.Nodes.HttpMethod.GET &&
-                node.HttpMethod != Models.Nodes.HttpMethod.HEAD)
+            // Body: Use file reference @path to avoid Windows CreateProcess command line length limits on large payloads
+            if (!string.IsNullOrEmpty(bodyInputFilePath) && File.Exists(bodyInputFilePath))
             {
-                var escapedBody = body.Replace("\\", "\\\\").Replace("\"", "\\\"");
-                sb.Append($" --data \"{escapedBody}\"");
+                sb.Append($" --data-binary \"@{bodyInputFilePath.Replace("\"", "\\\"")}\"");
             }
 
             // Output raw body to file so non-UTF8 payloads and split multibyte chars

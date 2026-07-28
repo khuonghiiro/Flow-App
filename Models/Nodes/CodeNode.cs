@@ -68,8 +68,43 @@ namespace FlowMy.Models.Nodes
     public sealed class CodeNode : WorkflowNode
     {
         private List<CodeInputMapping> _inputMappings = new();
-        private string _scriptCode = "// Nhập code JavaScript. Biến từ input dùng tên key (ví dụ: jsonData).\n// return { key1: value1, key2: value2 }; để trả về outputs.\n// Tip: Nếu muốn điều khiển WebNode (WebView2), hãy trả về output key 'js' chứa script.\n// Ví dụ (dùng parameter từ input):\n// function main() {\n//   const textToInput = JSON.stringify(prompt); // prompt là biến từ input mapping\n//   return {\n//     js: 'await ac.waitForSelector(\\'#btnLogin\\', 15000);\\n' +\n//         'await ac.retryClick(\\'#btnLogin\\', { timeoutMs: 15000, intervalMs: 250 });\\n' +\n//         'const textarea = document.querySelector(\\'#input\\');\\n' +\n//         'textarea.value = ' + textToInput + ';\\n' +\n//         'await ac.waitNetworkIdle({ idleMs: 800, timeoutMs: 15000 });'\n//   };\n// }\nreturn {};";
-        private List<string> _outputKeys = new() { "result" };
+        private string _scriptCode = @"// =========================================================================
+// VÍ DỤ MẪU: CHUYỂN ĐỔI 1 OBJECT INPUT THÀNH CÁC KEY RIÊNG BIỆT
+// =========================================================================
+
+function main() {
+    // 1. DỮ LIỆU MẪU BAN ĐẦU (Demo mẫu bên trong để chạy thử ngay):
+    var demoObject = {
+        id: 101,
+        name: ""Nguyen Van A"",
+        email: ""demo@example.com"",
+        status: ""active"",
+        message: ""Xử lý thành công""
+    };
+
+    // ---------------------------------------------------------------------
+    // 2. TRUYỀN PARAMETER VÀO ĐỂ THAY THẾ DỮ LIỆU MẪU:
+    // Khi bạn kết nối Input từ Node trước (mặc định tên biến là: input),
+    // hãy BỎ COMMENT 3 dòng dưới đây để sử dụng dữ liệu thực tế truyền vào:
+    //
+    // var rawParam = typeof input !== 'undefined' ? input : null;
+    // var inputObj = typeof rawParam === 'string' ? JSON.parse(rawParam) : rawParam;
+    // var targetObj = inputObj || demoObject;
+    // ---------------------------------------------------------------------
+
+    // Mặc định đang dùng ví dụ mẫu bên trong:
+    var targetObj = demoObject;
+
+    // 3. TÁCH THÀNH CÁC KEY RIÊNG BIỆT ĐỂ TRẢ VỀ OUTPUTS:
+    return {
+        id: targetObj.id,
+        name: targetObj.name,
+        email: targetObj.email,
+        status: targetObj.status,
+        message: targetObj.message
+    };
+}";
+        private List<string> _outputKeys = new() { "id", "name", "email", "status", "message" };
 
         public CodeNode()
         {

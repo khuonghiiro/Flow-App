@@ -26,6 +26,9 @@ namespace FlowMy.ViewModels
         private ConditionOperator _operator;
 
         [ObservableProperty]
+        private bool _isInverted;
+
+        [ObservableProperty]
         private bool _rightUseLiteralValue;
 
         [ObservableProperty]
@@ -61,6 +64,54 @@ namespace FlowMy.ViewModels
         /// <summary>True nếu là điều kiện đầu tiên (không hiển thị badge OR/AND).</summary>
         public bool IsFirst { get; }
 
+        public static (ConditionOperator Operator, bool IsInverted) NormalizeOperator(ConditionOperator op, bool isInverted)
+        {
+            if (isInverted) return (op, true);
+
+            return op switch
+            {
+                ConditionOperator.NotEqual => (ConditionOperator.Equal, true),
+                ConditionOperator.LessThan => (ConditionOperator.GreaterThan, true),
+                ConditionOperator.LessThanOrEqual => (ConditionOperator.GreaterThanOrEqual, true),
+                ConditionOperator.NotContains => (ConditionOperator.Contains, true),
+                ConditionOperator.TextNotEquals => (ConditionOperator.TextEquals, true),
+                ConditionOperator.NotEmpty => (ConditionOperator.Empty, true),
+                ConditionOperator.False => (ConditionOperator.True, true),
+                ConditionOperator.ImageSimilarityLte => (ConditionOperator.ImageSimilarityGte, true),
+                ConditionOperator.ImageSimilarityLt => (ConditionOperator.ImageSimilarityGt, true),
+                _ => (op, false)
+            };
+        }
+
+        public static ConditionOperator GetEffectiveOperator(ConditionOperator op, bool isInverted)
+        {
+            if (!isInverted) return op;
+
+            return op switch
+            {
+                ConditionOperator.Equal => ConditionOperator.NotEqual,
+                ConditionOperator.GreaterThan => ConditionOperator.LessThan,
+                ConditionOperator.GreaterThanOrEqual => ConditionOperator.LessThanOrEqual,
+                ConditionOperator.Contains => ConditionOperator.NotContains,
+                ConditionOperator.TextEquals => ConditionOperator.TextNotEquals,
+                ConditionOperator.Empty => ConditionOperator.NotEmpty,
+                ConditionOperator.True => ConditionOperator.False,
+                ConditionOperator.ImageSimilarityGte => ConditionOperator.ImageSimilarityLte,
+                ConditionOperator.ImageSimilarityGt => ConditionOperator.ImageSimilarityLt,
+
+                ConditionOperator.NotEqual => ConditionOperator.Equal,
+                ConditionOperator.LessThan => ConditionOperator.GreaterThan,
+                ConditionOperator.LessThanOrEqual => ConditionOperator.GreaterThanOrEqual,
+                ConditionOperator.NotContains => ConditionOperator.Contains,
+                ConditionOperator.TextNotEquals => ConditionOperator.TextEquals,
+                ConditionOperator.NotEmpty => ConditionOperator.Empty,
+                ConditionOperator.False => ConditionOperator.True,
+                ConditionOperator.ImageSimilarityLte => ConditionOperator.ImageSimilarityGte,
+                ConditionOperator.ImageSimilarityLt => ConditionOperator.ImageSimilarityGt,
+                _ => op
+            };
+        }
+
         public SubConditionViewModel(
             ConditionExpression expression,
             LogicalOperator operatorBefore,
@@ -75,7 +126,9 @@ namespace FlowMy.ViewModels
 
             _leftSourceNodeId = expression.LeftSourceNodeId;
             _leftKey = expression.LeftKey;
-            _operator = expression.Operator;
+            var (normOp, normInv) = NormalizeOperator(expression.Operator, expression.IsInverted);
+            _operator = normOp;
+            _isInverted = normInv;
             _rightUseLiteralValue = expression.RightUseLiteralValue;
             _rightLiteralValue = expression.RightLiteralValue ?? string.Empty;
             _rightSourceNodeId = expression.RightSourceNodeId;
@@ -133,6 +186,33 @@ namespace FlowMy.ViewModels
         {
             OnPropertyChanged(nameof(IsRightSideVisible));
             OnPropertyChanged(nameof(IsImageSimilarityMode));
+            OnPropertyChanged(nameof(EffectiveConditionDescription));
+        }
+
+        partial void OnIsInvertedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(EffectiveConditionDescription));
+        }
+
+        public string EffectiveConditionDescription
+        {
+            get
+            {
+                if (!IsInverted) return string.Empty;
+                return Operator switch
+                {
+                    ConditionOperator.Equal => "➔ Khác (!=)",
+                    ConditionOperator.GreaterThan => "➔ Nhỏ hơn (<)",
+                    ConditionOperator.GreaterThanOrEqual => "➔ Nhỏ hơn hoặc bằng (<=)",
+                    ConditionOperator.Contains => "➔ Chuỗi không chứa",
+                    ConditionOperator.TextEquals => "➔ So sánh text khác",
+                    ConditionOperator.Empty => "➔ Not Null",
+                    ConditionOperator.True => "➔ Giá trị là FALSE",
+                    ConditionOperator.ImageSimilarityGte => "➔ 🖼️ Ảnh khớp <= %",
+                    ConditionOperator.ImageSimilarityGt => "➔ 🖼️ Ảnh khớp < %",
+                    _ => "➔ [Phủ định (!)]"
+                };
+            }
         }
 
         public void SyncToExpression()
@@ -140,6 +220,7 @@ namespace FlowMy.ViewModels
             Expression.LeftSourceNodeId = LeftSourceNodeId;
             Expression.LeftKey = LeftKey;
             Expression.Operator = Operator;
+            Expression.IsInverted = IsInverted;
             Expression.RightUseLiteralValue = RightUseLiteralValue;
             Expression.RightLiteralValue = string.IsNullOrWhiteSpace(RightLiteralValue) ? null : RightLiteralValue.Trim();
             Expression.RightSourceNodeId = RightSourceNodeId;
