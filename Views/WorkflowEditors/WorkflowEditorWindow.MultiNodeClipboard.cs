@@ -746,6 +746,16 @@ namespace FlowMy.Views
                 case ImageProcessingNode imageProcessingNode:
                     imageProcessingNode.ImageUrlSourceNodeId = RemapNodeId(imageProcessingNode.ImageUrlSourceNodeId, sourceToNewNodeMap);
                     imageProcessingNode.ImageBase64SourceNodeId = RemapNodeId(imageProcessingNode.ImageBase64SourceNodeId, sourceToNewNodeMap);
+                    imageProcessingNode.CroppedFolderSourceNodeId = RemapNodeId(imageProcessingNode.CroppedFolderSourceNodeId, sourceToNewNodeMap);
+                    imageProcessingNode.RenderNodeId = RemapNodeId(imageProcessingNode.RenderNodeId, sourceToNewNodeMap);
+                    imageProcessingNode.ReturnIdNodeId = RemapNodeId(imageProcessingNode.ReturnIdNodeId, sourceToNewNodeMap);
+                    if (imageProcessingNode.LayerAiInputMappings != null)
+                    {
+                        foreach (var m in imageProcessingNode.LayerAiInputMappings)
+                        {
+                            m.SourceNodeId = RemapNodeId(m.SourceNodeId, sourceToNewNodeMap);
+                        }
+                    }
                     break;
 
                 case VideoProcessingNode videoProcessingNode:

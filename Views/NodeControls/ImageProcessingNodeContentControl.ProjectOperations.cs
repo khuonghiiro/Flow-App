@@ -50,11 +50,16 @@ namespace FlowMy.Views.NodeControls
             public string? ImageFileName { get; set; }
             public string? FilePath { get; set; }
             public bool IsSelected { get; set; }
+            public string? CodeId { get; set; }
+            public string? ImageId { get; set; }
+            public System.Collections.Generic.Dictionary<int, string> AspectRatioIds { get; set; } = new();
+            public System.Collections.Generic.List<SecondaryImageDto> SavedChildImages { get; set; } = new();
         }
 
         public class LayerMetadataDto
         {
             public string Id { get; set; } = "";
+            public string CodeId { get; set; } = "";
             public string Name { get; set; } = "";
             public double Opacity { get; set; } = 1.0;
             public bool IsVisible { get; set; } = true;
@@ -109,6 +114,8 @@ namespace FlowMy.Views.NodeControls
             public int LayerAiAspectRatioIndex { get; set; }
             public string? LayerAiCustomWidth { get; set; }
             public string? LayerAiCustomHeight { get; set; }
+            public int LayerAiSecondarySlotCount { get; set; } = 4;
+            public System.Collections.Generic.Dictionary<int, string> AspectRatioImageIds { get; set; } = new();
             public System.Collections.Generic.List<SecondaryImageDto> SecondaryImages { get; set; } = new();
         }
 
@@ -588,53 +595,108 @@ namespace FlowMy.Views.NodeControls
                             TextAlignment = l.TextAlignment ?? "Left",
 
                             // Save Layer AI properties specific to this layer
+                            CodeId = l.CodeId,
                             LayerAiPrompt = l.LayerAiPrompt,
                             LayerAiBatchSizeIndex = l.LayerAiBatchSizeIndex,
                             LayerAiAspectRatioIndex = l.LayerAiAspectRatioIndex,
                             LayerAiCustomWidth = l.LayerAiCustomWidth,
-                            LayerAiCustomHeight = l.LayerAiCustomHeight
+                            LayerAiCustomHeight = l.LayerAiCustomHeight,
+                            LayerAiSecondarySlotCount = l.LayerAiSecondarySlotCount > 0 ? l.LayerAiSecondarySlotCount : 4,
+                            AspectRatioImageIds = l.AspectRatioImageIds != null ? new System.Collections.Generic.Dictionary<int, string>(l.AspectRatioImageIds) : new()
                         };
 
-                        for (int i = 0; i < 4; i++)
+                        if (l.LayerAiSecondaryImages != null)
                         {
-                            var sec = l.LayerAiSecondaryImages[i];
-                            var secDto = new SecondaryImageDto
+                            for (int i = 0; i < l.LayerAiSecondaryImages.Count; i++)
                             {
-                                FilePath = sec.FilePath,
-                                IsSelected = sec.IsSelected
-                            };
-
-                            if (sec.Bitmap != null)
-                            {
-                                string entryName = $"layers/{l.Id}_sec_{i}.png";
-                                secDto.ImageFileName = entryName;
-
-                                var bmp = sec.Bitmap;
-                                if (!bmp.IsFrozen)
+                                var sec = l.LayerAiSecondaryImages[i];
+                                var secDto = new SecondaryImageDto
                                 {
-                                    try
+                                    FilePath = sec.FilePath,
+                                    IsSelected = sec.IsSelected,
+                                    CodeId = sec.ImageId,
+                                    ImageId = sec.ImageId,
+                                    AspectRatioIds = sec.AspectRatioIds != null ? new System.Collections.Generic.Dictionary<int, string>(sec.AspectRatioIds) : new()
+                                };
+
+                                if (sec.SavedChildImages != null)
+                                {
+                                    for (int cIdx = 0; cIdx < sec.SavedChildImages.Count; cIdx++)
                                     {
-                                        var clonedBmp = bmp.Clone();
-                                        clonedBmp.Freeze();
-                                        bmp = clonedBmp;
-                                    }
-                                    catch
-                                    {
-                                        int wbW = bmp.PixelWidth;
-                                        int wbH = bmp.PixelHeight;
-                                        int wbStride = wbW * 4;
-                                        byte[] wbPixels = new byte[wbH * wbStride];
-                                        bmp.CopyPixels(wbPixels, wbStride, 0);
-                                        var clonedBmp = BitmapSource.Create(wbW, wbH, bmp.DpiX, bmp.DpiY, PixelFormats.Bgra32, null, wbPixels, wbStride);
-                                        clonedBmp.Freeze();
-                                        bmp = clonedBmp;
+                                        var childSec = sec.SavedChildImages[cIdx];
+                                        var childDto = new SecondaryImageDto
+                                        {
+                                            FilePath = childSec.FilePath,
+                                            IsSelected = childSec.IsSelected,
+                                            ImageId = childSec.ImageId
+                                        };
+
+                                        if (childSec.Bitmap != null)
+                                        {
+                                            string childEntryName = $"layers/{l.Id}_sec_{i}_child_{cIdx}.png";
+                                            childDto.ImageFileName = childEntryName;
+
+                                            var childBmp = childSec.Bitmap;
+                                            if (!childBmp.IsFrozen)
+                                            {
+                                                try
+                                                {
+                                                    var clonedBmp = childBmp.Clone();
+                                                    clonedBmp.Freeze();
+                                                    childBmp = clonedBmp;
+                                                }
+                                                catch
+                                                {
+                                                    int wbW = childBmp.PixelWidth;
+                                                    int wbH = childBmp.PixelHeight;
+                                                    int wbStride = wbW * 4;
+                                                    byte[] wbPixels = new byte[wbH * wbStride];
+                                                    childBmp.CopyPixels(wbPixels, wbStride, 0);
+                                                    var clonedBmp = BitmapSource.Create(wbW, wbH, childBmp.DpiX, childBmp.DpiY, PixelFormats.Bgra32, null, wbPixels, wbStride);
+                                                    clonedBmp.Freeze();
+                                                    childBmp = clonedBmp;
+                                                }
+                                            }
+
+                                            secondaryImagesToProcess.Add((childEntryName, childBmp));
+                                        }
+
+                                        secDto.SavedChildImages.Add(childDto);
                                     }
                                 }
 
-                                secondaryImagesToProcess.Add((entryName, bmp));
-                            }
+                                if (sec.Bitmap != null)
+                                {
+                                    string entryName = $"layers/{l.Id}_sec_{i}.png";
+                                    secDto.ImageFileName = entryName;
 
-                            lDto.SecondaryImages.Add(secDto);
+                                    var bmp = sec.Bitmap;
+                                    if (!bmp.IsFrozen)
+                                    {
+                                        try
+                                        {
+                                            var clonedBmp = bmp.Clone();
+                                            clonedBmp.Freeze();
+                                            bmp = clonedBmp;
+                                        }
+                                        catch
+                                        {
+                                            int wbW = bmp.PixelWidth;
+                                            int wbH = bmp.PixelHeight;
+                                            int wbStride = wbW * 4;
+                                            byte[] wbPixels = new byte[wbH * wbStride];
+                                            bmp.CopyPixels(wbPixels, wbStride, 0);
+                                            var clonedBmp = BitmapSource.Create(wbW, wbH, bmp.DpiX, bmp.DpiY, PixelFormats.Bgra32, null, wbPixels, wbStride);
+                                            clonedBmp.Freeze();
+                                            bmp = clonedBmp;
+                                        }
+                                    }
+
+                                    secondaryImagesToProcess.Add((entryName, bmp));
+                                }
+
+                                lDto.SecondaryImages.Add(secDto);
+                            }
                         }
 
                         if (l.ContentGeometry != null)
@@ -1035,33 +1097,87 @@ namespace FlowMy.Views.NodeControls
                     layer.TextAlignment = lDto.TextAlignment ?? "Left";
 
                     // Restore layer-specific Layer AI configurations
+                    if (!string.IsNullOrWhiteSpace(lDto.CodeId))
+                    {
+                        layer.CodeId = lDto.CodeId;
+                    }
                     layer.LayerAiPrompt = lDto.LayerAiPrompt ?? string.Empty;
                     layer.LayerAiBatchSizeIndex = lDto.LayerAiBatchSizeIndex;
                     layer.LayerAiAspectRatioIndex = lDto.LayerAiAspectRatioIndex;
                     layer.LayerAiCustomWidth = lDto.LayerAiCustomWidth ?? string.Empty;
                     layer.LayerAiCustomHeight = lDto.LayerAiCustomHeight ?? string.Empty;
+                    layer.LayerAiSecondarySlotCount = lDto.LayerAiSecondarySlotCount > 0 ? lDto.LayerAiSecondarySlotCount : 4;
 
-                    if (lDto.SecondaryImages != null)
+                    if (lDto.AspectRatioImageIds != null)
                     {
-                        for (int i = 0; i < Math.Min(4, lDto.SecondaryImages.Count); i++)
+                        layer.AspectRatioImageIds.Clear();
+                        foreach (var kvp in lDto.AspectRatioImageIds)
+                        {
+                            layer.AspectRatioImageIds[kvp.Key] = kvp.Value;
+                        }
+                    }
+
+                    if (lDto.SecondaryImages != null && lDto.SecondaryImages.Count > 0)
+                    {
+                        layer.LayerAiSecondaryImages.Clear();
+                        for (int i = 0; i < lDto.SecondaryImages.Count; i++)
                         {
                             var secDto = lDto.SecondaryImages[i];
-                            layer.LayerAiSecondaryImages[i].FilePath = secDto.FilePath;
-                            layer.LayerAiSecondaryImages[i].IsSelected = secDto.IsSelected;
+                            var secImg = new EditorLayer.LayerAiSecondaryImage
+                            {
+                                FilePath = secDto.FilePath,
+                                IsSelected = secDto.IsSelected,
+                                ImageId = secDto.ImageId
+                            };
+                            if (secDto.AspectRatioIds != null)
+                            {
+                                foreach (var kvp in secDto.AspectRatioIds)
+                                {
+                                    secImg.AspectRatioIds[kvp.Key] = kvp.Value;
+                                }
+                            }
+                            if (secDto.SavedChildImages != null)
+                            {
+                                foreach (var childDto in secDto.SavedChildImages)
+                                {
+                                    var childImg = new EditorLayer.LayerAiSecondaryImage
+                                    {
+                                        FilePath = childDto.FilePath,
+                                        IsSelected = childDto.IsSelected,
+                                        ImageId = childDto.ImageId
+                                    };
+
+                                    if (!string.IsNullOrEmpty(childDto.ImageFileName) && layerBytesMap.TryGetValue(childDto.ImageFileName, out var childPngBytes))
+                                    {
+                                        childImg.PngBytes = childPngBytes;
+                                        try
+                                        {
+                                            using (var ms = new MemoryStream(childPngBytes))
+                                            {
+                                                var dec = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                                childImg.Bitmap = dec.Frames[0];
+                                            }
+                                        }
+                                        catch { }
+                                    }
+                                    secImg.SavedChildImages.Add(childImg);
+                                }
+                            }
 
                             if (!string.IsNullOrEmpty(secDto.ImageFileName) && layerBytesMap.TryGetValue(secDto.ImageFileName, out var secPngBytes))
                             {
-                                layer.LayerAiSecondaryImages[i].PngBytes = secPngBytes;
+                                secImg.PngBytes = secPngBytes;
                                 try
                                 {
                                     using (var ms = new MemoryStream(secPngBytes))
                                     {
                                         var dec = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-                                        layer.LayerAiSecondaryImages[i].Bitmap = dec.Frames[0];
+                                        secImg.Bitmap = dec.Frames[0];
                                     }
                                 }
                                 catch { }
                             }
+                            layer.LayerAiSecondaryImages.Add(secImg);
                         }
                     }
 

@@ -902,14 +902,17 @@ namespace FlowMy.Models.ImageEditor
 
         public class LayerAiSecondaryImage
         {
+            public string? ImageId { get; set; }
             public byte[]? PngBytes { get; set; }
             public string? FilePath { get; set; }
             public bool IsSelected { get; set; } = true;
             public BitmapSource? Bitmap { get; set; }
             public System.Collections.Generic.Dictionary<int, string> AspectRatioIds { get; } = new System.Collections.Generic.Dictionary<int, string>();
+            public System.Collections.Generic.List<LayerAiSecondaryImage> SavedChildImages { get; } = new System.Collections.Generic.List<LayerAiSecondaryImage>();
 
-            public string? GetImageId(int aspectIndex)
+            public string? GetImageId(int aspectIndex = 0)
             {
+                if (!string.IsNullOrWhiteSpace(ImageId)) return ImageId;
                 if (AspectRatioIds.TryGetValue(aspectIndex, out var id) && !string.IsNullOrWhiteSpace(id))
                     return id;
                 return null;
@@ -919,10 +922,12 @@ namespace FlowMy.Models.ImageEditor
             {
                 if (string.IsNullOrWhiteSpace(id))
                 {
+                    ImageId = null;
                     AspectRatioIds.Remove(aspectIndex);
                 }
                 else
                 {
+                    ImageId = id.Trim();
                     AspectRatioIds[aspectIndex] = id.Trim();
                 }
             }

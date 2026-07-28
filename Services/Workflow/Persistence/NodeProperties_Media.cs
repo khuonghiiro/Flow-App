@@ -118,6 +118,24 @@ public sealed partial class FileWorkflowPersistenceService
                 imageNode.RenderNodeId = rnObj?.ToString();
             if (properties.TryGetValue("RenderNodeOutputKey", out var rnkObj))
                 imageNode.RenderNodeOutputKey = rnkObj?.ToString();
+            if (properties.TryGetValue("RenderCodeIdKeys", out var rckObj))
+                imageNode.RenderCodeIdKeys = rckObj?.ToString() ?? "codeId, CodeId, code_id";
+            if (properties.TryGetValue("RenderImageIdKeys", out var rikObj))
+                imageNode.RenderImageIdKeys = rikObj?.ToString() ?? "id, Id, ID, mediaId, imageId, assetId";
+            if (properties.TryGetValue("RenderImageLinkKeys", out var rlkObj))
+                imageNode.RenderImageLinkKeys = rlkObj?.ToString() ?? "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
+
+            // Return ID node config (Node nhận lại ID ảnh)
+            if (properties.TryGetValue("ReturnIdNodeId", out var retnObj))
+                imageNode.ReturnIdNodeId = retnObj?.ToString();
+            if (properties.TryGetValue("ReturnIdOutputKey", out var retnkObj))
+                imageNode.ReturnIdOutputKey = retnkObj?.ToString();
+            if (properties.TryGetValue("ReturnCodeIdKeys", out var retckObj))
+                imageNode.ReturnCodeIdKeys = retckObj?.ToString() ?? "codeId, CodeId, code_id";
+            if (properties.TryGetValue("ReturnImageIdKeys", out var retikObj))
+                imageNode.ReturnImageIdKeys = retikObj?.ToString() ?? "id, Id, ID, mediaId, imageId, assetId";
+            if (properties.TryGetValue("ReturnImageLinkKeys", out var retlkObj))
+                imageNode.ReturnImageLinkKeys = retlkObj?.ToString() ?? "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
 
             // SkipOutputs
             if (properties.TryGetValue("SkipOutputs", out var soObj) && soObj != null)
@@ -150,6 +168,23 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("LayerAiParamsCode", out var paramsObj))
                 imageNode.LayerAiParamsCode = paramsObj?.ToString() ?? string.Empty;
 
+            if (properties.TryGetValue("LayerAiInputMappings", out var laimObj) && laimObj != null)
+            {
+                try
+                {
+                    string? laimJson = laimObj is string s ? s : laimObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(laimJson))
+                    {
+                        var mappings = JsonSerializer.Deserialize<List<CodeInputMapping>>(laimJson);
+                        if (mappings != null)
+                            imageNode.LayerAiInputMappings = mappings;
+                    }
+                }
+                catch { }
+            }
+
             if (properties.TryGetValue("LayerAiWebUrl", out var webUrlObj))
                 imageNode.LayerAiWebUrl = webUrlObj?.ToString() ?? "https://google.com";
             if (properties.TryGetValue("LayerAiCacheProfileName", out var profileObj))
@@ -168,6 +203,10 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("LayerAiSendModeOn", out var sendModeOnObj) && sendModeOnObj != null &&
                 bool.TryParse(sendModeOnObj.ToString(), out var smo))
                 imageNode.LayerAiSendModeOn = smo;
+
+            if (properties.TryGetValue("LayerAiIsCombinedMode", out var isCombObj) && isCombObj != null &&
+                bool.TryParse(isCombObj.ToString(), out var icm))
+                imageNode.LayerAiIsCombinedMode = icm;
 
             // Deserialize danh sách vùng crop
             if (properties.TryGetValue("Crops", out var cropsObj) && cropsObj != null)
@@ -215,6 +254,9 @@ public sealed partial class FileWorkflowPersistenceService
 
                                 if (cropEl.TryGetProperty("CropName", out var cnEl) && cnEl.ValueKind == JsonValueKind.String)
                                     region.CropName = cnEl.GetString() ?? string.Empty;
+
+                                if (cropEl.TryGetProperty("LastExecutionId", out var leiEl) && leiEl.ValueKind == JsonValueKind.String)
+                                    region.LastExecutionId = leiEl.GetString();
 
                                 // Khôi phục Order
                                 if (cropEl.TryGetProperty("Order", out var orderEl) && orderEl.TryGetInt32(out var orderVal))
@@ -556,7 +598,8 @@ public sealed partial class FileWorkflowPersistenceService
                     IsVisible = r.IsVisible,
                     IsOutlineOnly = r.IsOutlineOnly,
                     SavedPath = r.SavedPath ?? string.Empty,
-                    CropName = r.CropName ?? string.Empty
+                    CropName = r.CropName ?? string.Empty,
+                    LastExecutionId = r.LastExecutionId ?? string.Empty
                 }).ToList();
                 dict["Crops"] = JsonSerializer.Serialize(cropsData);
             }
@@ -572,6 +615,24 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["RenderNodeId"] = imageNode.RenderNodeId;
             if (!string.IsNullOrWhiteSpace(imageNode.RenderNodeOutputKey))
                 dict["RenderNodeOutputKey"] = imageNode.RenderNodeOutputKey;
+            if (!string.IsNullOrWhiteSpace(imageNode.RenderCodeIdKeys))
+                dict["RenderCodeIdKeys"] = imageNode.RenderCodeIdKeys;
+            if (!string.IsNullOrWhiteSpace(imageNode.RenderImageIdKeys))
+                dict["RenderImageIdKeys"] = imageNode.RenderImageIdKeys;
+            if (!string.IsNullOrWhiteSpace(imageNode.RenderImageLinkKeys))
+                dict["RenderImageLinkKeys"] = imageNode.RenderImageLinkKeys;
+
+            // Return ID node config (Node nhận lại ID ảnh)
+            if (!string.IsNullOrWhiteSpace(imageNode.ReturnIdNodeId))
+                dict["ReturnIdNodeId"] = imageNode.ReturnIdNodeId;
+            if (!string.IsNullOrWhiteSpace(imageNode.ReturnIdOutputKey))
+                dict["ReturnIdOutputKey"] = imageNode.ReturnIdOutputKey;
+            if (!string.IsNullOrWhiteSpace(imageNode.ReturnCodeIdKeys))
+                dict["ReturnCodeIdKeys"] = imageNode.ReturnCodeIdKeys;
+            if (!string.IsNullOrWhiteSpace(imageNode.ReturnImageIdKeys))
+                dict["ReturnImageIdKeys"] = imageNode.ReturnImageIdKeys;
+            if (!string.IsNullOrWhiteSpace(imageNode.ReturnImageLinkKeys))
+                dict["ReturnImageLinkKeys"] = imageNode.ReturnImageLinkKeys;
 
             // SkipOutputs
             if (imageNode.SkipOutputs != null && imageNode.SkipOutputs.Count > 0)
@@ -587,6 +648,9 @@ public sealed partial class FileWorkflowPersistenceService
             if (!string.IsNullOrWhiteSpace(imageNode.LayerAiParamsCode))
                 dict["LayerAiParamsCode"] = imageNode.LayerAiParamsCode;
 
+            if (imageNode.LayerAiInputMappings != null && imageNode.LayerAiInputMappings.Count > 0)
+                dict["LayerAiInputMappings"] = JsonSerializer.Serialize(imageNode.LayerAiInputMappings);
+
             if (!string.IsNullOrWhiteSpace(imageNode.LayerAiWebUrl))
                 dict["LayerAiWebUrl"] = imageNode.LayerAiWebUrl;
             if (!string.IsNullOrWhiteSpace(imageNode.LayerAiCacheProfileName))
@@ -600,6 +664,7 @@ public sealed partial class FileWorkflowPersistenceService
 
             dict["LayerAiPromptHidden"] = imageNode.LayerAiPromptHidden;
             dict["LayerAiSendModeOn"] = imageNode.LayerAiSendModeOn;
+            dict["LayerAiIsCombinedMode"] = imageNode.LayerAiIsCombinedMode;
 
     }
 

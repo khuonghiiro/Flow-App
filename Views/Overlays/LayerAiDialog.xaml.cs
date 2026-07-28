@@ -59,14 +59,17 @@ namespace FlowMy.Views.Overlays
         public class SecondaryImageItem
         {
             public string CodeId { get; set; } = Guid.NewGuid().ToString("N");
+            public string? ImageId { get; set; }
             public BitmapSource? Bitmap { get; set; }
             public string? FilePath { get; set; }
             public bool IsSelected { get; set; } = true;
             public bool HasImage => Bitmap != null;
             public System.Collections.Generic.Dictionary<int, string> AspectRatioIds { get; } = new System.Collections.Generic.Dictionary<int, string>();
+            public System.Collections.Generic.List<SecondaryImageItem> SavedChildImages { get; } = new System.Collections.Generic.List<SecondaryImageItem>();
 
-            public string? GetImageId(int aspectIndex)
+            public string? GetImageId(int aspectIndex = 0)
             {
+                if (!string.IsNullOrWhiteSpace(ImageId)) return ImageId;
                 if (AspectRatioIds.TryGetValue(aspectIndex, out var id) && !string.IsNullOrWhiteSpace(id))
                     return id;
                 return null;
@@ -76,11 +79,35 @@ namespace FlowMy.Views.Overlays
             {
                 if (string.IsNullOrWhiteSpace(id))
                 {
+                    ImageId = null;
                     AspectRatioIds.Remove(aspectIndex);
                 }
                 else
                 {
+                    ImageId = id.Trim();
                     AspectRatioIds[aspectIndex] = id.Trim();
+                }
+            }
+
+            /// <summary>
+            /// Lưu ảnh hiện tại (nếu đã có ID) vào danh sách ô ảnh con nhỏ trước khi thay bằng ảnh mới.
+            /// </summary>
+            public void ArchiveCurrentIfHasId()
+            {
+                if (HasImage && !string.IsNullOrWhiteSpace(ImageId))
+                {
+                    bool exists = SavedChildImages.Any(c => string.Equals(c.ImageId, ImageId, StringComparison.OrdinalIgnoreCase));
+                    if (!exists)
+                    {
+                        SavedChildImages.Add(new SecondaryImageItem
+                        {
+                            CodeId = CodeId,
+                            ImageId = ImageId,
+                            Bitmap = Bitmap,
+                            FilePath = FilePath,
+                            IsSelected = IsSelected
+                        });
+                    }
                 }
             }
         }
@@ -122,6 +149,8 @@ namespace FlowMy.Views.Overlays
         private List<Image> _slotImagesWv = new();
         private List<TextBlock> _slotPlaceholdersWv = new();
         private List<Border> _slotRemovesWv = new();
+        private List<StackPanel> _slotChildPanels = new();
+        private List<StackPanel> _slotChildPanelsWv = new();
 
         // Tab + dialog state
         private double _originalWidth;
@@ -324,6 +353,7 @@ namespace FlowMy.Views.Overlays
                 {
                     var secItem = new SecondaryImageItem
                     {
+                        ImageId = src.ImageId,
                         FilePath = src.FilePath,
                         IsSelected = src.IsSelected,
                         Bitmap = src.Bitmap
@@ -331,6 +361,19 @@ namespace FlowMy.Views.Overlays
                     foreach (var kvp in src.AspectRatioIds)
                     {
                         secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                    }
+                    if (src.SavedChildImages != null)
+                    {
+                        foreach (var child in src.SavedChildImages)
+                        {
+                            secItem.SavedChildImages.Add(new SecondaryImageItem
+                            {
+                                ImageId = child.ImageId,
+                                FilePath = child.FilePath,
+                                IsSelected = child.IsSelected,
+                                Bitmap = child.Bitmap
+                            });
+                        }
                     }
                     state.SecondaryImages.Add(secItem);
                 }
@@ -404,6 +447,7 @@ namespace FlowMy.Views.Overlays
             {
                 var secItem = new SecondaryImageItem
                 {
+                    ImageId = img.ImageId,
                     Bitmap = img.Bitmap,
                     FilePath = img.FilePath,
                     IsSelected = img.IsSelected
@@ -411,6 +455,16 @@ namespace FlowMy.Views.Overlays
                 foreach (var kvp in img.AspectRatioIds)
                 {
                     secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                }
+                foreach (var child in img.SavedChildImages)
+                {
+                    secItem.SavedChildImages.Add(new SecondaryImageItem
+                    {
+                        ImageId = child.ImageId,
+                        Bitmap = child.Bitmap,
+                        FilePath = child.FilePath,
+                        IsSelected = child.IsSelected
+                    });
                 }
                 state.SecondaryImages.Add(secItem);
             }
@@ -428,6 +482,7 @@ namespace FlowMy.Views.Overlays
             {
                 var layerImg = new EditorLayer.LayerAiSecondaryImage
                 {
+                    ImageId = img.ImageId,
                     FilePath = img.FilePath,
                     IsSelected = img.IsSelected,
                     Bitmap = img.Bitmap
@@ -435,6 +490,16 @@ namespace FlowMy.Views.Overlays
                 foreach (var kvp in img.AspectRatioIds)
                 {
                     layerImg.AspectRatioIds[kvp.Key] = kvp.Value;
+                }
+                foreach (var child in img.SavedChildImages)
+                {
+                    layerImg.SavedChildImages.Add(new EditorLayer.LayerAiSecondaryImage
+                    {
+                        ImageId = child.ImageId,
+                        FilePath = child.FilePath,
+                        IsSelected = child.IsSelected,
+                        Bitmap = child.Bitmap
+                    });
                 }
 
                 // Sync PNG bytes
@@ -495,6 +560,7 @@ namespace FlowMy.Views.Overlays
                 {
                     var secItem = new SecondaryImageItem
                     {
+                        ImageId = src.ImageId,
                         Bitmap = src.Bitmap,
                         FilePath = src.FilePath,
                         IsSelected = src.IsSelected
@@ -502,6 +568,16 @@ namespace FlowMy.Views.Overlays
                     foreach (var kvp in src.AspectRatioIds)
                     {
                         secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                    }
+                    foreach (var child in src.SavedChildImages)
+                    {
+                        secItem.SavedChildImages.Add(new SecondaryImageItem
+                        {
+                            ImageId = child.ImageId,
+                            Bitmap = child.Bitmap,
+                            FilePath = child.FilePath,
+                            IsSelected = child.IsSelected
+                        });
                     }
                     _secondaryImages.Add(secItem);
                 }
@@ -2415,6 +2491,7 @@ namespace FlowMy.Views.Overlays
             _slotPlaceholders.Clear();
             _slotChecks.Clear();
             _slotRemoves.Clear();
+            _slotChildPanels.Clear();
 
             if (count <= 0) return;
 
@@ -2460,6 +2537,7 @@ namespace FlowMy.Views.Overlays
             _slotImagesWv.Clear();
             _slotPlaceholdersWv.Clear();
             _slotRemovesWv.Clear();
+            _slotChildPanelsWv.Clear();
 
             if (count <= 0) return;
 
@@ -2597,6 +2675,26 @@ namespace FlowMy.Views.Overlays
             };
             grid.Children.Add(numberBadge);
 
+            // Child thumbnails panel (ô ảnh con nhỏ khi ảnh phụ cũ có ID)
+            var childScrollViewer = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = isCompact ? new Thickness(0, 0, 2, 2) : new Thickness(0, 0, 4, 2),
+                MaxHeight = isCompact ? 22 : 28,
+                MaxWidth = isCompact ? 100 : 160
+            };
+
+            var childStackPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            childScrollViewer.Content = childStackPanel;
+            grid.Children.Add(childScrollViewer);
+
             border.Child = grid;
 
             // Register in the appropriate lists
@@ -2606,6 +2704,7 @@ namespace FlowMy.Views.Overlays
                 _slotImagesWv.Add(image);
                 _slotPlaceholdersWv.Add(placeholder);
                 _slotRemovesWv.Add(removeBorder);
+                _slotChildPanelsWv.Add(childStackPanel);
             }
             else
             {
@@ -2614,6 +2713,7 @@ namespace FlowMy.Views.Overlays
                 _slotPlaceholders.Add(placeholder);
                 _slotChecks.Add(checkBadge!);
                 _slotRemoves.Add(removeBorder);
+                _slotChildPanels.Add(childStackPanel);
             }
 
             return border;
@@ -2667,8 +2767,10 @@ namespace FlowMy.Views.Overlays
                         bmp.EndInit();
                         bmp.Freeze();
 
+                        _secondaryImages[slotIdx].ArchiveCurrentIfHasId();
                         _secondaryImages[slotIdx].Bitmap = bmp;
                         _secondaryImages[slotIdx].FilePath = file;
+                        _secondaryImages[slotIdx].ImageId = null;
                         _secondaryImages[slotIdx].IsSelected = true;
                         slotIdx++;
                     }
@@ -2733,11 +2835,13 @@ namespace FlowMy.Views.Overlays
                             bmp.EndInit();
                             bmp.Freeze();
 
+                            _secondaryImages[idx].ArchiveCurrentIfHasId();
                             if (_sendModeOn)
                             {
                                 // ON mode: just add and select it
                                 _secondaryImages[idx].Bitmap = bmp;
                                 _secondaryImages[idx].FilePath = dlg.FileName;
+                                _secondaryImages[idx].ImageId = null;
                                 _secondaryImages[idx].IsSelected = true;
                             }
                             else
@@ -2749,6 +2853,7 @@ namespace FlowMy.Views.Overlays
                                 }
                                 _secondaryImages[idx].Bitmap = bmp;
                                 _secondaryImages[idx].FilePath = dlg.FileName;
+                                _secondaryImages[idx].ImageId = null;
                                 _secondaryImages[idx].IsSelected = true;
                             }
                         }
@@ -2907,8 +3012,10 @@ namespace FlowMy.Views.Overlays
 
                 if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
+                    _secondaryImages[idx].ArchiveCurrentIfHasId();
                     _secondaryImages[idx].Bitmap = bitmap;
                     _secondaryImages[idx].FilePath = null;
+                    _secondaryImages[idx].ImageId = null;
                     _secondaryImages[idx].IsSelected = true;
                     RefreshAllSlotsUI();
                 }
@@ -3141,6 +3248,73 @@ namespace FlowMy.Views.Overlays
                 {
                     _slotBordersWv[idx].BorderBrush = normalBrush;
                     _slotBordersWv[idx].BorderThickness = new Thickness(1.5);
+                }
+            }
+
+            RefreshChildThumbnailsUI(idx);
+        }
+
+        private void RefreshChildThumbnailsUI(int idx)
+        {
+            if (idx < 0 || idx >= _secondarySlotCount || idx >= _secondaryImages.Count) return;
+            var item = _secondaryImages[idx];
+
+            var panels = new List<StackPanel>();
+            if (idx < _slotChildPanels.Count) panels.Add(_slotChildPanels[idx]);
+            if (idx < _slotChildPanelsWv.Count) panels.Add(_slotChildPanelsWv[idx]);
+
+            foreach (var panel in panels)
+            {
+                panel.Children.Clear();
+                if (item.SavedChildImages != null && item.SavedChildImages.Count > 0)
+                {
+                    bool isCompact = (idx < _slotChildPanelsWv.Count && panel == _slotChildPanelsWv[idx]);
+                    double size = isCompact ? 18 : 22;
+
+                    foreach (var child in item.SavedChildImages)
+                    {
+                        var border = new Border
+                        {
+                            Width = size,
+                            Height = size,
+                            CornerRadius = new CornerRadius(3),
+                            BorderThickness = new Thickness(1.2),
+                            Margin = new Thickness(1, 0, 1, 0),
+                            Cursor = Cursors.Hand,
+                            ToolTip = !string.IsNullOrEmpty(child.ImageId) ? $"ID: #{child.ImageId}" : "Ảnh con"
+                        };
+
+                        bool isActive = !string.IsNullOrEmpty(child.ImageId) && string.Equals(child.ImageId, item.ImageId, StringComparison.OrdinalIgnoreCase);
+                        border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#4fffb0" : "#2a2e3d"));
+                        border.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#15171e"));
+
+                        var childImg = new Image
+                        {
+                            Stretch = Stretch.Uniform,
+                            Source = child.Bitmap
+                        };
+                        border.Child = childImg;
+
+                        var capturedChild = child;
+                        border.MouseLeftButtonDown += (s, e) =>
+                        {
+                            e.Handled = true;
+                            // Lưu ảnh hiện tại (nếu có ID) vào SavedChildImages
+                            item.ArchiveCurrentIfHasId();
+
+                            // Chọn ảnh con này lên ô ảnh phụ to
+                            item.Bitmap = capturedChild.Bitmap;
+                            item.FilePath = capturedChild.FilePath;
+                            item.ImageId = capturedChild.ImageId;
+                            item.IsSelected = true;
+
+                            RefreshAllSlotsUI();
+                            UpdateSecondaryInfo();
+                            UpdatePreviewImage();
+                        };
+
+                        panel.Children.Add(border);
+                    }
                 }
             }
         }

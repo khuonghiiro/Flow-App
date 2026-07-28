@@ -286,6 +286,52 @@ namespace FlowMy.Views
                 dstImage.PreferGpu = srcImage.PreferGpu;
                 dstImage.FfmpegFilter = srcImage.FfmpegFilter ?? string.Empty;
 
+                dstImage.CroppedFolderPath = srcImage.CroppedFolderPath ?? string.Empty;
+                dstImage.CroppedFolderSourceNodeId = srcImage.CroppedFolderSourceNodeId;
+                dstImage.CroppedFolderSourceOutputKey = srcImage.CroppedFolderSourceOutputKey;
+
+                dstImage.CropMode = srcImage.CropMode;
+                dstImage.PromptSize = srcImage.PromptSize;
+                dstImage.ProcessorPrompt = srcImage.ProcessorPrompt ?? string.Empty;
+                dstImage.IsVerticalMode = srcImage.IsVerticalMode;
+                dstImage.ProcessingMode = srcImage.ProcessingMode;
+
+                dstImage.RenderNodeId = srcImage.RenderNodeId;
+                dstImage.RenderNodeOutputKey = srcImage.RenderNodeOutputKey;
+                dstImage.RenderCodeIdKeys = srcImage.RenderCodeIdKeys;
+                dstImage.RenderImageIdKeys = srcImage.RenderImageIdKeys;
+                dstImage.RenderImageLinkKeys = srcImage.RenderImageLinkKeys;
+
+                dstImage.ReturnIdNodeId = srcImage.ReturnIdNodeId;
+                dstImage.ReturnIdOutputKey = srcImage.ReturnIdOutputKey;
+                dstImage.ReturnCodeIdKeys = srcImage.ReturnCodeIdKeys;
+                dstImage.ReturnImageIdKeys = srcImage.ReturnImageIdKeys;
+                dstImage.ReturnImageLinkKeys = srcImage.ReturnImageLinkKeys;
+
+                dstImage.LayerAiHtmlCode = srcImage.LayerAiHtmlCode ?? string.Empty;
+                dstImage.LayerAiCssCode = srcImage.LayerAiCssCode ?? string.Empty;
+                dstImage.LayerAiJsCode = srcImage.LayerAiJsCode ?? string.Empty;
+                dstImage.LayerAiParamsCode = srcImage.LayerAiParamsCode ?? string.Empty;
+                dstImage.LayerAiInputMappings = srcImage.LayerAiInputMappings != null
+                    ? srcImage.LayerAiInputMappings.Select(m => new CodeInputMapping
+                    {
+                        SourceNodeId = m.SourceNodeId,
+                        SourceOutputKey = m.SourceOutputKey,
+                        InputKeyOverride = m.InputKeyOverride,
+                        AutoRefreshEnabled = m.AutoRefreshEnabled,
+                        AutoRefreshInterval = m.AutoRefreshInterval,
+                        AutoRefreshUnit = m.AutoRefreshUnit
+                    }).ToList()
+                    : new List<CodeInputMapping>();
+                dstImage.LayerAiWebUrl = srcImage.LayerAiWebUrl;
+                dstImage.LayerAiCacheProfileName = srcImage.LayerAiCacheProfileName;
+                dstImage.LayerAiWebTabsJson = srcImage.LayerAiWebTabsJson;
+                dstImage.LayerAiWebSplitMode = srcImage.LayerAiWebSplitMode;
+                dstImage.LayerAiActiveTab = srcImage.LayerAiActiveTab;
+                dstImage.LayerAiPromptHidden = srcImage.LayerAiPromptHidden;
+                dstImage.LayerAiSendModeOn = srcImage.LayerAiSendModeOn;
+                dstImage.LayerAiIsCombinedMode = srcImage.LayerAiIsCombinedMode;
+
                 dstImage.TitleDisplayMode = srcImage.TitleDisplayMode;
                 dstImage.TitleColorMode = srcImage.TitleColorMode;
                 dstImage.TitleColorKey = srcImage.TitleColorKey;
