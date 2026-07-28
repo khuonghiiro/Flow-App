@@ -237,12 +237,13 @@ namespace FlowMy.ViewModels
         {
             if (string.IsNullOrWhiteSpace(CookieText)) return;
             var textToApply = CookieText;
+
+            // Xóa text khỏi ô nhập trong dialog UI
+            CookieText = string.Empty;
+
+            // Gán cho node để kích hoạt PropertyChanged event tới WebNodeControl
             _webNode.CookieText = textToApply;
             _webNode.RaisePropertyChanged(nameof(WebNode.CookieText));
-
-            // Xóa text tĩnh khỏi ô nhập để trình duyệt giữ cookie động theo phiên làm việc thực tế
-            CookieText = string.Empty;
-            _webNode.CookieText = null;
         }
 
         // JS injection: danh sách (Node+Key) – khi node đó chạy đến Web thì chạy JS

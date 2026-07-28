@@ -136,13 +136,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var timeoutMs = keyConfig.TimeoutMs;
                         var effectiveKeyTimeoutMs = timeoutMs > 0 ? timeoutMs : effectiveWaitTimeoutMs;
 
-                        // Nếu không cài TimeoutMs cụ thể (>0) và node không có global timeout, dùng mặc định 30000ms (30s) safety timeout để tránh chờ vô hạn
-                        if (effectiveKeyTimeoutMs <= 0 && (keyConfig.WaitForCompletion || keyConfig.IsList))
+                        string extractType = keyConfig.ExtractType?.Trim() ?? "Response";
+                        bool isResponseExtract = string.Equals(extractType, "Response", StringComparison.OrdinalIgnoreCase);
+
+                        // Nếu không cài TimeoutMs cụ thể (>0), bắt buộc phải gán timeout cho kiểu non-Response (CurlCmd, Payload, Params...) hoặc mảng
+                        if (effectiveKeyTimeoutMs <= 0 && (!isResponseExtract || keyConfig.IsList || keyConfig.WaitForCompletion))
                         {
-                            effectiveKeyTimeoutMs = 30000;
+                            effectiveKeyTimeoutMs = 5000;
                         }
 
-                        Debug.WriteLine($"[WebNodeExecutor][DIAG] Wait key '{keyConfig.Key}': IsCompletedImmediately={alreadyCompleted}, EffectiveTimeout={effectiveKeyTimeoutMs}ms");
+                        Debug.WriteLine($"[WebNodeExecutor][DIAG] Wait key '{keyConfig.Key}': ExtractType='{extractType}', IsCompletedImmediately={alreadyCompleted}, EffectiveTimeout={effectiveKeyTimeoutMs}ms");
 
                         if (effectiveKeyTimeoutMs > 0)
                         {

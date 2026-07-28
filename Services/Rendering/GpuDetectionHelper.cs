@@ -71,32 +71,33 @@ namespace FlowMy.Services.Rendering
         {
             try
             {
-                // Phương pháp 1: Kiểm tra WPF Render Tier
+                // 1. Kiểm tra WPF Render Tier (Instant C++ DirectX query - 0ms)
                 int tier = RenderCapability.Tier >> 16;
-                if (tier >= 1)
+                if (tier >= 1) return true;
+
+                // 2. Kiểm tra Pixel Shader support (Instant - 0ms)
+                if (RenderCapability.IsPixelShaderVersionSupported(2, 0)) return true;
+
+                // 3. WMI query: CHỈ chạy nếu đã ở background thread, hoặc dùng Task.Run ngầm
+                // Tránh làm đơ Main UI Thread khi ứng dụng vừa khởi động!
+                if (System.Windows.Application.Current?.Dispatcher.CheckAccess() == true)
                 {
-                    // Tier 1 hoặc 2 = có hardware acceleration
-                    return true;
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        try
+                        {
+                            bool wmiResult = HasGpuViaWmi();
+                            _isGpuAvailable = wmiResult;
+                        }
+                        catch { }
+                    });
+                    return true; // Trả về true mặc định trên UI thread để không block startup
                 }
 
-                // Phương pháp 2: Kiểm tra Pixel Shader support
-                if (RenderCapability.IsPixelShaderVersionSupported(2, 0))
-                {
-                    return true;
-                }
-
-                // Phương pháp 3: Kiểm tra GPU qua WMI (Windows Management Instrumentation)
-                if (HasGpuViaWmi())
-                {
-                    return true;
-                }
-
-                // Nếu không có GPU, dùng CPU
-                return false;
+                return HasGpuViaWmi();
             }
             catch (Exception)
             {
-                // Nếu có lỗi, mặc định dùng CPU để đảm bảo ứng dụng vẫn chạy được
                 return false;
             }
         }

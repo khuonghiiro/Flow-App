@@ -49,13 +49,7 @@ namespace FlowMy.Views.NodeControls
                                 return;
                             }
 
-                            var windowInfo = new WindowInfo();
-                            windowInfo.SetAsPopup(IntPtr.Zero, "DevTools - Chromium");
-                            windowInfo.Width = 1080;
-                            windowInfo.Height = 760;
-                            windowInfo.X = 120;
-                            windowInfo.Y = 120;
-                            host.ShowDevTools(windowInfo);
+                            host.ShowDevTools();
                             return;
                         }
 
@@ -120,168 +114,24 @@ namespace FlowMy.Views.NodeControls
             UrlRequestStatus status,
             long receivedContentLength)
         {
+            string? targetExecutionId = null;
+            if (_requestExecutionMap.TryRemove(request.Identifier, out var mappedExecId))
+            {
+                targetExecutionId = mappedExecId;
+                System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler][DIAG] Response [{request.Identifier}] '{request.Url}' matched tagged execution '{targetExecutionId}'");
+            }
+
+            string bodyText = string.Empty;
             if (_responseStreams.TryGetValue(request.Identifier, out var stream))
             {
                 try
                 {
-                    byte[] data;
                     lock (stream)
                     {
-                        data = stream.ToArray();
-                    }
-                    string bodyText = Encoding.UTF8.GetString(data);
-
-                    var requestHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    if (request.Headers != null)
-                    {
-                        foreach (string key in request.Headers.AllKeys)
-                        {
-                            if (!string.IsNullOrEmpty(key))
-                                requestHeaders[key] = request.Headers[key] ?? string.Empty;
-                        }
-                    }
-
-                    var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    if (response != null && response.Headers != null)
-                    {
-                        foreach (string key in response.Headers.AllKeys)
-                        {
-                            if (!string.IsNullOrEmpty(key))
-                                responseHeaders[key] = response.Headers[key] ?? string.Empty;
-                        }
-                    }
-
-                    string? postData = null;
-                    if (request.PostData != null && request.PostData.Elements.Count > 0)
-                    {
-                        var sb = new StringBuilder();
-                        foreach (var el in request.PostData.Elements)
-                        {
-                            if (el.Type == PostDataElementType.Bytes && el.Bytes != null)
-                            {
-                                sb.Append(Encoding.UTF8.GetString(el.Bytes));
-                            }
-                        }
-                        postData = sb.ToString();
-                    }
-
-                    string targetUrl = request.Url ?? string.Empty;
-                    string requestMethod = request.Method ?? "GET";
-
-                    string? targetExecutionId = null;
-                    if (_requestExecutionMap.TryRemove(request.Identifier, out var mappedExecId))
-                    {
-                        targetExecutionId = mappedExecId;
-                        System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler][DIAG] Response [{request.Identifier}] '{targetUrl}' matched tagged execution '{targetExecutionId}'");
-                    }
-
-                    if (_node is FlowMy.Models.Nodes.WebNode webNode)
-                    {
-                        webNode.ProcessInterceptedNetworkResponse(
-                            targetUrl,
-                            requestMethod,
-                            requestHeaders,
-                            responseHeaders,
-                            postData,
-                            bodyText,
-                            response != null ? (int)response.StatusCode : 200,
-                            targetExecutionId,
-                            _host);
-
-                        if (_host != null)
-                        {
-                            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
-                            {
-                                try
-                                {
-                                    _host.RequestSyncDataPanels(immediate: false);
-                                    if (webNode.SyncLiveOutputsToResults)
-                                    {
-                                        var vm = _host.ViewModel;
-                                        if (vm != null)
-                                        {
-                                            var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
-                                                .GetField("_executionVisualizer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                            if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
-                                            {
-                                                visualizer.RefreshSavedOutputs(new[] { webNode });
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler] Live result sync error: {ex.Message}");
-                                }
-                            }), System.Windows.Threading.DispatcherPriority.Background);
-                        }
-
-                        // Real-time cookie extraction for active URL
-                        if (!string.IsNullOrWhiteSpace(targetUrl) &&
-                            (targetUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                             targetUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            System.Threading.Tasks.Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    ICookieManager? cookieMgr;
-                                    if (string.Equals(webNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
-                                        !string.IsNullOrWhiteSpace(webNode.CustomCacheName))
-                                    {
-                                        var rc = FlowMy.Services.Workflow.CefSharpEnvironmentManager.CreateProfileRequestContext(webNode.CustomCacheName.Trim());
-                                        cookieMgr = rc.GetCookieManager(null);
-                                    }
-                                    else
-                                    {
-                                        cookieMgr = Cef.GetGlobalCookieManager();
-                                    }
-
-                                    if (cookieMgr != null)
-                                    {
-                                        var cookies = await cookieMgr.VisitUrlCookiesAsync(targetUrl, includeHttpOnly: true);
-                                        if (cookies != null && cookies.Count > 0)
-                                        {
-                                            var cookieStr = string.Join("; ", cookies.Select(c => $"{c.Name}={c.Value}"));
-                                            if (!string.IsNullOrWhiteSpace(cookieStr))
-                                            {
-                                                webNode.LastCookie = cookieStr;
-                                                webNode.UpdateResponseOutputValue("cookie", cookieStr, isList: false);
-
-                                                if (_host != null && webNode.SyncLiveOutputsToResults)
-                                                {
-                                                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
-                                                    {
-                                                        try
-                                                        {
-                                                            _host.RequestSyncDataPanels(immediate: false);
-                                                            var vm = _host.ViewModel;
-                                                            if (vm != null)
-                                                            {
-                                                                var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
-                                                                    .GetField("_executionVisualizer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                                                                if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
-                                                                {
-                                                                    visualizer.RefreshSavedOutputs(new[] { webNode });
-                                                                }
-                                                            }
-                                                        }
-                                                        catch { }
-                                                    }), System.Windows.Threading.DispatcherPriority.Background);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                catch { }
-                            });
-                        }
+                        bodyText = Encoding.UTF8.GetString(stream.ToArray());
                     }
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler] Error: {ex.Message}");
-                }
+                catch { }
                 finally
                 {
                     lock (stream)
@@ -290,6 +140,153 @@ namespace FlowMy.Views.NodeControls
                     }
                     _responseStreams.Remove(request.Identifier);
                 }
+            }
+
+            try
+            {
+                var requestHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (request.Headers != null)
+                {
+                    foreach (string key in request.Headers.AllKeys)
+                    {
+                        if (!string.IsNullOrEmpty(key))
+                            requestHeaders[key] = request.Headers[key] ?? string.Empty;
+                    }
+                }
+
+                var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (response != null && response.Headers != null)
+                {
+                    foreach (string key in response.Headers.AllKeys)
+                    {
+                        if (!string.IsNullOrEmpty(key))
+                            responseHeaders[key] = response.Headers[key] ?? string.Empty;
+                    }
+                }
+
+                string? postData = null;
+                if (request.PostData != null && request.PostData.Elements.Count > 0)
+                {
+                    var sb = new StringBuilder();
+                    foreach (var el in request.PostData.Elements)
+                    {
+                        if (el.Type == PostDataElementType.Bytes && el.Bytes != null)
+                        {
+                            sb.Append(Encoding.UTF8.GetString(el.Bytes));
+                        }
+                    }
+                    postData = sb.ToString();
+                }
+
+                string targetUrl = request.Url ?? string.Empty;
+                string requestMethod = request.Method ?? "GET";
+
+                if (_node is FlowMy.Models.Nodes.WebNode webNode)
+                {
+                    webNode.ProcessInterceptedNetworkResponse(
+                        targetUrl,
+                        requestMethod,
+                        requestHeaders,
+                        responseHeaders,
+                        postData,
+                        bodyText,
+                        response != null ? (int)response.StatusCode : 200,
+                        targetExecutionId,
+                        _host);
+
+                    if (_host != null)
+                    {
+                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                _host.RequestSyncDataPanels(immediate: false);
+                                if (webNode.SyncLiveOutputsToResults)
+                                {
+                                    var vm = _host.ViewModel;
+                                    if (vm != null)
+                                    {
+                                        var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                                            .GetField("_executionVisualizer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                        if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
+                                        {
+                                            visualizer.RefreshSavedOutputs(new[] { webNode });
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler] Live result sync error: {ex.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+
+                    // Real-time cookie extraction for active URL
+                    if (!string.IsNullOrWhiteSpace(targetUrl) &&
+                        (targetUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                         targetUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        System.Threading.Tasks.Task.Run(async () =>
+                        {
+                            try
+                            {
+                                ICookieManager? cookieMgr;
+                                if (string.Equals(webNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                                    !string.IsNullOrWhiteSpace(webNode.CustomCacheName))
+                                {
+                                    var rc = FlowMy.Services.Workflow.CefSharpEnvironmentManager.CreateProfileRequestContext(webNode.CustomCacheName.Trim());
+                                    cookieMgr = rc.GetCookieManager(null);
+                                }
+                                else
+                                {
+                                    cookieMgr = Cef.GetGlobalCookieManager();
+                                }
+
+                                if (cookieMgr != null)
+                                {
+                                    var cookies = await cookieMgr.VisitUrlCookiesAsync(targetUrl, includeHttpOnly: true);
+                                    if (cookies != null && cookies.Count > 0)
+                                    {
+                                        var cookieStr = string.Join("; ", cookies.Select(c => $"{c.Name}={c.Value}"));
+                                        if (!string.IsNullOrWhiteSpace(cookieStr))
+                                        {
+                                            webNode.LastCookie = cookieStr;
+                                            webNode.UpdateResponseOutputValue("cookie", cookieStr, isList: false);
+
+                                            if (_host != null && webNode.SyncLiveOutputsToResults)
+                                            {
+                                                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                                                {
+                                                    try
+                                                    {
+                                                        _host.RequestSyncDataPanels(immediate: false);
+                                                        var vm = _host.ViewModel;
+                                                        if (vm != null)
+                                                        {
+                                                            var field = typeof(FlowMy.ViewModels.WorkflowEditorViewModel)
+                                                                .GetField("_executionVisualizer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                                            if (field?.GetValue(vm) is FlowMy.Services.Workflow.IWorkflowExecutionVisualizer visualizer)
+                                                            {
+                                                                visualizer.RefreshSavedOutputs(new[] { webNode });
+                                                            }
+                                                        }
+                                                    }
+                                                    catch { }
+                                                }), System.Windows.Threading.DispatcherPriority.Background);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler] Error: {ex.Message}");
             }
         }
 
@@ -306,23 +303,52 @@ namespace FlowMy.Views.NodeControls
                 string requestMethod = request.Method ?? "GET";
 
                 string? activeExecutionId = null;
-                var activeRuns = webNode.GetActiveExecutionRuns();
-                if (activeRuns.Count == 1)
+
+                // 1. Prioritize reading X-Flow-Execution-Id header injected from JS or WebNode request
+                if (request.Headers != null && !string.IsNullOrWhiteSpace(request.Headers["X-Flow-Execution-Id"]))
                 {
-                    activeExecutionId = activeRuns.First().ExecutionId;
+                    var headers = request.Headers;
+                    activeExecutionId = headers["X-Flow-Execution-Id"];
+                    headers.Remove("X-Flow-Execution-Id");
+                    request.Headers = headers;
+                    System.Diagnostics.Debug.WriteLine($"[FlowResourceRequestHandler][DIAG] Extracted and stripped X-Flow-Execution-Id '{activeExecutionId}' for Request [{request.Identifier}] '{targetUrl}'");
                 }
-                else if (activeRuns.Count > 1)
+
+                // 2. Query parameter fallback (__execId=...)
+                if (string.IsNullOrEmpty(activeExecutionId) && !string.IsNullOrEmpty(targetUrl) && targetUrl.Contains("__execId="))
                 {
-                    if (!string.IsNullOrEmpty(webNode.CurrentExecutingExecutionId) &&
-                        webNode.GetExecutionRun(webNode.CurrentExecutingExecutionId) is { } curRun &&
-                        !curRun.IsAllKeysCompleted())
+                    try
                     {
-                        activeExecutionId = webNode.CurrentExecutingExecutionId;
+                        var match = System.Text.RegularExpressions.Regex.Match(targetUrl, @"[\?&]__execId=([^&]+)");
+                        if (match.Success)
+                        {
+                            activeExecutionId = Uri.UnescapeDataString(match.Groups[1].Value);
+                        }
                     }
-                    else
+                    catch { }
+                }
+
+                // 3. Fallback: resolve active execution runs if header/query parameter was not provided
+                if (string.IsNullOrEmpty(activeExecutionId))
+                {
+                    var activeRuns = webNode.GetActiveExecutionRuns();
+                    if (activeRuns.Count == 1)
                     {
-                        var waitingRun = activeRuns.FirstOrDefault(r => r != null && !r.IsAllKeysCompleted());
-                        activeExecutionId = waitingRun?.ExecutionId;
+                        activeExecutionId = activeRuns.First().ExecutionId;
+                    }
+                    else if (activeRuns.Count > 1)
+                    {
+                        if (!string.IsNullOrEmpty(webNode.CurrentExecutingExecutionId) &&
+                            webNode.GetExecutionRun(webNode.CurrentExecutingExecutionId) is { } curRun &&
+                            !curRun.IsAllKeysCompleted())
+                        {
+                            activeExecutionId = webNode.CurrentExecutingExecutionId;
+                        }
+                        else
+                        {
+                            var waitingRun = activeRuns.FirstOrDefault(r => r != null && !r.IsAllKeysCompleted());
+                            activeExecutionId = waitingRun?.ExecutionId;
+                        }
                     }
                 }
 
@@ -615,6 +641,9 @@ namespace FlowMy.Views.NodeControls
                         }
                     }
                     catch { }
+
+                    // Đọc tiếp các chunk dữ liệu phản hồi kế tiếp cho các response > 64KB
+                    return FilterStatus.NeedMoreData;
                 }
 
                 return FilterStatus.Done;

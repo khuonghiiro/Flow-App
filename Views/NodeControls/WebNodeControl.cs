@@ -84,7 +84,7 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private static async Task<string?> SetCookiesFromTextAsync(ICookieManager cookieManager, string cookieText)
+        private static async Task<string?> SetCookiesFromTextAsync(ICookieManager cookieManager, string cookieText, string? fallbackUrl = null)
         {
             if (string.IsNullOrWhiteSpace(cookieText)) return null;
 
@@ -197,28 +197,100 @@ namespace FlowMy.Views.NodeControls
                                     var path = cookieObj.TryGetProperty("path", out var p) ? p.GetString() : "/";
                                     var secure = cookieObj.TryGetProperty("secure", out var s) && s.GetBoolean();
                                     var httpOnly = cookieObj.TryGetProperty("httpOnly", out var h) && h.GetBoolean();
-                                    
-                                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(domain)) continue;
+                                    var hostOnly = cookieObj.TryGetProperty("hostOnly", out var ho) && ho.GetBoolean();
+
+                                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                                    // Xử lý tiền tố __Host- và __Secure- theo tiêu chuẩn RFC 6265bis / Chromium:
+                                    // Cookie bắt đầu bằng __Host- BẮT BUỘC: Secure=true, Path="/", và Domain BẮT BUỘC để trống (null)
+                                    var isHostPrefix = name.StartsWith("__Host-", StringComparison.OrdinalIgnoreCase);
+                                    var isSecurePrefix = name.StartsWith("__Secure-", StringComparison.OrdinalIgnoreCase);
+
+                                    if (isHostPrefix)
+                                    {
+                                        secure = true;
+                                        path = "/";
+                                        hostOnly = true;
+                                    }
+                                    else if (isSecurePrefix)
+                                    {
+                                        secure = true;
+                                    }
 
                                     var cookie = new CefSharp.Cookie
                                     {
                                         Name = name,
                                         Value = value ?? "",
-                                        Domain = domain,
-                                        Path = path ?? "/",
+                                        // Nếu là hostOnly (hoặc __Host-), Domain trên CefSharp.Cookie phải để null để Chromium lưu làm Host-Only cookie
+                                        Domain = hostOnly ? null : domain,
+                                        Path = string.IsNullOrWhiteSpace(path) ? "/" : path,
                                         Secure = secure,
                                         HttpOnly = httpOnly
                                     };
-                                    var cookieUrl = $"https://{domain.TrimStart('.')}{(path ?? "/")}";
-                                    await cookieManager.SetCookieAsync(cookieUrl, cookie);
-                                    System.Diagnostics.Debug.WriteLine($"[Cookie] Added from JSON array: {name}={value?.Substring(0, Math.Min(20, value?.Length ?? 0))}... (domain: {domain})");
+
+                                    // SameSite mapping
+                                    if (cookieObj.TryGetProperty("sameSite", out var ss) && ss.ValueKind == JsonValueKind.String)
+                                    {
+                                        var ssStr = ss.GetString();
+                                        if (!string.IsNullOrWhiteSpace(ssStr) && Enum.TryParse<CefSharp.Enums.CookieSameSite>(ssStr, true, out var parsedSs))
+                                        {
+                                            cookie.SameSite = parsedSs;
+                                        }
+                                    }
+
+                                    // Expiration Date (Unix timestamp in seconds)
+                                    if (cookieObj.TryGetProperty("expirationDate", out var exp) &&
+                                        exp.ValueKind == JsonValueKind.Number &&
+                                        exp.TryGetDouble(out var expSec) && expSec > 0)
+                                    {
+                                        try
+                                        {
+                                            cookie.Expires = DateTimeOffset.FromUnixTimeSeconds((long)expSec).LocalDateTime;
+                                        }
+                                        catch { }
+                                    }
+
+                                    var cleanDomain = (!string.IsNullOrWhiteSpace(domain) ? domain : (fallbackUrl ?? "")).TrimStart('.');
+                                    if (cleanDomain.Contains('/')) cleanDomain = cleanDomain.Split('/')[0];
+                                    if (cleanDomain.Contains(':')) cleanDomain = cleanDomain.Split(':')[0];
+
+                                    var scheme = secure ? "https" : "http";
+                                    var cookieUrl = $"{scheme}://{cleanDomain}{(path ?? "/")}";
+
+                                    var setOk = await cookieManager.SetCookieAsync(cookieUrl, cookie);
+                                    System.Diagnostics.Debug.WriteLine($"[Cookie] Added from JSON array: {name} (hostOnly: {hostOnly}, ok: {setOk}, url: {cookieUrl})");
                                 }
                                 catch (Exception ex)
                                 {
                                     System.Diagnostics.Debug.WriteLine($"[Cookie] Error parsing JSON cookie: {ex.Message}");
                                 }
                             }
-                            // Nếu chưa có URL từ text bên trên, tự tạo URL từ domain của cookie đầu tiên
+
+                            // Thử tìm URL công cụ đích từ giá trị cookie (như callback-url)
+                            if (string.IsNullOrWhiteSpace(extractedUrl))
+                            {
+                                foreach (var cookieObj in cookiesJson.EnumerateArray())
+                                {
+                                    var val = cookieObj.TryGetProperty("value", out var v) ? v.GetString() : null;
+                                    if (!string.IsNullOrWhiteSpace(val) && val.Contains("http", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        try
+                                        {
+                                            var unescaped = Uri.UnescapeDataString(val);
+                                            if (Uri.TryCreate(unescaped, UriKind.Absolute, out var valUri) && 
+                                                (valUri.Scheme == Uri.UriSchemeHttp || valUri.Scheme == Uri.UriSchemeHttps))
+                                            {
+                                                extractedUrl = unescaped;
+                                                System.Diagnostics.Debug.WriteLine($"[Cookie] Extracted target URL from cookie value: {extractedUrl}");
+                                                break;
+                                            }
+                                        }
+                                        catch { }
+                                    }
+                                }
+                            }
+
+                            // Nếu vẫn chưa có URL, tự tạo URL từ domain của cookie đầu tiên
                             if (string.IsNullOrWhiteSpace(extractedUrl))
                             {
                                 foreach (var cookieObj in cookiesJson.EnumerateArray())
@@ -226,7 +298,6 @@ namespace FlowMy.Views.NodeControls
                                     var domain = cookieObj.TryGetProperty("domain", out var dd) ? dd.GetString() : null;
                                     if (!string.IsNullOrWhiteSpace(domain))
                                     {
-                                        // Bỏ dấu chấm đầu (ví dụ ".labs.google" → "labs.google")
                                         var cleanDomain = domain!.TrimStart('.');
                                         extractedUrl = $"https://{cleanDomain}";
                                         System.Diagnostics.Debug.WriteLine($"[Cookie] Extracted URL from JSON array domain: {extractedUrl}");
@@ -234,6 +305,8 @@ namespace FlowMy.Views.NodeControls
                                     }
                                 }
                             }
+
+                            try { await cookieManager.FlushStoreAsync(); } catch { }
                             return extractedUrl;
                         }
                     }
@@ -315,10 +388,11 @@ namespace FlowMy.Views.NodeControls
                     cookieLines.Add(trimmed);
                 }
 
-                // Nếu không có domain, thử extract từ URL
-                if (string.IsNullOrWhiteSpace(cookieDomain) && !string.IsNullOrWhiteSpace(extractedUrl))
+                // Nếu không có domain, thử extract từ URL (hoặc fallbackUrl)
+                if (string.IsNullOrWhiteSpace(cookieDomain))
                 {
-                    if (Uri.TryCreate(extractedUrl, UriKind.Absolute, out var uri))
+                    var targetUrl = !string.IsNullOrWhiteSpace(extractedUrl) ? extractedUrl : fallbackUrl;
+                    if (!string.IsNullOrWhiteSpace(targetUrl) && Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri))
                     {
                         cookieDomain = uri.Host;
                     }
@@ -1053,53 +1127,80 @@ namespace FlowMy.Views.NodeControls
                     }
                     else if (string.Equals(e.PropertyName, nameof(WebNode.CookieText), StringComparison.Ordinal))
                     {
+                        var textToApply = node.CookieText;
+                        if (string.IsNullOrWhiteSpace(textToApply)) return;
+
+                        // Clear node.CookieText now that we captured textToApply locally
+                        node.CookieText = null;
+
                         // User clicked "Chạy" button - apply cookie now
                         webView.Dispatcher.BeginInvoke(new Action(async () =>
                         {
                             MarkActivity();
                             await WakeRuntimeAsync();
-                            if (webView != null && !string.IsNullOrWhiteSpace(node.CookieText))
+                            ICookieManager? cookieMgr = webView.RequestContext?.GetCookieManager(null) ?? Cef.GetGlobalCookieManager();
+                            if (cookieMgr != null)
                             {
-                                System.Diagnostics.Debug.WriteLine("[Cookie] User clicked 'Chạy' button - applying cookies...");
-                                var extractedUrl = await SetCookiesFromTextAsync(Cef.GetGlobalCookieManager(), node.CookieText);
-                                
-                                if (!string.IsNullOrWhiteSpace(extractedUrl))
+                                var fallbackUrl = !string.IsNullOrWhiteSpace(webView.Address) && webView.Address.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                                    ? webView.Address
+                                    : node.ExtractUrl;
+                                var extractedUrl = await SetCookiesFromTextAsync(cookieMgr, textToApply, fallbackUrl);
+                                webView.Dispatcher.BeginInvoke(new Action(() =>
                                 {
-                                    try
+                                    if (!string.IsNullOrWhiteSpace(extractedUrl))
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Navigating to: {extractedUrl}");
-                                        node.ExtractUrl = extractedUrl;
-                                        webView.LoadUrl(extractedUrl);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Error navigating: {ex.Message}");
-                                    }
-                                }
-                                else
-                                {
-                                    // Không có URL trong cookie text → reload trang hiện tại để cookies có hiệu lực
-                                    System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - reloading current page to apply cookies");
-                                    try
-                                    {
-                                        var currentUrl = webView.Address;
-                                        if (!string.IsNullOrWhiteSpace(currentUrl) && 
-                                            !currentUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase) &&
-                                            currentUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                        try
                                         {
-                                            webView.Reload();
+                                            System.Diagnostics.Debug.WriteLine($"[Cookie] Navigating to: {extractedUrl}");
+                                            node.ExtractUrl = extractedUrl;
+
+                                            if (webView.IsBrowserInitialized)
+                                            {
+                                                webView.Load(extractedUrl);
+                                            }
+                                            else
+                                            {
+                                                System.Windows.DependencyPropertyChangedEventHandler? initHandler = null;
+                                                initHandler = (s, e) =>
+                                                {
+                                                    webView.IsBrowserInitializedChanged -= initHandler;
+                                                    webView.Dispatcher.BeginInvoke(new Action(() =>
+                                                    {
+                                                        try { webView.Load(extractedUrl); } catch { }
+                                                    }));
+                                                };
+                                                webView.IsBrowserInitializedChanged += initHandler;
+                                            }
                                         }
-                                        else if (!string.IsNullOrWhiteSpace(node.ExtractUrl) &&
-                                                 node.ExtractUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                        catch (Exception ex)
                                         {
-                                            webView.LoadUrl(node.ExtractUrl);
+                                            System.Diagnostics.Debug.WriteLine($"[Cookie] Error navigating: {ex.Message}");
                                         }
                                     }
-                                    catch (Exception ex)
+                                    else
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"[Cookie] Error reloading after cookie apply: {ex.Message}");
+                                        System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - reloading current page to apply cookies");
+                                        try
+                                        {
+                                            var currentUrl = webView.Address;
+                                            if (!string.IsNullOrWhiteSpace(currentUrl) && 
+                                                !currentUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase) &&
+                                                currentUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                webView.Reload();
+                                            }
+                                            else if (!string.IsNullOrWhiteSpace(node.ExtractUrl) &&
+                                                     node.ExtractUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                if (webView.IsBrowserInitialized) webView.Load(node.ExtractUrl);
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"[Cookie] Error reloading after cookie apply: {ex.Message}");
+                                        }
                                     }
-                                }
+                                 }), DispatcherPriority.Normal);
                             }
                             RestartSleepModeTimer();
                         }), DispatcherPriority.Normal);
@@ -1894,13 +1995,26 @@ namespace FlowMy.Views.NodeControls
                 UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus
             });
 
-            // PreviewKeyDown: Ctrl+A bôi đen toàn bộ chữ + popup navigation (↑↓/Escape/Enter item) + Enter navigate bình thường
+            // PreviewKeyDown: Ctrl+A bôi đen toàn bộ chữ + Enter navigate + ↑↓ navigation trong popup
             urlBox.PreviewKeyDown += (s, e) =>
             {
                 if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
                     e.Handled = true;
                     urlBox.SelectAll();
+                    return;
+                }
+                if (e.Key == Key.Enter)
+                {
+                    e.Handled = true;
+                    if (suggestPopup.IsOpen && suggestListBox.SelectedItem is string sel && !sel.StartsWith("🔄"))
+                    {
+                        urlBox.Text = sel;
+                        node.ExtractUrl = sel;
+                    }
+                    suggestPopup.IsOpen = false;
+                    urlBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                    EnsureWebViewAndNavigate();
                     return;
                 }
                 if (suggestPopup.IsOpen)
@@ -1927,25 +2041,6 @@ namespace FlowMy.Views.NodeControls
                         e.Handled = true;
                         return;
                     }
-                    // Enter: chọn item đang focus
-                    if (e.Key == Key.Enter && suggestListBox.SelectedItem is string sel)
-                    {
-                        e.Handled = true;
-                        urlBox.Text = sel;
-                        suggestPopup.IsOpen = false;
-                        urlBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-                        node.ExtractUrl = sel;
-                        EnsureWebViewAndNavigate();
-                        return;
-                    }
-                }
-                // Enter bình thường khi popup đóng
-                if (e.Key == Key.Enter)
-                {
-                    e.Handled = true;
-                    suggestPopup.IsOpen = false;
-                    urlBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-                    EnsureWebViewAndNavigate();
                 }
             };
 
@@ -2085,29 +2180,60 @@ namespace FlowMy.Views.NodeControls
 
                 if (string.IsNullOrEmpty(input))
                 {
-                    try { webView.LoadUrl("about:blank"); } catch { }
+                    try { webView.Load("about:blank"); } catch { }
                     return;
                 }
 
+                string targetUrl;
                 if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
-                    try { webView.LoadUrl(input); node.ExtractUrl = input; }
-                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Navigate error: {ex.Message}"); }
-                    return;
+                    targetUrl = input;
                 }
-
-                var looksLikeDomain = !input.Contains(' ') && input.Contains('.');
-                if (looksLikeDomain)
+                else if (!input.Contains(' ') && input.Contains('.'))
                 {
-                    var withProtocol = "https://" + input;
-                    try { webView.LoadUrl(withProtocol); node.ExtractUrl = withProtocol; } catch { }
-                    return;
+                    targetUrl = "https://" + input;
+                }
+                else
+                {
+                    targetUrl = "https://www.google.com/search?q=" + Uri.EscapeDataString(input);
                 }
 
-                var searchUrl = "https://www.google.com/search?q=" + Uri.EscapeDataString(input);
-                try { webView.LoadUrl(searchUrl); node.ExtractUrl = searchUrl; } catch { }
+                node.ExtractUrl = targetUrl;
+                urlBox.Text = targetUrl;
+
+                try
+                {
+                    if (webView.IsBrowserInitialized)
+                    {
+                        webView.Load(targetUrl);
+                    }
+                    else
+                    {
+                        System.Windows.DependencyPropertyChangedEventHandler? initHandler = null;
+                        initHandler = (s, e) =>
+                        {
+                            webView.IsBrowserInitializedChanged -= initHandler;
+                            webView.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                try { webView.Load(targetUrl); } catch { }
+                            }));
+                        };
+                        webView.IsBrowserInitializedChanged += initHandler;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Navigate error: {ex.Message}");
+                }
             }
+
+            goBtn.Click += (s, e) =>
+            {
+                suggestPopup.IsOpen = false;
+                urlBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                EnsureWebViewAndNavigate();
+            };
 
 
 

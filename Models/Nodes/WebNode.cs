@@ -976,30 +976,10 @@ namespace FlowMy.Models.Nodes
                 oldRunSameId.CancelDebounce();
             }
 
-            var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
+            // Xóa sạch mảng dồn tích từ các lượt chạy cũ để luồng mới bắt đầu hoàn toàn độc lập
+            ClearConfiguredResponseOutputValues();
 
-            // Copy các response output đã bắt được trước khi StartExecutionRun vào lượt chạy này
-            lock (_responseOutputLock)
-            {
-                foreach (var kv in _responseOutputLists)
-                {
-                    if (!string.IsNullOrWhiteSpace(kv.Key) && kv.Value != null && kv.Value.Count > 0)
-                    {
-                        run.ResponseOutputLists[kv.Key] = new List<string>(kv.Value);
-                        run.ResponseOutputValues[kv.Key] = System.Text.Json.JsonSerializer.Serialize(kv.Value);
-                    }
-                }
-                foreach (var kv in ResponseOutputValues)
-                {
-                    if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value) && kv.Value != "[]")
-                    {
-                        if (!run.ResponseOutputValues.ContainsKey(kv.Key))
-                        {
-                            run.ResponseOutputValues[kv.Key] = kv.Value;
-                        }
-                    }
-                }
-            }
+            var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
 
             _activeExecutionRuns[executionId] = run;
             return run;
@@ -1581,9 +1561,8 @@ namespace FlowMy.Models.Nodes
                     }
                 }
                 OnPropertyChanged(nameof(ResponseOutputValues));
-                OnPropertyChanged(nameof(DynamicOutputs));
-
-                run.ScheduleDebounceCompletion(300);
+                int debounceMs = (roConfig != null && roConfig.TimeoutMs > 0) ? Math.Max(1500, roConfig.TimeoutMs) : 2000;
+                run.ScheduleDebounceCompletion(debounceMs);
             }
             else
             {
@@ -1645,24 +1624,45 @@ namespace FlowMy.Models.Nodes
             if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(pattern)) return false;
             pattern = pattern.Trim();
 
-            // 1. Direct contains check
-            if (url.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
+            // 1. Direct contains check (if no wildcard or template symbols)
+            if (!pattern.Contains('*') && !pattern.Contains('{') && !pattern.Contains('?'))
+            {
+                return url.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
+            }
 
             // 2. Variable template matching like https://example.com/api/{id}
-            if (pattern.Contains("{") && pattern.Contains("}"))
+            if (pattern.Contains('{') && pattern.Contains('}'))
             {
                 try
                 {
                     var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
                         .Replace(@"\{", "(?<")
-                        .Replace(@"\}", @">[^\/\?\#]+)") + "$";
-                    regexPattern = regexPattern.Replace(@"\*", ".*");
+                        .Replace(@"\}", @">[^\/\?\#]+)");
+                    regexPattern = regexPattern.Replace(@"\*", ".*") + "$";
                     if (System.Text.RegularExpressions.Regex.IsMatch(url, regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                         return true;
                 }
                 catch { }
             }
+
+            // 3. Wildcard matching (* and ?)
+            try
+            {
+                // Full match regex
+                string fullRegexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+                    .Replace(@"\*", ".*")
+                    .Replace(@"\?", ".") + "$";
+                if (System.Text.RegularExpressions.Regex.IsMatch(url, fullRegexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    return true;
+
+                // Substring glob regex (for partial patterns like "*api/v1*")
+                string subRegexPattern = System.Text.RegularExpressions.Regex.Escape(pattern)
+                    .Replace(@"\*", ".*")
+                    .Replace(@"\?", ".");
+                if (System.Text.RegularExpressions.Regex.IsMatch(url, subRegexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    return true;
+            }
+            catch { }
 
             return false;
         }
@@ -1860,15 +1860,23 @@ namespace FlowMy.Models.Nodes
                     return true;
                 }
 
+                string extractType = outputConfig.ExtractType?.Trim() ?? "Response";
+                bool isResponseExtract = string.Equals(extractType, "Response", StringComparison.OrdinalIgnoreCase);
+
+                // 1. Nếu kiểu trích xuất KHÔNG PHẢI "Response" (CurlCmd, Payload, Params, Headers...) hoặc là Mảng (IsList = true):
+                //    Loại bỏ cơ chế 0ms, bắt buộc phải chờ cho tới khi hết TimeoutMs để gom đủ tất cả các request trong lượt chạy.
+                if (!isResponseExtract || outputConfig.IsList)
+                {
+                    return false;
+                }
+
+                // 2. Nếu kiểu trích xuất là "Response" đơn lẻ (IsList = false && ExtractType == "Response"):
+                //    Giữ nguyên cơ chế 0ms - hoàn thành ngay lập tức khi nhận được response body hợp lệ.
                 bool hasValue = ResponseOutputValues.TryGetValue(trimmedKey, out var valStr) &&
                                 !string.IsNullOrWhiteSpace(valStr) && valStr != "[]";
                 if (hasValue)
                 {
-                    if (!outputConfig.IsList)
-                    {
-                        SignalKeyCompleted(trimmedKey);
-                        return true;
-                    }
+                    SignalKeyCompleted(trimmedKey);
                     return true;
                 }
             }

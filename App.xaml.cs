@@ -62,15 +62,18 @@ namespace FlowMy
 
                 ShowMainWindow();
 
-                try
+                System.Threading.Tasks.Task.Run(() =>
                 {
-                    CefSharpEnvironmentManager.Initialize();
-                    _logger?.LogInformation("✅ CefSharp environment initialized");
-                }
-                catch (Exception cefEx)
-                {
-                    _logger?.LogWarning(cefEx, "⚠️ CefSharp init warning");
-                }
+                    try
+                    {
+                        CefSharpEnvironmentManager.Initialize();
+                        _logger?.LogInformation("✅ CefSharp environment initialized");
+                    }
+                    catch (Exception cefEx)
+                    {
+                        _logger?.LogWarning(cefEx, "⚠️ CefSharp init warning");
+                    }
+                });
 
                 // Không khởi tạo tray icon khi startup.
                 try
