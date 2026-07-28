@@ -31,6 +31,30 @@ namespace FlowMy.Views.NodeControls
             return _resourceHandler;
         }
 
+        public static void RestoreWpfFocus(IWebBrowser? chromiumWebBrowser)
+        {
+            try
+            {
+                if (chromiumWebBrowser is System.Windows.UIElement uiElement)
+                {
+                    uiElement.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // Giải phóng mouse capture của WPF để canvas không bị khóa thao tác
+                            System.Windows.Input.Mouse.Capture(null);
+
+                            // Phôi phục focus về cửa sổ WPF chính
+                            var window = System.Windows.Window.GetWindow(uiElement);
+                            window?.Focus();
+                        }
+                        catch { }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                }
+            }
+            catch { }
+        }
+
         public static void ToggleDevTools(IWebBrowser chromiumWebBrowser, IBrowser browser)
         {
             if (chromiumWebBrowser is System.Windows.Threading.DispatcherObject dispatcherObj)
@@ -46,16 +70,25 @@ namespace FlowMy.Views.NodeControls
                             if (host.HasDevTools)
                             {
                                 host.CloseDevTools();
+                                RestoreWpfFocus(chromiumWebBrowser);
                                 return;
                             }
 
-                            host.ShowDevTools();
+                            var windowInfo = new WindowInfo();
+                            // Đặt parentHandle = IntPtr.Zero để DevTools tách biệt thành cửa sổ độc lập 100%,
+                            // không bị gán làm owner-modal window làm khóa message loop / canvas WPF.
+                            windowInfo.SetAsPopup(IntPtr.Zero, "DevTools - Chromium");
+                            host.ShowDevTools(windowInfo, 0, 0);
+                            RestoreWpfFocus(chromiumWebBrowser);
                             return;
                         }
 
                         if (chromiumWebBrowser != null && chromiumWebBrowser.IsBrowserInitialized)
                         {
-                            chromiumWebBrowser.ShowDevTools();
+                            var windowInfo = new WindowInfo();
+                            windowInfo.SetAsPopup(IntPtr.Zero, "DevTools - Chromium");
+                            chromiumWebBrowser.ShowDevTools(windowInfo, 0, 0);
+                            RestoreWpfFocus(chromiumWebBrowser);
                             return;
                         }
                     }
@@ -573,8 +606,9 @@ namespace FlowMy.Views.NodeControls
                         if (host != null)
                         {
                             var windowInfo = new WindowInfo();
-                            windowInfo.SetAsPopup(host.GetWindowHandle(), "DevTools - Chromium");
+                            windowInfo.SetAsPopup(IntPtr.Zero, "DevTools - Chromium");
                             host.ShowDevTools(windowInfo, x, y);
+                            FlowNetworkRequestHandler.RestoreWpfFocus(chromiumWebBrowser);
                             return;
                         }
                     }
@@ -582,7 +616,10 @@ namespace FlowMy.Views.NodeControls
 
                     try
                     {
-                        chromiumWebBrowser.ShowDevTools();
+                        var windowInfo = new WindowInfo();
+                        windowInfo.SetAsPopup(IntPtr.Zero, "DevTools - Chromium");
+                        chromiumWebBrowser.ShowDevTools(windowInfo, x, y);
+                        FlowNetworkRequestHandler.RestoreWpfFocus(chromiumWebBrowser);
                     }
                     catch (Exception ex)
                     {
