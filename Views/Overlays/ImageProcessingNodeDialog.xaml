@@ -281,6 +281,7 @@ Height="32"/>
                                             <ComboBox x:Name="ReturnIdKeyComboBox"
                                                        Height="32"
                                                        Style="{DynamicResource BaseComboBox}"
+                                                       IsSynchronizedWithCurrentItem="False"
                                                        SelectedValuePath="Key" DisplayMemberPath="Key"
                                                        SelectedValue="{Binding ReturnIdOutputKey, Mode=TwoWay}"
                                                        ItemsSource="{Binding ReturnIdKeyOptions, Mode=OneWay}"/>
@@ -329,6 +330,7 @@ Height="32"/>
                                             <ComboBox x:Name="RenderNodeKeyComboBox"
        Height="32"
        Style="{DynamicResource BaseComboBox}"
+       IsSynchronizedWithCurrentItem="False"
        SelectedValuePath="Key" DisplayMemberPath="Key"
        SelectedValue="{Binding RenderNodeOutputKey, Mode=TwoWay}"
        ItemsSource="{Binding RenderNodeKeyOptions, Mode=OneWay}"/>
@@ -388,6 +390,7 @@ Height="32"/>
                                             <ComboBox x:Name="CroppedFolderKeyComboBox"
                                   Height="32"
                                   Style="{DynamicResource BaseComboBox}"
+                                  IsSynchronizedWithCurrentItem="False"
                                   SelectedValuePath="Key" DisplayMemberPath="Key"
                                   SelectedValue="{Binding CroppedFolderSourceOutputKey, Mode=TwoWay}"
                                   ItemsSource="{Binding CroppedFolderKeyOptions, Mode=OneWay}"/>

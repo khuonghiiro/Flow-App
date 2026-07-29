@@ -976,8 +976,9 @@ namespace FlowMy.Models.Nodes
                 oldRunSameId.CancelDebounce();
             }
 
-            // Xóa sạch mảng dồn tích từ các lượt chạy cũ để luồng mới bắt đầu hoàn toàn độc lập
-            ClearConfiguredResponseOutputValues();
+            // Chỉ xóa các output key được checked WaitForCompletion = true cho lượt chạy này,
+            // giữ nguyên các key không chờ và cookie/bearer/access_token mặc định.
+            ClearResponseOutputValues(onlyWaitKeys: true);
 
             var run = new WebNodeExecutionRun(executionId) { OwnerNode = this };
 
@@ -1043,9 +1044,10 @@ namespace FlowMy.Models.Nodes
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
             var valStr = value ?? string.Empty;
+            string extractType = roConfig?.ExtractType?.Trim() ?? "Response";
 
             // 1. Cập nhật UI display master của node (cổng output & result panel) để thấy item gom lần lượt ngay lập tức
-            UpdateResponseOutputValue(trimmedKey, valStr, isList, statusCode);
+            UpdateResponseOutputValue(trimmedKey, valStr, isList, statusCode, extractType);
             SchedulePendingOutputsCompletion(800);
 
             // 2. Cập nhật cho tất cả luồng ExecutionRun đang active
@@ -1068,15 +1070,18 @@ namespace FlowMy.Models.Nodes
         /// - Nếu isList = true: gom tất cả response thành công (200-399) khớp vào mảng JSON ["res1", "res2"].
         /// - Nếu isList = false (mặc định): lưu giá trị chuỗi đơn lẻ duy nhất (không thành mảng JSON).
         /// </summary>
-        public void UpdateResponseOutputValue(string key, string value, bool isList, int statusCode = 200)
+        public void UpdateResponseOutputValue(string key, string value, bool isList, int statusCode = 200, string? extractType = "Response")
         {
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
             var valStr = value ?? string.Empty;
+            bool isResponseExtract = string.IsNullOrWhiteSpace(extractType) || string.Equals(extractType.Trim(), "Response", StringComparison.OrdinalIgnoreCase);
             bool isSuccess = statusCode >= 200 && statusCode < 400;
 
-            // Đảm bảo không ghi đè dữ liệu thành công cũ nếu response mới bị lỗi (không thành công) hoặc rỗng
-            if (!isSuccess || string.IsNullOrEmpty(valStr)) return;
+            // CHỈ áp dụng kiểm tra request thành công (Status 200-399) đối với kiểu lấy dữ liệu là "Response" (body)
+            // Các kiểu lấy dữ liệu khác (Params, Payload, RequestHeaders, CurlCmd, Headers...) không cần check status code
+            if (isResponseExtract && (!isSuccess || string.IsNullOrEmpty(valStr))) return;
+            if (string.IsNullOrEmpty(valStr)) return;
 
             lock (_responseOutputLock)
             {
@@ -1124,29 +1129,60 @@ namespace FlowMy.Models.Nodes
 
         /// <summary>
         /// Xóa các mảng kết quả output tích lũy của lần chạy trước.
-        /// - Nếu onlyWaitKeys = true: chỉ xóa các key được checked WaitForCompletion = true (dữ liệu cách ly theo luồng), giữ nguyên các key không chờ.
-        /// - Nếu onlyWaitKeys = false: xóa sạch toàn bộ outputs.
+        /// - Nếu onlyWaitKeys = true (mặc định): chỉ xóa các key được checked WaitForCompletion = true (dữ liệu cách ly theo luồng), giữ nguyên các key không chờ và cookie/bearer/access_token.
+        /// - Nếu onlyWaitKeys = false: xóa các key trừ cookie, bearer, access_token mặc định.
         /// </summary>
         public void ClearResponseOutputValues(bool onlyWaitKeys = false)
         {
             CancelPendingOutputsDebounce();
             lock (_responseOutputLock)
             {
-                if (onlyWaitKeys && ResponseOutputs != null && ResponseOutputs.Count > 0)
-                {
-                    var waitKeySet = new HashSet<string>(
-                        ResponseOutputs
-                            .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
-                            .Select(ro => ro.Key.Trim()),
-                        StringComparer.OrdinalIgnoreCase);
+                var defaultKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "cookie", "bearer", "access_token" };
 
-                    var listKeysToRemove = _responseOutputLists.Keys.Where(k => waitKeySet.Contains(k)).ToList();
+                if (onlyWaitKeys)
+                {
+                    if (ResponseOutputs != null && ResponseOutputs.Count > 0)
+                    {
+                        var waitKeySet = new HashSet<string>(
+                            ResponseOutputs
+                                .Where(ro => ro != null && ro.WaitForCompletion && !string.IsNullOrWhiteSpace(ro.Key))
+                                .Select(ro => ro.Key.Trim()),
+                            StringComparer.OrdinalIgnoreCase);
+
+                        var listKeysToRemove = _responseOutputLists.Keys.Where(k => waitKeySet.Contains(k)).ToList();
+                        foreach (var k in listKeysToRemove)
+                        {
+                            _responseOutputLists.Remove(k);
+                        }
+
+                        var valKeysToRemove = ResponseOutputValues.Keys.Where(k => waitKeySet.Contains(k)).ToList();
+                        foreach (var k in valKeysToRemove)
+                        {
+                            ResponseOutputValues.Remove(k);
+                        }
+
+                        if (DynamicOutputs != null)
+                        {
+                            foreach (var dyn in DynamicOutputs)
+                            {
+                                if (!string.IsNullOrWhiteSpace(dyn.Key) && waitKeySet.Contains(dyn.Key.Trim()))
+                                {
+                                    dyn.UserValueOverride = null;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Khi xóa toàn bộ (chủ động reset), giữ lại các key mặc định cookie, bearer, access_token
+                    var listKeysToRemove = _responseOutputLists.Keys.Where(k => !defaultKeys.Contains(k)).ToList();
                     foreach (var k in listKeysToRemove)
                     {
                         _responseOutputLists.Remove(k);
                     }
 
-                    var valKeysToRemove = ResponseOutputValues.Keys.Where(k => waitKeySet.Contains(k)).ToList();
+                    var valKeysToRemove = ResponseOutputValues.Keys.Where(k => !defaultKeys.Contains(k)).ToList();
                     foreach (var k in valKeysToRemove)
                     {
                         ResponseOutputValues.Remove(k);
@@ -1156,22 +1192,10 @@ namespace FlowMy.Models.Nodes
                     {
                         foreach (var dyn in DynamicOutputs)
                         {
-                            if (!string.IsNullOrWhiteSpace(dyn.Key) && waitKeySet.Contains(dyn.Key.Trim()))
+                            if (!string.IsNullOrWhiteSpace(dyn.Key) && !defaultKeys.Contains(dyn.Key.Trim()))
                             {
                                 dyn.UserValueOverride = null;
                             }
-                        }
-                    }
-                }
-                else
-                {
-                    _responseOutputLists.Clear();
-                    ResponseOutputValues.Clear();
-                    if (DynamicOutputs != null)
-                    {
-                        foreach (var dyn in DynamicOutputs)
-                        {
-                            dyn.UserValueOverride = null;
                         }
                     }
                 }
@@ -1181,60 +1205,12 @@ namespace FlowMy.Models.Nodes
         }
 
         /// <summary>
-        /// Xóa sạch các mảng kết quả tích lũy cũ của tất cả output keys đã cấu hình.
-        /// Được gọi tự động mỗi khi một luồng workflow mới bắt đầu để làm mới dữ liệu.
+        /// Xóa các mảng kết quả tích lũy cũ của các output keys đã cấu hình.
+        /// Được gọi tự động mỗi khi một luồng workflow mới bắt đầu để làm mới dữ liệu (chỉ xóa wait keys).
         /// </summary>
         public void ClearConfiguredResponseOutputValues()
         {
-            CancelPendingOutputsDebounce();
-            lock (_responseOutputLock)
-            {
-                if (ResponseOutputs != null && ResponseOutputs.Count > 0)
-                {
-                    var outputKeySet = new HashSet<string>(
-                        ResponseOutputs
-                            .Where(ro => ro != null && !string.IsNullOrWhiteSpace(ro.Key))
-                            .Select(ro => ro.Key.Trim()),
-                        StringComparer.OrdinalIgnoreCase);
-
-                    var listKeysToRemove = _responseOutputLists.Keys.Where(k => outputKeySet.Contains(k)).ToList();
-                    foreach (var k in listKeysToRemove)
-                    {
-                        _responseOutputLists.Remove(k);
-                    }
-
-                    var valKeysToRemove = ResponseOutputValues.Keys.Where(k => outputKeySet.Contains(k)).ToList();
-                    foreach (var k in valKeysToRemove)
-                    {
-                        ResponseOutputValues.Remove(k);
-                    }
-
-                    if (DynamicOutputs != null)
-                    {
-                        foreach (var dyn in DynamicOutputs)
-                        {
-                            if (!string.IsNullOrWhiteSpace(dyn.Key) && outputKeySet.Contains(dyn.Key.Trim()))
-                            {
-                                dyn.UserValueOverride = null;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    _responseOutputLists.Clear();
-                    ResponseOutputValues.Clear();
-                    if (DynamicOutputs != null)
-                    {
-                        foreach (var dyn in DynamicOutputs)
-                        {
-                            dyn.UserValueOverride = null;
-                        }
-                    }
-                }
-            }
-            OnPropertyChanged(nameof(ResponseOutputValues));
-            OnPropertyChanged(nameof(DynamicOutputs));
+            ClearResponseOutputValues(onlyWaitKeys: true);
         }
 
         /// <summary>
@@ -1446,8 +1422,28 @@ namespace FlowMy.Models.Nodes
         {
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
-            bool isSuccess = statusCode >= 200 && statusCode < 400;
             var valStr = value ?? string.Empty;
+            string extractType = roConfig?.ExtractType?.Trim() ?? "Response";
+            bool isResponseExtract = string.Equals(extractType, "Response", StringComparison.OrdinalIgnoreCase);
+            bool isSuccess = statusCode >= 200 && statusCode < 400;
+            bool isWaitKey = roConfig != null && roConfig.WaitForCompletion;
+
+            // CHỈ áp dụng kiểm tra request lỗi (Status Code không thuộc 200-399) đối với kiểu lấy dữ liệu là "Response" (body):
+            // Nếu là kiểu "Response", request lỗi hoặc response trả về null/empty thì đối với key KHÔNG checked chờ key (WaitForCompletion == false),
+            // tuyệt đối không ghi đè value và không clear key/value đi.
+            if (isResponseExtract && (!isSuccess || string.IsNullOrEmpty(valStr)))
+            {
+                if (!isWaitKey)
+                {
+                    // Key không chờ & kiểu Response: Giữ nguyên dữ liệu cũ, không ghi đè rỗng/lỗi
+                    return;
+                }
+            }
+            else if (!isResponseExtract && string.IsNullOrEmpty(valStr) && !isWaitKey)
+            {
+                // Các kiểu khác (Params, Payload, RequestHeaders, CurlCmd...): Không check status code lỗi, chỉ bỏ qua nếu valStr rỗng đối với non-wait key
+                return;
+            }
 
             var run = GetExecutionRun(executionId);
             if (run != null)
@@ -1475,7 +1471,9 @@ namespace FlowMy.Models.Nodes
                             run.ResponseOutputLists[trimmedKey] = list;
                         }
 
-                        if (isSuccess && !string.IsNullOrEmpty(valStr))
+                        bool shouldAddItem = isResponseExtract ? (isSuccess && !string.IsNullOrEmpty(valStr)) : !string.IsNullOrEmpty(valStr);
+
+                        if (shouldAddItem)
                         {
                             var trimmedVal = valStr.Trim();
                             if (trimmedVal.StartsWith("[") && trimmedVal.EndsWith("]"))
@@ -1514,7 +1512,9 @@ namespace FlowMy.Models.Nodes
                     }
                     else
                     {
-                        if (isSuccess && !string.IsNullOrEmpty(valStr))
+                        bool shouldUpdateSingle = isResponseExtract ? (isSuccess && !string.IsNullOrEmpty(valStr)) : !string.IsNullOrEmpty(valStr);
+
+                        if (shouldUpdateSingle)
                         {
                             jsonOrVal = valStr;
                             run.ResponseOutputValues[trimmedKey] = jsonOrVal;

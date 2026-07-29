@@ -25,7 +25,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _imageUrl = string.Empty;
         [ObservableProperty] private string? _imageUrlSourceNodeId;
         [ObservableProperty] private string? _imageUrlSourceOutputKey;
-        public ObservableCollection<WorkflowOutputKeyOption> UrlKeyOptions { get; } = new();
+        [ObservableProperty] private ObservableCollection<WorkflowOutputKeyOption> _urlKeyOptions = new();
         
         private static readonly HttpClient _httpClient = CreateHttpClient();
         private bool _isDownloadingUrl = false;
@@ -52,7 +52,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _imageBase64 = string.Empty;
         [ObservableProperty] private string? _imageBase64SourceNodeId;
         [ObservableProperty] private string? _imageBase64SourceOutputKey;
-        public ObservableCollection<WorkflowOutputKeyOption> Base64KeyOptions { get; } = new();
+        [ObservableProperty] private ObservableCollection<WorkflowOutputKeyOption> _base64KeyOptions = new();
 
         [ObservableProperty] private ImageInputMode _inputMode = ImageInputMode.Url;
 
@@ -76,13 +76,13 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _returnImageIdKeys = "id, Id, ID, mediaId, imageId, assetId";
         [ObservableProperty] private string _returnImageLinkKeys = "linkImage, linkImg, link_image, imageUrl, url, src, link, path";
 
-        public ObservableCollection<WorkflowOutputKeyOption> RenderNodeKeyOptions { get; } = new();
-        public ObservableCollection<WorkflowOutputKeyOption> ReturnIdKeyOptions { get; } = new();
-        public ObservableCollection<WorkflowOutputKeyOption> CroppedFolderKeyOptions { get; } = new();
+        [ObservableProperty] private ObservableCollection<WorkflowOutputKeyOption> _renderNodeKeyOptions = new();
+        [ObservableProperty] private ObservableCollection<WorkflowOutputKeyOption> _returnIdKeyOptions = new();
+        [ObservableProperty] private ObservableCollection<WorkflowOutputKeyOption> _croppedFolderKeyOptions = new();
 
-        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
-        public ObservableCollection<WorkflowDataSourceOption> RenderNodeOptions { get; } = new();
-        public ObservableCollection<WorkflowDataSourceOption> ReturnIdNodeOptions { get; } = new();
+        [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableNodeOptions = new();
+        [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _renderNodeOptions = new();
+        [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _returnIdNodeOptions = new();
 
         // ═══════ Layer AI: Dynamic UI Configuration ═══════
         [ObservableProperty] private string _layerAiHtmlCode = string.Empty;
@@ -164,126 +164,164 @@ namespace FlowMy.ViewModels
 
         public void RefreshAvailableNodes()
         {
-            AvailableNodeOptions.Clear();
-            if (_host.ViewModel?.Nodes == null) return;
-            foreach (var n in _host.ViewModel.Nodes)
+            var list = new List<WorkflowDataSourceOption>();
+            if (_host.ViewModel?.Nodes != null)
             {
-                if (ReferenceEquals(n, _imageNode)) continue;
-                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-                AvailableNodeOptions.Add(CreateDataSourceOption(n));
+                foreach (var n in _host.ViewModel.Nodes)
+                {
+                    if (ReferenceEquals(n, _imageNode)) continue;
+                    if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                    list.Add(CreateDataSourceOption(n));
+                }
             }
-            
+
+            var currentUrlNodeId = ImageUrlSourceNodeId;
+            var currentBase64NodeId = ImageBase64SourceNodeId;
+            var currentCroppedFolderNodeId = CroppedFolderSourceNodeId;
+
+            AvailableNodeOptions = new ObservableCollection<WorkflowDataSourceOption>(list);
+
+            if (!string.IsNullOrWhiteSpace(currentUrlNodeId) && list.Any(o => string.Equals(o.NodeId, currentUrlNodeId, StringComparison.OrdinalIgnoreCase)))
+                ImageUrlSourceNodeId = currentUrlNodeId;
+            if (!string.IsNullOrWhiteSpace(currentBase64NodeId) && list.Any(o => string.Equals(o.NodeId, currentBase64NodeId, StringComparison.OrdinalIgnoreCase)))
+                ImageBase64SourceNodeId = currentBase64NodeId;
+            if (!string.IsNullOrWhiteSpace(currentCroppedFolderNodeId) && list.Any(o => string.Equals(o.NodeId, currentCroppedFolderNodeId, StringComparison.OrdinalIgnoreCase)))
+                CroppedFolderSourceNodeId = currentCroppedFolderNodeId;
+
             // Refresh key options khi danh sách node thay đổi
             RefreshUrlKeyOptions();
             RefreshBase64KeyOptions();
-            RefreshRenderNodeKeyOptions();
-            RefreshReturnIdNodeOptions();
             RefreshCroppedFolderKeyOptions();
+            RefreshReturnIdNodeOptions();
+            RefreshRenderNodeOptions();
         }
 
         public void RefreshReturnIdNodeOptions()
         {
-            ReturnIdNodeOptions.Clear();
-            if (_host.ViewModel?.Nodes == null) return;
-            foreach (var n in _host.ViewModel.Nodes)
+            var list = new List<WorkflowDataSourceOption>();
+            if (_host.ViewModel?.Nodes != null)
             {
-                if (ReferenceEquals(n, _imageNode)) continue;
-                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-                ReturnIdNodeOptions.Add(CreateDataSourceOption(n));
+                foreach (var n in _host.ViewModel.Nodes)
+                {
+                    if (ReferenceEquals(n, _imageNode)) continue;
+                    if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                    list.Add(CreateDataSourceOption(n));
+                }
             }
+
+            var currentId = ReturnIdNodeId;
+            ReturnIdNodeOptions = new ObservableCollection<WorkflowDataSourceOption>(list);
+
+            if (!string.IsNullOrWhiteSpace(currentId) && list.Any(o => string.Equals(o.NodeId, currentId, StringComparison.OrdinalIgnoreCase)))
+            {
+                ReturnIdNodeId = currentId;
+            }
+
             RefreshReturnIdKeyOptions();
         }
 
         public void RefreshReturnIdKeyOptions()
         {
-            ReturnIdKeyOptions.Clear();
+            var currentKey = ReturnIdOutputKey;
             var options = GetOutputKeysForNode(ReturnIdNodeId);
-            foreach (var o in options)
-                ReturnIdKeyOptions.Add(o);
+            ReturnIdKeyOptions = new ObservableCollection<WorkflowOutputKeyOption>(options);
+
+            if (!string.IsNullOrWhiteSpace(currentKey) && options.Any(o => string.Equals(o.Key, currentKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                ReturnIdOutputKey = currentKey;
+            }
+            else if (options.Count > 0 && string.IsNullOrWhiteSpace(ReturnIdOutputKey))
+            {
+                ReturnIdOutputKey = options[0].Key;
+            }
         }
 
         public void RefreshRenderNodeOptions()
         {
-            RenderNodeOptions.Clear();
-            if (_host.ViewModel == null) return;
-
-            var vm = _host.ViewModel;
-            var connections = vm.Connections;
-            if (connections == null || connections.Count == 0) return;
-
-            // Thu thập toàn bộ UPSTREAM nodes (các node nối vào port IN của Image node).
-            // Không lấy downstream nodes để đảm bảo combobox chỉ hiển thị các node
-            // đang cung cấp dữ liệu cho node ảnh (đúng với logic "port IN").
-            var upstream = new HashSet<WorkflowNode>();
-            var stack = new Stack<WorkflowNode>();
-            stack.Push(_imageNode);
-
-            while (stack.Count > 0)
+            var list = new List<WorkflowDataSourceOption>();
+            if (_host.ViewModel?.Nodes != null)
             {
-                var current = stack.Pop();
-                var incoming = connections
-                    .Where(c => c.ToNode == current && c.FromNode != null)
-                    .ToList();
-
-                foreach (var conn in incoming)
+                foreach (var n in _host.ViewModel.Nodes)
                 {
-                    var src = conn.FromNode;
-                    if (src == null) continue;
-                    if (ReferenceEquals(src, _imageNode)) continue;
-
-                    if (upstream.Add(src))
-                    {
-                        stack.Push(src);
-                    }
+                    if (ReferenceEquals(n, _imageNode)) continue;
+                    if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                    list.Add(CreateDataSourceOption(n));
                 }
             }
 
-            // Lọc node có DynamicOutputs để có thể chọn key render ảnh
-            var candidates = upstream
-                .Where(n => !ReferenceEquals(n, _imageNode))
-                .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
-                .ToList();
+            var currentId = RenderNodeId;
+            RenderNodeOptions = new ObservableCollection<WorkflowDataSourceOption>(list);
 
-            RenderNodeOptions.Clear();
-            foreach (var n in candidates)
+            if (!string.IsNullOrWhiteSpace(currentId) && list.Any(o => string.Equals(o.NodeId, currentId, StringComparison.OrdinalIgnoreCase)))
             {
-                RenderNodeOptions.Add(CreateDataSourceOption(n));
+                RenderNodeId = currentId;
             }
-            
-            // Refresh key options khi danh sách node thay đổi
+
             RefreshRenderNodeKeyOptions();
-        }
-
-        public void RefreshUrlKeyOptions()
-        {
-            UrlKeyOptions.Clear();
-            var options = GetOutputKeysForNode(ImageUrlSourceNodeId);
-            foreach (var o in options)
-                UrlKeyOptions.Add(o);
-        }
-
-        public void RefreshBase64KeyOptions()
-        {
-            Base64KeyOptions.Clear();
-            var options = GetOutputKeysForNode(ImageBase64SourceNodeId);
-            foreach (var o in options)
-                Base64KeyOptions.Add(o);
         }
 
         public void RefreshRenderNodeKeyOptions()
         {
-            RenderNodeKeyOptions.Clear();
+            var currentKey = RenderNodeOutputKey;
             var options = GetOutputKeysForNode(RenderNodeId);
-            foreach (var o in options)
-                RenderNodeKeyOptions.Add(o);
+            RenderNodeKeyOptions = new ObservableCollection<WorkflowOutputKeyOption>(options);
+
+            if (!string.IsNullOrWhiteSpace(currentKey) && options.Any(o => string.Equals(o.Key, currentKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                RenderNodeOutputKey = currentKey;
+            }
+            else if (options.Count > 0 && string.IsNullOrWhiteSpace(RenderNodeOutputKey))
+            {
+                RenderNodeOutputKey = options[0].Key;
+            }
+        }
+
+        public void RefreshUrlKeyOptions()
+        {
+            var currentKey = ImageUrlSourceOutputKey;
+            var options = GetOutputKeysForNode(ImageUrlSourceNodeId);
+            UrlKeyOptions = new ObservableCollection<WorkflowOutputKeyOption>(options);
+
+            if (!string.IsNullOrWhiteSpace(currentKey) && options.Any(o => string.Equals(o.Key, currentKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                ImageUrlSourceOutputKey = currentKey;
+            }
+            else if (options.Count > 0 && string.IsNullOrWhiteSpace(ImageUrlSourceOutputKey))
+            {
+                ImageUrlSourceOutputKey = options[0].Key;
+            }
+        }
+
+        public void RefreshBase64KeyOptions()
+        {
+            var currentKey = ImageBase64SourceOutputKey;
+            var options = GetOutputKeysForNode(ImageBase64SourceNodeId);
+            Base64KeyOptions = new ObservableCollection<WorkflowOutputKeyOption>(options);
+
+            if (!string.IsNullOrWhiteSpace(currentKey) && options.Any(o => string.Equals(o.Key, currentKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                ImageBase64SourceOutputKey = currentKey;
+            }
+            else if (options.Count > 0 && string.IsNullOrWhiteSpace(ImageBase64SourceOutputKey))
+            {
+                ImageBase64SourceOutputKey = options[0].Key;
+            }
         }
 
         public void RefreshCroppedFolderKeyOptions()
         {
-            CroppedFolderKeyOptions.Clear();
+            var currentKey = CroppedFolderSourceOutputKey;
             var options = GetOutputKeysForNode(CroppedFolderSourceNodeId);
-            foreach (var o in options)
-                CroppedFolderKeyOptions.Add(o);
+            CroppedFolderKeyOptions = new ObservableCollection<WorkflowOutputKeyOption>(options);
+
+            if (!string.IsNullOrWhiteSpace(currentKey) && options.Any(o => string.Equals(o.Key, currentKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                CroppedFolderSourceOutputKey = currentKey;
+            }
+            else if (options.Count > 0 && string.IsNullOrWhiteSpace(CroppedFolderSourceOutputKey))
+            {
+                CroppedFolderSourceOutputKey = options[0].Key;
+            }
         }
 
         [RelayCommand]
