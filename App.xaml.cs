@@ -73,7 +73,7 @@ namespace FlowMy
                     {
                         _logger?.LogWarning(cefEx, "⚠️ CefSharp init warning");
                     }
-                }));
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
                 // Không khởi tạo tray icon khi startup.
                 try
