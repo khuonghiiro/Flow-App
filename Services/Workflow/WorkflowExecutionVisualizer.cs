@@ -331,16 +331,42 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     private void UpdateNodeExecutionResults(WorkflowNode node)
     {
-        if (node.DynamicOutputs == null || node.DynamicOutputs.Count == 0) return;
         if (node.ExecutionResultsToggleUI == null || node.ExecutionResultsItemsPanel == null) return;
+
+        var keysToProcess = new List<string>();
+        if (node.DynamicOutputs != null)
+        {
+            foreach (var output in node.DynamicOutputs)
+            {
+                var key = output.Key?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(key) && !keysToProcess.Contains(key, StringComparer.OrdinalIgnoreCase))
+                {
+                    keysToProcess.Add(key);
+                }
+            }
+        }
+
+        if (node is CodeNode codeNode)
+        {
+            lock (codeNode.ResolvedOutputsSyncRoot)
+            {
+                foreach (var k in codeNode.ResolvedOutputs.Keys)
+                {
+                    var trimmed = k?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(trimmed) && !keysToProcess.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                    {
+                        keysToProcess.Add(trimmed);
+                    }
+                }
+            }
+        }
+
+        if (keysToProcess.Count == 0) return;
 
         var results = new List<(string Key, string RawValue, bool IsArray, List<string> ArrayItems)>();
 
-        foreach (var output in node.DynamicOutputs)
+        foreach (var key in keysToProcess)
         {
-            var key = output.Key?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(key)) continue;
-
             var value = NodeDataPanelService.ResolveDynamicValueByKey(node, key);
             if (string.IsNullOrWhiteSpace(value) || value == "—") continue;
 

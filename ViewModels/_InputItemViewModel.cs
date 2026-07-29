@@ -146,6 +146,15 @@ namespace FlowMy.ViewModels
                 }
                 else if (e.PropertyName == nameof(SelectedSourceOutputKey))
                 {
+                    if (string.IsNullOrWhiteSpace(SelectedSourceOutputKey) &&
+                        !string.IsNullOrWhiteSpace(_input.SelectedSourceOutputKey) &&
+                        !string.IsNullOrWhiteSpace(SelectedSourceNodeId))
+                    {
+                        // Prevent WPF ComboBox UI transient coercion to null from wiping model key
+                        SelectedSourceOutputKey = _input.SelectedSourceOutputKey;
+                        return;
+                    }
+
                     _input.SelectedSourceOutputKey = SelectedSourceOutputKey;
                     UpdateValue();
                 }

@@ -350,6 +350,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             }
                         }
                     }
+
+                    // ⚠️ LUÔN TỰ ĐỘNG BẮT KEY 'error' VÀ 'success' NẾU CÓ TRONG OBJECT TRẢ VỀ
+                    if (!batchOutputs.ContainsKey("error"))
+                    {
+                        foreach (var prop in root.EnumerateObject())
+                        {
+                            if (string.Equals(prop.Name, "error", StringComparison.OrdinalIgnoreCase) && prop.Value.ValueKind != JsonValueKind.Null)
+                            {
+                                var errStr = prop.Value.ValueKind == JsonValueKind.String ? prop.Value.GetString() : prop.Value.GetRawText();
+                                if (!string.IsNullOrWhiteSpace(errStr))
+                                {
+                                    batchOutputs["error"] = errStr;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!batchOutputs.ContainsKey("success"))
+                    {
+                        foreach (var prop in root.EnumerateObject())
+                        {
+                            if (string.Equals(prop.Name, "success", StringComparison.OrdinalIgnoreCase) && prop.Value.ValueKind != JsonValueKind.Null)
+                            {
+                                var succVal = prop.Value.ValueKind == JsonValueKind.True ? "true" : (prop.Value.ValueKind == JsonValueKind.False ? "false" : prop.Value.GetRawText());
+                                batchOutputs["success"] = succVal;
+                                break;
+                            }
+                        }
+                    }
                 }
                 else if (result != null && !result.IsObject())
                 {
@@ -394,6 +424,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 env.OnNodeFailed?.Invoke(codeNode, ex.Message);
                 throw;
+            }
+
+            // Phát hiện lỗi từ kịch bản trả về (ví dụ { success: false, error: "..." }) để hiển thị thông báo lỗi lên panel result
+            string? scriptReturnedError = null;
+            if (batchOutputs.TryGetValue("error", out var errValObj) && errValObj != null)
+            {
+                var strErr = errValObj.ToString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(strErr))
+                {
+                    scriptReturnedError = strErr;
+                }
+            }
+            if (scriptReturnedError == null && batchOutputs.TryGetValue("success", out var succValObj) && succValObj != null)
+            {
+                var strSucc = succValObj.ToString()?.Trim();
+                if (string.Equals(strSucc, "false", StringComparison.OrdinalIgnoreCase))
+                {
+                    scriptReturnedError = "Script trả về success: false";
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(scriptReturnedError))
+            {
+                env.OnNodeFailed?.Invoke(codeNode, scriptReturnedError);
             }
 
             if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))

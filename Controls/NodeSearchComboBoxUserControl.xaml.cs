@@ -262,18 +262,18 @@ namespace FlowMy.Controls
             }
 
             iconKey = ResolveIconKey(iconKey, nodeType);
-            nodeBrush ??= ResolveNodeStateBrush(colorKey, "Brush")
+            nodeBrush = FreezeBrush(nodeBrush ?? ResolveNodeStateBrush(colorKey, "Brush")
                 ?? (Application.Current.TryFindResource("SecondaryBrush") as Brush)
-                ?? Brushes.Gray;
-            nodeTextBrush ??= ResolveTextOnNodeBrush(colorKey);
-            nodeHoverBrush ??= ResolveNodeStateBrush(colorKey, "HoverBrush") ?? nodeBrush;
-            nodeSelectedBrush ??= ResolveNodeStateBrush(colorKey, "PressedBrush") ?? nodeBrush;
+                ?? Brushes.Gray);
+            nodeTextBrush = FreezeBrush(nodeTextBrush ?? ResolveTextOnNodeBrush(colorKey));
+            nodeHoverBrush = FreezeBrush(nodeHoverBrush ?? ResolveNodeStateBrush(colorKey, "HoverBrush") ?? nodeBrush);
+            nodeSelectedBrush = FreezeBrush(nodeSelectedBrush ?? ResolveNodeStateBrush(colorKey, "PressedBrush") ?? nodeBrush);
 
             var subtitle = string.IsNullOrWhiteSpace(type)
                 ? nodeId
                 : $"{type} • {nodeId}";
 
-            var resolvedIconFillBrush = nodeTextBrush ?? ResolveDefaultIconBrush();
+            var resolvedIconFillBrush = FreezeBrush(nodeTextBrush ?? ResolveDefaultIconBrush());
 
             return new NodeSearchItemViewModel
             {
@@ -351,11 +351,12 @@ namespace FlowMy.Controls
             if (app != null && !string.IsNullOrWhiteSpace(nodeColorKey))
             {
                 var clean = NormalizeColorKey(nodeColorKey);
-                if (app.TryFindResource($"TextOn{clean}Brush") is Brush textOnBrush) return textOnBrush;
-                if (app.TryFindResource($"TextOn{clean}") is Brush textOnKey) return textOnKey;
+                if (app.TryFindResource($"TextOn{clean}Brush") is Brush textOnBrush) return FreezeBrush(textOnBrush);
+                if (app.TryFindResource($"TextOn{clean}") is Brush textOnKey) return FreezeBrush(textOnKey);
             }
 
-            return app?.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White;
+            var fallback = app?.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White;
+            return FreezeBrush(fallback);
         }
 
         private static Brush? ResolveNodeStateBrush(string? nodeColorKey, string suffix)
@@ -364,10 +365,35 @@ namespace FlowMy.Controls
             var cleaned = NormalizeColorKey(nodeColorKey);
             if (app != null && !string.IsNullOrWhiteSpace(cleaned))
             {
-                if (app.TryFindResource($"{cleaned}{suffix}") is Brush exact) return exact;
-                if (suffix != "Brush" && app.TryFindResource($"{cleaned}Brush") is Brush baseBrush) return baseBrush;
+                if (app.TryFindResource($"{cleaned}{suffix}") is Brush exact) return FreezeBrush(exact);
+                if (suffix != "Brush" && app.TryFindResource($"{cleaned}Brush") is Brush baseBrush) return FreezeBrush(baseBrush);
             }
             return null;
+        }
+
+        private static Brush FreezeBrush(Brush? brush)
+        {
+            if (brush == null) return Brushes.Transparent;
+            try
+            {
+                if (!brush.CheckAccess())
+                {
+                    return Brushes.Gray;
+                }
+
+                if (brush.IsFrozen) return brush;
+                if (brush.CanFreeze)
+                {
+                    var clone = brush.CloneCurrentValue();
+                    if (clone.CanFreeze) clone.Freeze();
+                    return clone;
+                }
+            }
+            catch
+            {
+                return Brushes.Gray;
+            }
+            return brush;
         }
 
         private static string NormalizeColorKey(string? nodeColorKey)

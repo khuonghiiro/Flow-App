@@ -310,6 +310,8 @@ namespace FlowMy.Views.Overlays
                 Margin = new Thickness(0, 0, 0, 6),
                 Style = Application.Current.TryFindResource("BaseComboBox") as Style,
                 SelectedValuePath = nameof(WorkflowOutputKeyOption.Key),
+                ItemsSource = inputVm.AvailableOutputKeyOptions,
+                SelectedValue = inputVm.SelectedSourceOutputKey,
                 Visibility = (inputVm.AvailableOutputKeyOptions?.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed
             };
 
@@ -328,6 +330,12 @@ namespace FlowMy.Views.Overlays
                     Mode = System.Windows.Data.BindingMode.TwoWay
                 });
 
+            // Ensure SelectedValue is properly synced after binding setup
+            if (!string.IsNullOrWhiteSpace(inputVm.SelectedSourceOutputKey) && outputKeyCombo.SelectedValue == null)
+            {
+                outputKeyCombo.SelectedValue = inputVm.SelectedSourceOutputKey;
+            }
+
             // Refresh outputKeyCombo khi source node thay đổi
             inputVm.PropertyChanged += (s, e) =>
             {
@@ -345,6 +353,13 @@ namespace FlowMy.Views.Overlays
                     // Refresh SelectedValue để đảm bảo giá trị được cập nhật
                     var selectedBinding = outputKeyCombo.GetBindingExpression(ComboBox.SelectedValueProperty);
                     selectedBinding?.UpdateTarget();
+                }
+                else if (e.PropertyName == nameof(InputItemViewModel.SelectedSourceOutputKey))
+                {
+                    if (!string.IsNullOrWhiteSpace(inputVm.SelectedSourceOutputKey) && outputKeyCombo.SelectedValue == null)
+                    {
+                        outputKeyCombo.SelectedValue = inputVm.SelectedSourceOutputKey;
+                    }
                 }
             };
 

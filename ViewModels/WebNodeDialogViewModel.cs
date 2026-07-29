@@ -763,17 +763,9 @@ namespace FlowMy.ViewModels
             }
         }
 
-        public ObservableCollection<WorkflowOutputKeyOption> GetOutputKeysForNode(string? nodeId)
+        public new ObservableCollection<WorkflowOutputKeyOption> GetOutputKeysForNode(string? nodeId)
         {
-            var list = new ObservableCollection<WorkflowOutputKeyOption>();
-            if (string.IsNullOrWhiteSpace(nodeId) || _host.ViewModel?.Nodes == null) return list;
-            var node = _host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
-            if (node?.DynamicOutputs == null) return list;
-            foreach (var o in node.DynamicOutputs)
-            {
-                list.Add(new WorkflowOutputKeyOption { Key = o.Key ?? "", Type = o.OutputType ?? o.ConvertType, DisplayName = o.DisplayName ?? o.Key });
-            }
-            return list;
+            return base.GetOutputKeysForNode(nodeId);
         }
 
         protected override void OnSaveTitle()

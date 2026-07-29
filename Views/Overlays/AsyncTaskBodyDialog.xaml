@@ -111,12 +111,12 @@
                                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                                 <TextBlock Text="Nguồn Node (Trong Body)" FontSize="10" FontWeight="SemiBold"
                                                            Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
-                                                <ComboBox Height="30"
-                                                          Style="{DynamicResource BaseComboBox}"
+                                                <controls:NodeSearchComboBoxUserControl Height="30"
                                                           ItemsSource="{Binding DataContext.InnerNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                           DisplayMemberPath="Title"
                                                           SelectedValuePath="NodeId"
-                                                          SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
+                                                          SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"
+                                                          PlaceholderText="Chọn node nguồn..."/>
                                             </StackPanel>
 
                                             <!-- Source Output Key -->

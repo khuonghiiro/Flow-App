@@ -794,58 +794,9 @@ namespace FlowMy.Views
 
             foreach (var node in ViewModel.Nodes)
             {
-                // Cập nhật TitleColorMode và TitleColorKey cho từng loại node
-                switch (node)
-                {
-                    case StringSplitNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case HttpRequestNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case MouseEventNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case LoopNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case InputNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case OutputNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case ListOutNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case HotkeyPressEventNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case KeyPressEventNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case CodeNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case MediaGalleryNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                    case ImageProcessingNode n:
-                        n.TitleColorMode = colorMode;
-                        n.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
-                        break;
-                }
+                // TitleColorMode và TitleColorKey được định nghĩa trực tiếp trên base WorkflowNode (chuẩn kiến trúc FlowMy)
+                node.TitleColorMode = colorMode;
+                node.TitleColorKey = colorMode == TitleColorMode.NodeColor ? null : colorKey;
 
                 // Cập nhật màu TitleTextBlockUI ngay lập tức nếu có
                 UpdateNodeTitleColor(node, colorMode, colorKey);
@@ -866,26 +817,10 @@ namespace FlowMy.Views
         private void UpdateNodeTitleColor(WorkflowNode node, TitleColorMode colorMode, string? colorKey)
         {
             if (node.TitleTextBlockUI == null) return;
-
-            Brush? brush = null;
-
-            if (colorMode == TitleColorMode.NodeColor)
-            {
-                brush = node.NodeBrush;
-            }
-            else if (colorKey == "LimeGreen")
-            {
-                brush = new SolidColorBrush(Colors.LimeGreen);
-            }
-            else if (!string.IsNullOrEmpty(colorKey))
-            {
-                brush = Application.Current.TryFindResource(colorKey) as Brush;
-            }
-
-            if (brush != null)
-            {
-                node.TitleTextBlockUI.Foreground = brush;
-            }
+            node.TitleTextBlockUI.Foreground = FlowMy.Views.NodeControls.Helpers.BaseNodeControlHelper.ResolveTitleBrush(
+                colorMode,
+                colorKey,
+                node.NodeBrush);
         }
 
         /// <summary>

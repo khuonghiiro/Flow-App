@@ -3637,20 +3637,10 @@ namespace FlowMy.Views.Overlays
                     ExecutionId = execId
                 };
 
-                var mainCropPayload = new
-                {
-                    codeId = mainCodeId,
-                    base64 = b64,
-                    id = string.IsNullOrWhiteSpace(existingMainId) ? (string?)null : existingMainId
-                };
-                string cropObjectJson = System.Text.Json.JsonSerializer.Serialize(mainCropPayload);
-
-                GetOrAddDynamicOutputPort("cropObject", "Layer AI - Crop Object {codeId, base64, id}").UserValueOverride = cropObjectJson;
                 GetOrAddDynamicOutputPort("mainCodeId", "Layer AI - Main Code ID").UserValueOverride = mainCodeId;
 
                 if (execSvc != null)
                 {
-                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropObject", cropObjectJson);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "mainCodeId", mainCodeId);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "prompt", activePromptText);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptSize", batchSize.ToString());
@@ -3661,8 +3651,8 @@ namespace FlowMy.Views.Overlays
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "executionId", execId);
                 }
 
-                // *** NEW: Collect secondary images base64 and set listBase64/cropListObjects outputs ***
-                await CollectAndSetListBase64Async(execId, selectedIndex);
+                // *** Collect main and secondary images into cropListObjects array (index [0] = main image) ***
+                await CollectAndSetListBase64Async(b64, mainCodeId, existingMainId, execId, selectedIndex);
 
                 // Refresh outputs list in node dialog immediately to reflect the generated overrides
                 RefreshRelatedNodeDialogs();
@@ -3979,54 +3969,57 @@ namespace FlowMy.Views.Overlays
         }
 
         /// <summary>
-        /// Collect selected secondary images, convert to base64, and set the listBase64 and cropListObjects outputs.
+        /// Collect main image (index [0]) and selected secondary images (index [1..n]), convert to base64 if no ID present, and set cropListObjects output.
         /// </summary>
-        private async Task CollectAndSetListBase64Async(string? execId = null, int aspectRatioIndex = 3)
+        private async Task CollectAndSetListBase64Async(string mainB64, string mainCodeId, string? existingMainId, string? execId = null, int aspectRatioIndex = 3)
         {
             var selectedSecItems = _secondaryImages
                 .Where(s => s.HasImage && s.IsSelected && s.Bitmap != null)
                 .ToList();
 
-            string jsonArray = "[]";
-            string cropListObjectsJson = "[]";
+            var cropListObjects = new List<object>();
 
-            if (selectedSecItems.Count > 0)
+            // 1. Main image at index [0]
+            bool mainHasId = !string.IsNullOrWhiteSpace(existingMainId);
+            cropListObjects.Add(new
             {
-                var base64List = new List<string>();
-                var cropListObjects = new List<object>();
+                codeId = mainCodeId,
+                base64 = mainHasId ? "" : mainB64,
+                id = mainHasId ? existingMainId : (string?)null
+            });
 
-                foreach (var secItem in selectedSecItems)
+            // 2. Secondary images at index [1..n]
+            foreach (var secItem in selectedSecItems)
+            {
+                string secCodeId = string.IsNullOrWhiteSpace(secItem.CodeId) ? (secItem.CodeId = Guid.NewGuid().ToString("N")) : secItem.CodeId;
+                string? existingId = secItem.GetImageId(aspectRatioIndex);
+
+                if (!string.IsNullOrEmpty(execId))
                 {
-                    var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(secItem.Bitmap!));
-                    base64List.Add(b64);
-
-                    string secCodeId = string.IsNullOrWhiteSpace(secItem.CodeId) ? (secItem.CodeId = Guid.NewGuid().ToString("N")) : secItem.CodeId;
-                    string? existingId = secItem.GetImageId(aspectRatioIndex);
-
-                    if (!string.IsNullOrEmpty(execId))
+                    CropGuidRegistry[secCodeId] = new CodeCropMappingInfo
                     {
-                        CropGuidRegistry[secCodeId] = new CodeCropMappingInfo
-                        {
-                            CodeId = secCodeId,
-                            TargetLayer = _activeLayer,
-                            SecondaryImage = secItem,
-                            AspectRatioIndex = aspectRatioIndex,
-                            ExecutionId = execId
-                        };
-                    }
-
-                    cropListObjects.Add(new
-                    {
-                        codeId = secCodeId,
-                        base64 = b64,
-                        id = string.IsNullOrWhiteSpace(existingId) ? (string?)null : existingId
-                    });
+                        CodeId = secCodeId,
+                        TargetLayer = _activeLayer,
+                        SecondaryImage = secItem,
+                        AspectRatioIndex = aspectRatioIndex,
+                        ExecutionId = execId
+                    };
                 }
-                jsonArray = System.Text.Json.JsonSerializer.Serialize(base64List);
-                cropListObjectsJson = System.Text.Json.JsonSerializer.Serialize(cropListObjects);
+
+                bool secHasId = !string.IsNullOrWhiteSpace(existingId);
+                string b64 = secHasId ? "" : await Task.Run(() => ImageProcessorHelper.ToBase64(secItem.Bitmap!));
+
+                cropListObjects.Add(new
+                {
+                    codeId = secCodeId,
+                    base64 = b64,
+                    id = secHasId ? existingId : (string?)null
+                });
             }
 
-            GetOrAddDynamicOutputPort("cropListObjects", "Layer AI - Crops List Objects (JSON)").UserValueOverride = cropListObjectsJson;
+            string cropListObjectsJson = System.Text.Json.JsonSerializer.Serialize(cropListObjects);
+
+            GetOrAddDynamicOutputPort("cropListObjects", "Layer AI - Crops List Objects (JSON)", FlowMy.Models.WorkflowDataType.ArrayDynamic, isMultiple: true).UserValueOverride = cropListObjectsJson;
 
             if (!string.IsNullOrEmpty(execId))
             {
@@ -4038,7 +4031,7 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private FlowMy.Models.WorkflowDynamicDataPort GetOrAddDynamicOutputPort(string key, string displayName, FlowMy.Models.WorkflowDataType dataType = FlowMy.Models.WorkflowDataType.String)
+        private FlowMy.Models.WorkflowDynamicDataPort GetOrAddDynamicOutputPort(string key, string displayName, FlowMy.Models.WorkflowDataType dataType = FlowMy.Models.WorkflowDataType.String, bool isMultiple = false)
         {
             if (_node.DynamicOutputs == null)
             {
@@ -4052,9 +4045,14 @@ namespace FlowMy.Views.Overlays
                     Key = key,
                     DisplayName = displayName,
                     OutputType = dataType,
-                    IsMultiple = false
+                    IsMultiple = isMultiple
                 };
                 _node.DynamicOutputs.Add(port);
+            }
+            else
+            {
+                port.OutputType = dataType;
+                port.IsMultiple = isMultiple;
             }
             return port;
         }

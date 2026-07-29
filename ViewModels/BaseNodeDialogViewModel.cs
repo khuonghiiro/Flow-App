@@ -1005,11 +1005,12 @@ namespace FlowMy.ViewModels
                 if (clean.EndsWith("Brush", StringComparison.OrdinalIgnoreCase))
                     clean = clean[..^"Brush".Length];
 
-                if (app.TryFindResource($"TextOn{clean}Brush") is System.Windows.Media.Brush textOnBrush) return textOnBrush;
-                if (app.TryFindResource($"TextOn{clean}") is System.Windows.Media.Brush textOnKey) return textOnKey;
+                if (app.TryFindResource($"TextOn{clean}Brush") is System.Windows.Media.Brush textOnBrush) return FreezeBrushIfPossible(textOnBrush);
+                if (app.TryFindResource($"TextOn{clean}") is System.Windows.Media.Brush textOnKey) return FreezeBrushIfPossible(textOnKey);
             }
 
-            return app?.TryFindResource("TextOnPrimaryBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.White;
+            var fallback = app?.TryFindResource("TextOnPrimaryBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.White;
+            return FreezeBrushIfPossible(fallback);
         }
 
         protected static System.Windows.Media.Brush ResolveNodeStateBrush(string? nodeColorKey, string suffix, System.Windows.Media.Brush? fallback)
@@ -1018,13 +1019,39 @@ namespace FlowMy.ViewModels
             var cleaned = NormalizeColorKeyForOption(nodeColorKey);
             if (app != null && !string.IsNullOrWhiteSpace(cleaned))
             {
-                if (app.TryFindResource($"{cleaned}{suffix}") is System.Windows.Media.Brush exact) return exact;
-                if (suffix != "Brush" && app.TryFindResource($"{cleaned}Brush") is System.Windows.Media.Brush baseBrush) return baseBrush;
+                if (app.TryFindResource($"{cleaned}{suffix}") is System.Windows.Media.Brush exact) return FreezeBrushIfPossible(exact);
+                if (suffix != "Brush" && app.TryFindResource($"{cleaned}Brush") is System.Windows.Media.Brush baseBrush) return FreezeBrushIfPossible(baseBrush);
             }
 
-            return fallback
+            var res = fallback
                 ?? app?.TryFindResource("SecondaryBrush") as System.Windows.Media.Brush
                 ?? System.Windows.Media.Brushes.Gray;
+            return FreezeBrushIfPossible(res);
+        }
+
+        protected static System.Windows.Media.Brush FreezeBrushIfPossible(System.Windows.Media.Brush? brush)
+        {
+            if (brush == null) return System.Windows.Media.Brushes.Transparent;
+            try
+            {
+                if (!brush.CheckAccess())
+                {
+                    return System.Windows.Media.Brushes.Gray;
+                }
+
+                if (brush.IsFrozen) return brush;
+                if (brush.CanFreeze)
+                {
+                    var clone = brush.CloneCurrentValue();
+                    if (clone.CanFreeze) clone.Freeze();
+                    return clone;
+                }
+            }
+            catch
+            {
+                return System.Windows.Media.Brushes.Gray;
+            }
+            return brush;
         }
 
         private static string NormalizeColorKeyForOption(string? nodeColorKey)
@@ -1040,6 +1067,9 @@ namespace FlowMy.ViewModels
         /// <summary>
         /// Lấy danh sách output key của một node theo nodeId.
         /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
+        /// <summary>
+        /// Lấy danh sách output key của một node theo nodeId.
+        /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
         /// </summary>
         public ObservableCollection<WorkflowOutputKeyOption> GetOutputKeysForNode(string? nodeId)
         {
@@ -1048,7 +1078,11 @@ namespace FlowMy.ViewModels
 
             var node = _host.ViewModel.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
-            if (node?.DynamicOutputs == null) return list;
+            if (node == null) return list;
+
+            EnsureNodeDynamicOutputsSynced(node);
+
+            if (node.DynamicOutputs == null) return list;
 
             foreach (var o in node.DynamicOutputs)
             {
@@ -1073,7 +1107,11 @@ namespace FlowMy.ViewModels
 
             var src = _host.ViewModel.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
-            if (src?.DynamicOutputs == null) return;
+            if (src == null) return;
+
+            EnsureNodeDynamicOutputsSynced(src);
+
+            if (src.DynamicOutputs == null) return;
 
             foreach (var o in src.DynamicOutputs)
             {
@@ -1084,6 +1122,22 @@ namespace FlowMy.ViewModels
                     DisplayName = o.DisplayName ?? key,
                     Type = o.OutputType ?? o.ConvertType
                 });
+            }
+        }
+
+        protected static void EnsureNodeDynamicOutputsSynced(WorkflowNode node)
+        {
+            if (node is FlowMy.Models.Nodes.WebNode webNode)
+            {
+                webNode.RebuildResponseOutputs();
+            }
+            else if (node is AsyncTaskNode asyncTaskNode)
+            {
+                asyncTaskNode.SyncBodyOutputDynamicPorts();
+            }
+            else if (node is AsyncTaskBodyNode bodyNode && bodyNode.ParentAsyncTaskNode != null)
+            {
+                bodyNode.ParentAsyncTaskNode.SyncBodyOutputDynamicPorts();
             }
         }
 
@@ -1100,6 +1154,7 @@ namespace FlowMy.ViewModels
             foreach (var n in _host.ViewModel.Nodes)
             {
                 if (ReferenceEquals(n, _node)) continue;
+                EnsureNodeDynamicOutputsSynced(n);
                 if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                 target.Add(CreateDataSourceOption(n));
             }
@@ -1153,6 +1208,11 @@ namespace FlowMy.ViewModels
 
                     if (upstream.Add(src)) stack.Push(src);
                 }
+            }
+
+            foreach (var n in upstream)
+            {
+                EnsureNodeDynamicOutputsSynced(n);
             }
 
             var producerNodes = upstream

@@ -178,6 +178,39 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
+            // ✅ Update title TextBlock position synchronously when moving AsyncTaskNode
+            if (asyncTaskNode.TitleTextBlockUI != null && _host.WorkflowCanvas != null)
+            {
+                var titleTextBlock = asyncTaskNode.TitleTextBlockUI;
+                if (!_host.WorkflowCanvas.Children.Contains(titleTextBlock))
+                {
+                    if (_host.ViewModel != null && _host.ViewModel.Nodes.Contains(asyncTaskNode))
+                    {
+                        _host.WorkflowCanvas.Children.Add(titleTextBlock);
+                        Panel.SetZIndex(titleTextBlock, 20000);
+                    }
+                    else
+                    {
+                        asyncTaskNode.TitleTextBlockUI = null;
+                    }
+                }
+
+                if (asyncTaskNode.TitleTextBlockUI != null && asyncTaskNode.Border != null)
+                {
+                    if (titleTextBlock.ActualWidth == 0 || titleTextBlock.ActualHeight == 0)
+                    {
+                        titleTextBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        titleTextBlock.Arrange(new Rect(titleTextBlock.DesiredSize));
+                    }
+
+                    double nodeWidth = asyncTaskNode.Border.ActualWidth > 0 ? asyncTaskNode.Border.ActualWidth : 100;
+                    var titleLeft = x + (nodeWidth / 2) - (titleTextBlock.ActualWidth / 2);
+                    var titleTop = y - titleTextBlock.ActualHeight - 4;
+                    Canvas.SetLeft(titleTextBlock, titleLeft);
+                    Canvas.SetTop(titleTextBlock, titleTop);
+                }
+            }
+
             if (IsLoopLike(asyncTaskNode))
             {
                 const double diamondWidth = 100;
@@ -237,6 +270,13 @@ namespace FlowMy.Services.Rendering
         public void RemoveNode(WorkflowNode node, Canvas canvas)
         {
             if (node is not AsyncTaskNode asyncTaskNode) return;
+
+            if (asyncTaskNode.TitleTextBlockUI != null)
+            {
+                if (canvas.Children.Contains(asyncTaskNode.TitleTextBlockUI))
+                    canvas.Children.Remove(asyncTaskNode.TitleTextBlockUI);
+                asyncTaskNode.TitleTextBlockUI = null;
+            }
 
             DetachLoopLikeVisuals(asyncTaskNode, canvas);
 

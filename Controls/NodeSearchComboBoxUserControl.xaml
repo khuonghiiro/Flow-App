@@ -65,7 +65,7 @@
                                 <Style TargetType="ToolTip">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.HasSelection, RelativeSource={RelativeSource AncestorType=ToolTip}}" Value="True">
+                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.HasSelection, RelativeSource={RelativeSource Self}}" Value="True">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>

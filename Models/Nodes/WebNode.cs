@@ -890,9 +890,15 @@ namespace FlowMy.Models.Nodes
                     val = v;
                 }
 
+                var isArray = responseOutput.IsList;
+                var dataType = isArray ? WorkflowDataType.ArrayDynamic : WorkflowDataType.String;
+
                 var existingPort = DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, trimmedKey, StringComparison.OrdinalIgnoreCase));
                 if (existingPort != null)
                 {
+                    existingPort.IsMultiple = isArray;
+                    existingPort.OutputType = dataType;
+                    existingPort.ConvertType = dataType;
                     if (val != null)
                     {
                         existingPort.UserValueOverride = val;
@@ -904,8 +910,9 @@ namespace FlowMy.Models.Nodes
                     {
                         Key = trimmedKey,
                         DisplayName = trimmedKey,
-                        ConvertType = WorkflowDataType.String,
-                        OutputType = WorkflowDataType.String,
+                        ConvertType = dataType,
+                        OutputType = dataType,
+                        IsMultiple = isArray,
                         UserValueOverride = val,
                         IsUserAdded = true
                     });

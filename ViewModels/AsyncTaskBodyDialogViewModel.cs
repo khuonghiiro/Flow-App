@@ -121,7 +121,7 @@ namespace FlowMy.ViewModels
         private readonly AsyncTaskNode _parentAsyncTaskNode;
         private readonly AsyncTaskBodyNode _bodyNode;
 
-        public ObservableCollection<BodyNodeOption> InnerNodeOptions { get; } = new();
+        public ObservableCollection<WorkflowDataSourceOption> InnerNodeOptions { get; } = new();
         public ObservableCollection<AsyncTaskBodyOutputMappingItemViewModel> Mappings { get; } = new();
 
         public ICommand AddMappingCommand { get; }
@@ -180,11 +180,7 @@ namespace FlowMy.ViewModels
 
             foreach (var node in innerNodes)
             {
-                InnerNodeOptions.Add(new BodyNodeOption
-                {
-                    NodeId = node.Id,
-                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} ({node.Type})"
-                });
+                InnerNodeOptions.Add(CreateDataSourceOption(node));
             }
         }
 
@@ -208,6 +204,8 @@ namespace FlowMy.ViewModels
 
             var targetNode = _host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
             if (targetNode == null) yield break;
+
+            EnsureNodeDynamicOutputsSynced(targetNode);
 
             // Common default output keys
             var defaultKeys = new List<OutputKeyOption>

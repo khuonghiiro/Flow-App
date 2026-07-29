@@ -165,17 +165,26 @@ namespace FlowMy.Models
             {
                 if (string.IsNullOrWhiteSpace(mapping.OutputKey)) continue;
                 var key = mapping.OutputKey.Trim();
+                var dataType = mapping.IsCollectArray ? WorkflowDataType.ArrayDynamic : WorkflowDataType.String;
 
-                if (!DynamicOutputs.Any(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase)))
+                var existing = DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                if (existing == null)
                 {
                     DynamicOutputs.Add(new WorkflowDynamicDataPort
                     {
                         Key = key,
                         DisplayName = key,
-                        ConvertType = WorkflowDataType.String,
-                        OutputType = WorkflowDataType.String,
+                        ConvertType = dataType,
+                        OutputType = dataType,
+                        IsMultiple = mapping.IsCollectArray,
                         IsUserAdded = true
                     });
+                }
+                else
+                {
+                    existing.IsMultiple = mapping.IsCollectArray;
+                    existing.OutputType = dataType;
+                    existing.ConvertType = dataType;
                 }
             }
         }

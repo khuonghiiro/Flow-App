@@ -49,9 +49,7 @@ namespace FlowMy.Services.Interaction
             if (depth > MaxRecursionDepth) return; // Tránh vòng lặp vô hạn
 
             var targetNodes = new List<WorkflowNode> { node };
-            if (node is LoopNode loopNode && loopNode.LoopBodyNode != null) targetNodes.Add(loopNode.LoopBodyNode);
-            else if (node is LoopBodyNode loopBody) { var parent = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody); if (parent != null) targetNodes.Add(parent); }
-            else if (node is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null) targetNodes.Add(asyncNode.AsyncTaskBodyNode);
+            if (node is LoopBodyNode loopBody) { var parent = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody); if (parent != null) targetNodes.Add(parent); }
             else if (node is AsyncTaskBodyNode asyncBody) { var parent = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody); if (parent != null) targetNodes.Add(parent); }
 
             var overlappingNodes = new List<(WorkflowNode otherNode, Rect otherBounds, double overlapX, double overlapY, WorkflowNode hitTarget)>();
@@ -215,37 +213,17 @@ namespace FlowMy.Services.Interaction
                 }
             }
 
-            // 2. Coi LoopNode và LoopBodyNode là 1 khối duy nhất khi bị đẩy
-            if (nodeToMove is LoopNode loopNode && loopNode.LoopBodyNode != null)
+            // 2. LoopBodyNode khi bị di chuyển
+            if (nodeToMove is LoopBodyNode loopBody)
             {
-                linkedNodes.Add(loopNode.LoopBodyNode);
-                // Bắt luôn các node con trong LoopBodyNode
-                var loopInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, loopNode.LoopBodyNode);
-                foreach (var inner in loopInnerNodes) linkedNodes.Add(inner);
-            }
-            else if (nodeToMove is LoopBodyNode loopBody)
-            {
-                // Tìm LoopNode cha tương ứng
-                var parentLoop = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
-                if (parentLoop != null) linkedNodes.Add(parentLoop);
-                
-                // Bắt các node con trong LoopBodyNode
+                // Bắt các node con trong LoopBodyNode bằng BFS + Spatial check
                 var loopInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, loopBody);
                 foreach (var inner in loopInnerNodes) linkedNodes.Add(inner);
             }
-
-            // 3. Coi AsyncTaskNode và AsyncTaskBodyNode là 1 khối duy nhất khi bị đẩy
-            if (nodeToMove is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null && asyncNode.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch)
-            {
-                linkedNodes.Add(asyncNode.AsyncTaskBodyNode);
-                var asyncInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, asyncNode.AsyncTaskBodyNode);
-                foreach (var inner in asyncInnerNodes) linkedNodes.Add(inner);
-            }
+            // 3. AsyncTaskBodyNode khi bị di chuyển
             else if (nodeToMove is AsyncTaskBodyNode asyncBody)
             {
-                var parentAsync = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
-                if (parentAsync != null) linkedNodes.Add(parentAsync);
-                
+                // Bắt các node con trong AsyncTaskBodyNode bằng BFS + Spatial check
                 var asyncInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, asyncBody);
                 foreach (var inner in asyncInnerNodes) linkedNodes.Add(inner);
             }
@@ -278,8 +256,48 @@ namespace FlowMy.Services.Interaction
 
         private List<WorkflowNode> CaptureLoopOrAsyncBodyChildren(WorkflowEditorViewModel viewModel, WorkflowNode bodyNode)
         {
-            // Simple spatial check for loop/async body
             var result = new List<WorkflowNode>();
+            WorkflowNode? parentHeader = null;
+            if (bodyNode is LoopBodyNode lbNode)
+            {
+                parentHeader = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == lbNode);
+            }
+            else if (bodyNode is AsyncTaskBodyNode abNode)
+            {
+                parentHeader = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == abNode);
+            }
+
+            // 1) Graph BFS traversal along connections starting from bodyNode
+            var visited = new HashSet<WorkflowNode> { bodyNode };
+            var queue = new Queue<WorkflowNode>();
+            queue.Enqueue(bodyNode);
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                var neighbors = viewModel.Connections
+                    .Where(c => c.FromNode == current || c.ToNode == current)
+                    .Select(c => c.FromNode == current ? c.ToNode : c.FromNode);
+
+                foreach (var neighbor in neighbors)
+                {
+                    if (neighbor == null) continue;
+                    if (parentHeader != null && ReferenceEquals(neighbor, parentHeader)) continue;
+                    if (visited.Add(neighbor))
+                    {
+                        queue.Enqueue(neighbor);
+                    }
+                }
+            }
+
+            visited.Remove(bodyNode);
+            foreach (var node in visited)
+            {
+                if (!result.Contains(node))
+                    result.Add(node);
+            }
+
+            // 2) Spatial check for unconnected nodes resting inside body bounds
             double bodyX = bodyNode.X;
             double bodyY = bodyNode.Y;
             double bodyW = 0;
@@ -298,7 +316,7 @@ namespace FlowMy.Services.Interaction
                 var childH = child.Border?.ActualHeight > 1 ? child.Border.ActualHeight : 80;
                 var center = new Point(child.X + childW / 2.0, child.Y + childH / 2.0);
                 
-                if (rect.Contains(center))
+                if (rect.Contains(center) && !result.Contains(child))
                 {
                     result.Add(child);
                 }

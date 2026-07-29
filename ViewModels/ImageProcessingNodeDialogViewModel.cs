@@ -170,6 +170,7 @@ namespace FlowMy.ViewModels
                 foreach (var n in _host.ViewModel.Nodes)
                 {
                     if (ReferenceEquals(n, _imageNode)) continue;
+                    EnsureNodeDynamicOutputsSynced(n);
                     if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                     list.Add(CreateDataSourceOption(n));
                 }
@@ -204,6 +205,7 @@ namespace FlowMy.ViewModels
                 foreach (var n in _host.ViewModel.Nodes)
                 {
                     if (ReferenceEquals(n, _imageNode)) continue;
+                    EnsureNodeDynamicOutputsSynced(n);
                     if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                     list.Add(CreateDataSourceOption(n));
                 }
@@ -244,6 +246,7 @@ namespace FlowMy.ViewModels
                 foreach (var n in _host.ViewModel.Nodes)
                 {
                     if (ReferenceEquals(n, _imageNode)) continue;
+                    EnsureNodeDynamicOutputsSynced(n);
                     if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                     list.Add(CreateDataSourceOption(n));
                 }
@@ -552,6 +555,7 @@ namespace FlowMy.ViewModels
             foreach (var n in _host.ViewModel.Nodes)
             {
                 if (ReferenceEquals(n, _imageNode)) continue;
+                EnsureNodeDynamicOutputsSynced(n);
                 if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                 LayerAiNodeOptions.Add(CreateDataSourceOption(n));
             }
