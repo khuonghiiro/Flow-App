@@ -668,55 +668,43 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             continue;
                         }
 
-                        // IMPORTANT:
-                        // readResultsInBody=false means "traverse after all dispatch iterations complete",
-                        // but downstream still needs per-iteration scoped data.
-                        // Execute once per iterationExecutionId instead of using parent env.ExecutionId,
-                        // otherwise downstream nodes (Conditional/FlowOverwrite/Output/...) see only one shared value.
-                        var targetRunIds = iterationExecutionIds.Count > 0
-                            ? iterationExecutionIds
-                            : new List<string> { env.ExecutionId };
-
-                        foreach (var runId in targetRunIds)
+                        if (asyncTaskNode.RunInParallel)
                         {
-                            if (asyncTaskNode.RunInParallel)
-                            {
-                                pending.Add(service.ExecuteNodeAsync(
-                                    conn.ToNode,
-                                    connections,
-                                    cancellationToken,
-                                    env.OnEnteringNode,
-                                    env.OnNodeStarted,
-                                    env.OnNodeCompleted,
-                                    env.OnNodeFailed,
-                                    conn,
-                                    env.ReachableToEnd,
-                                    false,
-                                    new List<string>(env.ExecutionPath),
-                                    executionId: runId,
-                                    flowScopeId: env.FlowScopeId,
-                                    branchId: env.BranchId,
-                                    parentFlowScopeId: env.ParentFlowScopeId));
-                            }
-                            else
-                            {
-                                await service.ExecuteNodeAsync(
-                                    conn.ToNode,
-                                    connections,
-                                    cancellationToken,
-                                    env.OnEnteringNode,
-                                    env.OnNodeStarted,
-                                    env.OnNodeCompleted,
-                                    env.OnNodeFailed,
-                                    conn,
-                                    env.ReachableToEnd,
-                                    false,
-                                    new List<string>(env.ExecutionPath),
-                                    executionId: runId,
-                                    flowScopeId: env.FlowScopeId,
-                                    branchId: env.BranchId,
-                                    parentFlowScopeId: env.ParentFlowScopeId);
-                            }
+                            pending.Add(service.ExecuteNodeAsync(
+                                conn.ToNode,
+                                connections,
+                                cancellationToken,
+                                env.OnEnteringNode,
+                                env.OnNodeStarted,
+                                env.OnNodeCompleted,
+                                env.OnNodeFailed,
+                                conn,
+                                env.ReachableToEnd,
+                                false,
+                                new List<string>(env.ExecutionPath),
+                                executionId: env.ExecutionId,
+                                flowScopeId: env.FlowScopeId,
+                                branchId: env.BranchId,
+                                parentFlowScopeId: env.ParentFlowScopeId));
+                        }
+                        else
+                        {
+                            await service.ExecuteNodeAsync(
+                                conn.ToNode,
+                                connections,
+                                cancellationToken,
+                                env.OnEnteringNode,
+                                env.OnNodeStarted,
+                                env.OnNodeCompleted,
+                                env.OnNodeFailed,
+                                conn,
+                                env.ReachableToEnd,
+                                false,
+                                new List<string>(env.ExecutionPath),
+                                executionId: env.ExecutionId,
+                                flowScopeId: env.FlowScopeId,
+                                branchId: env.BranchId,
+                                parentFlowScopeId: env.ParentFlowScopeId);
                         }
                     }
 

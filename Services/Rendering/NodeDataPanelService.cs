@@ -184,6 +184,23 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
+            if (node is AsyncTaskNode asyncTask)
+            {
+                if (!string.IsNullOrWhiteSpace(asyncTask.LastExecutionId))
+                {
+                    var scopedVal = TryGetScopedOutput(asyncTask.LastExecutionId, asyncTask.Id, key);
+                    if (!string.IsNullOrWhiteSpace(scopedVal) && scopedVal != "—")
+                        return scopedVal;
+
+                    var rootId = asyncTask.LastExecutionId;
+                    var idx = rootId.IndexOf(":dispatch-", StringComparison.Ordinal);
+                    if (idx > 0) rootId = rootId.Substring(0, idx);
+                    scopedVal = TryGetScopedOutput(rootId, asyncTask.Id, key);
+                    if (!string.IsNullOrWhiteSpace(scopedVal) && scopedVal != "—")
+                        return scopedVal;
+                }
+            }
+
             // StringSplitNode - return array items as JSON array string
             // để WorkflowEditorViewModel.UpdateNodeExecutionResults có thể parse và hiển thị dạng toggle "Có X kết quả"
             if (node is StringSplitNode stringSplitNode)
@@ -587,27 +604,47 @@ namespace FlowMy.Services.Rendering
             // HttpRequestNode - return response data from last request
             if (node is HttpRequestNode httpNode)
             {
+                string? directResult = null;
                 switch (key.ToLowerInvariant())
                 {
                     case "statuscode":
-                        return httpNode.LastStatusCode?.ToString() ?? "—";
+                        directResult = httpNode.LastStatusCode?.ToString();
+                        break;
                     case "responsebody":
-                        return string.IsNullOrWhiteSpace(httpNode.LastResponseBody) ? "—" : httpNode.LastResponseBody;
+                        directResult = httpNode.LastResponseBody;
+                        break;
                     case "responseheaders":
-                        if (httpNode.LastResponseHeaders == null || httpNode.LastResponseHeaders.Count == 0)
-                            return "—";
-                        return JsonSerializer.Serialize(httpNode.LastResponseHeaders);
+                        if (httpNode.LastResponseHeaders != null && httpNode.LastResponseHeaders.Count > 0)
+                            directResult = JsonSerializer.Serialize(httpNode.LastResponseHeaders);
+                        break;
                     case "issuccess":
-                        return httpNode.LastIsSuccess?.ToString() ?? "—";
+                        directResult = httpNode.LastIsSuccess?.ToString();
+                        break;
                     case "errormessage":
-                        return string.IsNullOrWhiteSpace(httpNode.LastErrorMessage) ? "—" : httpNode.LastErrorMessage;
+                        directResult = httpNode.LastErrorMessage;
+                        break;
                     case "responsetimems":
-                        return httpNode.LastResponseTimeMs?.ToString() ?? "—";
+                        directResult = httpNode.LastResponseTimeMs?.ToString();
+                        break;
                     case "curl":
-                        return string.IsNullOrWhiteSpace(httpNode.LastCurlCommand) ? "—" : httpNode.LastCurlCommand;
-                    default:
-                        return "—";
+                        directResult = httpNode.LastCurlCommand;
+                        break;
                 }
+
+                // Nếu Last* có giá trị, trả về ngay
+                if (!string.IsNullOrWhiteSpace(directResult))
+                    return directResult;
+
+                // Fallback: đọc từ scoped output store (hỗ trợ parallel execution mode)
+                var execId = httpNode.LastExecutionId;
+                if (!string.IsNullOrWhiteSpace(execId))
+                {
+                    var scopedVal = TryGetScopedOutput(execId, httpNode.Id, key.ToLowerInvariant());
+                    if (!string.IsNullOrWhiteSpace(scopedVal))
+                        return scopedVal;
+                }
+
+                return "—";
             }
 
             // WebNode - cookie, bearer, access_token từ response, và các response outputs đã cấu hình
@@ -632,6 +669,29 @@ namespace FlowMy.Services.Rendering
             }
 
             return "—";
+        }
+
+        /// <summary>
+        /// Đọc giá trị từ scoped output historical cache — fallback cho trường hợp
+        /// node.Last* bị null (parallel execution mode không set shared state).
+        /// </summary>
+        private static string? TryGetScopedOutput(string executionId, string nodeId, string key)
+        {
+            if (string.IsNullOrWhiteSpace(executionId) || string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(key))
+                return null;
+            try
+            {
+                var cache = FlowMy.Services.Workflow.WorkflowExecutionService.ScopedOutputsHistoricalCache;
+                if (cache.TryGetValue(executionId, out var byNode) &&
+                    byNode.TryGetValue(nodeId, out var byKey) &&
+                    byKey.TryGetValue(key, out var val) &&
+                    !string.IsNullOrWhiteSpace(val))
+                {
+                    return val;
+                }
+            }
+            catch { /* Ignore read errors from concurrent cleanup */ }
+            return null;
         }
 
         private static string SummarizeNodeDynamicOutputs(WorkflowNode node)

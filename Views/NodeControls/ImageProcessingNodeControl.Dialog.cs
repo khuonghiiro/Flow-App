@@ -137,6 +137,11 @@ namespace FlowMy.Views.NodeControls
                     dialogManager.CloseCurrentDialog();
                 var dialog = new ImageProcessingNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
                 dialogManager.OpenDialog(node, dialog, host);
+
+                if (!string.IsNullOrWhiteSpace(node.RenderNodeId) && !string.IsNullOrWhiteSpace(node.RenderNodeOutputKey))
+                {
+                    _ = RefreshRenderedImagesFromRenderNodeAsync(node, host, silent: true);
+                }
             }
             catch (Exception ex)
             {
@@ -488,26 +493,41 @@ namespace FlowMy.Views.NodeControls
         /// <summary>
         /// Đọc output từ Node render ảnh (RenderNodeId + RenderNodeOutputKey) và map
         /// thành ảnh render tương ứng cho từng crop (theo thứ tự Order tăng dần).
-        /// Hỗ trợ:
-        /// - Chuỗi đơn: path local hoặc URL online, hoặc base64 → áp dụng cho crop đầu tiên.
-        /// - JSON array chuỗi: ["path1","path2",...] → map theo thứ tự crop 1,2,3...
         /// </summary>
-        private static async System.Threading.Tasks.Task RefreshRenderedImagesFromRenderNodeAsync(
+        public static async System.Threading.Tasks.Task RefreshRenderedImagesFromRenderNodeAsync(
             ImageProcessingNode node,
-            IWorkflowEditorHost host)
+            IWorkflowEditorHost host,
+            bool silent = false)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(node.RenderNodeId) ||
                     string.IsNullOrWhiteSpace(node.RenderNodeOutputKey))
                 {
-                    MessageBox.Show("Chưa cấu hình Node render ảnh + Key trong dialog Xử lý ảnh.",
-                        "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (!silent)
+                    {
+                        MessageBox.Show("Chưa cấu hình Node render ảnh + Key trong dialog Xử lý ảnh.",
+                            "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                     return;
                 }
 
                 var execId = node.LastExecutionId;
                 var list = new List<RenderOutputEntry>();
+
+                string rootExecId = execId ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(execId))
+                {
+                    var dispIdx = execId.IndexOf(":dispatch-", StringComparison.Ordinal);
+                    var atIdx = execId.IndexOf(":at-manual-", StringComparison.Ordinal);
+                    var firstSuffix = Math.Min(
+                        dispIdx >= 0 ? dispIdx : int.MaxValue,
+                        atIdx >= 0 ? atIdx : int.MaxValue);
+                    if (firstSuffix < int.MaxValue)
+                        rootExecId = execId.Substring(0, firstSuffix);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] === Start refresh: execId={execId}, rootExecId={rootExecId}, RenderNodeId={node.RenderNodeId}, RenderNodeOutputKey={node.RenderNodeOutputKey}");
 
                 // 1. Quét tìm tất cả dữ liệu output của RenderNode trong ScopedOutputsHistoricalCache
                 // bao gồm cả các luồng con (dispatch-0, dispatch-1, dispatch-2...) thuộc về lần chạy này
@@ -515,44 +535,64 @@ namespace FlowMy.Views.NodeControls
                     !string.IsNullOrWhiteSpace(node.RenderNodeId) &&
                     !string.IsNullOrWhiteSpace(node.RenderNodeOutputKey))
                 {
-                    string actualRunId = execId;
-                    if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(execId, out var mappedRunId))
+                    string actualRunId = rootExecId;
+                    if (WorkflowExecutionService.ExecutionIdMapping.TryGetValue(rootExecId, out var mappedRunId))
                     {
                         actualRunId = mappedRunId;
                     }
 
-                    var prefix1 = execId + ":";
-                    var prefix2 = actualRunId + ":";
+                    // Dùng root prefix để scan TẤT CẢ dispatch subtrees
+                    var rootPrefix1 = rootExecId + ":";
+                    var rootPrefix2 = actualRunId + ":";
+                    int matchedCacheKeys = 0;
+
+                    System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] rootExecId={rootExecId}, actualRunId={actualRunId}");
 
                     foreach (var kv in WorkflowExecutionService.ScopedOutputsHistoricalCache)
                     {
-                        if (string.Equals(kv.Key, execId, StringComparison.OrdinalIgnoreCase) ||
+                        if (string.Equals(kv.Key, rootExecId, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(kv.Key, actualRunId, StringComparison.OrdinalIgnoreCase) ||
-                            kv.Key.StartsWith(prefix1, StringComparison.OrdinalIgnoreCase) ||
-                            kv.Key.StartsWith(prefix2, StringComparison.OrdinalIgnoreCase))
+                            kv.Key.StartsWith(rootPrefix1, StringComparison.OrdinalIgnoreCase) ||
+                            kv.Key.StartsWith(rootPrefix2, StringComparison.OrdinalIgnoreCase))
                         {
+                            matchedCacheKeys++;
                             if (kv.Value.TryGetValue(node.RenderNodeId, out var nodeOutputs) &&
                                 nodeOutputs.TryGetValue(node.RenderNodeOutputKey, out var valStr) &&
                                 !string.IsNullOrWhiteSpace(valStr) && valStr != "—")
                             {
+                                System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Scoped hit: cacheKey={kv.Key}, valStr.Length={valStr.Length}, valStr={valStr.Substring(0, Math.Min(200, valStr.Length))}...");
                                 var parsedEntries = ParseRenderOutputEntries(valStr, node.RenderCodeIdKeys, node.RenderImageLinkKeys, node.RenderImageIdKeys);
+                                System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Parsed {parsedEntries.Count} entries from scoped cache");
                                 foreach (var entry in parsedEntries)
                                 {
+                                    System.Diagnostics.Debug.WriteLine($"[ImageProc.Render]   Entry: CodeId={entry.CodeId}, ImageId={entry.ImageId}, ImageUrl={entry.ImageUrlOrData?.Substring(0, Math.Min(80, entry.ImageUrlOrData?.Length ?? 0))}...");
                                     if (!string.IsNullOrWhiteSpace(entry.ImageUrlOrData) && !list.Any(x => x.ImageUrlOrData == entry.ImageUrlOrData))
                                         list.Add(entry);
                                 }
                             }
+                            else
+                            {
+                                var hasNode = kv.Value.ContainsKey(node.RenderNodeId);
+                                System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Scoped miss: cacheKey={kv.Key}, hasRenderNodeId={hasNode}");
+                                if (hasNode && kv.Value.TryGetValue(node.RenderNodeId, out var nOut))
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[ImageProc.Render]   Available keys: [{string.Join(", ", nOut.Keys)}]");
+                                }
+                            }
                         }
                     }
+                    System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Scoped cache scan: {matchedCacheKeys} matching keys, total historical cache size={WorkflowExecutionService.ScopedOutputsHistoricalCache.Count}");
                 }
 
                 // 2. Fallback: Nếu trong HistoricalCache chưa thấy, dùng ResolveFromNodeIfAny
                 if (list.Count == 0)
                 {
                     var raw = ResolveFromNodeIfAny(host, node.RenderNodeId, node.RenderNodeOutputKey);
+                    System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Fallback ResolveFromNodeIfAny: raw={(raw != null ? raw.Substring(0, Math.Min(200, raw.Length)) : "NULL")}");
                     if (!string.IsNullOrWhiteSpace(raw))
                     {
                         var parsedEntries = ParseRenderOutputEntries(raw, node.RenderCodeIdKeys, node.RenderImageLinkKeys, node.RenderImageIdKeys);
+                        System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Fallback parsed {parsedEntries.Count} entries");
                         foreach (var entry in parsedEntries)
                         {
                             if (!string.IsNullOrWhiteSpace(entry.ImageUrlOrData) && !list.Any(x => x.ImageUrlOrData == entry.ImageUrlOrData))
@@ -561,18 +601,26 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
+                System.Diagnostics.Debug.WriteLine($"[ImageProc.Render] Total entries to render: {list.Count}");
+
                 if (list.Count == 0)
                 {
-                    MessageBox.Show("Output của Node render ảnh rỗng.",
-                        "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (!silent)
+                    {
+                        MessageBox.Show("Output của Node render ảnh rỗng.",
+                            "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                     return;
                 }
                 
-                // Lấy danh sách crops có LastExecutionId khớp với executionId hiện tại
+                // Lấy danh sách crops có LastExecutionId khớp với executionId/rootExecId hiện tại
                 // Đây là các crops đã được xử lý trong lần chạy workflow này
                 var targetCrops = node.Crops
                     .Where(c => !string.IsNullOrWhiteSpace(c.LastExecutionId) && 
-                                string.Equals(c.LastExecutionId, execId, StringComparison.OrdinalIgnoreCase))
+                                (string.Equals(c.LastExecutionId, execId, StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(c.LastExecutionId, rootExecId, StringComparison.OrdinalIgnoreCase) ||
+                                 c.LastExecutionId.StartsWith(rootExecId + ":", StringComparison.OrdinalIgnoreCase) ||
+                                 rootExecId.StartsWith(c.LastExecutionId + ":", StringComparison.OrdinalIgnoreCase)))
                     .OrderBy(c => c.Order)
                     .ToList();
                 
@@ -596,8 +644,11 @@ namespace FlowMy.Views.NodeControls
 
                 if (targetCrops.Count == 0)
                 {
-                    MessageBox.Show("Không tìm thấy vùng crop để gán ảnh render.",
-                        "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (!silent)
+                    {
+                        MessageBox.Show("Không tìm thấy vùng crop để gán ảnh render.",
+                            "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                     return;
                 }
 

@@ -1980,6 +1980,24 @@ namespace FlowMy.ViewModels
                             }
                             finally
                             {
+                                try
+                                {
+                                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                                    {
+                                        if (System.Windows.Application.Current?.MainWindow is FlowMy.Services.Interaction.IWorkflowEditorHost host)
+                                        {
+                                            foreach (var ipNode in Nodes.OfType<FlowMy.Models.Nodes.ImageProcessingNode>())
+                                            {
+                                                if (!string.IsNullOrWhiteSpace(ipNode.RenderNodeId) && !string.IsNullOrWhiteSpace(ipNode.RenderNodeOutputKey))
+                                                {
+                                                    _ = FlowMy.Views.NodeControls.ImageProcessingNodeControl.RefreshRenderedImagesFromRenderNodeAsync(ipNode, host, silent: true);
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                                catch { }
+
                                 _workflowExecutionService.ClearScopedOutputsForRun(runId);
                             }
                         }

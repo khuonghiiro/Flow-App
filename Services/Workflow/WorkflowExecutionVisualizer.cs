@@ -346,6 +346,18 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             }
         }
 
+        if (node is AsyncTaskNode asyncTaskNode && asyncTaskNode.BodyOutputMappings != null)
+        {
+            foreach (var mapping in asyncTaskNode.BodyOutputMappings)
+            {
+                var key = mapping.OutputKey?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(key) && !keysToProcess.Contains(key, StringComparer.OrdinalIgnoreCase))
+                {
+                    keysToProcess.Add(key);
+                }
+            }
+        }
+
         if (node is CodeNode codeNode)
         {
             lock (codeNode.ResolvedOutputsSyncRoot)
