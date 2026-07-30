@@ -73,6 +73,14 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private string _fetchedValuePreview = "(chưa lấy)";
 
+        /// <summary>
+        /// True khi node có connection từ node khác nối vào port IN.
+        /// Khi true: node chạy theo flow (A→F→B), Timer/Realtime bị ẩn.
+        /// Khi false: node chạy độc lập, Timer/Realtime hoạt động bình thường.
+        /// </summary>
+        [ObservableProperty]
+        private bool _hasIncomingFlowConnection;
+
         // ===== Options =====
         public List<string> TimerUnitOptions { get; } = new() { "ms", "s", "m" };
 
@@ -94,6 +102,9 @@ namespace FlowMy.ViewModels
                 DataReadyScanIntervalValue = _fetcherNode.DataReadyScanIntervalValue;
                 DataReadyScanUnit          = _fetcherNode.DataReadyScanUnit;
                 RunSourceNodeFirst    = _fetcherNode.RunSourceNodeFirst;
+
+                // Kiểm tra node có incoming connection vào port IN không
+                HasIncomingFlowConnection = CheckHasIncomingFlowConnection();
 
                 RefreshAvailableNodes();
 
@@ -349,8 +360,79 @@ namespace FlowMy.ViewModels
             _fetcherNode.DataReadyScanIntervalValue = DataReadyScanIntervalValue;
             _fetcherNode.DataReadyScanUnit          = DataReadyScanUnit ?? "s";
             ApplySelectedScanKeysToNode();
+
+            // Populate DynamicOutputs ngay khi đóng dialog
+            // để các node khác nhìn thấy output keys trên canvas
+            PopulateOutputPortsFromSource();
+
             _fetcherNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        /// <summary>
+        /// Tạo/cập nhật DynamicOutputs của DataFetcherNode ngay khi đóng dialog,
+        /// dựa trên source node đã chọn. Giúp các node khác nhìn thấy output keys
+        /// mà không cần chạy workflow.
+        /// </summary>
+        private void PopulateOutputPortsFromSource()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedSourceNodeId) || _host.ViewModel?.Nodes == null)
+                return;
+
+            var srcNode = _host.ViewModel.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, SelectedSourceNodeId, StringComparison.OrdinalIgnoreCase));
+
+            if (srcNode?.DynamicOutputs == null || srcNode.DynamicOutputs.Count == 0)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(SelectedSourceOutputKey))
+            {
+                // Chế độ 1: lấy 1 key cụ thể → chỉ tạo 1 output port
+                var srcPort = srcNode.DynamicOutputs.FirstOrDefault(p =>
+                    string.Equals(p.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase));
+                var displayName = srcPort?.DisplayName ?? SelectedSourceOutputKey;
+
+                // Xóa các port cũ không còn match
+                var toRemove = _fetcherNode.DynamicOutputs
+                    .Where(p => !string.Equals(p.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                foreach (var r in toRemove)
+                    _fetcherNode.DynamicOutputs.Remove(r);
+
+                EnsureOutputPort(_fetcherNode, SelectedSourceOutputKey, 
+                    _fetcherNode.DynamicOutputs.FirstOrDefault(p => 
+                        string.Equals(p.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase))?.UserValueOverride ?? string.Empty);
+
+                // Cập nhật DisplayName
+                var existingPort = _fetcherNode.DynamicOutputs.FirstOrDefault(p =>
+                    string.Equals(p.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase));
+                if (existingPort != null && !string.IsNullOrWhiteSpace(displayName))
+                    existingPort.DisplayName = displayName;
+            }
+            else
+            {
+                // Chế độ 2: lấy tất cả outputs → tạo port cho mỗi key
+                // Giữ lại giá trị cũ nếu key trùng
+                var existingValues = _fetcherNode.DynamicOutputs
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+                    .ToDictionary(p => p.Key!, p => p.UserValueOverride ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+
+                _fetcherNode.DynamicOutputs.Clear();
+
+                foreach (var srcOutput in srcNode.DynamicOutputs)
+                {
+                    if (string.IsNullOrWhiteSpace(srcOutput.Key)) continue;
+
+                    var preservedValue = existingValues.TryGetValue(srcOutput.Key, out var v) ? v : string.Empty;
+                    EnsureOutputPort(_fetcherNode, srcOutput.Key, preservedValue);
+
+                    // Cập nhật DisplayName từ source
+                    var port = _fetcherNode.DynamicOutputs.FirstOrDefault(p =>
+                        string.Equals(p.Key, srcOutput.Key, StringComparison.OrdinalIgnoreCase));
+                    if (port != null && !string.IsNullOrWhiteSpace(srcOutput.DisplayName))
+                        port.DisplayName = srcOutput.DisplayName;
+                }
+            }
         }
 
         private void ApplySelectedScanKeysToNode()
@@ -410,6 +492,31 @@ namespace FlowMy.ViewModels
             {
                 _isNormalizingScanInterval = false;
             }
+        }
+
+        /// <summary>
+        /// Kiểm tra xem DataFetcherNode có connection từ node khác nối vào port IN hay không.
+        /// Nếu có → node chạy theo flow (A→F→B), Timer/Realtime sẽ bị tắt.
+        /// </summary>
+        private bool CheckHasIncomingFlowConnection()
+        {
+            if (_host.ViewModel?.Connections == null) return false;
+
+            var inputPort = _fetcherNode.Ports?.FirstOrDefault(p => p.IsInput && p.IsVisible);
+            if (inputPort == null) return false;
+
+            return _host.ViewModel.Connections.Any(c =>
+                c.ToNode != null &&
+                string.Equals(c.ToNode.Id, _fetcherNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                (c.ToPort == null || string.Equals(c.ToPort.Id, inputPort.Id, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        /// <summary>
+        /// Refresh trạng thái HasIncomingFlowConnection. Gọi khi connections thay đổi.
+        /// </summary>
+        public void RefreshIncomingConnectionState()
+        {
+            HasIncomingFlowConnection = CheckHasIncomingFlowConnection();
         }
     }
 }

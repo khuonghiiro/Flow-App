@@ -60,16 +60,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             if (string.IsNullOrWhiteSpace(fetcherNode.SourceNodeId))
             {
-                // Debug.WriteLine("[DataFetcherNodeExecutor] SourceNodeId chưa cấu hình.");
+                Debug.WriteLine("[DataFetcherNodeExecutor] SourceNodeId chưa cấu hình → bỏ qua.");
                 return;
             }
+
+            Debug.WriteLine($"[DataFetcherNodeExecutor] FetchValueAsync: SourceNodeId='{fetcherNode.SourceNodeId}', " +
+                $"ReachableToEnd.Count={env.ReachableToEnd?.Count ?? 0}, " +
+                $"Connections.Count={env.Connections?.Count ?? 0}, " +
+                $"RefreshOnly={env.RefreshOnly}, ExecutionId={env.ExecutionId}");
 
             var sourceNode = FindSourceNode(fetcherNode.SourceNodeId, env);
             if (sourceNode == null)
             {
-                // Debug.WriteLine($"[DataFetcherNodeExecutor]Không tìm thấy node nguồn: {fetcherNode.SourceNodeId}");
+                Debug.WriteLine($"[DataFetcherNodeExecutor] ❌ Không tìm thấy node nguồn: {fetcherNode.SourceNodeId}");
                 return;
             }
+
+            Debug.WriteLine($"[DataFetcherNodeExecutor] ✅ Tìm thấy source node: '{sourceNode.Title}' (Id={sourceNode.Id}), " +
+                $"DynamicOutputs.Count={sourceNode.DynamicOutputs?.Count ?? 0}");
 
             // Nếu nguồn là WebNode và cần chờ load xong
             if (fetcherNode.WaitForWebNodeLoad && sourceNode is WebNode webNode)
@@ -80,7 +88,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 try
                 {
-                    // Debug.WriteLine($"[DataFetcherNodeExecutor]RunSourceNodeFirst → chạy lại '{sourceNode.Title}'");
+                    Debug.WriteLine($"[DataFetcherNodeExecutor] RunSourceNodeFirst → chạy lại '{sourceNode.Title}'");
 
                     // Tập hợp tất cả nodes từ connections để làm allNodesForLookup
                     var allNodes = env.Connections
@@ -88,6 +96,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         .OfType<WorkflowNode>()
                         .Distinct()
                         .ToList();
+
+                    // Source node có thể không nằm trong connections (standalone node)
+                    // → thêm vào allNodes để ExecuteNodeLogicOnlyAsync tìm được
+                    if (!allNodes.Any(n => string.Equals(n.Id, sourceNode.Id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        allNodes.Add(sourceNode);
+                        Debug.WriteLine($"[DataFetcherNodeExecutor] RunSourceNodeFirst: Thêm standalone source '{sourceNode.Title}' vào allNodes");
+                    }
 
                     // Chạy logic node nguồn (không traverse output, không ảnh hưởng flow)
                     await env.Service.ExecuteNodeLogicOnlyAsync(
@@ -97,11 +113,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         allNodesForLookup: allNodes)
                         .ConfigureAwait(false);
 
-                    // Debug.WriteLine($"[DataFetcherNodeExecutor]RunSourceNodeFirst xong → tiếp tục lấy data");
+                    Debug.WriteLine($"[DataFetcherNodeExecutor] RunSourceNodeFirst xong → tiếp tục lấy data");
                 }
                 catch (Exception ex)
                 {
-                    // Debug.WriteLine($"[DataFetcherNodeExecutor]RunSourceNodeFirst lỗi: {ex.Message}");
+                    Debug.WriteLine($"[DataFetcherNodeExecutor] RunSourceNodeFirst lỗi: {ex.Message}");
                     // Không throw — vẫn tiếp tục fetch bằng dữ liệu hiện có
                 }
             }
@@ -112,7 +128,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var value = env.Service.ResolveDynamicValueForExecution(sourceNode, fetcherNode.SourceOutputKey, env);
                 if (value == "—") value = string.Empty;
 
-                // Debug.WriteLine($"[DataFetcherNodeExecutor]Fetch '{fetcherNode.SourceOutputKey}' từ '{sourceNode.Title}': '{value}'");
+                Debug.WriteLine($"[DataFetcherNodeExecutor] Chế độ 1: Fetch key='{fetcherNode.SourceOutputKey}' từ '{sourceNode.Title}': value='{value}' (length={value?.Length ?? 0})");
                 EnsureOutputPort(fetcherNode, fetcherNode.SourceOutputKey, value);
                 if (!string.IsNullOrWhiteSpace(env.ExecutionId))
                 {
@@ -124,9 +140,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // ── Chế độ 2: copy TOÀN BỘ outputs từ node nguồn ──
                 if (sourceNode.DynamicOutputs == null || sourceNode.DynamicOutputs.Count == 0)
                 {
-                    // Debug.WriteLine($"[DataFetcherNodeExecutor]Node nguồn '{sourceNode.Title}' không có dynamic output.");
+                    Debug.WriteLine($"[DataFetcherNodeExecutor] ❌ Chế độ 2: Node nguồn '{sourceNode.Title}' không có dynamic output.");
                     return;
                 }
+
+                Debug.WriteLine($"[DataFetcherNodeExecutor] Chế độ 2: Copy {sourceNode.DynamicOutputs.Count} outputs từ '{sourceNode.Title}'");
 
                 // Xóa sạch các port cũ (kể cả port "value" mặc định từ các workflow cũ)
                 // để chỉ giữ lại đúng những keys thực tế từ node nguồn.
@@ -137,7 +155,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     var val = env.Service.ResolveDynamicValueForExecution(sourceNode, srcOutput.Key, env);
                     if (val == "—") val = string.Empty;
 
-                    // Debug.WriteLine($"[DataFetcherNodeExecutor]Copy '{srcOutput.Key}' từ '{sourceNode.Title}': '{val}'");
+                    Debug.WriteLine($"[DataFetcherNodeExecutor]   Copy '{srcOutput.Key}' = '{val}' (length={val?.Length ?? 0})");
                     EnsureOutputPort(fetcherNode, srcOutput.Key, val, srcOutput.DisplayName);
                     if (!string.IsNullOrWhiteSpace(env.ExecutionId) && !string.IsNullOrWhiteSpace(srcOutput.Key))
                     {
@@ -181,114 +199,71 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static WorkflowNode? FindSourceNode(string sourceNodeId, NodeExecutionEnvironment env)
         {
+            if (string.IsNullOrWhiteSpace(sourceNodeId)) return null;
+
             // 1) Tìm trong ReachableToEnd trước — khi chạy standalone (RunSingleNodeAsync),
             //    reachableToEnd = all workflow nodes (vì allNodesForLookup được truyền đầy đủ).
             //    Đây là cách chắc chắn nhất, không phụ thuộc vào flow connections.
-            var fromReachable = env.ReachableToEnd
-                .FirstOrDefault(n => string.Equals(n.Id, sourceNodeId, StringComparison.OrdinalIgnoreCase));
-            if (fromReachable != null) return fromReachable;
-
-            // 2) Fallback: tìm trong TẤT CẢ nodes có trong connections (cả upstream lẫn downstream)
-            return env.Connections
-                .SelectMany(c => new[] { c.FromNode, c.ToNode })
-                .Where(n => n != null)
-                .Distinct()
-                .FirstOrDefault(n => string.Equals(n!.Id, sourceNodeId, StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
-        /// Public helper: lấy value từ 1 source node, cập nhật DynamicOutputs của DataFetcherNode.
-        /// Dùng cho Timer và Realtime (không có NodeExecutionEnvironment).
-        /// </summary>
-        public static void FetchValueFromNode(DataFetcherNode fetcherNode, WorkflowNode sourceNode)
-        {
-            if (!string.IsNullOrWhiteSpace(fetcherNode.SourceOutputKey))
-            {
-                var val = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, fetcherNode.SourceOutputKey);
-                if (val == "—") val = string.Empty;
-                EnsureOutputPort(fetcherNode, fetcherNode.SourceOutputKey, val,
-                    sourceNode.DynamicOutputs?.FirstOrDefault(p =>
-                        string.Equals(p.Key, fetcherNode.SourceOutputKey, StringComparison.OrdinalIgnoreCase))
-                        ?.DisplayName);
-            }
-            else if (sourceNode.DynamicOutputs != null)
-            {
-                foreach (var output in sourceNode.DynamicOutputs)
-                {
-                    var val = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, output.Key);
-                    if (val == "—") val = string.Empty;
-                    EnsureOutputPort(fetcherNode, output.Key, val, output.DisplayName);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Chờ WebNode hoàn thành load trang. Timeout: 30 giây.
-        /// </summary>
-        private static async Task WaitForWebNodeLoadAsync(WebNode webNode, CancellationToken cancellationToken)
-        {
-            var tcs = webNode.PendingOutputsTcs;
-            if (tcs == null || tcs.Task.IsCompleted)
-            {
-                // WebNode đã hoàn thành load/gom dữ liệu hoặc không trong trạng thái đứng chờ -> Không block!
-                return;
-            }
-
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-            try
-            {
-                await tcs.Task.WaitAsync(linked.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
-    }
-}
-            {
-                dispatcher.Invoke(UpdatePort);
-            }
-            else
-            {
-                UpdatePort();
-            }
-        }
-
-        private static WorkflowNode? FindSourceNode(string sourceNodeId, NodeExecutionEnvironment env)
-        {
-            if (string.IsNullOrWhiteSpace(sourceNodeId)) return null;
-
-            // 1) Tìm trong ReachableToEnd trước
             var fromReachable = env.ReachableToEnd?
                 .FirstOrDefault(n => string.Equals(n.Id, sourceNodeId, StringComparison.OrdinalIgnoreCase));
-            if (fromReachable != null) return fromReachable;
+            if (fromReachable != null)
+            {
+                Debug.WriteLine($"[FindSourceNode] ✅ Tìm thấy trong ReachableToEnd: '{fromReachable.Title}'");
+                return fromReachable;
+            }
 
-            // 2) Tìm trong TẤT CẢ nodes có trong connections (cả upstream lẫn downstream)
+            // 2) Fallback: tìm trong TẤT CẢ nodes có trong connections (cả upstream lẫn downstream)
             var fromConnections = env.Connections?
                 .SelectMany(c => new[] { c.FromNode, c.ToNode })
                 .Where(n => n != null)
                 .Distinct()
                 .FirstOrDefault(n => string.Equals(n!.Id, sourceNodeId, StringComparison.OrdinalIgnoreCase));
-            if (fromConnections != null) return fromConnections;
+            if (fromConnections != null)
+            {
+                Debug.WriteLine($"[FindSourceNode] ✅ Tìm thấy trong Connections: '{fromConnections.Title}'");
+                return fromConnections;
+            }
 
-            // 3) Fallback: tìm trong TẤT CẢ nodes trên canvas (ViewModel.Nodes)
+            // 3) Fallback: tìm trong TẤT CẢ nodes trên canvas (tất cả WorkflowEditorWindow đang mở)
+            //    Source node có thể không nằm trong bất kỳ connection nào (standalone node).
+            Debug.WriteLine($"[FindSourceNode] ⚠️ Không tìm thấy trong ReachableToEnd/Connections, thử fallback ViewModel.Nodes...");
             WorkflowNode? fromViewModel = null;
             var dispatcher = System.Windows.Application.Current?.Dispatcher;
             if (dispatcher != null)
             {
                 void GetFromCanvas()
                 {
-                    if (System.Windows.Application.Current?.MainWindow is FlowMy.Views.WorkflowEditorWindow win &&
-                        win.ViewModel?.Nodes != null)
+                    var app = System.Windows.Application.Current;
+                    if (app == null) return;
+
+                    // Tìm trong TẤT CẢ cửa sổ đang mở (không chỉ MainWindow)
+                    foreach (System.Windows.Window window in app.Windows)
                     {
-                        fromViewModel = win.ViewModel.Nodes
-                            .FirstOrDefault(n => string.Equals(n.Id, sourceNodeId, StringComparison.OrdinalIgnoreCase));
+                        if (window is FlowMy.Views.WorkflowEditorWindow win &&
+                            win.ViewModel?.Nodes != null)
+                        {
+                            var found = win.ViewModel.Nodes
+                                .FirstOrDefault(n => string.Equals(n.Id, sourceNodeId, StringComparison.OrdinalIgnoreCase));
+                            if (found != null)
+                            {
+                                fromViewModel = found;
+                                Debug.WriteLine($"[FindSourceNode] ✅ Tìm thấy trong ViewModel.Nodes: '{found.Title}'");
+                                return;
+                            }
+                        }
                     }
+                    Debug.WriteLine($"[FindSourceNode] ❌ Không tìm thấy trong bất kỳ WorkflowEditorWindow nào");
                 }
-                if (dispatcher.CheckAccess()) GetFromCanvas();
-                else dispatcher.Invoke(GetFromCanvas);
+
+                try
+                {
+                    if (dispatcher.CheckAccess()) GetFromCanvas();
+                    else dispatcher.Invoke(GetFromCanvas);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[FindSourceNode] ❌ Dispatcher.Invoke lỗi: {ex.Message}");
+                }
             }
 
             return fromViewModel;

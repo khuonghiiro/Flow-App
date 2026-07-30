@@ -171,6 +171,24 @@ namespace FlowMy.Views.NodeControls
             return new SolidColorBrush(Color.FromRgb(148, 163, 184));
         }
 
+        // ===== INCOMING CONNECTION CHECK =====
+        /// <summary>
+        /// Kiểm tra xem DataFetcherNode có connection từ node khác nối vào port IN hay không.
+        /// Khi có incoming connection: node chạy theo flow (A→F→B), Timer/Realtime không cần.
+        /// </summary>
+        private static bool HasIncomingFlowConnection(DataFetcherNode node, IWorkflowEditorHost host)
+        {
+            if (host.ViewModel?.Connections == null) return false;
+
+            var inputPort = node.Ports?.FirstOrDefault(p => p.IsInput && p.IsVisible);
+            if (inputPort == null) return false;
+
+            return host.ViewModel.Connections.Any(c =>
+                c.ToNode != null &&
+                string.Equals(c.ToNode.Id, node.Id, StringComparison.OrdinalIgnoreCase) &&
+                (c.ToPort == null || string.Equals(c.ToPort.Id, inputPort.Id, StringComparison.OrdinalIgnoreCase)));
+        }
+
         // ===== OPEN DIALOG =====
         private static void OpenNodeDialog(DataFetcherNode node, IWorkflowEditorHost host, Window? ownerWindow)
         {
@@ -211,6 +229,10 @@ namespace FlowMy.Views.NodeControls
         private static void RestartFetchTimer(DataFetcherNode node, IWorkflowEditorHost host)
         {
             StopFetchTimer(node);
+
+            // Khi có incoming flow connection (A→F→B): không khởi động timer,
+            // flow engine sẽ trigger executor khi chạy đến node này.
+            if (HasIncomingFlowConnection(node, host)) return;
 
             if (!node.EnableTimer || string.IsNullOrWhiteSpace(node.SourceNodeId)) return;
 
@@ -348,6 +370,10 @@ namespace FlowMy.Views.NodeControls
         private static void AttachRealtimeSubscription(DataFetcherNode node, IWorkflowEditorHost host)
         {
             DetachRealtimeSubscription(node, host);
+
+            // Khi có incoming flow connection (A→F→B): không subscribe realtime,
+            // flow engine sẽ trigger executor khi chạy đến node này.
+            if (HasIncomingFlowConnection(node, host)) return;
 
             if (!node.EnableRealtime || string.IsNullOrWhiteSpace(node.SourceNodeId)) return;
 

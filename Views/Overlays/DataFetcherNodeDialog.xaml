@@ -17,6 +17,7 @@
 
     <local:BaseNodeDialog.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisConverter"/>
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisConverter"/>
     </local:BaseNodeDialog.Resources>
 
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
@@ -188,10 +189,11 @@
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>   
-                            <!-- ⏱ Timer tự động -->
+                            <!-- ⏱ Timer tự động (ẩn khi có incoming flow connection) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                                    Visibility="{Binding HasIncomingFlowConnection, Converter={StaticResource InverseBoolToVisConverter}}">
                                 <StackPanel>
                                     <TextBlock Text="⏱ Timer tự động" 
                                                Foreground="{DynamicResource TextBrush}"
@@ -274,10 +276,11 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- ⚡ Realtime -->
+                            <!-- ⚡ Realtime (ẩn khi có incoming flow connection) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                                    Visibility="{Binding HasIncomingFlowConnection, Converter={StaticResource InverseBoolToVisConverter}}">
                                 <StackPanel>
                                     <TextBlock Text="⚡ Realtime"
                                                Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"

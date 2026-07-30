@@ -479,6 +479,11 @@ public sealed partial class FileWorkflowPersistenceService
                 catch { }
             }
 
+            // RunSourceNodeFirst
+            if (properties.TryGetValue("RunSourceNodeFirst", out var rsnfObj) && rsnfObj != null &&
+                bool.TryParse(rsnfObj.ToString(), out var rsnf))
+                fetcherNode.RunSourceNodeFirst = rsnf;
+
     }
 
     private static void RestoreFlowOverwriteNodeProperties(FlowOverwriteNode flowOverwriteNode, Dictionary<string, object> properties)
