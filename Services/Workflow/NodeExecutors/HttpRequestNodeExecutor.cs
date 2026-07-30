@@ -31,14 +31,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var allNodesForLookup = env.ReachableToEnd;
             var sw = Stopwatch.StartNew();
             string? boundRawCurlCommand = null;
+            bool isParallel = WorkflowExecutionService.IsParallelScopedRun(env.ExecutionId);
 
-            // Reset previous results
-            httpNode.LastStatusCode = null;
-            httpNode.LastResponseBody = null;
-            httpNode.LastResponseHeaders = null;
-            httpNode.LastIsSuccess = null;
-            httpNode.LastErrorMessage = null;
-            httpNode.LastResponseTimeMs = null;
+            // Reset previous results — only for non-parallel runs.
+            // In parallel mode, each thread writes to scoped store via PublishScopedHttpOutputs,
+            // so mutating shared node.Last* causes cross-thread data corruption.
+            if (!isParallel)
+            {
+                httpNode.LastStatusCode = null;
+                httpNode.LastResponseBody = null;
+                httpNode.LastResponseHeaders = null;
+                httpNode.LastIsSuccess = null;
+                httpNode.LastErrorMessage = null;
+                httpNode.LastResponseTimeMs = null;
+            }
 
             // ⚡ THREAD-SAFE SNAPSHOTS: Snapshot collections trước bất kỳ enumeration nào.
             // Khi nhiều async dispatch tasks chạy song song trên cùng một node instance,
@@ -55,7 +61,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                // 1. Check if cURL command is bound from another node (highest priority)
+                FlowMy.Utils.CurlParseResult? parsedCurlResult = null;
+
+                // 1. Priority 1: Check if cURL command is bound from another node
                 if (!string.IsNullOrWhiteSpace(httpNode.CurlSourceNodeId) && 
                     !string.IsNullOrWhiteSpace(httpNode.CurlSourceOutputKey))
                 {
@@ -73,63 +81,80 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         boundRawCurlCommand = curlCommand;
                         
-                        // Check if the command is a stream request
+                        // Check if the command is a stream request (thread-local flag only)
                         var isStreamCurl = curlCommand.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
                         
-                        if (isStreamCurl)
+                        if (TryParseCurlForExecution(curlCommand, out var parsedCurl, out var pHeaders, out var pQueryParams, out var pFormData, out string errorMsg))
                         {
-                            // If it is a stream, we MUST parse and apply it to node config so we can stream it!
-                            if (ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
+                            parsedCurlResult = parsedCurl;
+                            if (isStreamCurl)
                             {
-                                httpNode.IsStream = true;
+                                // Only set shared node flag for non-parallel (single-node UI test)
+                                if (!isParallel) httpNode.IsStream = true;
                                 boundRawCurlCommand = null;
-                                lock (httpNode)
-                                {
-                                    headersSnapshot = httpNode.Headers.ToList();
-                                    queryParamsSnapshot = httpNode.QueryParams.ToList();
-                                    formDataSnapshot = httpNode.FormData.ToList();
-                                }
                             }
-                            else
+
+                            // Populate thread-local snapshots from parsed cURL
+                            headersSnapshot = pHeaders;
+                            queryParamsSnapshot = pQueryParams;
+                            formDataSnapshot = pFormData;
+
+                            // Apply to shared node object only when not running in parallel dispatch (UI single-node test)
+                            if (!isParallel)
                             {
-                                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound streaming cURL: {errorMsg}");
+                                ApplyParsedCurlToNode(httpNode, parsedCurl!);
                             }
                         }
                         else
                         {
-                            var willRunRawCurl = httpNode.UseCurl && httpNode.AutoAppendCurlWriteOut;
-                            if (ParseAndApplyCurl(httpNode, curlCommand, out string errorMsg))
-                            {
-                                lock (httpNode)
-                                {
-                                    headersSnapshot = httpNode.Headers.ToList();
-                                    queryParamsSnapshot = httpNode.QueryParams.ToList();
-                                    formDataSnapshot = httpNode.FormData.ToList();
-                                }
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound cURL: {errorMsg}");
-                            }
+                            Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound cURL: {errorMsg}");
                         }
                     }
                 }
 
-                // 2. Resolve URL (static or dynamic binding)
-                var url = ResolveStringValue(
-                    httpNode.Url,
-                    httpNode.UrlSourceNodeId,
-                    httpNode.UrlSourceOutputKey,
-                    connections,
-                    httpNode,
-                    env);
+                // Effective execution properties (parsed cURL taking base priority, falling back to static node config)
+                var effectiveHttpMethod = parsedCurlResult != null ? parsedCurlResult.Method : httpNode.HttpMethod;
+                var effectiveBodyType = parsedCurlResult != null ? parsedCurlResult.BodyType : httpNode.BodyType;
+                var effectiveRawBody = parsedCurlResult != null ? (parsedCurlResult.RawBody ?? string.Empty) : httpNode.RawBody;
+                var effectiveAuthType = parsedCurlResult != null ? parsedCurlResult.AuthType : httpNode.AuthType;
+                var effectiveAuthUsername = parsedCurlResult != null ? parsedCurlResult.AuthUsername : httpNode.AuthUsername;
+                var effectiveAuthPassword = parsedCurlResult != null ? parsedCurlResult.AuthPassword : httpNode.AuthPassword;
+                var effectiveAuthToken = parsedCurlResult != null ? parsedCurlResult.AuthToken : httpNode.AuthToken;
+
+                // 2. Priority 2: Resolve URL (dynamic URL binding overrides base parsed/static URL)
+                string url;
+                if (!string.IsNullOrWhiteSpace(httpNode.UrlSourceNodeId) && !string.IsNullOrWhiteSpace(httpNode.UrlSourceOutputKey))
+                {
+                    var dynamicUrl = ResolveStringValue(
+                        httpNode.Url,
+                        httpNode.UrlSourceNodeId,
+                        httpNode.UrlSourceOutputKey,
+                        connections,
+                        httpNode,
+                        env);
+                    url = !string.IsNullOrWhiteSpace(dynamicUrl) ? dynamicUrl : (parsedCurlResult?.Url ?? httpNode.Url);
+                }
+                else if (parsedCurlResult != null && !string.IsNullOrWhiteSpace(parsedCurlResult.Url))
+                {
+                    url = parsedCurlResult.Url;
+                }
+                else
+                {
+                    url = ResolveStringValue(
+                        httpNode.Url,
+                        httpNode.UrlSourceNodeId,
+                        httpNode.UrlSourceOutputKey,
+                        connections,
+                        httpNode,
+                        env);
+                }
 
                 if (string.IsNullOrWhiteSpace(url))
                 {
                     throw new InvalidOperationException("URL is empty or could not be resolved");
                 }
 
-                // Build query parameters
+                // Build query parameters (resolving any individual query parameter bindings)
                 var queryParams = new List<KeyValuePair<string, string>>();
                 foreach (var param in queryParamsSnapshot.Where(p => p.IsEnabled && !string.IsNullOrWhiteSpace(p.Key)))
                 {
@@ -138,7 +163,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 // Add API Key as query param if configured (resolve value from binding when set)
-                if (httpNode.AuthType == HttpAuthType.ApiKey && !httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
+                if (effectiveAuthType == HttpAuthType.ApiKey && !httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
                 {
                     var resolvedApiKeyValue = ResolveStringValue(
                         httpNode.ApiKeyValue ?? string.Empty,
@@ -163,12 +188,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     url = uriBuilder.ToString();
                 }
 
-                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Executing {httpNode.HttpMethod} {url}");
+                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Executing {effectiveHttpMethod} {url}");
 
-                // Resolve headers and body using shared helper
-                ResolveHeadersAndBody(httpNode, connections, env, formDataSnapshot, out var resolvedHeaders, out var resolvedBody);
+                // Resolve headers and body using active effective properties and snapshots
+                ResolveHeadersAndBody(
+                    httpNode,
+                    connections,
+                    env,
+                    headersSnapshot,
+                    formDataSnapshot,
+                    effectiveHttpMethod,
+                    effectiveBodyType,
+                    effectiveRawBody,
+                    effectiveAuthType,
+                    effectiveAuthUsername,
+                    effectiveAuthPassword,
+                    effectiveAuthToken,
+                    out var resolvedHeaders,
+                    out var resolvedBody);
 
-                // Auto-detect stream based on request headers
+                // Auto-detect stream based on request headers (thread-local decision)
                 var isStream = httpNode.IsStream;
                 if (!isStream)
                 {
@@ -176,13 +215,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         acceptHeader.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase))
                     {
                         isStream = true;
-                        httpNode.IsStream = true;
+                        if (!isParallel) httpNode.IsStream = true;
                     }
                 }
+                // For stream cURL detected above
+                if (parsedCurlResult != null && boundRawCurlCommand == null && 
+                    !isStream && httpNode.IsStream)
+                {
+                    isStream = true;
+                }
 
+                bool effectiveUseCurl = httpNode.UseCurl || boundRawCurlCommand != null || parsedCurlResult != null;
+
+                // ⚡ IMPORTANT: Sub-methods (ExecuteViaCurlAsync, ExecuteRawCurlCommandAsync, ExecuteStream*)
+                // have their own finally blocks that call OnNodeCompleted + TraverseOutputsAsync.
+                // So when delegating to them, we must NOT call those again at the bottom of this method.
                 if (isStream)
                 {
-                    if (httpNode.UseCurl)
+                    if (effectiveUseCurl)
                     {
                         await ExecuteStreamViaCurlExeAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, sw);
                     }
@@ -190,27 +240,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         await ExecuteStreamViaHttpClientAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, sw);
                     }
+                    // Sub-methods already called OnNodeCompleted + TraverseOutputsAsync
                     return;
                 }
 
-                // ⚡ BYPASS MODE: dùng libcurl (CurlThin/curl.exe) thay HttpClient
-                if (httpNode.UseCurl)
+                if (effectiveUseCurl)
                 {
-                    // Raw cURL mode toggle:
-                    // - enabled  => run bound cURL command directly (cmd/curl.exe style)
-                    // - disabled => keep old logic (parse/build request then execute via curl backends)
                     if (httpNode.AutoAppendCurlWriteOut && !string.IsNullOrWhiteSpace(boundRawCurlCommand))
                     {
                         await ExecuteRawCurlCommandAsync(httpNode, boundRawCurlCommand, connections, env, sw);
+                        // Sub-method already called OnNodeCompleted + TraverseOutputsAsync
                         return;
                     }
 
                     await ExecuteViaCurlAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, sw);
+                    // Sub-method already called OnNodeCompleted + TraverseOutputsAsync
                     return;
                 }
 
                 // Create HTTP request
-                var method = GetHttpMethod(httpNode.HttpMethod);
+                var method = GetHttpMethod(effectiveHttpMethod);
                 using var request = new HttpRequestMessage(method, url);
 
                 // Add headers
@@ -248,12 +297,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                      response.Headers.TransferEncoding.Any(te => string.Equals(te.Value, "chunked", StringComparison.OrdinalIgnoreCase))))
                 {
                     isStreamResponse = true;
-                    httpNode.IsStream = true;
+                    if (!isParallel) httpNode.IsStream = true;
                 }
 
                 if (isStreamResponse)
                 {
                     await ProcessStreamResponseAsync(httpNode, response, resolvedHeaders, connections, env, sw, cts.Token);
+                    // ProcessStreamResponseAsync calls OnNodeCompleted + TraverseOutputsAsync
                     return;
                 }
 
@@ -280,80 +330,81 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Anti-bot/403 detected from HttpClient, retrying via cURL backend");
                     var curlRetrySw = Stopwatch.StartNew();
                     await ExecuteViaCurlAsync(httpNode, url, resolvedHeaders, resolvedBody, connections, env, curlRetrySw);
+                    // ExecuteViaCurlAsync calls OnNodeCompleted + TraverseOutputsAsync
                     return;
                 }
 
                 // Generate cURL command with resolved values
-                httpNode.LastCurlCommand = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
+                var curlCmd = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
 
-                // Set results on node
-                httpNode.LastStatusCode = (int)response.StatusCode;
-                httpNode.LastResponseBody = responseBody;
-                httpNode.LastResponseHeaders = responseHeaders;
-                httpNode.LastIsSuccess = response.IsSuccessStatusCode;
-                httpNode.LastErrorMessage = response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}";
-                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                // Set results on node (safe for single-threaded path, scoped store handles parallel)
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = curlCmd;
+                    httpNode.LastStatusCode = (int)response.StatusCode;
+                    httpNode.LastResponseBody = responseBody;
+                    httpNode.LastResponseHeaders = responseHeaders;
+                    httpNode.LastIsSuccess = response.IsSuccessStatusCode;
+                    httpNode.LastErrorMessage = response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}";
+                    httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                }
                 PublishScopedHttpOutputs(
                     env, httpNode,
-                    httpNode.LastStatusCode,
+                    (int)response.StatusCode,
                     responseBody,
                     responseHeaders,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
+                    response.IsSuccessStatusCode,
+                    response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}",
+                    sw.ElapsedMilliseconds,
+                    curlCmd);
 
-                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Response {httpNode.LastStatusCode} in {httpNode.LastResponseTimeMs}ms");
+                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Response {(int)response.StatusCode} in {sw.ElapsedMilliseconds}ms");
                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Response body length: {responseBody?.Length ?? 0}");
-                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] cURL command generated");
             }
             // Timeout / lỗi kết nối HTTP: đánh dấu lỗi nhưng KHÔNG dừng toàn bộ workflow
             catch (TaskCanceledException ex) when (ex.CancellationToken != env.CancellationToken)
             {
                 sw.Stop();
-                // Generate cURL even on timeout/error
-                httpNode.LastCurlCommand = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
-                httpNode.LastIsSuccess = false;
-                httpNode.LastErrorMessage = $"Request timeout after {httpNode.TimeoutSeconds} seconds";
-                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                var curlCmd = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
+                var errMsg = $"Request timeout after {httpNode.TimeoutSeconds} seconds";
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = curlCmd;
+                    httpNode.LastIsSuccess = false;
+                    httpNode.LastErrorMessage = errMsg;
+                    httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                }
                 PublishScopedHttpOutputs(
                     env, httpNode,
-                    null,
-                    null,
-                    null,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
-                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Timeout - {httpNode.LastErrorMessage}");
-                // HTTP node exposes errors via output keys (errorMessage/isSuccess),
-                // so we intentionally do not mark node as "failed" badge here.
+                    null, null, null,
+                    false, errMsg,
+                    sw.ElapsedMilliseconds, curlCmd);
+                Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Timeout - {errMsg}");
             }
             // Các lỗi runtime khác (trừ khi là huỷ thủ công) cũng chỉ set lỗi và cho phép workflow đi tiếp
             catch (Exception ex) when (ex is not OperationCanceledException && ex is not TaskCanceledException)
             {
                 sw.Stop();
-                // Generate cURL even on error
-                httpNode.LastCurlCommand = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
-                httpNode.LastIsSuccess = false;
-                httpNode.LastErrorMessage = ex.Message;
-                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                var curlCmd = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = curlCmd;
+                    httpNode.LastIsSuccess = false;
+                    httpNode.LastErrorMessage = ex.Message;
+                    httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                }
                 PublishScopedHttpOutputs(
                     env, httpNode,
-                    null,
-                    null,
-                    null,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
+                    null, null, null,
+                    false, ex.Message,
+                    sw.ElapsedMilliseconds, curlCmd);
                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Error - {ex.Message}");
-                // HTTP node exposes errors via output keys (errorMessage/isSuccess),
-                // so we intentionally do not mark node as "failed" badge here.
             }
 
+            // Only call OnNodeCompleted + TraverseOutputsAsync for the HttpClient path.
+            // Sub-methods (ExecuteViaCurlAsync, ExecuteRawCurlCommandAsync, ExecuteStream*) 
+            // already call these in their own finally blocks and return before reaching here.
             env.OnNodeCompleted?.Invoke(httpNode, sw.Elapsed);
-
             await env.TraverseOutputsAsync(httpNode);
         }
 
@@ -361,52 +412,88 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             HttpRequestNode httpNode,
             List<WorkflowConnection> connections,
             NodeExecutionEnvironment env,
+            List<HttpKeyValuePair> headersSnapshot,
             List<HttpKeyValuePair> formDataSnapshot,
+            HttpMethod effectiveHttpMethod,
+            HttpBodyType effectiveBodyType,
+            string? effectiveRawBody,
+            HttpAuthType effectiveAuthType,
+            string? effectiveAuthUsername,
+            string? effectiveAuthPassword,
+            string? effectiveAuthToken,
             out Dictionary<string, string> resolvedHeaders,
             out string? resolvedBody)
         {
-            List<HttpKeyValuePair> headersSnapshot;
-            lock (httpNode)
-            {
-                headersSnapshot = httpNode.Headers.ToList();
-            }
-
             resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // 1. Resolve headers from the active headers snapshot (dynamic or cURL-parsed)
             foreach (var header in headersSnapshot.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
             {
                 resolvedHeaders[header.Key] = ResolveKeyValuePairValue(header, connections, httpNode, env);
             }
 
-            // Add auth headers
-            AddAuthToHeaders(resolvedHeaders, httpNode, connections, env);
+            // 2. Add auth headers based on effectiveAuthType
+            switch (effectiveAuthType)
+            {
+                case HttpAuthType.Basic:
+                    if (!string.IsNullOrWhiteSpace(effectiveAuthUsername) && !resolvedHeaders.ContainsKey("Authorization"))
+                    {
+                        var credentials = Convert.ToBase64String(
+                            Encoding.UTF8.GetBytes($"{effectiveAuthUsername}:{effectiveAuthPassword ?? string.Empty}"));
+                        resolvedHeaders["Authorization"] = $"Basic {credentials}";
+                    }
+                    break;
+                case HttpAuthType.Bearer:
+                    var token = ResolveStringValue(effectiveAuthToken ?? string.Empty, httpNode.TokenSourceNodeId, httpNode.TokenSourceOutputKey, connections, httpNode, env);
+                    if (!string.IsNullOrWhiteSpace(token) && !resolvedHeaders.ContainsKey("Authorization"))
+                    {
+                        resolvedHeaders["Authorization"] = $"Bearer {token}";
+                    }
+                    break;
+                case HttpAuthType.ApiKey:
+                    if (httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
+                    {
+                        var apiKeyVal = ResolveStringValue(httpNode.ApiKeyValue ?? string.Empty, httpNode.ApiKeyValueSourceNodeId, httpNode.ApiKeyValueSourceOutputKey, connections, httpNode, env);
+                        resolvedHeaders[httpNode.ApiKeyName] = apiKeyVal;
+                    }
+                    break;
+            }
 
-            // Default User-Agent to bypass simple blocks
+            // 3. Default User-Agent if missing
             if (!resolvedHeaders.ContainsKey("User-Agent"))
             {
                 resolvedHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
             }
 
+            // 4. Resolve body based on effectiveHttpMethod and effectiveBodyType
             resolvedBody = null;
-            if (httpNode.HttpMethod != HttpMethod.GET && httpNode.HttpMethod != HttpMethod.HEAD)
+            if (effectiveHttpMethod != HttpMethod.GET && effectiveHttpMethod != HttpMethod.HEAD)
             {
-                switch (httpNode.BodyType)
+                switch (effectiveBodyType)
                 {
                     case HttpBodyType.Raw:
-                        resolvedBody = ResolveStringValue(httpNode.RawBody, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env);
+                        resolvedBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env);
                         break;
                     case HttpBodyType.Json:
-                        var jsonBody = ResolveStringValue(httpNode.RawBody, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env);
+                        var jsonBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env);
                         resolvedBody = EscapeJsonStringValues(jsonBody, connections, httpNode, env);
                         if (!resolvedHeaders.ContainsKey("Content-Type"))
                             resolvedHeaders["Content-Type"] = "application/json";
                         break;
                     case HttpBodyType.FormUrlEncoded:
+                    case HttpBodyType.FormData:
                         var formParts = new List<string>();
                         foreach (var item in formDataSnapshot.Where(f => f.IsEnabled && !string.IsNullOrWhiteSpace(f.Key)))
+                        {
                             formParts.Add($"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(ResolveKeyValuePairValue(item, connections, httpNode, env))}");
+                        }
                         resolvedBody = string.Join("&", formParts);
                         if (!resolvedHeaders.ContainsKey("Content-Type"))
-                            resolvedHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+                        {
+                            resolvedHeaders["Content-Type"] = effectiveBodyType == HttpBodyType.FormUrlEncoded
+                                ? "application/x-www-form-urlencoded"
+                                : "multipart/form-data";
+                        }
                         break;
                 }
             }
@@ -424,6 +511,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             NodeExecutionEnvironment env,
             Stopwatch sw)
         {
+            bool isParallel = WorkflowExecutionService.IsParallelScopedRun(env.ExecutionId);
             try
             {
                 Debug.WriteLine($"[HttpNode-Curl] {httpNode.HttpMethod} {url}, Headers={resolvedHeaders.Count}, UseCurl=true");
@@ -431,47 +519,41 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var curlResult = await CurlNativeExecutor.ExecuteAsync(httpNode, url, resolvedHeaders, resolvedBody, env.CancellationToken);
                 sw.Stop();
 
-                // Generate cURL command for display
-                httpNode.LastCurlCommand = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
+                var curlCmd = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
+                var statusCode = curlResult.StatusCode;
+                var body = curlResult.Body;
+                var headers = curlResult.Headers.Count > 0 ? curlResult.Headers : new Dictionary<string, string>();
+                var isSuccess = curlResult.IsSuccess;
+                var errorMsg = curlResult.IsSuccess ? null : curlResult.ErrorMessage;
+                var timeMs = curlResult.ElapsedMs > 0 ? curlResult.ElapsedMs : sw.ElapsedMilliseconds;
 
-                httpNode.LastStatusCode = curlResult.StatusCode;
-                httpNode.LastResponseBody = curlResult.Body;
-                httpNode.LastResponseHeaders = curlResult.Headers.Count > 0 ? curlResult.Headers : new Dictionary<string, string>();
-                httpNode.LastIsSuccess = curlResult.IsSuccess;
-                httpNode.LastErrorMessage = curlResult.IsSuccess ? null : curlResult.ErrorMessage;
-                httpNode.LastResponseTimeMs = curlResult.ElapsedMs > 0 ? curlResult.ElapsedMs : sw.ElapsedMilliseconds;
-                PublishScopedHttpOutputs(
-                    env, httpNode,
-                    httpNode.LastStatusCode,
-                    httpNode.LastResponseBody,
-                    httpNode.LastResponseHeaders,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = curlCmd;
+                    httpNode.LastStatusCode = statusCode;
+                    httpNode.LastResponseBody = body;
+                    httpNode.LastResponseHeaders = headers;
+                    httpNode.LastIsSuccess = isSuccess;
+                    httpNode.LastErrorMessage = errorMsg;
+                    httpNode.LastResponseTimeMs = timeMs;
+                }
+                PublishScopedHttpOutputs(env, httpNode, statusCode, body, headers, isSuccess, errorMsg, timeMs, curlCmd);
 
-                Debug.WriteLine($"[HttpNode-Curl] Backend={curlResult.Backend}, Status={curlResult.StatusCode}, Time={httpNode.LastResponseTimeMs}ms");
-
-                // Keep workflow moving; HTTP errors are surfaced in outputs only.
+                Debug.WriteLine($"[HttpNode-Curl] Backend={curlResult.Backend}, Status={statusCode}, Time={timeMs}ms");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 sw.Stop();
-                httpNode.LastCurlCommand = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
-                httpNode.LastIsSuccess = false;
-                httpNode.LastErrorMessage = ex.Message;
-                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
-                PublishScopedHttpOutputs(
-                    env, httpNode,
-                    null,
-                    null,
-                    null,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
+                var curlCmd = HttpRequestCurlGenerator.GenerateCurlCommand(httpNode, connections);
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = curlCmd;
+                    httpNode.LastIsSuccess = false;
+                    httpNode.LastErrorMessage = ex.Message;
+                    httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                }
+                PublishScopedHttpOutputs(env, httpNode, null, null, null, false, ex.Message, sw.ElapsedMilliseconds, curlCmd);
                 Debug.WriteLine($"[HttpNode-Curl] Error: {ex.Message}");
-                // Keep workflow moving; HTTP errors are surfaced in outputs only.
             }
             finally
             {
@@ -901,6 +983,101 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return false;
         }
 
+        private static bool TryParseCurlForExecution(
+            string curlCommand,
+            out FlowMy.Utils.CurlParseResult? result,
+            out List<HttpKeyValuePair> headers,
+            out List<HttpKeyValuePair> queryParams,
+            out List<HttpKeyValuePair> formData,
+            out string errorMsg)
+        {
+            headers = new List<HttpKeyValuePair>();
+            queryParams = new List<HttpKeyValuePair>();
+            formData = new List<HttpKeyValuePair>();
+            result = null;
+
+            try
+            {
+                var parsed = FlowMy.Utils.CurlParser.Parse(curlCommand);
+                if (!parsed.IsValid || string.IsNullOrWhiteSpace(parsed.Url))
+                {
+                    errorMsg = parsed.ErrorMessage ?? "Parsed cURL has no URL";
+                    return false;
+                }
+
+                result = parsed;
+                if (parsed.Headers != null)
+                {
+                    foreach (var h in parsed.Headers)
+                        headers.Add(new HttpKeyValuePair { Key = h.Key, Value = h.Value, IsEnabled = h.IsEnabled });
+                }
+                if (parsed.QueryParams != null)
+                {
+                    foreach (var p in parsed.QueryParams)
+                        queryParams.Add(new HttpKeyValuePair { Key = p.Key, Value = p.Value, IsEnabled = p.IsEnabled });
+                }
+                if (parsed.FormData != null)
+                {
+                    foreach (var f in parsed.FormData)
+                        formData.Add(new HttpKeyValuePair { Key = f.Key, Value = f.Value, IsEnabled = f.IsEnabled });
+                }
+
+                errorMsg = string.Empty;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                errorMsg = ex.Message;
+                return false;
+            }
+        }
+
+        private static void ApplyParsedCurlToNode(HttpRequestNode node, FlowMy.Utils.CurlParseResult result)
+        {
+            lock (node)
+            {
+                node.Url = result.Url;
+                node.HttpMethod = result.Method;
+
+                if (result.Headers != null && result.Headers.Count > 0)
+                {
+                    node.Headers.Clear();
+                    foreach (var h in result.Headers)
+                        node.Headers.Add(new HttpKeyValuePair { Key = h.Key, Value = h.Value, IsEnabled = h.IsEnabled });
+                }
+
+                if (result.QueryParams != null && result.QueryParams.Count > 0)
+                {
+                    node.QueryParams.Clear();
+                    foreach (var p in result.QueryParams)
+                        node.QueryParams.Add(new HttpKeyValuePair { Key = p.Key, Value = p.Value, IsEnabled = p.IsEnabled });
+                }
+
+                node.AuthType = result.AuthType;
+                if (result.AuthType == HttpAuthType.Basic)
+                {
+                    node.AuthUsername = result.AuthUsername;
+                    node.AuthPassword = result.AuthPassword;
+                }
+                else if (result.AuthType == HttpAuthType.Bearer)
+                {
+                    node.AuthToken = result.AuthToken;
+                }
+
+                node.BodyType = result.BodyType;
+                if (result.BodyType == HttpBodyType.Raw || result.BodyType == HttpBodyType.Json)
+                {
+                    node.RawBody = result.RawBody ?? string.Empty;
+                }
+                else if (result.BodyType == HttpBodyType.FormData || result.BodyType == HttpBodyType.FormUrlEncoded)
+                {
+                    node.FormData.Clear();
+                    foreach (var f in result.FormData)
+                        node.FormData.Add(new HttpKeyValuePair { Key = f.Key, Value = f.Value, IsEnabled = f.IsEnabled });
+                }
+            }
+        }
+
         /// <summary>
         /// Parse cURL command and apply to node.
         /// Returns true if parsing was successful.
@@ -1018,6 +1195,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             NodeExecutionEnvironment env,
             Stopwatch sw)
         {
+            bool isParallel = WorkflowExecutionService.IsParallelScopedRun(env.ExecutionId);
             try
             {
                 var curlResult = await CurlNativeExecutor.ExecuteRawCommandAsync(httpNode, rawCurlCommand, env.CancellationToken);
@@ -1037,45 +1215,39 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 sw.Stop();
 
-                httpNode.LastCurlCommand = rawCurlCommand;
-                httpNode.LastStatusCode = curlResult.StatusCode;
-                httpNode.LastResponseBody = curlResult.Body;
-                httpNode.LastResponseHeaders = curlResult.Headers.Count > 0 ? curlResult.Headers : new Dictionary<string, string>();
-                httpNode.LastIsSuccess = curlResult.IsSuccess;
-                httpNode.LastErrorMessage = curlResult.IsSuccess ? null : curlResult.ErrorMessage;
-                httpNode.LastResponseTimeMs = curlResult.ElapsedMs > 0 ? curlResult.ElapsedMs : sw.ElapsedMilliseconds;
-                PublishScopedHttpOutputs(
-                    env, httpNode,
-                    httpNode.LastStatusCode,
-                    httpNode.LastResponseBody,
-                    httpNode.LastResponseHeaders,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
+                var statusCode = curlResult.StatusCode;
+                var body = curlResult.Body;
+                var headers = curlResult.Headers.Count > 0 ? curlResult.Headers : new Dictionary<string, string>();
+                var isSuccess = curlResult.IsSuccess;
+                var errorMsg = curlResult.IsSuccess ? null : curlResult.ErrorMessage;
+                var timeMs = curlResult.ElapsedMs > 0 ? curlResult.ElapsedMs : sw.ElapsedMilliseconds;
 
-                Debug.WriteLine($"[HttpNode-CurlRaw] Backend={curlResult.Backend}, Status={curlResult.StatusCode}, Time={httpNode.LastResponseTimeMs}ms");
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = rawCurlCommand;
+                    httpNode.LastStatusCode = statusCode;
+                    httpNode.LastResponseBody = body;
+                    httpNode.LastResponseHeaders = headers;
+                    httpNode.LastIsSuccess = isSuccess;
+                    httpNode.LastErrorMessage = errorMsg;
+                    httpNode.LastResponseTimeMs = timeMs;
+                }
+                PublishScopedHttpOutputs(env, httpNode, statusCode, body, headers, isSuccess, errorMsg, timeMs, rawCurlCommand);
 
-                // Keep workflow moving; HTTP errors are surfaced in outputs only.
+                Debug.WriteLine($"[HttpNode-CurlRaw] Backend={curlResult.Backend}, Status={statusCode}, Time={timeMs}ms");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 sw.Stop();
-                httpNode.LastCurlCommand = rawCurlCommand;
-                httpNode.LastIsSuccess = false;
-                httpNode.LastErrorMessage = ex.Message;
-                httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
-                PublishScopedHttpOutputs(
-                    env, httpNode,
-                    null,
-                    null,
-                    null,
-                    httpNode.LastIsSuccess,
-                    httpNode.LastErrorMessage,
-                    httpNode.LastResponseTimeMs,
-                    httpNode.LastCurlCommand);
+                if (!isParallel)
+                {
+                    httpNode.LastCurlCommand = rawCurlCommand;
+                    httpNode.LastIsSuccess = false;
+                    httpNode.LastErrorMessage = ex.Message;
+                    httpNode.LastResponseTimeMs = sw.ElapsedMilliseconds;
+                }
+                PublishScopedHttpOutputs(env, httpNode, null, null, null, false, ex.Message, sw.ElapsedMilliseconds, rawCurlCommand);
                 Debug.WriteLine($"[HttpNode-CurlRaw] Error: {ex.Message}");
-                // Keep workflow moving; HTTP errors are surfaced in outputs only.
             }
             finally
             {

@@ -541,7 +541,7 @@ namespace FlowMy.ViewModels
                         "FolderFilePaths" => "file-import duotone-light",
                         "KeyValueBridge" => "list-check solid",
                         "FlowOverwrite" => "merge sharp-regular",
-                        "Notification" => "message-captions duotone-regular",
+                        "Notification" => "bell duotone-regular",
                         "Storage" => "arrow-progress sharp-regular",
                         "Callback" => "arrows-turn-right regular",
                         "FileDownload" => "download solid",

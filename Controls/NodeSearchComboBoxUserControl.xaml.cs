@@ -327,7 +327,7 @@ namespace FlowMy.Controls
                 "DataFetcher" => "inbox-out duotone-light",
                 "FileDownload" => "download solid",
                 "Storage" => "arrow-progress sharp-regular",
-                "Notification" => "message-captions duotone-regular",
+                "Notification" => "bell duotone-regular",
                 "FlowOverwrite" => "merge sharp-regular",
                 "KeyValueBridge" => "list-check solid",
                 "FolderFilePaths" => "file-import duotone-light",

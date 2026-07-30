@@ -79,6 +79,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                     // Expose index/item for nodes inside body (DynamicInputs resolve via UserValueOverride)
                     WorkflowExecutionService.SetLoopRuntimeOutputs(loopNode, index, item);
+                    if (!string.IsNullOrWhiteSpace(env.ExecutionId))
+                    {
+                        env.Service.SetScopedNodeStringOutput(env.ExecutionId, loopNode.Id, "index", index.ToString());
+                        env.Service.SetScopedNodeStringOutput(env.ExecutionId, loopNode.Id, "item", item ?? string.Empty);
+                    }
 
                     // ✅ Gán dữ liệu trong vòng lặp: từ (SourceNodeId, SourceOutputKey) sang (TargetNodeId, TargetKey)
                     foreach (var a in loopNode.DataAssignments)
@@ -96,7 +101,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 env.Service.PublishStorageOutputsToScoped(st, env.ExecutionId);
                             }
                             else
+                            {
                                 WorkflowExecutionService.SetDynamicValueByKey(targetNode, a.TargetKey, value ?? string.Empty);
+                                if (!string.IsNullOrWhiteSpace(env.ExecutionId))
+                                {
+                                    env.Service.SetScopedNodeStringOutput(env.ExecutionId, targetNode.Id, a.TargetKey.Trim(), value ?? string.Empty);
+                                }
+                            }
                         }
                     }
 

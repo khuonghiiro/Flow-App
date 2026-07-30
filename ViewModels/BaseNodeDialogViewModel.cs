@@ -976,7 +976,7 @@ namespace FlowMy.ViewModels
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",
                 NodeType.BodyContainer => "square-dashed duotone-light",
-                NodeType.Notification => "message-captions duotone-regular",
+                NodeType.Notification => "bell duotone-regular",
                 NodeType.Storage => "arrow-progress sharp-regular",
                 NodeType.Callback => "arrows-turn-right regular",
                 NodeType.FileDownload => "download solid",

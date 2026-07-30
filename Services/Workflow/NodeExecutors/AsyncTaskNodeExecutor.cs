@@ -571,19 +571,56 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             var targetKey = mapping.OutputKey.Trim();
                             if (collectedResultsByMapping.TryGetValue(targetKey, out var dict))
                             {
-                                var sortedList = iterations
+                                var rawList = iterations
                                     .Select(p => dict.TryGetValue(p.index, out var v) ? v : string.Empty)
+                                    .Where(v => !string.IsNullOrWhiteSpace(v))
                                     .ToList();
 
-                                string finalVal;
-                                if (mapping.IsCollectArray)
+                                // Flatten array outputs (such as from FlowOverwriteNode or list outputs) across iterations
+                                var flattenedList = new List<string>();
+                                foreach (var rawItem in rawList)
                                 {
-                                    finalVal = System.Text.Json.JsonSerializer.Serialize(sortedList);
+                                    var trimmed = rawItem.Trim();
+                                    if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+                                    {
+                                        try
+                                        {
+                                            using var doc = System.Text.Json.JsonDocument.Parse(trimmed);
+                                            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                            {
+                                                foreach (var elem in doc.RootElement.EnumerateArray())
+                                                {
+                                                    var str = elem.ValueKind == System.Text.Json.JsonValueKind.String 
+                                                        ? elem.GetString() 
+                                                        : elem.GetRawText();
+                                                    if (str != null)
+                                                    {
+                                                        flattenedList.Add(str);
+                                                    }
+                                                }
+                                                continue;
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            // Fallback to raw string if JSON parsing fails
+                                        }
+                                    }
+                                    flattenedList.Add(rawItem);
+                                }
+
+                                string finalVal;
+                                if (mapping.IsCollectArray || flattenedList.Count > 1)
+                                {
+                                    finalVal = System.Text.Json.JsonSerializer.Serialize(flattenedList);
+                                }
+                                else if (flattenedList.Count == 1)
+                                {
+                                    finalVal = flattenedList[0];
                                 }
                                 else
                                 {
-                                    finalVal = sortedList.LastOrDefault(v => !string.IsNullOrWhiteSpace(v))
-                                               ?? (sortedList.Count > 0 ? sortedList.Last() : string.Empty);
+                                    finalVal = string.Empty;
                                 }
 
                                 service.SetScopedNodeStringOutput(env.ExecutionId, asyncTaskNode.Id, targetKey, finalVal);

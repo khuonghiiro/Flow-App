@@ -28,7 +28,7 @@ namespace FlowMy.Views.NodeControls
             var iconUri = iconConverter.Convert(
                 null,
                 typeof(Uri),
-                "message-captions duotone-regular",
+                "bell duotone-regular",
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
             var iconSvg = new SvgViewboxEx
@@ -38,7 +38,7 @@ namespace FlowMy.Views.NodeControls
                 Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = GetTextBrush(node.ColorKey)
+                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)
             };
             grid.Children.Add(iconSvg);
 
@@ -85,7 +85,7 @@ namespace FlowMy.Views.NodeControls
             {
                 [nameof(WorkflowNode.ColorKey)] = ctx =>
                 {
-                    iconSvg.Fill = GetTextBrush(node.ColorKey);
+                    iconSvg.Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey);
                 }
             };
 
@@ -103,14 +103,6 @@ namespace FlowMy.Views.NodeControls
                 .Build();
 
             return border;
-        }
-
-        private static Brush GetTextBrush(string? colorKey)
-        {
-            if (string.IsNullOrWhiteSpace(colorKey))
-                return new SolidColorBrush(Color.FromRgb(148, 163, 184));
-            var brush = Application.Current.TryFindResource($"TextOn{colorKey}Brush") as Brush;
-            return brush ?? new SolidColorBrush(Color.FromRgb(148, 163, 184));
         }
     }
 }

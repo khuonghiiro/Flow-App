@@ -294,7 +294,7 @@ namespace FlowMy.Views
                 "KeyValueBridge" => "list-check solid",
                 "FlowOverwrite" => "merge sharp-regular",
                 "BodyContainer" => "square-dashed duotone-light",
-                "Notification" => "message-captions duotone-regular",
+                "Notification" => "bell duotone-regular",
                 "Storage" => "arrow-progress sharp-regular",
                 "Callback" => "arrows-turn-right regular",
                 "FileDownload" => "download solid",

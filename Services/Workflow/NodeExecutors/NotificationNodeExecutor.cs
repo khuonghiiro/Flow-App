@@ -19,8 +19,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                env.OnNodeStarted?.Invoke(n, env.IncomingConnection);
-
                 string Resolve(InputVariable v)
                 {
                     if (string.IsNullOrWhiteSpace(v.SourceNodeId) ||

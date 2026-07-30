@@ -1339,7 +1339,7 @@ Tag="ListOut">
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                                                            Source="{Binding Source={x:Static sys:String.Empty},
                                                                             Converter={StaticResource IconKeyToPathConverter},
-                                                                            ConverterParameter='message-captions duotone-regular'}"
+                                                                            ConverterParameter='bell duotone-regular'}"
                                                            Fill="{DynamicResource TextOnCantaloupeOrangeBrush}"/>
                                 </Grid>
                             </Border>

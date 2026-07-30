@@ -1158,7 +1158,7 @@ namespace FlowMy.ViewModels
                 NodeType.FolderFilePaths => "file-import duotone-light",
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",
-                NodeType.Notification => "message-captions duotone-regular",
+                NodeType.Notification => "bell duotone-regular",
                 NodeType.Storage => "arrow-progress sharp-regular",
                 NodeType.Callback => "arrows-turn-right regular",
                 NodeType.FileDownload => "download solid",

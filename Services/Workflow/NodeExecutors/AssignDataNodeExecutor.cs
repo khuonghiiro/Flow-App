@@ -83,6 +83,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         value = string.Empty;
 
                     WorkflowExecutionService.SetDynamicValueByKey(targetNode, a.TargetKey, value ?? string.Empty);
+                    if (!string.IsNullOrWhiteSpace(env.ExecutionId))
+                    {
+                        env.Service.SetScopedNodeStringOutput(env.ExecutionId, targetNode.Id, a.TargetKey.Trim(), value ?? string.Empty);
+                    }
                 }
             }
 

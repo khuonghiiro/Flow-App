@@ -625,7 +625,31 @@ namespace FlowMy.Services.Workflow
                         }
                     }
                     break;
+                case LoopNode loop:
+                    if (loop.DynamicOutputs != null)
+                    {
+                        foreach (var o in loop.DynamicOutputs)
+                        {
+                            if (string.IsNullOrWhiteSpace(o.Key)) continue;
+                            var val = !string.IsNullOrWhiteSpace(o.UserValueOverride)
+                                ? o.UserValueOverride
+                                : NodeDataPanelService.ResolveRawDynamicValueByKey(loop, o.Key);
+                            SetScopedNodeStringOutput(executionId, node.Id, o.Key.Trim(), val);
+                        }
+                    }
+                    break;
                 default:
+                    if (node.DynamicOutputs != null)
+                    {
+                        foreach (var o in node.DynamicOutputs)
+                        {
+                            if (string.IsNullOrWhiteSpace(o.Key)) continue;
+                            var val = !string.IsNullOrWhiteSpace(o.UserValueOverride)
+                                ? o.UserValueOverride
+                                : NodeDataPanelService.ResolveRawDynamicValueByKey(node, o.Key);
+                            SetScopedNodeStringOutput(executionId, node.Id, o.Key.Trim(), val);
+                        }
+                    }
                     break;
             }
 
@@ -1933,13 +1957,24 @@ namespace FlowMy.Services.Workflow
             if (string.IsNullOrWhiteSpace(base64_1) || string.IsNullOrWhiteSpace(base64_2))
                 return 0;
 
+            var trimmed1 = base64_1.Trim();
+            var trimmed2 = base64_2.Trim();
+
+            // 1. Kiểm tra chuỗi trùng nhau tuyệt đối => 100%
+            if (string.Equals(trimmed1, trimmed2, StringComparison.Ordinal))
+                return 100.0;
+
             try
             {
-                byte[]? bytes1 = ExtractImageDataBytes(base64_1);
-                byte[]? bytes2 = ExtractImageDataBytes(base64_2);
+                byte[]? bytes1 = ExtractImageDataBytes(trimmed1);
+                byte[]? bytes2 = ExtractImageDataBytes(trimmed2);
 
                 if (bytes1 == null || bytes1.Length == 0 || bytes2 == null || bytes2.Length == 0)
                     return 0;
+
+                // 2. Kiểm tra mảng byte nguyên bản trùng nhau tuyệt đối => 100%
+                if (bytes1.Length == bytes2.Length && bytes1.SequenceEqual(bytes2))
+                    return 100.0;
 
                 using var origBmp1 = SkiaSharp.SKBitmap.Decode(bytes1);
                 using var origBmp2 = SkiaSharp.SKBitmap.Decode(bytes2);
@@ -1947,11 +1982,21 @@ namespace FlowMy.Services.Workflow
                 if (origBmp1 == null || origBmp2 == null)
                     return 0;
 
+                // 3. Nếu cùng kích thước và dữ liệu pixel gốc trùng nhau tuyệt đối => 100%
+                if (origBmp1.Width == origBmp2.Width && origBmp1.Height == origBmp2.Height)
+                {
+                    var pixelsOrig1 = origBmp1.Bytes;
+                    var pixelsOrig2 = origBmp2.Bytes;
+                    if (pixelsOrig1 != null && pixelsOrig2 != null && pixelsOrig1.Length == pixelsOrig2.Length && pixelsOrig1.SequenceEqual(pixelsOrig2))
+                        return 100.0;
+                }
+
+                // 4. Downscale về 64x64 để so sánh với chất lượng cao High
                 const int targetSize = 64;
                 var info = new SkiaSharp.SKImageInfo(targetSize, targetSize, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
 
-                using var resized1 = origBmp1.Resize(info, SkiaSharp.SKFilterQuality.Low);
-                using var resized2 = origBmp2.Resize(info, SkiaSharp.SKFilterQuality.Low);
+                using var resized1 = origBmp1.Resize(info, SkiaSharp.SKFilterQuality.High);
+                using var resized2 = origBmp2.Resize(info, SkiaSharp.SKFilterQuality.High);
 
                 if (resized1 == null || resized2 == null)
                     return 0;
@@ -1967,12 +2012,18 @@ namespace FlowMy.Services.Workflow
 
                 for (int i = 0; i < totalBytes; i++)
                 {
-                    totalDiff += Math.Abs(pixels1[i] - pixels2[i]);
+                    int diff = Math.Abs(pixels1[i] - pixels2[i]);
+                    // Bỏ qua nhiễu màu siêu nhỏ (diff <= 3) do nén JPEG, làm tròn sub-pixel
+                    if (diff > 3)
+                    {
+                        totalDiff += diff;
+                    }
                 }
 
                 double maxDiff = totalBytes * 255.0;
                 double similarity = (1.0 - (totalDiff / maxDiff)) * 100.0;
-                return similarity;
+
+                return Math.Round(similarity, 2);
             }
             catch (Exception ex)
             {

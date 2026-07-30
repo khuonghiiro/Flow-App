@@ -36,7 +36,7 @@ namespace FlowMy.Views.NodeControls
                 Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = GetTextBrush(node.ColorKey)
+                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)
             };
             grid.Children.Add(iconSvg);
 
@@ -134,7 +134,7 @@ namespace FlowMy.Views.NodeControls
             {
                 [nameof(WorkflowNode.ColorKey)] = ctx =>
                 {
-                    iconSvg.Fill = GetTextBrush(node.ColorKey);
+                    iconSvg.Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey);
                 },
                 [nameof(HttpRequestNode.IsStream)] = ctx =>
                 {
