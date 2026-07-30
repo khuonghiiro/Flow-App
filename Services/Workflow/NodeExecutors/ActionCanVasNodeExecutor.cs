@@ -1881,17 +1881,38 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 var vm = directHost.ViewModel;
                                 if (vm != null)
                                 {
-                                    var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWindow);
-                                    double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
-                                    double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
-                                    var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
-                                    var txVal = directHost.TranslateTransform?.X ?? 0;
-                                    var tyVal = directHost.TranslateTransform?.Y ?? 0;
+                                    double canvasX;
+                                    double canvasY;
 
-                                    double logicalClientX = (ax - (editorWindow.Left > -10000 ? editorWindow.Left : lastValidClientOrigin.X)) / dpiScaleX;
-                                    double logicalClientY = (ay - (editorWindow.Top > -10000 ? editorWindow.Top : lastValidClientOrigin.Y)) / dpiScaleY;
-                                    double canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
-                                    double canvasY = (logicalClientY - CanvasLayoutOffset.Y - tyVal) / scale;
+                                    if (macroNode is FlowMy.Models.Nodes.ActionCanVasNode canvasNode)
+                                    {
+                                        double rx = Math.Clamp(action.RelX, 0.0, 1.0);
+                                        double ry = Math.Clamp(action.RelY, 0.0, 1.0);
+                                        if (action.RelX == 0 && action.RelY == 0 && (action.X != 0 || action.Y != 0))
+                                        {
+                                            canvasX = canvasNode.X + action.X;
+                                            canvasY = canvasNode.Y + action.Y;
+                                        }
+                                        else
+                                        {
+                                            canvasX = canvasNode.X + rx * canvasNode.BodyWidth;
+                                            canvasY = canvasNode.Y + ry * canvasNode.BodyHeight;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWindow);
+                                        double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                                        double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                                        var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                        var txVal = directHost.TranslateTransform?.X ?? 0;
+                                        var tyVal = directHost.TranslateTransform?.Y ?? 0;
+
+                                        double logicalClientX = (ax - (editorWindow.Left > -10000 ? editorWindow.Left : lastValidClientOrigin.X)) / dpiScaleX;
+                                        double logicalClientY = (ay - (editorWindow.Top > -10000 ? editorWindow.Top : lastValidClientOrigin.Y)) / dpiScaleY;
+                                        canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
+                                        canvasY = (logicalClientY - CanvasLayoutOffset.Y - tyVal) / scale;
+                                    }
 
                                     foreach (var n in vm.Nodes)
                                     {
@@ -1899,8 +1920,21 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             n.Type == FlowMy.Models.NodeType.HtmlUi ||
                                             n.Type == FlowMy.Models.NodeType.EmbedApplication)
                                         {
-                                            double nw = (n.Border != null && n.Border.ActualWidth > 0) ? n.Border.ActualWidth : 600;
-                                            double nh = (n.Border != null && n.Border.ActualHeight > 0) ? n.Border.ActualHeight : 600;
+                                            double defaultW = 600;
+                                            double defaultH = 600;
+                                            if (n is FlowMy.Models.Nodes.HtmlUiNode htmlNode)
+                                            {
+                                                defaultW = htmlNode.Width;
+                                                defaultH = htmlNode.Height;
+                                            }
+                                            else if (n is FlowMy.Models.Nodes.WebNode webNode)
+                                            {
+                                                defaultW = webNode.Width;
+                                                defaultH = webNode.Height;
+                                            }
+
+                                            double nw = (n.Border != null && n.Border.ActualWidth > 0) ? n.Border.ActualWidth : defaultW;
+                                            double nh = (n.Border != null && n.Border.ActualHeight > 0) ? n.Border.ActualHeight : defaultH;
                                             if (canvasX >= n.X && canvasX <= n.X + nw && canvasY >= n.Y && canvasY <= n.Y + nh)
                                             {
                                                 if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(n.Id))
@@ -1925,24 +1959,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             }
                                         }
                                     }
+
+                                    // Fallback: nếu chưa tìm thấy webView nhưng có Widget đang mở
+                                    if (webView == null)
+                                    {
+                                        foreach (var n in vm.Nodes)
+                                        {
+                                            if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(n.Id))
+                                            {
+                                                var widget = FlowMy.Services.FloatingWidgetManager.Instance.GetWidget(n.Id);
+                                                if (widget?.WidgetWebView != null)
+                                                {
+                                                    webView = widget.WidgetWebView;
+                                                    ActiveVirtualCdpWebView = webView;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
                             if (webView != null)
                             {
                                 EnsureWebViewActiveInBackground(webView);
-                                // KHÔNG gọi webView.Focus() để tránh làm WPF tự động dịch chuyển/cuộn Canvas tới vị trí node Web
-                                // CefSharp được kích hoạt focus ngầm 100% qua EnsureWebViewActiveInBackground (host.SendFocusEvent)
-
                                 string keyStr = action.Key;
                                 bool ctrl = action.CtrlHeld || keyStr.StartsWith("Ctrl+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Ctrl");
                                 bool shift = action.ShiftHeld || keyStr.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Shift");
                                 bool alt = action.AltHeld || keyStr.StartsWith("Alt+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Alt");
-
-                                int modifiers = 0;
-                                if (alt) modifiers |= 1;
-                                if (ctrl) modifiers |= 2;
-                                if (shift) modifiers |= 8;
 
                                 string cleanKey = keyStr;
                                 if (cleanKey.Contains('+'))
@@ -1980,7 +2024,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
 
                                 // ── Mô phỏng Bàn Phím Ảo (Virtual Keyboard) hoàn toàn cho CefSharp ──
-                                // Gửi tín hiệu bàn phím ảo trực tiếp vào CefSharp, cách ly hoàn toàn với bàn phím thật của người dùng!
                                 try
                                 {
                                     IsVirtualEventDispatching = true;
@@ -2050,13 +2093,130 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     if (handledByCdp) return;
                 }
 
-                // Fallback cho Win32 app hoặc control ngoài WebView2
-                if (action.Key.Contains('+')) env.Service.KeyboardInput.SendHotkeyPress(action.Key, 1, 0);
-                else env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
+                // Fallback virtual event cho WPF Canvas / Win32 app (KHÔNG dùng phím thật của OS)
+                SimulateVirtualWpfOrWin32KeyEvent(action, editorWindow, capturedHwnd != IntPtr.Zero ? capturedHwnd : editorHwnd);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MacroExecutor] SimulateVirtualKeyEventAsync error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gửi phím ảo WPF / Win32 PostMessage cách ly, KHÔNG đụng đến bàn phím thật của người dùng.
+        /// </summary>
+        private static void SimulateVirtualWpfOrWin32KeyEvent(
+            FlowMy.Models.MacroAction action,
+            Window? editorWindow,
+            IntPtr targetHwnd)
+        {
+            if (action == null || string.IsNullOrWhiteSpace(action.Key)) return;
+
+            string keyStr = action.Key;
+            bool ctrl = action.CtrlHeld || keyStr.StartsWith("Ctrl+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Ctrl");
+            bool shift = action.ShiftHeld || keyStr.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Shift");
+            bool alt = action.AltHeld || keyStr.StartsWith("Alt+", StringComparison.OrdinalIgnoreCase) || keyStr.Contains("+Alt");
+
+            string cleanKey = keyStr;
+            if (cleanKey.Contains('+'))
+            {
+                var parts = cleanKey.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                cleanKey = parts.Length > 0 ? parts[^1] : cleanKey;
+            }
+
+            var targetElem = _lastWpfHitElement ?? editorWindow;
+            if (targetElem != null && targetElem.Dispatcher != null)
+            {
+                targetElem.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        if (ctrl)
+                        {
+                            if (cleanKey.Equals("V", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try { System.Windows.Input.ApplicationCommands.Paste.Execute(null, targetElem); } catch { }
+                                return;
+                            }
+                            else if (cleanKey.Equals("C", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try { System.Windows.Input.ApplicationCommands.Copy.Execute(null, targetElem); } catch { }
+                                return;
+                            }
+                            else if (cleanKey.Equals("A", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try { System.Windows.Input.ApplicationCommands.SelectAll.Execute(null, targetElem); } catch { }
+                                return;
+                            }
+                            else if (cleanKey.Equals("X", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try { System.Windows.Input.ApplicationCommands.Cut.Execute(null, targetElem); } catch { }
+                                return;
+                            }
+                        }
+
+                        var (keyName, code, vk, text) = GetCdpKeyDetails(cleanKey);
+                        if (vk > 0)
+                        {
+                            var wpfKey = System.Windows.Input.KeyInterop.KeyFromVirtualKey(vk);
+                            if (wpfKey != System.Windows.Input.Key.None)
+                            {
+                                var targetDevice = System.Windows.Input.Keyboard.PrimaryDevice;
+                                var source = System.Windows.PresentationSource.FromVisual(targetElem) 
+                                             ?? new System.Windows.Interop.HwndSource(0, 0, 0, 0, 0, "", IntPtr.Zero);
+                                
+                                var downArgs = new System.Windows.Input.KeyEventArgs(targetDevice, source, Environment.TickCount, wpfKey)
+                                {
+                                    RoutedEvent = UIElement.KeyDownEvent,
+                                    Source = targetElem
+                                };
+                                targetElem.RaiseEvent(downArgs);
+
+                                if (!string.IsNullOrEmpty(text) && !ctrl && !alt)
+                                {
+                                    var textArgs = new System.Windows.Input.TextCompositionEventArgs(
+                                        targetDevice,
+                                        new System.Windows.Input.TextComposition(System.Windows.Input.InputManager.Current, targetElem, text))
+                                    {
+                                        RoutedEvent = UIElement.TextInputEvent,
+                                        Source = targetElem
+                                    };
+                                    targetElem.RaiseEvent(textArgs);
+                                }
+
+                                var upArgs = new System.Windows.Input.KeyEventArgs(targetDevice, source, Environment.TickCount + 10, wpfKey)
+                                {
+                                    RoutedEvent = UIElement.KeyUpEvent,
+                                    Source = targetElem
+                                };
+                                targetElem.RaiseEvent(upArgs);
+                                return;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MacroExecutor] WPF Virtual key dispatch failed: {ex.Message}");
+                    }
+                });
+            }
+
+            if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
+            {
+                var (keyName, code, vk, text) = GetCdpKeyDetails(cleanKey);
+                if (vk > 0)
+                {
+                    const uint WM_KEYDOWN = 0x0100;
+                    const uint WM_KEYUP = 0x0101;
+                    const uint WM_CHAR = 0x0102;
+
+                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, WM_KEYDOWN, (IntPtr)vk, IntPtr.Zero);
+                    if (!string.IsNullOrEmpty(text) && !ctrl && !alt)
+                    {
+                        FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, WM_CHAR, (IntPtr)text[0], IntPtr.Zero);
+                    }
+                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, WM_KEYUP, (IntPtr)vk, IntPtr.Zero);
+                }
             }
         }
 
