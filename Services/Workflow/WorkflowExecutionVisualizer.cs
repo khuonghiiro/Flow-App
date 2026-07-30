@@ -856,12 +856,25 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         if (node.ExecutionStatusContainerUI == null || node.ExecutionStatusTextUI == null) return;
         if (node.ExecutionErrorToggleUI == null || node.ExecutionErrorItemsPanel == null) return;
 
-        // Dừng timing timer để không còn ghi đè status thành "⏳ X.XXs"
-        if (ReferenceEquals(_timingNode, node))
+        // Dừng và xóa tất cả active timers cho node bị lỗi để không còn ghi đè status thành "⏳ X.XXs"
+        var activeForNode = _activeNodeTimers.Where(k => ReferenceEquals(k.Key.Node, node)).ToList();
+        double elapsedSec = 0;
+        if (activeForNode.Count > 0)
+        {
+            elapsedSec = activeForNode.Max(e => e.Value.Stopwatch.Elapsed.TotalSeconds);
+            foreach (var kvp in activeForNode)
+            {
+                kvp.Value.Timer.Stop();
+                _activeNodeTimers.Remove(kvp.Key);
+            }
+        }
+
+        if (ReferenceEquals(_timingNode, node) && _activeNodeTimers.Count == 0)
             StopTimingTimer();
 
         node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
-        node.ExecutionStatusTextUI.Text = $"❌ Lỗi{BuildFlowBadge(node)}";
+        var elapsedBadge = elapsedSec > 0 ? $" {elapsedSec:0.00}s" : "";
+        node.ExecutionStatusTextUI.Text = $"❌ Lỗi{elapsedBadge}{BuildFlowBadge(node)}";
 
         if (node.ExecutionBusySpinnerUI != null)
             node.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
