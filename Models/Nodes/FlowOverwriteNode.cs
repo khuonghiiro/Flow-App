@@ -16,6 +16,7 @@ public sealed class FlowOverwriteNode : WorkflowNode
     private string _outputKey = "outputKey";
     private bool _appendMode;
     private bool _includeIndirectSources;
+    private bool _scopeToFlowExecution;
 
     public FlowOverwriteNode()
     {
@@ -74,6 +75,17 @@ public sealed class FlowOverwriteNode : WorkflowNode
         {
             if (_includeIndirectSources == value) return;
             _includeIndirectSources = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool ScopeToFlowExecution
+    {
+        get => _scopeToFlowExecution;
+        set
+        {
+            if (_scopeToFlowExecution == value) return;
+            _scopeToFlowExecution = value;
             OnPropertyChanged();
         }
     }

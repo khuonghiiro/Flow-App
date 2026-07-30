@@ -89,10 +89,13 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         }
 
         var runId = string.IsNullOrWhiteSpace(env.ExecutionId) ? "single" : env.ExecutionId;
-        // Append: gom theo lần chạy gốc (AsyncTask mỗi vòng có :dispatch-i / nhánh :at-manual-… — cùng state một mảng).
-        var stateKeyBase = typed.AppendMode
-            ? WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(runId).LastOrDefault() ?? runId
-            : runId;
+        // ScopeToFlowExecution: nếu bật thì giữ nguyên executionId riêng của luồng flow (không gộp chung với các luồng khác).
+        // Ngược lại (bất kỳ luồng): gom theo lần chạy gốc (AsyncTask mỗi vòng có :dispatch-i / nhánh :at-manual-… — cùng state một mảng).
+        var stateKeyBase = typed.ScopeToFlowExecution
+            ? runId
+            : (typed.AppendMode
+                ? WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(runId).LastOrDefault() ?? runId
+                : runId);
         var stateKey = $"{stateKeyBase}:{typed.Id}";
         var state = _stateByExecutionAndNode.GetOrAdd(stateKey, _ => new RuntimeState());
 

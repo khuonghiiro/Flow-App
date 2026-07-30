@@ -391,7 +391,7 @@ namespace FlowMy.Views
                 {
                     ViewModel.SaveWorkflowSilently();
                     FitToViewAfterRender();
-                    Activate();
+                    if (IsActive) Activate();
                 });
             }
             catch (OperationCanceledException)

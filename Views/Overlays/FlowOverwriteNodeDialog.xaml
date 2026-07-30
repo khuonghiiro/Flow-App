@@ -64,14 +64,22 @@
                             </Border>
 
                             <!-- 📝 Append mode -->
-                            <CheckBox Content="Append mode (gom thành mảng, mặc định tắt = ghi đè)"
-                                      IsChecked="{Binding AppendMode, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,12"/>
+                            <CheckBox IsChecked="{Binding AppendMode, Mode=TwoWay}" Margin="0,0,0,12">
+                                <TextBlock Text="Append mode (gom thành mảng, mặc định tắt = ghi đè)"
+                                           Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
+                            </CheckBox>
+
+                            <!-- 🧵 Scope to flow execution -->
+                            <CheckBox IsChecked="{Binding ScopeToFlowExecution, Mode=TwoWay}" Margin="0,0,0,12">
+                                <TextBlock Text="Dữ liệu thuộc riêng luồng flow (Checked = theo ExecutionId luồng hiện tại, Unchecked = bất kỳ luồng)"
+                                           Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
+                            </CheckBox>
 
                             <!-- 🔗 Include indirect sources -->
-                            <CheckBox Content="Hiển thị cả node upstream gián tiếp (A, B, C, D thay vì chỉ node nối trực tiếp)"
-                                      IsChecked="{Binding IncludeIndirectSources, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,12"/>
+                            <CheckBox IsChecked="{Binding IncludeIndirectSources, Mode=TwoWay}" Margin="0,0,0,12">
+                                <TextBlock Text="Hiển thị cả node upstream gián tiếp (A, B, C, D thay vì chỉ node nối trực tiếp)"
+                                           Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
+                            </CheckBox>
 
                             <!-- 📍 Nguồn override -->
                             <TextBlock Text="📍 Nguồn override"

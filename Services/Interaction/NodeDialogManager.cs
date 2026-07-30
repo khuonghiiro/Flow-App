@@ -64,10 +64,10 @@ namespace FlowMy.Services.Interaction
             dialog.Loaded += (s, e) =>
             {
                 PositionDialog(dialog);
-                // Focus vào dialog ngay khi load để node không còn focus
+                // Focus vào dialog ngay khi load nếu app đang active
                 try
                 {
-                    dialog.Activate();
+                    if (dialog.Owner == null || dialog.Owner.IsActive) dialog.Activate();
                     dialog.Focus();
                     Keyboard.Focus(dialog);
                 }
@@ -101,7 +101,7 @@ namespace FlowMy.Services.Interaction
                 // Focus vào dialog ngay để node không còn focus
                 try
                 {
-                    dialog.Activate();
+                    if (dialog.Owner == null || dialog.Owner.IsActive) dialog.Activate();
                     dialog.Focus();
                     Keyboard.Focus(dialog);
                 }
@@ -112,7 +112,7 @@ namespace FlowMy.Services.Interaction
                 // Nếu chưa load, focus vào dialog sau khi Show()
                 try
                 {
-                    dialog.Activate();
+                    if (dialog.Owner == null || dialog.Owner.IsActive) dialog.Activate();
                     dialog.Focus();
                     Keyboard.Focus(dialog);
                 }

@@ -1602,9 +1602,14 @@ namespace FlowMy.Services.Workflow
             WorkflowNode node,
             List<WorkflowConnection> connections,
             CancellationToken cancellationToken,
-            IReadOnlyList<WorkflowNode>? allNodesForLookup = null)
+            IReadOnlyList<WorkflowNode>? allNodesForLookup = null,
+            Action<WorkflowNode, WorkflowConnection?>? onNodeStarted = null,
+            Action<WorkflowNode, TimeSpan>? onNodeCompleted = null,
+            Action<WorkflowNode, string>? onNodeFailed = null)
         {
             if (node == null) return;
+            onNodeStarted?.Invoke(node, null);
+
             var reachableToEnd = allNodesForLookup != null && allNodesForLookup.Count > 0
                 ? new HashSet<WorkflowNode>(allNodesForLookup)
                 : new HashSet<WorkflowNode>();
@@ -1613,9 +1618,9 @@ namespace FlowMy.Services.Workflow
                 connections: connections,
                 cancellationToken: cancellationToken,
                 onEnteringNode: null,
-                onNodeStarted: null,
-                onNodeCompleted: null,
-                onNodeFailed: null, // onNodeFailed
+                onNodeStarted: onNodeStarted,
+                onNodeCompleted: onNodeCompleted,
+                onNodeFailed: onNodeFailed,
                 incomingConnection: null,
                 reachableToEnd: reachableToEnd,
                 refreshOnly: true,

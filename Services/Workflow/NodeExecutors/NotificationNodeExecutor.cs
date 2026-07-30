@@ -15,6 +15,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
         {
             var n = (NotificationNode)node;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
@@ -74,12 +75,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     n.ToastBackgroundColorKey,
                     n.ToastBackgroundOpacity);
 
-                // Thời gian thực thi gần như tức thì, dùng TimeSpan.Zero
-                env.OnNodeCompleted?.Invoke(n, TimeSpan.Zero);
+                sw.Stop();
+                env.OnNodeCompleted?.Invoke(n, sw.Elapsed);
                 await env.TraverseOutputsAsync(n);
             }
             catch (Exception ex)
             {
+                sw.Stop();
                 env.OnNodeFailed?.Invoke(n, ex.Message);
                 throw;
             }

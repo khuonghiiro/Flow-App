@@ -2840,9 +2840,34 @@ namespace FlowMy.ViewModels
             if (node == null) return;
             var connections = Connections?.ToList() ?? new List<WorkflowConnection>();
             var allNodes = Nodes?.ToList() ?? new List<WorkflowNode>();
+            var sessionId = Guid.NewGuid().ToString();
+
+            void OnNodeStarted(WorkflowNode n, WorkflowConnection? incoming)
+            {
+                _executionVisualizer.OnNodeStarted(n, sessionId);
+            }
+
+            void OnNodeCompleted(WorkflowNode n, TimeSpan elapsed)
+            {
+                _executionVisualizer.OnNodeCompleted(n, elapsed, sessionId);
+            }
+
+            void OnNodeFailed(WorkflowNode n, string err)
+            {
+                _executionVisualizer.OnNodeFailed(n, err);
+            }
+
             try
             {
-                await _workflowExecutionService.ExecuteNodeLogicOnlyAsync(node, connections, CancellationToken.None, allNodesForLookup: allNodes);
+                await _workflowExecutionService.ExecuteNodeLogicOnlyAsync(
+                    node,
+                    connections,
+                    CancellationToken.None,
+                    allNodesForLookup: allNodes,
+                    onNodeStarted: OnNodeStarted,
+                    onNodeCompleted: OnNodeCompleted,
+                    onNodeFailed: OnNodeFailed);
+
                 Application.Current?.Dispatcher.Invoke(() => _executionVisualizer.RefreshSavedOutputs(new[] { node }));
 
                 // Notify DataFetcher Realtime: khi bấm ▶ PlayButton trên bất kỳ node nào,
@@ -2851,6 +2876,7 @@ namespace FlowMy.ViewModels
             }
             catch (Exception ex)
             {
+                _executionVisualizer.OnNodeFailed(node, ex.Message);
                 Application.Current?.Dispatcher.Invoke(() =>
                     MessageBox.Show($"Lỗi khi chạy node: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning));
             }

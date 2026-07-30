@@ -1319,6 +1319,8 @@ namespace FlowMy.Views
             {
                 dstOverwrite.OutputKey = srcOverwrite.OutputKey;
                 dstOverwrite.AppendMode = srcOverwrite.AppendMode;
+                dstOverwrite.IncludeIndirectSources = srcOverwrite.IncludeIndirectSources;
+                dstOverwrite.ScopeToFlowExecution = srcOverwrite.ScopeToFlowExecution;
                 dstOverwrite.TitleDisplayMode = srcOverwrite.TitleDisplayMode;
                 dstOverwrite.TitleColorMode = srcOverwrite.TitleColorMode;
                 dstOverwrite.TitleColorKey = srcOverwrite.TitleColorKey;

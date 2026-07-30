@@ -502,6 +502,12 @@ public sealed partial class FileWorkflowPersistenceService
             {
                 flowOverwriteNode.IncludeIndirectSources = includeIndirect;
             }
+            if (properties.TryGetValue("ScopeToFlowExecution", out var scopeObj) &&
+                scopeObj != null &&
+                bool.TryParse(scopeObj.ToString(), out var scopeToFlow))
+            {
+                flowOverwriteNode.ScopeToFlowExecution = scopeToFlow;
+            }
             if (properties.TryGetValue("Mappings", out var mappingsObj))
             {
                 List<FlowOverwriteMapping>? parsedMappings = null;
@@ -701,6 +707,7 @@ public sealed partial class FileWorkflowPersistenceService
             dict["OutputKey"] = string.IsNullOrWhiteSpace(flowOverwriteNode.OutputKey) ? "outputKey" : flowOverwriteNode.OutputKey.Trim();
             dict["AppendMode"] = flowOverwriteNode.AppendMode;
             dict["IncludeIndirectSources"] = flowOverwriteNode.IncludeIndirectSources;
+            dict["ScopeToFlowExecution"] = flowOverwriteNode.ScopeToFlowExecution;
 
             if (flowOverwriteNode.Mappings != null && flowOverwriteNode.Mappings.Count > 0)
             {

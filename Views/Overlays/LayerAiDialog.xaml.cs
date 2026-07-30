@@ -186,8 +186,8 @@ namespace FlowMy.Views.Overlays
                 SaveActiveLayerState();
                 if (_ownerWindow != null)
                 {
-                    // Đưa owner lên trước rồi tắt Topmost để không che các dialog/app khác
-                    _ownerWindow.Activate();
+                    // Đưa owner lên trước (nếu đang active) rồi tắt Topmost để không che các dialog/app khác
+                    if (_ownerWindow.IsActive) _ownerWindow.Activate();
                     _ownerWindow.Topmost = false;
                 }
                 UnsubscribeFromViewModelEvents();
@@ -285,7 +285,7 @@ namespace FlowMy.Views.Overlays
                 SaveActiveLayerState();
                 if (_ownerWindow != null)
                 {
-                    _ownerWindow.Activate();
+                    if (_ownerWindow.IsActive) _ownerWindow.Activate();
                     _ownerWindow.Topmost = false;
                 }
                 LayerAiDialogManager.OnDialogHidden(_node.Id);
@@ -3628,15 +3628,22 @@ namespace FlowMy.Views.Overlays
                 var selectedSecItems = _secondaryImages.Where(s => s.HasImage && s.IsSelected).ToList();
                 var existingSecIds = selectedSecItems.Select(s => s.GetImageId(selectedIndex)).Where(id => !string.IsNullOrEmpty(id)).ToList();
 
+                // mainCodeId = Layer CodeId (identity của layer trên canvas, để downstream biết ảnh thuộc layer nào)
                 string mainCodeId = string.IsNullOrWhiteSpace(_activeLayer.CodeId) ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : _activeLayer.CodeId;
-                CropGuidRegistry[mainCodeId] = new CodeCropMappingInfo
+
+                // mainCropCodeId = GUID mới cho ảnh crop mỗi lần gửi (tránh trùng với layer CodeId)
+                // Dùng trong cropListObjects JSON và CropGuidRegistry để map kết quả render về đúng crop
+                string mainCropCodeId = Guid.NewGuid().ToString("N");
+
+                CropGuidRegistry[mainCropCodeId] = new CodeCropMappingInfo
                 {
-                    CodeId = mainCodeId,
+                    CodeId = mainCropCodeId,
                     TargetLayer = _activeLayer,
                     AspectRatioIndex = selectedIndex,
                     ExecutionId = execId
                 };
 
+                // Output port: mainCodeId = layer CodeId (để biết ảnh render thuộc layer nào)
                 GetOrAddDynamicOutputPort("mainCodeId", "Layer AI - Main Code ID").UserValueOverride = mainCodeId;
 
                 if (execSvc != null)
@@ -3652,7 +3659,8 @@ namespace FlowMy.Views.Overlays
                 }
 
                 // *** Collect main and secondary images into cropListObjects array (index [0] = main image) ***
-                await CollectAndSetListBase64Async(b64, mainCodeId, existingMainId, execId, selectedIndex);
+                // Dùng mainCropCodeId (GUID riêng cho crop) thay vì mainCodeId (layer CodeId)
+                await CollectAndSetListBase64Async(b64, mainCropCodeId, existingMainId, execId, selectedIndex);
 
                 // Refresh outputs list in node dialog immediately to reflect the generated overrides
                 RefreshRelatedNodeDialogs();
@@ -4629,6 +4637,41 @@ namespace FlowMy.Views.Overlays
             if (string.IsNullOrWhiteSpace(raw) || raw == "—") return list;
 
             raw = raw.Trim();
+
+            var linkSet = ParseKeySet(null, "linkImage, linkImg, link_image, imageUrl, url, src, link, path, base64, b64, data");
+
+            try
+            {
+                using (var doc = System.Text.Json.JsonDocument.Parse(raw))
+                {
+                    var root = doc.RootElement;
+                    if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        var link = ExtractImageLinkFromJsonObj(root, linkSet);
+                        if (!string.IsNullOrWhiteSpace(link)) list.Add(link);
+                        return list;
+                    }
+                    else if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var elem in root.EnumerateArray())
+                        {
+                            if (elem.ValueKind == System.Text.Json.JsonValueKind.Object)
+                            {
+                                var link = ExtractImageLinkFromJsonObj(elem, linkSet);
+                                if (!string.IsNullOrWhiteSpace(link)) list.Add(link);
+                            }
+                            else if (elem.ValueKind == System.Text.Json.JsonValueKind.String)
+                            {
+                                var str = elem.GetString();
+                                if (!string.IsNullOrWhiteSpace(str)) list.Add(str.Trim());
+                            }
+                        }
+                        if (list.Count > 0) return list;
+                    }
+                }
+            }
+            catch { }
+
             if (raw.StartsWith("["))
             {
                 try
@@ -4662,6 +4705,20 @@ namespace FlowMy.Views.Overlays
                 list.Add(raw);
             }
             return list;
+        }
+
+        private static string? ExtractImageLinkFromJsonObj(System.Text.Json.JsonElement obj, HashSet<string> linkSet)
+        {
+            if (obj.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+            foreach (var prop in obj.EnumerateObject())
+            {
+                if (linkSet.Contains(prop.Name))
+                {
+                    var val = prop.Value.ValueKind == System.Text.Json.JsonValueKind.String ? prop.Value.GetString() : prop.Value.ToString();
+                    if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+                }
+            }
+            return null;
         }
 
         private static string? ResolveFromHistoricalCache(string nodeId, string key, string executionId)

@@ -507,7 +507,7 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 var execId = node.LastExecutionId;
-                var list = new List<string>();
+                var list = new List<RenderOutputEntry>();
 
                 // 1. Quét tìm tất cả dữ liệu output của RenderNode trong ScopedOutputsHistoricalCache
                 // bao gồm cả các luồng con (dispatch-0, dispatch-1, dispatch-2...) thuộc về lần chạy này
@@ -535,29 +535,11 @@ namespace FlowMy.Views.NodeControls
                                 nodeOutputs.TryGetValue(node.RenderNodeOutputKey, out var valStr) &&
                                 !string.IsNullOrWhiteSpace(valStr) && valStr != "—")
                             {
-                                valStr = valStr.Trim();
-                                if (valStr.StartsWith("["))
+                                var parsedEntries = ParseRenderOutputEntries(valStr, node.RenderCodeIdKeys, node.RenderImageLinkKeys, node.RenderImageIdKeys);
+                                foreach (var entry in parsedEntries)
                                 {
-                                    try
-                                    {
-                                        var parsedList = JsonSerializer.Deserialize<List<string>>(valStr);
-                                        if (parsedList != null)
-                                        {
-                                            foreach (var item in parsedList)
-                                            {
-                                                var clean = CleanImageUrl(item);
-                                                if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
-                                                    list.Add(clean);
-                                            }
-                                        }
-                                    }
-                                    catch { }
-                                }
-                                else
-                                {
-                                    var clean = CleanImageUrl(valStr);
-                                    if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
-                                        list.Add(clean);
+                                    if (!string.IsNullOrWhiteSpace(entry.ImageUrlOrData) && !list.Any(x => x.ImageUrlOrData == entry.ImageUrlOrData))
+                                        list.Add(entry);
                                 }
                             }
                         }
@@ -570,43 +552,11 @@ namespace FlowMy.Views.NodeControls
                     var raw = ResolveFromNodeIfAny(host, node.RenderNodeId, node.RenderNodeOutputKey);
                     if (!string.IsNullOrWhiteSpace(raw))
                     {
-                        raw = raw.Trim();
-                        if (raw.StartsWith("["))
+                        var parsedEntries = ParseRenderOutputEntries(raw, node.RenderCodeIdKeys, node.RenderImageLinkKeys, node.RenderImageIdKeys);
+                        foreach (var entry in parsedEntries)
                         {
-                            try
-                            {
-                                var parsedList = JsonSerializer.Deserialize<List<string>>(raw);
-                                if (parsedList != null)
-                                {
-                                    foreach (var item in parsedList)
-                                    {
-                                        var clean = CleanImageUrl(item);
-                                        if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
-                                            list.Add(clean);
-                                    }
-                                }
-                            }
-                            catch
-                            {
-                                var inner = raw.Trim();
-                                if (inner.StartsWith("[")) inner = inner.Substring(1);
-                                if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
-                                var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                                 .Select(p => p.Trim().Trim('"'))
-                                                 .Where(p => !string.IsNullOrWhiteSpace(p));
-                                foreach (var p in parts)
-                                {
-                                    var clean = CleanImageUrl(p);
-                                    if (!string.IsNullOrWhiteSpace(clean) && !list.Contains(clean))
-                                        list.Add(clean);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            var clean = CleanImageUrl(raw);
-                            if (!string.IsNullOrWhiteSpace(clean))
-                                list.Add(clean);
+                            if (!string.IsNullOrWhiteSpace(entry.ImageUrlOrData) && !list.Any(x => x.ImageUrlOrData == entry.ImageUrlOrData))
+                                list.Add(entry);
                         }
                     }
                 }
@@ -657,25 +607,41 @@ namespace FlowMy.Views.NodeControls
                     for (int i = 0; i < list.Count; i++)
                     {
                         var entry = list[i];
-                        if (string.IsNullOrWhiteSpace(entry)) continue;
+                        if (string.IsNullOrWhiteSpace(entry.ImageUrlOrData)) continue;
 
                         // Thử load như URL/path trước, nếu fail thì thử base64
-                        BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry);
+                        BitmapImage? bmp = CreateBitmapFromUrlOrFile(entry.ImageUrlOrData);
                         if (bmp == null)
                         {
-                            bmp = CreateBitmapFromBase64(entry);
+                            bmp = CreateBitmapFromBase64(entry.ImageUrlOrData);
                         }
 
                         if (bmp == null) continue;
 
-                        var cropIndex = Math.Min(i, targetCrops.Count - 1);
-                        var targetCrop = targetCrops[cropIndex];
+                        // 🔍 Nếu entry chứa CodeId, ưu tiên tìm crop có Id khớp với CodeId
+                        ImageCropRegion? targetCrop = null;
+                        if (!string.IsNullOrWhiteSpace(entry.CodeId))
+                        {
+                            targetCrop = node.Crops.FirstOrDefault(c => string.Equals(c.Id, entry.CodeId, StringComparison.OrdinalIgnoreCase));
+                        }
+
+                        if (targetCrop == null)
+                        {
+                            var cropIndex = Math.Min(i, targetCrops.Count - 1);
+                            targetCrop = targetCrops[cropIndex];
+                        }
 
                         Application.Current.Dispatcher.Invoke(() =>
                         {
                             if (!targetCrop.RenderedImages.Contains(bmp))
                             {
                                 targetCrop.RenderedImages.Add(bmp);
+                            }
+
+                            // Lưu ImageId nếu có
+                            if (!string.IsNullOrWhiteSpace(entry.ImageId))
+                            {
+                                targetCrop.SavedPath = entry.ImageId;
                             }
 
                             // Tạo child variant layer cho Layer AI / EditorPanel nếu có EditorDoc
@@ -688,6 +654,10 @@ namespace FlowMy.Views.NodeControls
                                     var childLayer = new FlowMy.Models.ImageEditor.EditorLayer(parentLayer.Width, parentLayer.Height, $"Layer AI {parentLayer.ChildLayers.Count + 1}");
                                     childLayer.ParentLayer = parentLayer;
                                     childLayer.CopyFrom(bmp);
+                                    if (!string.IsNullOrWhiteSpace(entry.ImageId))
+                                    {
+                                        childLayer.SetImageId(0, entry.ImageId);
+                                    }
                                     parentLayer.ChildLayers.Add(childLayer);
 
                                     if (parentLayer.ActiveChildLayer == null)
@@ -706,6 +676,157 @@ namespace FlowMy.Views.NodeControls
                     "Image Processor", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+
+        #region Render Output Parsing Helpers
+
+        private class RenderOutputEntry
+        {
+            public string? CodeId { get; set; }
+            public string? ImageId { get; set; }
+            public string ImageUrlOrData { get; set; } = string.Empty;
+        }
+
+        private static List<RenderOutputEntry> ParseRenderOutputEntries(
+            string raw,
+            string? codeIdKeys = null,
+            string? imageLinkKeys = null,
+            string? imageIdKeys = null)
+        {
+            var list = new List<RenderOutputEntry>();
+            if (string.IsNullOrWhiteSpace(raw) || raw == "—") return list;
+
+            raw = raw.Trim();
+
+            var codeIdSet = ParseKeySetForIp(codeIdKeys, "codeId, CodeId, code_id");
+            var imageIdSet = ParseKeySetForIp(imageIdKeys, "id, Id, ID, mediaId, imageId, assetId");
+            var imageLinkSet = ParseKeySetForIp(imageLinkKeys, "linkImage, linkImg, link_image, imageUrl, url, src, link, path, base64, b64, data");
+
+            try
+            {
+                using (var doc = JsonDocument.Parse(raw))
+                {
+                    var root = doc.RootElement;
+                    if (root.ValueKind == JsonValueKind.Object)
+                    {
+                        var entry = ParseSingleJsonObjectForIp(root, codeIdSet, imageIdSet, imageLinkSet);
+                        if (entry != null) list.Add(entry);
+                        return list;
+                    }
+                    else if (root.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var elem in root.EnumerateArray())
+                        {
+                            if (elem.ValueKind == JsonValueKind.Object)
+                            {
+                                var entry = ParseSingleJsonObjectForIp(elem, codeIdSet, imageIdSet, imageLinkSet);
+                                if (entry != null) list.Add(entry);
+                            }
+                            else if (elem.ValueKind == JsonValueKind.String)
+                            {
+                                var str = elem.GetString();
+                                var clean = CleanImageUrl(str);
+                                if (!string.IsNullOrWhiteSpace(clean))
+                                {
+                                    list.Add(new RenderOutputEntry { ImageUrlOrData = clean });
+                                }
+                            }
+                        }
+                        if (list.Count > 0) return list;
+                    }
+                }
+            }
+            catch { }
+
+            if (raw.StartsWith("["))
+            {
+                try
+                {
+                    var parsedList = JsonSerializer.Deserialize<List<string>>(raw);
+                    if (parsedList != null)
+                    {
+                        foreach (var item in parsedList)
+                        {
+                            var clean = CleanImageUrl(item);
+                            if (!string.IsNullOrWhiteSpace(clean))
+                                list.Add(new RenderOutputEntry { ImageUrlOrData = clean });
+                        }
+                    }
+                }
+                catch
+                {
+                    var inner = raw.Trim();
+                    if (inner.StartsWith("[")) inner = inner.Substring(1);
+                    if (inner.EndsWith("]")) inner = inner.Substring(0, inner.Length - 1);
+                    var parts = inner.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                     .Select(p => p.Trim().Trim('"'))
+                                     .Where(p => !string.IsNullOrWhiteSpace(p));
+                    foreach (var p in parts)
+                    {
+                        var clean = CleanImageUrl(p);
+                        if (!string.IsNullOrWhiteSpace(clean))
+                            list.Add(new RenderOutputEntry { ImageUrlOrData = clean });
+                    }
+                }
+            }
+            else
+            {
+                var clean = CleanImageUrl(raw);
+                if (!string.IsNullOrWhiteSpace(clean))
+                    list.Add(new RenderOutputEntry { ImageUrlOrData = clean });
+            }
+
+            return list;
+        }
+
+        private static RenderOutputEntry? ParseSingleJsonObjectForIp(
+            JsonElement elem,
+            HashSet<string> codeIdSet,
+            HashSet<string> imageIdSet,
+            HashSet<string> imageLinkSet)
+        {
+            if (elem.ValueKind != JsonValueKind.Object) return null;
+
+            string? codeId = null;
+            string? imageId = null;
+            string? link = null;
+
+            foreach (var prop in elem.EnumerateObject())
+            {
+                var name = prop.Name;
+                var val = prop.Value.ValueKind == JsonValueKind.String ? prop.Value.GetString() : prop.Value.ToString();
+                if (string.IsNullOrWhiteSpace(val)) continue;
+
+                if (codeIdSet.Contains(name))
+                    codeId = val.Trim();
+                else if (imageIdSet.Contains(name))
+                    imageId = val.Trim();
+                else if (imageLinkSet.Contains(name))
+                    link = val.Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(link))
+                return null;
+
+            var cleanLink = CleanImageUrl(link);
+            if (string.IsNullOrWhiteSpace(cleanLink))
+                return null;
+
+            return new RenderOutputEntry
+            {
+                CodeId = codeId,
+                ImageId = imageId,
+                ImageUrlOrData = cleanLink
+            };
+        }
+
+        private static HashSet<string> ParseKeySetForIp(string? input, string defaultKeys)
+        {
+            var raw = string.IsNullOrWhiteSpace(input) ? defaultKeys : input;
+            var keys = raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
+        }
+
+        #endregion
 
     }
 }

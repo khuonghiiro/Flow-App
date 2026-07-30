@@ -57,6 +57,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     [ObservableProperty] private string _outputKey = "outputKey";
     [ObservableProperty] private bool _appendMode;
     [ObservableProperty] private bool _includeIndirectSources;
+    [ObservableProperty] private bool _scopeToFlowExecution;
 
     public ObservableCollection<FlowOverwriteSourceItemViewModel> Sources { get; } = new();
     [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableSourceOptions = new();
@@ -68,6 +69,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         _outputKey = node.OutputKey;
         _appendMode = node.AppendMode;
         _includeIndirectSources = node.IncludeIndirectSources;
+        _scopeToFlowExecution = node.ScopeToFlowExecution;
         LoadSourcesFromNode();
 
         if (node is INotifyPropertyChanged npc)
@@ -114,6 +116,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         _nodeTyped.OutputKey = string.IsNullOrWhiteSpace(OutputKey) ? "outputKey" : OutputKey.Trim();
         _nodeTyped.AppendMode = AppendMode;
         _nodeTyped.IncludeIndirectSources = IncludeIndirectSources;
+        _nodeTyped.ScopeToFlowExecution = ScopeToFlowExecution;
         _nodeTyped.Mappings = Sources
             .Where(s => !string.IsNullOrWhiteSpace(s.SelectedSourceNodeId))
             .Select(s => new FlowOverwriteMapping
