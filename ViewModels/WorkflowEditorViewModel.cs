@@ -1702,13 +1702,11 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            // Ưu tiên cập nhật ngay để badge/toolbar không bị "trễ số" sau khi run đã kết thúc.
-            d.Invoke(() => OnPropertyChanged(nameof(ManualExecutionRunsInFlight)), DispatcherPriority.Send);
+            d.BeginInvoke(DispatcherPriority.Background, new Action(() => OnPropertyChanged(nameof(ManualExecutionRunsInFlight))));
         }
 
         private void FinalizeManualRunUiState(int remaining, bool operationCancelled)
         {
-            var strictFinalSync = IsStrictFinalSyncEnabled();
             void Apply()
             {
                 IsExecuting = remaining > 0;
@@ -1736,22 +1734,12 @@ namespace FlowMy.ViewModels
             }
             else
             {
-                if (strictFinalSync)
-                {
-                    // Strict: chốt trạng thái flow ngay khi runtime code đã kết thúc.
-                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
-                }
-                else
-                {
-                    // Non-strict: để UI đi theo nhịp flow tự nhiên.
-                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
-                }
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
             }
         }
 
         private void FinalizeAllExecutionUiStateIfIdle()
         {
-            var strictFinalSync = IsStrictFinalSyncEnabled();
             var manualInFlight = Volatile.Read(ref _manualExecutionRunsInFlight);
             var autoInFlight = Volatile.Read(ref _autoScheduledLaneRunsInFlight);
             if (manualInFlight != 0 || autoInFlight != 0) return;
@@ -1773,21 +1761,12 @@ namespace FlowMy.ViewModels
             }
             else
             {
-                if (strictFinalSync)
-                {
-                    // Strict: ép chốt ngay trạng thái "đã dừng" khi không còn lane nào chạy.
-                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
-                }
-                else
-                {
-                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
-                }
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
             }
         }
 
         private void RegisterRunningNodeVisual(WorkflowNode node)
         {
-            var strictFinalSync = IsStrictFinalSyncEnabled();
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
             void Apply()
@@ -1807,17 +1786,13 @@ namespace FlowMy.ViewModels
                 Apply();
             else
             {
-                if (strictFinalSync)
-                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
-                else
-                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
             }
         }
 
         /// <summary>Gỡ ref-count trên UI thread (luôn qua Background) để finally của async không chặn UI khi hủy nhiều node.</summary>
         private void ReleaseRunningNodeVisualBatch(IReadOnlyList<WorkflowNode> nodes)
         {
-            var strictFinalSync = IsStrictFinalSyncEnabled();
             if (nodes == null || nodes.Count == 0) return;
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
@@ -1850,10 +1825,7 @@ namespace FlowMy.ViewModels
                 Apply();
             else
             {
-                if (strictFinalSync)
-                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
-                else
-                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
             }
         }
 
@@ -2057,6 +2029,12 @@ namespace FlowMy.ViewModels
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
+            }
+
+            // Lazy init CefSharp nếu workflow chứa node trình duyệt
+            if (CefSharpEnvironmentManager.RequiresCefSharp(Nodes))
+            {
+                await CefSharpEnvironmentManager.EnsureInitializedAsync();
             }
 
             var sessionId = Guid.NewGuid().ToString("N");
@@ -3856,6 +3834,13 @@ namespace FlowMy.ViewModels
                         _loadedWorkflowName = null;
                     return;
                 }
+
+                // Lazy init CefSharp nếu workflow chứa node trình duyệt (Web, HtmlUi)
+                if (CefSharpEnvironmentManager.RequiresCefSharp(result.Nodes))
+                {
+                    await CefSharpEnvironmentManager.EnsureInitializedAsync();
+                }
+
                 ApplyWorkflowLoadResult(result);
             }
             catch (OperationCanceledException)

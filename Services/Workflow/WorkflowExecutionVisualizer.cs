@@ -172,15 +172,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     private DispatcherPriority GetExecutionStatusPriority()
     {
-        try
-        {
-            var strict = CanvasToolbarPreferencesStore.Load(IsDebugMode)?.StrictFinalSyncEnabled ?? true;
-            return strict ? DispatcherPriority.Send : DispatcherPriority.Background;
-        }
-        catch
-        {
-            return DispatcherPriority.Send;
-        }
+        return DispatcherPriority.Background;
     }
 
     private void RefreshAggregateTimingForNode(WorkflowNode node)

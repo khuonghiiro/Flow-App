@@ -28,6 +28,133 @@ namespace FlowMy.Services.Rendering
                 return;
 
             var window = Host as Window;
+
+            // Nếu CefSharp đã init → render ngay
+            if (FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
+            {
+                RenderWebNodeDirect(node, webNode, window, canvas);
+                return;
+            }
+
+            // CefSharp chưa init → tạo placeholder loading, sau đó defer render khi init xong
+            var placeholder = CreatePlaceholderBorder(webNode);
+            placeholder.Tag = node;
+            node.Border = placeholder;
+
+            NodeChrome.Apply(node.Border, node, Host);
+
+            node.Border.MouseDown += Host.NodeMouseDown;
+            node.Border.MouseMove += Host.NodeMouseMove;
+            node.Border.MouseUp += Host.NodeMouseUp;
+            node.Border.MouseEnter += Host.NodeBorderMouseEnter;
+            node.Border.MouseLeave += Host.NodeBorderMouseLeave;
+            node.Border.ContextMenu = Host.CreateNodeContextMenu(node);
+
+            Canvas.SetLeft(node.Border, node.X);
+            Canvas.SetTop(node.Border, node.Y);
+            canvas.Children.Add(node.Border);
+            Host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
+
+            RenderPortsForNode(node, canvas);
+
+            // Khi CefSharp init xong, swap placeholder → real browser border
+            _ = SwapPlaceholderWhenReady(node, webNode, window, canvas, placeholder);
+        }
+
+        /// <summary>
+        /// Tạo placeholder border hiển thị "Đang tải trình duyệt..." khi CefSharp chưa init.
+        /// </summary>
+        private static Border CreatePlaceholderBorder(WebNode node)
+        {
+            var loadingText = new TextBlock
+            {
+                Text = "⏳ Đang khởi tạo trình duyệt...",
+                Foreground = new SolidColorBrush(Colors.White),
+                FontSize = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0.7
+            };
+
+            var border = new Border
+            {
+                Width = Math.Max(600, node.Width),
+                Height = Math.Max(600, node.Height),
+                MinWidth = 600,
+                MinHeight = 600,
+                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(12),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 270,
+                    ShadowDepth = 5,
+                    BlurRadius = 10,
+                    Opacity = 0.5
+                },
+                Child = loadingText
+            };
+
+            return border;
+        }
+
+        /// <summary>
+        /// Đợi CefSharp init xong rồi swap placeholder → real browser node.
+        /// </summary>
+        private async System.Threading.Tasks.Task SwapPlaceholderWhenReady(
+            WorkflowNode node, WebNode webNode, Window? window, Canvas canvas, Border placeholder)
+        {
+            try
+            {
+                await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+
+                // Đảm bảo chạy trên UI thread
+                if (!canvas.Dispatcher.CheckAccess())
+                {
+                    await canvas.Dispatcher.InvokeAsync(() => DoSwap());
+                    return;
+                }
+                DoSwap();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WebNodeRenderer] Swap error: {ex.Message}");
+            }
+
+            void DoSwap()
+            {
+                // Gỡ placeholder khỏi canvas
+                if (canvas.Children.Contains(placeholder))
+                    canvas.Children.Remove(placeholder);
+
+                // Gỡ event handlers cũ
+                placeholder.MouseDown -= Host.NodeMouseDown;
+                placeholder.MouseMove -= Host.NodeMouseMove;
+                placeholder.MouseUp -= Host.NodeMouseUp;
+                placeholder.MouseEnter -= Host.NodeBorderMouseEnter;
+                placeholder.MouseLeave -= Host.NodeBorderMouseLeave;
+
+                // Gỡ chrome cũ nếu có
+                foreach (var port in node.Ports)
+                {
+                    if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
+                        canvas.Children.Remove(port.PortUI);
+                    port.PortUI = null;
+                }
+
+                // Render thật
+                RenderWebNodeDirect(node, webNode, window, canvas);
+            }
+        }
+
+        /// <summary>
+        /// Render WebNode trực tiếp (khi CefSharp đã init).
+        /// </summary>
+        private void RenderWebNodeDirect(WorkflowNode node, WebNode webNode, Window? window, Canvas canvas)
+        {
             node.Border = WebNodeControl.CreateBorder(webNode, window, Host);
             node.Border.Tag = node;
 
@@ -69,6 +196,14 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
+            RenderPortsForNode(node, canvas);
+        }
+
+        /// <summary>
+        /// Render ports cho node (dùng chung cho placeholder và real border).
+        /// </summary>
+        private void RenderPortsForNode(WorkflowNode node, Canvas canvas)
+        {
             foreach (var port in node.Ports.Where(p => p.IsVisible))
             {
                 var portColor = ResolvePortColor(port);

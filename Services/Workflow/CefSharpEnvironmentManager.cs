@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CefSharp;
 using CefSharp.Wpf;
+using FlowMy.Models;
+using FlowMy.Models.Nodes;
 using FlowMy.Services.Rendering;
 
 namespace FlowMy.Services.Workflow
@@ -17,15 +21,197 @@ namespace FlowMy.Services.Workflow
     {
         private static bool _isInitialized = false;
         private static readonly object _lock = new();
+        private static TaskCompletionSource<bool>? _initTcs;
 
         /// <summary>
-        /// Khởi tạo CefSharp toàn cục (gọi tại App.OnStartup).
+        /// Cho biết CefSharp đã được khởi tạo chưa.
+        /// </summary>
+        public static bool IsInitialized => _isInitialized || Cef.IsInitialized == true;
+
+        /// <summary>
+        /// Kiểm tra NodeType có phải là loại dùng CefSharp hay không (Web, HtmlUi).
+        /// </summary>
+        public static bool IsCefSharpNodeType(NodeType type)
+        {
+            return type == NodeType.Web || type == NodeType.HtmlUi;
+        }
+
+        /// <summary>
+        /// Kiểm tra nodeType string (từ Template palette) có phải loại dùng CefSharp hay không.
+        /// </summary>
+        public static bool IsCefSharpNodeTypeString(string? nodeType)
+        {
+            if (string.IsNullOrEmpty(nodeType)) return false;
+            return string.Equals(nodeType, "Web", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(nodeType, "HtmlUi", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Kiểm tra danh sách nodes có chứa ít nhất 1 node dùng CefSharp hay không.
+        /// </summary>
+        public static bool RequiresCefSharp(IEnumerable<WorkflowNode>? nodes)
+        {
+            return nodes != null && nodes.Any(n => IsCefSharpNodeType(n.Type));
+        }
+
+        /// <summary>
+        /// Đảm bảo CefSharp đã được khởi tạo (KHÔNG chặn UI).
+        /// Phase 1: Background thread — chuẩn bị CefSettings (I/O đĩa, GPU detection).
+        /// Phase 2: UI thread @ DispatcherPriority.Background — gọi Cef.Initialize(settings).
+        /// Nhiều caller gọi đồng thời sẽ chia sẻ cùng 1 Task.
+        /// </summary>
+        public static Task EnsureInitializedAsync()
+        {
+            if (IsInitialized) return Task.CompletedTask;
+
+            lock (_lock)
+            {
+                if (IsInitialized) return Task.CompletedTask;
+                // Nếu đang init rồi, trả về Task hiện tại
+                if (_initTcs != null) return _initTcs.Task;
+
+                _initTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                StartInitializationPipeline(_initTcs);
+                return _initTcs.Task;
+            }
+        }
+
+        /// <summary>
+        /// Đảm bảo CefSharp đã được khởi tạo (sync fallback — CHỈ dùng khi bắt buộc phải sync).
+        /// Nếu đang ở UI thread, sẽ chặn UI thread. Ưu tiên dùng EnsureInitializedAsync().
+        /// </summary>
+        public static void EnsureInitialized()
+        {
+            if (IsInitialized) return;
+            Initialize();
+        }
+
+        /// <summary>
+        /// Pipeline khởi tạo 2 pha bất đồng bộ.
+        /// </summary>
+        private static void StartInitializationPipeline(TaskCompletionSource<bool> tcs)
+        {
+            // Phase 1: Background thread — chuẩn bị CefSettings (nặng I/O)
+            Task.Run(() =>
+            {
+                try
+                {
+                    var settings = PrepareSettings();
+
+                    // Phase 2: UI thread @ Background priority — Cef.Initialize
+                    var app = System.Windows.Application.Current;
+                    if (app == null)
+                    {
+                        lock (_lock) _initTcs = null;
+                        tcs.TrySetResult(false);
+                        return;
+                    }
+
+                    app.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            lock (_lock)
+                            {
+                                if (_isInitialized || Cef.IsInitialized == true)
+                                {
+                                    _initTcs = null;
+                                    tcs.TrySetResult(true);
+                                    return;
+                                }
+
+                                Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
+                                _isInitialized = true;
+                                _initTcs = null;
+                            }
+                            System.Diagnostics.Debug.WriteLine("[CefSharp] ✅ Initialized on UI thread (lazy, async pipeline)");
+                            tcs.TrySetResult(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            lock (_lock) _initTcs = null;
+                            System.Diagnostics.Debug.WriteLine($"[CefSharp] ❌ Init error: {ex.Message}");
+                            tcs.TrySetException(ex);
+                        }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch (Exception ex)
+                {
+                    lock (_lock) _initTcs = null;
+                    tcs.TrySetException(ex);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Chuẩn bị CefSettings trên background thread (I/O đĩa, GPU detection, paths).
+        /// Hàm này KHÔNG gọi Cef.Initialize() — chỉ tạo đối tượng CefSettings.
+        /// </summary>
+        private static CefSettings PrepareSettings()
+        {
+            var settings = new CefSettings();
+            var cachePath = WebNodeCacheHelper.GetSharedRuntimeCachePath();
+
+            try
+            {
+                if (!Directory.Exists(cachePath))
+                    Directory.CreateDirectory(cachePath);
+                settings.RootCachePath = cachePath;
+                settings.CachePath = Path.Combine(cachePath, "Default");
+            }
+            catch { }
+
+            // GPU detection (WMI query — chậm, chạy ở background)
+            bool gpuAvailable = GpuDetectionHelper.IsGpuAvailable;
+
+            // Tránh Chromium suspend/throttle khi ứng dụng ở background
+            settings.CefCommandLineArgs.Add("disable-background-timer-throttling", "1");
+            settings.CefCommandLineArgs.Add("disable-backgrounding-occluded-windows", "1");
+            settings.CefCommandLineArgs.Add("disable-renderer-backgrounding", "1");
+            settings.CefCommandLineArgs.Add("calculate-native-win-occlusion", "0");
+
+            if (gpuAvailable)
+            {
+                settings.CefCommandLineArgs.Add("enable-gpu-rasterization", "1");
+                settings.CefCommandLineArgs.Add("enable-zero-copy", "1");
+                settings.CefCommandLineArgs.Add("ignore-gpu-blocklist", "1");
+                settings.CefCommandLineArgs.Add("enable-accelerated-2d-canvas", "1");
+            }
+            else
+            {
+                settings.CefCommandLineArgs.Add("disable-gpu", "1");
+            }
+
+            // Cấu hình paths / resources / DevTools
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var nativeDir = Path.Combine(baseDir, "runtimes", Environment.Is64BitProcess ? "win-x64" : "win-x86", "native");
+            if (Directory.Exists(nativeDir) && File.Exists(Path.Combine(nativeDir, "resources.pak")))
+            {
+                settings.ResourcesDirPath = nativeDir;
+                settings.LocalesDirPath = Path.Combine(nativeDir, "locales");
+                var subProcessPath = Path.Combine(nativeDir, "CefSharp.BrowserSubprocess.exe");
+                if (File.Exists(subProcessPath))
+                    settings.BrowserSubprocessPath = subProcessPath;
+            }
+
+            settings.RemoteDebuggingPort = 8088;
+            settings.CefCommandLineArgs.Add("remote-allow-origins", "*");
+            settings.CefCommandLineArgs.Add("enable-high-dpi-support", "1");
+            settings.PersistSessionCookies = true;
+            settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+            return settings;
+        }
+
+        /// <summary>
+        /// Khởi tạo CefSharp đồng bộ trên UI thread (sync fallback).
         /// </summary>
         public static void Initialize()
         {
-            if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            var app = System.Windows.Application.Current;
+            if (app != null && app.Dispatcher != null && !app.Dispatcher.CheckAccess())
             {
-                System.Windows.Application.Current.Dispatcher.Invoke(Initialize);
+                app.Dispatcher.Invoke(Initialize);
                 return;
             }
 
@@ -34,86 +220,28 @@ namespace FlowMy.Services.Workflow
                 if (_isInitialized || Cef.IsInitialized == true)
                     return;
 
-                var settings = new CefSettings();
-                var cachePath = WebNodeCacheHelper.GetSharedRuntimeCachePath();
-
-                try
-                {
-                    if (!Directory.Exists(cachePath))
-                    {
-                        Directory.CreateDirectory(cachePath);
-                    }
-                    settings.RootCachePath = cachePath;
-                    settings.CachePath = Path.Combine(cachePath, "Default");
-                }
-                catch { }
-
-                // Tính toán DPI scale factor của màn hình để Chromium OSR render sắc nét 1:1 pixel
+                // DPI phải đọc trên UI thread
+                var settings = PrepareSettings();
                 try
                 {
                     double dpiScale = 1.0;
-                    if (System.Windows.Application.Current?.MainWindow != null)
+                    if (app?.MainWindow != null)
                     {
-                        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(System.Windows.Application.Current.MainWindow);
+                        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(app.MainWindow);
                         if (dpi.DpiScaleX > 0) dpiScale = dpi.DpiScaleX;
                     }
-
                     if (dpiScale > 0)
-                    {
-                        settings.CefCommandLineArgs.Add("force-device-scale-factor", dpiScale.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                    }
+                        settings.CefCommandLineArgs["force-device-scale-factor"] = dpiScale.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch { }
 
-                // Tránh Chromium suspend/throttle khi ứng dụng ở background
-                settings.CefCommandLineArgs.Add("disable-background-timer-throttling", "1");
-                settings.CefCommandLineArgs.Add("disable-backgrounding-occluded-windows", "1");
-                settings.CefCommandLineArgs.Add("disable-renderer-backgrounding", "1");
-                settings.CefCommandLineArgs.Add("calculate-native-win-occlusion", "0");
-
-                if (GpuDetectionHelper.IsGpuAvailable)
-                {
-                    settings.CefCommandLineArgs.Add("enable-gpu-rasterization", "1");
-                    settings.CefCommandLineArgs.Add("enable-zero-copy", "1");
-                    settings.CefCommandLineArgs.Add("ignore-gpu-blocklist", "1");
-                    settings.CefCommandLineArgs.Add("enable-accelerated-2d-canvas", "1");
-                }
-                else
-                {
-                    settings.CefCommandLineArgs.Add("disable-gpu", "1");
-                }
-
-                // Cấu hình mã hóa / cookies / High DPI crisp rendering / DevTools Resources
-                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                var nativeDir = Path.Combine(baseDir, "runtimes", Environment.Is64BitProcess ? "win-x64" : "win-x86", "native");
-                if (Directory.Exists(nativeDir) && File.Exists(Path.Combine(nativeDir, "resources.pak")))
-                {
-                    settings.ResourcesDirPath = nativeDir;
-                    settings.LocalesDirPath = Path.Combine(nativeDir, "locales");
-                    var subProcessPath = Path.Combine(nativeDir, "CefSharp.BrowserSubprocess.exe");
-                    if (File.Exists(subProcessPath))
-                    {
-                        settings.BrowserSubprocessPath = subProcessPath;
-                    }
-                }
-
-                settings.RemoteDebuggingPort = 8088;
-                settings.CefCommandLineArgs.Add("remote-allow-origins", "*");
-                settings.CefCommandLineArgs.Add("enable-high-dpi-support", "1");
-                settings.PersistSessionCookies = true;
-                settings.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
-                // Tắt performDependencyCheck để tránh quét đĩa chậm UI thread khi khởi động
                 Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
                 _isInitialized = true;
+                _initTcs = null;
             }
         }
 
-        public static Task InitializeAsync()
-        {
-            Initialize();
-            return Task.CompletedTask;
-        }
+        public static Task InitializeAsync() => EnsureInitializedAsync();
 
         /// <summary>
         /// Pre-warm browser subprocess bằng cách tạo 1 ChromiumWebBrowser ẩn.
@@ -176,19 +304,30 @@ namespace FlowMy.Services.Workflow
         /// </summary>
         public static void Shutdown()
         {
-            if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            var app = System.Windows.Application.Current;
+            if (app != null && app.Dispatcher != null && !app.Dispatcher.CheckAccess())
             {
-                System.Windows.Application.Current.Dispatcher.Invoke(Shutdown);
+                try { app.Dispatcher.Invoke(Shutdown); } catch { }
                 return;
             }
 
             lock (_lock)
             {
-                if (Cef.IsInitialized == true)
+                try
                 {
-                    Cef.Shutdown();
+                    if (Cef.IsInitialized == true)
+                    {
+                        Cef.Shutdown();
+                    }
                 }
-                _isInitialized = false;
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CefSharp] Shutdown info: {ex.Message}");
+                }
+                finally
+                {
+                    _isInitialized = false;
+                }
             }
         }
 

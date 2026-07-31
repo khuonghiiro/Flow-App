@@ -184,6 +184,10 @@ namespace FlowMy.ViewModels
 
         partial void OnOperatorChanged(ConditionOperator value)
         {
+            if (IsImageSimilarityMode)
+            {
+                RightUseLiteralValue = false;
+            }
             OnPropertyChanged(nameof(IsRightSideVisible));
             OnPropertyChanged(nameof(IsImageSimilarityMode));
             OnPropertyChanged(nameof(EffectiveConditionDescription));

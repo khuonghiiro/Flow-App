@@ -1921,8 +1921,16 @@ namespace FlowMy.Services.Workflow
                 op == ConditionOperator.ImageSimilarityGt ||
                 op == ConditionOperator.ImageSimilarityLt)
             {
+                bool isMissingInput = string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right);
                 double similarity = ComputeImageSimilarity(left, right);
-                System.Diagnostics.Debug.WriteLine($"[EvaluateCondition] ImageSimilarity: {similarity:F2}%, Target Threshold: {similarityThreshold:F2}%, Operator: {op}");
+                if (isMissingInput)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[EvaluateCondition] ImageSimilarity: 0.00% (⚠️ Thiếu ảnh nguồn/đích: Left='{(string.IsNullOrWhiteSpace(left) ? "rỗng" : "OK")}', Right='{(string.IsNullOrWhiteSpace(right) ? "rỗng" : "OK")}'), Target Threshold: {similarityThreshold:F2}%, Operator: {op}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[EvaluateCondition] ImageSimilarity: {similarity:F2}%, Target Threshold: {similarityThreshold:F2}%, Operator: {op}");
+                }
                 switch (op)
                 {
                     case ConditionOperator.ImageSimilarityGte: return similarity >= similarityThreshold;

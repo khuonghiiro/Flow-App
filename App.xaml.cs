@@ -62,18 +62,8 @@ namespace FlowMy
 
                 ShowMainWindow();
 
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    try
-                    {
-                        CefSharpEnvironmentManager.Initialize();
-                        _logger?.LogInformation("✅ CefSharp environment initialized");
-                    }
-                    catch (Exception cefEx)
-                    {
-                        _logger?.LogWarning(cefEx, "⚠️ CefSharp init warning");
-                    }
-                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                // CefSharp sẽ được khởi tạo lazy (on-demand) khi mở workflow hoặc kéo node trình duyệt.
+                // Không khởi tạo ở đây để app khởi động nhanh và tiết kiệm bộ nhớ.
 
                 // Không khởi tạo tray icon khi startup.
                 try

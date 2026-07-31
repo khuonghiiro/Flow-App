@@ -114,7 +114,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 string? rightVal = null;
                 if (branch.Operator != ConditionOperator.Empty && branch.Operator != ConditionOperator.NotEmpty)
                 {
-                    if (branch.RightUseLiteralValue)
+                    bool isImageSim = branch.Operator == ConditionOperator.ImageSimilarityGte ||
+                                      branch.Operator == ConditionOperator.ImageSimilarityLte ||
+                                      branch.Operator == ConditionOperator.ImageSimilarityGt ||
+                                      branch.Operator == ConditionOperator.ImageSimilarityLt;
+
+                    if (branch.RightUseLiteralValue && !isImageSim)
                         rightVal = branch.RightLiteralValue ?? string.Empty;
                     else
                         rightVal = service.ResolveValueByNodeIdAndKeyForExecution(connections, branch.RightSourceNodeId, branch.RightKey, env);
@@ -138,7 +143,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             string? rightVal = null;
             if (expr.Operator != ConditionOperator.Empty && expr.Operator != ConditionOperator.NotEmpty)
             {
-                if (expr.RightUseLiteralValue)
+                bool isImageSim = expr.Operator == ConditionOperator.ImageSimilarityGte ||
+                                  expr.Operator == ConditionOperator.ImageSimilarityLte ||
+                                  expr.Operator == ConditionOperator.ImageSimilarityGt ||
+                                  expr.Operator == ConditionOperator.ImageSimilarityLt;
+
+                if (expr.RightUseLiteralValue && !isImageSim)
                     rightVal = expr.RightLiteralValue ?? string.Empty;
                 else
                     rightVal = service.ResolveValueByNodeIdAndKeyForExecution(connections, expr.RightSourceNodeId, expr.RightKey, env);

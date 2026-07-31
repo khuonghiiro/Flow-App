@@ -27,6 +27,122 @@ namespace FlowMy.Services.Rendering
             if (node is not HtmlUiNode htmlNode) return;
 
             var window = Host as Window;
+
+            // Nếu CefSharp đã init → render ngay
+            if (FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
+            {
+                RenderHtmlUiNodeDirect(node, htmlNode, window, canvas);
+                return;
+            }
+
+            // CefSharp chưa init → tạo placeholder loading, sau đó defer render khi init xong
+            var placeholder = CreatePlaceholderBorder(htmlNode);
+            placeholder.Tag = node;
+            node.Border = placeholder;
+
+            NodeChrome.Apply(node.Border, node, Host);
+
+            node.Border.MouseDown += Host.NodeMouseDown;
+            node.Border.MouseMove += Host.NodeMouseMove;
+            node.Border.MouseUp += Host.NodeMouseUp;
+            node.Border.MouseEnter += Host.NodeBorderMouseEnter;
+            node.Border.MouseLeave += Host.NodeBorderMouseLeave;
+            node.Border.ContextMenu = Host.CreateNodeContextMenu(node);
+
+            Canvas.SetLeft(node.Border, node.X);
+            Canvas.SetTop(node.Border, node.Y);
+            canvas.Children.Add(node.Border);
+            Host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
+
+            RenderPortsForNode(node, canvas);
+
+            // Khi CefSharp init xong, swap placeholder → real browser border
+            _ = SwapPlaceholderWhenReady(node, htmlNode, window, canvas, placeholder);
+        }
+
+        /// <summary>
+        /// Tạo placeholder border hiển thị loading khi CefSharp chưa init.
+        /// </summary>
+        private static Border CreatePlaceholderBorder(HtmlUiNode node)
+        {
+            var loadingText = new TextBlock
+            {
+                Text = "⏳ Đang khởi tạo trình duyệt...",
+                Foreground = new SolidColorBrush(Colors.White),
+                FontSize = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0.7
+            };
+
+            return new Border
+            {
+                Width = Math.Max(400, node.Width),
+                Height = Math.Max(300, node.Height),
+                MinWidth = 400,
+                MinHeight = 300,
+                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(12),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black, Direction = 270, ShadowDepth = 5, BlurRadius = 10, Opacity = 0.5
+                },
+                Child = loadingText
+            };
+        }
+
+        /// <summary>
+        /// Đợi CefSharp init xong rồi swap placeholder → real HtmlUi node.
+        /// </summary>
+        private async System.Threading.Tasks.Task SwapPlaceholderWhenReady(
+            WorkflowNode node, HtmlUiNode htmlNode, Window? window, Canvas canvas, Border placeholder)
+        {
+            try
+            {
+                await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+
+                if (!canvas.Dispatcher.CheckAccess())
+                {
+                    await canvas.Dispatcher.InvokeAsync(() => DoSwap());
+                    return;
+                }
+                DoSwap();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HtmlUiNodeRenderer] Swap error: {ex.Message}");
+            }
+
+            void DoSwap()
+            {
+                if (canvas.Children.Contains(placeholder))
+                    canvas.Children.Remove(placeholder);
+
+                placeholder.MouseDown -= Host.NodeMouseDown;
+                placeholder.MouseMove -= Host.NodeMouseMove;
+                placeholder.MouseUp -= Host.NodeMouseUp;
+                placeholder.MouseEnter -= Host.NodeBorderMouseEnter;
+                placeholder.MouseLeave -= Host.NodeBorderMouseLeave;
+
+                foreach (var port in node.Ports)
+                {
+                    if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
+                        canvas.Children.Remove(port.PortUI);
+                    port.PortUI = null;
+                }
+
+                RenderHtmlUiNodeDirect(node, htmlNode, window, canvas);
+            }
+        }
+
+        /// <summary>
+        /// Render HtmlUiNode trực tiếp (khi CefSharp đã init).
+        /// </summary>
+        private void RenderHtmlUiNodeDirect(WorkflowNode node, HtmlUiNode htmlNode, Window? window, Canvas canvas)
+        {
             node.Border = HtmlUiNodeControl.CreateBorder(htmlNode, window, Host);
             node.Border.Tag = node;
 
@@ -58,8 +174,15 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            // ✅ CRITICAL: Cleanup port cũ của node này trước khi render port mới
-            // Tránh port trùng khi save/load hoặc di chuyển node
+            RenderPortsForNode(node, canvas);
+        }
+
+        /// <summary>
+        /// Render ports cho node (dùng chung).
+        /// </summary>
+        private void RenderPortsForNode(WorkflowNode node, Canvas canvas)
+        {
+            // Cleanup port cũ
             CleanupOrphanedPortsForNode(node, canvas);
 
             foreach (var port in node.Ports.Where(p => p.IsVisible))
@@ -68,7 +191,6 @@ namespace FlowMy.Services.Rendering
 
                 if (port.PortUI == null)
                 {
-                    // Tạo port với margin khác nhau tùy vị trí để dễ nhìn khi bị khuất
                     var margin = GetPortMarginForPosition(port.Position);
                     port.PortUI = _portRenderer.CreateRectangularPortWithMargin(portColor, margin, width: 12, height: 25);
                     port.PortUI.Tag = port;

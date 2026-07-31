@@ -2141,7 +2141,7 @@ namespace FlowMy.Views
             // Dùng Send để đồng bộ trạng thái kết thúc ngay với runtime.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsExecuting) && ViewModel?.IsExecuting == false)
             {
-                Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() =>
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                 {
                     ApplyExecutionConnectionHighlight(null);
                     _viewportCullingService?.ForceUpdate();
