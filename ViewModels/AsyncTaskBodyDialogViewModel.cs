@@ -30,6 +30,12 @@ namespace FlowMy.ViewModels
                     _sourceNodeId = value;
                     OnPropertyChanged();
                     UpdateAvailableOutputKeys();
+                    if (AvailableOutputKeys.Count > 0 &&
+                        (string.IsNullOrWhiteSpace(_sourceOutputKey) ||
+                         !AvailableOutputKeys.Any(k => string.Equals(k.Key, _sourceOutputKey, StringComparison.OrdinalIgnoreCase))))
+                    {
+                        SourceOutputKey = AvailableOutputKeys[0].Key;
+                    }
                 }
             }
         }
@@ -207,40 +213,38 @@ namespace FlowMy.ViewModels
 
             EnsureNodeDynamicOutputsSynced(targetNode);
 
-            // Common default output keys
-            var defaultKeys = new List<OutputKeyOption>
-            {
-                new OutputKeyOption { Key = "output", DisplayName = "output (Mặc định)" },
-                new OutputKeyOption { Key = "result", DisplayName = "result" },
-                new OutputKeyOption { Key = "text", DisplayName = "text" },
-                new OutputKeyOption { Key = "response", DisplayName = "response" },
-                new OutputKeyOption { Key = "cURL", DisplayName = "cURL (curlCmd)" }
-            };
-
             var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Add dynamic outputs from node
+            // Thêm các output key thuộc về node được chọn, loại bỏ các key ghép có ngoặc [...]
             if (targetNode.DynamicOutputs != null)
             {
                 foreach (var dyn in targetNode.DynamicOutputs)
                 {
-                    if (!string.IsNullOrWhiteSpace(dyn.Key) && keys.Add(dyn.Key))
+                    var key = dyn.Key?.Trim();
+                    if (string.IsNullOrWhiteSpace(key)) continue;
+
+                    // Bỏ các key ghép dạng bracket indexing / property (ví dụ: data[0], item[field])
+                    if (key.Contains('[') || key.Contains(']')) continue;
+
+                    if (keys.Add(key))
                     {
                         yield return new OutputKeyOption
                         {
-                            Key = dyn.Key,
-                            DisplayName = !string.IsNullOrWhiteSpace(dyn.DisplayName) ? $"{dyn.Key} ({dyn.DisplayName})" : dyn.Key
+                            Key = key,
+                            DisplayName = !string.IsNullOrWhiteSpace(dyn.DisplayName) ? $"{key} ({dyn.DisplayName})" : key
                         };
                     }
                 }
             }
 
-            foreach (var dk in defaultKeys)
+            // Đảm bảo key mặc định "output" luôn sẵn có nếu chưa được thêm
+            if (keys.Add("output"))
             {
-                if (keys.Add(dk.Key))
+                yield return new OutputKeyOption
                 {
-                    yield return dk;
-                }
+                    Key = "output",
+                    DisplayName = "output (Mặc định)"
+                };
             }
         }
 

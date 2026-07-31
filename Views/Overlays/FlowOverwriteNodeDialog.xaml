@@ -49,6 +49,39 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
+                            <!-- 💡 Hướng dẫn & Ví dụ minh họa -->
+                            <Expander Header="💡 Hướng dẫn &amp; Ví dụ minh họa (Bấm để xem)"
+                                      IsExpanded="False"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="12" FontWeight="SemiBold"
+                                      Margin="0,0,0,12">
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,6,0,0">
+                                    <StackPanel>
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap" LineHeight="18">
+                                            <Run Text="1. Khái niệm Append Mode:" FontWeight="Bold"/><LineBreak/>
+                                            <Run Text="   • Tắt Append mode (mặc định): Ghi đè - mỗi lần chạy giữ 1 giá trị mới nhất."/><LineBreak/>
+                                            <Run Text="   • Bật Append mode: Gom cộng dồn tất cả giá trị qua các lần thực thi thành mảng JSON."/><LineBreak/><LineBreak/>
+                                            
+                                            <Run Text="2. Ví dụ minh họa khi đặt trong Async Task / Loop:" FontWeight="Bold" Foreground="#E6A23C"/><LineBreak/>
+                                            <Run Text="   Giả sử Async Task lặp 4 lần qua mảng ['5', '2', '7', '8']:"/><LineBreak/>
+                                            <Run Text="   • " FontWeight="Bold"/><Run Text="Trường hợp BẬT Append mode + KHÔNG chọn Dữ liệu thuộc riêng luồng:"/><LineBreak/>
+                                            <Run Text="     - Vòng 1 sinh: ['5'] (1 phần tử)"/><LineBreak/>
+                                            <Run Text="     - Vòng 2 sinh: ['5', '2'] (2 phần tử)"/><LineBreak/>
+                                            <Run Text="     - Vòng 3 sinh: ['5', '2', '7'] (3 phần tử)"/><LineBreak/>
+                                            <Run Text="     - Vòng 4 sinh: ['5', '2', '7', '8'] (4 phần tử)"/><LineBreak/>
+                                            <Run Text="     ➔ Async Task gom tổng lại tất cả mảng của 4 vòng = 1 + 2 + 3 + 4 = "/>
+                                            <Run Text="10 phần tử" FontWeight="Bold" Foreground="#F56C6C"/><Run Text=" (['5', '5', '2', '5', '2', '7', '5', '2', '7', '8'])."/><LineBreak/><LineBreak/>
+                                            
+                                            <Run Text="   • " FontWeight="Bold"/><Run Text="Khắc phục (Để lấy đúng 4 phần tử):"/><LineBreak/>
+                                            <Run Text="     - Cách A: TẮT Append mode trong Flow Overwrite (Async Task đã tự động gom mảng kết quả của các vòng thành mảng 4 phần tử)."/><LineBreak/>
+                                            <Run Text="     - Cách B: BẬT 'Dữ liệu thuộc riêng luồng flow' để cô lập mảng cộng dồn cho riêng từng luồng."/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </Expander>
+
                             <!-- 🔑 Output key -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"

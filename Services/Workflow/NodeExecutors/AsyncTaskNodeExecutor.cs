@@ -650,6 +650,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                     }
                 }
+
+                // If running in background mode (readResultsInBody), trigger UI update when background tasks finish
+                if (readResultsInBody)
+                {
+                    sw.Stop();
+                    env.OnNodeCompleted?.Invoke(asyncTaskNode, sw.Elapsed);
+                }
             }
 
             if (!readResultsInBody && loopOutPort != null && !cancellationToken.IsCancellationRequested)

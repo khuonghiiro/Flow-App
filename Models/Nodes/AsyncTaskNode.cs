@@ -145,14 +145,19 @@ namespace FlowMy.Models
         {
             if (BodyOutputMappings == null) return;
 
-            // Clean up old user-added ports that are no longer in BodyOutputMappings
             var configuredKeys = BodyOutputMappings
                 .Where(m => !string.IsNullOrWhiteSpace(m.OutputKey))
                 .Select(m => m.OutputKey!.Trim())
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+            var standardKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "item", "index", "loopCount", "loopArray" };
+
+            // Clean up old user-added ports that are no longer in BodyOutputMappings and have no execution value
             var toRemove = DynamicOutputs
-                .Where(o => o.IsUserAdded && !configuredKeys.Contains(o.Key?.Trim() ?? string.Empty))
+                .Where(o => o.IsUserAdded 
+                         && string.IsNullOrWhiteSpace(o.UserValueOverride)
+                         && !standardKeys.Contains(o.Key?.Trim() ?? string.Empty)
+                         && !configuredKeys.Contains(o.Key?.Trim() ?? string.Empty))
                 .ToList();
 
             foreach (var port in toRemove)

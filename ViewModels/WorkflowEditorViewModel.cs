@@ -31,6 +31,7 @@ namespace FlowMy.ViewModels
         public WorkflowExecutionService WorkflowExecutionService => _workflowExecutionService;
         private readonly IWorkflowPersistenceService _persistenceService;
         private readonly IWorkflowExecutionVisualizer _executionVisualizer;
+        public IWorkflowExecutionVisualizer ExecutionVisualizer => _executionVisualizer;
 
         /// <summary>Số phiên chạy thủ công đang chạy (mỗi lần Bắt đầu / chạy từ node = một phiên độc lập).</summary>
         private int _manualExecutionRunsInFlight;

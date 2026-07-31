@@ -857,6 +857,11 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
         }
 
+        if (node.ExecutionResultsToggleUI.IsChecked != false)
+        {
+            node.ExecutionResultsToggleUI.IsChecked = true;
+        }
+
         var expanded = node.ExecutionResultsToggleUI.IsChecked == true;
         node.ExecutionResultsToggleUI.Visibility = Visibility.Visible;
         NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, results.Count, expanded);

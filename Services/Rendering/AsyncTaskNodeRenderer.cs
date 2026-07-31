@@ -88,6 +88,21 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
+            // 1) Render ContainerBorder FIRST
+            asyncTaskNode.ContainerBorder = LoopContainerControl.CreateAsyncTaskContainer(asyncTaskNode);
+            AttachAsyncTaskContainerHandlers(asyncTaskNode);
+
+            var body = asyncTaskNode.AsyncTaskBodyNode!;
+            if (body.X == 0 && body.Y == 0)
+                body.SyncPositionWithParent();
+
+            Canvas.SetLeft(asyncTaskNode.ContainerBorder, body.X);
+            Canvas.SetTop(asyncTaskNode.ContainerBorder, body.Y);
+            _host.ZIndexManager.InitializeNodeZIndex(body, asyncTaskNode.ContainerBorder);
+            canvas.Children.Add(asyncTaskNode.ContainerBorder);
+            body.Border = asyncTaskNode.ContainerBorder;
+
+            // 2) Render Diamond Header SECOND (so it sits on top of ContainerBorder)
             asyncTaskNode.Border = CreateAsyncTaskNodeBorder(asyncTaskNode);
             NodeChrome.Apply(asyncTaskNode.Border, asyncTaskNode, _host);
             // Avoid bitmap cache artifacts on the diamond chrome during drag/move.
@@ -105,6 +120,7 @@ namespace FlowMy.Services.Rendering
             Canvas.SetTop(asyncTaskNode.Border, asyncTaskNode.Y);
             canvas.Children.Add(asyncTaskNode.Border);
             _host.ZIndexManager.InitializeNodeZIndex(asyncTaskNode, asyncTaskNode.Border);
+            _host.ZIndexManager.RaiseNodeZIndex(asyncTaskNode, Panel.GetZIndex(asyncTaskNode.ContainerBorder) + 10);
 
             asyncTaskNode.Border.SizeChanged += (_, _) =>
             {
@@ -113,19 +129,6 @@ namespace FlowMy.Services.Rendering
                 foreach (var conn in _host.ViewModel.Connections.Where(c => c.FromNode == asyncTaskNode || c.ToNode == asyncTaskNode))
                     _host.UpdateConnectionPath(conn);
             };
-
-            asyncTaskNode.ContainerBorder = LoopContainerControl.CreateAsyncTaskContainer(asyncTaskNode);
-            AttachAsyncTaskContainerHandlers(asyncTaskNode);
-
-            var body = asyncTaskNode.AsyncTaskBodyNode!;
-            if (body.X == 0 && body.Y == 0)
-                body.SyncPositionWithParent();
-
-            Canvas.SetLeft(asyncTaskNode.ContainerBorder, body.X);
-            Canvas.SetTop(asyncTaskNode.ContainerBorder, body.Y);
-            _host.ZIndexManager.InitializeNodeZIndex(body, asyncTaskNode.ContainerBorder);
-            canvas.Children.Add(asyncTaskNode.ContainerBorder);
-            body.Border = asyncTaskNode.ContainerBorder;
 
             asyncTaskNode.Border.Loaded += (_, _) =>
             {
@@ -475,10 +478,16 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            _host.UpdateMinimap();
-
-            _host.Dispatcher.BeginInvoke(new Action(() => _host.SyncAllPortsZIndex(node)),
-                System.Windows.Threading.DispatcherPriority.Loaded);
+            _host.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                NodeChrome.RefreshExecutionIndicators(new[] { node }, _host);
+                _host.SyncAllPortsZIndex(node);
+                var vm = _host.ViewModel;
+                if (vm?.ExecutionVisualizer != null)
+                {
+                    vm.ExecutionVisualizer.RefreshSavedOutputs(new[] { node });
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private static void UpdateTaskExecutionOrder(WorkflowNode node)

@@ -62,12 +62,12 @@ namespace FlowMy.Views.NodeControls
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 8, 0, 0),
-                Fill = Application.Current.TryFindResource("TextOnMintChocolateBrush") as Brush ?? Brushes.White
+                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)
             };
             grid.Children.Add(iconSvg);
 
-            var titleBrush = Application.Current.TryFindResource("TextOnMintChocolateBrush") as Brush
-                ?? new SolidColorBrush(Colors.White);
+            var titleBrush = BaseNodeControlHelper.ResolveTitleBrush(
+                node.TitleColorMode, node.TitleColorKey, node.NodeBrush);
             var titleTextBlock = new TextBlock
             {
                 Text = node.Title ?? "Async Task",
@@ -123,6 +123,10 @@ namespace FlowMy.Views.NodeControls
             // --- Node-specific property handlers: sync diamond fill and title text ---
             var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
+                [nameof(WorkflowNode.ColorKey)] = ctx =>
+                {
+                    iconSvg.Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey);
+                },
                 [nameof(WorkflowNode.Title)] = ctx =>
                 {
                     ctx.TitleTextBlock.Text = node.Title ?? "Async Task";
@@ -131,8 +135,22 @@ namespace FlowMy.Views.NodeControls
                 {
                     diamond.Fill = node.NodeBrush;
                     ctx.TitleTextBlock.Foreground = BaseNodeControlHelper.ResolveTitleBrush(
-                        BaseNodeControlHelper.GetTitleColorMode(node),
-                        BaseNodeControlHelper.GetTitleColorKey(node),
+                        node.TitleColorMode,
+                        node.TitleColorKey,
+                        node.NodeBrush);
+                },
+                [nameof(WorkflowNode.TitleColorMode)] = ctx =>
+                {
+                    ctx.TitleTextBlock.Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                        node.TitleColorMode,
+                        node.TitleColorKey,
+                        node.NodeBrush);
+                },
+                [nameof(WorkflowNode.TitleColorKey)] = ctx =>
+                {
+                    ctx.TitleTextBlock.Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                        node.TitleColorMode,
+                        node.TitleColorKey,
                         node.NodeBrush);
                 }
             };

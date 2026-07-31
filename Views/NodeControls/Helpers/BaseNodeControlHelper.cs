@@ -744,8 +744,18 @@ namespace FlowMy.Views.NodeControls.Helpers
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
 
+            // Ensure title is disconnected from any prior parent before adding to canvas
+            if (context.TitleTextBlock?.Parent is Panel oldParent)
+            {
+                oldParent.Children.Remove(context.TitleTextBlock);
+            }
+            else if (context.TitleTextBlock?.Parent is ContentControl oldContentControl)
+            {
+                oldContentControl.Content = null;
+            }
+
             // Add title to canvas if not already present
-            if (context.Host.WorkflowCanvas?.Children.Contains(context.TitleTextBlock) != true)
+            if (context.TitleTextBlock != null && context.Host.WorkflowCanvas?.Children.Contains(context.TitleTextBlock) != true)
             {
                 context.Host.WorkflowCanvas?.Children.Add(context.TitleTextBlock);
             }
