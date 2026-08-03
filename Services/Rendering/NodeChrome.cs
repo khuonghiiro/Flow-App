@@ -230,39 +230,62 @@ namespace FlowMy.Services.Rendering
             var statusText = new TextBlock
             {
                 Text = "",
-                Foreground = node.NodeBrush,
-                FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
-                Opacity = 0.95
-            };
-
-            // Spinner quay tượng trưng "node đang xử lý" khi bật Cache node mode.
-            // Spinner chỉ chạy khi container (badge) đang visible và spinner được host bật Visibility.
-            var spinner = CreateSpinnerShape("Circle");
-
-            // Host sẽ gán spinner.Tag = true/false theo CacheNode mode.
-            // Spinner chỉ hiển thị khi: cache enabled AND node đang chạy.
-            spinner.Tag = false;
-
-            // Màu chữ status dùng theo node, còn toggle kết quả dùng màu xám đậm dễ đọc trên nền sáng
-            var resultsToggle = new ToggleButton
-            {
-                Content = "▸ Có 0 kết quả trả về",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = Application.Current.TryFindResource("PrimaryBrush") as Brush, // xám đậm, không đen tuyệt đối
-                Background = new SolidColorBrush(Color.FromArgb(20, 0, 0, 0)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                TextTrimming = TextTrimming.None,
+                TextWrapping = TextWrapping.Wrap, // ✨ Xuống dòng tự động khi vượt quá Width để hiển thị rõ ràng hơn
+                MaxWidth = 330,
+                Opacity = 0.95
+            };
+            statusText.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
+
+            // Spinner quay tượng trưng "node đang xử lý" khi bật Cache node mode.
+            var spinner = CreateSpinnerShape("Circle");
+            spinner.Tag = false;
+
+            var resultsToggle = new ToggleButton
+            {
+                Content = "▸ 0 kết quả trả về",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(6, 2, 6, 2),
-                Margin = new Thickness(0, 4, 0, 0),
+                Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(0, 5, 0, 0),
                 Visibility = Visibility.Collapsed,
                 Cursor = System.Windows.Input.Cursors.Hand
             };
 
+            var amberNormalBg = new SolidColorBrush(Color.FromRgb(245, 158, 11)); // Amber 500
+            var amberHoverBg = new SolidColorBrush(Color.FromRgb(251, 191, 36));  // Amber 400
+            var amberBorder = new SolidColorBrush(Color.FromRgb(217, 119, 6));    // Amber 600
+            var amberText = Brushes.Black;
+
+            Action refreshResultsToggleVisual = () =>
+            {
+                bool isChecked = resultsToggle.IsChecked == true;
+                bool isHover = resultsToggle.IsMouseOver;
+
+                if (isChecked || isHover)
+                {
+                    resultsToggle.Background = isHover ? amberHoverBg : amberNormalBg;
+                    resultsToggle.Foreground = amberText;
+                    resultsToggle.BorderBrush = amberBorder;
+                }
+                else
+                {
+                    resultsToggle.SetResourceReference(ToggleButton.BackgroundProperty, "SurfaceColor");
+                    resultsToggle.SetResourceReference(ToggleButton.ForegroundProperty, "TextPrimary");
+                    resultsToggle.SetResourceReference(ToggleButton.BorderBrushProperty, "ControlBorderBrush");
+                }
+            };
+
+            refreshResultsToggleVisual();
+            resultsToggle.MouseEnter += (s, e) => refreshResultsToggleVisual();
+            resultsToggle.MouseLeave += (s, e) => refreshResultsToggleVisual();
+
             var resultsList = new StackPanel
             {
-                Margin = new Thickness(4, 4, 0, 0),
+                Margin = new Thickness(0, 4, 0, 0),
                 Visibility = Visibility.Collapsed
             };
 
@@ -270,31 +293,53 @@ namespace FlowMy.Services.Rendering
             {
                 resultsList.Visibility = Visibility.Visible;
                 UpdateExecutionResultsToggleText(resultsToggle, node.ExecutionResultsItemsPanel?.Children.Count ?? 0, true);
+                refreshResultsToggleVisual();
             };
             resultsToggle.Unchecked += (s, e) =>
             {
                 resultsList.Visibility = Visibility.Collapsed;
                 UpdateExecutionResultsToggleText(resultsToggle, node.ExecutionResultsItemsPanel?.Children.Count ?? 0, false);
+                refreshResultsToggleVisual();
             };
 
             var errorToggle = new ToggleButton
             {
-                Content = "▸ Có lỗi",
+                Content = "▸ Có lỗi xảy ra",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Colors.DarkRed),
-                Background = new SolidColorBrush(Color.FromArgb(20, 200, 0, 0)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(60, 200, 0, 0)),
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(6, 2, 6, 2),
-                Margin = new Thickness(0, 4, 0, 0),
+                Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(0, 5, 0, 0),
                 Visibility = Visibility.Collapsed,
                 Cursor = System.Windows.Input.Cursors.Hand
             };
 
+            Action refreshErrorToggleVisual = () =>
+            {
+                bool isChecked = errorToggle.IsChecked == true;
+                bool isHover = errorToggle.IsMouseOver;
+
+                if (isChecked || isHover)
+                {
+                    errorToggle.Background = isHover ? amberHoverBg : amberNormalBg;
+                    errorToggle.Foreground = amberText;
+                    errorToggle.BorderBrush = amberBorder;
+                }
+                else
+                {
+                    errorToggle.SetResourceReference(ToggleButton.BackgroundProperty, "SurfaceColor");
+                    errorToggle.SetResourceReference(ToggleButton.ForegroundProperty, "DangerBrush");
+                    errorToggle.SetResourceReference(ToggleButton.BorderBrushProperty, "DangerHoverBrush");
+                }
+            };
+
+            refreshErrorToggleVisual();
+            errorToggle.MouseEnter += (s, e) => refreshErrorToggleVisual();
+            errorToggle.MouseLeave += (s, e) => refreshErrorToggleVisual();
+
             var errorList = new StackPanel
             {
-                Margin = new Thickness(4, 4, 0, 0),
+                Margin = new Thickness(0, 4, 0, 0),
                 Visibility = Visibility.Collapsed
             };
 
@@ -302,11 +347,13 @@ namespace FlowMy.Services.Rendering
             {
                 errorList.Visibility = Visibility.Visible;
                 UpdateExecutionErrorToggleText(errorToggle, true);
+                refreshErrorToggleVisual();
             };
             errorToggle.Unchecked += (s, e) =>
             {
                 errorList.Visibility = Visibility.Collapsed;
                 UpdateExecutionErrorToggleText(errorToggle, false);
+                refreshErrorToggleVisual();
             };
 
             var content = new StackPanel();
@@ -318,19 +365,27 @@ namespace FlowMy.Services.Rendering
 
             var container = new Border
             {
-                Background = Brushes.White,
-                BorderBrush = node.NodeBrush,
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(8, 4, 8, 6),
+                Padding = new Thickness(10, 6, 10, 8),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
+                MaxWidth = 360,
                 Margin = new Thickness(0),
                 Child = content,
                 Visibility = Visibility.Collapsed,
                 IsHitTestVisible = true,
-                Effect = null // bỏ đổ bóng
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = (Color?)Application.Current.TryFindResource("ShadowColor") ?? Colors.Black,
+                    Direction = 270,
+                    ShadowDepth = 3,
+                    BlurRadius = 10,
+                    Opacity = 0.35
+                }
             };
+            container.SetResourceReference(Border.BackgroundProperty, "CardBackgroundBrush");
+            container.SetResourceReference(Border.BorderBrushProperty, "ControlBorderBrush");
 
             node.ExecutionStatusTextUI = statusText;
             node.ExecutionBusySpinnerUI = spinner;

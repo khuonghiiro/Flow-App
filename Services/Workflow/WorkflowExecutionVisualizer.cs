@@ -182,11 +182,42 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
         var maxSec = entries.Max(e => e.Value.Stopwatch.Elapsed.TotalSeconds);
         var thisNodeActiveTasks = entries.Sum(e => Math.Max(1, e.Value.ActiveCount));
-        var parallelBadge = BuildParallelActivityBadgeForNode(node, entries);
-        var badge = BuildFlowBadge(node);
-        node.ExecutionStatusTextUI.Text = thisNodeActiveTasks > 1
-            ? $"⏳ {maxSec:0.00}s · {thisNodeActiveTasks} luồng{parallelBadge}{badge}"
-            : $"⏳ {maxSec:0.00}s{parallelBadge}{badge}";
+
+        if (thisNodeActiveTasks <= 1 && entries.Count <= 1)
+        {
+            node.ExecutionStatusTextUI.Text = $"⏳ {maxSec:0.00}s đang xử lý...";
+            return;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"⏳ {maxSec:0.00}s · {thisNodeActiveTasks} luồng đang chạy:");
+
+        int threadIdx = 1;
+        foreach (var entry in entries.OrderByDescending(e => e.Value.Stopwatch.Elapsed.TotalSeconds))
+        {
+            var elapsed = entry.Value.Stopwatch.Elapsed.TotalSeconds;
+            var runKey = string.IsNullOrWhiteSpace(entry.Key.RunKey) ? "mặc định" : entry.Key.RunKey;
+            
+            if (runKey.Length > 18)
+            {
+                runKey = runKey.Substring(0, 15) + "...";
+            }
+
+            var activeCount = Math.Max(1, entry.Value.ActiveCount);
+            if (activeCount > 1)
+            {
+                for (int sub = 1; sub <= activeCount; sub++)
+                {
+                    sb.AppendLine($"  • Luồng #{threadIdx++} [{runKey} #{sub}]: {elapsed:0.00}s");
+                }
+            }
+            else
+            {
+                sb.AppendLine($"  • Luồng #{threadIdx++} [{runKey}]: {elapsed:0.00}s");
+            }
+        }
+
+        node.ExecutionStatusTextUI.Text = sb.ToString().TrimEnd();
     }
 
     private void StartNodeTiming(WorkflowNode node, string runKey)
@@ -399,31 +430,67 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         {
             if (result.IsArray)
             {
-                var container = new StackPanel
+                var container = new Border
                 {
-                    Margin = new Thickness(0, panel.Children.Count == 0 ? 0 : 4, 0, 0),
-                    MaxWidth = 300,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(8, 6, 8, 6),
+                    Margin = new Thickness(0, panel.Children.Count == 0 ? 0 : 5, 0, 0),
+                    MaxWidth = 330
                 };
+                container.SetResourceReference(Border.BackgroundProperty, "HeaderBackgroundBrush");
+                container.SetResourceReference(Border.BorderBrushProperty, "ControlBorderBrush");
+
+                var toggleKey = result.Key.Replace("_", "__");
+                var itemCount = result.ArrayItems.Count;
 
                 var toggle = new ToggleButton
                 {
-                    Content = $"- {result.Key.Replace("_", "__")}: [{result.ArrayItems.Count} item]",
+                    Content = $"▸ ⚡ {toggleKey}: [{itemCount} items]",
                     FontSize = 11,
                     FontWeight = FontWeights.SemiBold,
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    Foreground = Application.Current.TryFindResource("ChocolateBrownBrush") as Brush,
                     Margin = new Thickness(0, 0, 0, 2),
-                    Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                    BorderBrush = Brushes.Transparent,
-                    BorderThickness = new Thickness(0),
+                    Padding = new Thickness(4, 2, 4, 2),
+                    BorderThickness = new Thickness(1),
                     Cursor = System.Windows.Input.Cursors.Hand
                 };
 
+                var amberNormalBg = new SolidColorBrush(Color.FromRgb(245, 158, 11)); // Amber 500
+                var amberHoverBg = new SolidColorBrush(Color.FromRgb(251, 191, 36));  // Amber 400
+                var amberBorder = new SolidColorBrush(Color.FromRgb(217, 119, 6));    // Amber 600
+                var amberText = Brushes.Black;
+
+                Action refreshArrayToggleVisual = () =>
+                {
+                    bool isExpanded = toggle.IsChecked == true;
+                    bool isHover = toggle.IsMouseOver;
+                    var arrow = isExpanded ? "▾" : "▸";
+                    toggle.Content = $"{arrow} ⚡ {toggleKey}: [{itemCount} items]";
+
+                    if (isExpanded || isHover)
+                    {
+                        toggle.Background = isHover ? amberHoverBg : amberNormalBg;
+                        toggle.Foreground = amberText;
+                        toggle.BorderBrush = amberBorder;
+                    }
+                    else
+                    {
+                        toggle.SetResourceReference(ToggleButton.ForegroundProperty, "ChocolateBrownBrush");
+                        toggle.SetResourceReference(ToggleButton.BackgroundProperty, "HeaderBackgroundBrush");
+                        toggle.SetResourceReference(ToggleButton.BorderBrushProperty, "HeaderBackgroundBrush");
+                    }
+                };
+
+                refreshArrayToggleVisual();
+                toggle.MouseEnter += (s, e) => refreshArrayToggleVisual();
+                toggle.MouseLeave += (s, e) => refreshArrayToggleVisual();
+
                 var itemsPanel = new StackPanel
                 {
-                    Margin = new Thickness(12, 0, 0, 0),
+                    Margin = new Thickness(6, 4, 0, 0),
                     Visibility = Visibility.Collapsed,
-                    MaxWidth = 300
+                    MaxWidth = 320
                 };
 
                 const int MaxPreviewCharsItem = 150;
@@ -438,30 +505,30 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
                     var itemContainer = new StackPanel
                     {
-                        Margin = new Thickness(0, i == 0 ? 0 : 2, 0, 0),
+                        Margin = new Thickness(0, i == 0 ? 0 : 4, 0, 0),
                         Orientation = Orientation.Vertical,
-                        MaxWidth = 300
+                        MaxWidth = 320
                     };
 
-                    // Phần index nổi bật
                     var indexRun = new Run($"[{i}]")
                     {
                         FontWeight = FontWeights.Bold,
-                        Foreground = Application.Current.TryFindResource("ChocolateBrownBrush") as Brush
-                                           ?? Application.Current.TryFindResource("PrimaryBrush") as Brush
-                                           ?? Brushes.DeepSkyBlue
+                        FontFamily = new FontFamily("Consolas, Segoe UI")
                     };
+                    indexRun.SetResourceReference(Run.ForegroundProperty, "PrimaryBrush");
 
-                    var textRun = new Run($" {previewItem}");
+                    var textRun = new Run($" {previewItem}")
+                    {
+                        FontFamily = new FontFamily("Consolas, Segoe UI")
+                    };
+                    textRun.SetResourceReference(Run.ForegroundProperty, "TextBrush");
 
                     var collapsedText = new TextBlock
                     {
                         HorizontalAlignment = HorizontalAlignment.Left,
-                        Foreground = Application.Current.TryFindResource("PrimaryBrush") as Brush,
-                        FontSize = 11,
-                        Opacity = 0.95,
+                        FontSize = 10.5,
                         TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 300
+                        MaxWidth = 320
                     };
                     collapsedText.Inlines.Add(indexRun);
                     collapsedText.Inlines.Add(textRun);
@@ -476,18 +543,22 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                         var fullIndexRun = new Run($"[{i}]")
                         {
                             FontWeight = FontWeights.Bold,
-                            Foreground = indexRun.Foreground
+                            FontFamily = new FontFamily("Consolas, Segoe UI")
                         };
-                        var fullTextRun = new Run($" {value}");
+                        fullIndexRun.SetResourceReference(Run.ForegroundProperty, "PrimaryBrush");
+
+                        var fullTextRun = new Run($" {value}")
+                        {
+                            FontFamily = new FontFamily("Consolas, Segoe UI")
+                        };
+                        fullTextRun.SetResourceReference(Run.ForegroundProperty, "TextPrimary");
 
                         fullTextBlock = new TextBlock
                         {
                             HorizontalAlignment = HorizontalAlignment.Left,
-                            Foreground = Application.Current.TryFindResource("CharcoalDarkBrush") as Brush,
-                            FontSize = 11,
-                            Opacity = 0.95,
+                            FontSize = 10.5,
                             TextWrapping = TextWrapping.Wrap,
-                            MaxWidth = 300
+                            MaxWidth = 320
                         };
                         fullTextBlock.Inlines.Add(fullIndexRun);
                         fullTextBlock.Inlines.Add(fullTextRun);
@@ -497,80 +568,64 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                             Content = fullTextBlock,
                             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                            MaxHeight = 200,
+                            MaxHeight = 180,
                             Visibility = Visibility.Collapsed,
                             Margin = new Thickness(0, 2, 0, 0),
-                            MaxWidth = 300
-                        };
-
-                        btnToggle = new Button
-                        {
-                            Content = "Xem thêm",
-                            FontSize = 10,
-                            Padding = new Thickness(4, 1, 4, 1),
-                            Margin = new Thickness(0, 2, 0, 0),
-                            HorizontalAlignment = HorizontalAlignment.Left,
-                            Width = 60,
-                            Height = 25,
-                            Style = Application.Current.TryFindResource("PrimaryButton") as Style,
-                            //Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                            //BorderBrush = Brushes.Transparent,
-                            //BorderThickness = new Thickness(0),
-                            Cursor = System.Windows.Input.Cursors.Hand
-                        };
-
-                        btnCopyItem = new Button
-                        {
-                            Content = "Copy",
-                            FontSize = 10,
-                            Padding = new Thickness(4, 1, 4, 1),
-                            Margin = new Thickness(4, 2, 0, 0),
-                            HorizontalAlignment = HorizontalAlignment.Left,
-                            Width = 40,
-                            Height = 25,
-                            Style = Application.Current.TryFindResource("DangerButton") as Style,
-                            //Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                            //BorderBrush = Brushes.Transparent,
-                            //BorderThickness = new Thickness(0),
-                            Cursor = System.Windows.Input.Cursors.Hand
+                            MaxWidth = 320
                         };
 
                         var capturedIndex = i;
                         var fallbackValue = value;
-                        btnCopyItem.Click += (s, e) =>
-                        {
-                            try
+
+                        TextBlock? labelToggleRef = null;
+                        var (toggleBtn, lblToggle) = CreateMicroActionButton(
+                            "🔍 Xem thêm",
+                            "PrimaryBrush",
+                            "PrimaryHoverBrush",
+                            "TextOnPrimaryBrush",
+                            new Thickness(0, 2, 4, 0),
+                            (s, e) =>
                             {
-                                var fullArrayStr = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
-                                if (TryParseJsonArrayItems(fullArrayStr, out var fullItems) && capturedIndex < fullItems.Count)
+                                if (fullScroll!.Visibility == Visibility.Collapsed)
                                 {
-                                    Clipboard.SetText(fullItems[capturedIndex]);
+                                    fullScroll.Visibility = Visibility.Visible;
+                                    collapsedText.Visibility = Visibility.Collapsed;
+                                    if (labelToggleRef != null) labelToggleRef.Text = "▲ Thu gọn";
                                 }
                                 else
                                 {
-                                    Clipboard.SetText(fallbackValue);
+                                    fullScroll.Visibility = Visibility.Collapsed;
+                                    collapsedText.Visibility = Visibility.Visible;
+                                    if (labelToggleRef != null) labelToggleRef.Text = "🔍 Xem thêm";
                                 }
-                            }
-                            catch { }
-                        };
+                            });
+                        btnToggle = toggleBtn;
+                        labelToggleRef = lblToggle;
 
-                        btnToggle.Click += (s, e) =>
-                        {
-                            if (fullScroll!.Visibility == Visibility.Collapsed)
+                        var (copyItemBtn, _) = CreateMicroActionButton(
+                            "📋 Copy",
+                            "SecondaryBrush",
+                            "SecondaryHoverBrush",
+                            "TextOnSecondaryBrush",
+                            new Thickness(0, 2, 0, 0),
+                            (s, e) =>
                             {
-                                fullScroll.Visibility = Visibility.Visible;
-                                collapsedText.Visibility = Visibility.Collapsed;
-                                btnToggle.Content = "Thu gọn";
-                            }
-                            else
-                            {
-                                fullScroll.Visibility = Visibility.Collapsed;
-                                collapsedText.Visibility = Visibility.Visible;
-                                btnToggle.Content = "Xem thêm";
-                            }
-                        };
+                                try
+                                {
+                                    var fullArrayStr = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
+                                    if (TryParseJsonArrayItems(fullArrayStr, out var fullItems) && capturedIndex < fullItems.Count)
+                                    {
+                                        Clipboard.SetText(fullItems[capturedIndex]);
+                                    }
+                                    else
+                                    {
+                                        Clipboard.SetText(fallbackValue);
+                                    }
+                                }
+                                catch { }
+                            });
+                        btnCopyItem = copyItemBtn;
 
-                        // Ngăn zoom canvas khi scroll trong ScrollViewer
                         fullScroll.PreviewMouseWheel += (s, e) =>
                         {
                             var sv = s as ScrollViewer;
@@ -597,61 +652,47 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     }
                     else
                     {
-                        // Copy button cho short items
-                        var btnCopyShort = new Button
-                        {
-                            Content = "Copy",
-                            FontSize = 10,
-                            Padding = new Thickness(4, 1, 4, 1),
-                            Margin = new Thickness(4, 2, 0, 0),
-                            HorizontalAlignment = HorizontalAlignment.Left,
-                            Width = 40,
-                            Height = 25,
-                            Style = Application.Current.TryFindResource("DangerButton") as Style,
-                            //Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                            //BorderBrush = Brushes.Transparent,
-                            //BorderThickness = new Thickness(0),
-                            Cursor = System.Windows.Input.Cursors.Hand
-                        };
-
                         var capturedShortIndex = i;
                         var fallbackShortValue = value;
-                        btnCopyShort.Click += (s, e) =>
-                        {
-                            try
+                        var (btnCopyShort, _) = CreateMicroActionButton(
+                            "📋 Copy",
+                            "SecondaryBrush",
+                            "SecondaryHoverBrush",
+                            "TextOnSecondaryBrush",
+                            new Thickness(0, 2, 0, 0),
+                            (s, e) =>
                             {
-                                var fullArrayStr = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
-                                if (TryParseJsonArrayItems(fullArrayStr, out var fullItems) && capturedShortIndex < fullItems.Count)
+                                try
                                 {
-                                    Clipboard.SetText(fullItems[capturedShortIndex]);
+                                    var fullArrayStr = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
+                                    if (TryParseJsonArrayItems(fullArrayStr, out var fullItems) && capturedShortIndex < fullItems.Count)
+                                    {
+                                        Clipboard.SetText(fullItems[capturedShortIndex]);
+                                    }
+                                    else
+                                    {
+                                        Clipboard.SetText(fallbackShortValue);
+                                    }
                                 }
-                                else
-                                {
-                                    Clipboard.SetText(fallbackShortValue);
-                                }
-                            }
-                            catch { }
-                        };
+                                catch { }
+                            });
                         itemContainer.Children.Add(btnCopyShort);
                     }
 
                     itemsPanel.Children.Add(itemContainer);
                 }
 
-                // Luôn dùng ScrollViewer với MaxHeight = 300 để tự động scroll khi cần
-                // (kể cả khi <= 10 items, nếu tổng chiều cao vượt quá 300px)
                 var scroll = new ScrollViewer
                 {
                     Content = itemsPanel,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                    MaxHeight = 300,
-                    MaxWidth = 300,
+                    MaxHeight = 260,
+                    MaxWidth = 320,
                     Margin = new Thickness(0, 0, 0, 0)
                 };
                 scroll.Visibility = Visibility.Collapsed;
 
-                // Ngăn zoom canvas khi scroll trong ScrollViewer của array items
                 scroll.PreviewMouseWheel += (s, e) =>
                 {
                     var sv = s as ScrollViewer;
@@ -662,21 +703,23 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     }
                 };
 
-                var itemsHost = scroll;
-
                 toggle.Checked += (s, e) =>
                 {
                     itemsPanel.Visibility = Visibility.Visible;
                     scroll.Visibility = Visibility.Visible;
+                    refreshArrayToggleVisual();
                 };
                 toggle.Unchecked += (s, e) =>
                 {
                     itemsPanel.Visibility = Visibility.Collapsed;
                     scroll.Visibility = Visibility.Collapsed;
+                    refreshArrayToggleVisual();
                 };
 
-                container.Children.Add(toggle);
-                container.Children.Add(itemsHost);
+                var itemStack = new StackPanel();
+                itemStack.Children.Add(toggle);
+                itemStack.Children.Add(scroll);
+                container.Child = itemStack;
                 panel.Children.Add(container);
             }
             else
@@ -687,55 +730,63 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     ? result.RawValue.Substring(0, MaxPreviewChars) + "..."
                     : result.RawValue;
 
-                var container = new StackPanel
+                var container = new Border
                 {
-                    Margin = new Thickness(0, panel.Children.Count == 0 ? 0 : 4, 0, 0),
-                    MaxWidth = 300
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(8, 6, 8, 6),
+                    Margin = new Thickness(0, panel.Children.Count == 0 ? 0 : 5, 0, 0),
+                    MaxWidth = 330
                 };
+                container.SetResourceReference(Border.BackgroundProperty, "HeaderBackgroundBrush");
+                container.SetResourceReference(Border.BorderBrushProperty, "ControlBorderBrush");
 
-                // Phần key nổi bật
-                var keyRun = new Run($"- {result.Key}:")
+                var keyRun = new Run($"⚡ {result.Key}: ")
                 {
                     FontWeight = FontWeights.Bold,
-                    Foreground = Application.Current.TryFindResource("ChocolateBrownBrush") as Brush
-                                       ?? Application.Current.TryFindResource("PrimaryBrush") as Brush
-                                       ?? Brushes.DeepSkyBlue
+                    FontFamily = new FontFamily("Consolas, Segoe UI")
                 };
+                keyRun.SetResourceReference(Run.ForegroundProperty, "PrimaryBrush");
 
-                var previewRun = new Run($" {preview}");
+                var previewRun = new Run(preview)
+                {
+                    FontFamily = new FontFamily("Consolas, Segoe UI")
+                };
+                previewRun.SetResourceReference(Run.ForegroundProperty, "TextBrush");
 
                 var collapsedText = new TextBlock
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    Foreground = Application.Current.TryFindResource("PrimaryBrush") as Brush,
-                    FontSize = 11,
-                    Opacity = 0.95,
+                    FontSize = 10.5,
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 300
+                    MaxWidth = 320
                 };
                 collapsedText.Inlines.Add(keyRun);
                 collapsedText.Inlines.Add(previewRun);
 
-                var fullKeyRun = new Run($"- {result.Key}:")
+                var fullKeyRun = new Run($"⚡ {result.Key}: ")
                 {
                     FontWeight = FontWeights.Bold,
-                    Foreground = keyRun.Foreground
+                    FontFamily = new FontFamily("Consolas, Segoe UI")
                 };
+                fullKeyRun.SetResourceReference(Run.ForegroundProperty, "PrimaryBrush");
 
                 var displayFullValue = NodeDataPanelService.IsBase64Value(result.Key, result.RawValue)
                     ? NodeDataPanelService.TruncateBase64ForDisplay(result.RawValue, 300)
                     : (result.RawValue.Length > 2000 ? result.RawValue.Substring(0, 2000) + "..." : result.RawValue);
 
-                var fullValueRun = new Run($" {displayFullValue}");
+                var fullValueRun = new Run(displayFullValue)
+                {
+                    FontFamily = new FontFamily("Consolas, Segoe UI")
+                };
+                fullValueRun.SetResourceReference(Run.ForegroundProperty, "TextPrimary");
 
                 var fullTextBlock = new TextBlock
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    Foreground = Application.Current.TryFindResource("CharcoalDarkBrush") as Brush,
-                    FontSize = 11,
-                    Opacity = 0.95,
+                    FontSize = 10.5,
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 300
+                    MaxWidth = 320
                 };
                 fullTextBlock.Inlines.Add(fullKeyRun);
                 fullTextBlock.Inlines.Add(fullValueRun);
@@ -745,13 +796,12 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     Content = fullTextBlock,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                    MaxHeight = 200,
+                    MaxHeight = 180,
                     Visibility = Visibility.Collapsed,
-                    Margin = new Thickness(0, 0, 0, 0),
-                    MaxWidth = 300
+                    Margin = new Thickness(0, 2, 0, 0),
+                    MaxWidth = 320
                 };
 
-                // Ngăn zoom canvas khi scroll trong ScrollViewer
                 fullScroll.PreviewMouseWheel += (s, e) =>
                 {
                     var sv = s as ScrollViewer;
@@ -762,68 +812,50 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     }
                 };
 
-                // Button Copy cho value (luôn hiển thị)
-                var btnCopy = new Button
-                {
-                    Content = "Copy",
-                    FontSize = 10,
-                    Padding = new Thickness(4, 1, 4, 1),
-                    Margin = new Thickness(4, 2, 0, 0),
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Width = 40,
-                    Height = 25,
-                    Style = Application.Current.TryFindResource("DangerButton") as Style,
-                    //Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                    //BorderBrush = Brushes.Transparent,
-                    //BorderThickness = new Thickness(0),
-                    Cursor = System.Windows.Input.Cursors.Hand
-                };
-
-                btnCopy.Click += (s, e) =>
-                {
-                    try
+                var (btnCopy, _) = CreateMicroActionButton(
+                    "📋 Copy",
+                    "SecondaryBrush",
+                    "SecondaryHoverBrush",
+                    "TextOnSecondaryBrush",
+                    new Thickness(0, 4, 0, 0),
+                    (s, e) =>
                     {
-                        var fullVal = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
-                        if (string.IsNullOrWhiteSpace(fullVal) || fullVal == "—") fullVal = result.RawValue;
-                        Clipboard.SetText(fullVal);
-                    }
-                    catch { }
-                };
+                        try
+                        {
+                            var fullVal = NodeDataPanelService.ResolveDynamicValueByKey(node, result.Key, forDisplay: false);
+                            if (string.IsNullOrWhiteSpace(fullVal) || fullVal == "—") fullVal = result.RawValue;
+                            Clipboard.SetText(fullVal);
+                        }
+                        catch { }
+                    });
 
-                container.Children.Add(collapsedText);
+                var itemStack = new StackPanel();
+                itemStack.Children.Add(collapsedText);
                 if (isLong)
                 {
-                    var btnToggle = new Button
-                    {
-                        Content = "Xem thêm",
-                        FontSize = 10,
-                        Padding = new Thickness(4, 1, 4, 1),
-                        Margin = new Thickness(0, 2, 0, 0),
-                        HorizontalAlignment = HorizontalAlignment.Left,
-                        Width = 60,
-                        Height = 25,
-                        Style = Application.Current.TryFindResource("PrimaryButton") as Style,
-                        //Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                        //BorderBrush = Brushes.Transparent,
-                        //BorderThickness = new Thickness(0),
-                        Cursor = System.Windows.Input.Cursors.Hand
-                    };
-
-                    btnToggle.Click += (s, e) =>
-                    {
-                        if (fullScroll.Visibility == Visibility.Collapsed)
+                    TextBlock? labelToggleRef = null;
+                    var (btnToggle, lblToggle) = CreateMicroActionButton(
+                        "🔍 Xem thêm",
+                        "PrimaryBrush",
+                        "PrimaryHoverBrush",
+                        "TextOnPrimaryBrush",
+                        new Thickness(0, 4, 6, 0),
+                        (s, e) =>
                         {
-                            fullScroll.Visibility = Visibility.Visible;
-                            collapsedText.Visibility = Visibility.Collapsed;
-                            btnToggle.Content = "Thu gọn";
-                        }
-                        else
-                        {
-                            fullScroll.Visibility = Visibility.Collapsed;
-                            collapsedText.Visibility = Visibility.Visible;
-                            btnToggle.Content = "Xem thêm";
-                        }
-                    };
+                            if (fullScroll.Visibility == Visibility.Collapsed)
+                            {
+                                fullScroll.Visibility = Visibility.Visible;
+                                collapsedText.Visibility = Visibility.Collapsed;
+                                if (labelToggleRef != null) labelToggleRef.Text = "▲ Thu gọn";
+                            }
+                            else
+                            {
+                                fullScroll.Visibility = Visibility.Collapsed;
+                                collapsedText.Visibility = Visibility.Visible;
+                                if (labelToggleRef != null) labelToggleRef.Text = "🔍 Xem thêm";
+                            }
+                        });
+                    labelToggleRef = lblToggle;
 
                     var buttonsPanel = new StackPanel
                     {
@@ -832,14 +864,15 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     };
                     buttonsPanel.Children.Add(btnToggle);
                     buttonsPanel.Children.Add(btnCopy);
-                    container.Children.Add(buttonsPanel);
-                    container.Children.Add(fullScroll);
+                    itemStack.Children.Add(buttonsPanel);
+                    itemStack.Children.Add(fullScroll);
                 }
                 else
                 {
-                    container.Children.Add(btnCopy);
+                    itemStack.Children.Add(btnCopy);
                 }
 
+                container.Child = itemStack;
                 panel.Children.Add(container);
             }
         }
@@ -865,7 +898,6 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         if (node.ExecutionStatusContainerUI == null || node.ExecutionStatusTextUI == null) return;
         if (node.ExecutionErrorToggleUI == null || node.ExecutionErrorItemsPanel == null) return;
 
-        // Dừng và xóa tất cả active timers cho node bị lỗi để không còn ghi đè status thành "⏳ X.XXs"
         var activeForNode = _activeNodeTimers.Where(k => ReferenceEquals(k.Key.Node, node)).ToList();
         double elapsedSec = 0;
         if (activeForNode.Count > 0)
@@ -899,41 +931,39 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
         var keyRun = new Run("- Lỗi:")
         {
-            FontWeight = FontWeights.Bold,
-            Foreground = Application.Current.TryFindResource("ChocolateBrownBrush") as Brush
-                                   ?? Application.Current.TryFindResource("PrimaryBrush") as Brush
-                                   ?? Brushes.DarkRed
+            FontWeight = FontWeights.Bold
         };
+        keyRun.SetResourceReference(Run.ForegroundProperty, "DangerBrush");
         var previewRun = new Run($" {preview}");
 
         var collapsedText = new TextBlock
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            Foreground = Application.Current.TryFindResource("PrimaryBrush") as Brush ?? Brushes.DarkRed,
             FontSize = 11,
             Opacity = 0.95,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 300
         };
+        collapsedText.SetResourceReference(TextBlock.ForegroundProperty, "DangerBrush");
         collapsedText.Inlines.Add(keyRun);
         collapsedText.Inlines.Add(previewRun);
 
         var fullKeyRun = new Run("- Lỗi:")
         {
-            FontWeight = FontWeights.Bold,
-            Foreground = keyRun.Foreground
+            FontWeight = FontWeights.Bold
         };
+        fullKeyRun.SetResourceReference(Run.ForegroundProperty, "DangerBrush");
         var fullValueRun = new Run($" {errorMessage}");
 
         var fullTextBlock = new TextBlock
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            Foreground = Application.Current.TryFindResource("CharcoalDarkBrush") as Brush ?? Brushes.DarkRed,
             FontSize = 11,
             Opacity = 0.95,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 300
         };
+        fullTextBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
         fullTextBlock.Inlines.Add(fullKeyRun);
         fullTextBlock.Inlines.Add(fullValueRun);
 
@@ -957,68 +987,59 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             }
         };
 
-        var btnCopy = new Button
-        {
-            Content = "Copy",
-            FontSize = 10,
-            Padding = new Thickness(4, 1, 4, 1),
-            Margin = new Thickness(4, 2, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Width = 40,
-            Height = 25,
-            Style = Application.Current.TryFindResource("DangerButton") as Style,
-            Cursor = System.Windows.Input.Cursors.Hand
-        };
         var capturedError = errorMessage;
-        btnCopy.Click += (_, _) =>
-        {
-            try { System.Windows.Clipboard.SetText(capturedError); }
-            catch { }
-        };
+        var (btnCopyError, _) = CreateMicroActionButton(
+            "📋 Copy Lỗi",
+            "DangerBrush",
+            "DangerHoverBrush",
+            "TextOnDangerBrush",
+            new Thickness(0, 4, 0, 0),
+            (_, _) =>
+            {
+                try { System.Windows.Clipboard.SetText(capturedError); }
+                catch { }
+            });
 
         container.Children.Add(collapsedText);
         if (isLong)
         {
-            var btnToggle = new Button
-            {
-                Content = "Xem thêm",
-                FontSize = 10,
-                Padding = new Thickness(4, 1, 4, 1),
-                Margin = new Thickness(0, 2, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Width = 60,
-                Height = 25,
-                Style = Application.Current.TryFindResource("PrimaryButton") as Style,
-                Cursor = System.Windows.Input.Cursors.Hand
-            };
-            btnToggle.Click += (_, _) =>
-            {
-                if (fullScroll.Visibility == Visibility.Collapsed)
+            TextBlock? labelErrorToggleRef = null;
+            var (btnToggleError, lblErrorToggle) = CreateMicroActionButton(
+                "🔍 Xem chi tiết",
+                "PrimaryBrush",
+                "PrimaryHoverBrush",
+                "TextOnPrimaryBrush",
+                new Thickness(0, 4, 6, 0),
+                (_, _) =>
                 {
-                    fullScroll.Visibility = Visibility.Visible;
-                    collapsedText.Visibility = Visibility.Collapsed;
-                    btnToggle.Content = "Thu gọn";
-                }
-                else
-                {
-                    fullScroll.Visibility = Visibility.Collapsed;
-                    collapsedText.Visibility = Visibility.Visible;
-                    btnToggle.Content = "Xem thêm";
-                }
-            };
+                    if (fullScroll.Visibility == Visibility.Collapsed)
+                    {
+                        fullScroll.Visibility = Visibility.Visible;
+                        collapsedText.Visibility = Visibility.Collapsed;
+                        if (labelErrorToggleRef != null) labelErrorToggleRef.Text = "▲ Thu gọn";
+                    }
+                    else
+                    {
+                        fullScroll.Visibility = Visibility.Collapsed;
+                        collapsedText.Visibility = Visibility.Visible;
+                        if (labelErrorToggleRef != null) labelErrorToggleRef.Text = "🔍 Xem chi tiết";
+                    }
+                });
+            labelErrorToggleRef = lblErrorToggle;
+
             var buttonsPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Left
             };
-            buttonsPanel.Children.Add(btnToggle);
-            buttonsPanel.Children.Add(btnCopy);
+            buttonsPanel.Children.Add(btnToggleError);
+            buttonsPanel.Children.Add(btnCopyError);
             container.Children.Add(buttonsPanel);
             container.Children.Add(fullScroll);
         }
         else
         {
-            container.Children.Add(btnCopy);
+            container.Children.Add(btnCopyError);
         }
 
         panel.Children.Add(container);
@@ -1130,6 +1151,58 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             ? "no-run"
             : (execution.Length > 8 ? execution.Substring(0, 8) : execution);
         return $" [{scopePart}|{branchPart}|{execPart}]";
+    }
+
+    private static (Button Button, TextBlock Label) CreateMicroActionButton(
+        string text,
+        string normalBgKey,
+        string hoverBgKey,
+        string textBrushKey,
+        Thickness margin,
+        RoutedEventHandler onClick)
+    {
+        var label = new TextBlock
+        {
+            Text = text,
+            FontSize = 10.5,
+            FontWeight = FontWeights.Medium,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        label.SetResourceReference(TextBlock.ForegroundProperty, textBrushKey);
+
+        var border = new Border
+        {
+            CornerRadius = new CornerRadius(5),
+            Padding = new Thickness(8, 3, 8, 3),
+            Child = label
+        };
+        border.SetResourceReference(Border.BackgroundProperty, normalBgKey);
+
+        var btn = new Button
+        {
+            Content = border,
+            Margin = margin,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Height = 26,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            Style = Application.Current.TryFindResource("TransparentButtonStyle") as Style
+        };
+
+        btn.MouseEnter += (s, e) =>
+        {
+            border.SetResourceReference(Border.BackgroundProperty, hoverBgKey);
+        };
+        btn.MouseLeave += (s, e) =>
+        {
+            border.SetResourceReference(Border.BackgroundProperty, normalBgKey);
+        };
+
+        btn.Click += onClick;
+        return (btn, label);
     }
 }
 
