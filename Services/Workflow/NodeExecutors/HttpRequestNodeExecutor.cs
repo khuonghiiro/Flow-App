@@ -62,10 +62,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             try
             {
                 FlowMy.Utils.CurlParseResult? parsedCurlResult = null;
+                bool isBoundFromCurlSource = !string.IsNullOrWhiteSpace(httpNode.CurlSourceNodeId) && 
+                                             !string.IsNullOrWhiteSpace(httpNode.CurlSourceOutputKey);
 
                 // 1. Priority 1: Check if cURL command is bound from another node
-                if (!string.IsNullOrWhiteSpace(httpNode.CurlSourceNodeId) && 
-                    !string.IsNullOrWhiteSpace(httpNode.CurlSourceOutputKey))
+                if (isBoundFromCurlSource)
                 {
                     var curlCommand = ResolveStringValue(
                         "", 
@@ -75,6 +76,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         httpNode,
                         env,
                         allNodesForLookup);
+                    
+                    // Replace dynamic variable placeholders {item}, {token}, {variable} in curlCommand if present
+                    if (!string.IsNullOrWhiteSpace(curlCommand))
+                    {
+                        curlCommand = ReplaceVariablePlaceholdersInText(curlCommand, connections, httpNode, env);
+                    }
+
                     curlCommand = NormalizeBoundCurlCommand(curlCommand);
                     
                     if (!string.IsNullOrWhiteSpace(curlCommand) && IsCurlCommand(curlCommand))
@@ -94,10 +102,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 boundRawCurlCommand = null;
                             }
 
-                            // Populate thread-local snapshots from parsed cURL
-                            headersSnapshot = pHeaders;
-                            queryParamsSnapshot = pQueryParams;
-                            formDataSnapshot = pFormData;
+                            // Populate thread-local snapshots from parsed cURL while preserving configured item-level bindings
+                            headersSnapshot = MergeParsedAndConfiguredKeyValues(pHeaders, httpNode.Headers);
+                            queryParamsSnapshot = MergeParsedAndConfiguredKeyValues(pQueryParams, httpNode.QueryParams);
+                            formDataSnapshot = MergeParsedAndConfiguredKeyValues(pFormData, httpNode.FormData);
 
                             // Apply to shared node object only when not running in parallel dispatch (UI single-node test)
                             if (!isParallel)
@@ -107,7 +115,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                         else
                         {
-                            Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Failed to parse bound cURL: {errorMsg}");
+                            Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Could not parse bound cURL into structured fields: {errorMsg}. Will execute raw bound cURL command.");
                         }
                     }
                 }
@@ -131,7 +139,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         httpNode.UrlSourceOutputKey,
                         connections,
                         httpNode,
-                        env);
+                        env,
+                        allNodesForLookup);
                     url = !string.IsNullOrWhiteSpace(dynamicUrl) ? dynamicUrl : (parsedCurlResult?.Url ?? httpNode.Url);
                 }
                 else if (parsedCurlResult != null && !string.IsNullOrWhiteSpace(parsedCurlResult.Url))
@@ -146,10 +155,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         httpNode.UrlSourceOutputKey,
                         connections,
                         httpNode,
-                        env);
+                        env,
+                        allNodesForLookup);
                 }
 
-                if (string.IsNullOrWhiteSpace(url))
+                if (string.IsNullOrWhiteSpace(url) && string.IsNullOrWhiteSpace(boundRawCurlCommand))
                 {
                     throw new InvalidOperationException("URL is empty or could not be resolved");
                 }
@@ -158,7 +168,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var queryParams = new List<KeyValuePair<string, string>>();
                 foreach (var param in queryParamsSnapshot.Where(p => p.IsEnabled && !string.IsNullOrWhiteSpace(p.Key)))
                 {
-                    var value = ResolveKeyValuePairValue(param, connections, httpNode, env);
+                    var value = ResolveKeyValuePairValue(param, connections, httpNode, env, allNodesForLookup);
                     queryParams.Add(new KeyValuePair<string, string>(param.Key, value));
                 }
 
@@ -171,12 +181,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         httpNode.ApiKeyValueSourceOutputKey,
                         connections,
                         httpNode,
-                        env);
+                        env,
+                        allNodesForLookup);
                     queryParams.Add(new KeyValuePair<string, string>(httpNode.ApiKeyName, resolvedApiKeyValue));
                 }
 
                 // Append query params to URL
-                if (queryParams.Count > 0)
+                if (queryParams.Count > 0 && !string.IsNullOrWhiteSpace(url))
                 {
                     var uriBuilder = new UriBuilder(url);
                     var query = HttpUtility.ParseQueryString(uriBuilder.Query);
@@ -205,7 +216,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     effectiveAuthPassword,
                     effectiveAuthToken,
                     out var resolvedHeaders,
-                    out var resolvedBody);
+                    out var resolvedBody,
+                    allNodesForLookup);
 
                 // Auto-detect stream based on request headers (thread-local decision)
                 var isStream = httpNode.IsStream;
@@ -246,7 +258,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (effectiveUseCurl)
                 {
-                    if (httpNode.AutoAppendCurlWriteOut && !string.IsNullOrWhiteSpace(boundRawCurlCommand))
+                    // Prefer structured execution via ExecuteViaCurlAsync whenever parsed parameters or URL are available,
+                    // avoiding Windows cmd.exe single-quote header corruption.
+                    // Only fall back to ExecuteRawCurlCommandAsync if structured parsing failed completely.
+                    if (parsedCurlResult == null && !string.IsNullOrWhiteSpace(boundRawCurlCommand))
                     {
                         await ExecuteRawCurlCommandAsync(httpNode, boundRawCurlCommand, connections, env, sw);
                         // Sub-method already called OnNodeCompleted + TraverseOutputsAsync
@@ -408,6 +423,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await env.TraverseOutputsAsync(httpNode);
         }
 
+        private static string CleanHeaderOrTokenValue(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            var trimmed = input.Trim();
+            if ((trimmed.StartsWith("'") && trimmed.EndsWith("'")) ||
+                (trimmed.StartsWith("\"") && trimmed.EndsWith("\"")))
+            {
+                trimmed = trimmed.Substring(1, trimmed.Length - 2).Trim();
+            }
+            return trimmed;
+        }
+
         private void ResolveHeadersAndBody(
             HttpRequestNode httpNode,
             List<WorkflowConnection> connections,
@@ -422,14 +449,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             string? effectiveAuthPassword,
             string? effectiveAuthToken,
             out Dictionary<string, string> resolvedHeaders,
-            out string? resolvedBody)
+            out string? resolvedBody,
+            IEnumerable<WorkflowNode>? allNodesForLookup = null)
         {
             resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             // 1. Resolve headers from the active headers snapshot (dynamic or cURL-parsed)
             foreach (var header in headersSnapshot.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
             {
-                resolvedHeaders[header.Key] = ResolveKeyValuePairValue(header, connections, httpNode, env);
+                var val = ResolveKeyValuePairValue(header, connections, httpNode, env, allNodesForLookup);
+                resolvedHeaders[header.Key] = CleanHeaderOrTokenValue(val);
             }
 
             // 2. Add auth headers based on effectiveAuthType
@@ -438,13 +467,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 case HttpAuthType.Basic:
                     if (!string.IsNullOrWhiteSpace(effectiveAuthUsername) && !resolvedHeaders.ContainsKey("Authorization"))
                     {
+                        var u = CleanHeaderOrTokenValue(effectiveAuthUsername);
+                        var p = CleanHeaderOrTokenValue(effectiveAuthPassword);
                         var credentials = Convert.ToBase64String(
-                            Encoding.UTF8.GetBytes($"{effectiveAuthUsername}:{effectiveAuthPassword ?? string.Empty}"));
+                            Encoding.UTF8.GetBytes($"{u}:{p}"));
                         resolvedHeaders["Authorization"] = $"Basic {credentials}";
                     }
                     break;
                 case HttpAuthType.Bearer:
-                    var token = ResolveStringValue(effectiveAuthToken ?? string.Empty, httpNode.TokenSourceNodeId, httpNode.TokenSourceOutputKey, connections, httpNode, env);
+                    var rawToken = ResolveStringValue(effectiveAuthToken ?? string.Empty, httpNode.TokenSourceNodeId, httpNode.TokenSourceOutputKey, connections, httpNode, env, allNodesForLookup);
+                    var token = CleanHeaderOrTokenValue(rawToken);
                     if (!string.IsNullOrWhiteSpace(token) && !resolvedHeaders.ContainsKey("Authorization"))
                     {
                         resolvedHeaders["Authorization"] = $"Bearer {token}";
@@ -453,29 +485,44 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 case HttpAuthType.ApiKey:
                     if (httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
                     {
-                        var apiKeyVal = ResolveStringValue(httpNode.ApiKeyValue ?? string.Empty, httpNode.ApiKeyValueSourceNodeId, httpNode.ApiKeyValueSourceOutputKey, connections, httpNode, env);
-                        resolvedHeaders[httpNode.ApiKeyName] = apiKeyVal;
+                        var apiKeyVal = ResolveStringValue(httpNode.ApiKeyValue ?? string.Empty, httpNode.ApiKeyValueSourceNodeId, httpNode.ApiKeyValueSourceOutputKey, connections, httpNode, env, allNodesForLookup);
+                        resolvedHeaders[httpNode.ApiKeyName] = CleanHeaderOrTokenValue(apiKeyVal);
                     }
                     break;
             }
 
-            // 3. Default User-Agent if missing
+            // 3. Clean quotes from existing Authorization header if present
+            if (resolvedHeaders.TryGetValue("Authorization", out var authHeaderVal))
+            {
+                var cleanedAuth = CleanHeaderOrTokenValue(authHeaderVal);
+                if (cleanedAuth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var tokenPart = CleanHeaderOrTokenValue(cleanedAuth.Substring(7));
+                    resolvedHeaders["Authorization"] = $"Bearer {tokenPart}";
+                }
+                else
+                {
+                    resolvedHeaders["Authorization"] = cleanedAuth;
+                }
+            }
+
+            // 4. Default User-Agent if missing
             if (!resolvedHeaders.ContainsKey("User-Agent"))
             {
                 resolvedHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
             }
 
-            // 4. Resolve body based on effectiveHttpMethod and effectiveBodyType
+            // 5. Resolve body based on effectiveHttpMethod and effectiveBodyType
             resolvedBody = null;
             if (effectiveHttpMethod != HttpMethod.GET && effectiveHttpMethod != HttpMethod.HEAD)
             {
                 switch (effectiveBodyType)
                 {
                     case HttpBodyType.Raw:
-                        resolvedBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env);
+                        resolvedBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env, allNodesForLookup);
                         break;
                     case HttpBodyType.Json:
-                        var jsonBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env);
+                        var jsonBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env, allNodesForLookup);
                         resolvedBody = EscapeJsonStringValues(jsonBody, connections, httpNode, env);
                         if (!resolvedHeaders.ContainsKey("Content-Type"))
                             resolvedHeaders["Content-Type"] = "application/json";
@@ -485,7 +532,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var formParts = new List<string>();
                         foreach (var item in formDataSnapshot.Where(f => f.IsEnabled && !string.IsNullOrWhiteSpace(f.Key)))
                         {
-                            formParts.Add($"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(ResolveKeyValuePairValue(item, connections, httpNode, env))}");
+                            formParts.Add($"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(ResolveKeyValuePairValue(item, connections, httpNode, env, allNodesForLookup))}");
                         }
                         resolvedBody = string.Join("&", formParts);
                         if (!resolvedHeaders.ContainsKey("Content-Type"))
@@ -768,7 +815,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         /// <summary>
-        /// Resolve giá trị của một variable từ connections hoặc node outputs.
+        /// Resolve giá trị của một variable từ connections hoặc node outputs trong env.
         /// </summary>
         private string? ResolveVariableValue(
             string variableKey,
@@ -776,16 +823,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             HttpRequestNode currentNode,
             NodeExecutionEnvironment env)
         {
-            // Tìm trong tất cả các upstream nodes
+            // Search in ReachableToEnd first (includes AsyncTaskNode, InputNode, CodeNode, etc.)
+            if (env?.ReachableToEnd != null)
+            {
+                foreach (var node in env.ReachableToEnd)
+                {
+                    if (node == currentNode) continue;
+                    var val = env.Service.ResolveDynamicValueForExecution(node, variableKey, env);
+                    if (val != null && val != "—" && !string.IsNullOrWhiteSpace(val))
+                    {
+                        return val;
+                    }
+                }
+            }
+
+            // Fallback: search all nodes connected in graph
             var upstreamNodes = connections
-                .Where(c => c.ToNode == currentNode && c.FromNode != null)
-                .Select(c => c.FromNode!)
+                .SelectMany(c => new[] { c.FromNode, c.ToNode })
+                .Where(n => n != null && n != currentNode)
                 .Distinct()
                 .ToList();
 
             foreach (var node in upstreamNodes)
             {
-                var value = env.Service.ResolveDynamicValueForExecution(node, variableKey, env);
+                var value = env.Service.ResolveDynamicValueForExecution(node!, variableKey, env);
                 if (value != null && value != "—" && !string.IsNullOrWhiteSpace(value))
                 {
                     return value;
@@ -793,6 +854,57 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             return null;
+        }
+
+        private string ReplaceVariablePlaceholdersInText(
+            string text,
+            List<WorkflowConnection> connections,
+            HttpRequestNode currentNode,
+            NodeExecutionEnvironment env)
+        {
+            if (string.IsNullOrWhiteSpace(text) || !text.Contains('{'))
+                return text;
+
+            var pattern = @"\{([^{}]+)\}";
+            return System.Text.RegularExpressions.Regex.Replace(text, pattern, match =>
+            {
+                var variableKey = match.Groups[1].Value.Trim();
+                var value = ResolveVariableValue(variableKey, connections, currentNode, env);
+                if (value != null && value != "—")
+                {
+                    return value;
+                }
+                return match.Value;
+            });
+        }
+
+        private static List<HttpKeyValuePair> MergeParsedAndConfiguredKeyValues(
+            List<HttpKeyValuePair> parsedItems,
+            IEnumerable<HttpKeyValuePair> configuredItems)
+        {
+            if (configuredItems == null || !configuredItems.Any()) return parsedItems;
+            var list = new List<HttpKeyValuePair>();
+            foreach (var p in parsedItems)
+            {
+                // Try to match configured item by Key to preserve SourceNodeId and SourceOutputKey
+                var matched = configuredItems.FirstOrDefault(c => string.Equals(c.Key, p.Key, StringComparison.OrdinalIgnoreCase));
+                if (matched != null && (!string.IsNullOrWhiteSpace(matched.SourceNodeId) || !string.IsNullOrWhiteSpace(matched.SourceOutputKey)))
+                {
+                    list.Add(new HttpKeyValuePair
+                    {
+                        Key = p.Key,
+                        Value = p.Value,
+                        IsEnabled = p.IsEnabled,
+                        SourceNodeId = matched.SourceNodeId,
+                        SourceOutputKey = matched.SourceOutputKey
+                    });
+                }
+                else
+                {
+                    list.Add(p);
+                }
+            }
+            return list;
         }
 
         /// <summary>
@@ -814,7 +926,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             // Find source node (with broader lookup so indirect nodes are also found)
-            var sourceNode = FindSourceNode(sourceNodeId, connections, currentNode, allNodesForLookup);
+            var sourceNode = FindSourceNode(sourceNodeId, connections, currentNode, allNodesForLookup ?? env?.ReachableToEnd);
             if (sourceNode == null)
             {
                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Source node {sourceNodeId} not found");
@@ -908,14 +1020,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             HttpKeyValuePair kvp,
             List<WorkflowConnection> connections,
             HttpRequestNode currentNode,
-            NodeExecutionEnvironment env)
+            NodeExecutionEnvironment env,
+            IEnumerable<WorkflowNode>? allNodesForLookup = null)
         {
             // If no dynamic binding, return static value
             if (string.IsNullOrWhiteSpace(kvp.SourceNodeId) || string.IsNullOrWhiteSpace(kvp.SourceOutputKey))
                 return kvp.Value ?? string.Empty;
 
             // Find source node
-            var sourceNode = FindSourceNode(kvp.SourceNodeId, connections, currentNode);
+            var sourceNode = FindSourceNode(kvp.SourceNodeId, connections, currentNode, allNodesForLookup ?? env?.ReachableToEnd);
             if (sourceNode == null)
             {
                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Source node {kvp.SourceNodeId} not found for '{kvp.Key}', falling back to static value");
