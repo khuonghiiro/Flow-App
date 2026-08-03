@@ -1501,6 +1501,11 @@ namespace FlowMy.Views.Overlays
                 _webView = null;
             }
 
+            if (!CefSharpEnvironmentManager.IsInitialized)
+            {
+                CefSharpEnvironmentManager.EnsureInitialized();
+            }
+
             _webView = new ChromiumWebBrowser
             {
                 RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext(profileName)

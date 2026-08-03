@@ -1271,6 +1271,11 @@ namespace FlowMy.Views.Overlays
                 var cacheState = LayerAiWebViewCache.GetOrCreateState(_node.Id);
                 if (cacheState.DynamicWebView == null)
                 {
+                    if (!CefSharpEnvironmentManager.IsInitialized)
+                    {
+                        CefSharpEnvironmentManager.EnsureInitialized();
+                    }
+
                     var webView = new ChromiumWebBrowser
                     {
                         RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext("DynamicUi_" + _node.Id),

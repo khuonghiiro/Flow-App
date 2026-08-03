@@ -38,14 +38,6 @@ namespace FlowMy.Views
                 _originalTemplateEffect = border.Effect; // Lưu Effect gốc
                 border.CaptureMouse();
 
-                // ✅ Khởi tạo CefSharp bất đồng bộ sớm nhất khi user bắt đầu kéo node Web/HtmlUi.
-                // Thời gian kéo (~500ms-2s) đủ để pipeline 2-phase (background prep + UI init) hoàn thành.
-                if (FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsCefSharpNodeTypeString(nodeType) &&
-                    !FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
-                {
-                    _ = FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
-                }
-
                 // Tạo ghost preview ngay
                 CreateDragGhost(border, nodeType);
                 Point mousePos = e.GetPosition(WorkflowCanvas);
@@ -170,13 +162,6 @@ namespace FlowMy.Views
         private void CreateNodeFromTemplate(string nodeType, double x, double y)
         {
             if (ViewModel == null) return;
-
-            // Lazy init CefSharp bất đồng bộ nếu node là loại trình duyệt (Web, HtmlUi)
-            if (FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsCefSharpNodeTypeString(nodeType) &&
-                !FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
-            {
-                _ = FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
-            }
 
             var newNode = _templateFactory.Create(nodeType, x, y);
 
@@ -468,6 +453,7 @@ namespace FlowMy.Views
             if (sender is Border border && !_isDraggingFromTemplate && _hoveredTemplate != border)
             {
                 _hoveredTemplate = border;
+
                 // Hiệu ứng hover (scale, shadow, viền) do Style PaletteIconNodeStyle trigger IsMouseOver xử lý.
                 if (border.RenderTransform == null || border.RenderTransform is not System.Windows.Media.ScaleTransform)
                 {

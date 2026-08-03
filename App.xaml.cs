@@ -47,7 +47,7 @@ namespace FlowMy
         #endregion
 
         #region Application Lifecycle
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
 
             try
@@ -60,10 +60,18 @@ namespace FlowMy
 
                 InitializeApplication();
 
-                ShowMainWindow();
+                // ✅ Đợi nạp CefSharp engine hoàn tất trước khi hiển thị MainWindow
+                // Nhờ đó khi MainWindow mở ra, CefSharp đã ready 100% -> 0ms delay khi kéo/mở node trình duyệt sau đó
+                try
+                {
+                    await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+                }
+                catch (Exception cefEx)
+                {
+                    LogError("CefSharp init error on startup", cefEx);
+                }
 
-                // CefSharp sẽ được khởi tạo lazy (on-demand) khi mở workflow hoặc kéo node trình duyệt.
-                // Không khởi tạo ở đây để app khởi động nhanh và tiết kiệm bộ nhớ.
+                ShowMainWindow();
 
                 // Không khởi tạo tray icon khi startup.
                 try

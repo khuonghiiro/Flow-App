@@ -88,25 +88,27 @@ namespace FlowMy.Services.Workflow
 
         /// <summary>
         /// Pipeline khởi tạo 2 pha bất đồng bộ.
+        /// Phase 1: Background thread — chuẩn bị CefSettings (I/O, paths, GPU config).
+        /// Phase 2: UI thread @ Background priority — Cef.Initialize (bắt buộc gọi trên UI thread để match thread ID với Cef.Shutdown).
         /// </summary>
         private static void StartInitializationPipeline(TaskCompletionSource<bool> tcs)
         {
-            // Phase 1: Background thread — chuẩn bị CefSettings (nặng I/O)
             Task.Run(() =>
             {
                 try
                 {
                     var settings = PrepareSettings();
 
-                    // Phase 2: UI thread @ Background priority — Cef.Initialize
                     var app = System.Windows.Application.Current;
-                    if (app == null)
+                    if (app == null || app.Dispatcher == null)
                     {
                         lock (_lock) _initTcs = null;
                         tcs.TrySetResult(false);
                         return;
                     }
 
+                    // Phase 2: Dispatcher.BeginInvoke lên UI Thread (ManagedThreadId 1) ở Normal priority
+                    // Đảm bảo khởi tạo hoàn tất ngay trong quá trình mở ứng dụng trước khi MainWindow hiển thị
                     app.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         try
@@ -115,16 +117,38 @@ namespace FlowMy.Services.Workflow
                             {
                                 if (_isInitialized || Cef.IsInitialized == true)
                                 {
+                                    _isInitialized = true;
                                     _initTcs = null;
                                     tcs.TrySetResult(true);
                                     return;
                                 }
 
+                                // Lấy DPI scale từ Application MainWindow nếu có
+                                try
+                                {
+                                    if (app.MainWindow != null)
+                                    {
+                                        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(app.MainWindow);
+                                        if (dpi.DpiScaleX > 0)
+                                        {
+                                            settings.CefCommandLineArgs["force-device-scale-factor"] =
+                                                dpi.DpiScaleX.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                        }
+                                    }
+                                }
+                                catch { }
+
+                                // KHỞI TẠO CEF TRÊN UI THREAD (ManagedThreadId 1)
                                 Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
                                 _isInitialized = true;
                                 _initTcs = null;
                             }
-                            System.Diagnostics.Debug.WriteLine("[CefSharp] ✅ Initialized on UI thread (lazy, async pipeline)");
+
+                            System.Diagnostics.Debug.WriteLine("[CefSharp] ✅ Initialized on UI thread (App Startup)");
+
+                            // Pre-warm subprocess
+                            PreWarmBrowserSubprocess();
+
                             tcs.TrySetResult(true);
                         }
                         catch (Exception ex)
@@ -133,7 +157,7 @@ namespace FlowMy.Services.Workflow
                             System.Diagnostics.Debug.WriteLine($"[CefSharp] ❌ Init error: {ex.Message}");
                             tcs.TrySetException(ex);
                         }
-                    }), System.Windows.Threading.DispatcherPriority.Background);
+                    }), System.Windows.Threading.DispatcherPriority.Normal);
                 }
                 catch (Exception ex)
                 {
@@ -204,41 +228,13 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Khởi tạo CefSharp đồng bộ trên UI thread (sync fallback).
+        /// Khởi tạo CefSharp đồng bộ (sync fallback).
+        /// Ưu tiên dùng EnsureInitializedAsync().
         /// </summary>
         public static void Initialize()
         {
-            var app = System.Windows.Application.Current;
-            if (app != null && app.Dispatcher != null && !app.Dispatcher.CheckAccess())
-            {
-                app.Dispatcher.Invoke(Initialize);
-                return;
-            }
-
-            lock (_lock)
-            {
-                if (_isInitialized || Cef.IsInitialized == true)
-                    return;
-
-                // DPI phải đọc trên UI thread
-                var settings = PrepareSettings();
-                try
-                {
-                    double dpiScale = 1.0;
-                    if (app?.MainWindow != null)
-                    {
-                        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(app.MainWindow);
-                        if (dpi.DpiScaleX > 0) dpiScale = dpi.DpiScaleX;
-                    }
-                    if (dpiScale > 0)
-                        settings.CefCommandLineArgs["force-device-scale-factor"] = dpiScale.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                }
-                catch { }
-
-                Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
-                _isInitialized = true;
-                _initTcs = null;
-            }
+            if (IsInitialized) return;
+            EnsureInitializedAsync().GetAwaiter().GetResult();
         }
 
         public static Task InitializeAsync() => EnsureInitializedAsync();

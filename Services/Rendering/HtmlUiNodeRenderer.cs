@@ -28,14 +28,14 @@ namespace FlowMy.Services.Rendering
 
             var window = Host as Window;
 
-            // Nếu CefSharp đã init → render ngay
+            // Nếu CefSharp đã init (đã nạp trong lúc mở editor/tạo workflow/import) → render trực tiếp 0ms tức thì
             if (FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
             {
                 RenderHtmlUiNodeDirect(node, htmlNode, window, canvas);
                 return;
             }
 
-            // CefSharp chưa init → tạo placeholder loading, sau đó defer render khi init xong
+            // Chưa init → tạo placeholder loading & swap ngầm khi xong
             var placeholder = CreatePlaceholderBorder(htmlNode);
             placeholder.Tag = node;
             node.Border = placeholder;
@@ -56,23 +56,24 @@ namespace FlowMy.Services.Rendering
 
             RenderPortsForNode(node, canvas);
 
-            // Khi CefSharp init xong, swap placeholder → real browser border
+            // Swap placeholder -> real browser border bất đồng bộ ở Background priority (không block UI drag-drop)
             _ = SwapPlaceholderWhenReady(node, htmlNode, window, canvas, placeholder);
         }
 
         /// <summary>
-        /// Tạo placeholder border hiển thị loading khi CefSharp chưa init.
+        /// Tạo placeholder border hiển thị loading khi CefSharp đang nạp.
         /// </summary>
         private static Border CreatePlaceholderBorder(HtmlUiNode node)
         {
             var loadingText = new TextBlock
             {
-                Text = "⏳ Đang khởi tạo trình duyệt...",
+                Text = "🌐 Đang nạp trình duyệt CefSharp...",
                 Foreground = new SolidColorBrush(Colors.White),
-                FontSize = 14,
+                FontSize = 13,
+                FontWeight = FontWeights.Medium,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Opacity = 0.7
+                Opacity = 0.85
             };
 
             return new Border
@@ -81,7 +82,7 @@ namespace FlowMy.Services.Rendering
                 Height = Math.Max(300, node.Height),
                 MinWidth = 400,
                 MinHeight = 300,
-                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(30, 30, 35)),
                 BorderBrush = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(12),
@@ -95,7 +96,7 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>
-        /// Đợi CefSharp init xong rồi swap placeholder → real HtmlUi node.
+        /// Đợi CefSharp init xong rồi swap placeholder -> real HtmlUi node ở Background priority.
         /// </summary>
         private async System.Threading.Tasks.Task SwapPlaceholderWhenReady(
             WorkflowNode node, HtmlUiNode htmlNode, Window? window, Canvas canvas, Border placeholder)
@@ -104,12 +105,9 @@ namespace FlowMy.Services.Rendering
             {
                 await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
 
-                if (!canvas.Dispatcher.CheckAccess())
-                {
-                    await canvas.Dispatcher.InvokeAsync(() => DoSwap());
-                    return;
-                }
-                DoSwap();
+                // Đẩy việc khởi tạo và gắn HwndHost control về Background DispatcherPriority
+                // để việc thả node và vẽ UI hoàn thành 100% mượt mà (0% lag UI thread)
+                await canvas.Dispatcher.InvokeAsync(() => DoSwap(), System.Windows.Threading.DispatcherPriority.Background);
             }
             catch (Exception ex)
             {

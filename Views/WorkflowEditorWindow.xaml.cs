@@ -510,7 +510,7 @@ namespace FlowMy.Views
 
             // Nếu preferences đã lưu mode=Detached thì reparent panel log sang cửa sổ riêng
             // ngay sau khi cửa sổ chính load xong (defer để CanvasHostGrid đã build visual tree).
-            Loaded += (_, _) =>
+            Loaded += async (_, _) =>
             {
                 SyncExecutionTraceDetachState();
                 SyncLeftMenuForExecutionTraceDockMode();
@@ -520,6 +520,26 @@ namespace FlowMy.Views
                 if (_hwndSource != null)
                 {
                     _hwndSource.AddHook(WndProc);
+                }
+
+                // ✅ Khi mở Editor (tạo new workflow, mở file, import workflow):
+                // Nếu CefSharp chưa init, hiển thị LoadingOverlay trong chớp mắt để nạp CefSharp engine.
+                // Nhờ đó khi người dùng kéo/thả node Web vào canvas sau đó, CefSharp đã ready 100% -> 0ms delay, 0% đơ UI!
+                if (!FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
+                {
+                    try
+                    {
+                        if (LoadingOverlay != null)
+                            LoadingOverlay.Visibility = Visibility.Visible;
+
+                        await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+                    }
+                    catch { }
+                    finally
+                    {
+                        if (LoadingOverlay != null && (ViewModel == null || !ViewModel.IsLoading))
+                            LoadingOverlay.Visibility = Visibility.Collapsed;
+                    }
                 }
             };
             // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.

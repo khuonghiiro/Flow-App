@@ -1945,6 +1945,11 @@ public partial class FloatingWidgetWindow : Window
 
         try
         {
+            if (!FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
+            {
+                await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+            }
+
             _webView = new ChromiumWebBrowser
             {
                 Visibility = Visibility.Collapsed
