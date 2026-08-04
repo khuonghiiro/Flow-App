@@ -241,6 +241,22 @@ namespace FlowMy.Views.Overlays
             }
             // Chỉ disable "ShowAll" khi culling=Low để nhấn mạnh ràng buộc, bật lại ở các mức cao hơn.
             CanvasDisplayModeAllRadio.IsEnabled = !cullingLow;
+
+            // Đồng bộ trạng thái ComboBox màu tùy chọn dựa trên RadioButton được chọn
+            CustomColorKeyComboBox.IsEnabled = ConnectionColorModeCustomRadio.IsChecked == true;
+            BulkTitleColorKeyComboBox.IsEnabled = BulkTitleModeCustomRadio.IsChecked == true;
+            EnergyCustomColorKeyComboBox.IsEnabled = EnergyColorModeCustomRadio.IsChecked == true;
+
+            // Đồng bộ các tùy chọn thuộc Nền nháy (Blink Background)
+            var blinkEnabled = NodeSpinnerBlinkBackgroundCheckBox.IsEnabled && NodeSpinnerBlinkBackgroundCheckBox.IsChecked == true;
+            NodeSpinnerBlinkBackgroundColorComboBox.IsEnabled = blinkEnabled;
+            NodeSpinnerBlinkModeComboBox.IsEnabled = blinkEnabled;
+            NodeSpinnerBlinkIntensitySlider.IsEnabled = blinkEnabled;
+            NodeSpinnerBlinkBaseOpacitySlider.IsEnabled = blinkEnabled;
+            NodeSpinnerBlinkPeakOpacitySlider.IsEnabled = blinkEnabled;
+
+            // Đồng bộ trạng thái Tỉ lệ kích thước Node Spinner
+            NodeSpinnerSizeRatioSlider.IsEnabled = NodeSpinnerScaleWithNodeCheckBox.IsChecked == true;
         }
 
         private static void SelectByTag(ComboBox comboBox, string tag)

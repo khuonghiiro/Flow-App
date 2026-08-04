@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Canvas Control Center"
         Width="980"
-        Height="680"
+        Height="700"
         MinWidth="900"
         MinHeight="620"
         WindowStartupLocation="CenterOwner"
@@ -54,296 +54,348 @@
         </Border>
 
         <TabControl Grid.Row="1" Style="{DynamicResource ModernTabControl}" Background="Transparent">
+            <!-- TAB 1: CANVAS -->
             <TabItem Header="Canvas" Style="{StaticResource HttpTabItemStyle}">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="Hiển thị" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                            <TextBlock Text="Kiểu lưới (Grid type)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <ComboBox x:Name="GridTypeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32">
-                                <ComboBoxItem Content="Không có lưới" Tag="None"/>
-                                <ComboBoxItem Content="Kẻ chấm (Dots)" Tag="Dots"/>
-                                <ComboBoxItem Content="Kẻ liền (Lines)" Tag="Lines"/>
-                            </ComboBox>
-                            <TextBlock Text="Chế độ hiển thị (Display mode)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <WrapPanel Margin="0,6,0,10">
-                                <RadioButton x:Name="CanvasDisplayModeAllRadio" Content="Hiển thị toàn bộ" Tag="ShowAll" GroupName="CanvasDisplayModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="CanvasDisplayModeViewportRadio" Content="Hiển thị theo màn" Tag="ViewportOnly" GroupName="CanvasDisplayModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                            </WrapPanel>
-                            <TextBlock Text="Hiệu năng culling" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <WrapPanel Margin="0,6,0,0">
-                                <RadioButton x:Name="CullingProfileLowRadio" Content="Máy yếu" Tag="Low" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="CullingProfileNormalRadio" Content="Máy bình thường" Tag="Normal" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="CullingProfileHighRadio" Content="Máy mạnh" Tag="High" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                            </WrapPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="Hiển thị" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <TextBlock Text="Kiểu lưới (Grid type)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="GridTypeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32">
+                                    <ComboBoxItem Content="Không có lưới" Tag="None"/>
+                                    <ComboBoxItem Content="Kẻ chấm (Dots)" Tag="Dots"/>
+                                    <ComboBoxItem Content="Kẻ liền (Lines)" Tag="Lines"/>
+                                </ComboBox>
+                                <TextBlock Text="Chế độ hiển thị (Display mode)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <WrapPanel Margin="0,6,0,10">
+                                    <RadioButton x:Name="CanvasDisplayModeAllRadio" Content="Hiển thị toàn bộ" Tag="ShowAll" GroupName="CanvasDisplayModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                    <RadioButton x:Name="CanvasDisplayModeViewportRadio" Content="Hiển thị theo màn" Tag="ViewportOnly" GroupName="CanvasDisplayModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                </WrapPanel>
+                                <TextBlock Text="Hiệu năng culling" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <WrapPanel Margin="0,6,0,0">
+                                    <RadioButton x:Name="CullingProfileLowRadio" Content="Máy yếu" Tag="Low" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                    <RadioButton x:Name="CullingProfileNormalRadio" Content="Máy bình thường" Tag="Normal" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                    <RadioButton x:Name="CullingProfileHighRadio" Content="Máy mạnh" Tag="High" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                </WrapPanel>
 
-                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Giao diện Node (Node Appearance)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
-                                    <ComboBox x:Name="NodeAppearanceModeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,6" Height="32">
-                                        <ComboBoxItem Content="Màu đặc (Solid)" Tag="Solid"/>
-                                        <ComboBoxItem Content="Kính lỏng (Liquid Glass)" Tag="LiquidGlass"/>
-                                    </ComboBox>
-                                    <TextBlock Text="Liquid Glass: node hiển thị trong suốt với hiệu ứng kính mờ, tint màu nhẹ theo node. Phù hợp với mọi theme."
-                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Giao diện Node (Node Appearance)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                        <ComboBox x:Name="NodeAppearanceModeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,6" Height="32">
+                                            <ComboBoxItem Content="Màu đặc (Solid)" Tag="Solid"/>
+                                            <ComboBoxItem Content="Kính lỏng (Liquid Glass)" Tag="LiquidGlass"/>
+                                        </ComboBox>
+                                        <TextBlock Text="Liquid Glass: node hiển thị trong suốt với hiệu ứng kính mờ, tint màu nhẹ theo node. Phù hợp với mọi theme."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
 
-                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Đồng bộ kết thúc luồng (Final Sync)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
-                                    <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="StrictFinalSyncEnabledCheckBox" Content="Strict Final Sync (code xong thì chốt UI và flush dữ liệu cuối)" Margin="0,0,0,6"/>
-                                    <TextBlock Text="Bật để ép đồng bộ UI ngay khi luồng code kết thúc. Nếu tắt, UI có thể mượt hơn nhẹ nhưng trạng thái/result có thể trễ một nhịp."
-                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
-                        <StackPanel>
-                            <TextBlock Text="GPU Rendering (tăng tốc GPU)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                            <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="GpuEnabledCheckBox" Content="Bật GPU rendering" Margin="0,0,0,10"/>
-                            <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="CacheNodeCheckBox" Content="Cache node (sẽ làm giảm chất lượng hiển thị xuống)" Margin="0,0,0,10"/>
-                            <TextBlock Text="Chất lượng GPU (GPU quality)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <ComboBox x:Name="GpuQualityComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,0" Height="32"/>
-
-                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,10" Padding="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Hiệu ứng giao diện (UI Animations)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
-                                    <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="UiAnimationsEnabledCheckBox" Content="Bật animation controls" Margin="0,0,0,6"/>
-                                    <TextBlock Text="Bật hiệu ứng chuyển động trên các nút, checkbox, radio button, v.v. Tắt để giảm tải GPU/CPU trên máy cấu hình thấp."
-                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                                    <TextBlock Text="💡 Khi tắt: các hiệu ứng như pop-in, fade, scale sẽ bị bỏ qua — giao diện vẫn đẹp nhưng phản hồi nhanh hơn."
-                                               Foreground="{DynamicResource TextBrush}" Opacity="0.5" FontSize="11" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="Kết nối" Style="{StaticResource HttpTabItemStyle}">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="Đường nối &amp; Animation" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                            <TextBlock Text="Kiểu đường nối (Line style)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <ComboBox x:Name="LineStyleComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32"/>
-                            <TextBlock Text="Chế độ animation (Animation mode)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <WrapPanel Margin="0,6,0,0">
-                                <RadioButton x:Name="AnimationModeAnimatedRadio" Content="Bật Animation" Tag="Animated" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="AnimationModeOffRadio" Content="Tắt Animation" Tag="Off" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="AnimationModeDashedRadio" Content="Hiển thị nét đứt" Tag="Dashed" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                            </WrapPanel>
-
-                            <!-- Thông báo hiển thị khi "Bật Animation" bị disable do Cache Node đang bật -->
-                            <Border x:Name="AnimationDisabledNotice"
-                                    Visibility="Collapsed"
-                                    Background="{DynamicResource CardColor}"
-                                    BorderBrush="{DynamicResource WarningBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="8,6"
-                                    Margin="0,8,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="⚠ Animation đang bị tắt vì 'Cache node' đang bật."
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               TextWrapping="Wrap" FontSize="12"/>
-                                    <TextBlock Text="Cache node dùng BitmapCache để node được raster sẵn một lần → tăng FPS nhưng line animation (energy dot) chạy trên connection sẽ không đồng bộ được với bitmap đã cache, dẫn tới giật/nháy."
-                                               Foreground="{DynamicResource TextBrush}" Opacity="0.75"
-                                               TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
-                                    <TextBlock Text="👉 Để bật lại: mở tab 'Canvas' → bỏ tích 'Cache node'."
-                                               Foreground="{DynamicResource TextBrush}" Opacity="0.9"
-                                               TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
-                        <StackPanel>
-                            <TextBlock Text="Màu đường nối (Connection color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                            <WrapPanel Margin="0,0,0,10">
-                                <RadioButton x:Name="ConnectionColorModeNodeRadio" Content="Màu theo node" Tag="NodeColor" GroupName="ConnectionColorModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="ConnectionColorModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" GroupName="ConnectionColorModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                            </WrapPanel>
-                            <ComboBox x:Name="CustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,0" Height="32"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="Tiêu đề + Energy" Style="{StaticResource HttpTabItemStyle}">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="380"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="Màu tiêu đề hàng loạt (Bulk title color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                            <WrapPanel Margin="0,0,0,10">
-                                <RadioButton x:Name="BulkTitleModeNodeRadio" Content="Màu theo node" Tag="NodeColor" GroupName="BulkTitleModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                                <RadioButton x:Name="BulkTitleModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" GroupName="BulkTitleModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
-                            </WrapPanel>
-                            <ComboBox x:Name="BulkTitleColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,0" Height="32"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="80"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Hiệu ứng chạy luồng (Execution energy)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-
-                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal">
-                                <StackPanel Width="220" Margin="0,0,8,0">
-                                    <RadioButton x:Name="EnergyColorModeFollowLineRadio" Content="Theo màu line" Tag="FollowLineColor" GroupName="EnergyColorModeGroup" Margin="0,0,0,4" Foreground="{DynamicResource TextBrush}"/>
-                                    <RadioButton x:Name="EnergyColorModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" Foreground="{DynamicResource TextBrush}" GroupName="EnergyColorModeGroup"/>
-                                </StackPanel>
-                                <ComboBox x:Name="EnergyCustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Width="220" Height="32"/>
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Đồng bộ kết thúc luồng (Final Sync)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                        <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="StrictFinalSyncEnabledCheckBox" Content="Strict Final Sync (code xong thì chốt UI và flush dữ liệu cuối)" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Bật để ép đồng bộ UI ngay khi luồng code kết thúc. Nếu tắt, UI có thể mượt hơn nhẹ nhưng trạng thái/result có thể trễ một nhịp."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="GPU Rendering (tăng tốc GPU)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="GpuEnabledCheckBox" Content="Bật GPU rendering" Margin="0,0,0,10"/>
+                                <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="CacheNodeCheckBox" Content="Cache node (sẽ làm giảm chất lượng hiển thị xuống)" Margin="0,0,0,10"/>
+                                <TextBlock Text="Chất lượng GPU (GPU quality)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="GpuQualityComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,0" Height="32"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Khoảng cách chấm (Gap)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
-                            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="EnergyDotGapValueText" Text="8.0" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
-                            <Slider Grid.Row="3" Grid.ColumnSpan="2" x:Name="EnergyDotGapSlider" Minimum="2" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="False"/>
-
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Độ dày cộng thêm (Thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
-                            <TextBlock Grid.Row="4" Grid.Column="1" x:Name="EnergyDotThicknessValueText" Text="0.8" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
-                            <Slider Grid.Row="5" Grid.ColumnSpan="2" x:Name="EnergyDotThicknessSlider" Minimum="0" Maximum="8" TickFrequency="0.2" IsSnapToTickEnabled="False"/>
-
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Tốc độ chạy (Run speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
-                            <TextBlock Grid.Row="6" Grid.Column="1" x:Name="EnergyRunSpeedValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
-                            <Slider Grid.Row="7" Grid.ColumnSpan="2" x:Name="EnergyRunSpeedSlider" Minimum="0.2" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
-
-                            <CheckBox Grid.Row="8" Grid.ColumnSpan="2" x:Name="AdvancedFlowStyleCheckBox" Content="Style luồng nâng cao" Foreground="{DynamicResource TextBrush}" Margin="0,30,0,0" FontWeight="SemiBold"/>
-                        </Grid>
-                    </Border>
-                </Grid>
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,10" Padding="0,10,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Hiệu ứng giao diện (UI Animations)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                        <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="UiAnimationsEnabledCheckBox" Content="Bật animation controls" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Bật hiệu ứng chuyển động trên các nút, checkbox, radio button, v.v. Tắt để giảm tải GPU/CPU trên máy cấu hình thấp."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                        <TextBlock Text="💡 Khi tắt: các hiệu ứng như pop-in, fade, scale sẽ bị bỏ qua — giao diện vẫn đẹp nhưng phản hồi nhanh hơn."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.5" FontSize="11" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
             </TabItem>
 
+            <!-- TAB 2: KẾT NỐI -->
+            <TabItem Header="Kết nối" Style="{StaticResource HttpTabItemStyle}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="Đường nối &amp; Animation" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <TextBlock Text="Kiểu đường nối (Line style)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="LineStyleComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32"/>
+                                <TextBlock Text="Chế độ animation (Animation mode)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <WrapPanel Margin="0,6,0,0">
+                                    <RadioButton x:Name="AnimationModeAnimatedRadio" Content="Bật Animation" Tag="Animated" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                    <RadioButton x:Name="AnimationModeOffRadio" Content="Tắt Animation" Tag="Off" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                    <RadioButton x:Name="AnimationModeDashedRadio" Content="Hiển thị nét đứt" Tag="Dashed" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                </WrapPanel>
+
+                                <!-- Thông báo hiển thị khi "Bật Animation" bị disable do Cache Node đang bật -->
+                                <Border x:Name="AnimationDisabledNotice"
+                                        Visibility="Collapsed"
+                                        Background="{DynamicResource CardColor}"
+                                        BorderBrush="{DynamicResource WarningBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,6"
+                                        Margin="0,8,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="⚠ Animation đang bị tắt vì 'Cache node' đang bật."
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   TextWrapping="Wrap" FontSize="12"/>
+                                        <TextBlock Text="Cache node dùng BitmapCache để node được raster sẵn một lần → tăng FPS nhưng line animation (energy dot) chạy trên connection sẽ không đồng bộ được với bitmap đã cache, dẫn tới giật/nháy."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.75"
+                                                   TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
+                                        <TextBlock Text="👉 Để bật lại: mở tab 'Canvas' → bỏ tích 'Cache node'."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.9"
+                                                   TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Màu đường nối (Connection color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="170"/>
+                                    </Grid.ColumnDefinitions>
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <RadioButton x:Name="ConnectionColorModeNodeRadio" Content="Theo màu node" Tag="NodeColor" GroupName="ConnectionColorModeGroup" Margin="0,0,12,0" Foreground="{DynamicResource TextBrush}"/>
+                                        <RadioButton x:Name="ConnectionColorModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" GroupName="ConnectionColorModeGroup" Foreground="{DynamicResource TextBrush}"/>
+                                    </WrapPanel>
+                                    <ComboBox Grid.Column="1" x:Name="CustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Height="32"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 3: TIÊU ĐỀ + ENERGY -->
+            <TabItem Header="Tiêu đề + Energy" Style="{StaticResource HttpTabItemStyle}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Card: Bulk Title Color -->
+                        <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="Màu tiêu đề hàng loạt (Bulk title color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="160"/>
+                                    </Grid.ColumnDefinitions>
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <RadioButton x:Name="BulkTitleModeNodeRadio" Content="Theo màu node" Tag="NodeColor" GroupName="BulkTitleModeGroup" Margin="0,0,10,0" Foreground="{DynamicResource TextBrush}"/>
+                                        <RadioButton x:Name="BulkTitleModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" GroupName="BulkTitleModeGroup" Foreground="{DynamicResource TextBrush}"/>
+                                    </WrapPanel>
+                                    <ComboBox Grid.Column="1" x:Name="BulkTitleColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Height="32"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Right Card: Execution Energy -->
+                        <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Hiệu ứng chạy luồng (Execution energy)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="160"/>
+                                    </Grid.ColumnDefinitions>
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <RadioButton x:Name="EnergyColorModeFollowLineRadio" Content="Theo màu line" Tag="FollowLineColor" GroupName="EnergyColorModeGroup" Margin="0,0,10,0" Foreground="{DynamicResource TextBrush}"/>
+                                        <RadioButton x:Name="EnergyColorModeCustomRadio" Content="Tùy chọn" Tag="CustomColor" Foreground="{DynamicResource TextBrush}" GroupName="EnergyColorModeGroup"/>
+                                    </WrapPanel>
+                                    <ComboBox Grid.Column="1" x:Name="EnergyCustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Height="32"/>
+                                </Grid>
+
+                                <!-- Sliders with side-by-side value badges -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="48"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Khoảng cách chấm (Gap)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" x:Name="EnergyDotGapSlider" Minimum="2" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                        <TextBlock x:Name="EnergyDotGapValueText" Text="8.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="48"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Độ dày cộng thêm (Thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" x:Name="EnergyDotThicknessSlider" Minimum="0" Maximum="8" TickFrequency="0.2" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                        <TextBlock x:Name="EnergyDotThicknessValueText" Text="0.8" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="48"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Tốc độ chạy (Run speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" x:Name="EnergyRunSpeedSlider" Minimum="0.2" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                        <TextBlock x:Name="EnergyRunSpeedValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                                    <StackPanel>
+                                        <CheckBox x:Name="AdvancedFlowStyleCheckBox" Content="Style luồng nâng cao" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="💡 Bật để mở thêm Tab 'Style node chạy' khi cần cấu hình viền xoay và nháy nền."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.55" FontSize="11" Margin="20,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Collapsed by default -->
             <TabItem Header="Energy nâng cao" Style="{StaticResource HttpTabItemStyle}" Visibility="Collapsed">
                 <Grid Margin="10">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
-                            <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="80"/>
-                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Text + Runtime (nâng cao)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <TextBlock Text="Text thay cho chấm (để trống = chỉ chấm)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                <TextBox x:Name="EnergyDotTextTextBox" Style="{DynamicResource BaseTextBoxV2}" Margin="0,0,0,10"/>
 
-                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Text + Runtime (nâng cao)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Text thay cho chấm (để trống = chỉ chấm)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                            <TextBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="EnergyDotTextTextBox" Style="{DynamicResource BaseTextBoxV2}" Margin="0,4,0,8"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="48"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Giây/vòng xoay (Spin sec)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="8" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                        <TextBlock x:Name="EnergySpinSpeedValueText" Text="0.7" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Giây/vòng xoay (Spin sec)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
-                            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="EnergySpinSpeedValueText" Text="0.7" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
-                            <Slider Grid.Row="4" Grid.ColumnSpan="2" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="8" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
-
-                            <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
-                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyDotRotateCheckBox" Content="Text xoay 360 độ" Margin="0,0,16,0"/>
-                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyMeteorModeCheckBox" Content="✨ Hiệu ứng phát sáng (Glow Pulse)" FontWeight="SemiBold"/>
-                            </StackPanel>
-                            <TextBlock Grid.Row="6" Grid.ColumnSpan="2" Text="Tạo hiệu ứng phát sáng nhấp nháy mượt mà theo đường nối."
-                                       Foreground="{DynamicResource TextBrush}" Opacity="0.7" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="7" Grid.ColumnSpan="2" Text="💡 Cần GPU ON để hiệu ứng glow hoạt động tốt nhất."
-                                       Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,12"/>
-
-                            <Border Grid.Row="8" Grid.ColumnSpan="2" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,0,0,12" Padding="0,12,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="✨ Cấu hình Glow Pulse" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
-                                    
-                                    <TextBlock Text="Độ sáng glow (Glow intensity)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="60"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Slider x:Name="MeteorTailLengthSlider" Minimum="5" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="False"/>
-                                        <TextBlock x:Name="MeteorTailLengthValueText" Text="15" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
-                                    </Grid>
-
-                                    <TextBlock Text="Bán kính glow (Glow radius)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="60"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Slider x:Name="MeteorTailBlurSlider" Minimum="3" Maximum="25" TickFrequency="1" IsSnapToTickEnabled="False"/>
-                                        <TextBlock x:Name="MeteorTailBlurValueText" Text="10" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
-                                    </Grid>
-
-                                    <TextBlock Text="Tốc độ nhấp nháy (Pulse speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="60"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Slider x:Name="MeteorTailOpacitySlider" Minimum="0.5" Maximum="3.0" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
-                                        <TextBlock x:Name="MeteorTailOpacityValueText" Text="1.5" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
-                                    </Grid>
-
-                                    <TextBlock Text="Độ dày glow (Glow thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="60"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Slider x:Name="MeteorTailThicknessSlider" Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="False"/>
-                                        <TextBlock x:Name="MeteorTailThicknessValueText" Text="4" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
-                                    </Grid>
-
-                                    <TextBlock Text="⚡ Preset nhanh" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,8,0,8"/>
-                                    <WrapPanel>
-                                        <Button Content="Nhẹ" Tag="Light" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
-                                        <Button Content="Vừa" Tag="Medium" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
-                                        <Button Content="Mạnh" Tag="Strong" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
-                                        <Button Content="Rất mạnh" Tag="VeryStrong" Click="MeteorPresetButton_Click" MinWidth="70" Style="{DynamicResource SecondaryButton}"/>
-                                    </WrapPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="EnergyDotRotateCheckBox" Content="Text xoay 360 độ" Margin="0,0,16,0"/>
+                                    <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="EnergyMeteorModeCheckBox" Content="✨ Hiệu ứng phát sáng (Glow Pulse)" FontWeight="SemiBold"/>
                                 </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Border>
+                                <TextBlock Text="Tạo hiệu ứng phát sáng nhấp nháy mượt mà theo đường nối."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.7" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                <TextBlock Text="💡 Cần GPU ON để hiệu ứng glow hoạt động tốt nhất."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,12"/>
+
+                                <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="✨ Cấu hình Glow Pulse" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="170"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Độ sáng glow (Glow intensity)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Slider Grid.Column="1" x:Name="MeteorTailLengthSlider" Minimum="5" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="MeteorTailLengthValueText" Text="15" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="170"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Bán kính glow (Glow radius)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Slider Grid.Column="1" x:Name="MeteorTailBlurSlider" Minimum="3" Maximum="25" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="MeteorTailBlurValueText" Text="10" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="170"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Tốc độ nhấp nháy (Pulse speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Slider Grid.Column="1" x:Name="MeteorTailOpacitySlider" Minimum="0.5" Maximum="3.0" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="MeteorTailOpacityValueText" Text="1.5" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="170"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Độ dày glow (Glow thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Slider Grid.Column="1" x:Name="MeteorTailThicknessSlider" Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="MeteorTailThicknessValueText" Text="4" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <TextBlock Text="⚡ Preset nhanh" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,8,0,8"/>
+                                        <WrapPanel>
+                                            <Button Content="Nhẹ" Tag="Light" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
+                                            <Button Content="Vừa" Tag="Medium" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
+                                            <Button Content="Mạnh" Tag="Strong" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
+                                            <Button Content="Rất mạnh" Tag="VeryStrong" Click="MeteorPresetButton_Click" MinWidth="70" Style="{DynamicResource SecondaryButton}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
 
+            <!-- Collapsed by default, enabled via AdvancedFlowStyleCheckBox -->
             <TabItem Header="Style node chạy" Style="{StaticResource HttpTabItemStyle}" x:Name="StyleNodeRunningTabItem" Visibility="Collapsed">
-                <Grid >
+                <Grid>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <Border Margin="10" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
                             <StackPanel>
@@ -356,12 +408,14 @@
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.8" FontSize="11" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
+
                                 <CheckBox x:Name="NodeSpinnerArcModeCheckBox"
                                           Content="Vòng quay 1 góc (arc mode như hiện tại)"
                                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
                                 <CheckBox x:Name="NodeSpinnerMultiColorCheckBox"
                                           Content="Vòng quay nhiều màu"
                                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -380,6 +434,7 @@
                                         <ComboBoxItem Tag="CoralBrush" Content="Cam san hô nhạt"/>
                                     </ComboBox>
                                 </Grid>
+
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -403,34 +458,53 @@
                                         </StackPanel>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Cường độ nháy nền" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerBlinkIntensityValueText" Text="0.65" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Cường độ nháy nền" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerBlinkIntensityValueText" Text="0.65" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerBlinkIntensitySlider" Minimum="0.10" Maximum="1.00" TickFrequency="0.01" Height="28"/>
                                         <TextBlock Text="Tăng để nền nháy sáng hơn và nổi bật hơn."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Grid>
+
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Opacity nền nháy" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerBlinkBaseOpacityValueText" Text="0.16" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Opacity nền nháy" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerBlinkBaseOpacityValueText" Text="0.16" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerBlinkBaseOpacitySlider" Minimum="0.00" Maximum="1.00" TickFrequency="0.01" Height="28"/>
                                         <TextBlock Text="Điều chỉnh độ trong nền, độc lập với cường độ nháy."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Độ sáng đỉnh (Peak)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerBlinkPeakOpacityValueText" Text="0.60" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Độ sáng đỉnh (Peak)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerBlinkPeakOpacityValueText" Text="0.60" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerBlinkPeakOpacitySlider" Minimum="0.02" Maximum="1.00" TickFrequency="0.01" Height="28"/>
                                         <TextBlock Text="Mức sáng cao nhất ở pha nháy giây lẻ."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
@@ -470,19 +544,31 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Kích thước (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerSizeValueText" Text="26.0" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Kích thước (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerSizeValueText" Text="26.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerSizeSlider" Minimum="10" Maximum="220" TickFrequency="1" Height="28"/>
                                         <TextBlock Text="Cho phép lớn hơn node để làm hiệu ứng nổi bật."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Độ dày nét" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerStrokeThicknessValueText" Text="3.2" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Độ dày nét" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerStrokeThicknessValueText" Text="3.2" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerStrokeThicknessSlider" Minimum="1" Maximum="12" TickFrequency="0.2" Height="28"/>
                                         <TextBlock Text="Nét dày hơn sẽ dễ nhìn trên nền sáng."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
@@ -495,10 +581,16 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Tốc độ animation viền (giây/chu kỳ)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerSpinSecondsValueText" Text="1.1" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Tốc độ animation viền (giây/chu kỳ)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerSpinSecondsValueText" Text="1.1" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerSpinSecondsSlider" Minimum="0.2" Maximum="6" TickFrequency="0.1" Height="28"/>
                                         <TextBlock Text="Số càng nhỏ thì viền chạy càng nhanh."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
@@ -507,10 +599,16 @@
                                         <CheckBox x:Name="NodeSpinnerScaleWithNodeCheckBox"
                                                   Content="Kích thước theo tỉ lệ node"
                                                   Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
-                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
-                                            <TextBlock Text="Tỉ lệ" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                            <TextBlock x:Name="NodeSpinnerSizeRatioValueText" Text="0.32" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
-                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Tỉ lệ" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
+                                                <TextBlock x:Name="NodeSpinnerSizeRatioValueText" Text="0.32" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
                                         <Slider x:Name="NodeSpinnerSizeRatioSlider" Minimum="0.12" Maximum="1.8" TickFrequency="0.01" Height="28"/>
                                         <TextBlock Text="Tỉ lệ có thể > 1 để vượt kích thước node."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>

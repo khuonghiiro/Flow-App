@@ -729,56 +729,55 @@
                     <TabItem Header="Cài đặt &amp; Đầu ra" Style="{StaticResource HttpTabItemStyle}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="0,12,0,0">
-                                <!-- Timeout & Display Settings Card -->
+                                <!-- System Config Card (Timeout + Title Display + Title Color) -->
                                 <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
+                                    <StackPanel>
                                         <!-- Timeout -->
-                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12">
+                                        <StackPanel Margin="0,0,0,10">
                                             <TextBlock Text="Timeout (giây):" Style="{DynamicResource DialogLabelText}"/>
                                             <TextBox Text="{Binding TimeoutSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{DynamicResource BaseTextBoxV2}"
-                                                     Height="32" Width="120" HorizontalAlignment="Left"/>
+                                                     Height="32" Width="140" HorizontalAlignment="Left"/>
                                         </StackPanel>
 
-                                        <!-- Title Display Mode -->
-                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12">
-                                            <TextBlock Text="Hiển thị tiêu đề:" Style="{DynamicResource DialogLabelText}"/>
-                                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-                                        </StackPanel>
+                                        <!-- Title Display Mode & Title Color in 2 Equal Columns -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <!-- Title Color -->
-                                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4,0,0">
-                                            <TextBlock Text="Màu tiêu đề Node:" Style="{DynamicResource DialogLabelText}"/>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                            <!-- Title Display Mode -->
+                                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                <TextBlock Text="Hiển thị tiêu đề:" Style="{DynamicResource DialogLabelText}"/>
+                                                <ComboBox x:Name="TitleDisplayModeComboBox" Height="32"
                                                           Style="{DynamicResource BaseComboBox}"
-                                                          ItemsSource="{Binding TitleColorOptions}"
-                                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                                                <Border x:Name="TitleColorPreview" Grid.Column="1"
-                                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
-                                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Grid>
+                                                          ItemsSource="{Binding TitleDisplayModeOptions}"
+                                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                                            </StackPanel>
+
+                                            <!-- Title Color -->
+                                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                                <TextBlock Text="Màu tiêu đề Node:" Style="{DynamicResource DialogLabelText}"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding TitleColorOptions}"
+                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                              SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                                    <Border x:Name="TitleColorPreview" Grid.Column="1"
+                                                            Width="32" Height="32" CornerRadius="6" Margin="6,0,0,0"
+                                                            BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
                                 </Border>
 
                                 <!-- Inputs (hidden container needed by base class) -->
