@@ -56,6 +56,7 @@ namespace FlowMy.Services
             services.AddSingleton<OrthogonalGeometryGenerator>();
             services.AddSingleton<StraightGeometryGenerator>();
             services.AddSingleton<OrthogonalV2GeometryGenerator>();
+            services.AddSingleton<CircuitBoardGeometryGenerator>();
 
             // Rendering
             services.AddScoped<PortRenderer>();

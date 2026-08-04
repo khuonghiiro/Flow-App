@@ -98,6 +98,7 @@ namespace FlowMy.Services.Rendering
         private readonly IPathGeometryGenerator _orthogonal;
         private readonly IPathGeometryGenerator _straight;
         private readonly OrthogonalV2GeometryGenerator _orthogonalV2;
+        private readonly CircuitBoardGeometryGenerator _circuitBoard;
 
         // Windy (gió thổi) animation state
         private EventHandler? _windRenderingHandler;
@@ -116,13 +117,15 @@ namespace FlowMy.Services.Rendering
             BezierGeometryGenerator bezier,
             OrthogonalGeometryGenerator orthogonal,
             StraightGeometryGenerator straight,
-            OrthogonalV2GeometryGenerator orthogonalV2)
+            OrthogonalV2GeometryGenerator orthogonalV2,
+            CircuitBoardGeometryGenerator circuitBoard)
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
             _bezier = bezier ?? throw new ArgumentNullException(nameof(bezier));
             _orthogonal = orthogonal ?? throw new ArgumentNullException(nameof(orthogonal));
             _straight = straight ?? throw new ArgumentNullException(nameof(straight));
             _orthogonalV2 = orthogonalV2 ?? throw new ArgumentNullException(nameof(orthogonalV2));
+            _circuitBoard = circuitBoard ?? throw new ArgumentNullException(nameof(circuitBoard));
         }
 
         /// <summary>
@@ -345,6 +348,7 @@ namespace FlowMy.Services.Rendering
                 ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
                 ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
                 ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
+                ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
                 _ => _bezier.Generate(start, end, startDirection, endDirection),
             };
 
@@ -502,6 +506,7 @@ namespace FlowMy.Services.Rendering
                     ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
                     ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
                     ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
+                    ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
                     _ => _bezier.Generate(start, end, startDirection, endDirection),
                 };
 
@@ -1248,6 +1253,7 @@ namespace FlowMy.Services.Rendering
                 ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startPortPosition, endPortPosition),
                 ConnectionLineStyle.Windy => _bezier.Generate(start, end, startPortPosition, endPortPosition),
                 ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startPortPosition, endPortPosition),
                 _ => _bezier.Generate(start, end, startPortPosition, endPortPosition),
             };
 

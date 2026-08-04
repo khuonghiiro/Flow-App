@@ -59,7 +59,8 @@ namespace FlowMy.Views.Overlays
                 ["Arc"] = "Cung tròn (Arc)",
                 ["RadialFanout"] = "Tỏa quạt (Radial / Fan-out)",
                 ["Windy"] = "Gió thổi (Windy)",
-                ["OrthogonalV2"] = "Vuông góc thông minh (V2)"
+                ["OrthogonalV2"] = "Vuông góc thông minh (V2)",
+                ["CircuitBoard"] = "Mạch điện PCB (Circuit Board)"
             };
 
             foreach (var item in styles)

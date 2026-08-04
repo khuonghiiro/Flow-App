@@ -263,6 +263,21 @@ namespace FlowMy.Views
             SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
+        /// <summary>
+        /// Chọn style Circuit Board (mạch điện PCB 45 độ, tránh node)
+        /// </summary>
+        private void LineStyle_CircuitBoard_Click(object sender, RoutedEventArgs e)
+        {
+            _connectionLineStyle = ConnectionLineStyle.CircuitBoard;
+            if (ViewModel != null)
+            {
+                ViewModel.ConnectionLineStyle = ConnectionLineStyle.CircuitBoard;
+            }
+            UpdateAllConnectionPaths();
+            RefreshConditionalDiamondLineStyles();
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
+        }
+
         // NOTE: UpdateAllConnectionPaths đã được tách sang Services/Rendering/ConnectionRenderer
 
         /// <summary>

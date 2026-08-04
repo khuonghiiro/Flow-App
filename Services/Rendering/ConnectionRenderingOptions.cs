@@ -45,7 +45,10 @@ namespace FlowMy.Services.Rendering
         Windy,
 
         /// <summary>Vuông góc thông minh – tránh node bằng A* obstacle avoidance.</summary>
-        OrthogonalV2
+        OrthogonalV2,
+
+        /// <summary>Kiểu đường mạch điện PCB – đi theo các góc 45 và 90 độ, né node thông minh bằng A* avoidance.</summary>
+        CircuitBoard
     }
 }
 

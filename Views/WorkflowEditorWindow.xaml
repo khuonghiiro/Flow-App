@@ -4138,7 +4138,8 @@ Tag="ListOut">
                             <ContextMenu>
                                 <MenuItem Header="Bezier (Cong mượt)" Click="LineStyle_Bezier_Click"/>
                                 <MenuItem Header="Vuông góc (Orthogonal)" Click="LineStyle_Orthogonal_Click"/>
-                                <!-- <MenuItem Header="Vuông góc thông minh (Orthogonal V2)" Click="LineStyle_OrthogonalV2_Click"/> -->
+                                <MenuItem Header="Vuông góc thông minh (Orthogonal V2)" Click="LineStyle_OrthogonalV2_Click"/>
+                                <MenuItem Header="Mạch điện PCB (Circuit Board 45°)" Click="LineStyle_CircuitBoard_Click"/>
                                 <MenuItem Header="Thẳng (Straight)" Click="LineStyle_Straight_Click"/>
                                 <Separator/>
                                 <MenuItem Header="Vuông góc bo tròn (Smooth-Orthogonal)" Click="LineStyle_SmoothOrthogonal_Click"/>

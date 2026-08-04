@@ -119,7 +119,8 @@ namespace FlowMy.ViewModels
             new ConnectionLineStyleOption("Arc", "Cung tròn (Arc)"),
             new ConnectionLineStyleOption("RadialFanout", "Tỏa quạt (Radial / Fan-out)"),
             new ConnectionLineStyleOption("Windy", "Gió thổi (Windy)"),
-            new ConnectionLineStyleOption("OrthogonalV2", "Vuông góc thông minh (Orthogonal V2)")
+            new ConnectionLineStyleOption("OrthogonalV2", "Vuông góc thông minh (Orthogonal V2)"),
+            new ConnectionLineStyleOption("CircuitBoard", "Mạch điện PCB (Circuit Board)")
         };
 
         /// <summary>
