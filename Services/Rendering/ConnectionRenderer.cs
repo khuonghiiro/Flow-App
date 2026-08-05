@@ -2240,6 +2240,22 @@ namespace FlowMy.Services.Rendering
                     return true;
             }
 
+            foreach (var bodyContainer in vm.Nodes.OfType<BodyContainerNode>())
+            {
+                var rect = new Rect(bodyContainer.X, bodyContainer.Y, bodyContainer.BodyWidth, bodyContainer.BodyHeight);
+                rect.Inflate(padding, padding);
+                if (rect.Contains(p))
+                    return true;
+            }
+
+            foreach (var actionCanvas in vm.Nodes.OfType<ActionCanVasNode>())
+            {
+                var rect = new Rect(actionCanvas.X, actionCanvas.Y, actionCanvas.BodyWidth, actionCanvas.BodyHeight);
+                rect.Inflate(padding, padding);
+                if (rect.Contains(p))
+                    return true;
+            }
+
             return false;
         }
 
