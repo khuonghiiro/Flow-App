@@ -1,5 +1,6 @@
 using FlowMy.Controls;
 using FlowMy.Converters;
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Workflow;
@@ -257,55 +258,7 @@ namespace FlowMy.Views
         /// </summary>
         private string GetIconNameForNodeType(string nodeType)
         {
-            return nodeType switch
-            {
-                "Start" => "play duotone-regular",
-                "End" => "flag-checkered sharp-duotone-solid",
-                "Input" => "left-to-dotted-line duotone-regular",
-                "Output" => "right-to-dotted-line duotone-regular",
-                "IfElse" => "list-tree sharp-light",
-                "Loop" => "arrows-spin duotone",
-                "Break" => "circle-stop duotone",
-                "Continue" => "diagram-predecessor duotone-light",
-                "Delay" => "timer regular",
-                "Keyboard" => "keyboard duotone",
-                "KeyPressEvent" => "key duotone-regular",
-                "HotkeyPressEvent" => "keyboard duotone",
-                "MouseEvent" => "computer-mouse duotone",
-                "ScreenPosition" => "crosshairs light",
-                "ScreenCapture" => "camera-viewfinder duotone-light",
-                "TextScan" => "camera-circle-ellipsis duotone-light",
-                "EmbedApplicationNode" => "desktop-arrow-down light",
-                "StringSplit" => "scissors light",
-                "ListOut" => "list-radio regular",
-                "AssignData" => "arrows-left-right duotone",
-                "MediaGallery" => "image-stack duotone",
-                "ImageProcessing" => "adobe_pts Custom-icons.color",
-                "VideoProcessing" => "circle-video sharp-light",
-                "Code" => "code duotone-regular",
-                "HtmlUi" => "html5 brands",
-                "Folder" => "adobe_pts Custom-icons.color",
-                "HttpRequest" => "globe-pointer sharp-duotone-light",
-                "Web" => "internet-explorer brands",
-                "AsyncTask" => "diagram-project duotone-light",
-                "MacroRecorder" => "chart-network light",
-                "BorderHighlight" => "bolt-lightning sharp-light",
-                "DataFetcher" => "inbox-out duotone-light",
-                "FolderFilePaths" => "file-import duotone-light",
-                "KeyValueBridge" => "list-check solid",
-                "FlowOverwrite" => "merge sharp-regular",
-                "BodyContainer" => "square-dashed duotone-light",
-                "Notification" => "bell duotone-regular",
-                "Storage" => "arrow-progress sharp-regular",
-                "Callback" => "arrows-turn-right regular",
-                "FileDownload" => "download solid",
-                "GitSource" => "git-alt brands",
-                "ActionCanVasNode" => "square-share-nodes light",
-                "ShowInputMsgNode" => "user-message regular",
-                "DynamicUi" => "desktop-designer Custom-icons.color",
-                "DynamicUiNode" => "desktop-designer Custom-icons.color",
-                _ => "circle duotone"
-            };
+            return NodeIconHelper.GetIconKey(nodeType);
         }
 
         /// <summary>

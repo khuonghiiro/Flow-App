@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FlowMy.Helpers;
 using FlowMy.Services.Utilities;
 using System;
 using System.Collections.ObjectModel;
@@ -503,59 +504,7 @@ namespace FlowMy.ViewModels
                 // ── FALLBACK: Hardcoded icon switch (cho các node hệ thống chuẩn) ──
                 if (string.IsNullOrWhiteSpace(EditIconKey))
                 {
-                    EditIconKey = baseName switch
-                    {
-                        "Start" => "play duotone-regular",
-                        "End" => "flag-checkered sharp-duotone-solid",
-                        "Input" => "left-to-dotted-line duotone-regular",
-                        "Output" => "right-to-dotted-line duotone-regular",
-                        "IfElse" => "list-tree sharp-light",
-                        "Loop" => "arrows-spin duotone",
-                        "Break" => "circle-stop duotone",
-                        "Continue" => "diagram-predecessor duotone-light",
-                        "Delay" => "timer regular",
-                        "Keyboard" => "keyboard duotone",
-                        "KeyPressEvent" => "key duotone-regular",
-                        "HotkeyPressEvent" => "keyboard duotone",
-                        "MouseEvent" => "computer-mouse duotone",
-                        "ScreenPosition" => "crosshairs light",
-                        "ScreenCapture" => "camera-viewfinder duotone-light",
-                        "TextScan" => "camera-circle-ellipsis duotone-light",
-                        "EmbedApplication" => "desktop-arrow-down light",
-                        "StringSplit" => "scissors light",
-                        "ListOut" => "list-radio regular",
-                        "AssignData" => "arrows-left-right duotone",
-                        "MediaGallery" => "image-stack duotone",
-                        "ImageProcessing" => "image notdog-duo-solid",
-                        "VideoProcessing" => "circle-video sharp-light",
-                        "Code" => "code duotone-regular",
-                        "HtmlUi" => "html5 brands",
-                        "Folder" => "folder-open duotone-thin",
-                        "HttpRequest" => "globe-pointer sharp-duotone-light",
-                        "Web" => "internet-explorer brands",
-                        "AsyncTask" => "diagram-project duotone-light",
-                        "MacroRecorder" => "chart-network light",
-                        "BorderHighlight" => "bolt-lightning sharp-light",
-                        "DataFetcher" => "inbox-out duotone-light",
-                        "BodyContainer" => "border-none sharp-duotone-regular",
-                        "FolderFilePaths" => "file-import duotone-light",
-                        "KeyValueBridge" => "list-check solid",
-                        "FlowOverwrite" => "merge sharp-regular",
-                        "Notification" => "bell duotone-regular",
-                        "Storage" => "arrow-progress sharp-regular",
-                        "Callback" => "arrows-turn-right regular",
-                        "FileDownload" => "download solid",
-                        "AsyncTaskDispatchCollect" => "list-radio regular",
-                        "KeyScopedStore" => "arrow-progress sharp-regular",
-                        "LoopContext" => "arrows-spin duotone",
-                        "Condition" => "list-tree sharp-light",
-                        "GitSource" => "git-alt brands",
-                        "ActionCanVas" => "square-share-nodes light",
-                        "ActionCanVasNode" => "square-share-nodes light",
-                        "ShowInputMsg" => "user-message regular",
-                        "ShowInputMsgNode" => "user-message regular",
-                        _ => "circle-nodes duotone-regular"
-                    };
+                    EditIconKey = NodeIconHelper.GetIconKey(baseName);
                 }
             }
             catch (Exception ex)

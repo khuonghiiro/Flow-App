@@ -1,3 +1,4 @@
+using FlowMy.Helpers;
 using FlowMy.Models;
 using System;
 using System.Collections;
@@ -299,50 +300,7 @@ namespace FlowMy.Controls
 
         private static string ResolveIconKey(string iconKey, object? nodeType)
         {
-            if (!string.IsNullOrWhiteSpace(iconKey)) return iconKey;
-            if (nodeType == null) return "cog";
-
-            var typeName = nodeType.ToString() ?? string.Empty;
-            return typeName switch
-            {
-                "Start" => "play duotone-regular",
-                "End" => "flag-checkered sharp-duotone-solid",
-                "Input" => "left-to-dotted-line duotone-regular",
-                "Output" => "right-to-dotted-line duotone-regular",
-                "IfElse" => "list-tree sharp-light",
-                "Loop" => "arrows-spin duotone",
-                "Delay" => "timer regular",
-                "KeyPressEvent" => "key duotone-regular",
-                "HotkeyPressEvent" => "keyboard duotone",
-                "MouseEvent" => "computer-mouse duotone",
-                "StringSplit" => "scissors light",
-                "AssignData" => "arrows-left-right duotone",
-                "MediaGallery" => "image-stack duotone",
-                "ImageProcessing" => "adobe_pts Custom-icons.color",
-                "Code" => "code duotone-regular",
-                "HtmlUi" => "html5 brands",
-                "Folder" => "folder-open duotone-thin",
-                "HttpRequest" => "globe-pointer sharp-duotone-light",
-                "Web" => "internet-explorer brands",
-                "DataFetcher" => "inbox-out duotone-light",
-                "FileDownload" => "download solid",
-                "Storage" => "arrow-progress sharp-regular",
-                "Notification" => "bell duotone-regular",
-                "FlowOverwrite" => "merge sharp-regular",
-                "KeyValueBridge" => "list-check solid",
-                "FolderFilePaths" => "file-import duotone-light",
-                "AsyncTaskDispatchCollect" => "list-radio regular",
-                "ListOut" => "list-radio regular",
-                "MacroRecorder" => "chart-network light",
-                "TextScan" => "camera-circle-ellipsis duotone-light",
-                "EmbedApplicationNode" => "desktop-arrow-down light",
-                "ShowInputMsg" => "user-message regular",
-                "BorderHighlight" => "bolt-lightning sharp-light",
-                "ActionCanVas" => "display regular",
-                "DynamicUi" => "desktop-designer Custom-icons.color",
-                "DynamicUiNode" => "desktop-designer Custom-icons.color",
-                _ => "cog"
-            };
+            return NodeIconHelper.ResolveIconKey(iconKey, nodeType);
         }
 
         private static Brush ResolveTextOnNodeBrush(string? nodeColorKey)

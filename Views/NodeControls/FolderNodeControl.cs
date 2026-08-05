@@ -1,5 +1,6 @@
 using FlowMy.Controls;
 using FlowMy.Converters;
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -26,7 +27,7 @@ namespace FlowMy.Views.NodeControls
             var grid = new Grid { MinWidth = 60, MinHeight = 60, Width = 60, Height = 60 };
 
             var iconConverter = new IconKeyToPathConverter();
-            var iconUri = iconConverter.Convert(null, typeof(Uri), "folder-open duotone-thin",
+            var iconUri = iconConverter.Convert(null, typeof(Uri), NodeIconHelper.GetIconKey(NodeType.Folder),
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
             var iconSvg = new SvgViewboxEx
             {
