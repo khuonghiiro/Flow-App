@@ -746,7 +746,7 @@
                         <!-- Batch size (hidden when OFF mode) -->
                         <StackPanel x:Name="PanelBatchSize" Margin="0,0,16,0">
                             <TextBlock Text="Số lượng ảnh" Foreground="{StaticResource TextMuted}" FontSize="9.5" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="CmbBatchSize" Width="80" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="1">
+                            <ComboBox x:Name="CmbBatchSize" Width="80" Height="28" Style="{StaticResource IpComboBoxStyle}" SelectedIndex="1" SelectionChanged="CmbBatchSize_SelectionChanged">
                                 <ComboBoxItem Content="1"/>
                                 <ComboBoxItem Content="2"/>
                                 <ComboBoxItem Content="3"/>

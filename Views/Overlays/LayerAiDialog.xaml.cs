@@ -805,6 +805,7 @@ namespace FlowMy.Views.Overlays
             }
 
             UpdateImageModeButtonUI();
+            UpdateSecondaryInfo();
 
             try
             {
@@ -3326,9 +3327,25 @@ namespace FlowMy.Views.Overlays
 
         private void UpdateSecondaryInfo()
         {
+            if (TxtSecondaryInfo == null) return;
             int total = _secondaryImages.Count(s => s.HasImage);
             int selected = _secondaryImages.Count(s => s.HasImage && s.IsSelected);
-            TxtSecondaryInfo.Text = total > 0 ? $"Ảnh phụ: {selected}/{total} đã chọn" : "";
+            if (total > 0)
+            {
+                string info = $"Ảnh phụ: {selected}/{total} đã chọn";
+                // Ảnh đơn mode: hiển thị tổng số ảnh output dự kiến
+                if (!_isCombinedMode && selected > 0)
+                {
+                    int batchSize = (CmbBatchSize?.SelectedIndex ?? 2) + 1;
+                    int totalOutput = selected * batchSize;
+                    info += $" · Tổng: {totalOutput} ảnh";
+                }
+                TxtSecondaryInfo.Text = info;
+            }
+            else
+            {
+                TxtSecondaryInfo.Text = "";
+            }
         }
 
         #endregion
@@ -3345,6 +3362,13 @@ namespace FlowMy.Views.Overlays
             }
             PanelCustomSize.Visibility = (CmbAspectRatio.SelectedIndex == 6) ? Visibility.Visible : Visibility.Collapsed;
             UpdatePreviewImage();
+        }
+
+        private void CmbBatchSize_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isSyncingUI || TxtSecondaryInfo == null) return;
+            // Cập nhật lại tổng số ảnh hiển thị ở chế độ ảnh đơn khi thay đổi batch size
+            UpdateSecondaryInfo();
         }
 
         private void TxtCustomSize_TextChanged(object sender, TextChangedEventArgs e)
@@ -3594,9 +3618,15 @@ namespace FlowMy.Views.Overlays
                 if (promptPort != null) promptPort.UserValueOverride = activePromptText;
 
                 int batchSize = CmbBatchSize.SelectedIndex + 1;
-                _node.PromptSize = batchSize;
+                // Ảnh đơn mode: tổng output = numberOfSelectedSecondaries × batchSize
+                // Ảnh chung mode hoặc không có ảnh phụ: tổng output = batchSize (giữ nguyên)
+                var selectedSecForCount = _secondaryImages.Where(s => s.HasImage && s.IsSelected).ToList();
+                int totalOutputCount = (!_isCombinedMode && selectedSecForCount.Count > 0)
+                    ? selectedSecForCount.Count * batchSize
+                    : batchSize;
+                _node.PromptSize = totalOutputCount;
                 var sizePort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "promptSize", StringComparison.OrdinalIgnoreCase));
-                if (sizePort != null) sizePort.UserValueOverride = batchSize.ToString();
+                if (sizePort != null) sizePort.UserValueOverride = totalOutputCount.ToString();
 
                 var widthPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropWidth", StringComparison.OrdinalIgnoreCase));
                 if (widthPort != null) widthPort.UserValueOverride = processedImg.PixelWidth.ToString();
@@ -3655,7 +3685,7 @@ namespace FlowMy.Views.Overlays
                 {
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "mainCodeId", mainCodeId);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "prompt", activePromptText);
-                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptSize", batchSize.ToString());
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptSize", totalOutputCount.ToString());
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropWidth", processedImg.PixelWidth.ToString());
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropHeight", processedImg.PixelHeight.ToString());
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "aspectRatio", aspectStr);
@@ -3671,7 +3701,7 @@ namespace FlowMy.Views.Overlays
                 RefreshRelatedNodeDialogs();
 
                 // Create variant placeholders in parent's ChildLayers before starting workflow execution
-                for (int i = 0; i < batchSize; i++)
+                for (int i = 0; i < totalOutputCount; i++)
                 {
                     var placeholder = new EditorLayer(destinationParent.Width, destinationParent.Height, $"Layer AI {destinationParent.ChildLayers.Count + 1}");
                     placeholder.ParentLayer = destinationParent;
