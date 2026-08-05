@@ -16,10 +16,8 @@ echo.
 
 echo [2/3] Building App (WPF - Executable)...
 cd "%MAIN_APP%"
-dotnet publish -c %BUILD_CONFIG% -r %RUNTIME% --self-contained true ^
-  -p:PublishSingleFile=true ^
-  -p:IncludeNativeLibrariesForSelfExtract=true ^
-  -p:EnableCompressionInSingleFile=true ^
+dotnet publish FlowMy.csproj -c %BUILD_CONFIG% -r %RUNTIME% --self-contained true ^
+  -p:PublishSingleFile=false ^
   -p:DebugType=none ^
   -p:DebugSymbols=false
 if %errorlevel% neq 0 (

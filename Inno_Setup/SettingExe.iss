@@ -5,7 +5,7 @@
 #include "version.iss"
 
 #define RootPath ".."
-#define MyAppName "Auto Click"
+#define MyAppName "Flow My"
 #define MyAppExeName "FlowMy.exe"
 #define MyAppCompany "Phạm Khương"
 #define MyAppURL "https://www.example.com"
