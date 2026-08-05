@@ -611,9 +611,10 @@ Source="{Binding Source={x:Static sys:String.Empty},
 
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
+                          Focusable="False"
                           Padding="12,0"
                           Visibility="{Binding HasWidgetShortcuts, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ItemsControl ItemsSource="{Binding WidgetGroups}">
+                <ItemsControl ItemsSource="{Binding WidgetGroups}" Focusable="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>

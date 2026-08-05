@@ -1478,19 +1478,17 @@ private static WorkflowNode CreateYourNode(double x, double y)
 }
 ```
 
-### 11.4 Icon trên canvas — `Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs`
+### 11.4 Icon mapping tập trung — `Helpers/NodeIconHelper.cs`
 
 ```csharp
-// Trong GetIconNameForNodeType(string nodeType):
+// Thêm mapping vào GetIconKey(NodeType type) hoặc GetIconKey(string? typeName):
+NodeType.YourType => "your-icon-key duotone-regular",
+// hoặc nếu không dùng NodeType enum:
 "YourNodeTypeName" => "your-icon-key duotone-regular",
 ```
 
-### 11.5 Icon trong Execution Trace — `ViewModels/WorkflowEditorViewModel.cs`
-
-```csharp
-// Trong ResolveNodeIconKey(NodeType type):
-NodeType.YourType => "your-icon-key duotone-regular",
-```
+### 11.5 (Tự động dùng NodeIconHelper)
+> Tất cả canvas drag ghost, execution trace, node dialog header và NodeSearchComboBox đều tự động gọi `NodeIconHelper`, không cần khai báo trùng lặp ở ViewModel hay Control nữa.
 
 ### 11.6 Đăng ký Renderer — `Services/Rendering/_NodeRenderer.cs`
 
@@ -1570,10 +1568,7 @@ case YourNode yourNode:
 - [ ] NodeType enum value thêm vào NodeType.cs
 - [ ] Palette XAML: Border + Tag + ColorKey + iconKey + TextOnColorKeyBrush + **cả ToolTip lẫn ContextMenu**
 - [ ] TemplateFactory: string switch case + CreateYourNode()
-- [ ] WorkflowEditorWindow.TemplateNodeHandler.cs: GetIconNameForNodeType
-- [ ] WorkflowEditorViewModel.cs: ResolveNodeIconKey
-- [ ] BaseNodeDialogViewModel.cs: ResolveNodeIconKey method (cho icon hiển thị trong dialog)
-- [ ] NodeSearchComboBoxUserControl.xaml.cs: ResolveIconKey method (cho icon hiển thị trong NodeSearchComboBox)
+- [ ] Helpers/NodeIconHelper.cs: GetIconKey (ánh xạ NodeType enum hoặc string name → icon key)
 - [ ] _NodeRenderer.cs: field + constructor + if branch trong 3 methods
 - [ ] DI container: services.AddSingleton<YourNodeRenderer>()
 - [ ] WorkflowExecutionService: thêm executor vào _nodeExecutors (nếu có)
@@ -1585,18 +1580,15 @@ case YourNode yourNode:
 
 ---
 
-## 11.A IconKey / ColorKey — 6 chỗ phải khớp nhau
+## 11.A IconKey / ColorKey — Các chỗ phải khớp nhau
 
-> Thiếu bất kỳ chỗ nào → node bị fallback icon `circle-question`, nền `AccentBrush`, icon màu sai.
+> Thiếu bất kỳ chỗ nào → node bị fallback icon `circle-nodes duotone-regular`, nền `AccentBrush`, icon màu sai.
 
 | # | File | Khai báo gì |
 |---|------|-------------|
 | 1 | `Views/WorkflowEditorWindow.xaml` | `Tag="NodeTypeName"` + `Background="{DynamicResource <ColorKey>Brush}"` + `ConverterParameter='<iconKey>'` + `Fill="{DynamicResource TextOn<ColorKey>Brush}"` |
-| 2 | `Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs` | `case "NodeTypeName" => "<iconKey>"` trong `GetIconNameForNodeType` |
+| 2 | `Helpers/NodeIconHelper.cs` | `NodeType.YourType => "<iconKey>"` hoặc `"YourNodeTypeName" => "<iconKey>"` trong `GetIconKey` |
 | 3 | `Services/Workflow/TemplateFactory.cs` | `ColorKey = "<ColorKey>"` trong `CreateYourNode()` |
-| 4 | `ViewModels/WorkflowEditorViewModel.cs` | `NodeType.YourType => "<iconKey>"` trong `ResolveNodeIconKey` |
-| 5 | `Controls/NodeSearchComboBoxUserControl.xaml.cs` | `"YourNodeType" => "<iconKey>"` trong `ResolveIconKey` method |
-| 6 | `ViewModels/BaseNodeDialogViewModel.cs` | `NodeType.YourType => "<iconKey>"` trong `ResolveNodeIconKey` method |
 
 **Quy tắc ColorKey:**
 - Nền node/palette: `{DynamicResource <ColorKey>Brush}` — brush phải có trong `Themes/Base/Colors/Common.xaml`

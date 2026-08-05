@@ -37,8 +37,8 @@ namespace FlowMy.Services.Rendering
             /// </summary>
             public bool NeedsUpdate(Point start, Point end, double zoom, ConnectionLineStyle lineStyle)
             {
-                const double threshold = 5.0; // pixels - chỉ recalculate khi di chuyển >5px
-                const double zoomThreshold = 0.1; // zoom change threshold
+                const double threshold = 3.0; // pixels - cân bằng giữa mượt và performance
+                const double zoomThreshold = 0.05; // zoom change threshold
 
                 return CachedPath == null ||
                        LastLineStyle != lineStyle ||
@@ -99,6 +99,10 @@ namespace FlowMy.Services.Rendering
         private readonly IPathGeometryGenerator _straight;
         private readonly OrthogonalV2GeometryGenerator _orthogonalV2;
         private readonly CircuitBoardGeometryGenerator _circuitBoard;
+
+        // ✅ Obstacle rect cache – rebuilt once per render pass, shared across connections
+        private IReadOnlyList<Rect>? _cachedObstacleRects;
+        private int _obstacleRectsCacheGeneration = -1;
 
         // Windy (gió thổi) animation state
         private EventHandler? _windRenderingHandler;
@@ -172,7 +176,7 @@ namespace FlowMy.Services.Rendering
 
         /// <summary>
         /// Build obstacle rects from all nodes except source/target of the given connection.
-        /// Used by OrthogonalV2 to route lines around nodes.
+        /// Uses accurate node sizing from both rendered Border and model properties.
         /// </summary>
         private IReadOnlyList<Rect> GetObstacleRects(WorkflowConnection connection)
         {
@@ -185,15 +189,115 @@ namespace FlowMy.Services.Rendering
                 // Skip source and target nodes of this connection
                 if (node == connection.FromNode || node == connection.ToNode) continue;
 
-                // Get actual rendered size from the Border element
-                double w = node.Border?.ActualWidth ?? 150;
-                double h = node.Border?.ActualHeight ?? 80;
-                if (w <= 0) w = 150;
-                if (h <= 0) h = 80;
+                double w = GetAccurateNodeWidth(node);
+                double h = GetAccurateNodeHeight(node);
 
                 result.Add(new Rect(node.X, node.Y, w, h));
             }
             return result;
+        }
+
+        /// <summary>
+        /// Get accurate node width by checking model property first, then rendered size.
+        /// Large nodes like ImageProcessingNode/WebNode have explicit Width property
+        /// that may not match Border.ActualWidth (which can be 0 before first render).
+        /// </summary>
+        private static double GetAccurateNodeWidth(WorkflowNode node)
+        {
+            // Check model-level Width property for nodes that define their own size
+            double modelW = node switch
+            {
+                ImageProcessingNode ipn => ipn.Width,
+                WebNode wn => wn.Width,
+                HtmlUiNode hn => hn.Width,
+                VideoProcessingNode vpn => vpn.Width,
+                ShowInputMsgNode simn => simn.Width,
+                MediaGalleryNode mgn => mgn.Width,
+                BodyContainerNode bcn => bcn.BodyWidth,
+                LoopBodyNode lbn => lbn.Width,
+                AsyncTaskBodyNode atbn => atbn.Width,
+                DynamicUiNode dun => dun.Width,
+                _ => 0
+            };
+
+            double borderW = node.Border?.ActualWidth ?? 0;
+            double w = Math.Max(modelW, borderW);
+            return w > 10 ? w : 160; // fallback for unrendered nodes
+        }
+
+        /// <summary>
+        /// Get accurate node height by checking model property first, then rendered size.
+        /// </summary>
+        private static double GetAccurateNodeHeight(WorkflowNode node)
+        {
+            double modelH = node switch
+            {
+                ImageProcessingNode ipn => ipn.Height,
+                WebNode wn => wn.Height,
+                HtmlUiNode hn => hn.Height,
+                VideoProcessingNode vpn => vpn.Height,
+                ShowInputMsgNode simn => simn.Height,
+                MediaGalleryNode mgn => mgn.Height,
+                BodyContainerNode bcn => bcn.BodyHeight,
+                LoopBodyNode lbn => lbn.Height,
+                AsyncTaskBodyNode atbn => atbn.Height,
+                DynamicUiNode dun => dun.Height,
+                _ => 0
+            };
+
+            double borderH = node.Border?.ActualHeight ?? 0;
+            double h = Math.Max(modelH, borderH);
+            return h > 10 ? h : 80; // fallback for unrendered nodes
+        }
+
+        /// <summary>
+        /// Cached version of GetObstacleRects — builds once per render generation,
+        /// reuses for all connections in that pass. Avoids O(N×M) node enumeration.
+        /// </summary>
+        private IReadOnlyList<Rect> GetObstacleRectsCached(WorkflowConnection connection)
+        {
+            var nodes = Host.ViewModel?.Nodes;
+            int gen = nodes?.Count ?? 0; // simple generation check
+
+            if (_cachedObstacleRects == null || _obstacleRectsCacheGeneration != gen)
+            {
+                // Rebuild full obstacle rects (all nodes)
+                var allRects = new List<(WorkflowNode node, Rect rect)>();
+                if (nodes != null)
+                {
+                    foreach (var node in nodes)
+                    {
+                        double w = GetAccurateNodeWidth(node);
+                        double h = GetAccurateNodeHeight(node);
+                        allRects.Add((node, new Rect(node.X, node.Y, w, h)));
+                    }
+                }
+                _cachedAllNodeRects = allRects;
+                _obstacleRectsCacheGeneration = gen;
+            }
+
+            // Filter out source/target nodes for this specific connection
+            if (_cachedAllNodeRects == null) return Array.Empty<Rect>();
+
+            var result = new List<Rect>();
+            foreach (var (node, rect) in _cachedAllNodeRects)
+            {
+                if (node != connection.FromNode && node != connection.ToNode)
+                    result.Add(rect);
+            }
+            return result;
+        }
+
+        private List<(WorkflowNode node, Rect rect)>? _cachedAllNodeRects;
+
+        /// <summary>
+        /// Invalidate obstacle rect cache (call when nodes move/resize).
+        /// </summary>
+        public void InvalidateObstacleCache()
+        {
+            _cachedObstacleRects = null;
+            _cachedAllNodeRects = null;
+            _obstacleRectsCacheGeneration = -1;
         }
 
         public void RenderAllConnections(
@@ -341,14 +445,14 @@ namespace FlowMy.Services.Rendering
 
             PathGeometry geometry = lineStyle switch
             {
-                ConnectionLineStyle.Orthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.Orthogonal => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection), 4),
                 ConnectionLineStyle.Straight => _straight.Generate(start, end, startDirection, endDirection),
-                ConnectionLineStyle.SmoothOrthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.SmoothOrthogonal => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection), 24),
                 ConnectionLineStyle.Arc => GenerateArcGeometry(start, end, startDirection, endDirection),
                 ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
                 ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
-                ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
-                ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
+                ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
+                ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
                 _ => _bezier.Generate(start, end, startDirection, endDirection),
             };
 
@@ -496,7 +600,8 @@ namespace FlowMy.Services.Rendering
             }
             else
             {
-                // Recalculate path geometry
+                // ⚡ PERFORMANCE: During drag, use fast generators (no obstacle avoidance)
+                // Full Visibility Graph routing runs on RenderAllConnections (after drag ends)
                 geometry = lineStyle switch
                 {
                     ConnectionLineStyle.Orthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
@@ -505,8 +610,8 @@ namespace FlowMy.Services.Rendering
                     ConnectionLineStyle.Arc => GenerateArcGeometry(start, end, startDirection, endDirection),
                     ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
                     ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
-                    ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
+                    ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
+                    ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
                     _ => _bezier.Generate(start, end, startDirection, endDirection),
                 };
 
@@ -2235,6 +2340,22 @@ namespace FlowMy.Services.Rendering
                 if (body == null) continue;
 
                 var rect = new Rect(body.X, body.Y, body.Width, body.Height);
+                rect.Inflate(padding, padding);
+                if (rect.Contains(p))
+                    return true;
+            }
+
+            foreach (var bodyContainer in vm.Nodes.OfType<BodyContainerNode>())
+            {
+                var rect = new Rect(bodyContainer.X, bodyContainer.Y, bodyContainer.BodyWidth, bodyContainer.BodyHeight);
+                rect.Inflate(padding, padding);
+                if (rect.Contains(p))
+                    return true;
+            }
+
+            foreach (var actionCanvas in vm.Nodes.OfType<ActionCanVasNode>())
+            {
+                var rect = new Rect(actionCanvas.X, actionCanvas.Y, actionCanvas.BodyWidth, actionCanvas.BodyHeight);
                 rect.Inflate(padding, padding);
                 if (rect.Contains(p))
                     return true;

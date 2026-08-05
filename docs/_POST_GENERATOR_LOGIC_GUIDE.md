@@ -483,18 +483,13 @@ case YourNode yourNode:
 
 ---
 
-## BƯỚC 5 — Đăng ký vào hệ thống (6 chỗ)
-
-Generator chỉ tạo `NodeType` enum. Còn 5 chỗ:
+## BƯỚC 5 — Đăng ký vào hệ thống
 
 | # | File | Việc cần làm |
 |---|------|---|
 | 1 | `Views/WorkflowEditorWindow.xaml` | Thêm `<Border Tag="YourNodeTypeName">` + ToolTip + ContextMenu vào palette |
 | 2 | `Services/Workflow/TemplateFactory.cs` | `"YourNodeTypeName" => CreateYourNode(x, y)` + method tạo node + ports |
-| 3 | `Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs` | `"YourNodeTypeName" => "your-icon-key duotone-regular"` |
-| 4 | `ViewModels/WorkflowEditorViewModel.cs` | `NodeType.YourType => "your-icon-key duotone-regular"` |
-| 5 | `Controls/NodeSearchComboBoxUserControl.xaml.cs` | `"YourNodeType" => "your-icon-key duotone-regular"` |
-| 6 | `ViewModels/BaseNodeDialogViewModel.cs` | `NodeType.YourType => "your-icon-key duotone-regular"` |
+| 3 | `Helpers/NodeIconHelper.cs` | `NodeType.YourType => "your-icon-key duotone-regular"` hoặc `"YourNodeTypeName" => "your-icon-key duotone-regular"` |
 
 **Đăng ký Renderer:**
 - `Services/Rendering/_NodeRenderer.cs`: thêm field + constructor + 3 if-branch (`RenderNode`, `UpdateNodePosition`, `RemoveNode`)

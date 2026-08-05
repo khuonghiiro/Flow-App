@@ -8,23 +8,24 @@ using FlowMy.Models;
 namespace FlowMy.Services.Geometry
 {
     /// <summary>
-    /// Orthogonal V2: A*-based obstacle-aware orthogonal line routing.
-    /// Builds a coarse grid from node bounding rects, runs A* with Manhattan heuristic,
-    /// simplifies into minimal waypoints, and adds rounded corners.
+    /// Orthogonal V2: Visibility-Graph-based obstacle-aware orthogonal line routing.
+    /// Instead of a coarse grid A*, this builds an orthogonal visibility graph from
+    /// obstacle corners and lead lines, then runs A* on that sparse graph.
+    /// Result: clean paths with minimal bends that hug obstacle contours naturally.
     /// </summary>
     public sealed class OrthogonalV2GeometryGenerator : IPathGeometryGenerator
     {
         /// <summary>Margin around each obstacle rect (pixels).</summary>
-        private const double ObstacleMargin = 15;
-
-        /// <summary>Grid cell size (pixels). Smaller = more accurate but slower.</summary>
-        private const double GridCellSize = 10;
-
-        /// <summary>Maximum grid dimension to prevent performance issues.</summary>
-        private const int MaxGridDim = 300;
+        private const double ObstacleMargin = 20;
 
         /// <summary>Extension length from port in the port direction before routing.</summary>
-        private const double PortExtension = 30;
+        private const double PortExtension = 28;
+
+        /// <summary>Penalty for each bend (direction change) in A* search.</summary>
+        private const double BendPenalty = 60;
+
+        /// <summary>Max corner radius for rounded corners.</summary>
+        private const double MaxCornerRadius = 12;
 
         // ─── IPathGeometryGenerator (4-param fallback, no obstacles) ───
 
@@ -40,11 +41,24 @@ namespace FlowMy.Services.Geometry
             PortPosition? startDir, PortPosition? endDir,
             IReadOnlyList<Rect> obstacles)
         {
+            return Generate(start, end, startDir, endDir, obstacles, MaxCornerRadius);
+        }
+
+        /// <summary>
+        /// Generate with custom corner radius.
+        /// Orthogonal=4, SmoothOrthogonal=24, OrthogonalV2=12 (default).
+        /// </summary>
+        public PathGeometry Generate(
+            Point start, Point end,
+            PortPosition? startDir, PortPosition? endDir,
+            IReadOnlyList<Rect> obstacles,
+            double maxCornerRadius)
+        {
             PortPosition sDir = startDir ?? InferDirection(start, end, isStart: true);
             PortPosition eDir = endDir ?? InferDirection(start, end, isStart: false);
 
             // Inflate obstacles by margin
-            var inflated = new List<Rect>(obstacles.Count);
+            var inflated = new List<Rect>();
             foreach (var r in obstacles)
             {
                 if (r.Width > 0 && r.Height > 0)
@@ -57,186 +71,221 @@ namespace FlowMy.Services.Geometry
                 }
             }
 
-            // Extend start/end in port direction so lines exit cleanly from ports
+            // Extend start/end in port direction so lines exit cleanly
             Point extStart = Extend(start, sDir, PortExtension);
             Point extEnd = Extend(end, eDir, PortExtension);
 
-            // Try A* pathfinding
-            List<Point>? path = FindPathAStar(extStart, extEnd, inflated);
+            // Build visibility graph and find path
+            List<Point>? path = FindPathVisibilityGraph(extStart, extEnd, inflated);
 
-            // Build final waypoints: start → extStart → (A* path) → extEnd → end
-            var waypoints = new List<Point>();
-            waypoints.Add(extStart);
-            if (path != null && path.Count > 0)
+            if (path != null && path.Count >= 2)
             {
-                // path already starts at extStart and ends at extEnd, simplify
-                var simplified = SimplifyPath(path);
-                waypoints.Clear();
-                waypoints.AddRange(simplified);
-            }
-            else
-            {
-                // Fallback: simple 3-segment bypass
-                waypoints = CreateFallbackPath(start, end, sDir, eDir);
-                return BuildGeometry(start, waypoints, end);
+                // Path includes extStart and extEnd
+                return BuildGeometry(start, path, end, maxCornerRadius);
             }
 
-            return BuildGeometry(start, waypoints, end);
+            // Fallback: simple 3-segment bypass
+            var fallback = CreateFallbackPath(start, end, sDir, eDir);
+            return BuildGeometry(start, fallback, end, maxCornerRadius);
         }
 
-        // ─── A* pathfinding on a coarse grid ───
+        // ═══════════════════════════════════════════════════════════════
+        // VISIBILITY GRAPH ROUTING
+        // ═══════════════════════════════════════════════════════════════
 
-        private static List<Point>? FindPathAStar(Point start, Point end, List<Rect> obstacles)
+        /// <summary>
+        /// Build an orthogonal visibility graph from obstacle corners + start/end,
+        /// then run A* on it with bend penalty.
+        /// </summary>
+        private static List<Point>? FindPathVisibilityGraph(Point start, Point end, List<Rect> obstacles)
         {
-            // Determine bounding area for the grid
-            double minX = Math.Min(start.X, end.X);
-            double minY = Math.Min(start.Y, end.Y);
-            double maxX = Math.Max(start.X, end.X);
-            double maxY = Math.Max(start.Y, end.Y);
-
+            // Step 1: Collect key points (obstacle corners + start + end)
+            var keyPoints = new List<Point> { start, end };
             foreach (var r in obstacles)
             {
-                minX = Math.Min(minX, r.X);
-                minY = Math.Min(minY, r.Y);
-                maxX = Math.Max(maxX, r.Right);
-                maxY = Math.Max(maxY, r.Bottom);
+                keyPoints.Add(new Point(r.Left, r.Top));
+                keyPoints.Add(new Point(r.Right, r.Top));
+                keyPoints.Add(new Point(r.Left, r.Bottom));
+                keyPoints.Add(new Point(r.Right, r.Bottom));
             }
 
-            // Add generous padding around the entire area
-            double padding = 80;
-            minX -= padding;
-            minY -= padding;
-            maxX += padding;
-            maxY += padding;
+            // Step 2: Generate lead lines (horizontal + vertical rays from each key point)
+            var hLines = new HashSet<double>(); // Y coords of horizontal lines
+            var vLines = new HashSet<double>(); // X coords of vertical lines
 
-            int cols = (int)Math.Ceiling((maxX - minX) / GridCellSize);
-            int rows = (int)Math.Ceiling((maxY - minY) / GridCellSize);
-
-            // Clamp grid size to prevent huge memory usage
-            if (cols > MaxGridDim || rows > MaxGridDim)
+            foreach (var p in keyPoints)
             {
-                // Scale the cell size up to fit
-                double scaleFactor = Math.Max((double)cols / MaxGridDim, (double)rows / MaxGridDim);
-                double adjustedCellSize = GridCellSize * scaleFactor;
-                cols = (int)Math.Ceiling((maxX - minX) / adjustedCellSize);
-                rows = (int)Math.Ceiling((maxY - minY) / adjustedCellSize);
-
-                return FindPathAStarOnGrid(start, end, obstacles, minX, minY, cols, rows, adjustedCellSize);
+                hLines.Add(p.Y);
+                vLines.Add(p.X);
             }
 
-            return FindPathAStarOnGrid(start, end, obstacles, minX, minY, cols, rows, GridCellSize);
+            // Step 3: Generate graph nodes from all intersections of hLines × vLines
+            //         that are NOT inside any obstacle
+            var graphNodes = new List<Point>();
+            var nodeIndex = new Dictionary<long, int>(); // packed (x,y) → index
+
+            foreach (double y in hLines)
+            {
+                foreach (double x in vLines)
+                {
+                    var p = new Point(x, y);
+                    if (!IsInsideAnyObstacle(p, obstacles))
+                    {
+                        int idx = graphNodes.Count;
+                        graphNodes.Add(p);
+                        nodeIndex[PackPoint(x, y)] = idx;
+                    }
+                }
+            }
+
+            // Ensure start and end are in the graph
+            EnsurePointInGraph(start, graphNodes, nodeIndex);
+            EnsurePointInGraph(end, graphNodes, nodeIndex);
+
+            int startIdx = FindClosestNode(start, graphNodes);
+            int endIdx = FindClosestNode(end, graphNodes);
+
+            if (startIdx < 0 || endIdx < 0 || startIdx == endIdx)
+                return null;
+
+            // Step 4: Build adjacency list — connect nodes on same horizontal/vertical line
+            //         if the segment between them doesn't intersect any obstacle
+            int n = graphNodes.Count;
+            var adj = new List<List<(int to, double dist)>>(n);
+            for (int i = 0; i < n; i++)
+                adj.Add(new List<(int, double)>());
+
+            // Group nodes by Y (horizontal lines)
+            var byY = new Dictionary<double, List<int>>();
+            // Group nodes by X (vertical lines)
+            var byX = new Dictionary<double, List<int>>();
+
+            for (int i = 0; i < n; i++)
+            {
+                double ry = Math.Round(graphNodes[i].Y, 2);
+                double rx = Math.Round(graphNodes[i].X, 2);
+
+                if (!byY.ContainsKey(ry)) byY[ry] = new List<int>();
+                byY[ry].Add(i);
+
+                if (!byX.ContainsKey(rx)) byX[rx] = new List<int>();
+                byX[rx].Add(i);
+            }
+
+            // Connect adjacent nodes on each horizontal line
+            foreach (var kvp in byY)
+            {
+                var indices = kvp.Value.OrderBy(i => graphNodes[i].X).ToList();
+                for (int k = 0; k < indices.Count - 1; k++)
+                {
+                    int a = indices[k], b = indices[k + 1];
+                    var pa = graphNodes[a];
+                    var pb = graphNodes[b];
+
+                    if (!SegmentIntersectsAnyObstacle(pa, pb, obstacles))
+                    {
+                        double dist = Math.Abs(pb.X - pa.X);
+                        adj[a].Add((b, dist));
+                        adj[b].Add((a, dist));
+                    }
+                }
+            }
+
+            // Connect adjacent nodes on each vertical line
+            foreach (var kvp in byX)
+            {
+                var indices = kvp.Value.OrderBy(i => graphNodes[i].Y).ToList();
+                for (int k = 0; k < indices.Count - 1; k++)
+                {
+                    int a = indices[k], b = indices[k + 1];
+                    var pa = graphNodes[a];
+                    var pb = graphNodes[b];
+
+                    if (!SegmentIntersectsAnyObstacle(pa, pb, obstacles))
+                    {
+                        double dist = Math.Abs(pb.Y - pa.Y);
+                        adj[a].Add((b, dist));
+                        adj[b].Add((a, dist));
+                    }
+                }
+            }
+
+            // Step 5: A* search with bend penalty
+            return AStarOnGraph(graphNodes, adj, startIdx, endIdx);
         }
 
-        private static List<Point>? FindPathAStarOnGrid(
-            Point start, Point end, List<Rect> obstacles,
-            double originX, double originY, int cols, int rows, double cellSize)
+        // ─── A* on visibility graph ───
+
+        private static List<Point>? AStarOnGraph(
+            List<Point> nodes,
+            List<List<(int to, double dist)>> adj,
+            int startIdx, int endIdx)
         {
-            // Convert start/end to grid coords
-            int startCol = (int)((start.X - originX) / cellSize);
-            int startRow = (int)((start.Y - originY) / cellSize);
-            int endCol = (int)((end.X - originX) / cellSize);
-            int endRow = (int)((end.Y - originY) / cellSize);
+            int n = nodes.Count;
+            var gScore = new double[n];
+            var cameFrom = new int[n];
+            var dirFrom = new int[n]; // 0=none, 1=horiz, 2=vert
+            var closed = new bool[n];
 
-            // Clamp
-            startCol = Math.Clamp(startCol, 0, cols - 1);
-            startRow = Math.Clamp(startRow, 0, rows - 1);
-            endCol = Math.Clamp(endCol, 0, cols - 1);
-            endRow = Math.Clamp(endRow, 0, rows - 1);
-
-            // Build blocked set using obstacle rects
-            var blocked = new HashSet<long>();
-            foreach (var r in obstacles)
+            for (int i = 0; i < n; i++)
             {
-                int c0 = Math.Max(0, (int)((r.X - originX) / cellSize));
-                int r0 = Math.Max(0, (int)((r.Y - originY) / cellSize));
-                int c1 = Math.Min(cols - 1, (int)((r.Right - originX) / cellSize));
-                int r1 = Math.Min(rows - 1, (int)((r.Bottom - originY) / cellSize));
-                for (int rr = r0; rr <= r1; rr++)
-                    for (int cc = c0; cc <= c1; cc++)
-                        blocked.Add(Key(cc, rr));
+                gScore[i] = double.MaxValue;
+                cameFrom[i] = -1;
+                dirFrom[i] = 0;
             }
 
-            // Ensure start and end cells are not blocked
-            blocked.Remove(Key(startCol, startRow));
-            blocked.Remove(Key(endCol, endRow));
+            gScore[startIdx] = 0;
+            Point endPt = nodes[endIdx];
 
-            // A* with orthogonal moves only
-            var openSet = new SortedSet<(double f, int col, int row, int id)>();
-            var gScore = new Dictionary<long, double>();
-            var cameFrom = new Dictionary<long, long>();
+            // Priority queue: (f, nodeIndex, idCounter)
+            var openSet = new SortedSet<(double f, int node, int id)>();
             int idCounter = 0;
-
-            // Penalty for changing direction (encourages fewer bends)
-            const double turnPenalty = 2.0;
-
-            long startKey = Key(startCol, startRow);
-            long endKey = Key(endCol, endRow);
-            gScore[startKey] = 0;
-            openSet.Add((Heuristic(startCol, startRow, endCol, endRow), startCol, startRow, idCounter++));
-
-            // Direction tracking: store dir as part of state for turn penalty
-            var dirFrom = new Dictionary<long, int>(); // 0=none, 1=horiz, 2=vert
-            dirFrom[startKey] = 0;
-
-            int[] dc = { 1, -1, 0, 0 };
-            int[] dr = { 0, 0, 1, -1 };
-            int[] dirType = { 1, 1, 2, 2 }; // horiz, horiz, vert, vert
+            openSet.Add((ManhattanDist(nodes[startIdx], endPt), startIdx, idCounter++));
 
             while (openSet.Count > 0)
             {
                 var current = openSet.Min;
                 openSet.Remove(current);
-                int cc = current.col, cr = current.row;
-                long ck = Key(cc, cr);
+                int ci = current.node;
 
-                if (cc == endCol && cr == endRow)
+                if (ci == endIdx)
                 {
                     // Reconstruct path
                     var path = new List<Point>();
-                    long k = endKey;
-                    while (cameFrom.ContainsKey(k))
+                    int k = endIdx;
+                    while (k != -1)
                     {
-                        int c = (int)(k >> 16);
-                        int r = (int)(k & 0xFFFF);
-                        path.Add(new Point(originX + c * cellSize + cellSize / 2, originY + r * cellSize + cellSize / 2));
+                        path.Add(nodes[k]);
                         k = cameFrom[k];
                     }
-                    path.Add(start);
                     path.Reverse();
-                    // Replace last point with exact end
-                    if (path.Count > 0)
-                        path[path.Count - 1] = end;
-                    path[0] = start;
-                    return path;
+                    return SimplifyPath(path);
                 }
 
-                double currentG = gScore.GetValueOrDefault(ck, double.MaxValue);
-                int currentDir = dirFrom.GetValueOrDefault(ck, 0);
+                if (closed[ci]) continue;
+                closed[ci] = true;
 
-                for (int i = 0; i < 4; i++)
+                foreach (var (ni, dist) in adj[ci])
                 {
-                    int nc = cc + dc[i];
-                    int nr = cr + dr[i];
-                    if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+                    if (closed[ni]) continue;
 
-                    long nk = Key(nc, nr);
-                    if (blocked.Contains(nk)) continue;
+                    // Determine direction of this edge
+                    int edgeDir = GetEdgeDirection(nodes[ci], nodes[ni]);
 
-                    double moveCost = cellSize;
-                    // Add turn penalty if direction changes
-                    if (currentDir != 0 && dirType[i] != currentDir)
-                        moveCost += turnPenalty * cellSize;
+                    // Apply bend penalty if direction changes
+                    double moveCost = dist;
+                    if (dirFrom[ci] != 0 && edgeDir != dirFrom[ci])
+                        moveCost += BendPenalty;
 
-                    double tentativeG = currentG + moveCost;
-                    double existingG = gScore.GetValueOrDefault(nk, double.MaxValue);
+                    double tentativeG = gScore[ci] + moveCost;
 
-                    if (tentativeG < existingG)
+                    if (tentativeG < gScore[ni])
                     {
-                        gScore[nk] = tentativeG;
-                        cameFrom[nk] = ck;
-                        dirFrom[nk] = dirType[i];
-                        double f = tentativeG + Heuristic(nc, nr, endCol, endRow) * cellSize;
-                        openSet.Add((f, nc, nr, idCounter++));
+                        gScore[ni] = tentativeG;
+                        cameFrom[ni] = ci;
+                        dirFrom[ni] = edgeDir;
+                        double f = tentativeG + ManhattanDist(nodes[ni], endPt);
+                        openSet.Add((f, ni, idCounter++));
                     }
                 }
             }
@@ -244,10 +293,106 @@ namespace FlowMy.Services.Geometry
             return null; // No path found
         }
 
-        private static long Key(int col, int row) => ((long)col << 16) | (long)(row & 0xFFFF);
+        // ─── Geometry helpers ───
 
-        private static double Heuristic(int c1, int r1, int c2, int r2)
-            => Math.Abs(c1 - c2) + Math.Abs(r1 - r2); // Manhattan distance
+        private static int GetEdgeDirection(Point a, Point b)
+        {
+            double dx = Math.Abs(b.X - a.X);
+            double dy = Math.Abs(b.Y - a.Y);
+            return dx > dy ? 1 : 2; // 1=horizontal, 2=vertical
+        }
+
+        private static double ManhattanDist(Point a, Point b)
+            => Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
+
+        /// <summary>
+        /// Pack a point's coordinates into a single long for dictionary keying.
+        /// Uses 0.5px rounding to handle floating point precision.
+        /// </summary>
+        private static long PackPoint(double x, double y)
+        {
+            int ix = (int)Math.Round(x * 2);
+            int iy = (int)Math.Round(y * 2);
+            return ((long)ix << 32) | (uint)iy;
+        }
+
+        private static void EnsurePointInGraph(Point p, List<Point> nodes, Dictionary<long, int> index)
+        {
+            long key = PackPoint(p.X, p.Y);
+            if (!index.ContainsKey(key))
+            {
+                int idx = nodes.Count;
+                nodes.Add(p);
+                index[key] = idx;
+            }
+        }
+
+        private static int FindClosestNode(Point target, List<Point> nodes)
+        {
+            int best = -1;
+            double bestDist = double.MaxValue;
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                double d = ManhattanDist(target, nodes[i]);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    best = i;
+                }
+            }
+            return best;
+        }
+
+        // ─── Obstacle intersection checks ───
+
+        /// <summary>Check if a point is strictly inside any obstacle rect.</summary>
+        private static bool IsInsideAnyObstacle(Point p, List<Rect> obstacles)
+        {
+            foreach (var r in obstacles)
+            {
+                // Use strict interior check (not touching edges)
+                if (p.X > r.Left + 0.5 && p.X < r.Right - 0.5 &&
+                    p.Y > r.Top + 0.5 && p.Y < r.Bottom - 0.5)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if a horizontal or vertical segment intersects the interior of any obstacle.
+        /// </summary>
+        private static bool SegmentIntersectsAnyObstacle(Point a, Point b, List<Rect> obstacles)
+        {
+            // Determine if segment is horizontal or vertical
+            bool isHoriz = Math.Abs(a.Y - b.Y) < 1;
+
+            foreach (var r in obstacles)
+            {
+                if (isHoriz)
+                {
+                    // Horizontal segment: check if Y is within obstacle and X range overlaps
+                    double minX = Math.Min(a.X, b.X);
+                    double maxX = Math.Max(a.X, b.X);
+                    double y = a.Y;
+
+                    if (y > r.Top + 0.5 && y < r.Bottom - 0.5 &&
+                        minX < r.Right - 0.5 && maxX > r.Left + 0.5)
+                        return true;
+                }
+                else
+                {
+                    // Vertical segment
+                    double minY = Math.Min(a.Y, b.Y);
+                    double maxY = Math.Max(a.Y, b.Y);
+                    double x = a.X;
+
+                    if (x > r.Left + 0.5 && x < r.Right - 0.5 &&
+                        minY < r.Bottom - 0.5 && maxY > r.Top + 0.5)
+                        return true;
+                }
+            }
+            return false;
+        }
 
         // ─── Path simplification: collapse collinear segments ───
 
@@ -263,9 +408,9 @@ namespace FlowMy.Services.Geometry
                 Point curr = path[i];
                 Point next = path[i + 1];
 
-                // Check if prev → curr → next are collinear (same direction)
-                bool collinearH = Math.Abs(prev.Y - curr.Y) < 1 && Math.Abs(curr.Y - next.Y) < 1;
-                bool collinearV = Math.Abs(prev.X - curr.X) < 1 && Math.Abs(curr.X - next.X) < 1;
+                // Skip collinear points (same horizontal or vertical line)
+                bool collinearH = Math.Abs(prev.Y - curr.Y) < 1.5 && Math.Abs(curr.Y - next.Y) < 1.5;
+                bool collinearV = Math.Abs(prev.X - curr.X) < 1.5 && Math.Abs(curr.X - next.X) < 1.5;
 
                 if (!collinearH && !collinearV)
                 {
@@ -275,47 +420,36 @@ namespace FlowMy.Services.Geometry
 
             result.Add(path[path.Count - 1]);
 
-            // Align waypoints to create clean orthogonal segments
-            return AlignWaypoints(result);
+            // Snap waypoints to be strictly orthogonal
+            return SnapOrthogonal(result);
         }
 
         /// <summary>
-        /// Snap intermediate waypoints so each segment is perfectly horizontal or vertical.
+        /// Ensure each segment is perfectly horizontal or vertical by snapping coordinates.
         /// </summary>
-        private static List<Point> AlignWaypoints(List<Point> points)
+        private static List<Point> SnapOrthogonal(List<Point> points)
         {
             if (points.Count <= 2) return points;
 
-            var aligned = new List<Point> { points[0] };
-
+            var snapped = new List<Point> { points[0] };
             for (int i = 1; i < points.Count; i++)
             {
-                Point prev = aligned[aligned.Count - 1];
+                Point prev = snapped[snapped.Count - 1];
                 Point curr = points[i];
 
                 double dx = Math.Abs(curr.X - prev.X);
                 double dy = Math.Abs(curr.Y - prev.Y);
 
-                if (dx < 2 || dy < 2)
-                {
-                    // Already nearly axis-aligned, just snap
-                    if (dx < dy)
-                        aligned.Add(new Point(prev.X, curr.Y));
-                    else
-                        aligned.Add(new Point(curr.X, prev.Y));
-                }
+                // Snap to the dominant axis
+                if (dx < dy)
+                    snapped.Add(new Point(prev.X, curr.Y)); // vertical segment
                 else
-                {
-                    // Need a bend point: first go horizontal, then vertical
-                    aligned.Add(new Point(curr.X, prev.Y));
-                    aligned.Add(curr);
-                }
+                    snapped.Add(new Point(curr.X, prev.Y)); // horizontal segment
             }
-
-            return aligned;
+            return snapped;
         }
 
-        // ─── Fallback path when A* fails ───
+        // ─── Fallback path when visibility graph fails ───
 
         private static List<Point> CreateFallbackPath(Point start, Point end, PortPosition sDir, PortPosition eDir)
         {
@@ -345,9 +479,11 @@ namespace FlowMy.Services.Geometry
             return waypoints;
         }
 
-        // ─── Geometry building with rounded corners ───
+        // ═══════════════════════════════════════════════════════════════
+        // GEOMETRY BUILDING WITH ROUNDED CORNERS
+        // ═══════════════════════════════════════════════════════════════
 
-        private static PathGeometry BuildGeometry(Point start, List<Point> waypoints, Point end)
+        private static PathGeometry BuildGeometry(Point start, List<Point> waypoints, Point end, double maxCornerRadius = 12)
         {
             var geometry = new PathGeometry();
             var figure = new PathFigure { StartPoint = start };
@@ -368,16 +504,13 @@ namespace FlowMy.Services.Geometry
                 {
                     Point current = allPoints[i];
                     Point next = allPoints[i + 1];
-
-                    // Determine previous point for corner calculation
                     Point prev = i == 0 ? start : allPoints[i - 1];
 
-                    // Check if there's a direction change (bend)
                     bool hasBend = HasDirectionChange(prev, current, next);
 
                     if (hasBend)
                     {
-                        double cornerRadius = CalculateCornerRadius(prev, current, next);
+                        double cornerRadius = CalculateCornerRadius(prev, current, next, maxCornerRadius);
                         AddRoundedCorner(figure, prev, current, next, cornerRadius);
                     }
                     else
@@ -398,7 +531,6 @@ namespace FlowMy.Services.Geometry
             double dx2 = next.X - current.X;
             double dy2 = next.Y - current.Y;
 
-            // Direction change if one segment is horizontal and the other is vertical
             bool seg1Horiz = Math.Abs(dy1) < 2;
             bool seg1Vert = Math.Abs(dx1) < 2;
             bool seg2Horiz = Math.Abs(dy2) < 2;
@@ -407,13 +539,14 @@ namespace FlowMy.Services.Geometry
             return (seg1Horiz && seg2Vert) || (seg1Vert && seg2Horiz);
         }
 
-        private static double CalculateCornerRadius(Point prev, Point current, Point next)
+        private static double CalculateCornerRadius(Point prev, Point current, Point next, double maxRadius = 12)
         {
             double d1 = Distance(prev, current);
             double d2 = Distance(current, next);
             double minDist = Math.Min(d1, d2);
-            double radius = Math.Min(minDist * 0.4, 15);
-            return Math.Max(radius, 4);
+            // Use up to 40% of the shorter segment, capped at MaxCornerRadius
+            double radius = Math.Min(minDist * 0.4, maxRadius);
+            return Math.Max(radius, 2);
         }
 
         private static void AddRoundedCorner(PathFigure figure, Point prev, Point corner, Point next, double radius)
@@ -421,21 +554,24 @@ namespace FlowMy.Services.Geometry
             double d1 = Distance(prev, corner);
             double d2 = Distance(corner, next);
 
-            if (d1 < radius * 2 || d2 < radius * 2)
+            // Dynamically scale radius to fit available segment length
+            double r = Math.Min(radius, Math.Min(d1 * 0.45, d2 * 0.45));
+
+            if (r < 1.5)
             {
-                // Too short for rounding, just draw lines
+                // Too short for rounding
                 figure.Segments.Add(new LineSegment(corner, true));
                 return;
             }
 
-            // Point on the line from prev → corner, radius before the corner
-            double ratio1 = (d1 - radius) / d1;
+            // Point on the line from prev → corner, r before the corner
+            double ratio1 = (d1 - r) / d1;
             Point beforeCorner = new Point(
                 prev.X + (corner.X - prev.X) * ratio1,
                 prev.Y + (corner.Y - prev.Y) * ratio1);
 
-            // Point on the line from corner → next, radius after the corner
-            double ratio2 = radius / d2;
+            // Point on the line from corner → next, r after the corner
+            double ratio2 = r / d2;
             Point afterCorner = new Point(
                 corner.X + (next.X - corner.X) * ratio2,
                 corner.Y + (next.Y - corner.Y) * ratio2);
@@ -443,11 +579,11 @@ namespace FlowMy.Services.Geometry
             // Line to before corner
             figure.Segments.Add(new LineSegment(beforeCorner, true));
 
-            // Quadratic bezier through the corner point
+            // Smooth quadratic bezier through the corner point
             figure.Segments.Add(new QuadraticBezierSegment(corner, afterCorner, true));
         }
 
-        // ─── Helpers ───
+        // ─── Common Helpers ───
 
         private static Point Extend(Point p, PortPosition dir, double distance)
         {

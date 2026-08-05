@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -940,61 +941,7 @@ namespace FlowMy.ViewModels
 
         protected static string ResolveNodeIconKey(NodeType type)
         {
-            return type switch
-            {
-                NodeType.Start => "play duotone-regular",
-                NodeType.End => "flag-checkered sharp-duotone-solid",
-                NodeType.Input => "left-to-dotted-line duotone-regular",
-                NodeType.Output => "right-to-dotted-line duotone-regular",
-                NodeType.Process => "cog",
-                NodeType.IfElse => "list-tree sharp-light",
-                NodeType.Loop => "arrows-spin duotone",
-                NodeType.Break => "circle-stop duotone",
-                NodeType.Continue => "diagram-predecessor duotone-light",
-                NodeType.Delay => "timer regular",
-                NodeType.Keyboard => "keyboard duotone",
-                NodeType.KeyPressEvent => "key duotone-regular",
-                NodeType.HotkeyPressEvent => "keyboard duotone",
-                NodeType.MouseEvent => "computer-mouse duotone",
-                NodeType.Variable => "square-root-variable",
-                NodeType.Function => "calculator",
-                NodeType.ScreenPosition => "crosshairs sharp-duotone-solid",
-                NodeType.ScreenCapture => "camera-viewfinder duotone-light",
-                NodeType.StringSplit => "scissors light",
-                NodeType.ListOut => "list-radio regular",
-                NodeType.AssignData => "arrows-left-right duotone",
-                NodeType.MediaGallery => "image-stack duotone",
-                NodeType.ImageProcessing => "adobe_pts Custom-icons.color",
-                NodeType.VideoProcessing => "circle-video sharp-light",
-                NodeType.Code => "code duotone-regular",
-                NodeType.HtmlUi => "html5 brands",
-                NodeType.Folder => "folder-open duotone-thin",
-                NodeType.HttpRequest => "globe-pointer sharp-duotone-light",
-                NodeType.Web => "internet-explorer brands",
-                NodeType.AsyncTask => "diagram-project duotone-light",
-                NodeType.DataFetcher => "inbox-out duotone-light",
-                NodeType.FolderFilePaths => "file-import duotone-light",
-                NodeType.KeyValueBridge => "list-check solid",
-                NodeType.FlowOverwrite => "merge sharp-regular",
-                NodeType.BodyContainer => "square-dashed duotone-light",
-                NodeType.Notification => "bell duotone-regular",
-                NodeType.Storage => "arrow-progress sharp-regular",
-                NodeType.Callback => "arrows-turn-right regular",
-                NodeType.FileDownload => "download solid",
-                NodeType.AsyncTaskDispatchCollect => "list-radio regular",
-                NodeType.KeyScopedStore => "arrow-progress sharp-regular",
-                NodeType.LoopContext => "arrows-spin duotone",
-                NodeType.Condition => "list-tree sharp-light",
-                NodeType.GitSource => "git-alt brands",
-                NodeType.MacroRecorder => "chart-network light",
-                NodeType.TextScan => "camera-circle-ellipsis duotone-light",
-                NodeType.EmbedApplication => "desktop-arrow-down light",
-                NodeType.ShowInputMsg => "user-message regular",
-                NodeType.BorderHighlight => "bolt-lightning sharp-light",
-                NodeType.ActionCanVas => "display regular",
-                NodeType.DynamicUi => "desktop-designer Custom-icons.color",
-                _ => "circle-question chisel-regular"
-            };
+            return NodeIconHelper.GetIconKey(type);
         }
 
         protected static System.Windows.Media.Brush ResolveTextOnNodeBrush(string? nodeColorKey)
