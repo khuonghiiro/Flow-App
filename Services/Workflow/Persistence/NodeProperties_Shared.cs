@@ -214,19 +214,32 @@ public sealed partial class FileWorkflowPersistenceService
     {
         if (!string.IsNullOrWhiteSpace(node.FlowScopeKey))
             dict["FlowScopeKey"] = node.FlowScopeKey;
-        dict["RunMode"] = node.RunMode.ToString();
-        dict["AutoRunIntervalValue"] = node.AutoRunIntervalValue;
-        dict["AutoRunIntervalUnit"] = node.AutoRunIntervalUnit.ToString();
-        dict["AutoScopeVisualPadding"] = node.AutoScopeVisualPadding.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        dict["AutoScopeFrameX"] = node.AutoScopeFrameX.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        dict["AutoScopeFrameY"] = node.AutoScopeFrameY.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        dict["AutoScopeFrameWidth"] = node.AutoScopeFrameWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        dict["AutoScopeFrameHeight"] = node.AutoScopeFrameHeight.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        dict["EndBehavior"] = node.EndBehavior.ToString();
-        dict["DiamondSharpness"] = node.DiamondSharpness.ToString();
-        if (node.IsConditionalNode)
+
+        // v2: Chỉ ghi nếu ≠ default — giảm ~10 fields/node cho workflow thông thường
+        if (node.RunMode != FlowRunMode.MainFlow)
+            dict["RunMode"] = node.RunMode.ToString();
+        if (node.AutoRunIntervalValue != 5d)
+            dict["AutoRunIntervalValue"] = node.AutoRunIntervalValue;
+        if (node.AutoRunIntervalUnit != AutoRunIntervalUnit.Seconds)
+            dict["AutoRunIntervalUnit"] = node.AutoRunIntervalUnit.ToString();
+        if (node.AutoScopeVisualPadding != 40d)
+            dict["AutoScopeVisualPadding"] = node.AutoScopeVisualPadding.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (node.AutoScopeFrameX != 0d)
+            dict["AutoScopeFrameX"] = node.AutoScopeFrameX.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (node.AutoScopeFrameY != 0d)
+            dict["AutoScopeFrameY"] = node.AutoScopeFrameY.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (node.AutoScopeFrameWidth != 0d)
+            dict["AutoScopeFrameWidth"] = node.AutoScopeFrameWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (node.AutoScopeFrameHeight != 0d)
+            dict["AutoScopeFrameHeight"] = node.AutoScopeFrameHeight.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (node.EndBehavior != EndNodeBehavior.StopCurrentFlow)
+            dict["EndBehavior"] = node.EndBehavior.ToString();
+        if (node.DiamondSharpness != DiamondSharpness.Medium)
+            dict["DiamondSharpness"] = node.DiamondSharpness.ToString();
+        if (node.IsConditionalNode && node.ConditionalVisualMode != ConditionalVisualMode.Classic)
             dict["ConditionalVisualMode"] = node.ConditionalVisualMode.ToString();
-        dict["IconSize"] = node.IconSize;
+        if (node.IconSize != 32)
+            dict["IconSize"] = node.IconSize;
     }
 
     // ===== GET: DynamicInputs (all nodes) =====
@@ -260,8 +273,11 @@ public sealed partial class FileWorkflowPersistenceService
 
     private static void GetSharedTitleProperties(WorkflowNode node, Dictionary<string, object> dict)
     {
-        dict["TitleDisplayMode"] = node.TitleDisplayMode.ToString();
-        dict["TitleColorMode"] = node.TitleColorMode.ToString();
+        // v2: Chỉ ghi nếu ≠ default
+        if (node.TitleDisplayMode != TitleDisplayMode.Always)
+            dict["TitleDisplayMode"] = node.TitleDisplayMode.ToString();
+        if (node.TitleColorMode != TitleColorMode.NodeColor)
+            dict["TitleColorMode"] = node.TitleColorMode.ToString();
         if (!string.IsNullOrEmpty(node.TitleColorKey))
             dict["TitleColorKey"] = node.TitleColorKey;
     }

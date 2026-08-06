@@ -1,7 +1,9 @@
 # Persistence — FlowMy Node Creation
 
-> Cập nhật: 2026-06-12
+> Cập nhật: 2026-08-06
 > Phần này giải thích cách thêm serialize/deserialize cho node mới.
+>
+> **⚡ Format v2 (AI-Friendly):** Hệ thống hỗ trợ format JSON đơn giản hóa — AI tạo workflow chỉ cần viết `Type`, `Title`, `X`, `Y` và specific `Properties`. System tự bổ sung Node ID, Ports, Viewport, Shared Properties. Xem chi tiết tại `docs/NodeReferences/_NODE_RENDER_LOGIC_SYNTHESIS.md` mục "FORMAT v2".
 
 ---
 

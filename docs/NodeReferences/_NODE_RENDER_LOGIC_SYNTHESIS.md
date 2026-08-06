@@ -5,6 +5,197 @@
 
 ---
 
+## ⚡ FORMAT v2 — AI SIMPLIFIED (ƯU TIÊN ĐỌC TRƯỚC)
+
+> **Từ version 2**, hệ thống hỗ trợ format JSON đơn giản hóa dành cho AI tạo sinh workflow. AI chỉ cần viết các fields cốt lõi — hệ thống **tự bổ sung** mọi thứ còn thiếu khi load.
+
+### Nguyên tắc v2
+1. **Convention over Configuration**: Shared properties có default → **không cần ghi nếu = default**
+2. **Auto-generate**: Port IDs, Node IDs tự sinh nếu thiếu
+3. **Viewport auto-calculate**: Nếu thiếu PanX/PanY/Zoom → tự tính từ bounding box nodes
+4. **Connection by Index**: `{"FromNodeId": "0", "ToNodeId": "1"}` thay vì GUID
+5. **Omit standard ports**: Node thường (2 ports: Input Left + Output Right) → bỏ hẳn `Ports`
+
+### Ví dụ v2: Start → Delay 2s → End (3 nodes, 25 dòng)
+```json
+{
+  "Version": 2,
+  "Name": "Simple Delay Workflow",
+  "Nodes": [
+    { "Type": "Start", "Title": "Start", "X": 9850, "Y": 9950 },
+    { 
+      "Type": "Delay", "Title": "Wait 2s", "X": 10250, "Y": 9950,
+      "Properties": { "DelayValue": 2, "DelayUnit": "Seconds" }
+    },
+    { "Type": "End", "Title": "End", "X": 10650, "Y": 9950 }
+  ],
+  "Connections": [
+    { "FromNodeId": "0", "ToNodeId": "1" },
+    { "FromNodeId": "1", "ToNodeId": "2" }
+  ]
+}
+```
+
+### Các fields được auto-fill khi load v2
+
+| Field | Auto-fill rule | Giá trị default |
+|-------|---------------|-----------------|
+| `Id` (node) | `"Node_{Type}_{GUID}"` | Tự sinh |
+| `Ports` | 1 Input Left + 1 Output Right (trừ InputNode: chỉ Output Right) | Tự sinh |
+| `Port.Id` | GUID mới | Tự sinh |
+| `ColorKey` | Theo TemplateFactory | Null OK |
+| `Properties` | Null = không có specific props | `{}` |
+| `OutputValues` | Luôn null khi tạo mới | Bỏ qua |
+| `PanX/PanY` | Tính từ bounding box: `Pan = -(Center * Zoom) + ScreenSize/2` | Auto |
+| `SavedViewportCenterX/Y` | Trung tâm bounding box nodes | Auto |
+| `ZoomLevel` | Auto-fit theo spread nodes | `0.3 - 1.5` |
+| `ConnectionLineStyle` | Default | `"Bezier"` |
+
+### Connection by Index (Option C)
+- `"FromNodeId": "0"` → Node đầu tiên trong `Nodes[]`
+- `"FromNodeId": "1"` → Node thứ 2
+- `"FromNodeId": "Node_Start_abc..."` → Match theo GUID (user-created)
+- System tự detect: nếu parse được int → dùng index, ngược lại → dùng string ID
+- **Khi save**: luôn dùng GUID ID (user-created nodes giữ nguyên GUID)
+
+### Shared Properties — chỉ ghi khi ≠ default
+
+| Property | Default | Chỉ ghi khi |
+|----------|---------|-------------|
+| `RunMode` | `"MainFlow"` | ≠ MainFlow |
+| `AutoRunIntervalValue` | `5` | ≠ 5 |
+| `AutoRunIntervalUnit` | `"Seconds"` | ≠ Seconds |
+| `EndBehavior` | `"StopCurrentFlow"` | ≠ StopCurrentFlow |
+| `DiamondSharpness` | `"Medium"` | ≠ Medium |
+| `TitleDisplayMode` | `"Always"` | ≠ Always |
+| `TitleColorMode` | `"NodeColor"` | ≠ NodeColor |
+| `IconSize` | `32` | ≠ 32 |
+| `AutoScopeVisualPadding` | `40` | ≠ 40 |
+| `AutoScopeFrame*` | `0` | ≠ 0 |
+
+### ⚠️ Node thường vs Node đặc biệt (khi nào CẦN Ports)
+- **KHÔNG cần Ports** (tự sinh): Start, End, Delay, Input, Output, Notification, Code, Folder, HttpRequest, Storage, AssignData, StringSplit, TextScan, ...
+- **CẦN Ports** (phức tạp, nhiều output): IfElse (ConditionalNode), Loop, AsyncTask, BodyContainer, LoopBody, AsyncTaskBody
+
+---
+
+## 🗺️ AI LAYOUT GUIDE — Toạ Độ & Kết Nối
+
+> **Canvas**: 20000 x 20000 pixels. **Tâm** ở `(10000, 10000)`. Mọi workflow nên bắt đầu gần tâm để luôn hiển thị đúng khi mở.
+
+### 1. Điểm bắt đầu (Origin Point)
+- **Start node** luôn đặt tại: `X = 9850, Y = 9950` (gần tâm, lệch trái một chút)
+- Các node tiếp theo nối **ngang sang phải** (flow pattern chuẩn)
+
+### 2. Kích thước Node (Visual Width × Height)
+
+| Nhóm | Node Types | Kích thước Visual | X Spacing |
+|------|-----------|------------------|-----------|
+| **Nhỏ** (icon) | Start, End, Input, Output, Break, Continue, AssignData | 60 × 60 | **250px** |
+| **Trung bình** | Delay, KeyPress, HotkeyPress, MouseEvent, Notification, Storage, Callback, StringSplit, TextScan, HttpRequest, FileDownload, FolderFilePaths, KeyValueBridge, FlowOverwrite, GitSource, MacroRecorder, BorderHighlight, ScreenPosition, ScreenCapture, ListOut, DataFetcher, ShowInputMsg | ~150 × 80 | **350px** |
+| **Lớn** | Code, Folder, ConditionalNode (IfElse), AsyncTask, EmbedApplication | ~200 × 120 | **450px** |
+| **Rất lớn** | Web (WebView2), HtmlUi, DynamicUi | 420 × 320 | **700px** |
+| **Khổng lồ** | ImageProcessing | 360 × 280 | **800px** |
+| **Cực lớn** | VideoProcessing | 1360 × 768 | **1600px** |
+| **Container** | BodyContainer, ActionCanVas | 800 × 400 | **1200px** |
+| **Loop** | Loop (+ LoopBody bên trong) | 200 × 80 + body 400 × 300 | **900px** |
+
+### 3. Quy tắc toạ độ
+
+#### Layout ngang (chuẩn — dùng cho hầu hết workflow):
+```
+Flow direction: → (trái sang phải)
+
+Start(9850, 9950) → NodeA(10200, 9950) → NodeB(10550, 9950) → End(10900, 9950)
+                     +350px                 +350px                +350px
+```
+
+**Công thức đơn giản:**
+```
+Node[0]: X = 9850,                  Y = 9950
+Node[i]: X = Node[i-1].X + SPACING, Y = 9950  (cùng hàng Y)
+```
+
+Trong đó `SPACING` lấy theo bảng kích thước ở trên.
+
+#### InputNode (data source — không nằm trong flow chính):
+```
+InputNode thường đặt PHÍA TRÊN flow chính, lệch trái so với node nó cung cấp data:
+
+   Input(10100, 9650)    ← Y - 300
+          │ (connection data)
+          ▼
+Start ──→ Delay ──→ HttpRequest ──→ End
+(9850)    (10200)   (10550)          (10900)
+                    ↑ nhận data từ Input
+```
+
+#### Layout rẽ nhánh (IfElse / ConditionalNode):
+```
+                    ┌→ NodeTrue  (X+450, Y-200)
+Start → IfElse ────┤
+                    └→ NodeFalse (X+450, Y+200)
+                         └→ End
+```
+**Mỗi nhánh cách nhau ΔY = 300-400px.**
+
+#### Layout song song (nhiều Input + 1 flow):
+```
+Input1(9850, 9500)  ──┐
+Input2(9850, 9750)  ──┼→ Start(10200, 9950) → ... → End
+Input3(9850, 10200) ──┘
+
+InputNodes xếp dọc, cách nhau ΔY = 250px
+```
+
+### 4. Bảng toạ độ nhanh (Copy-paste cho AI)
+
+| Vị trí | X | Y | Ghi chú |
+|--------|---|---|---------|
+| Start | 9850 | 9950 | Luôn bắt đầu tại đây |
+| Node 1 | 10200 | 9950 | +350 từ Start |
+| Node 2 | 10550 | 9950 | +350 từ Node 1 |
+| Node 3 | 10900 | 9950 | +350 từ Node 2 |
+| Node 4 | 11250 | 9950 | +350 từ Node 3 |
+| Node 5 | 11600 | 9950 | +350 từ Node 4 |
+| End | X cuối + 350 | 9950 | Luôn ở cuối flow |
+| Input (data) | X target - 100 | 9650 | Phía trên node đích |
+| Branch trên | X parent + 450 | Y - 250 | Nhánh true |
+| Branch dưới | X parent + 450 | Y + 250 | Nhánh false |
+
+### 5. Viewport — Không cần lo!
+> **v2 auto-calculate**: Khi thiếu `PanX`, `PanY`, `SavedViewportCenterX/Y` → hệ thống tự tính từ bounding box các node. AI **KHÔNG CẦN** tính viewport nữa.
+
+### 6. Bảng Tra Cứu Combobox Output Keys (Dùng cho Dynamic Binding)
+
+Khi một Node cần lấy dữ liệu từ Output của Node khác (qua Property Binding như `UrlSourceNodeId` + `UrlSourceOutputKey`, hoặc `DynIn_*_SrcNode` + `DynIn_*_SrcKey`, hoặc `SourceNodeId` + `SourceOutputKey`), hãy sử dụng đúng Key theo bảng dưới đây:
+
+| Node Nguồn (Type) | Output Key khả dụng (Combobox Key) | Mô tả dữ liệu |
+|-------------------|-----------------------------------|---------------|
+| **Input** | `"value"` (hoặc theo `InputKey`) | Giá trị nhập từ InputNode |
+| **HttpRequest** | `"statusCode"`, `"responseBody"`, `"headers"`, `"isSuccess"`, `"error"` | Kết quả HTTP Request |
+| **StringSplit** | `"items"`, `"count"` | Mảng chuỗi sau khi tách và số lượng |
+| **FolderFilePaths** | `"filePaths"`, `"folderPath"`, `"fileCount"` | Danh sách đường dẫn file trong folder |
+| **TextScan** | `"scannedText"`, `"confidence"` | Kết quả OCR quét văn bản |
+| **Storage** | Các key người dùng đã lưu trong Storage | Dữ liệu lưu đệm |
+| **Code** | Key trả về từ C# code (`dict["key"]`) | Dữ liệu tính toán từ Code |
+
+### 7. Quy Tắc Nối Cổng (Port Connection Rules — Rất Quan Trọng)
+
+> ⚠️ **Mỗi Cổng Input (Left Port) của một Node chỉ nhận TỐI ĐA 1 DÂY NỐI (1 Incoming Connection)**.
+
+1. **Dây nối Flow (Main Flow)**:
+   - Nối tuần tự: `Start` → `Delay` → `HttpRequest` → `IfElse` → `End`.
+   - Cổng Input của `HttpRequest` **chỉ dành cho dây nối Flow từ Start/Delay**.
+
+2. **Truyền Dữ Liệu từ InputNode (Data Binding)**:
+   - Node `Input` cung cấp dữ liệu cho `HttpRequest` bằng cách set trong `Properties`:
+     `"UrlSourceNodeId": "0"` (với 0 là index của InputNode trong `Nodes[]`)
+     `"UrlSourceOutputKey": "value"`
+   - **KHÔNG CẦN** cắm thêm 1 dây nối visual từ `InputNode` chụm vào cổng Input của `HttpRequest` (tránh bị 2 dây chụm vào 1 cổng).
+
+---
+
 ## 1. Cấu Trúc Object JSON Của Workflow (Global Scope)
 Một Workflow hoàn chỉnh xuất ra file JSON luôn có dạng gốc như sau. **Mọi AI render workflow bắt buộc phải tuân thủ form này**, không được thiếu các key về hiển thị (Zoom/Pan):
 
