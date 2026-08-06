@@ -1109,8 +1109,8 @@ namespace FlowMy.Views
             }
             NodeAppearanceModeSelector.SelectionChanged += NodeAppearanceModeSelector_SelectionChanged;
 
-            // Apply Liquid Glass to palette if mode is already LiquidGlass (from saved preferences)
-            if (string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase))
+            // Apply Node appearance style to palette if mode is not Solid (from saved preferences)
+            if (!string.Equals(_nodeAppearanceMode, "Solid", System.StringComparison.OrdinalIgnoreCase))
             {
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, new Action(() =>
                 {
@@ -1198,13 +1198,14 @@ namespace FlowMy.Views
                                     NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
                                 }
 
-                                // Liquid Glass: cập nhật icon color sau theme switch
-                                if (string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase))
+                                // Node appearance: cập nhật icon color và re-render node sau theme switch
+                                if (!string.Equals(_nodeAppearanceMode, "Solid", System.StringComparison.OrdinalIgnoreCase))
                                 {
-                                    // Canvas nodes: re-render để NodeChrome.Apply cập nhật icon fill theo theme mới
+                                    // Canvas nodes: re-render để NodeChrome.Apply cập nhật hiệu ứng & icon fill theo theme mới
                                     NodeRendererService?.RenderAllNodes();
                                     RenderAllConnections();
-                                    // Palette: cập nhật icon fill
+                                    // Palette: cập nhật appearance & icon fill
+                                    ApplyLiquidGlassToPalette();
                                     ApplyLiquidGlassIconsToPalette();
                                 }
                             }));
@@ -1243,7 +1244,7 @@ namespace FlowMy.Views
         private void ApplyLiquidGlassToPalette()
         {
             if (NodeTemplatesPanel == null) return;
-            var isGlass = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase);
+            var mode = Services.Rendering.NodeAppearanceHelper.GetNormalizedMode(_nodeAppearanceMode);
 
             foreach (var child in NodeTemplatesPanel.Children)
             {
@@ -1253,7 +1254,7 @@ namespace FlowMy.Views
                     {
                         if (wpChild is Border paletteBorder && paletteBorder.Tag is string)
                         {
-                            ApplyGlassToPaletteBorder(paletteBorder, isGlass);
+                            ApplyAppearanceToPaletteBorder(paletteBorder, mode);
                         }
                     }
                 }
@@ -1261,8 +1262,7 @@ namespace FlowMy.Views
         }
 
         /// <summary>
-        /// Chỉ cập nhật icon fill trong palette khi đang ở LiquidGlass mode (sau theme switch).
-        /// Không đụng background/border — chỉ đổi màu icon đen↔trắng theo theme mới.
+        /// Chỉ cập nhật icon fill trong palette khi đang ở mode không phải Solid (sau theme switch).
         /// </summary>
         private void ApplyLiquidGlassIconsToPalette()
         {
@@ -1288,11 +1288,11 @@ namespace FlowMy.Views
         }
 
         /// <summary>
-        /// Áp dụng hoặc gỡ Liquid Glass cho 1 palette border.
+        /// Áp dụng hoặc gỡ Node Appearance style cho 1 palette border.
         /// </summary>
-        private static void ApplyGlassToPaletteBorder(Border border, bool isGlass)
+        private static void ApplyAppearanceToPaletteBorder(Border border, string mode)
         {
-            if (isGlass)
+            if (!string.Equals(mode, Services.Rendering.NodeAppearanceHelper.ModeSolid, System.StringComparison.OrdinalIgnoreCase))
             {
                 // Lưu trạng thái gốc lần đầu (trước khi override bất cứ gì)
                 if (!border.Resources.Contains("_OrigBg"))
@@ -1311,18 +1311,25 @@ namespace FlowMy.Views
                 // Lấy base color từ original background
                 var origBg = border.Resources["_OrigBg"] as Brush ?? border.Background;
                 var baseColor = Services.Rendering.LiquidGlassHelper.GetColorFromBrush(origBg);
+                var style = Services.Rendering.NodeAppearanceHelper.GetStyle(mode, baseColor);
 
-                // Apply glass
-                border.Background = Services.Rendering.LiquidGlassHelper.CreateGlassBackground(baseColor);
-                border.BorderBrush = Services.Rendering.LiquidGlassHelper.CreateGlassBorderBrush();
-                border.BorderThickness = new System.Windows.Thickness(1.2);
-                var isLightColor = (0.299 * baseColor.R + 0.587 * baseColor.G + 0.114 * baseColor.B) / 255.0 > 0.65;
-                border.Effect = Services.Rendering.LiquidGlassHelper.CreateGlassEffect(baseColor, isLightColor);
+                border.Background = style.Background;
+                border.BorderBrush = style.BorderBrush;
+                border.BorderThickness = style.BorderThickness;
+                border.Effect = style.Effect;
 
-                // Icon fill theo theme
-                var iconBrush = Services.Rendering.LiquidGlassHelper.GetGlassIconBrush();
-                foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(border))
-                    svg.Fill = iconBrush;
+                if (string.Equals(mode, Services.Rendering.NodeAppearanceHelper.ModeLiquidGlass, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    var glassIconBrush = Services.Rendering.LiquidGlassHelper.GetGlassIconBrush();
+                    foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(border))
+                        svg.Fill = glassIconBrush;
+                }
+                else
+                {
+                    // ModernGradient: sử dụng style.TextColor có tính tương phản luminance của ColorKey
+                    foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(border))
+                        svg.Fill = style.TextColor;
+                }
             }
             else
             {

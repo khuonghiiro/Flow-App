@@ -301,30 +301,39 @@ namespace FlowMy.Views
             var ghostWidth = defaultContainerSize + 4;
             var ghostHeight = defaultContainerSize + 4;
 
-            // Tạo ghost mới dựa trên template
+            var origBg = sourceBorder.Resources["_OrigBg"] as Brush ?? background;
+            var baseColor = Services.Rendering.LiquidGlassHelper.GetColorFromBrush(origBg);
+            var ghostStyle = Services.Rendering.NodeAppearanceHelper.GetStyle(_nodeAppearanceMode, baseColor);
+
+            Brush ghostIconFill = ghostStyle.TextColor ?? new SolidColorBrush(Colors.White);
+            if (string.Equals(_nodeAppearanceMode, "Solid", System.StringComparison.OrdinalIgnoreCase))
+            {
+                if (sourceBorder.Resources["_OrigFills"] is System.Collections.Generic.List<Brush> origFills && origFills.Count > 0)
+                {
+                    ghostIconFill = origFills[0];
+                }
+                else
+                {
+                    var sourceIcon = FindVisualChildren<SvgViewboxEx>(sourceBorder).FirstOrDefault();
+                    if (sourceIcon?.Fill != null)
+                    {
+                        ghostIconFill = sourceIcon.Fill;
+                    }
+                }
+            }
+
+            // Tạo ghost mới dựa trên template & current node appearance mode
             _dragGhost = new Border
             {
                 Width = ghostWidth,
                 Height = ghostHeight,
-                Background = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
-                    ? Services.Rendering.LiquidGlassHelper.CreateGlassBackground(
-                        Services.Rendering.LiquidGlassHelper.GetColorFromBrush(background))
-                    : background,
-                BorderBrush = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
-                    ? Services.Rendering.LiquidGlassHelper.CreateGlassBorderBrush()
-                    : sourceBorder.BorderBrush,
-                BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(10),
-                Opacity = 0.5,
+                Background = ghostStyle.Background,
+                BorderBrush = ghostStyle.BorderBrush,
+                BorderThickness = ghostStyle.BorderThickness,
+                CornerRadius = ghostStyle.CornerRadius,
+                Opacity = 0.75,
                 IsHitTestVisible = false,
-                Effect = sourceBorder.Effect ?? new DropShadowEffect
-                {
-                    Color = Colors.Black,
-                    Direction = 270,
-                    ShadowDepth = 4,
-                    BlurRadius = 10,
-                    Opacity = 0.4
-                }
+                Effect = ghostStyle.Effect
             };
 
             // Tạo Grid chứa icon
@@ -348,9 +357,7 @@ namespace FlowMy.Views
                 Height = iconSize * 1.15,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
-                    ? Services.Rendering.LiquidGlassHelper.GetGlassIconBrush()
-                    : new SolidColorBrush(Colors.White),
+                Fill = ghostIconFill,
                 IsHitTestVisible = false
             };
 

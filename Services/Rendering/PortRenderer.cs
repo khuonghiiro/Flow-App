@@ -48,12 +48,12 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>Tạo port với margin wrapper để dễ nhìn khi bị khuất.</summary>
-        public FrameworkElement CreatePortWithMargin(Color color, Thickness margin, double portSize = 18)
+        public FrameworkElement CreatePortWithMargin(Color color, Thickness margin)
         {
             var ellipse = new Ellipse
             {
-                Width = portSize,
-                Height = portSize,
+                Width = 18,
+                Height = 18,
                 Fill = new SolidColorBrush(color),
                 Stroke = new SolidColorBrush(Colors.White),
                 StrokeThickness = 2,
@@ -79,7 +79,7 @@ namespace FlowMy.Services.Rendering
             {
                 Margin = margin,
                 Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)), // Background nhạt để dễ nhìn
-                CornerRadius = new CornerRadius(portSize / 2), // Bo góc theo port size
+                CornerRadius = new CornerRadius(9), // Bo góc theo port size (18 / 2)
                 Child = ellipse,
                 IsHitTestVisible = false // Chỉ ellipse nhận hit test
             };

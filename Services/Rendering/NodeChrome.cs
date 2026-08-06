@@ -50,15 +50,14 @@ namespace FlowMy.Services.Rendering
             // Không gắn chrome cho LoopBody container (node ảo)
             if (node is LoopBodyNode) return;
 
-            // ── Liquid Glass: transform border appearance trước khi apply GPU/chrome ──
-            // Skip cho các node dùng hình thoi (diamond) — border của chúng là transparent container
-            if (LiquidGlassHelper.IsLiquidGlassMode(host) && !(node is ActionCanVasNode))
+            // ── Node Appearance Mode: transform border appearance trước khi apply GPU/chrome ──
+            if (!string.Equals(host.NodeAppearanceMode, "Solid", System.StringComparison.OrdinalIgnoreCase) && !(node is ActionCanVasNode))
             {
                 var isDiamondNode = node is LoopNode
                     || (node.IsConditionalNode && node.ConditionalVisualMode == ConditionalVisualMode.Diamond)
                     || (node is AsyncTaskNode asyncTask && asyncTask.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch);
 
-                if (isDiamondNode)
+                if (isDiamondNode && string.Equals(host.NodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase))
                 {
                     // Diamond nodes: áp dụng glass lên Polygon fill bên trong, không đụng border
                     var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
@@ -66,8 +65,7 @@ namespace FlowMy.Services.Rendering
                 }
                 else
                 {
-                    var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
-                    LiquidGlassHelper.ApplyToExistingBorder(border, baseColor);
+                    NodeAppearanceHelper.ApplyToBorder(border, node, host);
                 }
             }
 

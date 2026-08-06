@@ -471,13 +471,14 @@ Cursor="Hand"
                     <ComboBox x:Name="NodeAppearanceModeSelector"
                               SelectionChanged="NodeAppearanceModeSelector_SelectionChanged"
                               Style="{DynamicResource BaseComboBox}"
-                              Width="110"
+                              Width="145"
                               Height="28"
                               VerticalAlignment="Center"
                               Margin="4,0,0,0"
-                              ToolTip="Chọn giao diện node (Solid / Liquid Glass)">
+                              ToolTip="Chọn phong cách giao diện hiển thị cho các Node">
                         <ComboBoxItem Tag="Solid">🎯 Solid</ComboBoxItem>
                         <ComboBoxItem Tag="LiquidGlass">💎 Liquid Glass</ComboBoxItem>
+                        <ComboBoxItem Tag="ModernGradient">✨ Modern Gradient</ComboBoxItem>
                     </ComboBox>
                     <!-- Quick toggle icon -->
                     <!-- <Button x:Name="ThemeToggleButton"

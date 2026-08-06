@@ -587,6 +587,11 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     RestoreNodeProperties(node, nodeDto.Properties);
                 }
 
+                if (node.Type == NodeType.Start || node.Type == NodeType.End)
+                {
+                    FlowMy.Services.Rendering.NodeAppearanceHelper.SyncStartEndPortVisibility(node);
+                }
+
                 nodeMap[node.Id] = node;
 
                 if (node is not LoopBodyNode && node is not AsyncTaskBodyNode)

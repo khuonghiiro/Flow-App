@@ -145,6 +145,8 @@ namespace FlowMy.ViewModels
 
         private void ApplyVisualUpdate()
         {
+            FlowMy.Services.Rendering.NodeAppearanceHelper.SyncStartEndPortVisibility(_node);
+
             if (_node.Type == NodeType.Start)
             {
                 StartNodeControl.RefreshVisual(_node);

@@ -416,6 +416,11 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
+            if (node.Type == NodeType.Start || node.Type == NodeType.End)
+            {
+                NodeAppearanceHelper.SyncStartEndPortVisibility(node);
+            }
+
             // Keep ports in sync with node position (required for Phase 5 layout algorithms).
             if (node.IsConditionalNode)
             {
@@ -674,6 +679,11 @@ namespace FlowMy.Services.Rendering
 
         public void RenderNodePorts(WorkflowNode node, Canvas canvas)
         {
+            if (node.Type == NodeType.Start || node.Type == NodeType.End)
+            {
+                NodeAppearanceHelper.SyncStartEndPortVisibility(node);
+            }
+
             foreach (var port in node.Ports)
             {
                 if (!port.IsVisible) continue;
@@ -690,58 +700,34 @@ namespace FlowMy.Services.Rendering
                 _portRenderer.EnsurePortAddedToCanvas(port);
                 _host.ZIndexManager.SetPortZIndex(node, port.PortUI);
             }
+
+            _host.SyncAllPortsZIndex(node);
         }
 
         private Border CreateNodeBorder(WorkflowNode node)
         {
-            var isLiquidGlass = string.Equals(_host.NodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase);
-
-            Brush background;
-            Brush borderBrush;
-            Thickness borderThickness;
-            Effect? effect;
-
-            if (isLiquidGlass)
-            {
-                // Liquid Glass: nền bán trong suốt lấy tint từ NodeBrush, viền trắng mờ, blur shadow
-                var baseColor = GetColorFromBrush(node.NodeBrush);
-                var glassColor = Color.FromArgb(60, baseColor.R, baseColor.G, baseColor.B); // ~23% opacity
-                background = new LinearGradientBrush(
-                    Color.FromArgb(80, baseColor.R, baseColor.G, baseColor.B),
-                    Color.FromArgb(35, baseColor.R, baseColor.G, baseColor.B),
-                    45.0);
-                borderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)); // viền trắng mờ
-                borderThickness = new Thickness(1.2);
-                effect = new DropShadowEffect
-                {
-                    Color = baseColor,
-                    BlurRadius = 18,
-                    ShadowDepth = 0,
-                    Opacity = 0.35,
-                    Direction = 0
-                };
-            }
-            else
-            {
-                // Solid mode (mặc định)
-                background = node.NodeBrush;
-                borderBrush = new SolidColorBrush(Colors.White);
-                borderThickness = new Thickness(2);
-                effect = GpuOptimizationHelper.CreateDropShadowEffect();
-            }
+            var baseColor = GetColorFromBrush(node.NodeBrush);
+            var style = NodeAppearanceHelper.GetStyle(_host.NodeAppearanceMode, baseColor);
 
             var border = new Border
             {
                 Width = 150,
                 Height = 80,
-                Background = background,
-                BorderBrush = borderBrush,
-                BorderThickness = borderThickness,
-                CornerRadius = new CornerRadius(10),
+                Background = style.Background,
+                BorderBrush = style.BorderBrush,
+                BorderThickness = style.BorderThickness,
+                CornerRadius = style.CornerRadius,
                 Cursor = Cursors.Hand,
-                Effect = effect,
+                Effect = style.Effect,
                 Tag = node
             };
+
+            Brush textColor = style.TextColor;
+            if (string.Equals(_host.NodeAppearanceMode, "Solid", System.StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(node.ColorKey))
+            {
+                var textBrush = Application.Current.TryFindResource($"TextOn{node.ColorKey}Brush") as Brush;
+                if (textBrush != null) textColor = textBrush;
+            }
 
             var textBlock = new TextBlock
             {
@@ -749,30 +735,10 @@ namespace FlowMy.Services.Rendering
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 14,
-                FontWeight = FontWeights.Bold
+                FontWeight = FontWeights.Bold,
+                Foreground = textColor,
+                Effect = style.TextEffect
             };
-
-            if (isLiquidGlass)
-            {
-                // Liquid Glass: text trắng với drop shadow nhẹ để đọc được trên nền trong suốt
-                textBlock.Foreground = new SolidColorBrush(Colors.White);
-                textBlock.Effect = new DropShadowEffect
-                {
-                    Color = Colors.Black,
-                    BlurRadius = 4,
-                    ShadowDepth = 1,
-                    Opacity = 0.5
-                };
-            }
-            else if (!string.IsNullOrEmpty(node.ColorKey))
-            {
-                var textBrush = Application.Current.TryFindResource($"TextOn{node.ColorKey}Brush") as Brush;
-                textBlock.Foreground = textBrush ?? GetTextColorFromBrush(node.NodeBrush);
-            }
-            else
-            {
-                textBlock.Foreground = GetTextColorFromBrush(node.NodeBrush);
-            }
 
             border.Child = textBlock;
             return border;
@@ -866,20 +832,7 @@ namespace FlowMy.Services.Rendering
         /// </summary>
         private void UpdateSimpleNodePorts(WorkflowNode node)
         {
-            foreach (var port in node.Ports.Where(p => p.IsVisible))
-            {
-                if (port.PortUI == null)
-                {
-                    var portColor = port.IsInput
-                        ? (GetColorFromTheme("CoralBrush") ?? Colors.Orange)
-                        : (GetColorFromTheme("AtlassianBrush") ?? Colors.Cyan);
-                    port.PortUI = _portRenderer.CreatePort(portColor);
-                }
-                _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
-                _portRenderer.EnsurePortAddedToCanvas(port);
-                _host.ZIndexManager.SetPortZIndex(node, port.PortUI);
-            }
-            _host.SyncAllPortsZIndex(node);
+            RenderNodePorts(node, _host.WorkflowCanvas);
         }
 
         /// <summary>

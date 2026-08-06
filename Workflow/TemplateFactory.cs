@@ -280,6 +280,7 @@ namespace FlowMy.Workflow
             };
             node.Ports.Add(new NodePort { IsInput = true, Position = PortPosition.Left, IsVisible = true });
             node.Ports.Add(new NodePort { IsInput = false, Position = PortPosition.Right, IsVisible = true });
+            FlowMy.Services.Rendering.NodeAppearanceHelper.SyncStartEndPortVisibility(node);
             return node;
         }
 
@@ -300,6 +301,7 @@ namespace FlowMy.Workflow
             };
             node.Ports.Add(new NodePort { IsInput = true, Position = PortPosition.Left, IsVisible = true });
             node.Ports.Add(new NodePort { IsInput = false, Position = PortPosition.Right, IsVisible = true });
+            FlowMy.Services.Rendering.NodeAppearanceHelper.SyncStartEndPortVisibility(node);
             return node;
         }
 

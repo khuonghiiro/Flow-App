@@ -110,6 +110,7 @@ namespace FlowMy.Views.Overlays
             SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, preferences.CanvasDisplayMode);
             SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, preferences.CullingPerformanceProfile);
             SelectByTag(NodeAppearanceModeComboBox, string.IsNullOrWhiteSpace(preferences.NodeAppearanceMode) ? "Solid" : preferences.NodeAppearanceMode);
+            UpdateNodeAppearanceDescription();
             SelectByTag(LineStyleComboBox, preferences.ConnectionLineStyle);
             SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, preferences.ConnectionAnimationMode);
             SetRadioSelection(ConnectionColorModeNodeRadio, ConnectionColorModeCustomRadio, preferences.ConnectionColorMode);
@@ -385,7 +386,7 @@ namespace FlowMy.Views.Overlays
             BulkTitleModeCustomRadio.Checked += AnyControlChanged;
             EnergyColorModeFollowLineRadio.Checked += AnyControlChanged;
             EnergyColorModeCustomRadio.Checked += AnyControlChanged;
-            NodeAppearanceModeComboBox.SelectionChanged += AnyControlChanged;
+            NodeAppearanceModeComboBox.SelectionChanged += NodeAppearanceModeComboBox_SelectionChanged;
             NodeSpinnerArcModeCheckBox.Checked += AnyControlChanged;
             NodeSpinnerArcModeCheckBox.Unchecked += AnyControlChanged;
             NodeSpinnerMultiColorCheckBox.Checked += AnyControlChanged;
@@ -402,6 +403,25 @@ namespace FlowMy.Views.Overlays
             GetDebounceBalancedRadio().Checked += AnyControlChanged;
             GetDebounceSmoothRadio().Checked += AnyControlChanged;
             EnergyDotTextBoxEvents();
+        }
+
+        private void NodeAppearanceModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateNodeAppearanceDescription();
+            AnyControlChanged(sender, e);
+        }
+
+        private void UpdateNodeAppearanceDescription()
+        {
+            if (NodeAppearanceDescriptionText == null) return;
+
+            var mode = SelectedTag(NodeAppearanceModeComboBox);
+            NodeAppearanceDescriptionText.Text = mode switch
+            {
+                "LiquidGlass" => "Liquid Glass: Nền kính lỏng trong suốt với tint màu nhẹ theo node, viền mờ và hiệu ứng phát sáng ambient mượt mà.",
+                "ModernGradient" => "Modern Gradient: Nền dải màu 3D sang trọng theo phong cách macOS/SaaS cao cấp, viền thủy tinh và hiệu ứng đổ bóng tự nhiên.",
+                _ => "Màu đặc (Solid): Nền màu đặc truyền thống, viền trắng nổi bật và đổ bóng tiêu chuẩn."
+            };
         }
 
         private void CacheNodeCheckBox_Checked(object sender, RoutedEventArgs e)

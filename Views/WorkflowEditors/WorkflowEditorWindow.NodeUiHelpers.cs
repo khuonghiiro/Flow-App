@@ -62,12 +62,10 @@ namespace FlowMy.Views
 
                 if (_draggedNode != node && !string.IsNullOrEmpty(node.ColorKey))
                 {
-                    // Liquid Glass mode: dùng glass hover (tăng opacity gradient) thay vì solid hover brush
-                    if (LiquidGlassHelper.IsLiquidGlassMode(this))
+                    var mode = NodeAppearanceHelper.GetNormalizedMode(_nodeAppearanceMode);
+                    if (mode != NodeAppearanceHelper.ModeSolid)
                     {
-                        var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
-                        border.Background = LiquidGlassHelper.CreateGlassHoverBackground(baseColor);
-                        border.BorderBrush = LiquidGlassHelper.CreateGlassHoverBorderBrush();
+                        NodeAppearanceHelper.ApplyHoverToBorder(border, node, this);
                     }
                     else
                     {
@@ -97,12 +95,10 @@ namespace FlowMy.Views
 
                 if (_draggedNode != node)
                 {
-                    // Liquid Glass mode: khôi phục glass background thay vì solid NodeBrush
-                    if (LiquidGlassHelper.IsLiquidGlassMode(this))
+                    var mode = NodeAppearanceHelper.GetNormalizedMode(_nodeAppearanceMode);
+                    if (mode != NodeAppearanceHelper.ModeSolid)
                     {
-                        var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
-                        border.Background = LiquidGlassHelper.CreateGlassBackground(baseColor);
-                        border.BorderBrush = LiquidGlassHelper.CreateGlassBorderBrush();
+                        NodeAppearanceHelper.ApplyToBorder(border, node, this);
                     }
                     else
                     {
