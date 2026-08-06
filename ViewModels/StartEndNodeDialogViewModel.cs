@@ -1,10 +1,8 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace FlowMy.ViewModels
 {
@@ -21,7 +19,7 @@ namespace FlowMy.ViewModels
 
         [ObservableProperty]
         private DiamondSharpness _diamondSharpness = DiamondSharpness.Medium;
-        
+
         [ObservableProperty]
         private double _autoRunIntervalValue = 5d;
 
@@ -47,7 +45,7 @@ namespace FlowMy.ViewModels
             new RunModeOption(FlowRunMode.SubFlowIndependent, "Luồng con độc lập", "Tách scope độc lập, phù hợp worker riêng", "Hình thoi"),
             new RunModeOption(FlowRunMode.AutoScheduled, "Tự động theo lịch", "Tự chạy theo chu kỳ đã cài, không phụ thuộc nút Bắt đầu", "Hình thoi")
         };
-        
+
         public ObservableCollection<AutoRunIntervalUnit> AutoRunIntervalUnitOptions { get; } = new()
         {
             AutoRunIntervalUnit.Milliseconds,

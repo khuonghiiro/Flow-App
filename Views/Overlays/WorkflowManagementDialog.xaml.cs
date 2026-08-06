@@ -1,5 +1,6 @@
 using FlowMy.Services.Workflow;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -21,6 +22,8 @@ namespace FlowMy.Views.Overlays
         private string _sortColumn = "Name";
         private ListSortDirection _sortDirection = ListSortDirection.Ascending;
         private string _workflowsDir = string.Empty;
+        private bool _isUpdatingSelection = false;
+        private bool _isGridView = true;
 
         public WorkflowManagementDialog()
         {
@@ -28,13 +31,19 @@ namespace FlowMy.Views.Overlays
             DataContext = this;
             LoadWorkflows();
             SetupCollectionView();
+            SetViewMode(true); // Default to Grid view
             UpdateCountText();
             UpdateSortArrows();
             UpdateEmptyState();
+            UpdateSelectionState();
         }
 
         private void LoadWorkflows()
         {
+            foreach (var item in Workflows)
+            {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
             Workflows.Clear();
 
             _workflowsDir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
@@ -57,7 +66,7 @@ namespace FlowMy.Views.Overlays
                 {
                     var fi = new FileInfo(file);
                     var name = Path.GetFileNameWithoutExtension(file);
-                    Workflows.Add(new WorkflowItem
+                    var item = new WorkflowItem
                     {
                         Index = index++,
                         Name = name,
@@ -69,7 +78,9 @@ namespace FlowMy.Views.Overlays
                         LastModifiedFull = fi.Exists
                             ? fi.LastWriteTime.ToString("dd/MM/yyyy HH:mm:ss")
                             : "—"
-                    });
+                    };
+                    item.PropertyChanged += Item_PropertyChanged;
+                    Workflows.Add(item);
                 }
                 catch
                 {
@@ -102,6 +113,58 @@ namespace FlowMy.Views.Overlays
             return item.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
         }
 
+        private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(WorkflowItem.IsSelected))
+            {
+                UpdateSelectionState();
+            }
+        }
+
+        // ─── View Mode Switch ─────────────────────────────────────────
+
+        private void ViewModeGrid_Click(object sender, RoutedEventArgs e)
+        {
+            SetViewMode(true);
+        }
+
+        private void ViewModeList_Click(object sender, RoutedEventArgs e)
+        {
+            SetViewMode(false);
+        }
+
+        private void SetViewMode(bool isGrid)
+        {
+            _isGridView = isGrid;
+
+            var activeBg = FindResource("PrimaryGlowBrush") as System.Windows.Media.Brush;
+            var normalBg = FindResource("ButtonBackgroundBrush") as System.Windows.Media.Brush;
+            var activeBorder = FindResource("PrimaryBrush") as System.Windows.Media.Brush;
+            var normalBorder = FindResource("ButtonBorderBrush") as System.Windows.Media.Brush;
+            var primaryIconFill = FindResource("PrimaryBrush") as System.Windows.Media.Brush;
+            var mutedIconFill = FindResource("TextMuted") as System.Windows.Media.Brush;
+
+            GridViewButton.Background = isGrid ? activeBg : normalBg;
+            GridViewButton.BorderBrush = isGrid ? activeBorder : normalBorder;
+
+            ListViewButton.Background = !isGrid ? activeBg : normalBg;
+            ListViewButton.BorderBrush = !isGrid ? activeBorder : normalBorder;
+
+            if (isGrid)
+            {
+                var wrapPanelFactory = new FrameworkElementFactory(typeof(WrapPanel));
+                wrapPanelFactory.SetValue(WrapPanel.OrientationProperty, Orientation.Horizontal);
+                WorkflowItemsControl.ItemsPanel = new ItemsPanelTemplate(wrapPanelFactory);
+                WorkflowItemsControl.ItemTemplate = (DataTemplate)Resources["GridItemTemplate"];
+            }
+            else
+            {
+                var stackPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
+                WorkflowItemsControl.ItemsPanel = new ItemsPanelTemplate(stackPanelFactory);
+                WorkflowItemsControl.ItemTemplate = (DataTemplate)Resources["ListItemTemplate"];
+            }
+        }
+
         // ─── Search ───────────────────────────────────────────────────
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -111,6 +174,7 @@ namespace FlowMy.Views.Overlays
             ReindexWorkflows();
             UpdateCountText();
             UpdateEmptyState();
+            UpdateSelectionState();
 
             ClearSearchButton.Visibility = string.IsNullOrWhiteSpace(_searchText)
                 ? Visibility.Collapsed
@@ -187,7 +251,123 @@ namespace FlowMy.Views.Overlays
             SortBySizeButton.BorderBrush = _sortColumn == "FileSize" ? activeBorder : normalBorder;
         }
 
-        // ─── Actions ──────────────────────────────────────────────────
+        // ─── Selection & Batch Delete ─────────────────────────────────
+
+        private void SelectAllCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isUpdatingSelection) return;
+
+            bool isChecked = SelectAllCheckBox.IsChecked == true;
+            var visibleItems = _collectionView?.Cast<WorkflowItem>().ToList() ?? Workflows.ToList();
+
+            _isUpdatingSelection = true;
+            try
+            {
+                foreach (var item in visibleItems)
+                {
+                    item.IsSelected = isChecked;
+                }
+            }
+            finally
+            {
+                _isUpdatingSelection = false;
+            }
+
+            UpdateSelectionState();
+        }
+
+        private void UpdateSelectionState()
+        {
+            if (_isUpdatingSelection) return;
+            _isUpdatingSelection = true;
+
+            try
+            {
+                var visibleItems = _collectionView?.Cast<WorkflowItem>().ToList() ?? Workflows.ToList();
+                int totalVisible = visibleItems.Count;
+                int selectedVisible = visibleItems.Count(w => w.IsSelected);
+                int totalSelected = Workflows.Count(w => w.IsSelected);
+
+                if (totalSelected > 0)
+                {
+                    DeleteSelectedButton.Visibility = Visibility.Visible;
+                    DeleteSelectedText.Text = $"Xóa đã chọn ({totalSelected})";
+                }
+                else
+                {
+                    DeleteSelectedButton.Visibility = Visibility.Collapsed;
+                }
+
+                if (totalVisible > 0 && selectedVisible == totalVisible)
+                {
+                    SelectAllCheckBox.IsChecked = true;
+                }
+                else if (selectedVisible == 0)
+                {
+                    SelectAllCheckBox.IsChecked = false;
+                }
+                else
+                {
+                    SelectAllCheckBox.IsChecked = null;
+                }
+            }
+            finally
+            {
+                _isUpdatingSelection = false;
+            }
+        }
+
+        private void DeleteSelected_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = Workflows.Where(w => w.IsSelected).ToList();
+            if (selectedItems.Count == 0) return;
+
+            var result = MessageBox.Show(
+                $"Bạn có chắc chắn muốn xóa {selectedItems.Count} workflow đã chọn?\n\nHành động này không thể hoàn tác!",
+                "Xác nhận xóa hàng loạt",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                int deletedCount = 0;
+                var failedItems = new List<string>();
+
+                foreach (var item in selectedItems)
+                {
+                    try
+                    {
+                        if (File.Exists(item.FilePath))
+                        {
+                            File.Delete(item.FilePath);
+                        }
+                        item.PropertyChanged -= Item_PropertyChanged;
+                        Workflows.Remove(item);
+                        deletedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failedItems.Add($"{item.Name}: {ex.Message}");
+                    }
+                }
+
+                if (failedItems.Count > 0)
+                {
+                    MessageBox.Show(
+                        $"Đã xóa {deletedCount} workflow.\nKhông thể xóa {failedItems.Count} workflow:\n" + string.Join("\n", failedItems),
+                        "Thông báo",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+
+                ReindexWorkflows();
+                UpdateCountText();
+                UpdateEmptyState();
+                UpdateSelectionState();
+            }
+        }
+
+        // ─── Individual Actions ───────────────────────────────────────
 
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
@@ -274,10 +454,12 @@ namespace FlowMy.Views.Overlays
                         File.Delete(item.FilePath);
                     }
 
+                    item.PropertyChanged -= Item_PropertyChanged;
                     Workflows.Remove(item);
                     ReindexWorkflows();
                     UpdateCountText();
                     UpdateEmptyState();
+                    UpdateSelectionState();
                 }
                 catch (Exception ex)
                 {
@@ -385,6 +567,7 @@ namespace FlowMy.Views.Overlays
     public class WorkflowItem : INotifyPropertyChanged
     {
         private int _index;
+        private bool _isSelected;
         private string _name = string.Empty;
         private string _fileName = string.Empty;
         private string _filePath = string.Empty;
@@ -397,6 +580,12 @@ namespace FlowMy.Views.Overlays
         {
             get => _index;
             set { _index = value; OnPropertyChanged(nameof(Index)); }
+        }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set { _isSelected = value; OnPropertyChanged(nameof(IsSelected)); }
         }
 
         public string Name
