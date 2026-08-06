@@ -99,6 +99,50 @@ namespace FlowMy.Views.NodeControls
                 grid.Effect = LiquidGlassHelper.CreateGlassEffect(baseColor, isLightColor);
             }
 
+            // Floating Result Pill below Diamond bottom apex
+            var resultIcon = new TextBlock
+            {
+                Text = "🎯 ",
+                FontSize = 9.5,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var resultText = new TextBlock
+            {
+                Text = "Chờ thực thi",
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var resultStack = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            resultStack.Children.Add(resultIcon);
+            resultStack.Children.Add(resultText);
+
+            var resultPanel = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(180, 15, 23, 42)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(6, 2, 6, 2),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, -22),
+                Child = resultStack,
+                Visibility = Visibility.Collapsed
+            };
+            grid.Children.Add(resultPanel);
+
+            node.ConditionResultPanelUI = resultPanel;
+            node.ConditionResultTextUI = resultText;
+
             // Title sẽ là TextBlock riêng trên Canvas (giống LoopNode)
             var titleTextBlock = new TextBlock
             {
@@ -401,6 +445,34 @@ namespace FlowMy.Views.NodeControls
             };
             stack.Children.Add(titleLabel);
             stack.Children.Add(circleGrid);
+
+            // Result badge pill under satellite circle
+            var resultBadgeText = new TextBlock
+            {
+                Text = "—",
+                FontSize = 9.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var resultBadgeBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(30, 41, 59)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(5, 1, 5, 1),
+                Margin = new Thickness(0, 3, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Child = resultBadgeText,
+                Visibility = Visibility.Collapsed
+            };
+            stack.Children.Add(resultBadgeBorder);
+
+            branch.ResultBadgeUI = resultBadgeText;
+            branch.ResultContainerUI = resultBadgeBorder;
 
             var satelliteBorder = new Border
             {

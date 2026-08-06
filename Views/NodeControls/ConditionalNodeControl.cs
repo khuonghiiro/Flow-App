@@ -32,8 +32,9 @@ namespace FlowMy.Views.NodeControls
             const double nodeWidth = 180 * UiScale;
             const double branchHeight = 35 * UiScale;
             const double headerHeight = 40 * UiScale;
+            const double resultPanelHeight = 30 * UiScale;
 
-            double totalHeight = headerHeight + (node.ConditionalBranches.Count * branchHeight);
+            double totalHeight = headerHeight + (node.ConditionalBranches.Count * branchHeight) + resultPanelHeight;
 
             var border = new Border
             {
@@ -58,6 +59,7 @@ namespace FlowMy.Views.NodeControls
             var mainGrid = new Grid();
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(headerHeight) });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(resultPanelHeight) });
 
             var headerTextBrush = GetBrushFromTheme("TextOnLavenderBrush") ?? new SolidColorBrush(Colors.White);
             var headerBorder = new Border
@@ -86,6 +88,51 @@ namespace FlowMy.Views.NodeControls
             }
 
             mainGrid.Children.Add(branchesStack);
+
+            // ── RESULT PANEL ─────────────────────────────────────────────
+            var resultIcon = new TextBlock
+            {
+                Text = "🎯 ",
+                FontSize = 10 * UiScale,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var resultText = new TextBlock
+            {
+                Text = "Chờ thực thi",
+                FontSize = 10.5 * UiScale,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = headerTextBrush,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                ToolTip = "Kết quả đánh giá điều kiện gần nhất"
+            };
+
+            var resultStack = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            resultStack.Children.Add(resultIcon);
+            resultStack.Children.Add(resultText);
+
+            var resultPanel = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                CornerRadius = new CornerRadius(0, 0, 8, 8),
+                Padding = new Thickness(6, 2, 6, 2),
+                Child = resultStack,
+                Visibility = Visibility.Visible
+            };
+            Grid.SetRow(resultPanel, 2);
+            mainGrid.Children.Add(resultPanel);
+
+            node.ConditionResultPanelUI = resultPanel;
+            node.ConditionResultTextUI = resultText;
+
             border.Child = mainGrid;
 
             // This node uses an internal header TextBlock for the title (not a canvas-floating title).
@@ -210,6 +257,32 @@ namespace FlowMy.Views.NodeControls
                 Grid.SetColumn(textBlock, 1);
                 grid.Children.Add(textBlock);
             }
+
+            // Branch evaluation result badge (Column 2)
+            var resultBadgeText = new TextBlock
+            {
+                Text = "—",
+                FontSize = 9.5 * UiScale,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var resultBadgeBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(4, 1, 4, 1),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = resultBadgeText,
+                Visibility = Visibility.Collapsed
+            };
+            Grid.SetColumn(resultBadgeBorder, 2);
+            grid.Children.Add(resultBadgeBorder);
+
+            branch.ResultBadgeUI = resultBadgeText;
+            branch.ResultContainerUI = resultBadgeBorder;
 
             branchBorder.Child = grid;
             return branchBorder;

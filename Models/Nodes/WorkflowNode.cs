@@ -413,6 +413,11 @@ namespace FlowMy.Models
         /// </summary>
         public ToggleButton? ExecutionErrorToggleUI { get; set; }
         public StackPanel? ExecutionErrorItemsPanel { get; set; }
+        /// <summary>
+        /// UI refs (runtime-only): Panel hiển thị kết quả đánh giá điều kiện (True/False & nhánh được chọn) cho Conditional Nodes.
+        /// </summary>
+        public FrameworkElement? ConditionResultPanelUI { get; set; }
+        public TextBlock? ConditionResultTextUI { get; set; }
 
         public bool SupportsDynamicData => (DynamicInputs?.Count > 0) || (DynamicOutputs?.Count > 0);
 

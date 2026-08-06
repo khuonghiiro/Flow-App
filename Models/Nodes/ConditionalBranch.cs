@@ -79,6 +79,31 @@ namespace FlowMy.Models
         [System.Text.Json.Serialization.JsonIgnore]
         [Newtonsoft.Json.JsonIgnore]
         public FrameworkElement? SatelliteArrowHead { get; set; }
+
+        /// <summary>Runtime-only: UI badge hiển thị kết quả đánh giá (TRUE/FALSE) trên từng nhánh. Không serialize.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
+        public TextBlock? ResultBadgeUI { get; set; }
+
+        /// <summary>Runtime-only: Container Border của result badge. Không serialize.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
+        public Border? ResultContainerUI { get; set; }
+
+        /// <summary>Runtime-only: Chuỗi mô tả giá trị đánh giá gần nhất của nhánh. Không serialize.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
+        public string? LastEvaluatedValue { get; set; }
+
+        /// <summary>Runtime-only: Tỷ lệ % tương đồng ảnh thực tế được tính toán. Không serialize.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
+        public double? LastImageSimilarityScore { get; set; }
+
+        /// <summary>Runtime-only: Mô tả chi tiết kết quả tính toán điều kiện (ví dụ: % khớp ảnh). Không serialize.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
+        public string? LastEvaluationDetails { get; set; }
     }
 }
 

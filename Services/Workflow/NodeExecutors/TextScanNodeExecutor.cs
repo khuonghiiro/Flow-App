@@ -1044,19 +1044,31 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var wv2 = FindFirstVisualChild<CefSharp.Wpf.ChromiumWebBrowser>(child);
                         if (wv2 != null)
                         {
+                            bool wasHidden = wv2.Visibility != System.Windows.Visibility.Visible;
+                            if (wasHidden)
+                            {
+                                wv2.Visibility = System.Windows.Visibility.Visible;
+                                wv2.UpdateLayout();
+                            }
+
+                            BitmapSource? capturedBmp = null;
                             try
                             {
-                                var devTools = wv2.GetBrowser()?.GetDevToolsClient();
-                                if (devTools != null)
+                                var browser = wv2.GetBrowser();
+                                if (browser != null)
                                 {
-                                    var screenshot = await devTools.Page.CaptureScreenshotAsync();
-                                    if (screenshot?.Data != null && screenshot.Data.Length > 0)
+                                    var devTools = browser.GetDevToolsClient();
+                                    if (devTools != null)
                                     {
-                                        using var ms = new MemoryStream(screenshot.Data);
-                                        var decoder = new PngBitmapDecoder(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-                                        if (decoder.Frames.Count > 0)
+                                        var screenshot = await devTools.Page.CaptureScreenshotAsync();
+                                        if (screenshot?.Data != null && screenshot.Data.Length > 0)
                                         {
-                                            webViewCaptures[child] = decoder.Frames[0];
+                                            using var ms = new MemoryStream(screenshot.Data);
+                                            var decoder = new PngBitmapDecoder(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                            if (decoder.Frames.Count > 0)
+                                            {
+                                                capturedBmp = decoder.Frames[0];
+                                            }
                                         }
                                     }
                                 }
@@ -1064,6 +1076,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             catch (Exception ex)
                             {
                                 System.Diagnostics.Debug.WriteLine($"[RenderCanvasRegion] CaptureScreenshotAsync error: {ex.Message}");
+                            }
+
+                            if (wasHidden)
+                            {
+                                wv2.Visibility = System.Windows.Visibility.Collapsed;
+                            }
+
+                            if (capturedBmp != null)
+                            {
+                                webViewCaptures[child] = capturedBmp;
                             }
                         }
                     }
@@ -1115,25 +1137,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 dc.DrawRectangle(childBrush, null,
                                     new System.Windows.Rect(drawX, drawY, childW, childH));
 
-                                // Tìm vị trí WebView2 trong child để vẽ bitmap web đúng chỗ
+                                // Tìm vị trí WebView2 trong child để vẽ bitmap web đúng chỗ (chồng lên trên nền node)
                                 var wv2 = FindFirstVisualChild<CefSharp.Wpf.ChromiumWebBrowser>(child);
                                 if (wv2 != null)
                                 {
                                     try
                                     {
-                                        // Lấy vị trí WebView2 tương đối với child
-                                        var wvPos = wv2.TranslatePoint(new System.Windows.Point(0, 0),
-                                            child as System.Windows.UIElement);
-                                        double wvDrawX = drawX + wvPos.X;
-                                        double wvDrawY = drawY + wvPos.Y;
                                         double wvW = wv2.RenderSize.Width;
                                         double wvH = wv2.RenderSize.Height;
+                                        double wvDrawX = drawX;
+                                        double wvDrawY = drawY;
 
                                         if (wvW > 0 && wvH > 0)
                                         {
-                                            dc.DrawImage(wvBitmap,
-                                                new System.Windows.Rect(wvDrawX, wvDrawY, wvW, wvH));
+                                            var wvPos = wv2.TranslatePoint(new System.Windows.Point(0, 0), child as System.Windows.UIElement);
+                                            wvDrawX = drawX + wvPos.X;
+                                            wvDrawY = drawY + wvPos.Y;
                                         }
+                                        else
+                                        {
+                                            // Fallback kích thước khi RenderSize chưa tính xong
+                                            wvW = Math.Max(10, childW - 10);
+                                            wvH = Math.Max(10, childH - 45);
+                                            wvDrawX = drawX + 5;
+                                            wvDrawY = drawY + 40;
+                                        }
+
+                                        // Vẽ hình ảnh web UI đè lên trên nền node
+                                        dc.DrawImage(wvBitmap, new System.Windows.Rect(wvDrawX, wvDrawY, wvW, wvH));
                                     }
                                     catch (Exception ex)
                                     {
