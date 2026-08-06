@@ -16,7 +16,7 @@ namespace FlowMy.Services.Geometry
     public sealed class OrthogonalV2GeometryGenerator : IPathGeometryGenerator
     {
         /// <summary>Margin around each obstacle rect (pixels).</summary>
-        private const double ObstacleMargin = 20;
+        private const double ObstacleMargin = 24;
 
         /// <summary>Extension length from port in the port direction before routing.</summary>
         private const double PortExtension = 28;
@@ -84,8 +84,8 @@ namespace FlowMy.Services.Geometry
                 return BuildGeometry(start, path, end, maxCornerRadius);
             }
 
-            // Fallback: simple 3-segment bypass
-            var fallback = CreateFallbackPath(start, end, sDir, eDir);
+            // Fallback: obstacle-aware detour bypass
+            var fallback = CreateFallbackPath(start, end, sDir, eDir, inflated);
             return BuildGeometry(start, fallback, end, maxCornerRadius);
         }
 
@@ -99,14 +99,23 @@ namespace FlowMy.Services.Geometry
         /// </summary>
         private static List<Point>? FindPathVisibilityGraph(Point start, Point end, List<Rect> obstacles)
         {
-            // Step 1: Collect key points (obstacle corners + start + end)
+            // Step 1: Collect key points (obstacle corners + mid-edges + start + end)
             var keyPoints = new List<Point> { start, end };
             foreach (var r in obstacles)
             {
+                // 4 corners
                 keyPoints.Add(new Point(r.Left, r.Top));
                 keyPoints.Add(new Point(r.Right, r.Top));
                 keyPoints.Add(new Point(r.Left, r.Bottom));
                 keyPoints.Add(new Point(r.Right, r.Bottom));
+
+                // 4 mid-edge points — tạo thêm đường routing dọc theo cạnh obstacle
+                double midX = (r.Left + r.Right) / 2;
+                double midY = (r.Top + r.Bottom) / 2;
+                keyPoints.Add(new Point(midX, r.Top));    // top-center
+                keyPoints.Add(new Point(midX, r.Bottom)); // bottom-center
+                keyPoints.Add(new Point(r.Left, midY));   // left-center
+                keyPoints.Add(new Point(r.Right, midY));  // right-center
             }
 
             // Step 2: Generate lead lines (horizontal + vertical rays from each key point)
@@ -453,6 +462,15 @@ namespace FlowMy.Services.Geometry
 
         private static List<Point> CreateFallbackPath(Point start, Point end, PortPosition sDir, PortPosition eDir)
         {
+            return CreateFallbackPath(start, end, sDir, eDir, null);
+        }
+
+        /// <summary>
+        /// Fallback path with obstacle detection: nếu đường đi đơn giản xuyên qua obstacle,
+        /// tạo detour vòng quanh obstacle đó.
+        /// </summary>
+        private static List<Point> CreateFallbackPath(Point start, Point end, PortPosition sDir, PortPosition eDir, IReadOnlyList<Rect>? obstacles)
+        {
             var waypoints = new List<Point>();
             double ext = PortExtension;
 
@@ -461,20 +479,83 @@ namespace FlowMy.Services.Geometry
 
             waypoints.Add(extStart);
 
-            // Simple 3-segment: extStart → midpoint → extEnd
+            // Simple 3-segment path
+            List<Point> midPoints;
             if (IsHorizontal(sDir))
             {
                 double midX = (extStart.X + extEnd.X) / 2;
-                waypoints.Add(new Point(midX, extStart.Y));
-                waypoints.Add(new Point(midX, extEnd.Y));
+                midPoints = new List<Point>
+                {
+                    new Point(midX, extStart.Y),
+                    new Point(midX, extEnd.Y)
+                };
             }
             else
             {
                 double midY = (extStart.Y + extEnd.Y) / 2;
-                waypoints.Add(new Point(extStart.X, midY));
-                waypoints.Add(new Point(extEnd.X, midY));
+                midPoints = new List<Point>
+                {
+                    new Point(extStart.X, midY),
+                    new Point(extEnd.X, midY)
+                };
             }
 
+            // Kiểm tra nếu đường đi xuyên qua obstacle → tạo detour
+            if (obstacles != null && obstacles.Count > 0)
+            {
+                var allSegmentPoints = new List<Point> { extStart };
+                allSegmentPoints.AddRange(midPoints);
+                allSegmentPoints.Add(extEnd);
+
+                // Tìm obstacle bị xuyên qua
+                Rect? blockingObstacle = null;
+                for (int i = 0; i < allSegmentPoints.Count - 1; i++)
+                {
+                    foreach (var obs in obstacles)
+                    {
+                        if (SegmentIntersectsAnyObstacle(allSegmentPoints[i], allSegmentPoints[i + 1], 
+                            new List<Rect> { obs }))
+                        {
+                            blockingObstacle = obs;
+                            break;
+                        }
+                    }
+                    if (blockingObstacle.HasValue) break;
+                }
+
+                if (blockingObstacle.HasValue)
+                {
+                    var obs = blockingObstacle.Value;
+                    // Tạo detour: đi vòng quanh obstacle
+                    // Chọn hướng vòng (trên/dưới hoặc trái/phải) dựa trên vị trí start/end
+                    double obsCenterX = (obs.Left + obs.Right) / 2;
+                    double obsCenterY = (obs.Top + obs.Bottom) / 2;
+                    double margin = ObstacleMargin + 4; // Extra margin cho detour
+
+                    midPoints.Clear();
+
+                    if (IsHorizontal(sDir))
+                    {
+                        // Đang đi ngang → vòng lên/xuống
+                        bool goAbove = extStart.Y < obsCenterY; // vòng phía gần hơn
+                        double detourY = goAbove ? obs.Top - margin : obs.Bottom + margin;
+
+                        midPoints.Add(new Point(extStart.X, detourY));
+                        midPoints.Add(new Point(extEnd.X, detourY));
+                    }
+                    else
+                    {
+                        // Đang đi dọc → vòng trái/phải
+                        bool goLeft = extStart.X < obsCenterX;
+                        double detourX = goLeft ? obs.Left - margin : obs.Right + margin;
+
+                        midPoints.Add(new Point(detourX, extStart.Y));
+                        midPoints.Add(new Point(detourX, extEnd.Y));
+                    }
+                }
+            }
+
+            waypoints.AddRange(midPoints);
             waypoints.Add(extEnd);
             return waypoints;
         }

@@ -52,15 +52,11 @@ namespace FlowMy.Views.Overlays
         {
             var styles = new Dictionary<string, string>
             {
-                ["Bezier"] = "Bezier (Cong mượt)",
-                ["Orthogonal"] = "Vuông góc (Orthogonal)",
-                ["Straight"] = "Thẳng (Straight)",
+                ["Bezier"] = "Cong mượt",
+                ["Straight"] = "Thẳng",
+                ["Orthogonal"] = "Vuông góc",
                 ["SmoothOrthogonal"] = "Vuông góc bo tròn",
-                ["Arc"] = "Cung tròn (Arc)",
-                ["RadialFanout"] = "Tỏa quạt (Radial / Fan-out)",
-                ["Windy"] = "Gió thổi (Windy)",
-                ["OrthogonalV2"] = "Vuông góc thông minh (V2)",
-                ["CircuitBoard"] = "Mạch điện PCB (Circuit Board)"
+                ["OrthogonalV2"] = "Vuông góc thông minh",
             };
 
             foreach (var item in styles)

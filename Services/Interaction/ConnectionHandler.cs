@@ -15,6 +15,9 @@ namespace FlowMy.Services.Interaction
 
         private IWorkflowEditorHost _host => _hostAccessor.GetRequiredHost();
 
+        // ✅ Theo dõi port đang được hover để reset khi rời khỏi phạm vi
+        private NodePort? _hoveredPort;
+
         public ConnectionHandler(IWorkflowEditorHostAccessor hostAccessor)
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -489,6 +492,9 @@ namespace FlowMy.Services.Interaction
                 }
             }
 
+            // ✅ Reset hover port khi nhả chuột
+            ResetHoveredPort();
+
             _host.ConnectingFromNode = null;
         }
 
@@ -705,6 +711,13 @@ namespace FlowMy.Services.Interaction
 
                 _host.TempLine.Data = preview.Data;
             }
+
+            // ✅ Hover proximity feedback: khi KHÔNG đang kéo connection, kiểm tra mouse gần port nào thì highlight port đó
+            if (_host.TempLine == null && _host.ConnectingFromNode == null && !_host.IsPanning 
+                && !_host.IsDraggingFromTemplate && _host.DraggedNode == null && viewModel != null)
+            {
+                UpdatePortHoverProximity(viewModel, e.GetPosition(_host.WorkflowCanvas));
+            }
         }
 
         public void WorkflowCanvasMouseUp(object sender, MouseButtonEventArgs e)
@@ -768,6 +781,9 @@ namespace FlowMy.Services.Interaction
                 // Cập nhật canvas size sau khi pan để đảm bảo có thể scroll tiếp
                 _host.UpdateCanvasSize();
             }
+
+            // ✅ Reset hover port khi nhả chuột trên canvas
+            ResetHoveredPort();
 
             RemoveTempLineIfAny();
             _host.ConnectingFromNode = null;
@@ -858,6 +874,13 @@ namespace FlowMy.Services.Interaction
 
                 _host.CancelBoxSelection();
                 
+                // ✅ Kiểm tra click gần port: nếu click trong phạm vi nhất định quanh port thì bắt đầu kéo connection
+                if (_host.DraggedNode == null && TryStartConnectionFromNearbyPort(viewModel, e))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 // Chỉ bắt đầu pan nếu không đang drag
                 if (_host.DraggedNode == null)
                 {
@@ -876,6 +899,95 @@ namespace FlowMy.Services.Interaction
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// ✅ Kiểm tra xem click có gần port nào không (trong phạm vi maxHitDistance).
+        /// Nếu có, bắt đầu kéo connection từ port đó (tương tự PortMouseDown).
+        /// Điều này giúp user không cần hover chính xác vào port mà chỉ cần click gần port là đủ.
+        /// </summary>
+        private bool TryStartConnectionFromNearbyPort(ViewModels.WorkflowEditorViewModel viewModel, MouseButtonEventArgs e)
+        {
+            Point mousePos = e.GetPosition(_host.WorkflowCanvas);
+            const double maxHitDistance = 10; // Phạm vi tìm port gần nhất (pixel)
+
+            double minDistance = double.MaxValue;
+            WorkflowNode? foundNode = null;
+            NodePort? foundPort = null;
+
+            // Hàm helper tìm port gần nhất trong danh sách ports của node
+            void SearchPortsInNode(WorkflowNode node)
+            {
+                foreach (var port in node.Ports.Where(p => p.IsVisible && p.PortUI != null))
+                {
+                    // Bỏ qua default loop ports
+                    if (port.Id == "LoopNodeBottom" || port.Id == "LoopBodyTop")
+                        continue;
+
+                    double distance = Math.Sqrt(
+                        Math.Pow(mousePos.X - port.PositionPoint.X, 2) +
+                        Math.Pow(mousePos.Y - port.PositionPoint.Y, 2)
+                    );
+
+                    if (distance < maxHitDistance && distance < minDistance)
+                    {
+                        minDistance = distance;
+                        foundNode = node;
+                        foundPort = port;
+                    }
+                }
+            }
+
+            // Tìm trong tất cả nodes
+            foreach (var node in viewModel.Nodes)
+            {
+                SearchPortsInNode(node);
+            }
+
+            // Tìm trong LoopBodyNode
+            foreach (var loopNode in viewModel.Nodes.OfType<LoopNode>())
+            {
+                SearchPortsInNode(loopNode.LoopBodyNode);
+            }
+
+            // Tìm trong AsyncTaskBodyNode (chế độ giống lặp)
+            foreach (var asyncTask in viewModel.Nodes.OfType<AsyncTaskNode>())
+            {
+                if (asyncTask.AsyncTaskBodyNode == null) continue;
+                if (asyncTask.UiPresentationMode != AsyncTaskUiPresentationMode.LoopLikeDispatch) continue;
+                SearchPortsInNode(asyncTask.AsyncTaskBodyNode);
+            }
+
+            if (foundNode == null || foundPort == null) return false;
+
+            // Kiểm tra node có bị lock không
+            if (IsNodeLockedByBodyContainer(viewModel, foundNode))
+                return false;
+
+            // ✅ Bắt đầu kéo connection (tương tự PortMouseDown)
+            _host.ConnectingFromNode = foundNode;
+
+            // Capture mouse trên portUI để WorkflowCanvasMouseMove có thể theo dõi
+            if (foundPort.PortUI is FrameworkElement portUIElement)
+            {
+                portUIElement.CaptureMouse();
+            }
+
+            Point startPos = foundPort.PositionPoint;
+            PortPosition? startPortPos = foundPort.Position;
+
+            _host.TempLine = _host.CreateConnectionLine(
+                startPos,
+                startPos,
+                Colors.Gray,
+                isDashed: true,
+                startPortPosition: startPortPos,
+                endPortPosition: null);
+
+            Panel.SetZIndex(_host.TempLine, 999);
+            _host.WorkflowCanvas.Children.Add(_host.TempLine);
+
+            return true;
         }
 
         private void RemoveTempLineIfAny()
@@ -1090,6 +1202,80 @@ namespace FlowMy.Services.Interaction
             visited.Remove(body);
             result.UnionWith(visited);
             return result;
+        }
+
+        /// <summary>
+        /// ✅ Kiểm tra mouse có gần port nào không và highlight port đó.
+        /// Khi mouse rời khỏi phạm vi port, reset port về trạng thái bình thường.
+        /// </summary>
+        private void UpdatePortHoverProximity(ViewModels.WorkflowEditorViewModel viewModel, Point mousePos)
+        {
+            const double maxHoverDistance = 10; // Phạm vi hover (pixel)
+
+            double minDistance = double.MaxValue;
+            NodePort? nearestPort = null;
+
+            // Hàm helper tìm port gần nhất
+            void SearchPorts(WorkflowNode node)
+            {
+                foreach (var port in node.Ports.Where(p => p.IsVisible && p.PortUI != null))
+                {
+                    if (port.Id == "LoopNodeBottom" || port.Id == "LoopBodyTop")
+                        continue;
+
+                    double distance = Math.Sqrt(
+                        Math.Pow(mousePos.X - port.PositionPoint.X, 2) +
+                        Math.Pow(mousePos.Y - port.PositionPoint.Y, 2)
+                    );
+
+                    if (distance < maxHoverDistance && distance < minDistance)
+                    {
+                        minDistance = distance;
+                        nearestPort = port;
+                    }
+                }
+            }
+
+            foreach (var node in viewModel.Nodes)
+                SearchPorts(node);
+
+            foreach (var loopNode in viewModel.Nodes.OfType<LoopNode>())
+                SearchPorts(loopNode.LoopBodyNode);
+
+            foreach (var asyncTask in viewModel.Nodes.OfType<AsyncTaskNode>())
+            {
+                if (asyncTask.AsyncTaskBodyNode == null) continue;
+                if (asyncTask.UiPresentationMode != AsyncTaskUiPresentationMode.LoopLikeDispatch) continue;
+                SearchPorts(asyncTask.AsyncTaskBodyNode);
+            }
+
+            // Nếu port gần nhất khác port đang hover → reset port cũ, highlight port mới
+            if (nearestPort != _hoveredPort)
+            {
+                // Reset port cũ
+                if (_hoveredPort?.PortUI != null)
+                {
+                    ResetPortToDefault(_hoveredPort.PortUI);
+                }
+
+                // Highlight port mới
+                if (nearestPort?.PortUI != null)
+                {
+                    HighlightPort(nearestPort.PortUI);
+                }
+
+                _hoveredPort = nearestPort;
+            }
+        }
+
+        /// <summary>Reset port đang hover về trạng thái bình thường.</summary>
+        private void ResetHoveredPort()
+        {
+            if (_hoveredPort?.PortUI != null)
+            {
+                ResetPortToDefault(_hoveredPort.PortUI);
+            }
+            _hoveredPort = null;
         }
 
         private static void ResetPortToDefault(FrameworkElement portUI)
