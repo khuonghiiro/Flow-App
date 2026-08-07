@@ -290,6 +290,18 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             .Select(g => g.First())
             .ToList();
 
+        var validProfiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+        foreach (var wNode in allNodes.OfType<WebNode>())
+        {
+            if (string.Equals(wNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(wNode.CustomCacheName) &&
+                !validProfiles.Contains(wNode.CustomCacheName, StringComparer.OrdinalIgnoreCase))
+            {
+                wNode.CacheMode = "Shared";
+                wNode.CustomCacheName = "Shared";
+            }
+        }
+
         var dto = new WorkflowDto
         {
             Version = 2,
@@ -750,6 +762,18 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             foreach (var loopNode in nodes.OfType<LoopNode>())
             {
                 loopNode.RebuildOutputsFromLoopBody(connections, nodes);
+            }
+
+            var validProfiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+            foreach (var wNode in nodes.OfType<WebNode>())
+            {
+                if (string.Equals(wNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(wNode.CustomCacheName) &&
+                    !validProfiles.Contains(wNode.CustomCacheName, StringComparer.OrdinalIgnoreCase))
+                {
+                    wNode.CacheMode = "Shared";
+                    wNode.CustomCacheName = "Shared";
+                }
             }
 
             return new WorkflowLoadResult

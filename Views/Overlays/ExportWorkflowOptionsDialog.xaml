@@ -62,9 +62,21 @@
 
                 <StackPanel x:Name="WebCookiesPanel" Visibility="Collapsed">
                     <CheckBox x:Name="IncludeWebCookiesCheckBox"
-                              Content="Xuất dữ liệu Web (cookies + web cache nhẹ) cho flowz/webpkg"
-                              Foreground="{DynamicResource TextBrush}"
-                              Margin="0,0,0,0"/>
+                               Content="Xuất dữ liệu Web (cookies + web cache nhẹ) cho flowz/webpkg"
+                               Foreground="{DynamicResource TextBrush}"
+                               Margin="0,0,0,0"
+                               Checked="IncludeWebCookiesCheckBox_CheckedChanged"
+                               Unchecked="IncludeWebCookiesCheckBox_CheckedChanged"/>
+
+                    <StackPanel x:Name="ProfileSelectPanel" Margin="24,8,0,0" Visibility="Collapsed">
+                        <TextBlock Text="Chọn Profile để xuất cookie/session:"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <ComboBox x:Name="ProfileComboBox" Height="30">
+                        </ComboBox>
+                    </StackPanel>
+
                     <TextBlock Text="Lưu ý: bật web data với flowz có thể làm file lớn hơn đáng kể; dùng khi cần mang theo phiên web/cookie."
                                Foreground="{DynamicResource TextSecondary}"
                                TextWrapping="Wrap"

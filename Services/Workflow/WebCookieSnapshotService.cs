@@ -72,24 +72,53 @@ public static class WebCookieSnapshotService
         WriteIndented = false
     };
 
-    public static async Task<string> ExportSnapshotJsonAsync(IReadOnlyCollection<WorkflowNode> nodes, CancellationToken cancellationToken)
+    public static async Task<string> ExportSnapshotJsonAsync(
+        IReadOnlyCollection<WorkflowNode> nodes,
+        CancellationToken cancellationToken,
+        string? selectedProfile = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var lookupUris = CollectCookieLookupUris(nodes);
         var entries = new List<PortableCookieEntryDto>();
 
         var profilesToExport = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var w in nodes.OfType<WebNode>())
+        if (!string.IsNullOrWhiteSpace(selectedProfile) &&
+            !selectedProfile.Equals("All", StringComparison.OrdinalIgnoreCase) &&
+            !selectedProfile.Equals("*", StringComparison.OrdinalIgnoreCase))
         {
-            var mode = w.CacheMode ?? "Shared";
-            if (string.Equals(mode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(w.CustomCacheName))
+            profilesToExport.Add(selectedProfile.Trim());
+        }
+        else
+        {
+            foreach (var w in nodes.OfType<WebNode>())
             {
-                profilesToExport.Add(w.CustomCacheName.Trim());
+                var mode = w.CacheMode ?? "Shared";
+                if (string.Equals(mode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(w.CustomCacheName))
+                {
+                    profilesToExport.Add(w.CustomCacheName.Trim());
+                }
+                else
+                {
+                    profilesToExport.Add("Shared");
+                }
             }
-            else
+
+            foreach (var h in nodes.OfType<HtmlUiNode>())
             {
-                // Shared hoặc không set → dùng profile Shared
+                if (h.UseWebTab)
+                    profilesToExport.Add("Shared");
+            }
+
+            var diskProfiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+            foreach (var p in diskProfiles)
+            {
+                if (!string.IsNullOrWhiteSpace(p))
+                    profilesToExport.Add(p.Trim());
+            }
+
+            if (profilesToExport.Count == 0)
+            {
                 profilesToExport.Add("Shared");
             }
         }
@@ -99,45 +128,117 @@ public static class WebCookieSnapshotService
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                ICookieManager cookieManager;
+                var rc = CefSharpEnvironmentManager.CreateProfileRequestContext(profileName);
+                ICookieManager? cookieManager = rc.GetCookieManager(null);
+
                 if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
                 {
-                    cookieManager = Cef.GetGlobalCookieManager();
-                }
-                else
-                {
-                    var rc = CefSharpEnvironmentManager.CreateProfileRequestContext(profileName);
-                    cookieManager = rc.GetCookieManager(null);
+                    cookieManager ??= Cef.GetGlobalCookieManager();
                 }
 
-                if (cookieManager == null) continue;
-
-                foreach (var uri in lookupUris)
+                if (cookieManager == null)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try
+                    System.Diagnostics.Debug.WriteLine($"[CookieExport] CookieManager returned null for profile '{profileName}'");
+                    continue;
+                }
+
+                // ── FlushStoreAsync to write live in-memory cookies to storage ──
+                try
+                {
+                    await cookieManager.FlushStoreAsync();
+                }
+                catch { }
+
+                // ── VisitAllCookiesAsync to capture ALL cookies in this profile ──
+                var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+                try
+                {
+                    var allCookies = await cookieManager.VisitAllCookiesAsync();
+
+                    // Fallback to Cef.GetGlobalCookieManager() if Shared returned 0
+                    if ((allCookies == null || allCookies.Count == 0) && string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
                     {
-                        var cookies = await cookieManager.VisitUrlCookiesAsync(uri, includeHttpOnly: true);
-                        if (cookies != null && cookies.Count > 0)
+                        var globalMgr = Cef.GetGlobalCookieManager();
+                        if (globalMgr != null && globalMgr != cookieManager)
                         {
-                            var list = cookies.Select(SerializeCookie)
-                                .Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain))
-                                .ToList();
+                            try { await globalMgr.FlushStoreAsync(); } catch { }
+                            allCookies = await globalMgr.VisitAllCookiesAsync();
+                        }
+                    }
 
-                            if (list.Count > 0)
+                    System.Diagnostics.Debug.WriteLine($"[CookieExport] Profile '{profileName}': VisitAllCookiesAsync returned {allCookies?.Count ?? 0} cookies");
+
+                    if (allCookies != null && allCookies.Count > 0)
+                    {
+                        // Group cookies by domain origin for organized entries
+                        var byDomain = new Dictionary<string, List<PortableCookieItemDto>>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var c in allCookies)
+                        {
+                            var item = SerializeCookie(c);
+                            if (string.IsNullOrWhiteSpace(item.Name) || string.IsNullOrWhiteSpace(item.Domain))
+                                continue;
+
+                            var key = $"{item.Name}|{item.Domain}|{item.Path}";
+                            if (!seenKeys.Add(key)) continue;
+
+                            var domainKey = item.Domain!.TrimStart('.');
+                            if (!byDomain.TryGetValue(domainKey, out var domainList))
+                            {
+                                domainList = new List<PortableCookieItemDto>();
+                                byDomain[domainKey] = domainList;
+                            }
+                            domainList.Add(item);
+                        }
+
+                        foreach (var (domain, cookieList) in byDomain)
+                        {
+                            if (cookieList.Count > 0)
                             {
                                 entries.Add(new PortableCookieEntryDto
                                 {
-                                    RequestUri = uri,
+                                    RequestUri = $"https://{domain}/",
                                     Profile = profileName,
-                                    Cookies = list
+                                    Cookies = cookieList
                                 });
                             }
                         }
+
+                        System.Diagnostics.Debug.WriteLine($"[CookieExport] Profile '{profileName}': exported {seenKeys.Count} unique cookies");
                     }
-                    catch (Exception ex)
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.VisitAllCookiesAsync(profile '{profileName}'): {ex.Message}");
+
+                    // Fallback: try per-URL approach if VisitAllCookiesAsync fails
+                    foreach (var uri in lookupUris)
                     {
-                        System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.VisitUrlCookiesAsync({uri}, profile '{profileName}'): {ex.Message}");
+                        cancellationToken.ThrowIfCancellationRequested();
+                        try
+                        {
+                            var cookies = await cookieManager.VisitUrlCookiesAsync(uri, includeHttpOnly: true);
+                            if (cookies != null && cookies.Count > 0)
+                            {
+                                var list = cookies.Select(SerializeCookie)
+                                    .Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Domain))
+                                    .Where(c => seenKeys.Add($"{c.Name}|{c.Domain}|{c.Path}"))
+                                    .ToList();
+
+                                if (list.Count > 0)
+                                {
+                                    entries.Add(new PortableCookieEntryDto
+                                    {
+                                        RequestUri = uri,
+                                        Profile = profileName,
+                                        Cookies = list
+                                    });
+                                }
+                            }
+                        }
+                        catch (Exception urlEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"WebCookieSnapshotService.VisitUrlCookiesAsync({uri}, profile '{profileName}'): {urlEx.Message}");
+                        }
                     }
                 }
             }
@@ -149,6 +250,92 @@ public static class WebCookieSnapshotService
 
         var dto = new PortableCookieBundleDto { Format = FormatVersion, Entries = entries };
         return JsonSerializer.Serialize(dto, JsonOpts);
+    }
+
+    /// <summary>
+    /// Nhập cookie snapshot cho tất cả các profile có trong JSON.
+    /// Nếu trùng profile: ghi đè cookie.
+    /// Nếu không trùng (chưa có profile): tự động tạo mới profile đó trên đĩa.
+    /// Thực hiện TRƯỚC KHI load workflow nodes.
+    /// </summary>
+    public static async Task ImportSnapshotJsonAllProfilesAsync(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return;
+
+        PortableCookieBundleDto? dto;
+        try
+        {
+            dto = JsonSerializer.Deserialize<PortableCookieBundleDto>(json, JsonOpts);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ImportSnapshotJsonAllProfilesAsync parse error: {ex.Message}");
+            return;
+        }
+
+        if (dto == null || !IsSupportedFormatVersion(dto.Format) || dto.Entries == null || dto.Entries.Count == 0)
+            return;
+
+        var profileGroups = dto.Entries
+            .GroupBy(e => string.IsNullOrWhiteSpace(e.Profile) ? "Shared" : e.Profile.Trim(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in profileGroups)
+        {
+            var pName = group.Key;
+
+            // 1. Tạo mới profile trên đĩa nếu chưa có (hoặc trùng thì đảm bảo tồn tại)
+            WebNodeCacheHelper.EnsureProfileExists(pName);
+
+            // 2. Lấy CookieManager của đúng profile đó
+            var rc = CefSharpEnvironmentManager.CreateProfileRequestContext(pName);
+            var cookieManager = rc.GetCookieManager(null);
+            if (pName.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                cookieManager ??= Cef.GetGlobalCookieManager();
+            }
+
+            if (cookieManager == null) continue;
+
+            // 3. Ghi đè / Nạp cookie của profile này
+            foreach (var entry in group)
+            {
+                if (entry.Cookies == null) continue;
+                foreach (var c in entry.Cookies)
+                {
+                    var name = c.Name?.Trim();
+                    var domain = c.Domain?.Trim();
+                    if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(domain)) continue;
+
+                    var path = string.IsNullOrWhiteSpace(c.Path) ? "/" : c.Path.Trim();
+                    var cookieUrl = $"https://{domain.TrimStart('.')}{path}";
+
+                    DateTime? expires = null;
+                    if (!string.IsNullOrWhiteSpace(c.Expires) &&
+                        DateTime.TryParse(c.Expires, System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
+                    {
+                        expires = exp;
+                    }
+
+                    var cookie = new Cookie
+                    {
+                        Name = name,
+                        Value = c.Value ?? string.Empty,
+                        Domain = domain,
+                        Path = path,
+                        Secure = c.Secure,
+                        HttpOnly = c.HttpOnly,
+                        Expires = expires
+                    };
+
+                    await cookieManager.SetCookieAsync(cookieUrl, cookie);
+                }
+            }
+
+            try { await cookieManager.FlushStoreAsync(); } catch { }
+        }
+
+        WebNodeCacheHelper.NotifyProfilesChanged();
     }
 
     public static Task ApplySnapshotJsonAsync(ICookieManager mgr, string json)
@@ -174,18 +361,22 @@ public static class WebCookieSnapshotService
         if (dto == null || !IsSupportedFormatVersion(dto.Format) || dto.Entries == null || dto.Entries.Count == 0)
             return;
 
+        var reqProfile = string.IsNullOrWhiteSpace(profileName) ? "Shared" : profileName.Trim();
+
+        var matchingEntries = dto.Entries
+            .Where(e => string.Equals(string.IsNullOrWhiteSpace(e.Profile) ? "Shared" : e.Profile.Trim(), reqProfile, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (matchingEntries.Count == 0)
+        {
+            return;
+        }
+
         try
         {
-            foreach (var entry in dto.Entries)
+            foreach (var entry in matchingEntries)
             {
                 if (entry.Cookies == null) continue;
-
-                if (profileName != null)
-                {
-                    var entryProfile = string.IsNullOrWhiteSpace(entry.Profile) ? "Shared" : entry.Profile.Trim();
-                    if (!string.Equals(entryProfile, profileName, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                }
 
                 foreach (var c in entry.Cookies)
                 {

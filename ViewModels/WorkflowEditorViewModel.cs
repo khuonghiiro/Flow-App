@@ -2884,20 +2884,96 @@ namespace FlowMy.ViewModels
             var result = _persistenceService.ImportFromJson(json);
             if (result == null) return;
 
+            var dir = string.IsNullOrWhiteSpace(importJsonFilePath) ? null : Path.GetDirectoryName(importJsonFilePath);
+
+            // ── Pre-enqueue cookies BEFORE rendering nodes ──
+            // This ensures WebCookiePortableBridge has data ready when
+            // WebNodeControl / HtmlUiNodeControl loadedHandlers fire.
+            string? preExtractedTemp = null;
+            try
+            {
+                if (!string.IsNullOrEmpty(dir) && !string.IsNullOrWhiteSpace(result.PortableWebBundleFileName))
+                {
+                    var zip = Path.Combine(dir, result.PortableWebBundleFileName);
+                    if (File.Exists(zip))
+                    {
+                        preExtractedTemp = Path.Combine(Path.GetTempPath(), "FlowMyPreCookie_" + Guid.NewGuid().ToString("N"));
+                        Directory.CreateDirectory(preExtractedTemp);
+                        await Task.Run(() => System.IO.Compression.ZipFile.ExtractToDirectory(zip, preExtractedTemp, overwriteFiles: true), cancellationToken);
+
+                        var cookiePath = Path.Combine(preExtractedTemp, WebNodeCacheHelper.PortableCookieBundleFileName);
+                        if (File.Exists(cookiePath))
+                        {
+                            var cookieText = File.ReadAllText(cookiePath);
+                            if (!string.IsNullOrEmpty(cookieText) && WebCookieSnapshotService.IsV2PortableCookieBundleJson(cookieText))
+                            {
+                                WebCookiePortableBridge.Enqueue(cookieText);
+                                await WebCookieSnapshotService.ImportSnapshotJsonAllProfilesAsync(cookieText);
+                            }
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(dir) && string.IsNullOrWhiteSpace(result.PortableWebBundleFileName) && !string.IsNullOrWhiteSpace(importJsonFilePath))
+                {
+                    var baseName = Path.GetFileNameWithoutExtension(importJsonFilePath);
+                    var portableCache = Path.Combine(dir, baseName + "_webcache");
+                    if (Directory.Exists(portableCache))
+                    {
+                        var cookiePath = Path.Combine(portableCache, WebNodeCacheHelper.PortableCookieBundleFileName);
+                        if (File.Exists(cookiePath))
+                        {
+                            var cookieText = File.ReadAllText(cookiePath);
+                            if (!string.IsNullOrEmpty(cookieText) && WebCookieSnapshotService.IsV2PortableCookieBundleJson(cookieText))
+                            {
+                                WebCookiePortableBridge.Enqueue(cookieText);
+                                await WebCookieSnapshotService.ImportSnapshotJsonAllProfilesAsync(cookieText);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImportFromJsonAsync] Pre-enqueue cookies error: {ex.Message}");
+            }
+
+            // ── Now render nodes — cookies are already in the bridge queue ──
             ApplyWorkflowLoadResult(result);
 
-            var dir = string.IsNullOrWhiteSpace(importJsonFilePath) ? null : Path.GetDirectoryName(importJsonFilePath);
             if (string.IsNullOrEmpty(dir)) return;
 
+            // ── Restore remaining web data (profile caches, html assets) ──
             var nodeList = Nodes.ToList();
             var usedZip = false;
             if (!string.IsNullOrWhiteSpace(result.PortableWebBundleFileName))
             {
-                var zip = Path.Combine(dir, result.PortableWebBundleFileName);
-                if (File.Exists(zip))
+                if (preExtractedTemp != null && Directory.Exists(preExtractedTemp))
                 {
-                    await PortableWebBundleZipService.ExtractAndRestoreAsync(zip, nodeList, progress, cancellationToken);
-                    usedZip = true;
+                    // Reuse already-extracted temp directory
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await Task.Run(() => WebNodeCacheHelper.RestorePortableWebCaches(preExtractedTemp, nodeList), cancellationToken);
+                        usedZip = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ImportFromJsonAsync] RestorePortableWebCaches error: {ex.Message}");
+                    }
+                    finally
+                    {
+                        try { if (Directory.Exists(preExtractedTemp)) Directory.Delete(preExtractedTemp, recursive: true); } catch { }
+                    }
+                }
+                else
+                {
+                    var zip = Path.Combine(dir, result.PortableWebBundleFileName);
+                    if (File.Exists(zip))
+                    {
+                        await PortableWebBundleZipService.ExtractAndRestoreAsync(zip, nodeList, progress, cancellationToken);
+                        usedZip = true;
+                    }
                 }
             }
 
@@ -2938,6 +3014,18 @@ namespace FlowMy.ViewModels
                     ConnectionLineStyle = restoredStyle;
                 else
                     ConnectionLineStyle = ConnectionLineStyle.Bezier;
+                var validProfiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
+                foreach (var wNode in result.Nodes.OfType<WebNode>())
+                {
+                    if (string.Equals(wNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(wNode.CustomCacheName) &&
+                        !validProfiles.Contains(wNode.CustomCacheName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        wNode.CacheMode = "Shared";
+                        wNode.CustomCacheName = "Shared";
+                    }
+                }
+
                 // Batch replace để giảm notify/render từng phần tử khi load workflow lớn.
                 Nodes = new ObservableCollection<WorkflowNode>(result.Nodes);
                 Connections = new ObservableCollection<WorkflowConnection>(result.Connections);

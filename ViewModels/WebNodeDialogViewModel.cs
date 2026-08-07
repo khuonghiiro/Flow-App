@@ -150,6 +150,14 @@ namespace FlowMy.ViewModels
                 {
                     CustomCacheName = "Shared";
                 }
+                else if (newMode == "Isolated")
+                {
+                    var firstIsolated = AvailableProfiles.FirstOrDefault(p => !p.Equals("Shared", StringComparison.OrdinalIgnoreCase));
+                    if (!string.IsNullOrEmpty(firstIsolated))
+                    {
+                        CustomCacheName = firstIsolated;
+                    }
+                }
                 _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
             }
         }
@@ -188,15 +196,26 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            if (AvailableProfiles.Contains(name))
+            if (AvailableProfiles.Contains(name, StringComparer.OrdinalIgnoreCase))
             {
                 System.Windows.MessageBox.Show("Profile này đã tồn tại.", "Thông báo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                 return;
             }
 
-            AvailableProfiles.Add(name);
+            WebNodeCacheHelper.EnsureProfileExists(name);
+
+            if (!AvailableProfiles.Contains(name, StringComparer.OrdinalIgnoreCase))
+            {
+                AvailableProfiles.Add(name);
+            }
+
+            CacheMode = "Isolated";
             CustomCacheName = name;
             NewProfileNameInput = string.Empty;
+            _webNode.CacheMode = "Isolated";
+            _webNode.CustomCacheName = name;
+            _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
+            _webNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
             WebNodeCacheHelper.NotifyProfilesChanged();
         }
 
@@ -216,7 +235,27 @@ namespace FlowMy.ViewModels
                 var target = CustomCacheName;
                 CacheMode = "Shared";
                 CustomCacheName = "Shared";
+                _webNode.CacheMode = "Shared";
+                _webNode.CustomCacheName = "Shared";
+                _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
+                _webNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
+
+                if (_host?.ViewModel?.Nodes != null)
+                {
+                    foreach (var wNode in _host.ViewModel.Nodes.OfType<WebNode>())
+                    {
+                        if (string.Equals(wNode.CustomCacheName, target, StringComparison.OrdinalIgnoreCase))
+                        {
+                            wNode.CacheMode = "Shared";
+                            wNode.CustomCacheName = "Shared";
+                            wNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
+                            wNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
+                        }
+                    }
+                }
+
                 WebNodeCacheHelper.DeleteProfileCache(target);
+                RefreshAvailableProfiles();
             }
         }
 
@@ -334,18 +373,12 @@ namespace FlowMy.ViewModels
             AutoReloadIntervalValue = _webNode.AutoReloadIntervalValue;
             AutoReloadIntervalUnit = _webNode.AutoReloadIntervalUnit;
 
-            // Load available profiles
-            RefreshAvailableProfiles();
-            WebNodeCacheHelper.ProfilesChanged += OnProfilesChangedHandler;
-
             CacheMode = _webNode.CacheMode ?? "Shared";
             CustomCacheName = _webNode.CustomCacheName ?? "Shared";
 
-            // Đảm bảo CustomCacheName được thêm vào danh sách hiển thị
-            if (!string.IsNullOrEmpty(CustomCacheName) && !AvailableProfiles.Contains(CustomCacheName))
-            {
-                AvailableProfiles.Add(CustomCacheName);
-            }
+            // Load available profiles
+            RefreshAvailableProfiles();
+            WebNodeCacheHelper.ProfilesChanged += OnProfilesChangedHandler;
 
             // ⚠️ CRITICAL: Refresh available nodes TRƯỚC KHI load mappings và JS options
             RefreshAvailableNodes();
@@ -615,15 +648,31 @@ namespace FlowMy.ViewModels
 
         public void RefreshAvailableProfiles()
         {
+            var selectedBefore = CustomCacheName;
             var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
             AvailableProfiles.Clear();
             foreach (var p in profiles)
             {
                 AvailableProfiles.Add(p);
             }
-            if (!string.IsNullOrEmpty(CustomCacheName) && !AvailableProfiles.Contains(CustomCacheName))
+
+            if (!string.IsNullOrEmpty(selectedBefore) && AvailableProfiles.Contains(selectedBefore, StringComparer.OrdinalIgnoreCase))
             {
-                AvailableProfiles.Add(CustomCacheName);
+                var matched = AvailableProfiles.FirstOrDefault(p => p.Equals(selectedBefore, StringComparison.OrdinalIgnoreCase)) ?? selectedBefore;
+                CustomCacheName = matched;
+                OnPropertyChanged(nameof(CustomCacheName));
+            }
+            else
+            {
+                CacheMode = "Shared";
+                CustomCacheName = "Shared";
+                if (_webNode != null)
+                {
+                    _webNode.CacheMode = "Shared";
+                    _webNode.CustomCacheName = "Shared";
+                    _webNode.RaisePropertyChanged(nameof(WebNode.CacheMode));
+                    _webNode.RaisePropertyChanged(nameof(WebNode.CustomCacheName));
+                }
             }
         }
 

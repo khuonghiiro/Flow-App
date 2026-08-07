@@ -174,14 +174,21 @@ namespace FlowMy.Services.Workflow
         private static CefSettings PrepareSettings()
         {
             var settings = new CefSettings();
-            var cachePath = WebNodeCacheHelper.GetSharedRuntimeCachePath();
+            var cefRootDir = WebNodeCacheHelper.GetCefRootDir();
+            var userProfilesDir = WebNodeCacheHelper.GetUserProfilesDir();
+            var sharedCachePath = WebNodeCacheHelper.GetSharedRuntimeCachePath();
 
             try
             {
-                if (!Directory.Exists(cachePath))
-                    Directory.CreateDirectory(cachePath);
-                settings.RootCachePath = cachePath;
-                settings.CachePath = Path.Combine(cachePath, "Default");
+                if (!Directory.Exists(cefRootDir))
+                    Directory.CreateDirectory(cefRootDir);
+                if (!Directory.Exists(userProfilesDir))
+                    Directory.CreateDirectory(userProfilesDir);
+                if (!Directory.Exists(sharedCachePath))
+                    Directory.CreateDirectory(sharedCachePath);
+
+                settings.RootCachePath = cefRootDir;
+                settings.CachePath = sharedCachePath;
             }
             catch { }
 
@@ -327,18 +334,36 @@ namespace FlowMy.Services.Workflow
             }
         }
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, RequestContext> _profileContexts = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
-        /// Tạo RequestContext riêng cho từng profile (Isolated mode).
+        /// Tạo hoặc lấy lại RequestContext riêng cho từng profile (Isolated mode).
         /// </summary>
         public static RequestContext CreateProfileRequestContext(string profileName)
         {
-            var profilePath = WebNodeCacheHelper.GetProfileCachePath(profileName);
-            var options = new RequestContextSettings
+            var key = string.IsNullOrWhiteSpace(profileName) ? "Shared" : profileName.Trim();
+            return _profileContexts.GetOrAdd(key, k =>
             {
-                CachePath = profilePath,
-                PersistSessionCookies = true
-            };
-            return new RequestContext(options);
+                var profilePath = WebNodeCacheHelper.GetProfileCachePath(k);
+                var options = new RequestContextSettings
+                {
+                    CachePath = profilePath,
+                    PersistSessionCookies = true
+                };
+                return new RequestContext(options);
+            });
+        }
+
+        /// <summary>
+        /// Hủy và đóng RequestContext của profile khi bị xóa.
+        /// </summary>
+        public static void DisposeProfileRequestContext(string profileName)
+        {
+            var key = string.IsNullOrWhiteSpace(profileName) ? "Shared" : profileName.Trim();
+            if (_profileContexts.TryRemove(key, out var rc))
+            {
+                try { rc.Dispose(); } catch { }
+            }
         }
 
         /// <summary>

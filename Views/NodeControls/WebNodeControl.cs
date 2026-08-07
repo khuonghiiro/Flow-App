@@ -500,15 +500,26 @@ namespace FlowMy.Views.NodeControls
             // Áp dụng GPU optimization cho grid (tự động kiểm tra GPU)
             GpuOptimizationHelper.ApplyToElement(grid);
 
+            string activeCacheMode = node.CacheMode ?? "Shared";
+            string activeCustomCacheName = node.CustomCacheName ?? "Shared";
+
+            RequestContext GetCurrentRequestContext()
+            {
+                var profileName = string.Equals(node.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(node.CustomCacheName)
+                    ? node.CustomCacheName.Trim()
+                    : "Shared";
+                return CefSharpEnvironmentManager.CreateProfileRequestContext(profileName);
+            }
+
             var webView = new ChromiumWebBrowser
             {
-                Visibility = Visibility.Collapsed
+                Visibility = Visibility.Collapsed,
+                RequestContext = GetCurrentRequestContext()
             };
             Grid.SetRow(webView, 1);
             var isDisposed = false;
             Action recreateWebView = null!;
-            string activeCacheMode = node.CacheMode ?? "Shared";
-            string activeCustomCacheName = node.CustomCacheName ?? "Shared";
 
             // JS injection bridge: when workflow runs WebNodeExecutor it sets node.PendingJavaScript.
             // WebNodeControl listens and executes the script into WebView2.
@@ -812,6 +823,7 @@ namespace FlowMy.Views.NodeControls
             DispatcherTimer? sleepModeTimer = null;
             var isSleepModeActive = false;
             var suppressUrlSyncForSleepNav = false;
+            Action loadProfileComboItems = null!;
 
             static int CalcSleepIdleMs(WebNode n)
             {
@@ -1215,6 +1227,30 @@ namespace FlowMy.Views.NodeControls
                     {
                         // JsSources thay đổi (có thể do user bật/tắt timer, đổi interval, thêm/xóa item)
                         webView.Dispatcher.BeginInvoke(new Action(() => UpdateJsSourceTimers()), DispatcherPriority.Normal);
+                    }
+                    else if (string.Equals(e.PropertyName, nameof(WebNode.CacheMode), StringComparison.Ordinal) ||
+                             string.Equals(e.PropertyName, nameof(WebNode.CustomCacheName), StringComparison.Ordinal))
+                    {
+                        border.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            var targetMode = node.CacheMode ?? "Shared";
+                            var targetName = string.Equals(targetMode, "Isolated", StringComparison.OrdinalIgnoreCase)
+                                ? (node.CustomCacheName ?? "Shared")
+                                : "Shared";
+
+                            if (!string.Equals(activeCacheMode, targetMode, StringComparison.Ordinal) ||
+                                !string.Equals(activeCustomCacheName, targetName, StringComparison.Ordinal))
+                            {
+                                activeCacheMode = targetMode;
+                                activeCustomCacheName = targetName;
+                                loadProfileComboItems?.Invoke();
+                                recreateWebView?.Invoke();
+                            }
+                            else
+                            {
+                                loadProfileComboItems?.Invoke();
+                            }
+                        }), DispatcherPriority.Normal);
                     }
                     else if (string.Equals(e.PropertyName, nameof(WebNode.WakeRequestToken), StringComparison.Ordinal))
                     {
@@ -1787,14 +1823,18 @@ namespace FlowMy.Views.NodeControls
                         ? (node.CustomCacheName ?? "Shared") 
                         : "Shared";
 
+                    if (!profiles.Contains(activeProfile, StringComparer.OrdinalIgnoreCase))
+                    {
+                        node.CacheMode = "Shared";
+                        node.CustomCacheName = "Shared";
+                        activeProfile = "Shared";
+                        activeCacheMode = "Shared";
+                        activeCustomCacheName = "Shared";
+                    }
+
                     foreach (var p in profiles)
                     {
                         cmbWebProfile.Items.Add(p);
-                    }
-
-                    if (!profiles.Contains(activeProfile))
-                    {
-                        cmbWebProfile.Items.Add(activeProfile);
                     }
 
                     cmbWebProfile.SelectedItem = activeProfile;
@@ -1804,6 +1844,7 @@ namespace FlowMy.Views.NodeControls
                     isUpdatingProfileCombo = false;
                 }
             }
+            loadProfileComboItems = LoadProfileComboItems;
 
             LoadProfileComboItems();
 
@@ -1872,10 +1913,13 @@ namespace FlowMy.Views.NodeControls
                 {
                     node.CacheMode = "Shared";
                     node.CustomCacheName = "Shared";
+                    node.RaisePropertyChanged(nameof(node.CacheMode));
+                    node.RaisePropertyChanged(nameof(node.CustomCacheName));
                     activeCacheMode = "Shared";
                     activeCustomCacheName = "Shared";
 
                     WebNodeCacheHelper.DeleteProfileCache(current);
+                    LoadProfileComboItems();
                     recreateWebView?.Invoke();
                 }
             };
@@ -2275,7 +2319,8 @@ namespace FlowMy.Views.NodeControls
                         {
                             try
                             {
-                                Cef.GetGlobalCookieManager().DeleteCookies(domain, null);
+                                var cookieMgr = webView.RequestContext?.GetCookieManager(null) ?? Cef.GetGlobalCookieManager();
+                                cookieMgr?.DeleteCookies(domain, null);
                             }
                             catch (Exception cookieEx)
                             {
@@ -2610,6 +2655,27 @@ if (window.__elementInspector) {
                         // Stop mouse wheel bubbling to parent WPF canvas after CefSharp has scrolled web page
                         ef.Handled = true;
                     };
+
+                    // Apply enqueued cookies from imported .webpkg.zip bundle BEFORE first navigation
+                    // so the browser loads the page with the login session already set.
+                    try
+                    {
+                        var profileName = string.Equals(node.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase)
+                            && !string.IsNullOrWhiteSpace(node.CustomCacheName)
+                            ? node.CustomCacheName
+                            : "Shared";
+                        ICookieManager? cookieMgr = webViewForInit.RequestContext?.GetCookieManager(null)
+                            ?? Cef.GetGlobalCookieManager();
+                        if (cookieMgr != null)
+                        {
+                            await WebCookiePortableBridge.TryConsumeAndApplyAsync(cookieMgr, profileName);
+                        }
+                    }
+                    catch (Exception cookieEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[WebNode] Cookie restore from portable bridge error: {cookieEx.Message}");
+                    }
+
                     EnsureWebViewAndNavigate();
 
                     if (!string.IsNullOrWhiteSpace(pendingJsQueue))
@@ -2718,7 +2784,8 @@ if (window.__elementInspector) {
 
                 webView = new ChromiumWebBrowser
                 {
-                    Visibility = Visibility.Collapsed
+                    Visibility = Visibility.Collapsed,
+                    RequestContext = GetCurrentRequestContext()
                 };
                 Grid.SetRow(webView, 1);
                 grid.Children.Add(webView);

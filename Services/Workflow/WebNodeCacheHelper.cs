@@ -18,6 +18,8 @@ public static class WebNodeCacheHelper
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FlowMy", "WebNodeCache");
 
+    public static string GetBaseCacheDir() => BaseCacheDir;
+
     /// <summary>Thư mục con trong <c>{workflow}_webcache</c>: snapshot profile WebView2 dùng chung (cookie, storage).</summary>
     public const string SharedWebViewProfileFolderName = "_webview2_shared";
 
@@ -38,42 +40,156 @@ public static class WebNodeCacheHelper
         return Path.Combine(BaseCacheDir, nodeId);
     }
 
-    /// <summary>
-    /// Thư mục cache runtime chung cho tất cả WebView2 nodes.
-    /// Tất cả node web sẽ dùng chung một cache để tránh tạo cache riêng cho từng node.
-    /// Chứa CSS, JS, cookies, storage — dùng làm UserDataFolder khi khởi tạo CoreWebView2.
-    /// </summary>
-    public static string GetSharedRuntimeCachePath()
+    private static readonly string CefRootDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FlowMy", "CefRoot");
+
+    private static readonly string UserProfilesDir = Path.Combine(CefRootDir, "UserProfiles");
+
+    public static string GetCefRootDir() => CefRootDir;
+    public static string GetUserProfilesDir() => UserProfilesDir;
+
+    private static bool _initialized = false;
+    private static void EnsureUserProfilesInitialized()
     {
-        return Path.Combine(BaseCacheDir, "Shared");
+        if (_initialized) return;
+        _initialized = true;
+
+        try
+        {
+            if (!Directory.Exists(CefRootDir))
+                Directory.CreateDirectory(CefRootDir);
+            if (!Directory.Exists(UserProfilesDir))
+                Directory.CreateDirectory(UserProfilesDir);
+
+            // Cleanup old legacy UserProfiles directory if it exists directly under FlowMy
+            var legacyUserProfilesDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FlowMy", "UserProfiles");
+
+            if (Directory.Exists(legacyUserProfilesDir) && !string.Equals(legacyUserProfilesDir, UserProfilesDir, StringComparison.OrdinalIgnoreCase))
+            {
+                var knownSystemDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "Shared", "Profiles", "UserProfiles", "GPUCache", "BlobStorage", "Network", "Session Storage",
+                    "Cache", "Code Cache", "Local Storage", "Crashpad", "databases", "IndexedDB",
+                    "Extensions", "GrShaderCache", "GraphiteDawnCache", "DawnCache", "Storage", "Default",
+                    "AutofillStates", "CertificateRevocation", "Crowd Deny", "Dictionaries", "FileTypePolicies",
+                    "FirstPartySetsPreloaded", "hyphen-data", "MEIPreload", "OnDeviceHeadSuggestModel",
+                    "OptimizationHints", "OriginTrials", "PKIMetadata", "PrivacySandboxAttestationsPreloaded",
+                    "Safe Browsing", "SafetyTips", "segmentation_platform", "ShaderCache", "SSLErrorAssistant",
+                    "Subresource Filter", "TpcdMetadata", "TrustTokenKeyCommitments", "WidevineCdm", "ZxcvbnData"
+                };
+
+                foreach (var sub in Directory.GetDirectories(legacyUserProfilesDir))
+                {
+                    var name = Path.GetFileName(sub);
+                    if (string.IsNullOrWhiteSpace(name) || name.StartsWith("_", StringComparison.Ordinal) || knownSystemDirs.Contains(name))
+                    {
+                        continue;
+                    }
+                    var dest = Path.Combine(UserProfilesDir, name);
+                    if (!Directory.Exists(dest))
+                    {
+                        try { Directory.Move(sub, dest); } catch { }
+                    }
+                }
+
+                try { Directory.Delete(legacyUserProfilesDir, recursive: true); } catch { }
+            }
+        }
+        catch { }
     }
 
     /// <summary>
-    /// Quét và trả về danh sách các Profile Cache hiện có (tên các thư mục con trong BaseCacheDir)
+    /// Đảm bảo một thư mục profile người dùng tồn tại và có file marker profile.json
+    /// </summary>
+    public static string EnsureProfileExists(string profileName)
+    {
+        EnsureUserProfilesInitialized();
+
+        var pName = string.IsNullOrWhiteSpace(profileName) || profileName.Equals("Shared", StringComparison.OrdinalIgnoreCase)
+            ? "Shared"
+            : profileName.Trim();
+
+        var path = Path.Combine(UserProfilesDir, pName);
+        try
+        {
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            var metaPath = Path.Combine(path, "profile.json");
+            if (!File.Exists(metaPath))
+            {
+                File.WriteAllText(metaPath, $"{{\"name\":\"{pName}\",\"created\":\"{DateTime.UtcNow:o}\"}}");
+            }
+        }
+        catch { }
+        return path;
+    }
+
+    /// <summary>
+    /// Thư mục cache runtime chung cho tất cả WebView2 nodes.
+    /// </summary>
+    public static string GetSharedRuntimeCachePath()
+    {
+        return EnsureProfileExists("Shared");
+    }
+
+    /// <summary>
+    /// Lấy đường dẫn thư mục cache của profile (chỉ tự động tạo khi createIfNotExists = true).
+    /// </summary>
+    public static string GetProfileCachePath(string profileName, bool createIfNotExists = true)
+    {
+        EnsureUserProfilesInitialized();
+
+        var pName = string.IsNullOrWhiteSpace(profileName) || profileName.Equals("Shared", StringComparison.OrdinalIgnoreCase)
+            ? "Shared"
+            : profileName.Trim();
+
+        if (createIfNotExists)
+        {
+            return EnsureProfileExists(pName);
+        }
+
+        return Path.Combine(UserProfilesDir, pName);
+    }
+
+    /// <summary>
+    /// Quét và trả về danh sách các Profile Cache do người dùng tạo (chỉ lọc thư mục chứa profile.json hoặc cookie hợp lệ)
     /// </summary>
     public static List<string> GetAvailableCacheProfiles()
     {
-        var profiles = new List<string> { "Shared" }; // Mặc định luôn có Shared
+        EnsureProfileExists("Shared");
+
+        var profiles = new List<string> { "Shared" };
         try
         {
-            if (Directory.Exists(BaseCacheDir))
+            if (Directory.Exists(UserProfilesDir))
             {
-                var subDirs = Directory.GetDirectories(BaseCacheDir);
+                var subDirs = Directory.GetDirectories(UserProfilesDir);
                 foreach (var dir in subDirs)
                 {
                     var name = Path.GetFileName(dir);
                     if (string.IsNullOrWhiteSpace(name)) continue;
-
-                    // Loại bỏ Shared
                     if (name.Equals("Shared", StringComparison.OrdinalIgnoreCase)) continue;
-
-                    // Loại bỏ thư mục tạm/offline assets
                     if (name.StartsWith("_", StringComparison.Ordinal)) continue;
 
-                    // Loại bỏ các ID node tự động (thường là GUID)
-                    if (Guid.TryParse(name, out _)) continue;
+                    var metaPath = Path.Combine(dir, "profile.json");
+                    var hasCookies = File.Exists(Path.Combine(dir, "Cookies")) ||
+                                     File.Exists(Path.Combine(dir, "Network", "Cookies")) ||
+                                     File.Exists(Path.Combine(dir, "Preferences")) ||
+                                     File.Exists(Path.Combine(dir, "Web Data"));
 
-                    profiles.Add(name);
+                    // Chỉ chấp nhận thư mục có file marker profile.json hoặc có file cookie/preferences trình duyệt
+                    if (File.Exists(metaPath) || hasCookies)
+                    {
+                        if (!File.Exists(metaPath))
+                        {
+                            try { File.WriteAllText(metaPath, $"{{\"name\":\"{name}\"}}"); } catch { }
+                        }
+                        profiles.Add(name);
+                    }
                 }
             }
         }
@@ -81,7 +197,7 @@ public static class WebNodeCacheHelper
         {
             System.Diagnostics.Debug.WriteLine($"Lỗi quét danh sách cache: {ex.Message}");
         }
-        return profiles;
+        return profiles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>Sự kiện được phát khi danh sách Profile thay đổi (thêm/xóa profile).</summary>
@@ -107,13 +223,66 @@ public static class WebNodeCacheHelper
             return false;
         try
         {
-            var path = GetProfileCachePath(profileName);
+            var pName = profileName.Trim();
+            CefSharpEnvironmentManager.DisposeProfileRequestContext(pName);
+
+            // Dùng createIfNotExists = false để không tự động tạo lại folder!
+            var path = GetProfileCachePath(pName, createIfNotExists: false);
             if (Directory.Exists(path))
             {
-                Directory.Delete(path, recursive: true);
-                NotifyProfilesChanged();
-                return true;
+                // Rename thư mục sang _deleted_xxx để GetAvailableCacheProfiles loại bỏ lập tức (bất kể CEF có đang nhả file hay chưa)
+                var tempDeletePath = Path.Combine(GetUserProfilesDir(), $"_deleted_{Guid.NewGuid():N}");
+                try
+                {
+                    Directory.Move(path, tempDeletePath);
+                }
+                catch
+                {
+                    tempDeletePath = path;
+                }
+
+                try
+                {
+                    Directory.Delete(tempDeletePath, recursive: true);
+                }
+                catch
+                {
+                    try
+                    {
+                        foreach (var file in Directory.GetFiles(tempDeletePath, "*", SearchOption.AllDirectories))
+                        {
+                            try { File.Delete(file); } catch { }
+                        }
+                        Directory.Delete(tempDeletePath, recursive: true);
+                    }
+                    catch { }
+                }
             }
+
+            // Xóa triệt để các thư mục lưu cũ tại BaseCacheDir nếu có
+            try
+            {
+                var legacyPath1 = Path.Combine(BaseCacheDir, "Profiles", pName);
+                if (Directory.Exists(legacyPath1))
+                {
+                    var temp1 = Path.Combine(BaseCacheDir, "Profiles", $"_deleted_{Guid.NewGuid():N}");
+                    try { Directory.Move(legacyPath1, temp1); Directory.Delete(temp1, true); } catch { }
+                }
+            }
+            catch { }
+            try
+            {
+                var legacyPath2 = Path.Combine(BaseCacheDir, pName);
+                if (Directory.Exists(legacyPath2))
+                {
+                    var temp2 = Path.Combine(BaseCacheDir, $"_deleted_{Guid.NewGuid():N}");
+                    try { Directory.Move(legacyPath2, temp2); Directory.Delete(temp2, true); } catch { }
+                }
+            }
+            catch { }
+
+            NotifyProfilesChanged();
+            return true;
         }
         catch (Exception ex)
         {
@@ -122,17 +291,7 @@ public static class WebNodeCacheHelper
         return false;
     }
 
-    /// <summary>
-    /// Tạo đường dẫn cache tương ứng với tên profile
-    /// </summary>
-    public static string GetProfileCachePath(string profileName)
-    {
-        if (string.IsNullOrWhiteSpace(profileName) || profileName.Equals("Shared", StringComparison.OrdinalIgnoreCase))
-        {
-            return GetSharedRuntimeCachePath(); // Trỏ về ".../Cache/Shared"
-        }
-        return Path.Combine(BaseCacheDir, profileName); // Trỏ về ".../Cache/profileName"
-    }
+
 
     /// <summary>
     /// Thư mục cache WebNode khi lưu workflow (workflowsDir + workflowName + "_webcache").

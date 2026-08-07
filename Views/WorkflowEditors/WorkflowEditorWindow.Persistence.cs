@@ -1,4 +1,5 @@
 using FlowMy.Models;
+using FlowMy.Models.Nodes;
 using FlowMy.Models.Persistence;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.Overlays;
@@ -26,6 +27,7 @@ namespace FlowMy.Views
             public string Format { get; init; } = "json";
             public bool IncludeRuntimeOutput { get; init; }
             public bool IncludeWebCookies { get; init; }
+            public string SelectedProfile { get; init; } = "All";
             public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
             public string CompressionMode { get; init; } = "medium";
 
@@ -64,7 +66,7 @@ namespace FlowMy.Views
                 {
                     try
                     {
-                        var cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), CancellationToken.None);
+                        var cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), CancellationToken.None, selection.SelectedProfile);
                         var tempZip = Path.Combine(Path.GetTempPath(), "FlowMyExportEmbedded_" + Guid.NewGuid().ToString("N") + ".zip");
                         try
                         {
@@ -131,6 +133,11 @@ namespace FlowMy.Views
                 Owner = this
             };
 
+            var usedProfiles = ViewModel?.Nodes?.OfType<WebNode>()
+                .Select(w => string.Equals(w.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(w.CustomCacheName) ? w.CustomCacheName.Trim() : "Shared")
+                .ToList();
+            dialog.PopulateProfiles(usedProfiles);
+
             if (dialog.ShowDialog() != true)
             {
                 return null;
@@ -141,6 +148,7 @@ namespace FlowMy.Views
                 Format = dialog.SelectedFormat,
                 IncludeRuntimeOutput = dialog.IncludeRuntimeOutput,
                 IncludeWebCookies = dialog.IncludeWebCookies,
+                SelectedProfile = dialog.SelectedProfile,
                 CompressionLevel = dialog.SelectedCompressionLevel,
                 CompressionMode = dialog.SelectedCompressionMode
             };
@@ -184,7 +192,7 @@ namespace FlowMy.Views
                 {
                     try
                     {
-                        cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), cts.Token);
+                        cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), cts.Token, selection.SelectedProfile);
                     }
                     catch (Exception ex)
                     {
@@ -363,27 +371,45 @@ namespace FlowMy.Views
             SetExportImportBusy(true);
             try
             {
+                // ── Pre-enqueue cookies from package BEFORE rendering nodes ──
+                // This ensures WebCookiePortableBridge has cookies ready when
+                // WebNodeControl's loadedHandler calls TryConsumeAndApplyAsync.
+                if (!string.IsNullOrWhiteSpace(extractedPackageRoot) && Directory.Exists(extractedPackageRoot))
+                {
+                    try
+                    {
+                        var cookiePath = Path.Combine(extractedPackageRoot, WebNodeCacheHelper.PortableCookieBundleFileName);
+                        if (File.Exists(cookiePath))
+                        {
+                            var cookieText = File.ReadAllText(cookiePath);
+                            if (!string.IsNullOrEmpty(cookieText) && WebCookieSnapshotService.IsV2PortableCookieBundleJson(cookieText))
+                            {
+                                WebCookiePortableBridge.Enqueue(cookieText);
+                                await WebCookieSnapshotService.ImportSnapshotJsonAllProfilesAsync(cookieText);
+                            }
+                        }
+                    }
+                    catch (Exception cookiePreloadEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Import] Pre-enqueue cookies error: {cookiePreloadEx.Message}");
+                    }
+                }
+
                 await ViewModel.ImportFromJsonAsync(json, importPath, progress, cts.Token);
 
-                // If user selected a package zip, importPath currently points to extracted temp\workflow.json
-                // and the extracted folder contains cookies/html bundle at root.
-                var importDir = extractedPackageRoot ?? Path.GetDirectoryName(importPath);
-                if (!string.IsNullOrWhiteSpace(importDir) && extractedPackageRoot != null)
+                // Restore remaining web data (profile caches, html assets) — cookies already enqueued above.
+                if (!string.IsNullOrWhiteSpace(extractedPackageRoot) && Directory.Exists(extractedPackageRoot))
                 {
                     try
                     {
                         cts.Token.ThrowIfCancellationRequested();
                         ((IProgress<WorkflowTransferProgress>)progress)?.Report(new WorkflowTransferProgress("Đang khôi phục dữ liệu web từ package...", 80));
                         var nodeList = ViewModel.Nodes.ToList();
-                        await Task.Run(() => WebNodeCacheHelper.RestorePortableWebCaches(importDir, nodeList), cts.Token);
+                        await Task.Run(() => WebNodeCacheHelper.RestorePortableWebCaches(extractedPackageRoot, nodeList), cts.Token);
                     }
                     catch
                     {
                         // ignore restore errors; workflow itself is already loaded
-                    }
-                    finally
-                    {
-                        try { Directory.Delete(importDir, recursive: true); } catch { /* ignore */ }
                     }
                 }
 
