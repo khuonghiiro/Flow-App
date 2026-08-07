@@ -2222,6 +2222,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static (string key, string code, int vk, string text) GetCdpKeyDetails(string cleanKey)
         {
+            if (string.IsNullOrWhiteSpace(cleanKey))
+                return ("", "", 0, "");
+
             var lower = cleanKey.ToLowerInvariant();
             switch (lower)
             {
@@ -2253,6 +2256,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     return ("PageUp", "PageUp", 33, "");
                 case "pagedown": case "pgdn":
                     return ("PageDown", "PageDown", 34, "");
+                case "prtsc": case "printscreen":
+                    return ("PrintScreen", "PrintScreen", 44, "");
+                case "insert":
+                    return ("Insert", "Insert", 45, "");
+            }
+
+            // ── Hỗ trợ đầy đủ phím chức năng F1 - F24 (F5 refresh web, F11 fullscreen,...) ──
+            if (cleanKey.StartsWith("F", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(cleanKey.Substring(1), out int fNum) && fNum >= 1 && fNum <= 24)
+            {
+                int fVk = 0x70 + (fNum - 1);
+                string fName = $"F{fNum}";
+                return (fName, fName, fVk, "");
             }
 
             if (cleanKey.Length == 1)
@@ -2275,6 +2291,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     _ => ""
                 };
                 return (ch.ToString(), string.IsNullOrEmpty(code) ? "Unidentified" : code, (int)ch, ch.ToString());
+            }
+
+            // Fallback tra cứu qua KeyNameToVk để đảm bảo luôn map đúng Virtual Key code
+            ushort mappedVk = KeyNameToVk(cleanKey);
+            if (mappedVk != 0)
+            {
+                return (cleanKey, cleanKey, mappedVk, "");
             }
 
             return (cleanKey, cleanKey, 0, "");
