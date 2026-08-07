@@ -76,10 +76,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -120,17 +124,23 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📁 Tên file -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📁 Tên file (mẫu)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📁 Tên file (mẫu)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Placeholder: {filename}, {date}, {time}, {datetime}, {index}. Ví dụ: {filename}_{date}. Nếu có {index} và bật tự tăng, lần đầu rỗng rồi _1, _2…"
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
                                     <TextBox Text="{Binding FileNameTemplate, UpdateSourceTrigger=PropertyChanged}"
@@ -176,8 +186,10 @@
                                     <CheckBox Content="Chuẩn hóa tên file: bỏ dấu tiếng Việt và ký tự đặc biệt"
                                               Foreground="{DynamicResource TextBrush}" FontSize="11"
                                               IsChecked="{Binding RemoveDiacriticsFromFileName, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 💾 Lưu thêm nhiều file -->
                             <CheckBox Content="Lưu thêm nhiều file từ output node (nội dung text vào thư mục lưu)"
@@ -189,9 +201,13 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="💾 Từng dòng: hàng trên là mẫu tên file; hàng dưới là Node → Key và định dạng lưu"
-                                                   Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💾 Từng dòng: hàng trên là mẫu tên file; hàng dưới là Node → Key và định dạng lưu"
+                                                   Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <ItemsControl ItemsSource="{Binding AdditionalSaveRows}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -251,18 +267,24 @@
                                                 Command="{Binding AddAdditionalSaveRowCommand}"
                                                 HorizontalAlignment="Left" MinWidth="120"
                                                 Style="{DynamicResource PrimaryButton}"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </StackPanel>
 
                             <!-- 🌐 URL tải -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🌐 URL tải (GET/POST theo curl nếu dùng curl)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🌐 URL tải (GET/POST theo curl nếu dùng curl)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Text="{Binding DownloadUrl, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              Height="32" Margin="0,0,0,8"/>
@@ -288,17 +310,23 @@
                                                       SelectedValue="{Binding UrlSourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 💻 cURL -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="💻 cURL (ưu tiên hơn URL nếu có và hợp lệ)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💻 cURL (ưu tiên hơn URL nếu có và hợp lệ)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Text="{Binding CurlCommand, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              AcceptsReturn="True"
@@ -328,17 +356,23 @@
                                                       SelectedValue="{Binding CurlSourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📂 Thư mục lưu -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📂 Thư mục lưu (tự tạo nếu chưa có)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📂 Thư mục lưu (tự tạo nếu chưa có)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -374,37 +408,51 @@
                                                       SelectedValue="{Binding FolderSourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📊 Kết quả lần chạy gần nhất -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📊 Kết quả lần chạy gần nhất" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Kết quả lần chạy gần nhất" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                         <TextBlock Text="{Binding LastRunSummary}"
                                                    Foreground="{DynamicResource TextBrush}" FontSize="10" TextWrapping="Wrap"/>
                                     </Border>
                                     <TextBlock Text="Output: filePath (đường dẫn đầy đủ), completed (True/False), errorMessage"
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📋 Outputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📋 Outputs" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📋 Outputs" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="OutputsPanel"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

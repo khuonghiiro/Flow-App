@@ -54,9 +54,13 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị" Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -90,8 +94,10 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- Cho phép quét text -->
                             <CheckBox IsChecked="{Binding EnableTextScan, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,12">
@@ -116,9 +122,13 @@
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
                                     Visibility="{Binding IsTesseractMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <StackPanel>
-                                    <TextBlock Text="⚙️ Cấu hình Tesseract" Foreground="{DynamicResource TextBrush}"
-                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚙️ Cấu hình Tesseract" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="11" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Thư mục tessdata" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
@@ -142,8 +152,10 @@
                                               ItemsSource="{Binding TesseractEngineModeOptions}"
                                               SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                               SelectedValue="{Binding TesseractEngineMode, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             </StackPanel>
 
@@ -161,9 +173,13 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="📍 Input — Toạ độ vùng cắt" Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Input — Toạ độ vùng cắt" Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="11" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -186,8 +202,10 @@
                                                           IsSynchronizedWithCurrentItem="False"/>
                                             </StackPanel>
                                         </Grid>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                 <!-- CheckBox Chụp tại Workflow -->
                                 <CheckBox IsChecked="{Binding CaptureWorkflowCanvas, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10">
@@ -231,9 +249,13 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📍 Input — Ảnh từ node" Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Input — Ảnh từ node" Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="11" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -256,8 +278,10 @@
                                                           IsSynchronizedWithCurrentItem="False"/>
                                             </StackPanel>
                                         </Grid>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </StackPanel>
 
                             <!-- MODE: Path/URL -->
@@ -332,13 +356,19 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="Vùng đã chọn:" Foreground="{DynamicResource TextBrush}"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Vùng đã chọn:" Foreground="{DynamicResource TextBrush}"
                                                    FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock x:Name="ManualRegionCoordinates" Foreground="{DynamicResource TextMuted}"
                                                    FontSize="10" FontFamily="Consolas" Text="Chưa chụp"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </StackPanel>
 
                             <!-- Language Settings (ẩn khi không bật quét text) -->

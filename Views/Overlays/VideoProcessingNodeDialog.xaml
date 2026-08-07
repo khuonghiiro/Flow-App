@@ -65,10 +65,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -97,17 +101,23 @@
                                                       SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎬 Video Source -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎬 Video Source" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎬 Video Source" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -138,17 +148,23 @@
                                               Foreground="{DynamicResource TextBrush}"
                                               FontSize="11"
                                               IsChecked="{Binding OutputBase64, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📁 Output Folder -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel x:Name="OutputFolderPanel">
-                                    <TextBlock Text="📁 Output Folder" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📁 Output Folder" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel x:Name="OutputFolderPanel" Margin="0,8,0,0">
+
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -174,17 +190,23 @@
                                                       SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎥 Video Folder (node link) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel x:Name="VideoOutputFolderPanel">
-                                    <TextBlock Text="🎥 Video Folder (node link)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎥 Video Folder (node link)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -210,50 +232,70 @@
                                                       SelectedValue="{Binding VideoOutputFolderSourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📂 Frame Output Folder (local) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📂 Frame Output Folder (local)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📂 Frame Output Folder (local)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Height="32"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              VerticalContentAlignment="Center"
                                              Text="{Binding FrameOutputFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎬 Default Output Video Path -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎬 Default Output Video Path" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎬 Default Output Video Path" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Height="32"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              VerticalContentAlignment="Center"
                                              Text="{Binding DefaultOutputVideoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📊 Outputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📊 Outputs" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Outputs" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="OutputsPanel"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -292,10 +334,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⚙️ Đường dẫn FFmpeg" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚙️ Đường dẫn FFmpeg" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -336,8 +382,10 @@
                                                    RequestNavigate="OpenFfmpegGuideLink_Click">gyan.dev/ffmpeg/builds</Hyperlink>,
                                         giải nén và chọn file <Run FontWeight="SemiBold">bin\ffmpeg.exe</Run>.
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

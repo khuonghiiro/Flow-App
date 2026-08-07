@@ -69,10 +69,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -109,8 +113,10 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- ✏️ Chế độ ghi -->
                             <CheckBox Content="Chế độ ghi (write): map key/value vào kho scoped theo ExecutionId"
@@ -123,25 +129,35 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🔑 Key tĩnh (fallback nếu không map dynamic 'key')"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔑 Key tĩnh (fallback nếu không map dynamic 'key')"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Text="{Binding StaticKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              Height="32"
                                              VerticalContentAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- ⏱️ Chờ trước khi đọc kho -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⏱️ Chờ trước khi đọc kho (chế độ read, 0 = không chờ)"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⏱️ Chờ trước khi đọc kho (chế độ read, 0 = không chờ)"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -161,34 +177,48 @@
                                                   DisplayMemberPath="Label"
                                                   SelectedValue="{Binding PollUnit, Mode=TwoWay}"/>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📍 Input (map nguồn) -->
                             <StackPanel Visibility="{Binding IsWriteMode, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📍 Input (map nguồn)"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Input (map nguồn)"
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <StackPanel x:Name="InputsPanel"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </StackPanel>
 
                             <!-- 📤 Output -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📤 Output"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📤 Output"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="OutputsPanel"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 💡 Lưu ý -->
                             <Border Background="{DynamicResource HeaderBackgroundBrush}"
@@ -196,12 +226,15 @@
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="12">
-                                <StackPanel>
-                                    <TextBlock Text="💡 Lưu ý"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💡 Lưu ý"
                                                Foreground="{DynamicResource PrimaryBrush}"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Margin="0,0,0,8"/>
+                                               FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap"
                                                Foreground="{DynamicResource TextMuted}"
                                                FontSize="10"
@@ -210,8 +243,10 @@
                                         • Ghi: nối flow IN, map key/value; đọc: tắt ghi – chỉ port OUT, có thể chờ poll rồi xuất store JSON.<LineBreak/>
                                         • Output dạng: store (JSON), lastKey, lastValue.
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

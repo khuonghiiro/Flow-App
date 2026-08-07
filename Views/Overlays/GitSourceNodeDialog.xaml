@@ -69,10 +69,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="💻 Command Line"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💻 Command Line"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Nhập lệnh để chạy (ví dụ: npm install, npm run build, dotnet run...)"
                                                Foreground="{DynamicResource TextMuted}"
                                                FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
@@ -93,17 +97,23 @@
                                             <TextBlock Text="Áp dụng" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📄 Command output -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12">
-                                <StackPanel>
-                                    <TextBlock Text="📄 Output"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📄 Output"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="8"
                                             MaxHeight="200">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -113,8 +123,10 @@
                                                        TextWrapping="Wrap"/>
                                         </ScrollViewer>
                                     </Border>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- Inputs/Outputs hidden -->
                             <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
@@ -131,24 +143,34 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Icon"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Icon"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <controls:IconSelectorUserControl x:Name="IconSelector"
                                                               ButtonHeight="32"
                                                               SelectedIcon="{Binding IconKey, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎨 Màu icon -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Màu icon"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Màu icon"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -168,17 +190,23 @@
                                                 Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
                                                 BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎨 Màu node -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Màu node"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Màu node"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -198,24 +226,32 @@
                                                 Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
                                                 BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 💬 Tooltip -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12">
-                                <StackPanel>
-                                    <TextBlock Text="💬 Tooltip"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💬 Tooltip"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Text="{Binding TooltipText, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}" Height="64"
                                              AcceptsReturn="True" TextWrapping="Wrap"
                                              VerticalContentAlignment="Top"
                                              Padding="8,4"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

@@ -63,25 +63,35 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🖱️ Nút chuột" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🖱️ Nút chuột" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <ComboBox x:Name="MouseButtonComboBox" Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding MouseButtonOptions}"
                                               SelectedValue="{Binding MouseButton, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎯 Ứng dụng đích -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎯 Ứng dụng cần click" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎯 Ứng dụng cần click" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                TextWrapping="Wrap" Margin="0,0,0,8">
                                         <Run Text="Chọn app để gửi thao tác chuột đến. "/>
@@ -120,8 +130,10 @@
                                             <Run Text="↩️ Trở về màn hình ban đầu sau khi thực hiện xong"/>
                                         </TextBlock>
                                     </CheckBox>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- ⚙️ Background Mode -->
                             <Border Background="{DynamicResource WindowBackground}" Visibility="Collapsed"
@@ -221,10 +233,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📍 Toạ độ click / scroll" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Toạ độ click / scroll" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <!-- Từ node khác -->
                                     <TextBlock Text="Từ node khác"
                                                Foreground="{DynamicResource TextBrush}"
@@ -265,8 +281,10 @@
                                                 Cursor="Hand" Click="PickPositionButton_Click"
                                                 Padding="10,0"/>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎯 Click tại toạ độ trước khi thực hiện -->
                             <Border Background="{DynamicResource WindowBackground}"
@@ -306,11 +324,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🔢 Số lần nhấn" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔢 Số lần nhấn" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"
-                                               Visibility="{Binding IsScrollMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                               FontSize="12" FontWeight="SemiBold" Visibility="{Binding IsScrollMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox x:Name="RepeatCountTextBox" Height="32"
                                              Text="{Binding RepeatCount, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}"
@@ -324,33 +345,47 @@
                                     <TextBox x:Name="ExtraTextBox" Height="32"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              VerticalContentAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📥 Inputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📥 Inputs" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📥 Inputs" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="InputsPanel"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📤 Outputs -->
                             <Border x:Name="BorderOutputPanel"
                                     Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock x:Name="TextBlockOutputPanel" Text="📤 Outputs" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock x:Name="TextBlockOutputPanel" Text="📤 Outputs" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="OutputsPanel"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🎨 Tiêu đề node -->
                             <Border Background="{DynamicResource WindowBackground}"

@@ -94,10 +94,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -138,17 +142,23 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📍 Node nguồn -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📍 Node nguồn" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Node nguồn" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Lấy output từ node nào" 
                                                Foreground="{DynamicResource TextMuted}" 
                                                FontSize="10" Margin="0,0,0,4"/>
@@ -183,17 +193,23 @@
                                               IsChecked="{Binding WaitForWebNodeLoad, Mode=TwoWay}"
                                               Margin="0,0,0,0"
                                               Visibility="{Binding IsSourceWebNode, Converter={StaticResource BoolToVisConverter}}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 👁️ Preview -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="👁️ Preview" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="👁️ Preview" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Giá trị đã lấy" 
                                                Foreground="{DynamicResource TextMuted}" 
                                                FontSize="10" Margin="0,0,0,4"/>
@@ -202,8 +218,10 @@
                                                    Foreground="{DynamicResource TextBrush}" FontSize="11"
                                                    TextWrapping="Wrap" MaxHeight="80"/>
                                     </Border>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🔄 Chạy lại node nguồn -->
                             <Border Background="{DynamicResource WindowBackground}"
@@ -311,16 +329,21 @@
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
                                     Visibility="{Binding HasIncomingFlowConnection, Converter={StaticResource InverseBoolToVisConverter}}">
-                                <StackPanel>
-                                    <TextBlock Text="⚡ Realtime"
-                                               Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
-                                               Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚡ Realtime"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <CheckBox Content="Bật Realtime (nhận ngay khi node nguồn xử lý xong)"
                                               Foreground="{DynamicResource TextBrush}" FontSize="11"
                                               IsChecked="{Binding EnableRealtime, Mode=TwoWay}"
                                               Margin="0,0,0,0"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
@@ -328,13 +351,19 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12" x:Name="BorderOutputPanel">
-                                <StackPanel>
-                                    <TextBlock Text="📊 Outputs (giá trị đã fetch)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Outputs (giá trị đã fetch)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="OutputsPanel"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                         </StackPanel>
                     </ScrollViewer>

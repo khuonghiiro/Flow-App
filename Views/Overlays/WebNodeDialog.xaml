@@ -59,10 +59,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -99,17 +103,23 @@
                                     </Grid>
                                 </StackPanel>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
  
                     <!-- 🌐 Cấu hình Profile & Cache -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🌐 Cấu hình Profile &amp; Cache" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🌐 Cấu hình Profile &amp; Cache" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             
                             <TextBlock Text="Chế độ chạy trình duyệt" 
                                        Foreground="{DynamicResource TextMuted}" 
@@ -153,17 +163,23 @@
                                             ToolTip="Xóa vĩnh viễn profile đang chọn khỏi đĩa"/>
                                 </Grid>
                             </StackPanel>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 💤 Chế độ nghỉ -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="💤 Chế độ nghỉ" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💤 Chế độ nghỉ" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <CheckBox Margin="0,0,0,8"
                                       IsChecked="{Binding EnableSleepMode, Mode=TwoWay}"
                                       Foreground="{DynamicResource TextBrush}"
@@ -198,17 +214,23 @@
                                            VerticalAlignment="Center"
                                            Margin="8,0,0,0"/>
                             </StackPanel>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📍 Input từ node khác -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📍 Input (node nguồn + key) — mỗi dòng = một biến trong URL template" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Input (node nguồn + key) — mỗi dòng = một biến trong URL template" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Mỗi dòng = một biến trong URL template" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,6"/>
@@ -261,17 +283,23 @@
                                     <Run Text="💡 Sử dụng: Trong ExtractUrl, dùng {tên_biến} để thay thế động. Ví dụ: https://api.example.com/v1/projects/{name}/flowMedia:batchGenerateImages"/>
                                 </TextBlock>
                             </Border>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 💻 JS Sources -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="💻 Chạy JS từ node khác (Node + Key) — mỗi dòng = 1 node: khi node đã chạy đến Web thì chạy JS" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💻 Chạy JS từ node khác (Node + Key) — mỗi dòng = 1 node: khi node đã chạy đến Web thì chạy JS" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <ItemsControl x:Name="JsSourcesItemsControl" ItemsSource="{Binding JsSourcesList}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate >
@@ -345,17 +373,23 @@
                             <Button Content="+ Thêm JS source" Height="32" Margin="0,8,0,0"
                                     Command="{Binding AddJsSourceCommand}"
                                     Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🔄 Auto-reload timer -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🔄 Auto-reload timer" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔄 Auto-reload timer" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <CheckBox x:Name="AutoReloadCheckBox"
                                       Foreground="{DynamicResource TextBrush}"
                                       FontSize="11"
@@ -382,17 +416,23 @@
                                           Margin="8,0,0,0"
                                           ToolTip="Đơn vị thời gian: mili giây, giây, phút."/>
                             </StackPanel>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                             
                     <!-- 🍪 Cookie configuration -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🍪 Cookie (paste text cookie để set vào WebView2)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🍪 Cookie (paste text cookie để set vào WebView2)" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Hỗ trợ Netscape format hoặc JSON format {url, cookies:[...]}. Click 'Chạy' để set cookie và mở website."
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid>
@@ -416,7 +456,9 @@
                                         Cursor="Hand"
                                         ToolTip="Parse cookie và set vào WebView2. Nếu có URL thì mở luôn website đó."/>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                 </StackPanel>
                     </ScrollViewer>
@@ -440,10 +482,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🚫 Chặn request (URL Pattern)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🚫 Chặn request (URL Pattern)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Danh sách URL pattern (string contains). Nếu URL chứa pattern -> Chặn."
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
@@ -552,22 +598,30 @@
                                     Style="{DynamicResource PrimaryButton}"
                                     Command="{Binding AddBlockingRuleCommand}" Margin="0,0,0,12"/>
 
+                            
                             </StackPanel>
-                            </Border>
+                        </Expander>
+                    </Border>
 
                             <!-- 🔄 Thay request (intercept rules) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🔄 Thay request (match URL → thay URL/params/body bằng Node+Key)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔄 Thay request (match URL → thay URL/params/body bằng Node+Key)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <StackPanel x:Name="InterceptRulesPanel" Margin="0,0,0,8"/>
                                     <Button x:Name="AddInterceptRuleButton" Content="+ Thêm rule" Height="32"
                                             Style="{DynamicResource PrimaryButton}" Click="AddInterceptRuleButton_Click"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -580,17 +634,23 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📊 Outputs (Lấy response từ URL - so sánh khớp URL pattern, lấy request cuối cùng khớp)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Outputs (Lấy response từ URL - so sánh khớp URL pattern, lấy request cuối cùng khớp)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <!-- Live sync execution results -->
                                     <CheckBox Content="Cập nhật luôn → Result của node khi WebView2 bắt được response (live)"
                                               Foreground="{DynamicResource TextBrush}" FontSize="11"
                                               IsChecked="{Binding SyncLiveOutputsToResults, Mode=TwoWay}"
                                               Margin="0,0,0,8"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
 
 
@@ -598,17 +658,23 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📊 Outputs (Lấy response từ URL - so sánh khớp URL pattern)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Outputs (Lấy response từ URL - so sánh khớp URL pattern)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
 
                                     <!-- Outputs (Response outputs) -->
                                     <StackPanel x:Name="ResponseOutputsPanel" Margin="0,0,0,8"/>
                                     <Button x:Name="AddResponseOutputButton" Content="+ Thêm output" Height="32"
                                             Style="{DynamicResource PrimaryButton}" Click="AddResponseOutputButton_Click"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                         </StackPanel>
                     </ScrollViewer>

@@ -63,8 +63,12 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
-                            <StackPanel>
-                                <TextBlock Text="Hiển thị" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Hiển thị" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Text="Kiểu lưới (Grid type)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                                 <ComboBox x:Name="GridTypeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32">
                                     <ComboBoxItem Content="Không có lưới" Tag="None"/>
@@ -105,11 +109,17 @@
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                         <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="GPU Rendering (tăng tốc GPU)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="GPU Rendering (tăng tốc GPU)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="GpuEnabledCheckBox" Content="Bật GPU rendering" Margin="0,0,0,10"/>
                                 <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="CacheNodeCheckBox" Content="Cache node (sẽ làm giảm chất lượng hiển thị xuống)" Margin="0,0,0,10"/>
                                 <TextBlock Text="Chất lượng GPU (GPU quality)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
@@ -125,8 +135,10 @@
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.5" FontSize="11" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -160,24 +172,34 @@
                                         CornerRadius="6"
                                         Padding="8,6"
                                         Margin="0,8,0,0">
-                                    <StackPanel>
-                                        <TextBlock Text="⚠ Animation đang bị tắt vì 'Cache node' đang bật."
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚠ Animation đang bị tắt vì 'Cache node' đang bật."
                                                    FontWeight="SemiBold"
                                                    Foreground="{DynamicResource TextBrush}"
                                                    TextWrapping="Wrap" FontSize="12"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Text="Cache node dùng BitmapCache để node được raster sẵn một lần → tăng FPS nhưng line animation (energy dot) chạy trên connection sẽ không đồng bộ được với bitmap đã cache, dẫn tới giật/nháy."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.75"
                                                    TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
                                         <TextBlock Text="👉 Để bật lại: mở tab 'Canvas' → bỏ tích 'Cache node'."
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.9"
                                                    TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Màu đường nối (Connection color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Màu đường nối (Connection color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -189,8 +211,10 @@
                                     </WrapPanel>
                                     <ComboBox Grid.Column="1" x:Name="CustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Height="32"/>
                                 </Grid>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -206,8 +230,12 @@
 
                         <!-- Left Card: Bulk Title Color -->
                         <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
-                            <StackPanel>
-                                <TextBlock Text="Màu tiêu đề hàng loạt (Bulk title color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Màu tiêu đề hàng loạt (Bulk title color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -219,13 +247,19 @@
                                     </WrapPanel>
                                     <ComboBox Grid.Column="1" x:Name="BulkTitleColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Height="32"/>
                                 </Grid>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
 
                         <!-- Right Card: Execution Energy -->
                         <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Hiệu ứng chạy luồng (Execution energy)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Hiệu ứng chạy luồng (Execution energy)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
 
                                 <Grid Margin="0,0,0,14">
                                     <Grid.ColumnDefinitions>
@@ -286,8 +320,10 @@
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.55" FontSize="11" Margin="20,2,0,0"/>
                                     </StackPanel>
                                 </Border>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -297,8 +333,12 @@
                 <Grid Margin="10">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
-                            <StackPanel>
-                                <TextBlock Text="Text + Runtime (nâng cao)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Text + Runtime (nâng cao)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Text="Text thay cho chấm (để trống = chỉ chấm)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
                                 <TextBox x:Name="EnergyDotTextTextBox" Style="{DynamicResource BaseTextBoxV2}" Margin="0,0,0,10"/>
 
@@ -389,8 +429,10 @@
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
@@ -402,14 +444,20 @@
                         <Border Margin="10" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
                             <StackPanel>
                                 <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="⚠️ Lưu ý quan trọng" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" FontSize="13" Margin="0,0,0,4"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚠️ Lưu ý quan trọng" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" FontSize="13" Margin="0,0,0,4"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Text="Để hiển thị style node chạy bên dưới, bạn cần chọn radio 'Tắt Animation' hoặc 'Hiển thị nét đứt' trong tab [Kết nối]." 
                                                    Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"/>
                                         <TextBlock Text="Nếu đang ở chế độ 'Bật Animation', style node chạy sẽ không hiển thị." 
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.8" FontSize="11" TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                 <CheckBox x:Name="NodeSpinnerArcModeCheckBox"
                                           Content="Vòng quay 1 góc (arc mode như hiện tại)"

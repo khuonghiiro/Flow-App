@@ -61,10 +61,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Kích thước khung hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Kích thước khung hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -82,17 +86,23 @@
                                              Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
                                 </StackPanel>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📍 Nguồn JSON -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📍 Nguồn JSON" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Nguồn JSON" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10">
                                 <Run Text="Node + key chứa chuỗi JSON để hiển thị gallery"/>
@@ -118,40 +128,54 @@
                                               SelectedValue="{Binding JsonSourceOutputKey, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🎯 Chạy lại node nguồn -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎯 Khi ấn nút ▶ trong dialog" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎯 Khi ấn nút ▶ trong dialog" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <CheckBox x:Name="ReexecuteSourceCheckBox"
                                       Content="Cho phép chạy lại logic node nguồn (single play)"
                                       IsChecked="{Binding CanReexecuteSourceNode, Mode=TwoWay}"
                                       Foreground="{DynamicResource TextBrush}"
                                       FontSize="12"
                                       Cursor="Hand"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🎨 Chế độ hiển thị -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Chế độ hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Chế độ hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <ComboBox x:Name="DisplayModeComboBox" Height="32"
                                       Style="{DynamicResource BaseComboBox}"
                                       ItemsSource="{Binding GalleryDisplayModeOptions}"
                                       SelectedValuePath="Mode" DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding DisplayMode, Mode=TwoWay}"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📂 Cấu hình nhóm -->
@@ -169,10 +193,14 @@
                         <Border Background="{DynamicResource WindowBackground}"
                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="12">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="📂 Cấu hình nhóm" 
                                            Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                           FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Foreground="{DynamicResource TextMuted}" 
                                            FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10">
                                     <Run Text="Key JSON cho chế độ theo nhóm (vd: workflows → workflowId → videos)"/>
@@ -189,34 +217,46 @@
                                            Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                 <TextBox Text="{Binding GroupItemsKey, UpdateSourceTrigger=PropertyChanged}"
                                          Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </StackPanel>
 
                     <!-- 👆 Hành động khi nhấn item -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="👆 Hành động khi nhấn item" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="👆 Hành động khi nhấn item" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <ComboBox x:Name="ItemClickPreviewComboBox" Height="32"
                                       Style="{DynamicResource BaseComboBox}"
                                       ItemsSource="{Binding ItemClickPreviewOptions}"
                                       SelectedValuePath="Mode" DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding ItemClickPreviewMode, Mode=TwoWay}"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📊 Key JSON của item -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📊 Key JSON của item" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Key JSON của item" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Tiêu đề (vd: title)"
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding TitleKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
@@ -229,17 +269,23 @@
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding VideoUrlKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🎨 Màu tiêu đề -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Màu tiêu đề" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Màu tiêu đề" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -255,7 +301,9 @@
                                         Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
                                         BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
@@ -271,17 +319,23 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Foreground="{DynamicResource TextBrush}" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Foreground="{DynamicResource TextBrush}" 
                                                FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4">
                                         <Run Text="💡 Gợi ý:"/>
                                     </TextBlock>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Foreground="{DynamicResource TextMuted}" 
                                                FontSize="10" TextWrapping="Wrap">
                                         <Run Text="Dùng Code Node để chuẩn hóa JSON thành 2 format dưới đây rồi nối vào MediaGallery."/>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <TextBlock Text="Ảnh/Video theo lưới (Grid):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
@@ -334,10 +388,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="💾 Folder lưu ảnh" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💾 Folder lưu ảnh" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Điền đường dẫn hoặc để trống để lấy từ Node + Key bên below."
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap"/>
                                     <TextBox Text="{Binding FolderSaveImages, UpdateSourceTrigger=PropertyChanged}"
@@ -365,17 +423,23 @@
                                                       SelectedValue="{Binding FolderSourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 💾 Folder lưu video -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="💾 Folder lưu video" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💾 Folder lưu video" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Điền đường dẫn hoặc để trống để lấy từ Node + Key bên below."
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap"/>
                                     <TextBox Text="{Binding FolderSaveVideos, UpdateSourceTrigger=PropertyChanged}"
@@ -403,8 +467,10 @@
                                                       SelectedValue="{Binding FolderSourceOutputKeyVideo, Mode=TwoWay}"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

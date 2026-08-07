@@ -75,10 +75,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -115,17 +119,23 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 💾 Nguồn dữ liệu -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="💾 Nguồn dữ liệu (Node + Key)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💾 Nguồn dữ liệu (Node + Key)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <CheckBox x:Name="IsInputModeCheckBox"
                                               Content="Chế độ nhận dữ liệu (port IN visible)"
                                               Foreground="{DynamicResource TextBrush}"
@@ -164,8 +174,10 @@
                                                Foreground="{DynamicResource TextMuted}"
                                                FontSize="10"
                                                TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📊 Giá trị mặc định -->
                             <StackPanel x:Name="DefaultOutputsPanel">
@@ -261,11 +273,14 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📋 Outputs đang lưu (snapshot sau khi chạy Storage)"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📋 Outputs đang lưu (snapshot sau khi chạy Storage)"
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold"
-                                                   Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <ItemsControl ItemsSource="{Binding StoredOutputs}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -293,8 +308,10 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

@@ -68,10 +68,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -108,15 +112,21 @@
                                     </Grid>
                                 </StackPanel>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🌐 UseWebTab: 2-Tab Mode -->
                     <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🌐 Sử dụng 2 tab (Tab1: Trình duyệt Web, Tab2: HTML UI)"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🌐 Sử dụng 2 tab (Tab1: Trình duyệt Web, Tab2: HTML UI)"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <CheckBox x:Name="UseWebTabCheckBox"
                                       IsChecked="{Binding UseWebTab, Mode=TwoWay}"
                                       Content="Bật chế độ 2-tab"
@@ -202,15 +212,21 @@
                                 <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,0"
                                            Text="→ Hỗ trợ: raw, JSON object {url, cookies:[{name,value,domain,path,secure,httpOnly,session,expirationTime}]}, JSON array, Netscape. URL → navigate Tab1. Sẽ xóa sau khi đóng dialog."/>
                             </StackPanel>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📍 Inputs -->
                     <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📍 Inputs (node nguồn + key → biến dùng trong Html/Js)"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Inputs (node nguồn + key → biến dùng trong Html/Js)"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Height="160">
                             <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
                                 <ItemsControl.ItemTemplate>
@@ -280,7 +296,9 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                     <Button Content="+ Thêm input" Height="32" Margin="0,0,0,12"
                             Command="{Binding AddInputMappingCommand}"
@@ -644,8 +662,12 @@
                                     CornerRadius="10"
                                     Padding="14"
                                     Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
                                         <Run Text="Khác với " Foreground="{DynamicResource TextSecondary}"/>
                                         <Run Text="window.hostLive" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
@@ -718,8 +740,10 @@
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -1265,8 +1289,12 @@
                                     <TextBlock Text="Hướng dẫn biến {variableName} + API mới (hostLive/hostAsync/host*)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
                                 </Expander.Header>
                                 <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
                                             <Run Text="1) Cấu hình Input: Chọn Node nguồn + Key (ví dụ node HttpRequest, key responseBody)."/>
                                             <LineBreak/>
@@ -1635,8 +1663,10 @@
                                                 </Border>
                                             </StackPanel>
                                         </Border>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </Expander>
 
                             <!-- Tab1 Injection Expander: chỉ hiển thị khi UseWebTab = true -->
@@ -1658,8 +1688,12 @@
                                         <!-- API Reference box -->
                                         <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="10" Margin="0,0,0,12"
                                                 BorderBrush="{DynamicResource TextBrush}" BorderThickness="1">
-                                            <StackPanel>
-                                                <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                                 <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                                     <Run Text="tab1Seq(jsString)" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=" — Sequential: request2 đợi request1 hoàn thành rồi mới chạy."/>
@@ -1669,8 +1703,10 @@
                                                     <LineBreak/><LineBreak/>
                                                     <Run Text="// jsString = đoạn JS sẽ chạy bên trong Tab1 (có session/cookie của trang đó)"/>
                                                 </TextBlock>
-                                            </StackPanel>
-                                        </Border>
+                                            
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                         <!-- SEQ Example 1: Click → Fill → Submit -->
                                         <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
@@ -1783,17 +1819,22 @@
                             </Expander>
 
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                <StackPanel>
-                                    <TextBlock Text="Prompt chuẩn để gửi AI tạo HTML UI node"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Prompt chuẩn để gửi AI tạo HTML UI node"
                                                Foreground="{DynamicResource PrimaryBrush}"
                                                FontSize="14"
-                                               FontWeight="SemiBold"
-                                               Margin="0,0,0,6"/>
+                                               FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12">
                                         <Run Text="Prompt này mô tả chi tiết cách dùng biến đầu vào, realtime update, active submit/start workflow và format output chuẩn 4 phần: html/css/js/param."/>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <Button Content="📋 Copy prompt cho AI"
@@ -1837,9 +1878,13 @@
                             <TextBlock Text="Dùng như checklist nhanh khi viết/sửa HTML UI."
                                        Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                                <StackPanel>
-                                    <TextBlock Text="Luồng chuẩn để phát video local (AI mới đọc là làm được):"
-                                               Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Luồng chuẩn để phát video local (AI mới đọc là làm được):"
+                                               Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Foreground="{DynamicResource PrimaryBrush}" FontSize="10" TextWrapping="Wrap">
                                         <Run Text="B1: Nhận datas từ window.hostLive.on('datas', ...)"/>
                                         <LineBreak/>
@@ -1859,8 +1904,10 @@
                                         <LineBreak/>
                                         <Run Text="B9: map vào outputImageUpload: { filename:name, linkPathImage:path, base64:dataUrl }."/>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <Button Content="📋 Copy all API docs"
                                         Height="30" Padding="10,0"
@@ -1901,9 +1948,13 @@
                             </Border>
 
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Template copy nhanh (dán vào tab JS)"
-                                               Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Template copy nhanh (dán vào tab JS)"
+                                               Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Mỗi template là khung cơ bản để AI mới hoặc người mới bắt đầu sửa nhanh."
                                                Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
 
@@ -1965,8 +2016,10 @@
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_full_new_api"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

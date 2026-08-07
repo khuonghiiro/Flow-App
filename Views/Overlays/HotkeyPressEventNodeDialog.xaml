@@ -58,10 +58,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⌨️ Tổ hợp phím kích hoạt" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⌨️ Tổ hợp phím kích hoạt" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Button x:Name="HotkeyButton"
                                             Content="{Binding HotkeyDisplayText}"
                                             Height="32" Style="{DynamicResource SecondaryButton}"
@@ -70,17 +74,23 @@
                                             Foreground="{DynamicResource TextBrush}" FontSize="11"
                                             Cursor="Hand"
                                             Click="HotkeyButton_Click"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- ⚙️ Chế độ kích hoạt -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⚙️ Chế độ kích hoạt" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚙️ Chế độ kích hoạt" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <RadioButton x:Name="SendModeRadio" GroupName="TriggerMode"
                                                  Cursor="Hand" Margin="0,0,0,8"
                                                  Checked="SendModeRadio_Checked">
@@ -94,8 +104,10 @@
                                                    Foreground="{DynamicResource TextBrush}"
                                                    FontSize="11" TextWrapping="Wrap"/>
                                     </RadioButton>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- Nội dung Send Mode (ẩn khi Listen) -->
                             <StackPanel x:Name="SendModePanel">
@@ -114,10 +126,14 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="🎯 Ứng dụng cần nhấn phím" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎯 Ứng dụng cần nhấn phím" 
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                    TextWrapping="Wrap" Margin="0,0,0,8">
                                             <Run Text="Chọn app để gửi phím đến. Để trống = dùng cửa sổ hiện tại."/>
@@ -143,8 +159,10 @@
                                                 <Run Text="↩️ Trở về màn hình ban đầu sau khi thực hiện xong"/>
                                             </TextBlock>
                                         </CheckBox>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                 <!-- ⚙️ Background Mode -->
                                 <Border Background="{DynamicResource WindowBackground}" Visibility="Collapsed"
@@ -189,10 +207,14 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📍 Toạ độ click trước khi nhấn" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Toạ độ click trước khi nhấn" 
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Text="Từ node khác"
                                                    Foreground="{DynamicResource TextBrush}"
                                                    FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
@@ -231,8 +253,10 @@
                                                     Cursor="Hand" Click="PickPositionButton_Click"
                                                     Padding="10,0"/>
                                         </Grid>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                 <!-- 🎯 Click tại toạ độ -->
                                 <Border Background="{DynamicResource WindowBackground}"
@@ -272,40 +296,58 @@
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="⏱️ Delay giữa các lần nhấn (ms)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⏱️ Delay giữa các lần nhấn (ms)" 
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBox x:Name="PressDelayTextBox" Height="32"
                                                  Text="{Binding PressDelayMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Style="{DynamicResource BaseTextBoxV2}"
                                                  VerticalContentAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                 <!-- 📥 Inputs -->
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📥 Số lần nhấn phím" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📥 Số lần nhấn phím" 
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <StackPanel x:Name="InputsPanel"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                                 <!-- 📤 Outputs -->
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="📤 Giá trị trả về" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📤 Giá trị trả về" 
                                                    Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                                   FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <StackPanel x:Name="OutputsPanel"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             </StackPanel> <!-- End SendModePanel -->
 
@@ -313,10 +355,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Tiêu đề node" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Tiêu đề node" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -353,8 +399,10 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                         </StackPanel>
                     </ScrollViewer>

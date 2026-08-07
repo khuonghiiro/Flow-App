@@ -75,10 +75,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -115,17 +119,23 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🔍 Regex Pattern -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🔍 Regex Pattern" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔍 Regex Pattern" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Regex pattern để cắt chuỗi" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,4"/>
@@ -137,17 +147,23 @@
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="10"
                                        Margin="0,4,0,0"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📝 Output Key -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📝 Output Key" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📝 Output Key" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Key của output (để trống sẽ dùng 'ListItems')" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,4"/>
@@ -159,17 +175,23 @@
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="10"
                                        Margin="0,4,0,0"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📍 Input -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📍 Input" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Input" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <StackPanel x:Name="InputsPanel"/>
                             <!-- Error message khi input type không phải String -->
                             <TextBlock Text="{Binding InputErrorMessage}"
@@ -178,19 +200,27 @@
                                        TextWrapping="Wrap"
                                        Margin="0,8,0,0"
                                        Visibility="{Binding InputErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📊 Output -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📊 Output" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Output" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <StackPanel x:Name="OutputsPanel"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 💡 Lưu ý -->
@@ -198,12 +228,15 @@
                             CornerRadius="8" 
                             Padding="12" 
                             Margin="0,0,0,0">
-                        <StackPanel>
-                            <TextBlock Text="💡 Lưu ý"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💡 Lưu ý"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
+                                       FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="10"
@@ -212,7 +245,9 @@
                                 • Output là mảng string<LineBreak/>
                                 • Có thể đổi key của output để dễ nhận diện
                             </TextBlock>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                 </StackPanel>
                     </ScrollViewer>

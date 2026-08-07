@@ -61,10 +61,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -101,17 +105,23 @@
                                     </Grid>
                                 </StackPanel>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📍 Input từ node khác (với MaxHeight để không che UI bên dưới) -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📍 Input từ node khác" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Input từ node khác" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Mỗi dòng = một biến trong code" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,6"/>
@@ -179,7 +189,9 @@
                                 <Run Text="Biến trong code: "/>
                                 <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
                             </TextBlock>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 3 tabs: Code / Output keys / Ví dụ -->
@@ -361,17 +373,23 @@
                                 </Border>
                                 <TextBlock Text="Biến &amp; hàm gợi ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Margin="0,0,0,4">
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Margin="0,0,0,4">
                                             <Run Text="• Biến input toàn cục: " Foreground="{DynamicResource TextSecondary}"/>
                                             <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
                                             <Run Text=" (chuỗi hoặc mảng từ node nguồn)" Foreground="{DynamicResource TextSecondary}"/>
                                         </TextBlock>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Text="• JSON.parse(str) — chuyển chuỗi JSON thành object" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
                                         <TextBlock Text="• JSON.stringify(obj) — chuyển object thành chuỗi JSON" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
                                         <TextBlock Text="• return { key1: value1, key2: value2 }; — bắt buộc để trả output" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                                 <TextBlock Text="Ví dụ (xử lý an toàn mảng Array-like từ .NET interop):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6">
                                     <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">

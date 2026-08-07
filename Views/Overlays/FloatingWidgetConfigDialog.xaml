@@ -242,11 +242,14 @@
                                 CornerRadius="10"
                                 Padding="14,10"
                                 Margin="0,0,0,10">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="Hình dạng khi thu nhỏ"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           Margin="0,0,0,6"/>
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Text="Kiểu hình" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                                 <ComboBox x:Name="IdleShapeComboBox"
                                           Style="{DynamicResource BaseComboBox}"
@@ -360,8 +363,10 @@
                                           Foreground="{DynamicResource TextBrush}"
                                           Margin="0,6,0,0"
                                           ToolTip="Bật: icon SVG dùng màu gốc từ file. Tắt: icon SVG được tô màu bởi màu icon/chữ đã chọn."/>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
 
                         <!-- Kích thước Expanded -->
                         <Border Background="{DynamicResource CardColor}"
@@ -370,11 +375,14 @@
                                 CornerRadius="10"
                                 Padding="14,10"
                                 Margin="0,0,0,10">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="Kích thước khi mở rộng"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           Margin="0,0,0,6"/>
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
 
                                 <CheckBox x:Name="UseRatioSizeCheckBox"
                                           Content="Theo tỉ lệ màn hình (0.0 – 1.0). Bỏ chọn để dùng px."
@@ -434,8 +442,10 @@
                                         </Grid>
                                     </StackPanel>
                                 </Grid>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
 
 
                     </StackPanel>
@@ -450,11 +460,14 @@
                                 CornerRadius="10"
                                 Padding="14,10"
                                 Margin="0,0,0,10">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="Vị trí &amp; Di chuyển"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           Margin="0,0,0,6"/>
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <CheckBox x:Name="AllowDragCheckBox"
                                           Content="Cho phép kéo di chuyển"
                                           Foreground="{DynamicResource TextBrush}"
@@ -499,8 +512,10 @@
                                              Style="{DynamicResource BaseTextBox}"
                                              Height="28" Margin="10,0,0,0"/>
                                 </Grid>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
 
                         <!-- Hành vi Idle -->
                         <Border Background="{DynamicResource CardColor}"
@@ -509,11 +524,14 @@
                                 CornerRadius="10"
                                 Padding="14,10"
                                 Margin="0,0,0,10">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="Hành vi khi không dùng"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           Margin="0,0,0,6"/>
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <CheckBox x:Name="AutoCollapseCheckBox"
                                           Content="Tự động thu nhỏ khi idle"
                                           Foreground="{DynamicResource TextBrush}"
@@ -566,8 +584,10 @@
                                                  ToolTip="Phần trăm widget bị ẩn vào trong cạnh màn hình khi dock (0–95). Ví dụ 50 = ẩn nửa widget."/>
                                     </StackPanel>
                                 </Grid>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
 
                         <!-- Display Mode + Multi-monitor -->
                         <Border Background="{DynamicResource CardColor}"
@@ -576,11 +596,14 @@
                                 CornerRadius="10"
                                 Padding="14,10"
                                 Margin="0,0,0,10">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="Hiển thị &amp; Màn hình"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           Margin="0,0,0,6"/>
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Text="Chế độ hiển thị" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                                 <ComboBox x:Name="DisplayModeComboBox"
                                           Style="{DynamicResource BaseComboBox}"
@@ -599,8 +622,10 @@
                                           Content="Hiển thị trên tất cả màn hình"
                                           Foreground="{DynamicResource TextBrush}"
                                           Margin="0,2,0,0"/>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </StackPanel>
                 </Grid>
 
@@ -611,11 +636,14 @@
                         CornerRadius="10"
                         Padding="14,10"
                         Margin="0,0,0,10">
-                    <StackPanel>
-                        <TextBlock Text="Trạng thái Window"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Trạng thái Window"
                                    FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}"
-                                   Margin="0,0,0,6"/>
+                                   Foreground="{DynamicResource TextBrush}" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -732,8 +760,10 @@
                                 </Grid>
                             </StackPanel>
                         </Grid>
-                    </StackPanel>
-                </Border>
+                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
             </StackPanel>
         </ScrollViewer>
 

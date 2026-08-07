@@ -68,10 +68,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -108,7 +112,9 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🔄 Output Mappings -->
@@ -237,8 +243,12 @@
 
                     <!-- 💡 Hướng dẫn -->
                     <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="💡 Hướng dẫn" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="💡 Hướng dẫn" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="10" LineHeight="16">
                                 <Run>• Node này lọc và đổi tên outputs từ các node upstream</Run>
                                 <LineBreak/>
@@ -246,19 +256,27 @@
                                 <LineBreak/>
                                 <Run>• Hữu ích để đơn giản hóa data flow và đổi tên keys</Run>
                             </TextBlock>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📊 Outputs -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📊 Outputs (tự động tạo từ mappings)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Outputs (tự động tạo từ mappings)" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <StackPanel x:Name="OutputsPanel"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                 </StackPanel>
                     </ScrollViewer>

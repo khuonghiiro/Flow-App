@@ -225,11 +225,22 @@ namespace FlowMy.Views.Overlays
 
             panel.Children.Clear();
 
-            foreach (var inputVm in ViewModel.Inputs)
+            var inputs = ViewModel.Inputs;
+            if (inputs == null || inputs.Count == 0) return;
+
+            // Tạo Expander bọc tất cả input items — dễ ẩn/hiện khi nhiều inputs
+            var contentPanel = new StackPanel();
+            foreach (var inputVm in inputs)
             {
                 var item = CreateInputItemUI(inputVm);
-                panel.Children.Add(item);
+                contentPanel.Children.Add(item);
             }
+
+            var expander = CreateSectionExpander(
+                $"📥 Đầu vào ({inputs.Count} input{(inputs.Count > 1 ? "s" : "")})",
+                contentPanel,
+                isExpanded: inputs.Count <= 3);
+            panel.Children.Add(expander);
         }
 
         protected virtual void LoadOutputs()
@@ -239,11 +250,49 @@ namespace FlowMy.Views.Overlays
 
             panel.Children.Clear();
 
-            foreach (var outputVm in ViewModel.Outputs)
+            var outputs = ViewModel.Outputs;
+            if (outputs == null || outputs.Count == 0) return;
+
+            // Tạo Expander bọc tất cả output items
+            var contentPanel = new StackPanel();
+            foreach (var outputVm in outputs)
             {
                 var item = CreateOutputItemUI(outputVm);
-                panel.Children.Add(item);
+                contentPanel.Children.Add(item);
             }
+
+            var expander = CreateSectionExpander(
+                $"📤 Đầu ra ({outputs.Count} output{(outputs.Count > 1 ? "s" : "")})",
+                contentPanel,
+                isExpanded: outputs.Count <= 3);
+            panel.Children.Add(expander);
+        }
+
+        /// <summary>
+        /// Tạo Expander chuẩn cho các section Inputs/Outputs trong dialog.
+        /// Dùng chung style để đồng nhất UX giữa tất cả các dialog.
+        /// </summary>
+        protected Expander CreateSectionExpander(string header, UIElement content, bool isExpanded = true)
+        {
+            var textBrush = GetThemeBrush("TextMuted", Brushes.Gray);
+            var headerText = new TextBlock
+            {
+                Text = header,
+                Foreground = textBrush,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            return new Expander
+            {
+                Header = headerText,
+                Content = content,
+                IsExpanded = isExpanded,
+                BorderThickness = new Thickness(0),
+                Margin = new Thickness(0, 8, 0, 0),
+                Padding = new Thickness(0)
+            };
         }
 
         public void RefreshOutputsUI()

@@ -75,10 +75,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -115,24 +119,31 @@
                                     </Grid>
                                 </StackPanel>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🔑 Output Key -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🔑 Output Key"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔑 Output Key"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,10"/>
+                                       FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Height="32"
                                      VerticalContentAlignment="Center"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📍 Input Variables -->
@@ -280,12 +291,15 @@
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
                             Visibility="{Binding CopyImagesToClipboard, Converter={StaticResource InverseBoolToVisibility}}">
-                        <StackPanel>
-                            <TextBlock Text="📝 Format String"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📝 Format String"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,10"/>
+                                       FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBox Text="{Binding FormatString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
                                      MinHeight="100"
@@ -293,7 +307,9 @@
                                      AcceptsReturn="True"
                                      VerticalScrollBarVisibility="Auto"
                                      FontSize="10"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📋 Save to Clipboard -->
@@ -404,8 +420,12 @@
                             
                             <!-- Detailed Example -->
                             <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,8">
-                                <StackPanel>
-                                    <TextBlock Text="📌 Ví dụ chi tiết với JSON Object:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📌 Ví dụ chi tiết với JSON Object:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" LineHeight="16" FontFamily="Consolas">
                                         <Run>Giả sử có JSON object:</Run>
                                         <LineBreak/>
@@ -430,8 +450,10 @@
                                         <Run> → </Run>
                                         <Run Foreground="{DynamicResource WarningColor}">"[apple, banana, orange]"</Run>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             
                             <!-- Examples -->
                             <TextBlock Text="📋 Ví dụ tổng hợp Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,4"/>
@@ -451,14 +473,19 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="📊 Outputs (tự động tạo từ OutputKey)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Outputs (tự động tạo từ OutputKey)" 
                                        Foreground="{DynamicResource TextBrush}" 
                                        FontSize="12" 
-                                       FontWeight="SemiBold" 
-                                       Margin="0,0,0,10"/>
+                                       FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <StackPanel x:Name="OutputsPanel"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                 </StackPanel>
                     </ScrollViewer>

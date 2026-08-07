@@ -95,9 +95,13 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị" Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -132,14 +136,20 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- Inputs -->
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📍 Inputs (node nguồn + key → biến dùng trong Html/Js)"
-                                               Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📍 Inputs (node nguồn + key → biến dùng trong Html/Js)"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" Height="160">
                                         <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
                                             <ItemsControl.ItemTemplate>
@@ -184,8 +194,10 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                     </ScrollViewer>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             <Button Content="+ Thêm input" Height="32" Margin="0,0,0,12"
                                     Command="{Binding AddInputMappingCommand}"
                                     Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
@@ -399,8 +411,12 @@
 
                             <!-- Size configuration for the popup window at runtime -->
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📏 Kích thước cửa sổ popup khi chạy" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📏 Kích thước cửa sổ popup khi chạy" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -416,8 +432,10 @@
                                             <TextBox Text="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- Outputs panel ẩn / InputsPanel ẩn — BaseNodeDialog dùng để inject port rows -->
                             <StackPanel x:Name="OutputsPanel" Visibility="Collapsed"/>
@@ -503,8 +521,12 @@
                                     CornerRadius="10"
                                     Padding="14"
                                     Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
                                         <Run Text="Khác với " Foreground="{DynamicResource TextSecondary}"/>
                                         <Run Text="window.hostLive" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
@@ -577,8 +599,10 @@
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- Hướng dẫn JS ↔ C# Host Functions -->
                             <Border Background="{DynamicResource CardBackgroundBrush}"
@@ -587,8 +611,12 @@
                                     CornerRadius="10"
                                     Padding="14"
                                     Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⚡ Hướng dẫn JS ↔ C# Host Functions (Polling Bridge)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚡ Hướng dẫn JS ↔ C# Host Functions (Polling Bridge)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
                                         <Run Text="Các hàm JS dưới đây được inject tự động bởi " Foreground="{DynamicResource TextSecondary}"/>
                                         <Run Text="SciterEmbeddedControl" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
@@ -661,8 +689,10 @@
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -1206,8 +1236,12 @@
                                     <TextBlock Text="Hướng dẫn biến {variableName} + API mới (hostLive/hostAsync/host*)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
                                 </Expander.Header>
                                 <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                         <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
                                             <Run Text="1) Cấu hình Input: Chọn Node nguồn + Key (ví dụ node HttpRequest, key responseBody)."/>
                                             <LineBreak/>
@@ -1576,22 +1610,29 @@
                                                 </Border>
                                             </StackPanel>
                                         </Border>
-                                    </StackPanel>
-                                </Border>
+                                    
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             </Expander>
 
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                <StackPanel>
-                                    <TextBlock Text="Prompt chuẩn để gửi AI tạo HTML UI node"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Prompt chuẩn để gửi AI tạo HTML UI node"
                                                Foreground="{DynamicResource PrimaryBrush}"
                                                FontSize="14"
-                                               FontWeight="SemiBold"
-                                               Margin="0,0,0,6"/>
+                                               FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12">
                                         <Run Text="Prompt này mô tả chi tiết cách dùng biến đầu vào, realtime update, active submit/start workflow và format output chuẩn 4 phần: html/css/js/param."/>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <Button Content="📋 Copy prompt cho AI"
@@ -1635,9 +1676,13 @@
                                        Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
 
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                                <StackPanel>
-                                    <TextBlock Text="⚠ Lưu ý quan trọng khi dùng Sciter (khác WebView2):"
-                                               Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚠ Lưu ý quan trọng khi dùng Sciter (khác WebView2):"
+                                               Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold" FontSize="11" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Foreground="{DynamicResource PrimaryBrush}" FontSize="10" TextWrapping="Wrap">
                                         <Run Text="• CSS: Dùng text-selection-caret-color thay cho caret-color (Sciter không hỗ trợ caret-color)."/>
                                         <LineBreak/>
@@ -1647,8 +1692,10 @@
                                         <LineBreak/>
                                         <Run Text="• JS: Hàm hostResolvePath, hostCurl, hostPickImages kết quả trả về qua globalThis.__hostCallbackResults."/>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <Button Content="📋 Copy all API docs"
@@ -1713,9 +1760,13 @@
                             </Border>
 
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Template copy nhanh (dán vào tab JS)"
-                                               Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="Template copy nhanh (dán vào tab JS)"
+                                               Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Mỗi template là khung cơ bản để bắt đầu sửa nhanh — tương thích Sciter.JS."
                                                Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
 
@@ -1760,8 +1811,10 @@ Tag="// HTML gợi ý: input#noteInput + div#resultBox + button#btnRun&#xA;(func
 Tag="// FULL SCITER API DEMO&#xA;(function(){&#xA;&#xA;  // 1) Live data từ InputMappings&#xA;  if (typeof hostLive !== 'undefined' &amp;&amp; typeof hostLive.on === 'function') {&#xA;    hostLive.on('datas', function(datas){&#xA;      console.log('live datas', datas);&#xA;    });&#xA;  }&#xA;&#xA;  // 2) Async data từ Async Data tab&#xA;  if (typeof hostAsync !== 'undefined' &amp;&amp; typeof hostAsync.on === 'function') {&#xA;    hostAsync.on('jobResult', function(v){&#xA;      console.log('async jobResult', v);&#xA;    });&#xA;  }&#xA;&#xA;  // 3) Gọi host API&#xA;  if (typeof hostResolvePath === 'function') hostResolvePath('C:\\\\path\\\\video.mp4', 'req1');&#xA;  if (typeof hostCurl === 'function') hostCurl('curl --location &quot;https://example.com/a.mp4&quot;', 'a.mp4', 'k1');&#xA;  if (typeof hostPickImages === 'function') hostPickImages('img_req_1');&#xA;&#xA;  // 4) Submit + chạy&#xA;  if (typeof hostSubmit === 'function') hostSubmit();&#xA;  if (typeof sciterRunSingleNode === 'function') sciterRunSingleNode();&#xA;  if (typeof hostStart === 'function') hostStart();&#xA;})();"/>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

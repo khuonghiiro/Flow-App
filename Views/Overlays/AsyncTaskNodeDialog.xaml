@@ -82,13 +82,19 @@
                                       Foreground="{DynamicResource TextBrush}" FontSize="11"
                                       Margin="0,0,0,8"/>
                             <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10">
-                                <StackPanel>
-                                    <TextBlock Text="So sánh thời gian" Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="So sánh thời gian" Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock x:Name="ExecutionModeExplanation"
                                                Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                                LineHeight="16"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </Border>
 
@@ -96,10 +102,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Kiểu giao diện trên canvas" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Kiểu giao diện trên canvas" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Chế độ hiển thị trên canvas" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,4"/>
@@ -109,7 +119,9 @@
                                       DisplayMemberPath="Label"
                                       SelectedValuePath="Mode"
                                       SelectedValue="{Binding UiPresentationMode, Mode=TwoWay}"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🔄 Dispatch Loop -->
@@ -117,10 +129,14 @@
                         <Border Background="{DynamicResource WindowBackground}"
                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="🔄 Kiểu dispatch (giống Loop)" 
                                            Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                           FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Text="Chọn kiểu dispatch" 
                                            Foreground="{DynamicResource TextMuted}" 
                                            FontSize="10" Margin="0,0,0,4"/>
@@ -152,8 +168,10 @@
                                           Foreground="{DynamicResource TextBrush}"
                                           FontSize="11"
                                           Margin="0,8,0,0"/>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </StackPanel>
 
                     <!-- 📋 Các Task -->
@@ -161,10 +179,14 @@
                         <Border Background="{DynamicResource WindowBackground}"
                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                            <StackPanel>
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
                                 <TextBlock Text="📋 Các Task (số bên cạnh port out tương ứng với Task N)" 
                                            Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                           FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                 <TextBlock Text="Mỗi task tương ứng với một port OUT" 
                                            Foreground="{DynamicResource TextMuted}" 
                                            FontSize="10" Margin="0,0,0,8"/>
@@ -195,8 +217,10 @@
                                 <Button Content="+ Thêm task" Height="32" Margin="0,8,0,0"
                                         Command="{Binding AddTaskCommand}"
                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
+                            
                             </StackPanel>
-                        </Border>
+                        </Expander>
+                    </Border>
                     </StackPanel>
 
                     <!-- Inputs/Outputs (empty for async task node) -->

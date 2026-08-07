@@ -95,10 +95,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,12,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎯 Node callback (chọn node cần chạy lại)" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎯 Node callback (chọn node cần chạy lại)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <controls:NodeSearchComboBoxUserControl x:Name="TargetNodeComboBox"
                                               Height="32"
                                               ItemsSource="{Binding AvailableNodes}"
@@ -106,39 +110,53 @@
                                               DisplayMemberPath="Title"
                                               SelectedValue="{Binding TargetNodeId, Mode=TwoWay}"
                                               PlaceholderText="Chọn node callback..."/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             
                             <!-- 🔢 Số lần callback tối đa -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🔢 Số lần callback tối đa trong 1 luồng" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔢 Số lần callback tối đa trong 1 luồng" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBox Text="{Binding MaxCallbackCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              Height="32"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- ⚙️ Cách chạy flow sau callback -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⚙️ Cách chạy flow sau callback" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="⚙️ Cách chạy flow sau callback" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding FlowBehaviorOptions}"
                                               SelectedValuePath="Value"
                                               DisplayMemberPath="DisplayName"
                                               SelectedValue="{Binding FlowBehavior, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             
                             <!-- ℹ️ Cách hoạt động -->
                             <Border Background="{DynamicResource CardBackgroundBrush}"
@@ -147,12 +165,15 @@
                                     CornerRadius="8"
                                     Padding="12"
                                     Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="ℹ️ Cách hoạt động" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="ℹ️ Cách hoạt động" 
                                                Foreground="{DynamicResource PrimaryBrush}"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Margin="0,0,0,10"/>
+                                               FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Foreground="{DynamicResource TextSecondary}"
                                                FontSize="10"
                                                TextWrapping="Wrap"
@@ -167,8 +188,10 @@
                                         <LineBreak/>
                                         <Run Text="• Node callback có thể gọi bất kỳ node nào trong phạm vi kết nối."/>
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                             
                             <!-- Inputs Section (Empty for this node) -->
                             <TextBlock Text="Inputs:"

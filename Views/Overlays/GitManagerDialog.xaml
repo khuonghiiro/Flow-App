@@ -146,11 +146,17 @@
                             Background="{DynamicResource CardColor}"
                             BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
                             Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <TextBlock Text="{Binding ProgressStatusText}" Foreground="{DynamicResource AccentBrush}"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="{Binding ProgressStatusText}" Foreground="{DynamicResource AccentBrush}"
                                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <ProgressBar IsIndeterminate="True" Height="3" Foreground="{DynamicResource AccentBrush}"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
                     <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding SavedRepos}">
@@ -467,12 +473,18 @@
                                     Background="{DynamicResource CardColor}"
                                     BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
                                     Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding ProgressStatusText}" Foreground="{DynamicResource AccentBrush}"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="{Binding ProgressStatusText}" Foreground="{DynamicResource AccentBrush}"
                                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <ProgressBar IsIndeterminate="True" Height="3" Foreground="{DynamicResource AccentBrush}"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}"
                                     BorderThickness="1" CornerRadius="6" Padding="8" MaxHeight="120">

@@ -75,10 +75,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="🎨 Cấu hình hiển thị"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -119,17 +123,23 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📁 Thư mục -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📁 Thư mục"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📁 Thư mục"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <TextBlock Text="Đường dẫn thư mục"
                                                Foreground="{DynamicResource TextMuted}"
                                                FontSize="10" Margin="0,0,0,4"/>
@@ -176,8 +186,10 @@
                                     <CheckBox Content="Gồm cả file trong thư mục con (recursive)"
                                               IsChecked="{Binding IncludeSubfolders, Mode=TwoWay}"
                                               Foreground="{DynamicResource TextBrush}" FontSize="11"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 🔍 Lọc đuôi file -->
                             <Border Background="{DynamicResource WindowBackground}"
@@ -242,9 +254,13 @@
                                     <DataTemplate>
                                         <Border Margin="0,0,8,8" CornerRadius="10" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
                                                 Padding="2,2,2,2" SnapsToDevicePixels="True">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding}" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="{Binding}" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
                                                            VerticalAlignment="Center" Margin="10,4,2,4"/>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                                 <Button Content="×" FontSize="13" FontWeight="SemiBold" Width="26" Height="26"
                                                         Foreground="{DynamicResource TextSecondary}" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
                                                         Cursor="Hand" FocusVisualStyle="{x:Null}" Padding="0"
@@ -274,8 +290,10 @@
                                                         </ControlTemplate>
                                                     </Button.Template>
                                                 </Button>
-                                            </StackPanel>
-                                        </Border>
+                                            
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -286,10 +304,14 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📖 Đọc nội dung file"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📖 Đọc nội dung file"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <CheckBox Content="Đọc nội dung file (mục khớp đuôi bên dưới = text/base64; còn lại = đường dẫn)"
                                               IsChecked="{Binding ReadFileContents, Mode=TwoWay}"
                                               Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,8"/>
@@ -302,17 +324,23 @@
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              Height="32"
                                              VerticalContentAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                             <!-- 📊 Kết quả lần chạy gần nhất -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📊 Kết quả lần chạy gần nhất"
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="📊 Kết quả lần chạy gần nhất"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                               FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                                     <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                         <TextBlock Text="{Binding LastRunSummary}"
                                                    Foreground="{DynamicResource TextBrush}" FontSize="10" TextWrapping="Wrap"/>
@@ -323,8 +351,10 @@
                                             x:Name="BorderOutputPanel">
                                         <StackPanel x:Name="OutputsPanel"/>
                                     </Border>
-                                </StackPanel>
-                            </Border>
+                                
+                            </StackPanel>
+                        </Expander>
+                    </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

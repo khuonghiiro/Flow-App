@@ -70,10 +70,14 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🎨 Cấu hình hiển thị" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Màu tiêu đề" 
                                        Foreground="{DynamicResource TextMuted}" 
                                        FontSize="10" Margin="0,0,0,4"/>
@@ -99,17 +103,23 @@
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1"/>
                             </Grid>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 🔄 Gán dữ liệu -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12" x:Name="BorderAssignPanel">
-                        <StackPanel>
-                            <TextBlock Text="🔄 Gán dữ liệu" 
+                        <Expander IsExpanded="True" BorderThickness="0">
+                            <Expander.Header>
+                                <TextBlock Text="🔄 Gán dữ liệu" 
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                       FontSize="12" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
+
                             <TextBlock Text="Mỗi dòng: chọn node + key nguồn (lấy giá trị) → chọn node + key đích (sẽ nhận giá trị đó)."
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             <StackPanel x:Name="DataAssignmentsPanel"/>
@@ -117,7 +127,9 @@
                                     Margin="0,8,0,0" Padding="12,0" HorizontalAlignment="Left"
                                     Click="AddAssignmentButton_Click"
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- Placeholder panels for BaseNodeDialog (no inputs/outputs) -->
