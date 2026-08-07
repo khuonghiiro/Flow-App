@@ -12,6 +12,11 @@
         Width="920"
         Height="540">
     <Window.Resources>
+        <!-- Style for Paragraph inside RichTextBox to prevent extra line spacing -->
+        <Style TargetType="Paragraph">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
         <!-- Reusable dark theme brush copies if global ones are not available -->
         <SolidColorBrush x:Key="DialogBg" Color="#111318"/>
         <SolidColorBrush x:Key="BorderColor" Color="#2a2e3d"/>
@@ -51,10 +56,10 @@
                         <RowDefinition Height="8"/>
                         <RowDefinition Height="8"/>
                     </Grid.RowDefinitions>
-                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#cbcbcb"/>
-                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#ffffff"/>
-                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#ffffff"/>
-                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#cbcbcb"/>
+                    <Rectangle Grid.Row="0" Grid.Column="0" Fill="#14161d"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Fill="#222531"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Fill="#222531"/>
+                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#14161d"/>
                 </Grid>
             </VisualBrush.Visual>
         </VisualBrush>
@@ -428,9 +433,9 @@
                         <Grid x:Name="TabContentPrompt" Visibility="Visible">
                             <Border Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
                                 <Grid>
-                                    <TextBox x:Name="TxtPrompt" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
-                                             Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
+                                    <RichTextBox x:Name="TxtPrompt" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
+                                                 Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True"
+                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
                                     <Button x:Name="BtnSend" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="True">
                                         <Button.Style>
                                             <Style TargetType="Button">
@@ -492,9 +497,9 @@
                                 <TextBlock Grid.Row="0" Text="💬 Prompt gợi ý" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
                                 <Border Grid.Row="1" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
                                     <Grid>
-                                        <TextBox x:Name="TxtPromptWv" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
-                                                 Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
+                                        <RichTextBox x:Name="TxtPromptWv" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
+                                                    Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True"
+                                                    VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
                                         <Button x:Name="BtnSendWv" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="True">
                                             <Button.Style>
                                                 <Style TargetType="Button">
@@ -693,9 +698,9 @@
                                 <TextBlock Grid.Row="0" Text="💬 Prompt gợi ý" Foreground="{StaticResource TextMuted}" FontSize="9" FontWeight="Bold" Margin="0,0,0,4"/>
                                 <Border Grid.Row="1" Background="#1a1c23" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="6">
                                     <Grid>
-                                        <TextBox x:Name="TxtPromptWeb" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
-                                                 Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap"
-                                                 VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
+                                        <RichTextBox x:Name="TxtPromptWeb" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
+                                                    Padding="8,8,38,8" FontSize="11" FontFamily="Consolas" AcceptsReturn="True"
+                                                    VerticalScrollBarVisibility="Auto" CaretBrush="{StaticResource AccentColor}" TextChanged="TxtPrompt_TextChanged"/>
                                         <Button x:Name="BtnSendWeb" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" Cursor="Hand" Click="BtnSend_Click" IsEnabled="False">
                                             <Button.Style>
                                                 <Style TargetType="Button">
