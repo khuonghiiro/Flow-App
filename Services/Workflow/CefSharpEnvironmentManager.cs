@@ -318,6 +318,27 @@ namespace FlowMy.Services.Workflow
             {
                 try
                 {
+                    foreach (var kvp in _profileContexts)
+                    {
+                        try
+                        {
+                            if (kvp.Value != null && !kvp.Value.IsDisposed)
+                            {
+                                var cm = kvp.Value.GetCookieManager(null);
+                                cm?.FlushStore(null);
+                            }
+                        }
+                        catch { }
+                    }
+                    try
+                    {
+                        var globalCm = Cef.GetGlobalCookieManager();
+                        globalCm?.FlushStore(null);
+                    }
+                    catch { }
+
+                    System.Threading.Thread.Sleep(150);
+
                     if (Cef.IsInitialized == true)
                     {
                         Cef.Shutdown();

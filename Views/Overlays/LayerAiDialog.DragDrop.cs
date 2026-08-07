@@ -23,7 +23,7 @@ namespace FlowMy.Views.Overlays
 {
     public partial class LayerAiDialog : Window
     {
-        #region Two-Way Drag and Drop (WPF <-> WebView2)
+        #region Two-Way Drag and Drop (WPF <-> WebView2 / CefSharp)
 
         private void SetupDragAndDrop()
         {
@@ -370,16 +370,14 @@ namespace FlowMy.Views.Overlays
                     }
                 }
 
-                // 3. Web URL / HTML drop (from Browser or WebView2)
                 string? url = null;
 
-                // 3a. Check HTML format for <img> src attribute
+                // 3. Check HTML format for <img> src attribute
                 if (e.Data.GetDataPresent(DataFormats.Html))
                 {
                     var htmlText = e.Data.GetData(DataFormats.Html) as string;
                     if (!string.IsNullOrEmpty(htmlText))
                     {
-                        // Priority 1: Match <img> src attribute (including data-src, src, srcset)
                         var srcMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"<img[^>]+(?:src|data-src|srcset)\s*=\s*[""']([^""'>]+)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                         if (srcMatch.Success)
                         {
@@ -412,109 +410,117 @@ namespace FlowMy.Views.Overlays
                                     }
                                 }
 
-                                // Fallback to href if it points to an image
                                 if (string.IsNullOrEmpty(foundUrl))
                                 {
                                     var linkMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"href\s*=\s*[""']([^""' >]+\.(?:png|jpg|jpeg|gif|webp|bmp))[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                                    if (linkMatch.Success)
-                                    {
-                                        foundUrl = linkMatch.Groups[1].Value;
-                                    }
+                                    if (linkMatch.Success) foundUrl = linkMatch.Groups[1].Value;
                                 }
 
-                                // Fallback to CSS background-image url()
                                 if (string.IsNullOrEmpty(foundUrl))
                                 {
                                     var bgMatch = System.Text.RegularExpressions.Regex.Match(htmlText, @"url\(\s*['""]?([^'"")]+?)['""]?\s*\)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                                    if (bgMatch.Success)
-                                    {
-                                        foundUrl = bgMatch.Groups[1].Value;
-                                    }
+                                    if (bgMatch.Success) foundUrl = bgMatch.Groups[1].Value;
                                 }
 
                                 if (!string.IsNullOrEmpty(foundUrl))
                                 {
-                                    url = foundUrl;
-                                    url = System.Net.WebUtility.HtmlDecode(url);
+                                    url = System.Net.WebUtility.HtmlDecode(foundUrl);
                                 }
                             }
                         }
                     }
+                }
 
-                    // 3b. Check UniformResourceLocator (WebView2 drops URL as a MemoryStream)
-                    if (string.IsNullOrEmpty(url) && e.Data.GetDataPresent("UniformResourceLocator"))
+                // 4. Check UniformResourceLocator (CefSharp / Edge / IE drops URL as MemoryStream)
+                if (string.IsNullOrEmpty(url))
+                {
+                    string[] urlFormats = new[] { "UniformResourceLocator", "UniformResourceLocatorW", "System.String" };
+                    foreach (var fmt in urlFormats)
                     {
-                        var data = e.Data.GetData("UniformResourceLocator");
-                        if (data is MemoryStream ms)
+                        if (e.Data.GetDataPresent(fmt))
                         {
-                            byte[] bytes = ms.ToArray();
-                            string rawUrl = System.Text.Encoding.ASCII.GetString(bytes).Trim('\0');
-                            if (!string.IsNullOrWhiteSpace(rawUrl))
+                            var data = e.Data.GetData(fmt);
+                            if (data is MemoryStream ms)
                             {
-                                url = rawUrl;
+                                byte[] bytes = ms.ToArray();
+                                string rawUrl = System.Text.Encoding.Unicode.GetString(bytes).Trim('\0');
+                                if (!rawUrl.StartsWith("http"))
+                                {
+                                    rawUrl = System.Text.Encoding.ASCII.GetString(bytes).Trim('\0');
+                                }
+                                if (rawUrl.StartsWith("http://") || rawUrl.StartsWith("https://") || rawUrl.StartsWith("data:image/"))
+                                {
+                                    url = rawUrl;
+                                    break;
+                                }
+                            }
+                            else if (data is string strUrl && (strUrl.StartsWith("http://") || strUrl.StartsWith("https://") || strUrl.StartsWith("data:image/")))
+                            {
+                                url = strUrl;
+                                break;
                             }
                         }
                     }
+                }
 
-                    // 3c. Check Text / UnicodeText for image URL
-                    if (string.IsNullOrEmpty(url) && (e.Data.GetDataPresent(DataFormats.Text) || e.Data.GetDataPresent(DataFormats.UnicodeText)))
+                // 5. Check Text / UnicodeText for image URL
+                if (string.IsNullOrEmpty(url) && (e.Data.GetDataPresent(DataFormats.Text) || e.Data.GetDataPresent(DataFormats.UnicodeText)))
+                {
+                    string text = (e.Data.GetData(DataFormats.Text) as string) ?? (e.Data.GetData(DataFormats.UnicodeText) as string) ?? "";
+                    text = text.Trim();
+                    if (text.StartsWith("http://") || text.StartsWith("https://") || text.StartsWith("data:image/"))
                     {
-                        string text = (e.Data.GetData(DataFormats.Text) as string) ?? (e.Data.GetData(DataFormats.UnicodeText) as string) ?? "";
-                        text = text.Trim();
-                        if (text.StartsWith("http://") || text.StartsWith("https://") || text.StartsWith("data:image/"))
-                        {
-                            url = text;
-                        }
+                        url = text;
                     }
+                }
 
-                    // Download and process web image URL if found
-                    if (!string.IsNullOrEmpty(url))
+                // If image URL is found, download or decode base64
+                if (!string.IsNullOrEmpty(url))
+                {
+                    if (url.StartsWith("//")) url = "https:" + url;
+
+                    if (url.StartsWith("data:image/"))
                     {
-                        if (url.StartsWith("//")) url = "https:" + url;
-
-                        if (url.StartsWith("data:image/"))
+                        var base64Bmp = LoadBitmapFromBase64DataUrl(url);
+                        if (base64Bmp != null)
                         {
-                            var base64Bmp = LoadBitmapFromBase64DataUrl(url);
-                            if (base64Bmp != null)
-                            {
-                                ProcessDroppedImage(sender, base64Bmp);
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            var webBmp = await DownloadImageFromUrlAsync(url);
-                            if (webBmp != null)
-                            {
-                                ProcessDroppedImage(sender, webBmp);
-                                return;
-                            }
-                        }
-                    }
-
-                    // 4. DeviceIndependentBitmap / DIB drop
-                    if (e.Data.GetDataPresent("DeviceIndependentBitmap"))
-                    {
-                        if (e.Data.GetData("DeviceIndependentBitmap") is MemoryStream dibMs)
-                        {
-                            var dibBmp = LoadBitmapFromDibStream(dibMs);
-                            if (dibBmp != null)
-                            {
-                                ProcessDroppedImage(sender, dibBmp);
-                                return;
-                            }
-                        }
-                    }
-
-                    // 5. COM FileContents drop
-                    if (e.Data.GetDataPresent("FileContents"))
-                    {
-                        var contentsBmp = LoadBitmapFromFileContentsData(e.Data);
-                        if (contentsBmp != null)
-                        {
-                            ProcessDroppedImage(sender, contentsBmp);
+                            ProcessDroppedImage(sender, base64Bmp);
                             return;
                         }
+                    }
+                    else
+                    {
+                        var webBmp = await DownloadImageFromUrlAsync(url);
+                        if (webBmp != null)
+                        {
+                            ProcessDroppedImage(sender, webBmp);
+                            return;
+                        }
+                    }
+                }
+
+                // 6. DeviceIndependentBitmap / DIB drop (CefSharp native image drag)
+                if (e.Data.GetDataPresent("DeviceIndependentBitmap"))
+                {
+                    if (e.Data.GetData("DeviceIndependentBitmap") is MemoryStream dibMs)
+                    {
+                        var dibBmp = LoadBitmapFromDibStream(dibMs);
+                        if (dibBmp != null)
+                        {
+                            ProcessDroppedImage(sender, dibBmp);
+                            return;
+                        }
+                    }
+                }
+
+                // 7. COM FileContents drop (CefSharp / Edge download drop)
+                if (e.Data.GetDataPresent("FileContents"))
+                {
+                    var contentsBmp = LoadBitmapFromFileContentsData(e.Data);
+                    if (contentsBmp != null)
+                    {
+                        ProcessDroppedImage(sender, contentsBmp);
+                        return;
                     }
                 }
             }
