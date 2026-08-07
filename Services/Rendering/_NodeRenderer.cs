@@ -515,15 +515,50 @@ namespace FlowMy.Services.Rendering
 
         public void RemoveAllNodeVisuals(Canvas canvas)
         {
-            // Xóa tất cả các Border (Node Body) mà có Tag là WorkflowNode
-            var borders = canvas.Children.OfType<Border>().Where(b => b.Tag is WorkflowNode).ToList();
-            foreach (var border in borders)
+            // ── Single-pass: thu thập tất cả elements cần xóa trong 1 lần duyệt ──
+            var toRemove = new List<UIElement>(canvas.Children.Count);
+
+            foreach (UIElement child in canvas.Children)
             {
-                canvas.Children.Remove(border);
+                switch (child)
+                {
+                    case Border b:
+                        if (b.Tag is WorkflowNode) { toRemove.Add(b); break; }
+                        if (b.Tag is NodePort) { toRemove.Add(b); break; }
+                        if (b.Tag is string s && s.StartsWith("AddSatellite:", StringComparison.Ordinal))
+                        { toRemove.Add(b); break; }
+                        // Port rectangle wrapper: Border chứa Rectangle child
+                        if (b.Child is Rectangle rect)
+                        {
+                            if (rect.Tag is Size) { toRemove.Add(b); break; }
+                            if ((rect.Width == 12 && rect.Height == 25) ||
+                                (rect.Width == 10 && rect.Height == 18) ||
+                                (rect.Width == 14 && rect.Height == 27) ||
+                                (rect.Width == 12 && rect.Height == 20))
+                            { toRemove.Add(b); break; }
+                        }
+                        break;
+
+                    case Ellipse e:
+                        if (e.Tag is NodePort || (e.Width == 18 && e.Height == 18))
+                            toRemove.Add(e);
+                        break;
+
+                    case System.Windows.Controls.TextBlock tb:
+                        var zIndex = Panel.GetZIndex(tb);
+                        if (zIndex == 20000 || zIndex > 10000)
+                            toRemove.Add(tb);
+                        break;
+                }
             }
 
-            // Dọn sạch visual phụ của Conditional Diamond mode (satellite, add-circle, line, arrow, delete button)
-            // để tránh ghost/duplicate visuals khi import workflow mới.
+            // Batch remove
+            foreach (var item in toRemove)
+            {
+                canvas.Children.Remove(item);
+            }
+
+            // Dọn visual phụ của Conditional Diamond mode
             if (_host.ViewModel != null)
             {
                 foreach (var conditionalNode in _host.ViewModel.Nodes.Where(n => n.IsConditionalNode))
@@ -551,110 +586,15 @@ namespace FlowMy.Services.Rendering
                         branch.SatelliteArrowHead = null;
                     }
                 }
-            }
 
-            var addCircleBorders = canvas.Children
-                .OfType<Border>()
-                .Where(b => b.Tag is string s && s.StartsWith("AddSatellite:", StringComparison.Ordinal))
-                .ToList();
-            foreach (var addCircle in addCircleBorders)
-            {
-                canvas.Children.Remove(addCircle);
-            }
-
-            // Xóa tất cả các Ellipse (Ports tròn).
-            // Legacy: nhiều port ellipses trước đây không gắn Tag => fallback remove theo kích thước chuẩn (18x18).
-            var ellipsePorts = canvas.Children
-                .OfType<Ellipse>()
-                .Where(e => e.Tag is NodePort || (e.Width == 18 && e.Height == 18))
-                .ToList();
-            foreach (var port in ellipsePorts)
-            {
-                canvas.Children.Remove(port);
-            }
-
-            // Xóa các port UI còn sót lại (đặc biệt port hình thoi/rectangle trong Conditional Diamond mode).
-            if (_host.ViewModel != null)
-            {
+                // Xóa port UI còn sót lại + clear TitleTextBlockUI references
                 foreach (var node in _host.ViewModel.Nodes)
                 {
                     foreach (var port in node.Ports)
                     {
                         if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
-                        {
                             canvas.Children.Remove(port.PortUI);
-                        }
                     }
-                }
-            }
-
-            // ✅ Xóa tất cả các Border wrapper chứa port chữ nhật (Rectangle)
-            // Rectangle không được add trực tiếp vào canvas, chỉ Border wrapper được add
-            var rectangularPortBorders = canvas.Children
-                .OfType<Border>()
-                .Where(b =>
-                {
-                    // Bỏ qua Border có Tag là WorkflowNode (đã xóa ở trên)
-                    if (b.Tag is WorkflowNode) return false;
-                    
-                    // Nếu Border có Tag là NodePort, đó là port wrapper
-                    if (b.Tag is NodePort) return true;
-                    
-                    // Nếu Border có child là Rectangle với Tag là Size hoặc kích thước port
-                    if (b.Child is Rectangle rect)
-                    {
-                        // Kiểm tra Tag là Size (port chữ nhật luôn có Tag là Size)
-                        if (rect.Tag is Size) return true;
-                        
-                        // Kiểm tra kích thước port chuẩn và đã highlight
-                        if ((rect.Width == 12 && rect.Height == 25) ||
-                            (rect.Width == 10 && rect.Height == 18) ||
-                            (rect.Width == 14 && rect.Height == 27) ||
-                            (rect.Width == 12 && rect.Height == 20))
-                            return true;
-                    }
-                    
-                    return false;
-                })
-                .ToList();
-
-            // Xóa tất cả Border wrapper của port chữ nhật
-            foreach (var portBorder in rectangularPortBorders)
-            {
-                if (portBorder != null && canvas.Children.Contains(portBorder))
-                {
-                    canvas.Children.Remove(portBorder);
-                }
-            }
-
-            // Xóa tất cả titleTextBlocks từ các nodes có TitleTextBlockUI
-            // ⚠️ CRITICAL: Xóa TẤT CẢ TextBlocks có ZIndex cao (titleTextBlocks thường có ZIndex = 20000)
-            // Cần xóa tất cả để tránh ghost titles khi chuyển workflow
-            var titleTextBlocks = canvas.Children.OfType<System.Windows.Controls.TextBlock>()
-                .Where(tb => 
-                {
-                    var zIndex = Panel.GetZIndex(tb);
-                    // Xóa tất cả TextBlocks có ZIndex = 20000 (titleTextBlocks chuẩn)
-                    // HOẶC ZIndex > 10000 (các titleTextBlocks khác có thể có ZIndex khác)
-                    return zIndex == 20000 || zIndex > 10000;
-                })
-                .ToList();
-            
-            // ⚠️ CRITICAL: Xóa từ canvas TRƯỚC để tránh ghost visuals
-            foreach (var titleTextBlock in titleTextBlocks)
-            {
-                if (canvas.Children.Contains(titleTextBlock))
-                {
-                    canvas.Children.Remove(titleTextBlock);
-                }
-            }
-
-            // Clear TitleTextBlockUI references từ tất cả nodes — TitleTextBlockUI là property
-            // trên WorkflowNode base class, không cần cast theo từng type.
-            if (_host.ViewModel != null)
-            {
-                foreach (var node in _host.ViewModel.Nodes)
-                {
                     if (node.TitleTextBlockUI != null)
                     {
                         if (canvas.Children.Contains(node.TitleTextBlockUI))

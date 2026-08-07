@@ -8,6 +8,8 @@ using FlowMy.Views.NodeControls;
 using FlowMy.Properties;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -53,22 +55,64 @@ namespace FlowMy.Services.Interaction
         private IWorkflowEditorHost Host => _hostAccessor.GetRequiredHost();
         private WorkflowEditorViewModel? ViewModel => Host.ViewModel;
 
+        /// <summary>
+        /// Cancellation source cho lần InitialRender hiện tại; khi gọi lại sẽ hủy lần trước.
+        /// </summary>
+        private CancellationTokenSource? _initialRenderCts;
+
+        /// <summary>
+        /// Số node render mỗi batch trước khi yield cho Dispatcher xử lý UI events
+        /// (ProgressBar animation, mouse, …). Giá trị nhỏ → mượt hơn nhưng load lâu hơn.
+        /// </summary>
+        private const int RenderBatchSize = 4;
+
         public void InitialRender()
+        {
+            // Hủy lần render trước nếu đang chạy (ví dụ user đổi workflow liên tục)
+            _initialRenderCts?.Cancel();
+            _initialRenderCts?.Dispose();
+            var cts = new CancellationTokenSource();
+            _initialRenderCts = cts;
+
+            _ = InitialRenderBatchedAsync(cts.Token);
+        }
+
+        private async Task InitialRenderBatchedAsync(CancellationToken cancellationToken)
         {
             var vm = ViewModel;
             if (vm == null) return;
 
-            // Xóa sạch visuals trước khi render để tránh lỗi parenting
-            _nodeRenderer.RemoveAllNodeVisuals(Host.WorkflowCanvas);
-            _connectionRenderer.ClearAllConnectionVisuals();
+            // Visuals đã được dọn sạch bởi HandleViewModelPropertyChanged khi IsLoading = true;
+            // không cần gọi lại RemoveAllNodeVisuals ở đây (tránh block UI thread 2 lần).
 
-            foreach (var node in vm.Nodes)
+            var nodes = vm.Nodes.ToList(); // snapshot tránh collection changed trong khi render
+            int total = nodes.Count;
+
+            for (int i = 0; i < total; i += RenderBatchSize)
             {
-                TrackNodeNotifier(node);
-                _nodeRenderer.RenderNode(node, Host.WorkflowCanvas);
-                ApplyNodeGpuVisualPreferences(node);
+                if (cancellationToken.IsCancellationRequested) return;
+
+                int end = Math.Min(i + RenderBatchSize, total);
+                for (int j = i; j < end; j++)
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+                    var node = nodes[j];
+                    TrackNodeNotifier(node);
+                    _nodeRenderer.RenderNode(node, Host.WorkflowCanvas);
+                    ApplyNodeGpuVisualPreferences(node);
+                }
+
+                // Yield cho Dispatcher xử lý UI events giữa các batch
+                // (giữ ProgressBar animation mượt, tránh đơ cửa sổ)
+                if (end < total)
+                {
+                    await Host.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+                }
             }
 
+            if (cancellationToken.IsCancellationRequested) return;
+
+            // Render connections sau khi tất cả nodes đã sẵn sàng
             // Khi GPU bật: defer connections sang frame sau → nodes hiện trước, load cảm giác nhanh hơn
             var useGpuDefer = GpuDetectionHelper.IsGpuAvailable && Settings.Default.GpuEnabled;
             if (useGpuDefer)
@@ -76,6 +120,7 @@ namespace FlowMy.Services.Interaction
                 var conns = vm.Connections.ToList();
                 Host.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
                 {
+                    if (cancellationToken.IsCancellationRequested) return;
                     _connectionRenderer.RenderAllConnections(
                         conns,
                         setSelectedConnection: c => Host.SelectedConnection = c,

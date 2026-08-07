@@ -69,7 +69,8 @@ namespace FlowMy.Views.Overlays
         {
             // SelectionChanged có thể bắn ra ngay trong InitializeComponent
             // khi một số control phía dưới chưa được tạo xong.
-            if (IncludeWebCookiesCheckBox == null ||
+            if (WebCookiesPanel == null ||
+                IncludeWebCookiesCheckBox == null ||
                 CompressionModeComboBox == null ||
                 CompressionHintTextBlock == null)
             {
@@ -78,7 +79,12 @@ namespace FlowMy.Views.Overlays
 
             var isWebBundle = SelectedFormat == "webpkg";
             var isCompressedOutput = isWebBundle || SelectedFormat == "flowz";
-            IncludeWebCookiesCheckBox.IsEnabled = isCompressedOutput;
+
+            // Ẩn hoàn toàn checkbox web cookies khi chọn JSON; hiện khi flowz hoặc webpkg
+            WebCookiesPanel.Visibility = isCompressedOutput
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
             CompressionModeComboBox.IsEnabled = isCompressedOutput;
             CompressionHintTextBlock.Opacity = isCompressedOutput ? 1.0 : 0.6;
 

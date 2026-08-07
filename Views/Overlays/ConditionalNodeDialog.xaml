@@ -134,48 +134,58 @@
                                                        MinWidth="120" Cursor="IBeam"/>
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
                                                         Visibility="{Binding IsElse, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                                <Button Content="OR" Width="50" Height="24" FontSize="11" FontWeight="SemiBold"
+                                                <Button Content="OR" Width="50" Height="24" Padding="0" FontSize="11" FontWeight="SemiBold"
                                                         ToolTip="Thêm điều kiện kết hợp || (OR)"
                                                         Command="{Binding AddWithOrCommand}"
                                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand" Margin="0,0,4,0"/>
-                                                <Button Content="AND" Width="50" Height="24" FontSize="11" FontWeight="SemiBold"
+                                                <Button Content="AND" Width="50" Height="24" Padding="0" FontSize="11" FontWeight="SemiBold"
                                                         ToolTip="Thêm điều kiện kết hợp &amp;&amp; (AND)"
                                                         Command="{Binding AddWithAndCommand}"
                                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
                                             </StackPanel>
-                                            <Button Grid.Column="3" Content="−" Width="24" Height="24" FontSize="14" FontWeight="Bold"
+                                            <Button Grid.Column="3" Content="−" Width="24" Height="24" Padding="0" FontSize="14" FontWeight="Bold"
                                                     Command="{Binding DataContext.RemoveConditionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"
                                                     Visibility="{Binding CanRemove, Converter={StaticResource BoolToVisibilityConverter}}"
                                                     Style="{DynamicResource WarningButton}" Cursor="Hand" Margin="8,0,0,0"/>
                                         </Grid>
-                                        <!-- Sub-conditions với scroll -->
-                                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="280" Margin="0,0,0,0"
-                                                      Visibility="{Binding IsElse, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                            <ItemsControl ItemsSource="{Binding SubConditions}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Background="{DynamicResource CardHoverBackground}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
-                                                                CornerRadius="6" Padding="10" Margin="0,0,0,8">
-                                                            <Grid>
-                                                                <Grid.RowDefinitions>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                </Grid.RowDefinitions>
-                                                                <!-- Badge OR/AND + nút xóa (ẩn khi IsFirst) -->
-                                                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6"
-                                                                            Visibility="{Binding IsFirst, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                                                    <Border Background="#44FF9800" CornerRadius="4" Padding="8,4" Margin="0,0,8,0">
-                                                                        <TextBlock Text="{Binding OperatorLabel}" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="Bold"/>
-                                                                    </Border>
-                                                                    <Button Content="×" Width="20" Height="20" FontSize="12"
-                                                                            Command="{Binding DataContext.RemoveSubConditionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                            CommandParameter="{Binding}"
-                                                                            Style="{DynamicResource WarningButton}" Cursor="Hand"/>
-                                                                </StackPanel>
+                                        <!-- Sub-conditions — Expander tree-style ẩn/hiện -->
+                                        <Expander Grid.Row="1"
+                                                  IsExpanded="{Binding IsSubConditionsExpanded, Mode=TwoWay}"
+                                                  Visibility="{Binding IsElse, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                                  BorderThickness="0"
+                                                  Margin="0,4,0,0">
+                                            <Expander.Header>
+                                                <TextBlock Text="{Binding SubConditionsSummary}"
+                                                           Foreground="{DynamicResource TextMuted}"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"/>
+                                            </Expander.Header>
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="280" Margin="0,6,0,0">
+                                                <ItemsControl ItemsSource="{Binding SubConditions}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Background="{DynamicResource CardHoverBackground}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                                                    CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                                                <Grid>
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                    </Grid.RowDefinitions>
+                                                                    <!-- Badge OR/AND + nút xóa (ẩn khi IsFirst) -->
+                                                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6"
+                                                                                Visibility="{Binding IsFirst, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                                        <Border Background="#44FF9800" CornerRadius="4" Padding="8,4" Margin="0,0,8,0">
+                                                                            <TextBlock Text="{Binding OperatorLabel}" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="Bold"/>
+                                                                        </Border>
+                                                                        <Button Content="×" Width="20" Height="20" Padding="0" FontSize="12"
+                                                                                Command="{Binding DataContext.RemoveSubConditionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                CommandParameter="{Binding}"
+                                                                                Style="{DynamicResource WarningButton}" Cursor="Hand"/>
+                                                                    </StackPanel>
                                                                 <!-- Node trái + Key trái: 2 cột bằng nhau -->
                                                                 <Grid Grid.Row="1" Margin="0,0,0,6">
                                                                     <Grid.ColumnDefinitions>
@@ -299,6 +309,7 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </ScrollViewer>
+                                        </Expander>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

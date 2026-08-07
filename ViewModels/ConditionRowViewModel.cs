@@ -64,6 +64,31 @@ namespace FlowMy.ViewModels
         /// <summary>Sub-conditions thêm bằng OR/AND (item đầu = main condition từ Left/Op/Right).</summary>
         public ObservableCollection<SubConditionViewModel> SubConditions { get; } = new();
 
+        /// <summary>Tóm tắt số sub-conditions hiện có (dùng cho Expander header).</summary>
+        public string SubConditionsSummary
+        {
+            get
+            {
+                int total = SubConditions.Count;
+                if (total <= 1) return "📋 1 điều kiện";
+                int orCount = SubConditions.Count(s => !s.IsFirst && s.OperatorBefore == LogicalOperator.Or);
+                int andCount = SubConditions.Count(s => !s.IsFirst && s.OperatorBefore == LogicalOperator.And);
+                var parts = new System.Collections.Generic.List<string>();
+                if (orCount > 0) parts.Add($"{orCount} OR");
+                if (andCount > 0) parts.Add($"{andCount} AND");
+                return parts.Count > 0
+                    ? $"📋 {total} điều kiện ({string.Join(", ", parts)})"
+                    : $"📋 {total} điều kiện";
+            }
+        }
+
+        /// <summary>
+        /// Binding cho Expander.IsExpanded — mặc định mở khi ≤ 2 sub-conditions, đóng khi > 2.
+        /// User có thể toggle thủ công (TwoWay binding).
+        /// </summary>
+        [ObservableProperty]
+        private bool _isSubConditionsExpanded = true;
+
         public ObservableCollection<WorkflowDataSourceOption> AvailableSourceNodes { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> AvailableLeftKeys { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> AvailableRightKeys { get; } = new();
@@ -119,6 +144,15 @@ namespace FlowMy.ViewModels
             RefreshRightKeys();
 
             LoadSubConditions(availableSourceNodes);
+
+            // Auto-collapse Expander khi > 2 sub-conditions
+            _isSubConditionsExpanded = SubConditions.Count <= 2;
+
+            // Refresh summary khi thêm/xóa sub-conditions
+            SubConditions.CollectionChanged += (_, __) =>
+            {
+                OnPropertyChanged(nameof(SubConditionsSummary));
+            };
 
             PropertyChanged += (s, e) =>
             {

@@ -2051,7 +2051,9 @@ namespace FlowMy.Views
                 if (ViewModel?.IsLoading == true)
                 {
                     LoadingOverlay.Visibility = Visibility.Visible;
-                    ClearVisualsForReload();
+                    // Node/connection visuals đã được dọn bởi _eventService.HandleViewModelPropertyChanged
+                    // (gọi ở dòng trên cùng) — không gọi ClearVisualsForReload() lần nữa để tránh
+                    // block UI thread với RemoveAllNodeVisuals scan canvas children lần thứ 2.
                     // Chỉ xóa undo/redo khi load workflow thật (không phải đang undo/redo restore)
                     if (!_isRestoringSnapshot)
                         ClearUndoRedoStacks();

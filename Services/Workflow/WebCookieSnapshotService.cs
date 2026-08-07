@@ -78,13 +78,19 @@ public static class WebCookieSnapshotService
         var lookupUris = CollectCookieLookupUris(nodes);
         var entries = new List<PortableCookieEntryDto>();
 
-        var profilesToExport = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Shared" };
+        var profilesToExport = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var w in nodes.OfType<WebNode>())
         {
-            if (string.Equals(w.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+            var mode = w.CacheMode ?? "Shared";
+            if (string.Equals(mode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
                 !string.IsNullOrWhiteSpace(w.CustomCacheName))
             {
                 profilesToExport.Add(w.CustomCacheName.Trim());
+            }
+            else
+            {
+                // Shared hoặc không set → dùng profile Shared
+                profilesToExport.Add("Shared");
             }
         }
 
