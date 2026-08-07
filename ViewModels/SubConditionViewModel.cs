@@ -153,8 +153,8 @@ namespace FlowMy.ViewModels
             AvailableLeftKeys.Clear();
             if (string.IsNullOrWhiteSpace(LeftSourceNodeId)) return;
             var node = _host.ViewModel?.Nodes?.FirstOrDefault(n => n.Id == LeftSourceNodeId);
-            if (node?.DynamicOutputs == null) return;
-            foreach (var o in node.DynamicOutputs)
+            if (node == null) return;
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
             {
                 AvailableLeftKeys.Add(new WorkflowOutputKeyOption
                 {
@@ -170,8 +170,8 @@ namespace FlowMy.ViewModels
             AvailableRightKeys.Clear();
             if (string.IsNullOrWhiteSpace(RightSourceNodeId)) return;
             var node = _host.ViewModel?.Nodes?.FirstOrDefault(n => n.Id == RightSourceNodeId);
-            if (node?.DynamicOutputs == null) return;
-            foreach (var o in node.DynamicOutputs)
+            if (node == null) return;
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
             {
                 AvailableRightKeys.Add(new WorkflowOutputKeyOption
                 {

@@ -41,6 +41,11 @@ namespace FlowMy.Views.Overlays
                     : Visibility.Collapsed;
             }
         }
+
+        private void AddVariableButton_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true; // Chặn toggle expand/collapse của Expander khi click nút thêm
+        }
     }
 }
 

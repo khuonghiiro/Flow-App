@@ -65,6 +65,18 @@ public sealed partial class FileWorkflowPersistenceService
         {
             node.IconSize = iconSz;
         }
+
+        if (properties.TryGetValue("CollapsedSections", out var csObj) && csObj != null)
+        {
+            node.CollapsedSections.Clear();
+            var csStr = csObj.ToString();
+            if (!string.IsNullOrWhiteSpace(csStr))
+            {
+                var keys = csStr.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var k in keys)
+                    node.CollapsedSections.Add(k.Trim());
+            }
+        }
     }
 
     // ===== RESTORE: ReuseRoutes (áp dụng chung cho mọi loại node) =====
@@ -240,6 +252,10 @@ public sealed partial class FileWorkflowPersistenceService
             dict["ConditionalVisualMode"] = node.ConditionalVisualMode.ToString();
         if (node.IconSize != 32)
             dict["IconSize"] = node.IconSize;
+
+        // v2: Chỉ lưu CollapsedSections nếu ≠ default (tức là có ít nhất 1 section bị user collapse)
+        if (node.CollapsedSections.Count > 0)
+            dict["CollapsedSections"] = string.Join(";", node.CollapsedSections);
     }
 
     // ===== GET: DynamicInputs (all nodes) =====

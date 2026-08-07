@@ -139,9 +139,9 @@ namespace FlowMy.ViewModels
 
             var src = _host.ViewModel.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, CoordSourceNodeId, StringComparison.OrdinalIgnoreCase));
-            if (src?.DynamicOutputs == null) return;
+            if (src == null) return;
 
-            foreach (var o in src.DynamicOutputs)
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(src))
             {
                 var key = o.Key ?? string.Empty;
                 AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption

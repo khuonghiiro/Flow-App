@@ -444,32 +444,6 @@ Chỉ khai báo trong `customPropertyHandlers` những gì **đặc thù của n
                                 </StackPanel>
                             </Border>
 
-                            <!-- Properties đặc thù của node ở đây -->
-                            <!-- Sử dụng Border với emoji icon cho mỗi section quan trọng -->
-
-                            <!-- 📍 Input từ node khác -->
-                            <Border Background="{DynamicResource WindowBackground}"
-                                    BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="📍 Input — [Tên input]" Foreground="{DynamicResource TextBrush}"
-                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10"
-                                               TextWrapping="Wrap" Margin="0,0,0,10">
-                                        <Run Text="[Mô tả ngắn gọn]"/>
-                                    </TextBlock>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}"
-                                                       FontSize="10" Margin="0,0,0,4"/>
-                                            <controls:NodeSearchComboBoxUserControl Height="32"
-                                                      ItemsSource="{Binding AvailableNodeOptions}"
-                                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                       SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">

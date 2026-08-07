@@ -193,7 +193,7 @@ namespace FlowMy.Models.Nodes
         private ImageProcessingMode _processingMode = ImageProcessingMode.Manual;
 
         /// <summary>Danh sách output keys bị skip (checked = true nghĩa là không xử lý output đó).</summary>
-        public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public override HashSet<string>? SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // ═══════ Layer AI: Dynamic UI Configuration ═══════
 

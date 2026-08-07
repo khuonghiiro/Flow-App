@@ -12,12 +12,10 @@ using FlowMy.Services.Interaction;
 
 namespace FlowMy.ViewModels
 {
-    public class AsyncTaskBodyOutputMappingItemViewModel : INotifyPropertyChanged
+    public class AsyncTaskBodySourceItemViewModel : INotifyPropertyChanged
     {
         private string? _sourceNodeId;
         private string? _sourceOutputKey;
-        private string? _outputKey;
-        private bool _isCollectArray = true;
         private ObservableCollection<OutputKeyOption> _availableOutputKeys = new();
 
         public string? SourceNodeId
@@ -48,32 +46,6 @@ namespace FlowMy.ViewModels
                 if (_sourceOutputKey != value)
                 {
                     _sourceOutputKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public string? OutputKey
-        {
-            get => _outputKey;
-            set
-            {
-                if (_outputKey != value)
-                {
-                    _outputKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public bool IsCollectArray
-        {
-            get => _isCollectArray;
-            set
-            {
-                if (_isCollectArray != value)
-                {
-                    _isCollectArray = value;
                     OnPropertyChanged();
                 }
             }
@@ -110,6 +82,96 @@ namespace FlowMy.ViewModels
         }
     }
 
+    public class AsyncTaskBodyOutputMappingItemViewModel : INotifyPropertyChanged
+    {
+        private string? _outputKey;
+        private bool _isCollectArray = true;
+        public ObservableCollection<AsyncTaskBodySourceItemViewModel> Sources { get; } = new();
+
+        public ICommand AddSourceCommand { get; }
+        public ICommand RemoveSourceCommand { get; }
+
+        public Func<string?, IEnumerable<OutputKeyOption>>? GetOutputKeysFunc { get; set; }
+
+        public AsyncTaskBodyOutputMappingItemViewModel()
+        {
+            AddSourceCommand = new RelayCommand(AddSource);
+            RemoveSourceCommand = new RelayCommand<AsyncTaskBodySourceItemViewModel>(RemoveSource);
+        }
+
+        public string? SourceNodeId
+        {
+            get => Sources.FirstOrDefault()?.SourceNodeId;
+            set
+            {
+                if (Sources.Count == 0) AddSource();
+                if (Sources.Count > 0) Sources[0].SourceNodeId = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string? SourceOutputKey
+        {
+            get => Sources.FirstOrDefault()?.SourceOutputKey;
+            set
+            {
+                if (Sources.Count == 0) AddSource();
+                if (Sources.Count > 0) Sources[0].SourceOutputKey = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public void AddSource()
+        {
+            var item = new AsyncTaskBodySourceItemViewModel
+            {
+                GetOutputKeysFunc = GetOutputKeysFunc,
+                SourceOutputKey = "output"
+            };
+            Sources.Add(item);
+        }
+
+        public void RemoveSource(AsyncTaskBodySourceItemViewModel? item)
+        {
+            if (item != null && Sources.Contains(item) && Sources.Count > 1)
+            {
+                Sources.Remove(item);
+            }
+        }
+
+        public string? OutputKey
+        {
+            get => _outputKey;
+            set
+            {
+                if (_outputKey != value)
+                {
+                    _outputKey = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsCollectArray
+        {
+            get => _isCollectArray;
+            set
+            {
+                if (_isCollectArray != value)
+                {
+                    _isCollectArray = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
     public class BodyNodeOption
     {
         public string NodeId { get; set; } = string.Empty;
@@ -133,6 +195,25 @@ namespace FlowMy.ViewModels
         public ICommand AddMappingCommand { get; }
         public ICommand RemoveMappingCommand { get; }
 
+        private string _outputMappingsHeader = "📤 Output Mappings (0 items)";
+        public string OutputMappingsHeader
+        {
+            get => _outputMappingsHeader;
+            set
+            {
+                if (_outputMappingsHeader != value)
+                {
+                    _outputMappingsHeader = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private void UpdateOutputMappingsHeader()
+        {
+            OutputMappingsHeader = $"📤 Output Mappings ({Mappings.Count} items)";
+        }
+
         private bool _waitForAllThreads;
         public bool WaitForAllThreads
         {
@@ -155,6 +236,8 @@ namespace FlowMy.ViewModels
 
             AddMappingCommand = new RelayCommand(AddNewMapping);
             RemoveMappingCommand = new RelayCommand<AsyncTaskBodyOutputMappingItemViewModel>(RemoveMapping);
+
+            Mappings.CollectionChanged += (_, _) => UpdateOutputMappingsHeader();
 
             _waitForAllThreads = !_parentAsyncTaskNode.ReadResultsInBody;
 
@@ -215,25 +298,22 @@ namespace FlowMy.ViewModels
 
             var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Thêm các output key thuộc về node được chọn, loại bỏ các key ghép có ngoặc [...]
-            if (targetNode.DynamicOutputs != null)
+            // Thêm các output key thuộc về node được chọn (lọc qua GetActiveOutputs để bỏ key unchecked)
+            foreach (var dyn in GetActiveOutputs(targetNode))
             {
-                foreach (var dyn in targetNode.DynamicOutputs)
+                var key = dyn.Key?.Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+
+                // Bỏ các key ghép dạng bracket indexing / property (ví dụ: data[0], item[field])
+                if (key.Contains('[') || key.Contains(']')) continue;
+
+                if (keys.Add(key))
                 {
-                    var key = dyn.Key?.Trim();
-                    if (string.IsNullOrWhiteSpace(key)) continue;
-
-                    // Bỏ các key ghép dạng bracket indexing / property (ví dụ: data[0], item[field])
-                    if (key.Contains('[') || key.Contains(']')) continue;
-
-                    if (keys.Add(key))
+                    yield return new OutputKeyOption
                     {
-                        yield return new OutputKeyOption
-                        {
-                            Key = key,
-                            DisplayName = !string.IsNullOrWhiteSpace(dyn.DisplayName) ? $"{key} ({dyn.DisplayName})" : key
-                        };
-                    }
+                        Key = key,
+                        DisplayName = !string.IsNullOrWhiteSpace(dyn.DisplayName) ? $"{key} ({dyn.DisplayName})" : key
+                    };
                 }
             }
 
@@ -251,21 +331,50 @@ namespace FlowMy.ViewModels
         private void LoadMappings()
         {
             Mappings.Clear();
-            if (_parentAsyncTaskNode.BodyOutputMappings == null) return;
+            if (_parentAsyncTaskNode.BodyOutputMappings == null)
+            {
+                UpdateOutputMappingsHeader();
+                return;
+            }
 
             foreach (var m in _parentAsyncTaskNode.BodyOutputMappings)
             {
                 var vm = new AsyncTaskBodyOutputMappingItemViewModel
                 {
-                    SourceNodeId = m.SourceNodeId,
-                    SourceOutputKey = m.SourceOutputKey,
                     OutputKey = m.OutputKey,
                     IsCollectArray = m.IsCollectArray,
                     GetOutputKeysFunc = GetOutputKeysForNode
                 };
-                vm.UpdateAvailableOutputKeys();
+
+                var effectiveSources = m.GetEffectiveSources().ToList();
+                if (effectiveSources.Count > 0)
+                {
+                    foreach (var src in effectiveSources)
+                    {
+                        var srcVm = new AsyncTaskBodySourceItemViewModel
+                        {
+                            GetOutputKeysFunc = GetOutputKeysForNode,
+                            SourceNodeId = src.SourceNodeId,
+                            SourceOutputKey = src.SourceOutputKey
+                        };
+                        srcVm.UpdateAvailableOutputKeys();
+                        vm.Sources.Add(srcVm);
+                    }
+                }
+                else
+                {
+                    vm.AddSource();
+                    if (vm.Sources.Count > 0)
+                    {
+                        vm.Sources[0].SourceNodeId = m.SourceNodeId;
+                        vm.Sources[0].SourceOutputKey = m.SourceOutputKey;
+                        vm.Sources[0].UpdateAvailableOutputKeys();
+                    }
+                }
+
                 Mappings.Add(vm);
             }
+            UpdateOutputMappingsHeader();
         }
 
         private void AddNewMapping()
@@ -273,14 +382,22 @@ namespace FlowMy.ViewModels
             var defaultSourceNodeId = InnerNodeOptions.FirstOrDefault()?.NodeId;
             var vm = new AsyncTaskBodyOutputMappingItemViewModel
             {
-                SourceNodeId = defaultSourceNodeId,
-                SourceOutputKey = "output",
                 OutputKey = $"result_{Mappings.Count + 1}",
                 IsCollectArray = true,
                 GetOutputKeysFunc = GetOutputKeysForNode
             };
-            vm.UpdateAvailableOutputKeys();
+
+            var srcVm = new AsyncTaskBodySourceItemViewModel
+            {
+                GetOutputKeysFunc = GetOutputKeysForNode,
+                SourceNodeId = defaultSourceNodeId,
+                SourceOutputKey = "output"
+            };
+            srcVm.UpdateAvailableOutputKeys();
+            vm.Sources.Add(srcVm);
+
             Mappings.Add(vm);
+            UpdateOutputMappingsHeader();
         }
 
         private void RemoveMapping(AsyncTaskBodyOutputMappingItemViewModel? item)
@@ -288,6 +405,7 @@ namespace FlowMy.ViewModels
             if (item != null)
             {
                 Mappings.Remove(item);
+                UpdateOutputMappingsHeader();
             }
         }
 
@@ -297,17 +415,33 @@ namespace FlowMy.ViewModels
             _parentAsyncTaskNode.BodyOutputMappings.Clear();
             foreach (var vm in Mappings)
             {
-                if (!string.IsNullOrWhiteSpace(vm.SourceNodeId) &&
-                    !string.IsNullOrWhiteSpace(vm.SourceOutputKey) &&
-                    !string.IsNullOrWhiteSpace(vm.OutputKey))
+                if (!string.IsNullOrWhiteSpace(vm.OutputKey))
                 {
-                    _parentAsyncTaskNode.BodyOutputMappings.Add(new AsyncTaskBodyOutputMapping
+                    var mapping = new AsyncTaskBodyOutputMapping
                     {
-                        SourceNodeId = vm.SourceNodeId.Trim(),
-                        SourceOutputKey = vm.SourceOutputKey.Trim(),
                         OutputKey = vm.OutputKey.Trim(),
                         IsCollectArray = vm.IsCollectArray
-                    });
+                    };
+
+                    foreach (var srcVm in vm.Sources)
+                    {
+                        if (!string.IsNullOrWhiteSpace(srcVm.SourceNodeId) && !string.IsNullOrWhiteSpace(srcVm.SourceOutputKey))
+                        {
+                            mapping.Sources.Add(new AsyncTaskBodySourceItem
+                            {
+                                SourceNodeId = srcVm.SourceNodeId.Trim(),
+                                SourceOutputKey = srcVm.SourceOutputKey.Trim()
+                            });
+                        }
+                    }
+
+                    if (mapping.Sources.Count > 0)
+                    {
+                        // Sync primary SourceNodeId/SourceOutputKey from first source for backward compatibility
+                        mapping.SourceNodeId = mapping.Sources[0].SourceNodeId;
+                        mapping.SourceOutputKey = mapping.Sources[0].SourceOutputKey;
+                        _parentAsyncTaskNode.BodyOutputMappings.Add(mapping);
+                    }
                 }
             }
 

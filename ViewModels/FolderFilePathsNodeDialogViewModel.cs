@@ -88,8 +88,8 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(nodeId) || _host.ViewModel?.Nodes == null) return;
             var src = _host.ViewModel.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
-            if (src?.DynamicOutputs == null) return;
-            foreach (var o in src.DynamicOutputs)
+            if (src == null) return;
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(src))
             {
                 var key = o.Key ?? string.Empty;
                 target.Add(new WorkflowOutputKeyOption

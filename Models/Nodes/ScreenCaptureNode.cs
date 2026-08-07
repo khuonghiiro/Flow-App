@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
 
@@ -54,7 +54,7 @@ namespace FlowMy.Models.Nodes
 
         // ── SkipOutputs (giống ImageProcessingNode) ──────────────────────────
         /// <summary>Danh sách output keys bị tắt (unchecked trong dialog).</summary>
-        public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public override HashSet<string>? SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public ScreenCaptureNode()
         {

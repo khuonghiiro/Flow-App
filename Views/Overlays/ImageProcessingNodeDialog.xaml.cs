@@ -55,12 +55,14 @@ namespace FlowMy.Views.Overlays
                 {
                     // Bỏ skip → key này sẽ được output
                     imageNode.SkipOutputs.Remove(outputVm.Key);
+                    UpdateOutputsHeaderCount();
                 };
                 checkbox.Unchecked += (s, e) =>
                 {
                     // Thêm vào skip → key này không output
                     if (!imageNode.SkipOutputs.Contains(outputVm.Key))
                         imageNode.SkipOutputs.Add(outputVm.Key);
+                    UpdateOutputsHeaderCount();
                 };
             }
 
@@ -97,7 +99,17 @@ namespace FlowMy.Views.Overlays
 
             stack.Children.Add(valueText);
 
-            return stack;
+            var card = new Border
+            {
+                Background = GetThemeBrush("CardColor", Brushes.Transparent),
+                BorderBrush = GetThemeBrush("ControlBorderBrush", Brushes.LightGray),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 4, 0, 8)
+            };
+            card.Child = stack;
+            return card;
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

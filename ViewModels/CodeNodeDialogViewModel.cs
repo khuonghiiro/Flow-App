@@ -68,6 +68,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private int _codeFontSize = 13;
 
+        // Expander Header Summaries
+        public string InputMappingsHeader => $"📍 Input từ node khác ({InputMappingsList.Count} item{(InputMappingsList.Count != 1 ? "s" : "")})";
+        public string OutputKeysHeader => $"🔑 Output Keys ({OutputKeysList.Count} item{(OutputKeysList.Count != 1 ? "s" : "")})";
+
         public CodeNodeDialogViewModel(CodeNode node, IWorkflowEditorHost host)
             : base(node, host)
         {
@@ -96,6 +100,9 @@ namespace FlowMy.ViewModels
 
             foreach (var k in node.OutputKeys)
                 OutputKeysList.Add(new OutputKeyItemViewModel { Key = k });
+
+            InputMappingsList.CollectionChanged += (s, e) => OnPropertyChanged(nameof(InputMappingsHeader));
+            OutputKeysList.CollectionChanged += (s, e) => OnPropertyChanged(nameof(OutputKeysHeader));
 
             RefreshAvailableNodes();
 

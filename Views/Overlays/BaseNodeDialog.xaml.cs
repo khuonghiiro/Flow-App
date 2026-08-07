@@ -178,11 +178,85 @@ namespace FlowMy.Views.Overlays
             try
             {
                 SetupInputsOutputs();
+                SyncExpanderStatesWithNode();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading inputs/outputs: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Đồng bộ trạng thái Expand/Collapse của tất cả Expander trong dialog với node.CollapsedSections (lưu/mở workflow v2).
+        /// </summary>
+        protected void SyncExpanderStatesWithNode()
+        {
+            if (ViewModel?.Node == null) return;
+            var node = ViewModel.Node;
+
+            var expanders = FindVisualChildren<Expander>(this);
+            foreach (var exp in expanders)
+            {
+                string? sectionKey = GetExpanderSectionKey(exp);
+                if (string.IsNullOrWhiteSpace(sectionKey)) continue;
+
+                // Đồng bộ trạng thái mở/đóng nếu node có lưu thông tin collapse
+                if (node.CollapsedSections.Contains(sectionKey))
+                {
+                    exp.IsExpanded = false;
+                }
+
+                // Gắn listener lắng nghe người dùng ẩn/hiện section
+                exp.Collapsed -= Expander_Collapsed;
+                exp.Collapsed += Expander_Collapsed;
+                exp.Expanded -= Expander_Expanded;
+                exp.Expanded += Expander_Expanded;
+            }
+        }
+
+        private void Expander_Collapsed(object sender, RoutedEventArgs e)
+        {
+            if (sender is Expander exp && ViewModel?.Node != null)
+            {
+                string? key = GetExpanderSectionKey(exp);
+                if (!string.IsNullOrWhiteSpace(key))
+                    ViewModel.Node.CollapsedSections.Add(key);
+            }
+        }
+
+        private void Expander_Expanded(object sender, RoutedEventArgs e)
+        {
+            if (sender is Expander exp && ViewModel?.Node != null)
+            {
+                string? key = GetExpanderSectionKey(exp);
+                if (!string.IsNullOrWhiteSpace(key))
+                    ViewModel.Node.CollapsedSections.Remove(key);
+            }
+        }
+
+        private static string? GetExpanderSectionKey(Expander exp)
+        {
+            if (!string.IsNullOrWhiteSpace(exp.Name)) return exp.Name;
+            if (exp.Header is TextBlock tb && !string.IsNullOrWhiteSpace(tb.Text)) return tb.Text.Trim();
+            if (exp.Header is string s && !string.IsNullOrWhiteSpace(s)) return s.Trim();
+            return null;
+        }
+
+        private static List<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            var results = new List<T>();
+            if (parent == null) return results;
+
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild)
+                    results.Add(typedChild);
+
+                results.AddRange(FindVisualChildren<T>(child));
+            }
+            return results;
         }
 
         private void SetupInputsOutputs()
@@ -253,6 +327,8 @@ namespace FlowMy.Views.Overlays
             var outputs = ViewModel.Outputs;
             if (outputs == null || outputs.Count == 0) return;
 
+            int activeCount = GetActiveOutputsCount();
+
             // Tạo Expander bọc tất cả output items
             var contentPanel = new StackPanel();
             foreach (var outputVm in outputs)
@@ -262,10 +338,42 @@ namespace FlowMy.Views.Overlays
             }
 
             var expander = CreateSectionExpander(
-                $"📤 Đầu ra ({outputs.Count} output{(outputs.Count > 1 ? "s" : "")})",
+                $"📤 Đầu ra ({activeCount} output{(activeCount != 1 ? "s" : "")})",
                 contentPanel,
                 isExpanded: outputs.Count <= 3);
             panel.Children.Add(expander);
+        }
+
+        /// <summary>
+        /// Đếm số lượng output key đang được checked (không nằm trong SkipOutputs).
+        /// </summary>
+        public int GetActiveOutputsCount()
+        {
+            if (ViewModel?.Node == null || ViewModel.Outputs == null) return 0;
+            var node = ViewModel.Node;
+            if (node.SkipOutputs == null || node.SkipOutputs.Count == 0)
+                return ViewModel.Outputs.Count;
+
+            return ViewModel.Outputs.Count(o => !node.SkipOutputs.Contains(o.Key));
+        }
+
+        /// <summary>
+        /// Cập nhật ngay lập tức tiêu đề đếm số lượng Output key checked trên Expander Header.
+        /// </summary>
+        public void UpdateOutputsHeaderCount()
+        {
+            var panel = GetOutputsPanel();
+            if (panel == null) return;
+
+            foreach (UIElement child in panel.Children)
+            {
+                if (child is Expander exp && exp.Header is TextBlock tb)
+                {
+                    int activeCount = GetActiveOutputsCount();
+                    tb.Text = $"📤 Đầu ra ({activeCount} output{(activeCount != 1 ? "s" : "")})";
+                    break;
+                }
+            }
         }
 
         /// <summary>
@@ -593,7 +701,17 @@ namespace FlowMy.Views.Overlays
 
             stack.Children.Add(valueText);
 
-            return stack;
+            var card = new Border
+            {
+                Background = GetThemeBrush("CardColor", Brushes.Transparent),
+                BorderBrush = GetThemeBrush("ControlBorderBrush", Brushes.LightGray),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 4, 0, 8)
+            };
+            card.Child = stack;
+            return card;
         }
 
         protected virtual void CloseButton_Click(object sender, RoutedEventArgs e)

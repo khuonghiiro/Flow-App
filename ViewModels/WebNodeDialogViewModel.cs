@@ -260,6 +260,11 @@ namespace FlowMy.ViewModels
 
         public ObservableCollection<WebBlockingRule> BlockingRules => _webNode.BlockingRules;
 
+        // Dynamic Expander Header Summaries
+        public string InputMappingsHeader => $"📍 Input (node nguồn + key) ({InputMappingsList.Count} item{(InputMappingsList.Count != 1 ? "s" : "")})";
+        public string JsSourcesHeader => $"💻 Chạy JS từ node khác ({JsSourcesList.Count} item{(JsSourcesList.Count != 1 ? "s" : "")})";
+        public string BlockingRulesHeader => $"🚫 Chặn request (URL Pattern) ({BlockingRules.Count} rule{(BlockingRules.Count != 1 ? "s" : "")})";
+
         [RelayCommand]
         private void AddBlockingRule()
         {
@@ -407,6 +412,10 @@ namespace FlowMy.ViewModels
                     item.SourceOutputKey = sk;
                 }
             }
+
+            InputMappingsList.CollectionChanged += (s, e) => OnPropertyChanged(nameof(InputMappingsHeader));
+            JsSourcesList.CollectionChanged += (s, e) => OnPropertyChanged(nameof(JsSourcesHeader));
+            BlockingRules.CollectionChanged += (s, e) => OnPropertyChanged(nameof(BlockingRulesHeader));
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -559,7 +568,7 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;
             var node = _host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
             if (node?.DynamicOutputs == null) return;
-            foreach (var o in node.DynamicOutputs)
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
             {
                 item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
                 {
@@ -726,7 +735,7 @@ namespace FlowMy.ViewModels
             var node = _host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
             if (node?.DynamicOutputs == null) return;
 
-            foreach (var o in node.DynamicOutputs)
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
             {
                 item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
                 {

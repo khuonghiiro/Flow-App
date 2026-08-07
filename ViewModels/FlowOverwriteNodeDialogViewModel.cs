@@ -31,15 +31,17 @@ public partial class FlowOverwriteSourceItemViewModel : ObservableObject
         var selectedId = SelectedSourceNodeId;
         var srcNode = _host.ViewModel?.Nodes.FirstOrDefault(n =>
             string.Equals(n.Id, selectedId, StringComparison.OrdinalIgnoreCase));
-        var opts = srcNode?.DynamicOutputs?
-            .Where(x => !string.IsNullOrWhiteSpace(x.Key))
-            .Select(x => new WorkflowOutputKeyOption
-            {
-                Key = x.Key.Trim(),
-                DisplayName = string.IsNullOrWhiteSpace(x.DisplayName) ? x.Key : x.DisplayName,
-                Type = x.OutputType ?? x.ConvertType
-            })
-            .ToList() ?? new();
+        var opts = srcNode != null
+            ? BaseNodeDialogViewModel.GetActiveOutputs(srcNode)
+                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                .Select(x => new WorkflowOutputKeyOption
+                {
+                    Key = x.Key.Trim(),
+                    DisplayName = string.IsNullOrWhiteSpace(x.DisplayName) ? x.Key : x.DisplayName,
+                    Type = x.OutputType ?? x.ConvertType
+                })
+                .ToList()
+            : new();
 
         AvailableOutputKeys = new ObservableCollection<WorkflowOutputKeyOption>(opts);
         if (string.IsNullOrWhiteSpace(SelectedSourceOutputKey) ||
@@ -59,6 +61,8 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     [ObservableProperty] private bool _includeIndirectSources;
     [ObservableProperty] private bool _scopeToFlowExecution;
 
+    [ObservableProperty] private string _sourcesHeader = "📍 Nguồn override (0 items)";
+
     public ObservableCollection<FlowOverwriteSourceItemViewModel> Sources { get; } = new();
     [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableSourceOptions = new();
 
@@ -72,10 +76,18 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         _scopeToFlowExecution = node.ScopeToFlowExecution;
         LoadSourcesFromNode();
 
+        Sources.CollectionChanged += (_, _) => UpdateSourcesHeader();
+        UpdateSourcesHeader();
+
         if (node is INotifyPropertyChanged npc)
         {
             npc.PropertyChanged += (_, e) => OnNodePropertyChanged(e.PropertyName ?? string.Empty);
         }
+    }
+
+    private void UpdateSourcesHeader()
+    {
+        SourcesHeader = $"📍 Nguồn override ({Sources.Count} items)";
     }
 
     protected override string GetDefaultTitle() => "Flow Overwrite";
@@ -86,12 +98,14 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         item.SelectedSourceNodeId = AvailableSourceOptions.FirstOrDefault()?.NodeId;
         item.RefreshOutputKeys();
         Sources.Add(item);
+        UpdateSourcesHeader();
     }
 
     public void RemoveSource(FlowOverwriteSourceItemViewModel? item)
     {
         if (item == null) return;
         Sources.Remove(item);
+        UpdateSourcesHeader();
     }
 
     public void RefreshDirectIncomingSourceOptions()

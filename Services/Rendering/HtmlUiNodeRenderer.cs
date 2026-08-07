@@ -141,6 +141,11 @@ namespace FlowMy.Services.Rendering
         /// </summary>
         private void RenderHtmlUiNodeDirect(WorkflowNode node, HtmlUiNode htmlNode, Window? window, Canvas canvas)
         {
+            if (node.Border != null && canvas.Children.Contains(node.Border))
+            {
+                canvas.Children.Remove(node.Border);
+            }
+
             node.Border = HtmlUiNodeControl.CreateBorder(htmlNode, window, Host);
             node.Border.Tag = node;
 

@@ -397,9 +397,9 @@ namespace FlowMy.ViewModels
 
             var node = _host.ViewModel.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
-            if (node?.DynamicOutputs == null) return;
+            if (node == null) return;
 
-            foreach (var o in node.DynamicOutputs)
+            foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
             {
                 item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
                 {
@@ -719,9 +719,9 @@ namespace FlowMy.ViewModels
 
             foreach (var bodyNode in bodyNodes)
             {
-                if (bodyNode.DynamicOutputs == null) continue;
+                if (bodyNode == null) continue;
                 var nodeTitle = string.IsNullOrWhiteSpace(bodyNode.Title) ? bodyNode.Id : bodyNode.Title;
-                foreach (var o in bodyNode.DynamicOutputs)
+                foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(bodyNode))
                 {
                     var keyName = o.Key ?? string.Empty;
                     item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption

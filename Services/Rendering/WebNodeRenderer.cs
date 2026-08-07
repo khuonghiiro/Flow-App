@@ -152,6 +152,11 @@ namespace FlowMy.Services.Rendering
         /// </summary>
         private void RenderWebNodeDirect(WorkflowNode node, WebNode webNode, Window? window, Canvas canvas)
         {
+            if (node.Border != null && canvas.Children.Contains(node.Border))
+            {
+                canvas.Children.Remove(node.Border);
+            }
+
             node.Border = WebNodeControl.CreateBorder(webNode, window, Host);
             node.Border.Tag = node;
 

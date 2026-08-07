@@ -151,9 +151,9 @@ namespace FlowMy.ViewModels
 
             // Find source node
             var sourceNode = _host.ViewModel.Nodes.FirstOrDefault(n => n.Id == SelectedSourceNodeId);
-            if (sourceNode == null || sourceNode.DynamicOutputs == null) return;
+            if (sourceNode == null) return;
 
-            foreach (var output in sourceNode.DynamicOutputs)
+            foreach (var output in BaseNodeDialogViewModel.GetActiveOutputs(sourceNode))
             {
                 AvailableOutputKeys.Add(new WorkflowOutputKeyOption
                 {
@@ -232,6 +232,8 @@ namespace FlowMy.ViewModels
 
         public ObservableCollection<InputVariableItemViewModel> Variables { get; } = new();
 
+        public string InputVarsHeader => $"📍 Input Variables ({Variables.Count} item{(Variables.Count != 1 ? "s" : "")})";
+
         [ObservableProperty]
         private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
 
@@ -250,6 +252,8 @@ namespace FlowMy.ViewModels
 
             // Load existing variables
             LoadVariables();
+
+            Variables.CollectionChanged += (s, e) => OnPropertyChanged(nameof(InputVarsHeader));
 
             // Sync additional properties
             if (node is INotifyPropertyChanged npc)

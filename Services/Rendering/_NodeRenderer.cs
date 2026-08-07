@@ -201,6 +201,14 @@ namespace FlowMy.Services.Rendering
 
         public void RenderNode(WorkflowNode node, Canvas canvas)
         {
+            if (canvas == null || node == null) return;
+
+            // ✅ Gỡ sạch UI cũ của node (nếu đã từng được render trên canvas) để tránh dính ghost border khi re-render/thay đổi property
+            if (node.Border != null && canvas.Children.Contains(node.Border))
+            {
+                RemoveNode(node, canvas);
+            }
+
             // ── Các node có inline logic đặc biệt — xử lý trước dictionary ──
 
             if (node is ScreenPositionPickerNode screenNode)
@@ -602,6 +610,38 @@ namespace FlowMy.Services.Rendering
                         node.TitleTextBlockUI = null;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Quét dọn các UIElement mồ côi (ghost borders/ports) trên canvas mà không thuộc bất kỳ node active nào trong ViewModel
+        /// hoặc là bản sao UI border cũ đã bị thay thế (tránh dính ghost node trên canvas).
+        /// </summary>
+        public static void CleanOrphanedGhostNodes(Canvas canvas, System.Collections.Generic.IEnumerable<WorkflowNode>? activeNodes)
+        {
+            if (canvas == null) return;
+
+            var activeSet = activeNodes != null
+                ? new System.Collections.Generic.HashSet<WorkflowNode>(activeNodes)
+                : new System.Collections.Generic.HashSet<WorkflowNode>();
+
+            var toRemove = new System.Collections.Generic.List<UIElement>();
+            foreach (UIElement child in canvas.Children)
+            {
+                if (child is FrameworkElement fe && fe.Tag is WorkflowNode taggedNode)
+                {
+                    // Xóa nếu node này không còn trong danh sách activeNodes của workflow,
+                    // hoặc nếu border của node đã được gán sang instance UI mới (element này là ghost border cũ).
+                    if (!activeSet.Contains(taggedNode) || (taggedNode.Border != null && taggedNode.Border != fe))
+                    {
+                        toRemove.Add(fe);
+                    }
+                }
+            }
+
+            foreach (var elem in toRemove)
+            {
+                canvas.Children.Remove(elem);
             }
         }
 

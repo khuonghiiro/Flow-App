@@ -376,6 +376,18 @@ namespace FlowMy.Models
         /// </summary>
         public bool IsDefaultSampleStartEnd { get; set; }
 
+        /// <summary>
+        /// Danh sách các section key/title bị collapse (khác default IsExpanded = true).
+        /// Chỉ lưu những section bị collapse (khác mặc định) để làm gọn JSON workflow v2.
+        /// </summary>
+        public HashSet<string> CollapsedSections { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Danh sách các output key bị người dùng bỏ chọn (unchecked) trong dialog.
+        /// Các key trong danh sách này sẽ không xuất hiện trong combobox của node khác và không được tính vào số lượng đếm.
+        /// </summary>
+        public virtual HashSet<string>? SkipOutputs { get; set; }
+
         // Danh sách ports (hỗ trợ nhiều ports)
         public List<NodePort> Ports { get; set; } = new();
 

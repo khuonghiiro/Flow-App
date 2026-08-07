@@ -1017,6 +1017,32 @@ namespace FlowMy.ViewModels
         /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
         /// <summary>
         /// Lấy danh sách output key của một node theo nodeId.
+        /// <summary>
+        /// Kiểm tra output key có bị người dùng bỏ chọn (unchecked/skip) trên node hay không.
+        /// </summary>
+        public static bool IsOutputKeySkipped(WorkflowNode? node, string? key)
+        {
+            if (node == null || string.IsNullOrWhiteSpace(key)) return false;
+            return node.SkipOutputs != null && node.SkipOutputs.Contains(key.Trim());
+        }
+
+        /// <summary>
+        /// Lấy danh sách các Output key đang hoạt động (không bị người dùng unchecked/skip).
+        /// Dùng chung cho tất cả ViewModels khi nạp combobox chọn key.
+        /// </summary>
+        public static IEnumerable<WorkflowDynamicDataPort> GetActiveOutputs(WorkflowNode? node)
+        {
+            if (node?.DynamicOutputs == null) yield break;
+            foreach (var o in node.DynamicOutputs)
+            {
+                var key = o.Key ?? string.Empty;
+                if (!IsOutputKeySkipped(node, key))
+                    yield return o;
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách output key hợp lệ (đã filter các key bị unchecked) của một node.
         /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
         /// </summary>
         public ObservableCollection<WorkflowOutputKeyOption> GetOutputKeysForNode(string? nodeId)
@@ -1034,18 +1060,21 @@ namespace FlowMy.ViewModels
 
             foreach (var o in node.DynamicOutputs)
             {
+                var key = o.Key ?? string.Empty;
+                if (IsOutputKeySkipped(node, key)) continue;
+
                 list.Add(new WorkflowOutputKeyOption
                 {
-                    Key = o.Key ?? string.Empty,
+                    Key = key,
                     Type = o.OutputType ?? o.ConvertType,
-                    DisplayName = o.DisplayName ?? o.Key
+                    DisplayName = o.DisplayName ?? key
                 });
             }
             return list;
         }
 
         /// <summary>
-        /// Điền danh sách output key của một node vào collection target.
+        /// Điền danh sách output key của một node vào collection target (chỉ điền các key được checked).
         /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
         /// </summary>
         protected void FillOutputKeys(string? nodeId, ObservableCollection<WorkflowOutputKeyOption> target)
@@ -1064,6 +1093,8 @@ namespace FlowMy.ViewModels
             foreach (var o in src.DynamicOutputs)
             {
                 var key = o.Key ?? string.Empty;
+                if (IsOutputKeySkipped(src, key)) continue;
+
                 target.Add(new WorkflowOutputKeyOption
                 {
                     Key = key,

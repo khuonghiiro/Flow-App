@@ -142,7 +142,7 @@ namespace FlowMy.Models.Nodes
 
         // ── SkipOutputs (giống ScreenCaptureNode) ─────────────────────────────
         /// <summary>Danh sách output keys bị tắt (unchecked trong dialog).</summary>
-        public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public override HashSet<string>? SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public TextScanNode()
         {

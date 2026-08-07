@@ -390,37 +390,49 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         "Hãy nối node kết thúc trong body vào 'Port Body Right'.");
                 }
 
-                // ── Extract body outputs configured in BodyOutputMappings ──
+                // ── Extract body outputs configured in BodyOutputMappings (Hỗ trợ Gộp Value Multi-source trong cùng 1 luồng) ──
                 if (bodyMappings.Count > 0)
                 {
                     foreach (var mapping in bodyMappings)
                     {
-                        if (string.IsNullOrWhiteSpace(mapping.SourceNodeId) ||
-                            string.IsNullOrWhiteSpace(mapping.SourceOutputKey) ||
-                            string.IsNullOrWhiteSpace(mapping.OutputKey))
+                        if (string.IsNullOrWhiteSpace(mapping.OutputKey))
                             continue;
 
-                        var srcNodeId = mapping.SourceNodeId.Trim();
-                        var srcKey = mapping.SourceOutputKey.Trim();
                         var outKey = mapping.OutputKey.Trim();
+                        var iterationValues = new List<string>();
 
-                        string? outVal = null;
-                        if (service.TryGetScopedNodeStringOutput(iterationExecutionId, srcNodeId, srcKey, out var scopedVal))
+                        foreach (var srcItem in mapping.GetEffectiveSources())
                         {
-                            outVal = scopedVal;
-                        }
-                        else
-                        {
-                            var srcNode = connections
-                                .SelectMany(c => new[] { c.FromNode, c.ToNode })
-                                .FirstOrDefault(n => n != null && string.Equals(n.Id, srcNodeId, StringComparison.OrdinalIgnoreCase));
-                            if (srcNode != null)
+                            if (string.IsNullOrWhiteSpace(srcItem.SourceNodeId) ||
+                                string.IsNullOrWhiteSpace(srcItem.SourceOutputKey))
+                                continue;
+
+                            var srcNodeId = srcItem.SourceNodeId.Trim();
+                            var srcKey = srcItem.SourceOutputKey.Trim();
+
+                            // ✅ Chỉ thu thập giá trị khi node này ĐÃ THỰC THI trong luồng (iterationExecutionId) hiện tại.
+                            // Không dùng fallback ResolveDynamicValueForRun để tránh kéo nhầm giá trị cũ/tĩnh từ các node thuộc nhánh không được chạy (ví dụ nhánh else).
+                            if (service.TryGetScopedNodeStringOutput(iterationExecutionId, srcNodeId, srcKey, out var scopedVal) &&
+                                scopedVal != null)
                             {
-                                outVal = service.ResolveDynamicValueForRun(srcNode, srcKey, iterationExecutionId);
+                                iterationValues.Add(scopedVal);
                             }
                         }
 
-                        outVal ??= string.Empty;
+                        string outVal;
+                        if (iterationValues.Count == 0)
+                        {
+                            outVal = string.Empty;
+                        }
+                        else if (iterationValues.Count == 1)
+                        {
+                            outVal = iterationValues[0];
+                        }
+                        else
+                        {
+                            // Nhiều node trong cùng 1 luồng đều có kết quả -> gộp tất cả giá trị vào mảng JSON
+                            outVal = System.Text.Json.JsonSerializer.Serialize(iterationValues);
+                        }
 
                         var dict = collectedResultsByMapping.GetOrAdd(outKey, _ => new ConcurrentDictionary<int, string>());
                         dict[index] = outVal;

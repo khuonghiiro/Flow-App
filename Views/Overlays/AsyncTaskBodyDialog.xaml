@@ -78,105 +78,153 @@
                         </Expander>
                     </Border>
 
-                    <!-- Button Add Mapping -->
-                    <Grid Margin="0,0,0,12">
-                        <TextBlock Text="📌 Danh sách Output Dynamic Mappings"
-                                   FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}"
-                                   VerticalAlignment="Center"/>
-                        <Button Content="+ Thêm Output Mapping"
-                                HorizontalAlignment="Right"
-                                Style="{DynamicResource PrimaryButton}"
-                                Height="30" Padding="12,0"
-                                Cursor="Hand"
-                                Command="{Binding AddMappingCommand}"/>
-                    </Grid>
+                    <!-- Section Output Mappings -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <Expander IsExpanded="True" BorderThickness="0" HorizontalContentAlignment="Stretch">
+                            <Expander.Header>
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Expander}}" Margin="0,0,24,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                    <!-- ItemsControl list of mappings -->
-                    <ItemsControl ItemsSource="{Binding Mappings}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{DynamicResource WindowBackground}"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
+                                    <TextBlock Text="{Binding OutputMappingsHeader}"
+                                               Grid.Column="0"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
 
-                                        <Grid Grid.Row="0" Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="1"
+                                            Content="+ Thêm Output Mapping"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            Height="30" Padding="10,0"
+                                            Cursor="Hand"
+                                            Command="{Binding AddMappingCommand}"/>
+                                </Grid>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
 
-                                            <!-- Source Node -->
-                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                                <TextBlock Text="Nguồn Node (Trong Body)" FontSize="10" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
-                                                <controls:NodeSearchComboBoxUserControl Height="30"
-                                                          ItemsSource="{Binding DataContext.InnerNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                          DisplayMemberPath="Title"
-                                                          SelectedValuePath="NodeId"
-                                                          SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"
-                                                          PlaceholderText="Chọn node nguồn..."/>
-                                            </StackPanel>
+                                <!-- ItemsControl list of target mappings -->
+                                <ItemsControl ItemsSource="{Binding Mappings}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource WindowBackground}"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                                <StackPanel>
+                                                    <!-- Top Bar: Target Output Key & Remove Mapping -->
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
 
-                                            <!-- Source Output Key -->
-                                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                                <TextBlock Text="Output Key Nguồn" FontSize="10" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
-                                                <ComboBox Height="30"
-                                                          Style="{DynamicResource BaseComboBox}"
-                                                          ItemsSource="{Binding AvailableOutputKeys}"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValuePath="Key"
-                                                          SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
-                                            </StackPanel>
+                                                        <!-- Target Output Key -->
+                                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                            <TextBlock Text="🔑 Target Output Key (AsyncTask)" FontSize="10" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
+                                                            <TextBox Height="30"
+                                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                                     Text="{Binding OutputKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Padding="6,0"/>
+                                                        </StackPanel>
 
-                                            <!-- Target Output Key -->
-                                            <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                                <TextBlock Text="Target Key AsyncTask" FontSize="10" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
-                                                <TextBox Height="30"
-                                                         Style="{DynamicResource BaseTextBoxV2}"
-                                                         Text="{Binding OutputKey, UpdateSourceTrigger=PropertyChanged}"
-                                                         VerticalContentAlignment="Center"
-                                                         Padding="6,0"/>
-                                            </StackPanel>
+                                                        <!-- Gom Item Checkbox -->
+                                                        <CheckBox Grid.Column="1"
+                                                                  IsChecked="{Binding IsCollectArray, Mode=TwoWay}"
+                                                                  VerticalAlignment="Bottom"
+                                                                  Margin="0,0,8,6"
+                                                                  Cursor="Hand"
+                                                                  ToolTip="Checked = Gom kết quả các lượt chạy thành mảng JSON">
+                                                            <TextBlock Text="Gom mảng JSON"
+                                                                       FontSize="11" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource TextBrush}"/>
+                                                        </CheckBox>
 
-                                            <!-- Delete Button -->
-                                            <Button Grid.Column="3"
-                                                    Width="30" Height="30"
-                                                    VerticalAlignment="Bottom"
-                                                    Style="{DynamicResource DangerButton}"
-                                                    Content="🗑" FontSize="12"
-                                                    Cursor="Hand"
-                                                    ToolTip="Xóa mapping này"
-                                                    Command="{Binding DataContext.RemoveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}"/>
-                                        </Grid>
+                                                        <!-- Delete Mapping Button -->
+                                                        <Button Grid.Column="2"
+                                                                Width="28" Height="28" Padding="0"
+                                                                VerticalAlignment="Bottom"
+                                                                Style="{DynamicResource DangerButton}"
+                                                                Content="🗑" FontSize="12"
+                                                                Cursor="Hand"
+                                                                ToolTip="Xóa Target Output Mapping này"
+                                                                Command="{Binding DataContext.RemoveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </Grid>
 
-                                        <!-- Gom Item Checkbox -->
-                                        <Border Grid.Row="1" Background="{DynamicResource CardColor}" CornerRadius="6" Padding="8,6" Margin="0,4,0,0">
-                                            <CheckBox IsChecked="{Binding IsCollectArray, Mode=TwoWay}"
-                                                      VerticalAlignment="Center"
-                                                      Cursor="Hand">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="☑ Gom Item (Tự động gom kết quả các iteration song song thành mảng JSON)"
-                                                               FontSize="11" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <!-- Dynamic Multi-Source List -->
+                                                    <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="8" Margin="0,4,0,0">
+                                                        <StackPanel>
+                                                            <TextBlock Text="📍 Các Nguồn Dữ Liệu Gộp (Whichever node produces output)"
+                                                                       FontSize="10" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource TextMuted}" Margin="0,0,0,6"/>
+
+                                                            <ItemsControl ItemsSource="{Binding Sources}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Grid Margin="0,0,0,6">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="8"/>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="8"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <!-- Source Node -->
+                                                                            <controls:NodeSearchComboBoxUserControl Grid.Column="0" Height="30"
+                                                                                      ItemsSource="{Binding DataContext.InnerNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=2}}"
+                                                                                      DisplayMemberPath="Title"
+                                                                                      SelectedValuePath="NodeId"
+                                                                                      SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"
+                                                                                      PlaceholderText="Chọn node nguồn..."/>
+
+                                                                            <!-- Source Output Key -->
+                                                                            <ComboBox Grid.Column="2" Height="30"
+                                                                                      Style="{DynamicResource BaseComboBox}"
+                                                                                      ItemsSource="{Binding AvailableOutputKeys}"
+                                                                                      DisplayMemberPath="DisplayName"
+                                                                                      SelectedValuePath="Key"
+                                                                                      SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
+
+                                                                            <!-- Remove Source Button -->
+                                                                            <Button Grid.Column="4" Width="26" Height="26" Padding="0"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Style="{DynamicResource DangerButton}"
+                                                                                    Content="-" FontSize="16" FontWeight="Bold"
+                                                                                    Cursor="Hand"
+                                                                                    ToolTip="Xóa nguồn gộp này"
+                                                                                    Command="{Binding DataContext.RemoveSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                    CommandParameter="{Binding}"/>
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+
+                                                            <!-- Add Source Button (+ Gộp value) -->
+                                                            <Button Content="+ Gộp value (Thêm nguồn dữ liệu)"
+                                                                    Height="26" Padding="8,0"
+                                                                    Margin="0,4,0,0"
+                                                                    HorizontalAlignment="Left"
+                                                                    Style="{DynamicResource PrimaryButton}"
+                                                                    FontSize="11" Cursor="Hand"
+                                                                    Command="{Binding AddSourceCommand}"/>
+                                                        </StackPanel>
+                                                    </Border>
                                                 </StackPanel>
-                                            </CheckBox>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                            </StackPanel>
+                        </Expander>
+                    </Border>
 
                     <!-- Hint / Help card -->
                     <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,8,0,0">

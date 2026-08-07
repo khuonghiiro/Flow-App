@@ -1075,6 +1075,9 @@ namespace FlowMy.Views
                 ViewModel.Nodes.Remove(node);
             }
 
+            // Quét dọn triệt để các ghost border/port mồ côi (nếu có)
+            FlowMy.Services.Rendering.NodeRenderer.CleanOrphanedGhostNodes(WorkflowCanvas, ViewModel.Nodes);
+
             // Reset selected node
             ViewModel.SelectedNode = null;
 

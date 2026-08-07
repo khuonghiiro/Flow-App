@@ -116,7 +116,7 @@
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <Expander IsExpanded="True" BorderThickness="0">
                             <Expander.Header>
-                                <TextBlock Text="📍 Input từ node khác" 
+                                <TextBlock Text="{Binding InputMappingsHeader}" 
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="12" FontWeight="SemiBold" />
                             </Expander.Header>
@@ -172,7 +172,7 @@
                                                              Style="{DynamicResource BaseTextBoxV2}" Height="32"
                                                              ToolTip="Tên biến trong code. Để trống thì dùng key từ combobox Key."/>
                                                 </StackPanel>
-                                                <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                <Button Grid.Column="5" Content="-" Width="28" Height="28" Padding="0" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                                         Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
                                                         Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>

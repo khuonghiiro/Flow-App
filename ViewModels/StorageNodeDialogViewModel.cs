@@ -146,10 +146,10 @@ namespace FlowMy.ViewModels
                     });
                 }
             }
-            // ✅ Nếu node thường, lấy từ DynamicOutputs
-            else if (node?.DynamicOutputs != null)
+            // ✅ Nếu node thường, lấy từ DynamicOutputs (lọc các output active)
+            else if (node != null)
             {
-                foreach (var o in node.DynamicOutputs)
+                foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
                 {
                     var key = o.Key ?? string.Empty;
                     AvailableOutputKeys.Add(new WorkflowOutputKeyOption

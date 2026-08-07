@@ -541,70 +541,74 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
                 sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
                 sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
-                sb.AppendLine("                                <StackPanel>");
-                sb.AppendLine("                                    <TextBlock Text=\"📥 Danh sách Inputs\" ");
-                sb.AppendLine("                                               Foreground=\"{DynamicResource TextBrush}\"");
-                sb.AppendLine("                                               FontSize=\"12\" FontWeight=\"SemiBold\" Margin=\"0,0,0,10\"/>");
-                sb.AppendLine($"                                    <ItemsControl ItemsSource=\"{{Binding InputMappingsList}}\">");
-                sb.AppendLine("                                        <ItemsControl.ItemTemplate>");
-                sb.AppendLine("                                            <DataTemplate>");
-                sb.AppendLine("                                                <Grid Margin=\"0,0,0,8\">");
-                sb.AppendLine("                                                    <Grid.ColumnDefinitions>");
-                sb.AppendLine("                                                        <ColumnDefinition Width=\"*\"/>");
-                sb.AppendLine("                                                        <ColumnDefinition Width=\"8\"/>");
-                sb.AppendLine("                                                        <ColumnDefinition Width=\"*\"/>");
+                sb.AppendLine("                                <Expander IsExpanded=\"True\" BorderThickness=\"0\">");
+                sb.AppendLine("                                    <Expander.Header>");
+                sb.AppendLine("                                        <TextBlock Text=\"{Binding InputMappingsHeader}\"");
+                sb.AppendLine("                                                   Foreground=\"{DynamicResource TextBrush}\"");
+                sb.AppendLine("                                                   FontSize=\"12\" FontWeight=\"SemiBold\"/>");
+                sb.AppendLine("                                    </Expander.Header>");
+                sb.AppendLine("                                    <StackPanel Margin=\"0,8,0,0\">");
+                sb.AppendLine($"                                        <ItemsControl ItemsSource=\"{{Binding InputMappingsList}}\">");
+                sb.AppendLine("                                            <ItemsControl.ItemTemplate>");
+                sb.AppendLine("                                                <DataTemplate>");
+                sb.AppendLine("                                                    <Grid Margin=\"0,0,0,8\">");
+                sb.AppendLine("                                                        <Grid.ColumnDefinitions>");
+                sb.AppendLine("                                                            <ColumnDefinition Width=\"*\"/>");
+                sb.AppendLine("                                                            <ColumnDefinition Width=\"8\"/>");
+                sb.AppendLine("                                                            <ColumnDefinition Width=\"*\"/>");
                 if (c.HasCustomKeyOverride)
                 {
-                    sb.AppendLine("                                                        <ColumnDefinition Width=\"8\"/>");
-                    sb.AppendLine("                                                        <ColumnDefinition Width=\"*\"/>");
+                    sb.AppendLine("                                                            <ColumnDefinition Width=\"8\"/>");
+                    sb.AppendLine("                                                            <ColumnDefinition Width=\"*\"/>");
                 }
-                sb.AppendLine("                                                        <ColumnDefinition Width=\"8\"/>");
-                sb.AppendLine("                                                        <ColumnDefinition Width=\"Auto\"/>");
-                sb.AppendLine("                                                    </Grid.ColumnDefinitions>");
+                sb.AppendLine("                                                            <ColumnDefinition Width=\"8\"/>");
+                sb.AppendLine("                                                            <ColumnDefinition Width=\"Auto\"/>");
+                sb.AppendLine("                                                        </Grid.ColumnDefinitions>");
                 sb.AppendLine();
                 // Cột Node Nguồn
-                sb.AppendLine("                                                    <StackPanel Grid.Column=\"0\">");
-                sb.AppendLine("                                                        <TextBlock Text=\"Node Nguồn\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                sb.AppendLine("                                                        <controls:NodeSearchComboBoxUserControl Height=\"32\"");
-                sb.AppendLine("                                                            ItemsSource=\"{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}\"");
-                sb.AppendLine("                                                            SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
-                sb.AppendLine("                                                            SelectedValue=\"{Binding SourceNodeId, Mode=TwoWay}\"/>");
-                sb.AppendLine("                                                    </StackPanel>");
+                sb.AppendLine("                                                        <StackPanel Grid.Column=\"0\">");
+                sb.AppendLine("                                                            <TextBlock Text=\"Node Nguồn\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                sb.AppendLine("                                                            <controls:NodeSearchComboBoxUserControl Height=\"32\"");
+                sb.AppendLine("                                                                ItemsSource=\"{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}\"");
+                sb.AppendLine("                                                                SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
+                sb.AppendLine("                                                                SelectedValue=\"{Binding SourceNodeId, Mode=TwoWay}\"/>");
+                sb.AppendLine("                                                        </StackPanel>");
                 sb.AppendLine();
                 // Cột Output Key
-                sb.AppendLine("                                                    <StackPanel Grid.Column=\"2\">");
-                sb.AppendLine("                                                        <TextBlock Text=\"Key\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                sb.AppendLine("                                                        <ComboBox Height=\"32\" Style=\"{DynamicResource BaseComboBox}\"");
-                sb.AppendLine("                                                                  ItemsSource=\"{Binding AvailableOutputKeyOptions}\"");
-                sb.AppendLine("                                                                  SelectedValuePath=\"Key\"");
-                sb.AppendLine("                                                                  DisplayMemberPath=\"DisplayName\"");
-                sb.AppendLine("                                                                  IsSynchronizedWithCurrentItem=\"False\"");
-                sb.AppendLine("                                                                  SelectedValue=\"{Binding SourceOutputKey, Mode=TwoWay}\"/>");
-                sb.AppendLine("                                                    </StackPanel>");
+                sb.AppendLine("                                                        <StackPanel Grid.Column=\"2\">");
+                sb.AppendLine("                                                            <TextBlock Text=\"Key\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                sb.AppendLine("                                                            <ComboBox Height=\"32\" Style=\"{DynamicResource BaseComboBox}\"");
+                sb.AppendLine("                                                                      ItemsSource=\"{Binding AvailableOutputKeyOptions}\"");
+                sb.AppendLine("                                                                      SelectedValuePath=\"Key\"");
+                sb.AppendLine("                                                                      DisplayMemberPath=\"DisplayName\"");
+                sb.AppendLine("                                                                      IsSynchronizedWithCurrentItem=\"False\"");
+                sb.AppendLine("                                                                      SelectedValue=\"{Binding SourceOutputKey, Mode=TwoWay}\"/>");
+                sb.AppendLine("                                                        </StackPanel>");
                 sb.AppendLine();
                 // Cột Override Key (tuỳ chọn)
                 if (c.HasCustomKeyOverride)
                 {
-                    sb.AppendLine("                                                    <StackPanel Grid.Column=\"4\">");
-                    sb.AppendLine("                                                        <TextBlock Text=\"Tên biến (trống = dùng key)\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                    sb.AppendLine("                                                        <TextBox Text=\"{Binding InputKeyOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"");
-                    sb.AppendLine("                                                                 Style=\"{DynamicResource BaseTextBoxV2}\" Height=\"32\"/>");
-                    sb.AppendLine("                                                    </StackPanel>");
+                    sb.AppendLine("                                                        <StackPanel Grid.Column=\"4\">");
+                    sb.AppendLine("                                                            <TextBlock Text=\"Tên biến (trống = dùng key)\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                    sb.AppendLine("                                                            <TextBox Text=\"{Binding InputKeyOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"");
+                    sb.AppendLine("                                                                     Style=\"{DynamicResource BaseTextBoxV2}\" Height=\"32\"/>");
+                    sb.AppendLine("                                                        </StackPanel>");
                     sb.AppendLine();
                 }
                 // Nút Remove
-                sb.AppendLine($"                                                    <Button Grid.Column=\"{lastColIdx}\" Content=\"-\" Width=\"28\" Height=\"28\" Margin=\"0,0,0,0\" VerticalAlignment=\"Bottom\"");
-                sb.AppendLine("                                                            Command=\"{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}\"");
-                sb.AppendLine("                                                            CommandParameter=\"{Binding}\"");
-                sb.AppendLine("                                                            Foreground=\"White\" Background=\"{DynamicResource DangerBrush}\" BorderThickness=\"0\" Cursor=\"Hand\"/>");
-                sb.AppendLine("                                                </Grid>");
-                sb.AppendLine("                                            </DataTemplate>");
-                sb.AppendLine("                                        </ItemsControl.ItemTemplate>");
-                sb.AppendLine("                                    </ItemsControl>");
-                sb.AppendLine("                                    <Button Content=\"+ Thêm input\" Height=\"32\" Margin=\"0,8,0,0\"");
-                sb.AppendLine("                                            Command=\"{Binding AddInputMappingCommand}\"");
-                sb.AppendLine("                                            Width=\"120\" Style=\"{DynamicResource PrimaryButton}\" HorizontalAlignment=\"Left\"/>");
-                sb.AppendLine("                                </StackPanel>");
+                sb.AppendLine($"                                                        <Button Grid.Column=\"{lastColIdx}\" Content=\"-\" Width=\"28\" Height=\"28\" Padding=\"0\" Margin=\"0,0,0,0\" VerticalAlignment=\"Bottom\"");
+                sb.AppendLine("                                                                Command=\"{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}\"");
+                sb.AppendLine("                                                                CommandParameter=\"{Binding}\"");
+                sb.AppendLine("                                                                Foreground=\"White\" Background=\"{DynamicResource DangerBrush}\" BorderThickness=\"0\" Cursor=\"Hand\"/>");
+                sb.AppendLine("                                                    </Grid>");
+                sb.AppendLine("                                                </DataTemplate>");
+                sb.AppendLine("                                            </ItemsControl.ItemTemplate>");
+                sb.AppendLine("                                        </ItemsControl>");
+                sb.AppendLine("                                        <Button Content=\"+ Thêm input\" Height=\"32\" Margin=\"0,8,0,0\"");
+                sb.AppendLine("                                                Command=\"{Binding AddInputMappingCommand}\"");
+                sb.AppendLine("                                                Width=\"120\" Style=\"{DynamicResource PrimaryButton}\" HorizontalAlignment=\"Left\"/>");
+                sb.AppendLine("                                    </StackPanel>");
+                sb.AppendLine("                                </Expander>");
                 sb.AppendLine("                            </Border>");
             }
 
@@ -919,8 +923,17 @@ namespace FlowMy.Services.Utilities
             if (c.HasDynamicInputs)
             {
                 sb.AppendLine("        private bool _isSyncingFromNode;");
+                sb.AppendLine("        [ObservableProperty] private string _inputMappingsHeader = \"📥 Danh sách Inputs (0 items)\";");
                 sb.AppendLine($"        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions {{ get; }} = new();");
                 sb.AppendLine($"        public ObservableCollection<{c.NodeName}InputMappingItemViewModel> InputMappingsList {{ get; }} = new();");
+                sb.AppendLine();
+                sb.AppendLine("        // Constructor setup:");
+                sb.AppendLine("        // InputMappingsList.CollectionChanged += (_, _) => UpdateInputMappingsHeader();");
+                sb.AppendLine();
+                sb.AppendLine("        private void UpdateInputMappingsHeader()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            InputMappingsHeader = $\"📥 Danh sách Inputs ({InputMappingsList.Count} items)\";");
+                sb.AppendLine("        }");
                 sb.AppendLine();
                 sb.AppendLine("        [RelayCommand]");
                 sb.AppendLine($"        private void AddInputMapping()");
@@ -928,6 +941,7 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine($"            var item = new {c.NodeName}InputMappingItemViewModel();");
                 sb.AppendLine("            item.PropertyChanged += InputMappingItem_PropertyChanged;");
                 sb.AppendLine("            InputMappingsList.Add(item);");
+                sb.AppendLine("            UpdateInputMappingsHeader();");
                 sb.AppendLine("            SyncInputMappingsToNode();");
                 sb.AppendLine("        }");
                 sb.AppendLine();
@@ -938,6 +952,7 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine("            {");
                 sb.AppendLine("                item.PropertyChanged -= InputMappingItem_PropertyChanged;");
                 sb.AppendLine("                InputMappingsList.Remove(item);");
+                sb.AppendLine("                UpdateInputMappingsHeader();");
                 sb.AppendLine("                SyncInputMappingsToNode();");
                 sb.AppendLine("            }");
                 sb.AppendLine("        }");
@@ -959,8 +974,8 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine("            if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;");
                 sb.AppendLine("            var node = _host.ViewModel.Nodes.FirstOrDefault(n =>");
                 sb.AppendLine("                string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));");
-                sb.AppendLine("            if (node?.DynamicOutputs == null) return;");
-                sb.AppendLine("            foreach (var o in node.DynamicOutputs)");
+                sb.AppendLine("            if (node == null) return;");
+                sb.AppendLine("            foreach (var o in GetActiveOutputs(node))");
                 sb.AppendLine("            {");
                 sb.AppendLine("                item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption");
                 sb.AppendLine("                {");

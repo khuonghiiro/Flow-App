@@ -12,23 +12,78 @@ namespace FlowMy.Models.Nodes
         private string? _sourceOutputKey;
         private string? _outputKey;
         private bool _isCollectArray = true;
+        private System.Collections.Generic.List<AsyncTaskBodySourceItem> _sources = new();
 
         /// <summary>
-        /// ID of the source node located inside the AsyncTaskBody.
+        /// Danh sách các cặp nguồn (Node, Key) gộp chung vào OutputKey này.
         /// </summary>
-        public string? SourceNodeId
+        public System.Collections.Generic.List<AsyncTaskBodySourceItem> Sources
         {
-            get => _sourceNodeId;
-            set { if (_sourceNodeId != value) { _sourceNodeId = value; OnPropertyChanged(); } }
+            get => _sources;
+            set { _sources = value ?? new(); OnPropertyChanged(); }
         }
 
         /// <summary>
-        /// Output key name from the source node to read.
+        /// ID of the primary source node located inside the AsyncTaskBody.
+        /// </summary>
+        public string? SourceNodeId
+        {
+            get
+            {
+                if (_sources.Count > 0 && !string.IsNullOrWhiteSpace(_sources[0].SourceNodeId))
+                    return _sources[0].SourceNodeId;
+                return _sourceNodeId;
+            }
+            set
+            {
+                _sourceNodeId = value;
+                if (_sources.Count == 0)
+                    _sources.Add(new AsyncTaskBodySourceItem { SourceNodeId = value, SourceOutputKey = _sourceOutputKey });
+                else
+                    _sources[0].SourceNodeId = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Output key name from the primary source node to read.
         /// </summary>
         public string? SourceOutputKey
         {
-            get => _sourceOutputKey;
-            set { if (_sourceOutputKey != value) { _sourceOutputKey = value; OnPropertyChanged(); } }
+            get
+            {
+                if (_sources.Count > 0 && !string.IsNullOrWhiteSpace(_sources[0].SourceOutputKey))
+                    return _sources[0].SourceOutputKey;
+                return _sourceOutputKey;
+            }
+            set
+            {
+                _sourceOutputKey = value;
+                if (_sources.Count == 0)
+                    _sources.Add(new AsyncTaskBodySourceItem { SourceNodeId = _sourceNodeId, SourceOutputKey = value });
+                else
+                    _sources[0].SourceOutputKey = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Lấy tất cả các cặp nguồn đã cấu hình (nếu Sources rỗng thì trả về từ SourceNodeId/SourceOutputKey).
+        /// </summary>
+        public System.Collections.Generic.IEnumerable<AsyncTaskBodySourceItem> GetEffectiveSources()
+        {
+            if (_sources != null && _sources.Count > 0)
+            {
+                foreach (var s in _sources)
+                {
+                    if (s != null && (!string.IsNullOrWhiteSpace(s.SourceNodeId) || !string.IsNullOrWhiteSpace(s.SourceOutputKey)))
+                        yield return s;
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(SourceNodeId) || !string.IsNullOrWhiteSpace(SourceOutputKey))
+            {
+                yield return new AsyncTaskBodySourceItem { SourceNodeId = SourceNodeId, SourceOutputKey = SourceOutputKey };
+            }
         }
 
         /// <summary>

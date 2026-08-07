@@ -147,11 +147,13 @@ namespace FlowMy.Views.Overlays
                 checkbox.Checked += (s, e) =>
                 {
                     textScanNode.SkipOutputs.Remove(outputVm.Key);
+                    UpdateOutputsHeaderCount();
                 };
                 checkbox.Unchecked += (s, e) =>
                 {
                     if (!textScanNode.SkipOutputs.Contains(outputVm.Key))
                         textScanNode.SkipOutputs.Add(outputVm.Key);
+                    UpdateOutputsHeaderCount();
                 };
             }
 
@@ -191,7 +193,17 @@ namespace FlowMy.Views.Overlays
             BindThemeResource(valueText, TextBlock.ForegroundProperty, "TextBrush");
             stack.Children.Add(valueText);
 
-            return stack;
+            var card = new Border
+            {
+                Background = GetThemeBrush("CardColor", Brushes.Transparent),
+                BorderBrush = GetThemeBrush("ControlBorderBrush", Brushes.LightGray),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 4, 0, 8)
+            };
+            card.Child = stack;
+            return card;
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

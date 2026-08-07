@@ -144,7 +144,7 @@ public List<YourInputMapping> InputMappings
 
 Generator tạo properties nhưng tất cả phần sync còn là `// TODO`. Phải bỏ comment và điền logic.
 
-### 2.1 Bỏ comment TODO trong `partial void OnXxxChanged`
+### 2.1 Bỏ comment TODO trong `partial void OnXxxChanged` & Quy chuẩn Lọc Output Keys
 
 Generator sinh:
 ```csharp
@@ -156,8 +156,29 @@ partial void OnSourceNodeIdChanged(string value)
 }
 ```
 
-Phải sửa thành:
-```csharp
+> ⚠️ **QUY TẮC BẮT BUỘC KHI NẠP OUTPUT KEYS**:
+> Khi nạp danh sách output key từ node nguồn vào Combobox (bất kể trực tiếp hay trong ItemsControl), **LUÔN LUÔN** sử dụng `BaseNodeDialogViewModel.GetActiveOutputs(node)` thay vì `node.DynamicOutputs` để tự động lọc bỏ các output key mà người dùng đã bỏ chọn (unchecked/skip):
+>
+> ```csharp
+> public void RefreshOutputKeyOptionsFor(YourInputMappingItemViewModel item)
+> {
+>     item.AvailableOutputKeyOptions.Clear();
+>     if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;
+>     var node = _host.ViewModel.Nodes.FirstOrDefault(n => string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
+>     if (node == null) return;
+> 
+>     // ✅ BẮT BUỘC dùng GetActiveOutputs(node) thay vì node.DynamicOutputs
+>     foreach (var o in BaseNodeDialogViewModel.GetActiveOutputs(node))
+>     {
+>         item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
+>         {
+>             Key = o.Key ?? string.Empty,
+>             Type = o.OutputType ?? o.ConvertType,
+>             DisplayName = o.DisplayName ?? o.Key
+>         });
+>     }
+> }
+> ```
 partial void OnSourceNodeIdChanged(string value)
 {
     _yourNode.SourceNodeId = value;         // ← bỏ comment

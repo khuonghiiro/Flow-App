@@ -170,6 +170,10 @@ namespace FlowMy.Views
             node.DynamicInputs = CloneDynamicDataPorts(source.DynamicInputs);
             node.DynamicOutputs = CloneDynamicDataPorts(source.DynamicOutputs);
 
+            node.CollapsedSections.Clear();
+            foreach (var s in source.CollapsedSections)
+                node.CollapsedSections.Add(s);
+
             // 3) Generate unique title with "- copy {x}" suffix if needed
             var baseTitle = source.Title ?? string.Empty;
             var newTitle = GenerateUniqueTitle(baseTitle);

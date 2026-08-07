@@ -150,42 +150,35 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBlock Text="📍 Input Variables"
-                                           Grid.Column="0"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center"/>
-                                
-                                <Button x:Name="AddVariableButton"
-                                        Grid.Column="1"
-                                        Content="+ Thêm"
-                                        Width="70"
-                                        Height="32"
-                                        FontSize="12"
-                                        Foreground="{DynamicResource TextBrush}"
-                                        Background="{DynamicResource PrimaryBrush}"
-                                        BorderThickness="0"
-                                        Cursor="Hand"
-                                        Command="{Binding AddVariableCommand}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                    CornerRadius="6" 
-                                                    Padding="8,4">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                            </Grid>
+                        <Expander IsExpanded="True" BorderThickness="0" HorizontalContentAlignment="Stretch">
+                            <Expander.Header>
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Expander}}" Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Text="{Binding InputVarsHeader}"
+                                               Grid.Column="0"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    
+                                    <Button x:Name="AddVariableButton"
+                                            Grid.Column="1"
+                                            Content="+ Thêm"
+                                            Width="70"
+                                            Height="30"
+                                            Padding="0"
+                                            Margin="0,0,25,0"
+                                            HorizontalAlignment="Right"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            Command="{Binding AddVariableCommand}"
+                                            Click="AddVariableButton_Click"/>
+                                </Grid>
+                            </Expander.Header>
+                            <StackPanel Margin="0,8,0,0">
 
                             <!-- Variables List -->
                             <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10">
@@ -219,6 +212,7 @@
                                                         <Button Grid.Row="0" Grid.Column="1"
                                                                 Content="-"
                                                                 Width="28" Height="28"
+                                                                Padding="0"
                                                                 FontSize="18" FontWeight="Bold"
                                                                 Foreground="{DynamicResource TextBrush}"
                                                                 Background="{DynamicResource DangerBrush}"
@@ -283,7 +277,9 @@
                                                Visibility="Collapsed"/>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
+                        
+                            </StackPanel>
+                        </Expander>
                     </Border>
 
                     <!-- 📝 Format String (ẩn khi chọn dán ảnh Base64) -->
