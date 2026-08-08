@@ -69,28 +69,11 @@ namespace FlowMy.Views.Overlays
             {
                 if (target == null) continue;
                 target.AllowDrop = true;
-
-                target.DragEnter -= Target_DragEnter;
-                target.DragEnter += Target_DragEnter;
-                target.PreviewDragEnter -= Target_DragEnter;
-                target.PreviewDragEnter += Target_DragEnter;
-
                 target.DragOver -= Target_DragOver;
                 target.DragOver += Target_DragOver;
-                target.PreviewDragOver -= Target_DragOver;
-                target.PreviewDragOver += Target_DragOver;
-
                 target.Drop -= Control_Drop;
                 target.Drop += Control_Drop;
-                target.PreviewDrop -= Control_Drop;
-                target.PreviewDrop += Control_Drop;
             }
-        }
-
-        private void Target_DragEnter(object sender, DragEventArgs e)
-        {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
         }
 
         private void Target_DragOver(object sender, DragEventArgs e)
@@ -603,29 +586,21 @@ namespace FlowMy.Views.Overlays
                         if (data is MemoryStream ms)
                         {
                             byte[] bytes = ms.ToArray();
-                            string rawUrl = System.Text.Encoding.Unicode.GetString(bytes).Replace("\0", "").Trim();
-                            if (!rawUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !rawUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                            string rawUrl = System.Text.Encoding.Unicode.GetString(bytes).Trim('\0');
+                            if (!rawUrl.StartsWith("http") && !rawUrl.StartsWith("data:"))
                             {
-                                rawUrl = System.Text.Encoding.UTF8.GetString(bytes).Replace("\0", "").Trim();
+                                rawUrl = System.Text.Encoding.ASCII.GetString(bytes).Trim('\0');
                             }
-                            if (rawUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                                rawUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-                                rawUrl.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+                            if (rawUrl.StartsWith("http://") || rawUrl.StartsWith("https://") || rawUrl.StartsWith("data:image/"))
                             {
                                 url = rawUrl;
                                 break;
                             }
                         }
-                        else if (data is string strUrl)
+                        else if (data is string strUrl && (strUrl.StartsWith("http://") || strUrl.StartsWith("https://") || strUrl.StartsWith("data:image/")))
                         {
-                            strUrl = strUrl.Replace("\0", "").Trim();
-                            if (strUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                                strUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-                                strUrl.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
-                            {
-                                url = strUrl;
-                                break;
-                            }
+                            url = strUrl;
+                            break;
                         }
                     }
                 }
@@ -634,17 +609,13 @@ namespace FlowMy.Views.Overlays
             // 7. Text / UnicodeText
             if (string.IsNullOrEmpty(url))
             {
-                if (e.Data.GetDataPresent(DataFormats.UnicodeText))
-                {
-                    url = e.Data.GetData(DataFormats.UnicodeText) as string;
-                }
-                else if (e.Data.GetDataPresent(DataFormats.Text))
+                if (e.Data.GetDataPresent(DataFormats.Text))
                 {
                     url = e.Data.GetData(DataFormats.Text) as string;
                 }
-                if (!string.IsNullOrEmpty(url))
+                else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
                 {
-                    url = url.Replace("\0", "").Trim();
+                    url = e.Data.GetData(DataFormats.UnicodeText) as string;
                 }
             }
 
@@ -812,39 +783,7 @@ namespace FlowMy.Views.Overlays
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"HttpClient failed for image URL '{url}': {ex.Message}. Trying in-browser fetch...");
-                try
-                {
-                    ChromiumWebBrowser? activeWv = null;
-                    if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
-                    else if (_dynamicWebView != null) activeWv = _dynamicWebView;
-
-                    if (activeWv != null && activeWv.IsBrowserInitialized)
-                    {
-                        string safeUrl = Uri.EscapeDataString(url);
-                        string js = $@"(async function() {{
-                            try {{
-                                const resp = await fetch(decodeURIComponent('{safeUrl}'), {{ credentials: 'include' }});
-                                const blob = await resp.blob();
-                                return new Promise((resolve) => {{
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => resolve(reader.result);
-                                    reader.readAsDataURL(blob);
-                                }});
-                            }} catch (e) {{ return null; }}
-                        }})();";
-
-                        var resp = await activeWv.EvaluateScriptAsync(js, timeout: TimeSpan.FromSeconds(5));
-                        if (resp.Success && resp.Result is string base64Data && base64Data.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
-                        {
-                            return LoadBitmapFromBase64DataUrl(base64Data);
-                        }
-                    }
-                }
-                catch (Exception jsEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"In-browser fetch fallback failed: {jsEx.Message}");
-                }
+                System.Diagnostics.Debug.WriteLine($"Failed to download image from URL '{url}': {ex.Message}");
             }
             return null;
         }
