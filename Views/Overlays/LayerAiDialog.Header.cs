@@ -121,7 +121,63 @@ namespace FlowMy.Views.Overlays
             UpdatePreviewImage();
         }
 
-        private void BtnTogglePrompt_Click(object sender, RoutedEventArgs e) { }
+        private bool _promptHidden = false;
+
+        private void ApplyPromptHiddenUi()
+        {
+            if (BtnTogglePrompt != null)
+            {
+                BtnTogglePrompt.Content = _promptHidden ? "Hiện Prompt" : "Ẩn Prompt";
+            }
+
+            // Update WebView Prompt Layout
+            if (RowWvBrowser != null && RowWvGap != null && RowWvPrompt != null && GridPromptWvContainer != null)
+            {
+                if (_promptHidden)
+                {
+                    RowWvBrowser.Height = new GridLength(1, GridUnitType.Star);
+                    RowWvGap.Height = new GridLength(0);
+                    RowWvPrompt.Height = new GridLength(0);
+                    GridPromptWvContainer.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    RowWvBrowser.Height = new GridLength(4, GridUnitType.Star);
+                    RowWvGap.Height = new GridLength(8);
+                    RowWvPrompt.Height = new GridLength(1, GridUnitType.Star);
+                    GridPromptWvContainer.Visibility = Visibility.Visible;
+                }
+            }
+
+            // Update WebBrowser Prompt Layout
+            if (RowWebBrowser != null && RowWebGap != null && RowWebPrompt != null && GridPromptWebContainer != null)
+            {
+                if (_promptHidden)
+                {
+                    RowWebBrowser.Height = new GridLength(1, GridUnitType.Star);
+                    RowWebGap.Height = new GridLength(0);
+                    RowWebPrompt.Height = new GridLength(0);
+                    GridPromptWebContainer.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    RowWebBrowser.Height = new GridLength(4, GridUnitType.Star);
+                    RowWebGap.Height = new GridLength(8);
+                    RowWebPrompt.Height = new GridLength(1, GridUnitType.Star);
+                    GridPromptWebContainer.Visibility = Visibility.Visible;
+                }
+            }
+        }
+
+        private void BtnTogglePrompt_Click(object sender, RoutedEventArgs e)
+        {
+            _promptHidden = !_promptHidden;
+            if (_node != null)
+            {
+                _node.LayerAiPromptHidden = _promptHidden;
+            }
+            ApplyPromptHiddenUi();
+        }
 
         #endregion
 

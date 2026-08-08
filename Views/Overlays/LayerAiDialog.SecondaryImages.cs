@@ -154,6 +154,7 @@ namespace FlowMy.Views.Overlays
             }
 
             UpdateSecondaryInfo();
+            SetupDragAndDrop();
         }
 
         private Border CreateSlotUI(int index, SecondaryImageItem item, out Image img, out StackPanel placeholder)

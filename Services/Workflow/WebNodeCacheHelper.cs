@@ -62,40 +62,64 @@ public static class WebNodeCacheHelper
             if (!Directory.Exists(UserProfilesDir))
                 Directory.CreateDirectory(UserProfilesDir);
 
-            // Cleanup old legacy UserProfiles directory if it exists directly under FlowMy
-            var legacyUserProfilesDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "FlowMy", "UserProfiles");
-
-            if (Directory.Exists(legacyUserProfilesDir) && !string.Equals(legacyUserProfilesDir, UserProfilesDir, StringComparison.OrdinalIgnoreCase))
+            var knownSystemDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                var knownSystemDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "Shared", "Profiles", "UserProfiles", "GPUCache", "BlobStorage", "Network", "Session Storage",
-                    "Cache", "Code Cache", "Local Storage", "Crashpad", "databases", "IndexedDB",
-                    "Extensions", "GrShaderCache", "GraphiteDawnCache", "DawnCache", "Storage", "Default",
-                    "AutofillStates", "CertificateRevocation", "Crowd Deny", "Dictionaries", "FileTypePolicies",
-                    "FirstPartySetsPreloaded", "hyphen-data", "MEIPreload", "OnDeviceHeadSuggestModel",
-                    "OptimizationHints", "OriginTrials", "PKIMetadata", "PrivacySandboxAttestationsPreloaded",
-                    "Safe Browsing", "SafetyTips", "segmentation_platform", "ShaderCache", "SSLErrorAssistant",
-                    "Subresource Filter", "TpcdMetadata", "TrustTokenKeyCommitments", "WidevineCdm", "ZxcvbnData"
-                };
+                "Profiles", "UserProfiles", "GPUCache", "BlobStorage", "Network", "Session Storage",
+                "Cache", "Code Cache", "Local Storage", "Crashpad", "databases", "IndexedDB",
+                "Extensions", "GrShaderCache", "GraphiteDawnCache", "DawnCache", "Storage", "Default",
+                "AutofillStates", "CertificateRevocation", "Crowd Deny", "Dictionaries", "FileTypePolicies",
+                "FirstPartySetsPreloaded", "hyphen-data", "MEIPreload", "OnDeviceHeadSuggestModel",
+                "OptimizationHints", "OriginTrials", "PKIMetadata", "PrivacySandboxAttestationsPreloaded",
+                "Safe Browsing", "SafetyTips", "segmentation_platform", "ShaderCache", "SSLErrorAssistant",
+                "Subresource Filter", "TpcdMetadata", "TrustTokenKeyCommitments", "WidevineCdm", "ZxcvbnData"
+            };
 
-                foreach (var sub in Directory.GetDirectories(legacyUserProfilesDir))
+            var legacyRootDirs = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlowMy", "WebNodeCache"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlowMy", "UserProfiles")
+            };
+
+            foreach (var legacyDir in legacyRootDirs)
+            {
+                if (Directory.Exists(legacyDir) && !string.Equals(legacyDir, UserProfilesDir, StringComparison.OrdinalIgnoreCase))
                 {
-                    var name = Path.GetFileName(sub);
-                    if (string.IsNullOrWhiteSpace(name) || name.StartsWith("_", StringComparison.Ordinal) || knownSystemDirs.Contains(name))
+                    foreach (var sub in Directory.GetDirectories(legacyDir))
                     {
-                        continue;
-                    }
-                    var dest = Path.Combine(UserProfilesDir, name);
-                    if (!Directory.Exists(dest))
-                    {
-                        try { Directory.Move(sub, dest); } catch { }
+                        var name = Path.GetFileName(sub);
+                        if (string.IsNullOrWhiteSpace(name) || name.StartsWith("_", StringComparison.Ordinal) || knownSystemDirs.Contains(name))
+                        {
+                            continue;
+                        }
+
+                        if (Guid.TryParse(name, out _)) continue;
+
+                        var dest = Path.Combine(UserProfilesDir, name);
+                        if (!Directory.Exists(dest))
+                        {
+                            try { Directory.Move(sub, dest); } catch { }
+                        }
+                        else if (Directory.Exists(sub))
+                        {
+                            try
+                            {
+                                foreach (var file in Directory.GetFiles(sub, "*", SearchOption.AllDirectories))
+                                {
+                                    var relPath = Path.GetRelativePath(sub, file);
+                                    var targetFile = Path.Combine(dest, relPath);
+                                    var targetDir = Path.GetDirectoryName(targetFile);
+                                    if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                                        Directory.CreateDirectory(targetDir);
+                                    if (!File.Exists(targetFile))
+                                    {
+                                        try { File.Copy(file, targetFile); } catch { }
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
-
-                try { Directory.Delete(legacyUserProfilesDir, recursive: true); } catch { }
             }
         }
         catch { }

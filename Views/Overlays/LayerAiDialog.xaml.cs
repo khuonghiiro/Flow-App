@@ -280,6 +280,18 @@ namespace FlowMy.Views.Overlays
         {
             if (_node == null) return;
             SetSlotCount(_secondarySlotCount > 0 ? _secondarySlotCount : 4);
+
+            _promptHidden = _node.LayerAiPromptHidden;
+            ApplyPromptHiddenUi();
+
+            _sendModeOn = _node.LayerAiSendModeOn;
+            if (BtnToggleSendMode != null)
+            {
+                BtnToggleSendMode.Content = _sendModeOn ? "Gửi AI: ON" : "Gửi AI: OFF";
+                BtnToggleSendMode.Style = _sendModeOn
+                    ? (TryFindResource("SuccessButton") as Style)
+                    : (TryFindResource("SecondaryButton") as Style);
+            }
         }
 
         private void SaveActiveLayerState()

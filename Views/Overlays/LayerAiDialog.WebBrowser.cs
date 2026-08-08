@@ -31,29 +31,51 @@ namespace FlowMy.Views.Overlays
         private bool _isUpdatingProfileCombo = false;
         private EventHandler? _onProfilesChangedHandler;
 
-        private void BtnSplitSingle_Click(object sender, RoutedEventArgs e)
+        private void UpdateSplitButtonsHighlight()
         {
-            _splitMode = "Single";
-            RenderWebTabsInGrid();
+            if (BtnSplitSingle == null) return;
+
+            var activeBrush = FindResource("AccentColor") as Brush ?? Brushes.Lime;
+            var normalBrush = FindResource("TextMuted") as Brush ?? Brushes.Gray;
+
+            BtnSplitSingle.BorderBrush = (_splitMode == "Single") ? activeBrush : normalBrush;
+            BtnSplitVertical.BorderBrush = (_splitMode == "Split2V" || _splitMode == "Vertical") ? activeBrush : normalBrush;
+            BtnSplitHorizontal.BorderBrush = (_splitMode == "Split2H" || _splitMode == "Horizontal") ? activeBrush : normalBrush;
+            BtnSplitGrid.BorderBrush = (_splitMode == "Grid4" || _splitMode == "Grid") ? activeBrush : normalBrush;
         }
 
-        private void BtnSplitVertical_Click(object sender, RoutedEventArgs e)
+        private void SetSplitMode(string mode)
         {
-            _splitMode = "Split2V";
+            _splitMode = mode;
+            if (_node != null)
+            {
+                _node.LayerAiWebSplitMode = _splitMode;
+            }
+
+            int targetCount = 1;
+            if (_splitMode == "Split2V" || _splitMode == "Vertical" || _splitMode == "Split2H" || _splitMode == "Horizontal")
+            {
+                targetCount = 2;
+            }
+            else if (_splitMode == "Grid4" || _splitMode == "Grid")
+            {
+                targetCount = 4;
+            }
+
+            while (_webTabs.Count < targetCount)
+            {
+                AddNewWebTab("https://google.com", "Shared");
+            }
+
+            UpdateSplitButtonsHighlight();
             RenderWebTabsInGrid();
+            SaveWebTabsState();
         }
 
-        private void BtnSplitHorizontal_Click(object sender, RoutedEventArgs e)
-        {
-            _splitMode = "Split2H";
-            RenderWebTabsInGrid();
-        }
-
-        private void BtnSplitGrid_Click(object sender, RoutedEventArgs e)
-        {
-            _splitMode = "Grid4";
-            RenderWebTabsInGrid();
-        }
+        private void BtnSplitSingle_Click(object sender, RoutedEventArgs e) => SetSplitMode("Single");
+        private void BtnSplitVertical_Click(object sender, RoutedEventArgs e) => SetSplitMode("Split2V");
+        private void BtnSplitHorizontal_Click(object sender, RoutedEventArgs e) => SetSplitMode("Split2H");
+        private void BtnSplitGrid_Click(object sender, RoutedEventArgs e) => SetSplitMode("Grid4");
 
         private void LoadProfileComboItems()
         {
@@ -224,7 +246,6 @@ namespace FlowMy.Views.Overlays
             _webBrowserInitialized = true;
 
             SetupSuggestPopup();
-            _splitMode = "Single";
 
             LoadProfileComboItems();
 
@@ -234,28 +255,70 @@ namespace FlowMy.Views.Overlays
             };
             WebNodeCacheHelper.ProfilesChanged += _onProfilesChangedHandler;
 
-            if (_webTabs.Count == 0)
+            if (CmbWebProfile != null)
             {
-                AddNewWebTab("https://google.com", "Shared");
+                CmbWebProfile.SelectionChanged -= CmbWebProfile_SelectionChanged;
+                CmbWebProfile.SelectionChanged += CmbWebProfile_SelectionChanged;
             }
-            else
+
+            LoadSavedWebTabs();
+        }
+
+        private void CmbWebProfile_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isUpdatingProfileCombo) return;
+            var selected = CmbWebProfile?.SelectedValue as string;
+            if (string.IsNullOrWhiteSpace(selected)) return;
+
+            if (_activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count)
             {
-                _activeTabIdx = 0;
-                RebuildTabBar();
-                RenderWebTabsInGrid();
+                var tab = _webTabs[_activeTabIdx];
+                if (!string.Equals(tab.ProfileName, selected, StringComparison.OrdinalIgnoreCase))
+                {
+                    tab.ProfileName = selected;
+                    if (tab.WebView != null)
+                    {
+                        var url = tab.WebView.Address ?? tab.Url ?? "https://google.com";
+                        RemoveVisualParent(tab.WebView);
+                        try { tab.WebView.Dispose(); } catch { }
+
+                        var reqProfile = CefSharpEnvironmentManager.CreateProfileRequestContext(selected);
+                        var newWebView = new ChromiumWebBrowser();
+                        newWebView.RequestContext = reqProfile;
+                        newWebView.Address = url;
+                        newWebView.AllowDrop = true;
+                        tab.WebView = newWebView;
+                        InjectDragDropInterceptorScriptAsync(newWebView);
+
+                        newWebView.MouseEnter += (s, ev) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                int idx = _webTabs.FindIndex(t => t.WebView == newWebView);
+                                if (idx >= 0 && idx != _activeTabIdx)
+                                {
+                                    _activeTabIdx = idx;
+                                    RebuildTabBar();
+                                    UpdateUrlBarUI();
+                                }
+                            });
+                        };
+                    }
+                    SaveWebTabsState();
+                    RenderWebTabsInGrid();
+                }
             }
         }
 
-        private void AddNewWebTab(string initialUrl = "https://google.com", string initialProfile = "Shared")
+        private void AddNewWebTab(string initialUrl = "https://google.com", string initialProfile = "Shared", string? initialTitle = null)
         {
             var profileName = initialProfile;
             var req = CefSharpEnvironmentManager.CreateProfileRequestContext(profileName);
 
-            var webView = new ChromiumWebBrowser
-            {
-                Address = initialUrl,
-                RequestContext = req
-            };
+            var webView = new ChromiumWebBrowser();
+            webView.RequestContext = req;
+            webView.Address = initialUrl;
+            webView.AllowDrop = true;
 
             InjectDragDropInterceptorScriptAsync(webView);
 
@@ -263,9 +326,37 @@ namespace FlowMy.Views.Overlays
             {
                 WebView = webView,
                 Url = initialUrl,
-                Title = "Loading...",
+                Title = string.IsNullOrWhiteSpace(initialTitle) ? "Loading..." : initialTitle,
                 ProfileName = profileName,
                 IsLoading = true
+            };
+
+            webView.MouseEnter += (s, e) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    int idx = _webTabs.FindIndex(t => t.WebView == webView);
+                    if (idx >= 0 && idx != _activeTabIdx)
+                    {
+                        _activeTabIdx = idx;
+                        RebuildTabBar();
+                        UpdateUrlBarUI();
+                    }
+                });
+            };
+
+            webView.GotFocus += (s, e) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    int idx = _webTabs.FindIndex(t => t.WebView == webView);
+                    if (idx >= 0 && idx != _activeTabIdx)
+                    {
+                        _activeTabIdx = idx;
+                        RebuildTabBar();
+                        UpdateUrlBarUI();
+                    }
+                });
             };
 
             webView.TitleChanged += (s, e) =>
@@ -427,7 +518,11 @@ namespace FlowMy.Views.Overlays
 
             if (_webTabs.Count == 0) return;
 
-            if (_splitMode == "Single" || _webTabs.Count == 1)
+            bool isVertical = _splitMode == "Split2V" || _splitMode == "Vertical";
+            bool isHorizontal = _splitMode == "Split2H" || _splitMode == "Horizontal";
+            bool isGrid = _splitMode == "Grid4" || _splitMode == "Grid";
+
+            if (!isVertical && !isHorizontal && !isGrid)
             {
                 if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) _activeTabIdx = 0;
                 var activeTab = _webTabs[_activeTabIdx];
@@ -437,7 +532,7 @@ namespace FlowMy.Views.Overlays
                     WebBrowserContainer.Children.Add(activeTab.WebView);
                 }
             }
-            else if (_splitMode == "Split2V")
+            else if (isVertical)
             {
                 WebBrowserContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 WebBrowserContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -454,7 +549,7 @@ namespace FlowMy.Views.Overlays
                     }
                 }
             }
-            else if (_splitMode == "Split2H")
+            else if (isHorizontal)
             {
                 WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -471,7 +566,7 @@ namespace FlowMy.Views.Overlays
                     }
                 }
             }
-            else if (_splitMode == "Grid4")
+            else if (isGrid)
             {
                 WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 WebBrowserContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -493,6 +588,67 @@ namespace FlowMy.Views.Overlays
                     }
                 }
             }
+        }
+
+        private void SaveWebTabsState()
+        {
+            if (_node == null) return;
+
+            var tabDtos = _webTabs.Select(t => new WebTabDto
+            {
+                Url = t.WebView?.Address ?? t.Url ?? "https://google.com",
+                Title = string.IsNullOrWhiteSpace(t.Title) ? "New Tab" : t.Title,
+                ProfileName = string.IsNullOrWhiteSpace(t.ProfileName) ? "Shared" : t.ProfileName
+            }).ToList();
+
+            _node.LayerAiWebTabsJson = System.Text.Json.JsonSerializer.Serialize(tabDtos);
+            _node.LayerAiWebSplitMode = _splitMode;
+        }
+
+        private void LoadSavedWebTabs()
+        {
+            _webTabs.Clear();
+
+            if (_node != null && !string.IsNullOrWhiteSpace(_node.LayerAiWebSplitMode))
+            {
+                _splitMode = _node.LayerAiWebSplitMode;
+            }
+            else
+            {
+                _splitMode = "Single";
+            }
+
+            if (_node != null && !string.IsNullOrWhiteSpace(_node.LayerAiWebTabsJson))
+            {
+                try
+                {
+                    var tabDtos = System.Text.Json.JsonSerializer.Deserialize<List<WebTabDto>>(_node.LayerAiWebTabsJson);
+                    if (tabDtos != null && tabDtos.Count > 0)
+                    {
+                        foreach (var dto in tabDtos)
+                        {
+                            AddNewWebTab(dto.Url ?? "https://google.com", dto.ProfileName ?? "Shared", dto.Title);
+                        }
+                        _activeTabIdx = 0;
+                        RebuildTabBar();
+                        RenderWebTabsInGrid();
+                        UpdateSplitButtonsHighlight();
+                        UpdateUrlBarUI();
+                        return;
+                    }
+                }
+                catch { }
+            }
+
+            AddNewWebTab(_node?.LayerAiWebUrl ?? "https://google.com", "Shared", "Trình duyệt");
+            UpdateSplitButtonsHighlight();
+        }
+
+        private class WebTabDto
+        {
+            public string? Url { get; set; }
+            public string? Title { get; set; }
+            public string? ProfileName { get; set; }
         }
 
         private static void RemoveVisualParent(UIElement element)
@@ -617,79 +773,6 @@ namespace FlowMy.Views.Overlays
             }
 
             tab.WebView.Load(targetUrl);
-        }
-
-        private void CmbWebProfile_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isUpdatingProfileCombo) return;
-            if (_activeTabIdx < 0 || _activeTabIdx >= _webTabs.Count) return;
-
-            var tabItem = _webTabs[_activeTabIdx];
-
-            string newProfile = (CmbWebProfile.SelectedValue as string) ?? "Shared";
-            if (tabItem.ProfileName == newProfile) return;
-
-            tabItem.ProfileName = newProfile;
-            var req = CefSharpEnvironmentManager.CreateProfileRequestContext(newProfile);
-
-            var oldWebView = tabItem.WebView;
-            string currentUrl = tabItem.Url;
-
-            var newWebView = new ChromiumWebBrowser
-            {
-                Address = currentUrl,
-                RequestContext = req
-            };
-
-            InjectDragDropInterceptorScriptAsync(newWebView);
-
-            newWebView.TitleChanged += (s, ev) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    tabItem.Title = ev.NewValue as string ?? "New Tab";
-                    RebuildTabBar();
-                    UpdateUrlBarUI();
-                });
-            };
-
-            newWebView.AddressChanged += (s, ev) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    tabItem.Url = ev.NewValue as string ?? "";
-                    if (_webTabs.Count > 0 && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tabItem)
-                    {
-                        if (TxtWebUrl != null && !TxtWebUrl.IsKeyboardFocused)
-                        {
-                            TxtWebUrl.Text = tabItem.Url;
-                        }
-                    }
-                });
-            };
-
-            newWebView.LoadingStateChanged += (s, ev) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    tabItem.IsLoading = ev.IsLoading;
-                    if (_webTabs.Count > 0 && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count && _webTabs[_activeTabIdx] == tabItem)
-                    {
-                        BtnWebRefresh.Content = ev.IsLoading ? "✕" : "🔄";
-                    }
-                });
-            };
-
-            tabItem.WebView = newWebView;
-
-            try
-            {
-                oldWebView?.Dispose();
-            }
-            catch { }
-
-            RenderWebTabsInGrid();
-            UpdateUrlBarUI();
         }
 
         private void SetupSuggestPopup()
