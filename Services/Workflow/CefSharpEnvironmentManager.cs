@@ -303,6 +303,58 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
+        /// Flush toàn bộ cookie store của Global RequestContext và các active isolated profile RequestContexts xuống đĩa đệm SQLite.
+        /// </summary>
+        public static void FlushAllCookiesSync()
+        {
+            try
+            {
+                var globalMgr = Cef.GetGlobalCookieManager();
+                globalMgr?.FlushStore(null);
+
+                foreach (var kvp in _profileContexts)
+                {
+                    try
+                    {
+                        var mgr = kvp.Value.GetCookieManager(null);
+                        mgr?.FlushStore(null);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Flush toàn bộ cookie store bất đồng bộ.
+        /// </summary>
+        public static async Task FlushAllCookiesAsync()
+        {
+            try
+            {
+                var globalMgr = Cef.GetGlobalCookieManager();
+                if (globalMgr != null)
+                {
+                    try { await globalMgr.FlushStoreAsync(); } catch { }
+                }
+
+                foreach (var kvp in _profileContexts)
+                {
+                    try
+                    {
+                        var mgr = kvp.Value.GetCookieManager(null);
+                        if (mgr != null)
+                        {
+                            await mgr.FlushStoreAsync();
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
         /// Dọn dẹp tài nguyên CefSharp khi thoát app.
         /// </summary>
         public static void Shutdown()
@@ -320,6 +372,7 @@ namespace FlowMy.Services.Workflow
                 {
                     if (Cef.IsInitialized == true)
                     {
+                        FlushAllCookiesSync();
                         Cef.Shutdown();
                     }
                 }
@@ -338,10 +391,17 @@ namespace FlowMy.Services.Workflow
 
         /// <summary>
         /// Tạo hoặc lấy lại RequestContext riêng cho từng profile (Isolated mode).
+        /// Nếu profileName là "Shared" hoặc rỗng, trả về null để ChromiumWebBrowser dùng Global RequestContext
+        /// (tránh tạo 2 RequestContext cùng trỏ vào 1 thư mục gây khóa SQLite/LevelDB).
         /// </summary>
-        public static RequestContext CreateProfileRequestContext(string profileName)
+        public static RequestContext? CreateProfileRequestContext(string? profileName)
         {
-            var key = string.IsNullOrWhiteSpace(profileName) ? "Shared" : profileName.Trim();
+            if (string.IsNullOrWhiteSpace(profileName) || string.Equals(profileName.Trim(), "Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var key = profileName.Trim();
             return _profileContexts.GetOrAdd(key, k =>
             {
                 var profilePath = WebNodeCacheHelper.GetProfileCachePath(k);

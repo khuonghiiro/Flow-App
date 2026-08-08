@@ -503,7 +503,7 @@ namespace FlowMy.Views.NodeControls
             string activeCacheMode = node.CacheMode ?? "Shared";
             string activeCustomCacheName = node.CustomCacheName ?? "Shared";
 
-            RequestContext GetCurrentRequestContext()
+            RequestContext? GetCurrentRequestContext()
             {
                 var profileName = string.Equals(node.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase)
                     && !string.IsNullOrWhiteSpace(node.CustomCacheName)

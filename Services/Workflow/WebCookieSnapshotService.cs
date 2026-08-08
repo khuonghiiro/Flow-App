@@ -129,9 +129,9 @@ public static class WebCookieSnapshotService
             try
             {
                 var rc = CefSharpEnvironmentManager.CreateProfileRequestContext(profileName);
-                ICookieManager? cookieManager = rc.GetCookieManager(null);
+                ICookieManager? cookieManager = rc?.GetCookieManager(null);
 
-                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(profileName, "Shared", StringComparison.OrdinalIgnoreCase) || rc == null)
                 {
                     cookieManager ??= Cef.GetGlobalCookieManager();
                 }
@@ -288,8 +288,8 @@ public static class WebCookieSnapshotService
 
             // 2. Lấy CookieManager của đúng profile đó
             var rc = CefSharpEnvironmentManager.CreateProfileRequestContext(pName);
-            var cookieManager = rc.GetCookieManager(null);
-            if (pName.Equals("Shared", StringComparison.OrdinalIgnoreCase))
+            var cookieManager = rc?.GetCookieManager(null);
+            if (pName.Equals("Shared", StringComparison.OrdinalIgnoreCase) || rc == null)
             {
                 cookieManager ??= Cef.GetGlobalCookieManager();
             }
