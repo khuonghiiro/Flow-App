@@ -1599,7 +1599,10 @@ namespace FlowMy.Views.Overlays
 
                     if (needsInitialization)
                     {
-                        var webView = new ChromiumWebBrowser();
+                        var webView = new ChromiumWebBrowser
+                        {
+                            RequestContext = CefSharpEnvironmentManager.CreateProfileRequestContext(tab.ProfileName)
+                        };
                         tab.WebView = webView;
                         
                         HookActivityEvents(webView);
@@ -5772,6 +5775,8 @@ namespace FlowMy.Views.Overlays
                         ChromiumWebBrowser? activeWv = null;
                         if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                         else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
+                        if (activeWv == null && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
+                        if (activeWv == null) activeWv = _dynamicWebView;
                         if (activeWv != null && !string.IsNullOrWhiteSpace(activeWv.Address))
                         {
                             pageUrl = activeWv.Address;
@@ -5956,12 +5961,19 @@ namespace FlowMy.Views.Overlays
         private void ProcessDroppedImage(object sender, BitmapSource bitmap)
         {
             bool isMainImage = false;
-            if (sender is FrameworkElement fe && (fe.Name == "ImgPreview" || fe.Name == "ImgPreviewWv"))
+            FrameworkElement? feContainer = sender as FrameworkElement;
+            Border? slotBorder = feContainer as Border ?? FindParentBorderOrTarget<Border>(feContainer as DependencyObject);
+
+            if (feContainer != null && (feContainer.Name == "ImgPreview" || feContainer.Name == "ImgPreviewWv"))
             {
                 isMainImage = true;
             }
- 
-            if (sender is FrameworkElement feContainer)
+            else if (slotBorder != null && (slotBorder.Name == "ImgPreview" || slotBorder.Name == "ImgPreviewWv"))
+            {
+                isMainImage = true;
+            }
+
+            if (feContainer != null)
             {
                 FlashSlotBorder(feContainer);
             }
@@ -5992,13 +6004,17 @@ namespace FlowMy.Views.Overlays
 
             // Otherwise, it is a slot drop
             int idx = -1;
-            if (sender is FrameworkElement feSlot && feSlot.Tag is string tagStr && int.TryParse(tagStr, out int tagIdx))
+            if (slotBorder != null && slotBorder.Tag is string tagStr && int.TryParse(tagStr, out int tagIdx))
             {
                 idx = tagIdx;
             }
-            else if (sender is FrameworkElement feSlot2)
+            else if (feContainer != null && feContainer.Tag is string tagStr2 && int.TryParse(tagStr2, out int tagIdx2))
             {
-                var name = feSlot2.Name ?? "";
+                idx = tagIdx2;
+            }
+            else if (feContainer != null)
+            {
+                var name = feContainer.Name ?? "";
                 if (name.EndsWith("0")) idx = 0;
                 else if (name.EndsWith("1")) idx = 1;
                 else if (name.EndsWith("2")) idx = 2;
@@ -6071,10 +6087,12 @@ namespace FlowMy.Views.Overlays
         {
             try
             {
-                // Find the active WebView2 instance to extract session cookies
+                // Find the active ChromiumWebBrowser instance to extract session cookies
                 ChromiumWebBrowser? activeWv = null;
                 if (_activeTab == ActiveTab.WebBrowser && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
                 else if (_activeTab == ActiveTab.WebView) activeWv = _dynamicWebView;
+                if (activeWv == null && _activeTabIdx >= 0 && _activeTabIdx < _webTabs.Count) activeWv = _webTabs[_activeTabIdx].WebView;
+                if (activeWv == null) activeWv = _dynamicWebView;
 
                 using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
                 {
@@ -6103,7 +6121,7 @@ namespace FlowMy.Views.Overlays
                     {
                         try
                         {
-                            var cookieManager = Cef.GetGlobalCookieManager();
+                            ICookieManager? cookieManager = activeWv.RequestContext?.GetCookieManager(null) ?? Cef.GetGlobalCookieManager();
                             var cookieTask = cookieManager.VisitUrlCookiesAsync(uri.ToString(), true);
                             if (await System.Threading.Tasks.Task.WhenAny(cookieTask, System.Threading.Tasks.Task.Delay(150)) == cookieTask)
                             {
