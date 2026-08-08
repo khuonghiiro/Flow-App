@@ -337,7 +337,7 @@ namespace FlowMy.Services.Workflow
                     }
                     catch { }
 
-                    System.Threading.Thread.Sleep(150);
+                    System.Threading.Thread.Sleep(400);
 
                     if (Cef.IsInitialized == true)
                     {
@@ -363,16 +363,28 @@ namespace FlowMy.Services.Workflow
         public static RequestContext CreateProfileRequestContext(string profileName)
         {
             var key = string.IsNullOrWhiteSpace(profileName) ? "Shared" : profileName.Trim();
-            return _profileContexts.GetOrAdd(key, k =>
+
+            lock (_lock)
             {
-                var profilePath = WebNodeCacheHelper.GetProfileCachePath(k);
+                if (_profileContexts.TryGetValue(key, out var existing))
+                {
+                    if (existing != null && !existing.IsDisposed)
+                    {
+                        return existing;
+                    }
+                    _profileContexts.TryRemove(key, out _);
+                }
+
+                var profilePath = WebNodeCacheHelper.GetProfileCachePath(key);
                 var options = new RequestContextSettings
                 {
                     CachePath = profilePath,
                     PersistSessionCookies = true
                 };
-                return new RequestContext(options);
-            });
+                var newRc = new RequestContext(options);
+                _profileContexts[key] = newRc;
+                return newRc;
+            }
         }
 
         /// <summary>
