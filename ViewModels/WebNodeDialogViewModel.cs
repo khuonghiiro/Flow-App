@@ -649,6 +649,12 @@ namespace FlowMy.ViewModels
         public void RefreshAvailableProfiles()
         {
             var selectedBefore = CustomCacheName;
+            if (string.Equals(CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) && 
+                !string.IsNullOrWhiteSpace(selectedBefore) && 
+                !string.Equals(selectedBefore, "Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                WebNodeCacheHelper.EnsureProfileExists(selectedBefore);
+            }
             var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
             AvailableProfiles.Clear();
             foreach (var p in profiles)

@@ -1950,9 +1950,19 @@ public partial class FloatingWidgetWindow : Window
                 await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
             }
 
+            CefSharp.RequestContext? reqContext = null;
+            if (_node is FlowMy.Models.Nodes.WebNode wNode && 
+                string.Equals(wNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) && 
+                !string.IsNullOrWhiteSpace(wNode.CustomCacheName) &&
+                !string.Equals(wNode.CustomCacheName, "Shared", StringComparison.OrdinalIgnoreCase))
+            {
+                reqContext = FlowMy.Services.Workflow.CefSharpEnvironmentManager.CreateProfileRequestContext(wNode.CustomCacheName);
+            }
+
             _webView = new ChromiumWebBrowser
             {
-                Visibility = Visibility.Collapsed
+                Visibility = Visibility.Collapsed,
+                RequestContext = reqContext
             };
 
             var contentGrid = ContentArea.Child as Grid;

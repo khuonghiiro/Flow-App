@@ -173,9 +173,34 @@ public static class WebNodeCacheHelper
                     var name = Path.GetFileName(dir);
                     if (string.IsNullOrWhiteSpace(name)) continue;
                     if (name.Equals("Shared", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (name.Equals("Default", StringComparison.OrdinalIgnoreCase)) continue;
                     if (name.StartsWith("_", StringComparison.Ordinal)) continue;
+                    
+                    var knownSystemDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "Crashpad", "BrowserMetrics", "GrShaderCache", "GraphiteDawnCache", "DawnCache",
+                        "AutofillStates", "CertificateRevocation", "Crowd Deny", "Dictionaries", "FileTypePolicies",
+                        "FirstPartySetsPreloaded", "hyphen-data", "MEIPreload", "OnDeviceHeadSuggestModel",
+                        "OptimizationHints", "OriginTrials", "PKIMetadata", "PrivacySandboxAttestationsPreloaded",
+                        "Safe Browsing", "SafetyTips", "segmentation_platform", "ShaderCache", "SSLErrorAssistant",
+                        "Subresource Filter", "TpcdMetadata", "TrustTokenKeyCommitments", "WidevineCdm", "ZxcvbnData",
+                        "component_crx_cache"
+                    };
+                    if (knownSystemDirs.Contains(name)) continue;
 
                     var metaPath = Path.Combine(dir, "profile.json");
+                    
+                    if (File.Exists(metaPath))
+                    {
+                        try
+                        {
+                            var jsonText = File.ReadAllText(metaPath);
+                            if (jsonText.Contains("\"deleted\":true") || jsonText.Contains("\"deleted\": true"))
+                                continue;
+                        }
+                        catch { }
+                    }
+
                     var hasCookies = File.Exists(Path.Combine(dir, "Cookies")) ||
                                      File.Exists(Path.Combine(dir, "Network", "Cookies")) ||
                                      File.Exists(Path.Combine(dir, "Preferences")) ||
@@ -226,10 +251,17 @@ public static class WebNodeCacheHelper
             var pName = profileName.Trim();
             CefSharpEnvironmentManager.DisposeProfileRequestContext(pName);
 
-            // Dùng createIfNotExists = false để không tự động tạo lại folder!
             var path = GetProfileCachePath(pName, createIfNotExists: false);
             if (Directory.Exists(path))
             {
+                // MARK AS DELETED IMMEDIATELY so GetAvailableCacheProfiles will ignore it on next scan
+                try
+                {
+                    var metaPath = Path.Combine(path, "profile.json");
+                    File.WriteAllText(metaPath, $"{{\"name\":\"{pName}\",\"deleted\":true}}");
+                }
+                catch { }
+
                 // Rename thư mục sang _deleted_xxx để GetAvailableCacheProfiles loại bỏ lập tức (bất kể CEF có đang nhả file hay chưa)
                 var tempDeletePath = Path.Combine(GetUserProfilesDir(), $"_deleted_{Guid.NewGuid():N}");
                 try
@@ -241,22 +273,23 @@ public static class WebNodeCacheHelper
                     tempDeletePath = path;
                 }
 
-                try
+                // CefSharp subprocesses might take a moment to release file handles after Dispose. Retry up to 10 times (2 seconds).
+                System.Threading.Tasks.Task.Run(async () =>
                 {
-                    Directory.Delete(tempDeletePath, recursive: true);
-                }
-                catch
-                {
-                    try
+                    for (int i = 0; i < 10; i++)
                     {
-                        foreach (var file in Directory.GetFiles(tempDeletePath, "*", SearchOption.AllDirectories))
+                        try
                         {
-                            try { File.Delete(file); } catch { }
+                            if (!Directory.Exists(tempDeletePath)) break;
+                            Directory.Delete(tempDeletePath, recursive: true);
+                            break;
                         }
-                        Directory.Delete(tempDeletePath, recursive: true);
+                        catch
+                        {
+                            await System.Threading.Tasks.Task.Delay(200);
+                        }
                     }
-                    catch { }
-                }
+                });
             }
 
             // Xóa triệt để các thư mục lưu cũ tại BaseCacheDir nếu có
@@ -326,6 +359,10 @@ public static class WebNodeCacheHelper
     public static void SaveWorkflowWebNodeCaches(string workflowsDir, string workflowName, IEnumerable<WorkflowNode> nodes)
     {
         if (nodes == null) return;
+        
+        // Đảm bảo dữ liệu từ RAM đã được ghi xuống đĩa trước khi copy
+        CefSharpEnvironmentManager.FlushAllCookiesSync();
+        
         var cacheBase = GetWorkflowWebCacheDir(workflowsDir, workflowName);
         foreach (var n in nodes.OfType<WebNode>())
         {

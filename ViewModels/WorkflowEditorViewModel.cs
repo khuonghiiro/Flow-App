@@ -3014,15 +3014,13 @@ namespace FlowMy.ViewModels
                     ConnectionLineStyle = restoredStyle;
                 else
                     ConnectionLineStyle = ConnectionLineStyle.Bezier;
-                var validProfiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
                 foreach (var wNode in result.Nodes.OfType<WebNode>())
                 {
                     if (string.Equals(wNode.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
                         !string.IsNullOrWhiteSpace(wNode.CustomCacheName) &&
-                        !validProfiles.Contains(wNode.CustomCacheName, StringComparer.OrdinalIgnoreCase))
+                        !string.Equals(wNode.CustomCacheName, "Shared", StringComparison.OrdinalIgnoreCase))
                     {
-                        wNode.CacheMode = "Shared";
-                        wNode.CustomCacheName = "Shared";
+                        WebNodeCacheHelper.EnsureProfileExists(wNode.CustomCacheName);
                     }
                 }
 

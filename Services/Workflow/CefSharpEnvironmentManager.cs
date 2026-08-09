@@ -22,6 +22,13 @@ namespace FlowMy.Services.Workflow
         private static bool _isInitialized = false;
         private static readonly object _lock = new();
         private static TaskCompletionSource<bool>? _initTcs;
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, RequestContext> _profileContexts;
+
+        static CefSharpEnvironmentManager()
+        {
+            CefSharpNativeLoader.RegisterNativeDllSearchPaths();
+            _profileContexts = new System.Collections.Concurrent.ConcurrentDictionary<string, RequestContext>(StringComparer.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// Cho biết CefSharp đã được khởi tạo chưa.
@@ -187,7 +194,7 @@ namespace FlowMy.Services.Workflow
                 if (!Directory.Exists(sharedCachePath))
                     Directory.CreateDirectory(sharedCachePath);
 
-                settings.RootCachePath = cefRootDir;
+                settings.RootCachePath = userProfilesDir;
                 settings.CachePath = sharedCachePath;
             }
             catch { }
@@ -387,8 +394,6 @@ namespace FlowMy.Services.Workflow
             }
         }
 
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, RequestContext> _profileContexts = new(StringComparer.OrdinalIgnoreCase);
-
         /// <summary>
         /// Tạo hoặc lấy lại RequestContext riêng cho từng profile (Isolated mode).
         /// Nếu profileName là "Shared" hoặc rỗng, trả về null để ChromiumWebBrowser dùng Global RequestContext
@@ -413,6 +418,8 @@ namespace FlowMy.Services.Workflow
                 return new RequestContext(options);
             });
         }
+
+
 
         /// <summary>
         /// Hủy và đóng RequestContext của profile khi bị xóa.

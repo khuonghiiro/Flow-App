@@ -1818,19 +1818,16 @@ namespace FlowMy.Views.NodeControls
                 try
                 {
                     cmbWebProfile.Items.Clear();
+                    if (string.Equals(node.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(node.CustomCacheName) &&
+                        !string.Equals(node.CustomCacheName, "Shared", StringComparison.OrdinalIgnoreCase))
+                    {
+                        WebNodeCacheHelper.EnsureProfileExists(node.CustomCacheName);
+                    }
                     var profiles = WebNodeCacheHelper.GetAvailableCacheProfiles();
                     var activeProfile = string.Equals(node.CacheMode, "Isolated", StringComparison.OrdinalIgnoreCase) 
                         ? (node.CustomCacheName ?? "Shared") 
                         : "Shared";
-
-                    if (!profiles.Contains(activeProfile, StringComparer.OrdinalIgnoreCase))
-                    {
-                        node.CacheMode = "Shared";
-                        node.CustomCacheName = "Shared";
-                        activeProfile = "Shared";
-                        activeCacheMode = "Shared";
-                        activeCustomCacheName = "Shared";
-                    }
 
                     foreach (var p in profiles)
                     {
@@ -2777,6 +2774,7 @@ if (window.__elementInspector) {
             {
                 if (webView != null)
                 {
+                    try { FlowMy.Services.Workflow.CefSharpEnvironmentManager.FlushAllCookiesSync(); } catch { }
                     grid.Children.Remove(webView);
                     try { webView.Dispose(); } catch { }
                     webView = null!;

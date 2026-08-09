@@ -49,6 +49,8 @@ namespace FlowMy
         #region Application Lifecycle
         protected override async void OnStartup(StartupEventArgs e)
         {
+            // ✅ Đăng ký native DLL search paths (runtimes/win-x64/native) TRƯỚC BẤT KỲ thao tác CefSharp nào
+            CefSharpNativeLoader.RegisterNativeDllSearchPaths();
 
             try
             {
@@ -465,7 +467,14 @@ namespace FlowMy
                     _logger?.LogInformation("ViewCacheService disposed");
                 }
 
-                CefSharpEnvironmentManager.Shutdown();
+                try
+                {
+                    CefSharpEnvironmentManager.Shutdown();
+                }
+                catch (Exception cefEx)
+                {
+                    LogError("CefSharp shutdown error", cefEx);
+                }
 
                 _serviceProvider?.Dispose();
                 _serviceProvider = null;
