@@ -922,36 +922,60 @@ namespace FlowMy.Views.NodeControls
                     _isSelecting = false;
                     MainScrollViewer.ReleaseMouseCapture();
 
-                    if (activeLayer != null)
+                    if (_node.EditorDoc != null)
                     {
-                        double scaleX = activeLayer.Width / MainImage.ActualWidth;
-                        double scaleY = activeLayer.Height / MainImage.ActualHeight;
+                        double mainW = MainImage.ActualWidth > 0 ? MainImage.ActualWidth : 1.0;
+                        double mainH = MainImage.ActualHeight > 0 ? MainImage.ActualHeight : 1.0;
 
-                        double lx = SelectionBoxRect.Margin.Left * scaleX;
-                        double ly = SelectionBoxRect.Margin.Top * scaleY;
-                        double lw = SelectionBoxRect.Width * scaleX;
-                        double lh = SelectionBoxRect.Height * scaleY;
-
-                        if (lw > 2 && lh > 2)
+                        if (SelectionBoxRect.Width > 2 && SelectionBoxRect.Height > 2)
                         {
                             if (tool == "ObjectSelection")
                             {
-                                int rx1 = (int)Math.Clamp(lx, 0, activeLayer.Width - 1);
-                                int ry1 = (int)Math.Clamp(ly, 0, activeLayer.Height - 1);
-                                int rx2 = (int)Math.Clamp(lx + lw, 0, activeLayer.Width - 1);
-                                int ry2 = (int)Math.Clamp(ly + lh, 0, activeLayer.Height - 1);
+                                if (activeLayer != null)
+                                {
+                                    double scaleX = activeLayer.Width / mainW;
+                                    double scaleY = activeLayer.Height / mainH;
 
-                                RunObjectSelection(rx1, ry1, rx2, ry2);
+                                    double lx = SelectionBoxRect.Margin.Left * scaleX;
+                                    double ly = SelectionBoxRect.Margin.Top * scaleY;
+                                    double lw = SelectionBoxRect.Width * scaleX;
+                                    double lh = SelectionBoxRect.Height * scaleY;
+
+                                    int rx1 = (int)Math.Clamp(lx, 0, activeLayer.Width - 1);
+                                    int ry1 = (int)Math.Clamp(ly, 0, activeLayer.Height - 1);
+                                    int rx2 = (int)Math.Clamp(lx + lw, 0, activeLayer.Width - 1);
+                                    int ry2 = (int)Math.Clamp(ly + lh, 0, activeLayer.Height - 1);
+
+                                    RunObjectSelection(rx1, ry1, rx2, ry2);
+                                }
                             }
                             else
                             {
-                                var rectGeom = new RectangleGeometry(new Rect(lx, ly, lw, lh));
-                                ApplyNewGeometry(rectGeom);
+                                double docScaleX = _node.EditorDoc.Width / mainW;
+                                double docScaleY = _node.EditorDoc.Height / mainH;
+
+                                double lx = SelectionBoxRect.Margin.Left * docScaleX;
+                                double ly = SelectionBoxRect.Margin.Top * docScaleY;
+                                double lw = SelectionBoxRect.Width * docScaleX;
+                                double lh = SelectionBoxRect.Height * docScaleY;
+
+                                var rect = new Rect(lx, ly, lw, lh);
+                                var pathGeometry = new PathGeometry();
+                                var figure = new PathFigure { StartPoint = new Point(rect.Left, rect.Top), IsClosed = true };
+                                figure.Segments.Add(new LineSegment(new Point(rect.Right, rect.Top), true));
+                                figure.Segments.Add(new LineSegment(new Point(rect.Right, rect.Bottom), true));
+                                figure.Segments.Add(new LineSegment(new Point(rect.Left, rect.Bottom), true));
+                                pathGeometry.Figures.Add(figure);
+
+                                ApplyNewGeometry(pathGeometry);
                             }
                         }
                         else
                         {
-                            ClearSelection();
+                            if (_currentSelectionMode == SelectionMode.New)
+                            {
+                                ClearSelection();
+                            }
                         }
                     }
                 }

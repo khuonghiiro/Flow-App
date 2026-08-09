@@ -295,11 +295,14 @@ namespace FlowMy.Views.NodeControls
             if (newGeometry == null || newGeometry.IsEmpty())
                 return;
 
-            // 1. Convert newGeometry to SKPath
+            // Convert newGeometry to PathGeometry so .ToString() is guaranteed to produce valid SVG path data
+            PathGeometry pathGeom = newGeometry as PathGeometry ?? PathGeometry.CreateFromGeometry(newGeometry);
+
+            // 1. Convert pathGeom to SKPath
             SkiaSharp.SKPath newPath = null;
             try
             {
-                var svg = newGeometry.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var svg = pathGeom.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 if (svg.StartsWith("F0") || svg.StartsWith("F1"))
                 {
                     svg = svg.Substring(2).Trim();

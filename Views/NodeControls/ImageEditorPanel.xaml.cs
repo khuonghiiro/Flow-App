@@ -24,7 +24,7 @@ namespace FlowMy.Views.NodeControls
     public partial class ImageEditorPanel : UserControl
     {
         private EditorDocument? _doc;
-        private string _activeTool = "Brush";
+        private string _activeTool = "Lasso";
         
         // Drag reorder layers state fields
         private EditorLayer? _draggedLayer;
