@@ -644,14 +644,23 @@
                                         Style="{DynamicResource SecondaryButton}" Cursor="Hand" Click="BtnDeleteProfile_Click"/>
 
                                 <!-- URL / Search TextBox -->
-                                <Border Grid.Column="8" Background="#1e222d" BorderBrush="#2a2e3d" BorderThickness="1.2" CornerRadius="6" Padding="0">
+                                <Border Grid.Column="8" Grid.ColumnSpan="2" Background="#111318" BorderBrush="{StaticResource BorderColor}" BorderThickness="1.5" CornerRadius="14" Padding="0">
                                     <Grid>
-                                        <TextBox x:Name="TxtWebUrl" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
-                                                 Padding="8,4,30,4" FontSize="11" VerticalContentAlignment="Center" CaretBrush="{StaticResource AccentColor}"
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/> <!-- Security Icon -->
+                                            <ColumnDefinition Width="*"/>    <!-- TextBox -->
+                                            <ColumnDefinition Width="Auto"/> <!-- Loading -->
+                                            <ColumnDefinition Width="Auto"/> <!-- Go Button -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="🔒" Foreground="{StaticResource TextMuted}" FontSize="10" VerticalAlignment="Center" Margin="10,0,2,0" Opacity="0.6"/>
+
+                                        <TextBox x:Name="TxtWebUrl" Grid.Column="1" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0"
+                                                 Padding="6,0,8,0" FontSize="11.5" VerticalContentAlignment="Center" CaretBrush="{StaticResource AccentColor}"
                                                  SelectionBrush="#804fffb0" Text="https://google.com" KeyDown="TxtWebUrl_KeyDown" GotFocus="TxtWebUrl_GotFocus"/>
                                         
                                         <!-- Inline Loading Indicator in URL bar -->
-                                        <Border x:Name="UrlLoadingIndicator" Width="14" Height="14" HorizontalAlignment="Right" Margin="0,0,8,0" Visibility="Collapsed" VerticalAlignment="Center">
+                                        <Border x:Name="UrlLoadingIndicator" Grid.Column="2" Width="14" Height="14" Margin="0,0,8,0" Visibility="Collapsed" VerticalAlignment="Center">
                                             <Ellipse Stroke="{StaticResource AccentColor}" StrokeThickness="2" StrokeDashArray="3,1" RenderTransformOrigin="0.5,0.5">
                                                 <Ellipse.RenderTransform>
                                                     <RotateTransform x:Name="UrlSpinnerRotate"/>
@@ -667,13 +676,38 @@
                                                 </Ellipse.Triggers>
                                             </Ellipse>
                                         </Border>
+
+                                        <!-- Go / Navigate button inside the URL bar -->
+                                        <Button x:Name="BtnWebGo" Grid.Column="3" Content="→" Padding="0" Width="24" Height="24" Margin="0,0,2,0"
+                                                FontSize="14" FontWeight="Bold" ToolTip="Điều hướng"
+                                                Cursor="Hand" Click="BtnWebGo_Click">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentColor}"/>
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border Background="{TemplateBinding Background}" CornerRadius="12">
+                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#252a39"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsPressed" Value="True">
+                                                            <Setter Property="Background" Value="#1a4fffb0"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                     </Grid>
                                 </Border>
-
-                                <!-- Go / Navigate button -->
-                                <Button x:Name="BtnWebGo" Grid.Column="8" Content="→" Padding="0" Width="28" Height="28" Margin="4,0,0,0"
-                                        FontSize="14" FontWeight="Bold" ToolTip="Điều hướng" Style="{DynamicResource SuccessButton}"
-                                        Cursor="Hand" Click="BtnWebGo_Click"/>
                             </Grid>
 
                             <!-- Row 2: WebView2 Browser container -->
