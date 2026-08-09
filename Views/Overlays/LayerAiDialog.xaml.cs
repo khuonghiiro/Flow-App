@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -435,7 +436,7 @@ namespace FlowMy.Views.Overlays
         {
             if (_activeLayer == null || !_layerStates.TryGetValue(_activeLayer, out var state)) return;
 
-            state.Prompt = TxtPrompt.Text;
+            state.Prompt = GetRichText(TxtPrompt);
             state.BatchSizeIndex = CmbBatchSize.SelectedIndex;
             state.AspectRatioIndex = CmbAspectRatio.SelectedIndex;
             state.CustomWidth = TxtCustomWidth.Text;
@@ -531,9 +532,9 @@ namespace FlowMy.Views.Overlays
             _isSyncingUI = true;
             try
             {
-                TxtPrompt.Text = state.Prompt;
-                if (TxtPromptWv != null) TxtPromptWv.Text = state.Prompt;
-                if (TxtPromptWeb != null) TxtPromptWeb.Text = state.Prompt;
+                SetRichText(TxtPrompt, state.Prompt);
+                if (TxtPromptWv != null) SetRichText(TxtPromptWv, state.Prompt);
+                if (TxtPromptWeb != null) SetRichText(TxtPromptWeb, state.Prompt);
 
                 CmbBatchSize.SelectedIndex = state.BatchSizeIndex;
                 CmbAspectRatio.SelectedIndex = state.AspectRatioIndex;
@@ -852,18 +853,18 @@ namespace FlowMy.Views.Overlays
         {
             return _activeTab switch
             {
-                ActiveTab.WebView => TxtPromptWv.Text,
-                ActiveTab.WebBrowser => TxtPromptWeb.Text,
-                _ => TxtPrompt.Text
+                ActiveTab.WebView => GetRichText(TxtPromptWv),
+                ActiveTab.WebBrowser => GetRichText(TxtPromptWeb),
+                _ => GetRichText(TxtPrompt)
             };
         }
 
         private void SyncPromptTo(ActiveTab target)
         {
             var text = GetActivePromptText();
-            if (target != ActiveTab.Prompt) TxtPrompt.Text = text;
-            if (target != ActiveTab.WebView) TxtPromptWv.Text = text;
-            if (target != ActiveTab.WebBrowser) TxtPromptWeb.Text = text;
+            if (target != ActiveTab.Prompt) SetRichText(TxtPrompt, text);
+            if (target != ActiveTab.WebView) SetRichText(TxtPromptWv, text);
+            if (target != ActiveTab.WebBrowser) SetRichText(TxtPromptWeb, text);
         }
 
         private void SetTabStyles(ActiveTab active)
@@ -3616,9 +3617,11 @@ namespace FlowMy.Views.Overlays
                 if (cropBase64Port != null) cropBase64Port.UserValueOverride = b64;
 
                 var activePromptText = GetActivePromptText();
+                var (resolvedPrompt, promptJson) = BuildResolvedPromptAndJson(activePromptText);
                 _node.ProcessorPrompt = activePromptText;
-                var promptPort = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase));
-                if (promptPort != null) promptPort.UserValueOverride = activePromptText;
+
+                GetOrAddDynamicOutputPort("prompt", "Layer AI - Prompt").UserValueOverride = resolvedPrompt;
+                GetOrAddDynamicOutputPort("promptJson", "Layer AI - Prompt JSON (Multimodal Parts)").UserValueOverride = promptJson;
 
                 int batchSize = CmbBatchSize.SelectedIndex + 1;
                 // Ảnh đơn mode: tổng output = numberOfSelectedSecondaries × batchSize
@@ -3687,7 +3690,8 @@ namespace FlowMy.Views.Overlays
                 if (execSvc != null)
                 {
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "mainCodeId", mainCodeId);
-                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "prompt", activePromptText);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "prompt", resolvedPrompt);
+                    execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptJson", promptJson);
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "promptSize", totalOutputCount.ToString());
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropWidth", processedImg.PixelWidth.ToString());
                     execSvc.SetScopedNodeStringOutput(execId, _node.Id, "cropHeight", processedImg.PixelHeight.ToString());
@@ -4316,28 +4320,15 @@ namespace FlowMy.Views.Overlays
 
         private void TxtPrompt_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_isSyncingUI) return;
-            _isSyncingUI = true;
-            try
-            {
-                if (sender is TextBox textBox)
-                {
-                    string text = textBox.Text;
-                    if (TxtPrompt != null && TxtPrompt.Text != text) TxtPrompt.Text = text;
-                    if (TxtPromptWv != null && TxtPromptWv.Text != text) TxtPromptWv.Text = text;
-                    if (TxtPromptWeb != null && TxtPromptWeb.Text != text) TxtPromptWeb.Text = text;
-                }
-                UpdateSendButtonsState();
-            }
-            finally
-            {
-                _isSyncingUI = false;
-            }
+            UpdateSendButtonsState();
         }
+
+
+
 
         private void UpdateSendButtonsState()
         {
-            BtnSend.IsEnabled = true;
+            if (BtnSend != null) BtnSend.IsEnabled = true;
             if (BtnSendWv != null) BtnSendWv.IsEnabled = true;
             if (BtnSendWeb != null) BtnSendWeb.IsEnabled = true;
         }
@@ -4827,11 +4818,11 @@ namespace FlowMy.Views.Overlays
             var savedPrompt = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "prompt", StringComparison.OrdinalIgnoreCase))?.UserValueOverride;
             if (!string.IsNullOrEmpty(savedPrompt))
             {
-                TxtPrompt.Text = savedPrompt;
+                SetRichText(TxtPrompt, savedPrompt);
             }
             else
             {
-                TxtPrompt.Text = _node.ProcessorPrompt ?? string.Empty;
+                SetRichText(TxtPrompt, _node.ProcessorPrompt ?? string.Empty);
             }
 
             // Load batch size (promptSize)
@@ -6264,7 +6255,317 @@ namespace FlowMy.Views.Overlays
         private static extern int GlobalSize(IntPtr hMem);
  
         #endregion
- 
+        
+        #region Autocomplete & RichText Helpers
+
+        private string GetRichText(RichTextBox rtb)
+        {
+            if (rtb?.Document == null) return string.Empty;
+            var sb = new System.Text.StringBuilder();
+            foreach (var block in rtb.Document.Blocks)
+            {
+                if (block is Paragraph p)
+                {
+                    foreach (var inline in p.Inlines)
+                    {
+                        if (inline is Run run)
+                        {
+                            sb.Append(run.Text);
+                        }
+                        else if (inline is InlineUIContainer uiContainer && uiContainer.Child is Border b && b.Child is Image img)
+                        {
+                            if (img.Tag is string codeId)
+                            {
+                                sb.Append(codeId);
+                            }
+                        }
+                    }
+                    sb.AppendLine();
+                }
+            }
+            return sb.ToString().TrimEnd('\r', '\n');
+        }
+
+        private void SetRichText(RichTextBox rtb, string text)
+        {
+            if (rtb == null) return;
+            rtb.Document.Blocks.Clear();
+            if (string.IsNullOrEmpty(text)) return;
+            
+            // Basic text injection
+            var p = new Paragraph(new Run(text));
+            rtb.Document.Blocks.Add(p);
+        }
+
+        private void TxtPrompt_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (sender is RichTextBox rtb && rtb.IsFocused)
+            {
+                var caret = rtb.CaretPosition;
+                if (caret != null)
+                {
+                    string textInRun = caret.GetTextInRun(LogicalDirection.Backward);
+                    if (textInRun.EndsWith("@"))
+                    {
+                        // Show autocomplete popup
+                        var rect = caret.GetCharacterRect(LogicalDirection.Backward);
+                        PopupPromptAutocomplete.PlacementTarget = rtb;
+                        PopupPromptAutocomplete.PlacementRectangle = rect;
+                        
+                        PopulateAutocompleteList();
+                        PopupPromptAutocomplete.IsOpen = true;
+                    }
+                    else if (e.Key == Key.Escape || e.Key == Key.Back)
+                    {
+                        if (!textInRun.Contains("@"))
+                            PopupPromptAutocomplete.IsOpen = false;
+                    }
+                }
+            }
+        }
+
+                private (string resolvedPrompt, string promptJson) BuildResolvedPromptAndJson(string rawPrompt)
+        {
+            if (string.IsNullOrEmpty(rawPrompt)) rawPrompt = string.Empty;
+
+            // Real CodeId for main layer
+            string mainRealCodeId = string.IsNullOrWhiteSpace(_activeLayer?.CodeId)
+                ? (_activeLayer != null ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : Guid.NewGuid().ToString("N"))
+                : _activeLayer.CodeId;
+
+            bool hasMainImage = _activeLayer != null && (_activeLayer.Thumbnail != null || _activeLayer.Bitmap != null);
+
+            var childTags = new System.Collections.Generic.List<string>();
+            var childCodeIds = new System.Collections.Generic.List<string>();
+            var imagesDict = new System.Collections.Generic.Dictionary<string, object>();
+            var tagsMap = new System.Collections.Generic.Dictionary<string, object>();
+
+            // 1. Main image info
+            if (hasMainImage)
+            {
+                string? mainId = !string.IsNullOrWhiteSpace(_activeLayer?.CurrentImageId) ? _activeLayer.CurrentImageId : null;
+                imagesDict[mainRealCodeId] = new
+                {
+                    fileName = $"{mainRealCodeId}.png",
+                    id = mainId
+                };
+                tagsMap["@main"] = mainRealCodeId;
+            }
+
+            // 2. Secondary/child images info
+            for (int i = 0; i < _secondaryImages.Count; i++)
+            {
+                if (_secondaryImages[i].HasImage)
+                {
+                    string tag = $"@img{i}";
+                    childTags.Add(tag);
+
+                    string secRealCodeId = string.IsNullOrWhiteSpace(_secondaryImages[i].CodeId)
+                        ? (_secondaryImages[i].CodeId = Guid.NewGuid().ToString("N"))
+                        : _secondaryImages[i].CodeId;
+                    childCodeIds.Add(secRealCodeId);
+
+                    string? secId = !string.IsNullOrWhiteSpace(_secondaryImages[i].ImageId) 
+                        ? _secondaryImages[i].ImageId 
+                        : null;
+
+                    imagesDict[secRealCodeId] = new
+                    {
+                        fileName = $"{secRealCodeId}.png",
+                        id = secId
+                    };
+                    tagsMap[tag] = secRealCodeId;
+                }
+            }
+
+            // 3. All image tags
+            var allTags = new System.Collections.Generic.List<string>();
+            if (hasMainImage)
+            {
+                allTags.Add("@main");
+            }
+            allTags.AddRange(childTags);
+
+            tagsMap["@child"] = childTags;
+            tagsMap["@all"] = allTags;
+
+            string childTagsStr = string.Join(", ", childTags);
+            string allTagsStr = string.Join(", ", allTags);
+
+            // 4. Resolved prompt text
+            string resolvedPrompt = rawPrompt;
+            if (resolvedPrompt.Contains("@all"))
+            {
+                resolvedPrompt = resolvedPrompt.Replace("@all", allTagsStr);
+            }
+            if (resolvedPrompt.Contains("@child"))
+            {
+                resolvedPrompt = resolvedPrompt.Replace("@child", childTagsStr);
+            }
+
+            // 5. Build Parts array (tokenizing rawPrompt into text & ref parts)
+            var partsList = new System.Collections.Generic.List<object>();
+            var regex = new System.Text.RegularExpressions.Regex(@"(@all|@child|@main|@img\d+)");
+            int lastIdx = 0;
+            foreach (System.Text.RegularExpressions.Match match in regex.Matches(rawPrompt))
+            {
+                if (match.Index > lastIdx)
+                {
+                    string textChunk = rawPrompt.Substring(lastIdx, match.Index - lastIdx);
+                    partsList.Add(new { text = textChunk });
+                }
+
+                string tagMatched = match.Value;
+                partsList.Add(new { @ref = tagMatched });
+
+                lastIdx = match.Index + match.Length;
+            }
+
+            if (lastIdx < rawPrompt.Length)
+            {
+                partsList.Add(new { text = rawPrompt.Substring(lastIdx) });
+            }
+
+            // 6. Assemble payload
+            var payload = new
+            {
+                rawPrompt = rawPrompt,
+                prompt = resolvedPrompt,
+                images = imagesDict,
+                tags = tagsMap,
+                parts = partsList
+            };
+
+            string jsonString = System.Text.Json.JsonSerializer.Serialize(payload, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+
+            return (resolvedPrompt, jsonString);
+        }
+
+        private void PopulateAutocompleteList()
+        {
+            var items = new System.Collections.Generic.List<object>();
+            
+            items.Add(new { DisplayName = "Tất cả ảnh (@all)", Bitmap = (BitmapSource?)null, CodeId = "@all" });
+            
+            if (_secondaryImages.Count > 0)
+            {
+                items.Add(new { DisplayName = "Tất cả ảnh con (@child)", Bitmap = (BitmapSource?)null, CodeId = "@child" });
+            }
+
+            if (_activeLayer != null && (_activeLayer.Thumbnail != null || _activeLayer.Bitmap != null))
+            {
+                items.Add(new { DisplayName = "Ảnh chính", Bitmap = _activeLayer.Thumbnail ?? (BitmapSource)_activeLayer.Bitmap, CodeId = "@main" });
+            }
+            
+            for (int i = 0; i < _secondaryImages.Count; i++)
+            {
+                if (_secondaryImages[i].HasImage && _secondaryImages[i].Bitmap != null)
+                {
+                    items.Add(new { 
+                        DisplayName = $"Ảnh con {i + 1}", 
+                        Bitmap = _secondaryImages[i].Bitmap, 
+                        CodeId = $"@img{i}" 
+                    });
+                }
+            }
+            
+            ListPromptAutocomplete.ItemsSource = items;
+            if (items.Count > 0)
+            {
+                ListPromptAutocomplete.SelectedIndex = 0;
+            }
+        }
+
+        private void InsertImageTag(object selectedItem)
+        {
+            if (selectedItem == null) return;
+            
+            RichTextBox? rtb = null;
+            if (ActiveTab.Prompt == _activeTab) rtb = TxtPrompt;
+            else if (ActiveTab.WebView == _activeTab) rtb = TxtPromptWv;
+            else if (ActiveTab.WebBrowser == _activeTab) rtb = TxtPromptWeb;
+
+            if (rtb == null) return;
+
+            dynamic item = selectedItem;
+            string codeId = item.CodeId;
+            BitmapSource? bmp = item.Bitmap;
+
+            var caret = rtb.CaretPosition;
+            if (caret == null) return;
+
+            // Delete the '@' character
+            TextPointer startDelete = caret.GetPositionAtOffset(-1, LogicalDirection.Backward);
+            if (startDelete != null)
+            {
+                new TextRange(startDelete, caret).Text = "";
+            }
+
+            if (codeId == "@all")
+            {
+                rtb.CaretPosition.InsertTextInRun("@all ");
+                rtb.CaretPosition = rtb.CaretPosition.GetPositionAtOffset(5, LogicalDirection.Forward);
+            }
+            else if (codeId == "@child")
+            {
+                rtb.CaretPosition.InsertTextInRun("@child ");
+                rtb.CaretPosition = rtb.CaretPosition.GetPositionAtOffset(7, LogicalDirection.Forward);
+            }
+            else if (bmp != null)
+            {
+                var border = new Border
+                {
+                    Width = 20,
+                    Height = 20,
+                    CornerRadius = new CornerRadius(4),
+                    ClipToBounds = true,
+                    Background = new SolidColorBrush(Color.FromRgb(21, 23, 30)),
+                    Margin = new Thickness(2, 0, 2, -4)
+                };
+                var img = new Image
+                {
+                    Source = bmp,
+                    Stretch = Stretch.UniformToFill,
+                    Tag = codeId
+                };
+                border.Child = img;
+
+                var container = new InlineUIContainer(border, rtb.CaretPosition);
+                rtb.CaretPosition = container.ElementEnd;
+            }
+
+            PopupPromptAutocomplete.IsOpen = false;
+            rtb.Focus();
+        }
+
+        private void ListPromptAutocomplete_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (ListPromptAutocomplete.SelectedItem != null)
+            {
+                InsertImageTag(ListPromptAutocomplete.SelectedItem);
+                e.Handled = true;
+            }
+        }
+
+        private void ListPromptAutocomplete_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                InsertImageTag(ListPromptAutocomplete.SelectedItem);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                PopupPromptAutocomplete.IsOpen = false;
+                e.Handled = true;
+            }
+        }
+        
+        #endregion
         #endregion
     }
 
@@ -6555,3 +6856,14 @@ namespace FlowMy.Views.Overlays
     }
     #endregion
 }
+
+
+
+
+
+
+
+
+
+
+
