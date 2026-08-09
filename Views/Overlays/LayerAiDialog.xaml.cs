@@ -238,6 +238,7 @@ namespace FlowMy.Views.Overlays
 
             // Sync prompt from node to prompt boxes
             LoadActiveLayerState();
+            ClearPromptOnOpen();
 
             // Setup two-way drag and drop between WPF and WebView2
             SetupDragAndDrop();
@@ -327,6 +328,7 @@ namespace FlowMy.Views.Overlays
 
             LoadActiveLayerState();
             UpdateSelectedLayersLists();
+            ClearPromptOnOpen();
 
             if (_activeTab == ActiveTab.WebBrowser || _activeTab == ActiveTab.WebView)
             {
@@ -334,6 +336,25 @@ namespace FlowMy.Views.Overlays
             }
 
             SubscribeToViewModelEvents();
+        }
+
+        private void ClearPromptOnOpen()
+        {
+            _node.ProcessorPrompt = string.Empty;
+            if (_activeLayer != null)
+            {
+                _activeLayer.LayerAiPrompt = string.Empty;
+            }
+            foreach (var state in _layerStates.Values)
+            {
+                if (state != null)
+                {
+                    state.Prompt = string.Empty;
+                }
+            }
+            try { SetRichText(TxtPrompt, string.Empty); } catch { }
+            try { if (TxtPromptWv != null) SetRichText(TxtPromptWv, string.Empty); } catch { }
+            try { if (TxtPromptWeb != null) SetRichText(TxtPromptWeb, string.Empty); } catch { }
         }
 
         private LayerAiState CreateStateForLayer(EditorLayer layer)
@@ -6466,7 +6487,7 @@ namespace FlowMy.Views.Overlays
                 if (_secondaryImages[i].HasImage && _secondaryImages[i].Bitmap != null)
                 {
                     items.Add(new { 
-                        DisplayName = $"Ảnh con {i + 1}", 
+                        DisplayName = $"Ảnh {i + 1}", 
                         Bitmap = _secondaryImages[i].Bitmap, 
                         CodeId = $"@img{i}" 
                     });
@@ -6477,6 +6498,19 @@ namespace FlowMy.Views.Overlays
             if (items.Count > 0)
             {
                 ListPromptAutocomplete.SelectedIndex = 0;
+            }
+        }
+
+        private void ListPromptAutocomplete_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is DependencyObject dep)
+            {
+                var scrollViewer = FindVisualChild<ScrollViewer>(dep);
+                if (scrollViewer != null)
+                {
+                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - (e.Delta / 3.0));
+                    e.Handled = true;
+                }
             }
         }
 
