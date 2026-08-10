@@ -68,7 +68,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // 1. Priority 1: Check if cURL command is bound from another node
                 if (isBoundFromCurlSource)
                 {
-                    var curlCommand = ResolveStringValue(
+                    var curlCommand = await ResolveStringValueAsync(
                         "", 
                         httpNode.CurlSourceNodeId, 
                         httpNode.CurlSourceOutputKey, 
@@ -77,12 +77,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         env,
                         allNodesForLookup);
                     
-                    // Replace dynamic variable placeholders {item}, {token}, {variable} in curlCommand if present
-                    if (!string.IsNullOrWhiteSpace(curlCommand))
+                    if (string.IsNullOrWhiteSpace(curlCommand))
                     {
-                        curlCommand = ReplaceVariablePlaceholdersInText(curlCommand, connections, httpNode, env);
+                        throw new InvalidOperationException("Dynamic cURL binding is configured but value could not be resolved or is empty after waiting. Cannot fallback to static cURL.");
                     }
 
+                    // Replace dynamic variable placeholders {item}, {token}, {variable} in curlCommand if present
+                    curlCommand = ReplaceVariablePlaceholdersInText(curlCommand, connections, httpNode, env);
                     curlCommand = NormalizeBoundCurlCommand(curlCommand);
                     
                     if (!string.IsNullOrWhiteSpace(curlCommand) && IsCurlCommand(curlCommand))
@@ -118,6 +119,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Could not parse bound cURL into structured fields: {errorMsg}. Will execute raw bound cURL command.");
                         }
                     }
+                    else
+                    {
+                        throw new InvalidOperationException($"Dynamic cURL binding failed: resolved value is not a valid cURL command. Value: {curlCommand}");
+                    }
                 }
 
                 // Effective execution properties (parsed cURL taking base priority, falling back to static node config)
@@ -133,7 +138,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 string url;
                 if (!string.IsNullOrWhiteSpace(httpNode.UrlSourceNodeId) && !string.IsNullOrWhiteSpace(httpNode.UrlSourceOutputKey))
                 {
-                    var dynamicUrl = ResolveStringValue(
+                    var dynamicUrl = await ResolveStringValueAsync(
                         httpNode.Url,
                         httpNode.UrlSourceNodeId,
                         httpNode.UrlSourceOutputKey,
@@ -149,7 +154,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 else
                 {
-                    url = ResolveStringValue(
+                    url = await ResolveStringValueAsync(
                         httpNode.Url,
                         httpNode.UrlSourceNodeId,
                         httpNode.UrlSourceOutputKey,
@@ -168,14 +173,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var queryParams = new List<KeyValuePair<string, string>>();
                 foreach (var param in queryParamsSnapshot.Where(p => p.IsEnabled && !string.IsNullOrWhiteSpace(p.Key)))
                 {
-                    var value = ResolveKeyValuePairValue(param, connections, httpNode, env, allNodesForLookup);
+                    var value = await ResolveKeyValuePairValueAsync(param, connections, httpNode, env, allNodesForLookup);
                     queryParams.Add(new KeyValuePair<string, string>(param.Key, value));
                 }
 
                 // Add API Key as query param if configured (resolve value from binding when set)
                 if (effectiveAuthType == HttpAuthType.ApiKey && !httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
                 {
-                    var resolvedApiKeyValue = ResolveStringValue(
+                    var resolvedApiKeyValue = await ResolveStringValueAsync(
                         httpNode.ApiKeyValue ?? string.Empty,
                         httpNode.ApiKeyValueSourceNodeId,
                         httpNode.ApiKeyValueSourceOutputKey,
@@ -202,7 +207,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 Debug.WriteLine($"[HttpNode][{env.ExecutionId}] Executing {effectiveHttpMethod} {url}");
 
                 // Resolve headers and body using active effective properties and snapshots
-                ResolveHeadersAndBody(
+                var headersAndBody = await ResolveHeadersAndBodyAsync(
                     httpNode,
                     connections,
                     env,
@@ -215,9 +220,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     effectiveAuthUsername,
                     effectiveAuthPassword,
                     effectiveAuthToken,
-                    out var resolvedHeaders,
-                    out var resolvedBody,
                     allNodesForLookup);
+                var resolvedHeaders = headersAndBody.resolvedHeaders;
+                var resolvedBody = headersAndBody.resolvedBody;
 
                 // Auto-detect stream based on request headers (thread-local decision)
                 var isStream = httpNode.IsStream;
@@ -435,7 +440,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return trimmed;
         }
 
-        private void ResolveHeadersAndBody(
+        private async Task<(Dictionary<string, string> resolvedHeaders, string? resolvedBody)> ResolveHeadersAndBodyAsync(
             HttpRequestNode httpNode,
             List<WorkflowConnection> connections,
             NodeExecutionEnvironment env,
@@ -448,16 +453,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             string? effectiveAuthUsername,
             string? effectiveAuthPassword,
             string? effectiveAuthToken,
-            out Dictionary<string, string> resolvedHeaders,
-            out string? resolvedBody,
             IEnumerable<WorkflowNode>? allNodesForLookup = null)
         {
-            resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             // 1. Resolve headers from the active headers snapshot (dynamic or cURL-parsed)
             foreach (var header in headersSnapshot.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
             {
-                var val = ResolveKeyValuePairValue(header, connections, httpNode, env, allNodesForLookup);
+                var val = await ResolveKeyValuePairValueAsync(header, connections, httpNode, env, allNodesForLookup);
                 resolvedHeaders[header.Key] = CleanHeaderOrTokenValue(val);
             }
 
@@ -475,7 +478,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                     break;
                 case HttpAuthType.Bearer:
-                    var rawToken = ResolveStringValue(effectiveAuthToken ?? string.Empty, httpNode.TokenSourceNodeId, httpNode.TokenSourceOutputKey, connections, httpNode, env, allNodesForLookup);
+                    var rawToken = await ResolveStringValueAsync(effectiveAuthToken ?? string.Empty, httpNode.TokenSourceNodeId, httpNode.TokenSourceOutputKey, connections, httpNode, env, allNodesForLookup);
                     var token = CleanHeaderOrTokenValue(rawToken);
                     if (!string.IsNullOrWhiteSpace(token) && !resolvedHeaders.ContainsKey("Authorization"))
                     {
@@ -485,7 +488,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 case HttpAuthType.ApiKey:
                     if (httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
                     {
-                        var apiKeyVal = ResolveStringValue(httpNode.ApiKeyValue ?? string.Empty, httpNode.ApiKeyValueSourceNodeId, httpNode.ApiKeyValueSourceOutputKey, connections, httpNode, env, allNodesForLookup);
+                        var apiKeyVal = await ResolveStringValueAsync(httpNode.ApiKeyValue ?? string.Empty, httpNode.ApiKeyValueSourceNodeId, httpNode.ApiKeyValueSourceOutputKey, connections, httpNode, env, allNodesForLookup);
                         resolvedHeaders[httpNode.ApiKeyName] = CleanHeaderOrTokenValue(apiKeyVal);
                     }
                     break;
@@ -513,16 +516,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             // 5. Resolve body based on effectiveHttpMethod and effectiveBodyType
-            resolvedBody = null;
+            string? resolvedBody = null;
             if (effectiveHttpMethod != HttpMethod.GET && effectiveHttpMethod != HttpMethod.HEAD)
             {
                 switch (effectiveBodyType)
                 {
                     case HttpBodyType.Raw:
-                        resolvedBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env, allNodesForLookup);
+                        resolvedBody = await ResolveStringValueAsync(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env, allNodesForLookup);
                         break;
                     case HttpBodyType.Json:
-                        var jsonBody = ResolveStringValue(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env, allNodesForLookup);
+                        var jsonBody = await ResolveStringValueAsync(effectiveRawBody ?? string.Empty, httpNode.BodySourceNodeId, httpNode.BodySourceOutputKey, connections, httpNode, env, allNodesForLookup);
                         resolvedBody = EscapeJsonStringValues(jsonBody, connections, httpNode, env);
                         if (!resolvedHeaders.ContainsKey("Content-Type"))
                             resolvedHeaders["Content-Type"] = "application/json";
@@ -532,7 +535,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var formParts = new List<string>();
                         foreach (var item in formDataSnapshot.Where(f => f.IsEnabled && !string.IsNullOrWhiteSpace(f.Key)))
                         {
-                            formParts.Add($"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(ResolveKeyValuePairValue(item, connections, httpNode, env, allNodesForLookup))}");
+                            var resolvedVal = await ResolveKeyValuePairValueAsync(item, connections, httpNode, env, allNodesForLookup);
+                            formParts.Add($"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(resolvedVal)}");
                         }
                         resolvedBody = string.Join("&", formParts);
                         if (!resolvedHeaders.ContainsKey("Content-Type"))
@@ -544,6 +548,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         break;
                 }
             }
+
+            return (resolvedHeaders, resolvedBody);
         }
 
         /// <summary>
@@ -611,33 +617,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         /// <summary>
         /// Resolve auth thành headers dict cho curl bypass mode.
-        /// </summary>
-        private void AddAuthToHeaders(Dictionary<string, string> headers, HttpRequestNode httpNode, List<WorkflowConnection> connections, NodeExecutionEnvironment env)
-        {
-            switch (httpNode.AuthType)
-            {
-                case HttpAuthType.Basic:
-                    if (!string.IsNullOrWhiteSpace(httpNode.AuthUsername))
-                    {
-                        var credentials = Convert.ToBase64String(
-                            System.Text.Encoding.UTF8.GetBytes($"{httpNode.AuthUsername}:{httpNode.AuthPassword ?? string.Empty}"));
-                        headers["Authorization"] = $"Basic {credentials}";
-                    }
-                    break;
-                case HttpAuthType.Bearer:
-                    var token = ResolveStringValue(httpNode.AuthToken ?? string.Empty, httpNode.TokenSourceNodeId, httpNode.TokenSourceOutputKey, connections, httpNode, env);
-                    if (!string.IsNullOrWhiteSpace(token))
-                        headers["Authorization"] = $"Bearer {token}";
-                    break;
-                case HttpAuthType.ApiKey:
-                    if (httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
-                    {
-                        var apiKeyVal = ResolveStringValue(httpNode.ApiKeyValue ?? string.Empty, httpNode.ApiKeyValueSourceNodeId, httpNode.ApiKeyValueSourceOutputKey, connections, httpNode, env);
-                        headers[httpNode.ApiKeyName] = apiKeyVal;
-                    }
-                    break;
-            }
-        }
 
         private static System.Net.Http.HttpMethod GetHttpMethod(HttpMethod method)
         {
@@ -654,117 +633,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
         }
 
-        private void AddAuthentication(HttpRequestMessage request, HttpRequestNode httpNode, List<WorkflowConnection> connections, NodeExecutionEnvironment env)
-        {
-            switch (httpNode.AuthType)
-            {
-                case HttpAuthType.Basic:
-                    if (!string.IsNullOrWhiteSpace(httpNode.AuthUsername))
-                    {
-                        var credentials = Convert.ToBase64String(
-                            Encoding.UTF8.GetBytes($"{httpNode.AuthUsername}:{httpNode.AuthPassword ?? string.Empty}"));
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-                    }
-                    break;
-
-                case HttpAuthType.Bearer:
-                    var bearerToken = ResolveStringValue(
-                        httpNode.AuthToken ?? string.Empty,
-                        httpNode.TokenSourceNodeId,
-                        httpNode.TokenSourceOutputKey,
-                        connections,
-                        httpNode,
-                        env);
-                    if (!string.IsNullOrWhiteSpace(bearerToken))
-                    {
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-                    }
-                    break;
-
-                case HttpAuthType.ApiKey:
-                    if (httpNode.ApiKeyInHeader && !string.IsNullOrWhiteSpace(httpNode.ApiKeyName))
-                    {
-                        var apiKeyValue = ResolveStringValue(
-                            httpNode.ApiKeyValue ?? string.Empty,
-                            httpNode.ApiKeyValueSourceNodeId,
-                            httpNode.ApiKeyValueSourceOutputKey,
-                            connections,
-                            httpNode,
-                            env);
-                        request.Headers.TryAddWithoutValidation(httpNode.ApiKeyName, apiKeyValue);
-                    }
-                    // Query param is handled in URL building
-                    break;
-            }
-        }
-
-        private void AddBody(HttpRequestMessage request, HttpRequestNode httpNode, List<WorkflowConnection> connections, NodeExecutionEnvironment env, List<HttpKeyValuePair> formDataSnapshot)
-        {
-            if (httpNode.HttpMethod == HttpMethod.GET || httpNode.HttpMethod == HttpMethod.HEAD)
-            {
-                return; // GET and HEAD typically don't have body
-            }
-
-            switch (httpNode.BodyType)
-            {
-                case HttpBodyType.Raw:
-                    var rawBody = ResolveStringValue(
-                        httpNode.RawBody,
-                        httpNode.BodySourceNodeId,
-                        httpNode.BodySourceOutputKey,
-                        connections,
-                        httpNode,
-                        env);
-                    if (!string.IsNullOrEmpty(rawBody))
-                    {
-                        request.Content = new StringContent(rawBody, Encoding.UTF8, "text/plain");
-                    }
-                    break;
-
-                case HttpBodyType.Json:
-                    var jsonBody = ResolveStringValue(
-                        httpNode.RawBody,
-                        httpNode.BodySourceNodeId,
-                        httpNode.BodySourceOutputKey,
-                        connections,
-                        httpNode,
-                        env);
-                    if (!string.IsNullOrEmpty(jsonBody))
-                    {
-                        // ⚠️ CRITICAL: JSON-escape các giá trị được replace từ variables (như {base64})
-                        // để tránh lỗi khi base64 string chứa ký tự đặc biệt làm hỏng JSON structure
-                        jsonBody = EscapeJsonStringValues(jsonBody, connections, httpNode, env);
-                        request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-                    }
-                    break;
-
-                case HttpBodyType.FormUrlEncoded:
-                    var formData = new List<KeyValuePair<string, string>>();
-                    foreach (var item in formDataSnapshot.Where(f => f.IsEnabled && !string.IsNullOrWhiteSpace(f.Key)))
-                    {
-                        var value = ResolveKeyValuePairValue(item, connections, httpNode, env);
-                        formData.Add(new KeyValuePair<string, string>(item.Key, value));
-                    }
-                    if (formData.Count > 0)
-                    {
-                        request.Content = new FormUrlEncodedContent(formData);
-                    }
-                    break;
-
-                case HttpBodyType.FormData:
-                    var multipartContent = new MultipartFormDataContent();
-                    foreach (var item in formDataSnapshot.Where(f => f.IsEnabled && !string.IsNullOrWhiteSpace(f.Key)))
-                    {
-                        var value = ResolveKeyValuePairValue(item, connections, httpNode, env);
-                        multipartContent.Add(new StringContent(value), item.Key);
-                    }
-                    if (formDataSnapshot.Any(f => f.IsEnabled && !string.IsNullOrWhiteSpace(f.Key)))
-                    {
-                        request.Content = multipartContent;
-                    }
-                    break;
-            }
-        }
 
         /// <summary>
         /// Escape JSON string values trong JSON body khi replace variables.
@@ -910,7 +778,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         /// <summary>
         /// Resolve a string value that may have dynamic binding from another node.
         /// </summary>
-        private string ResolveStringValue(
+        private async Task<string> ResolveStringValueAsync(
             string staticValue,
             string? sourceNodeId,
             string? sourceOutputKey,
@@ -933,8 +801,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return staticValue ?? string.Empty;
             }
 
-            // Resolve value from source node
-            var value = env.Service.ResolveDynamicValueForExecution(sourceNode, sourceOutputKey, env);
+            // Wait/retry logic for async parallel tasks where the source node might still be running
+            string value = "—";
+            int retryCount = 0;
+            while (retryCount < 100) // Wait up to 10 seconds
+            {
+                value = env.Service.ResolveDynamicValueForExecution(sourceNode, sourceOutputKey, env);
+                if (value != "—")
+                {
+                    break;
+                }
+                await Task.Delay(100, env.CancellationToken);
+                retryCount++;
+            }
+
             if (value == "—" || string.IsNullOrWhiteSpace(value))
             {
                 return staticValue ?? string.Empty;
@@ -1016,7 +896,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
         }
 
-        private string ResolveKeyValuePairValue(
+        private async Task<string> ResolveKeyValuePairValueAsync(
             HttpKeyValuePair kvp,
             List<WorkflowConnection> connections,
             HttpRequestNode currentNode,
@@ -1035,8 +915,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return kvp.Value ?? string.Empty;
             }
 
-            // Resolve value from source node
-            var value = env.Service.ResolveDynamicValueForExecution(sourceNode, kvp.SourceOutputKey, env);
+            // Wait/retry logic for async parallel tasks
+            string value = "—";
+            int retryCount = 0;
+            while (retryCount < 100) // Wait up to 10 seconds
+            {
+                value = env.Service.ResolveDynamicValueForExecution(sourceNode, kvp.SourceOutputKey, env);
+                if (value != "—")
+                {
+                    break;
+                }
+                await Task.Delay(100, env.CancellationToken);
+                retryCount++;
+            }
+
             if (value == "—" || string.IsNullOrWhiteSpace(value))
                 return kvp.Value ?? string.Empty;
 
