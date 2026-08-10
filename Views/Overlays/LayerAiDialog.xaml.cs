@@ -2617,12 +2617,19 @@ namespace FlowMy.Views.Overlays
             {
                 Style = borderStyle,
                 Focusable = true,
-                Tag = index.ToString()
+                Tag = index.ToString(),
+                AllowDrop = true
             };
             border.KeyDown += SlotBorder_KeyDown;
             border.MouseEnter += Slot_MouseEnter;
             border.MouseLeave += Slot_MouseLeave;
             border.MouseLeftButtonDown += Slot_Click;
+            border.DragOver += (s, e) =>
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            };
+            border.Drop += Control_Drop;
 
             var grid = new Grid();
 
