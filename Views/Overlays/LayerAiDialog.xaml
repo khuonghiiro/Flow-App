@@ -10,7 +10,7 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen"
         Width="920"
-        Height="540">
+        Height="690">
     <Window.Resources>
         <!-- Reusable dark theme brush copies if global ones are not available -->
         <SolidColorBrush x:Key="DialogBg" Color="#111318"/>
@@ -212,6 +212,11 @@
                 <Grid Grid.Column="0">
                     <!-- NORMAL LAYOUT LEFT: Preview (3*) and Secondary Images Grid (3*) -->
                     <Grid x:Name="GridLeftNormal" Visibility="Visible">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="150"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="3*"/>
                             <ColumnDefinition Width="10"/>
@@ -219,17 +224,20 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Column 0: Preview (Main Image) -->
-                        <Grid Grid.Column="0">
+                        <Grid Grid.Column="0" Grid.Row="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="📸 ẢNH CHÍNH (Preview)" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <Border Grid.Row="1" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="8" ClipToBounds="True">
+                            <Border x:Name="ImgPreviewBorder" Grid.Row="1" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="8" ClipToBounds="True">
                                 <Grid>
                                     <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
                                      <Image x:Name="ImgPreview" Stretch="Uniform" Margin="0" MouseEnter="ImgPreview_MouseEnter" MouseLeave="ImgPreview_MouseLeave"/>
+                                    <Border x:Name="ImgPreviewAiBadge" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#4fffb0" CornerRadius="0,0,6,0" Padding="6,2,6,2" Visibility="Collapsed">
+                                        <TextBlock Text="✓ AI" Foreground="#111318" FontSize="10" FontWeight="Bold"/>
+                                    </Border>
                                 </Grid>
                             </Border>
                             <!-- Bottom horizontal selected images list -->
@@ -258,7 +266,7 @@
                         </Grid>
 
                         <!-- Column 2: Secondary Images Grid (Dynamic Slots) -->
-                        <Grid Grid.Column="2">
+                        <Grid Grid.Column="2" Grid.Row="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
@@ -300,6 +308,20 @@
                                         Style="{DynamicResource SuccessButton}" Cursor="Hand" FontSize="11" Click="BtnToggleSendMode_Click"/>
                             </Grid>
                         </Grid>
+
+                        <!-- Row 2: History Images -->
+                        <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="🕒 LỊCH SỬ ẢNH PHỤ" Foreground="{StaticResource TextMuted}" FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <Border Grid.Row="1" Background="#0b0d12" BorderBrush="#1e222d" BorderThickness="1.5" CornerRadius="6" Padding="6">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <WrapPanel x:Name="HistoryImagesWrapPanel" Orientation="Horizontal" Margin="0"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
                     </Grid>
 
                     <!-- EXPANDED LAYOUT LEFT: Compact vertically stacked images (Shared for Tab 2 & Tab 3) -->
@@ -325,10 +347,13 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 
-                                <Border Grid.Column="0" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="6" ClipToBounds="True">
+                                <Border x:Name="ImgPreviewWvBorder" Grid.Column="0" BorderBrush="{StaticResource AccentColor}" BorderThickness="2" CornerRadius="6" ClipToBounds="True">
                                     <Grid>
                                         <Rectangle Fill="{StaticResource PsCheckeredBrush}" SnapsToDevicePixels="True"/>
                                          <Image x:Name="ImgPreviewWv" Stretch="Uniform" Margin="0" MouseEnter="ImgPreview_MouseEnter" MouseLeave="ImgPreview_MouseLeave"/>
+                                        <Border x:Name="ImgPreviewWvAiBadge" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#4fffb0" CornerRadius="0,0,6,0" Padding="5,2,5,2" Visibility="Collapsed">
+                                            <TextBlock Text="✓ AI" Foreground="#111318" FontSize="9" FontWeight="Bold"/>
+                                        </Border>
                                     </Grid>
                                 </Border>
                                 

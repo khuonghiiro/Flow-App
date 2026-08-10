@@ -42,6 +42,7 @@ namespace FlowMy.Views.Overlays
             public SecondaryImageItem? SecondaryImage { get; set; }
             public int AspectRatioIndex { get; set; }
             public string ExecutionId { get; set; } = string.Empty;
+            public int SecondaryImageIndex { get; set; } = -1;
         }
 
         public static readonly ConcurrentDictionary<string, CodeCropMappingInfo> CropGuidRegistry = new();
@@ -57,6 +58,8 @@ namespace FlowMy.Views.Overlays
         private Window? _ownerWindow;
 
         // Secondary images management
+        public static SecondaryImageItem? DraggedHistoryItem { get; set; }
+
         public class SecondaryImageItem
         {
             public string CodeId { get; set; } = Guid.NewGuid().ToString("N");
@@ -149,6 +152,7 @@ namespace FlowMy.Views.Overlays
         private List<Border> _slotBordersWv = new();
         private List<Image> _slotImagesWv = new();
         private List<TextBlock> _slotPlaceholdersWv = new();
+        private List<Border> _slotChecksWv = new();
         private List<Border> _slotRemovesWv = new();
         private List<StackPanel> _slotChildPanels = new();
         private List<StackPanel> _slotChildPanelsWv = new();
@@ -2567,6 +2571,7 @@ namespace FlowMy.Views.Overlays
             _slotBordersWv.Clear();
             _slotImagesWv.Clear();
             _slotPlaceholdersWv.Clear();
+            _slotChecksWv.Clear();
             _slotRemovesWv.Clear();
             _slotChildPanelsWv.Clear();
 
@@ -2642,28 +2647,24 @@ namespace FlowMy.Views.Overlays
             };
             grid.Children.Add(placeholder);
 
-            // Check badge (only normal, not compact)
-            Border? checkBadge = null;
-            if (!isCompact)
+            // Check badge for AI ID (✓ AI)
+            var checkBadge = new Border
             {
-                checkBadge = new Border
-                {
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0")),
-                    CornerRadius = new CornerRadius(0, 0, 6, 0),
-                    Padding = new Thickness(4, 2, 4, 2),
-                    Visibility = Visibility.Collapsed
-                };
-                checkBadge.Child = new TextBlock
-                {
-                    Text = "✓",
-                    Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#111318")),
-                    FontSize = 10,
-                    FontWeight = FontWeights.Bold
-                };
-                grid.Children.Add(checkBadge);
-            }
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0")),
+                CornerRadius = new CornerRadius(0, 0, 6, 0),
+                Padding = isCompact ? new Thickness(3, 1, 3, 1) : new Thickness(6, 2, 6, 2),
+                Visibility = Visibility.Collapsed
+            };
+            checkBadge.Child = new TextBlock
+            {
+                Text = "✓ AI",
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#111318")),
+                FontSize = isCompact ? 8 : 10,
+                FontWeight = FontWeights.Bold
+            };
+            grid.Children.Add(checkBadge);
 
             // Remove button
             var removeBorder = new Border
@@ -2724,7 +2725,7 @@ namespace FlowMy.Views.Overlays
                 VerticalAlignment = VerticalAlignment.Center
             };
             childScrollViewer.Content = childStackPanel;
-            grid.Children.Add(childScrollViewer);
+            // grid.Children.Add(childScrollViewer); // Removed as per user request to hide inline history thumbnails
 
             border.Child = grid;
 
@@ -2734,6 +2735,7 @@ namespace FlowMy.Views.Overlays
                 _slotBordersWv.Add(border);
                 _slotImagesWv.Add(image);
                 _slotPlaceholdersWv.Add(placeholder);
+                _slotChecksWv.Add(checkBadge);
                 _slotRemovesWv.Add(removeBorder);
                 _slotChildPanelsWv.Add(childStackPanel);
             }
@@ -2742,7 +2744,7 @@ namespace FlowMy.Views.Overlays
                 _slotBorders.Add(border);
                 _slotImages.Add(image);
                 _slotPlaceholders.Add(placeholder);
-                _slotChecks.Add(checkBadge!);
+                _slotChecks.Add(checkBadge);
                 _slotRemoves.Add(removeBorder);
                 _slotChildPanels.Add(childStackPanel);
             }
@@ -2907,6 +2909,7 @@ namespace FlowMy.Views.Overlays
                 {
                     _secondaryImages[idx].Bitmap = null;
                     _secondaryImages[idx].FilePath = null;
+                    _secondaryImages[idx].ImageId = null;
                     _secondaryImages[idx].IsSelected = false;
                     RefreshAllSlotsUI();
                     UpdateSecondaryInfo();
@@ -3215,6 +3218,7 @@ namespace FlowMy.Views.Overlays
             for (int i = 0; i < _secondarySlotCount && i < _secondaryImages.Count; i++)
                 RefreshSlotUI(i);
             UpdateSecondaryInfo();
+            RefreshHistoryPanelUI();
         }
 
         private void RefreshSlotUI(int idx)
@@ -3237,6 +3241,11 @@ namespace FlowMy.Views.Overlays
 
                 var activeBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
                 var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
+
+                bool hasId = !string.IsNullOrEmpty(item.GetImageId(CmbAspectRatio?.SelectedIndex ?? 3));
+
+                if (idx < _slotChecks.Count) _slotChecks[idx].Visibility = hasId ? Visibility.Visible : Visibility.Collapsed;
+                if (idx < _slotChecksWv.Count) _slotChecksWv[idx].Visibility = hasId ? Visibility.Visible : Visibility.Collapsed;
 
                 if (item.IsSelected)
                 {
@@ -3270,6 +3279,7 @@ namespace FlowMy.Views.Overlays
                 // Expanded slots
                 if (idx < _slotImagesWv.Count) _slotImagesWv[idx].Source = null;
                 if (idx < _slotPlaceholdersWv.Count) _slotPlaceholdersWv[idx].Visibility = Visibility.Visible;
+                if (idx < _slotChecksWv.Count) _slotChecksWv[idx].Visibility = Visibility.Collapsed;
                 if (idx < _slotRemovesWv.Count) _slotRemovesWv[idx].Visibility = Visibility.Collapsed;
 
                 var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2a2e3d"));
@@ -3370,6 +3380,129 @@ namespace FlowMy.Views.Overlays
             else
             {
                 TxtSecondaryInfo.Text = "";
+            }
+        }
+
+        private void RefreshHistoryPanelUI()
+        {
+            if (HistoryImagesWrapPanel == null) return;
+            HistoryImagesWrapPanel.Children.Clear();
+
+            var allHistory = new List<SecondaryImageItem>();
+            foreach (var slot in _secondaryImages)
+            {
+                if (slot.SavedChildImages != null)
+                {
+                    allHistory.AddRange(slot.SavedChildImages.Where(s => !string.IsNullOrEmpty(s.ImageId)));
+                }
+            }
+
+            // Remove duplicates by ImageId
+            var distinctHistory = allHistory
+                .GroupBy(s => s.ImageId, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+
+            foreach (var child in distinctHistory)
+            {
+                var border = new Border
+                {
+                    Width = 60,
+                    Height = 60,
+                    CornerRadius = new CornerRadius(4),
+                    BorderThickness = new Thickness(1.5),
+                    Margin = new Thickness(4),
+                    Cursor = Cursors.Hand,
+                    ToolTip = !string.IsNullOrEmpty(child.ImageId) ? $"ID: #{child.ImageId}\n(Kéo thả vào ô ảnh phụ)" : "Ảnh lịch sử"
+                };
+
+                bool isActive = _secondaryImages.Any(s => s.HasImage && string.Equals(s.ImageId, child.ImageId, StringComparison.OrdinalIgnoreCase));
+                border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#00ffff" : "#2a2e3d"));
+                border.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#15171e"));
+
+                var childImg = new Image
+                {
+                    Stretch = Stretch.Uniform,
+                    Source = child.Bitmap,
+                    Margin = new Thickness(2)
+                };
+                border.Child = childImg;
+
+                var capturedChild = child;
+                Point dragStartPoint = new Point();
+                bool isMouseDown = false;
+
+                border.MouseLeftButtonDown += (s, e) =>
+                {
+                    isMouseDown = true;
+                    dragStartPoint = e.GetPosition(null);
+                    border.CaptureMouse();
+                    e.Handled = true;
+                };
+
+                border.MouseLeftButtonUp += (s, e) =>
+                {
+                    if (isMouseDown)
+                    {
+                        isMouseDown = false;
+                        border.ReleaseMouseCapture();
+                        
+                        // Click behavior
+                        e.Handled = true;
+                        int targetSlot = GetSelectedSlotIndex();
+                        if (targetSlot < 0)
+                        {
+                            for (int i = 0; i < _secondarySlotCount; i++)
+                            {
+                                if (!_secondaryImages[i].HasImage)
+                                {
+                                    targetSlot = i;
+                                    break;
+                                }
+                            }
+                        }
+                        if (targetSlot >= 0 && targetSlot < _secondaryImages.Count)
+                        {
+                            var item = _secondaryImages[targetSlot];
+                            item.ArchiveCurrentIfHasId();
+                            item.Bitmap = capturedChild.Bitmap;
+                            item.FilePath = capturedChild.FilePath;
+                            item.ImageId = capturedChild.ImageId;
+                            item.IsSelected = true;
+                            RefreshAllSlotsUI();
+                            UpdatePreviewImage();
+                        }
+                    }
+                };
+
+                border.MouseMove += (s, e) =>
+                {
+                    if (isMouseDown && e.LeftButton == MouseButtonState.Pressed)
+                    {
+                        var currentPosition = e.GetPosition(null);
+                        if (Math.Abs(currentPosition.X - dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                            Math.Abs(currentPosition.Y - dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                        {
+                            isMouseDown = false;
+                            border.ReleaseMouseCapture();
+
+                            var data = new DataObject();
+                            data.SetData("LayerAiHistoryItem", "dummy");
+                            LayerAiDialog.DraggedHistoryItem = capturedChild;
+                            try
+                            {
+                                DragDrop.DoDragDrop(border, data, DragDropEffects.Copy);
+                            }
+                            catch { }
+                            finally
+                            {
+                                LayerAiDialog.DraggedHistoryItem = null;
+                            }
+                        }
+                    }
+                };
+
+                HistoryImagesWrapPanel.Children.Add(border);
             }
         }
 
@@ -3569,6 +3702,28 @@ namespace FlowMy.Views.Overlays
                 {
                     ImgPreviewWv.Source = processedImg;
                 }
+
+                bool layerHasId = !string.IsNullOrEmpty(_activeLayer.GetImageId(selectedIndex));
+                
+                if (ImgPreviewAiBadge != null)
+                {
+                    ImgPreviewAiBadge.Visibility = layerHasId ? Visibility.Visible : Visibility.Collapsed;
+                }
+                if (ImgPreviewWvAiBadge != null)
+                {
+                    ImgPreviewWvAiBadge.Visibility = layerHasId ? Visibility.Visible : Visibility.Collapsed;
+                }
+                
+                var normalBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
+
+                if (ImgPreviewBorder != null)
+                {
+                    ImgPreviewBorder.BorderBrush = normalBrush;
+                }
+                if (ImgPreviewWvBorder != null)
+                {
+                    ImgPreviewWvBorder.BorderBrush = normalBrush;
+                }
             }
             catch { }
         }
@@ -3631,7 +3786,7 @@ namespace FlowMy.Views.Overlays
                 }
 
                 // Convert main image to base64
-                var b64 = await Task.Run(() => ImageProcessorHelper.ToBase64(processedImg));
+                var b64 = ImageProcessorHelper.ToBase64(processedImg);
 
                 // Bind main image base64 output
                 var cropBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropBase64", StringComparison.OrdinalIgnoreCase));
@@ -4060,8 +4215,9 @@ namespace FlowMy.Views.Overlays
             });
 
             // 2. Secondary images at index [1..n]
-            foreach (var secItem in selectedSecItems)
+            for (int i = 0; i < selectedSecItems.Count; i++)
             {
+                var secItem = selectedSecItems[i];
                 string secCodeId = string.IsNullOrWhiteSpace(secItem.CodeId) ? (secItem.CodeId = Guid.NewGuid().ToString("N")) : secItem.CodeId;
                 string? existingId = secItem.GetImageId(aspectRatioIndex);
 
@@ -4072,13 +4228,14 @@ namespace FlowMy.Views.Overlays
                         CodeId = secCodeId,
                         TargetLayer = _activeLayer,
                         SecondaryImage = secItem,
+                        SecondaryImageIndex = _secondaryImages.IndexOf(secItem),
                         AspectRatioIndex = aspectRatioIndex,
                         ExecutionId = execId
                     };
                 }
 
                 bool secHasId = !string.IsNullOrWhiteSpace(existingId);
-                string b64 = secHasId ? "" : await Task.Run(() => ImageProcessorHelper.ToBase64(secItem.Bitmap!));
+                string b64 = secHasId ? "" : ImageProcessorHelper.ToBase64(secItem.Bitmap!);
 
                 cropListObjects.Add(new
                 {
@@ -4232,10 +4389,34 @@ namespace FlowMy.Views.Overlays
                             if (info.SecondaryImage != null)
                             {
                                 info.SecondaryImage.SetImageId(info.AspectRatioIndex, returnedId);
+                                info.SecondaryImage.ArchiveCurrentIfHasId();
                             }
-                            else if (info.TargetLayer != null)
+                            else if (info.TargetLayer != null && info.SecondaryImageIndex == -1)
                             {
                                 info.TargetLayer.SetImageId(info.AspectRatioIndex, returnedId);
+                            }
+                            
+                            // Always sync back to the underlying EditorLayer to ensure data isn't lost if the dialog is closed
+                            if (info.TargetLayer != null && info.SecondaryImageIndex >= 0 && info.SecondaryImageIndex < info.TargetLayer.LayerAiSecondaryImages.Count)
+                            {
+                                var layerSec = info.TargetLayer.LayerAiSecondaryImages[info.SecondaryImageIndex];
+                                layerSec.SetImageId(info.AspectRatioIndex, returnedId);
+                                
+                                if (layerSec.Bitmap != null)
+                                {
+                                    bool exists = layerSec.SavedChildImages.Any(c => string.Equals(c.ImageId, returnedId, StringComparison.OrdinalIgnoreCase));
+                                    if (!exists)
+                                    {
+                                        layerSec.SavedChildImages.Add(new EditorLayer.LayerAiSecondaryImage
+                                        {
+                                            ImageId = returnedId,
+                                            FilePath = layerSec.FilePath,
+                                            IsSelected = layerSec.IsSelected,
+                                            Bitmap = layerSec.Bitmap,
+                                            PngBytes = layerSec.PngBytes
+                                        });
+                                    }
+                                }
                             }
                         }
                     });
@@ -5515,6 +5696,7 @@ namespace FlowMy.Views.Overlays
                     {
                         _secondaryImages[idx].Bitmap = null;
                         _secondaryImages[idx].FilePath = null;
+                        _secondaryImages[idx].ImageId = null;
                         _secondaryImages[idx].IsSelected = false;
                         RefreshAllSlotsUI();
                         UpdateSecondaryInfo();
@@ -5531,6 +5713,20 @@ namespace FlowMy.Views.Overlays
             {
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
+
+                if (e.Data.GetDataPresent("LayerAiHistoryItem"))
+                {
+                    if (LayerAiDialog.DraggedHistoryItem != null)
+                    {
+                        ProcessDroppedHistoryItem(sender, LayerAiDialog.DraggedHistoryItem);
+                        return;
+                    }
+                    else if (e.Data.GetData("LayerAiHistoryItem") is SecondaryImageItem historyItem)
+                    {
+                        ProcessDroppedHistoryItem(sender, historyItem);
+                        return;
+                    }
+                }
 
                 BitmapSource? droppedBitmap = await GetImageFromDragEventArgsAsync(e);
 
@@ -6057,6 +6253,66 @@ namespace FlowMy.Views.Overlays
                 _secondaryImages[targetIdx].FilePath = null;
                 _secondaryImages[targetIdx].IsSelected = true;
                 RefreshAllSlotsUI();
+            }
+        }
+
+        private void ProcessDroppedHistoryItem(object sender, SecondaryImageItem historyItem)
+        {
+            int idx = -1;
+            FrameworkElement? feContainer = sender as FrameworkElement;
+            Border? slotBorder = feContainer as Border ?? FindParentBorderOrTarget<Border>(feContainer as DependencyObject);
+
+            if (slotBorder != null && slotBorder.Tag is string tagStr && int.TryParse(tagStr, out int tagIdx))
+            {
+                idx = tagIdx;
+            }
+            else if (feContainer != null && feContainer.Tag is string tagStr2 && int.TryParse(tagStr2, out int tagIdx2))
+            {
+                idx = tagIdx2;
+            }
+            else if (feContainer != null)
+            {
+                var name = feContainer.Name ?? "";
+                if (name.EndsWith("0")) idx = 0;
+                else if (name.EndsWith("1")) idx = 1;
+                else if (name.EndsWith("2")) idx = 2;
+                else if (name.EndsWith("3")) idx = 3;
+            }
+
+            if (feContainer != null) FlashSlotBorder(feContainer);
+
+            if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
+            {
+                var item = _secondaryImages[idx];
+                item.ArchiveCurrentIfHasId();
+                item.Bitmap = historyItem.Bitmap;
+                item.FilePath = historyItem.FilePath;
+                item.ImageId = historyItem.ImageId;
+                item.IsSelected = true;
+                RefreshAllSlotsUI();
+                UpdatePreviewImage();
+            }
+            else
+            {
+                int targetIdx = -1;
+                for (int i = 0; i < _secondaryImages.Count; i++)
+                {
+                    if (!_secondaryImages[i].HasImage)
+                    {
+                        targetIdx = i;
+                        break;
+                    }
+                }
+                if (targetIdx == -1) targetIdx = 0;
+
+                var item = _secondaryImages[targetIdx];
+                item.ArchiveCurrentIfHasId();
+                item.Bitmap = historyItem.Bitmap;
+                item.FilePath = historyItem.FilePath;
+                item.ImageId = historyItem.ImageId;
+                item.IsSelected = true;
+                RefreshAllSlotsUI();
+                UpdatePreviewImage();
             }
         }
 
