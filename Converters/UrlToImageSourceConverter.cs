@@ -37,6 +37,9 @@ namespace FlowMy.Converters
         {
             try
             {
+                var bmp = FlowMy.Views.NodeControls.ImageProcessingNodeControl.CreateBitmapFromUrlOrFile(url);
+                if (bmp != null) return bmp;
+
                 var kind = url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
                     ? UriKind.Absolute : UriKind.RelativeOrAbsolute;
                 var uri = new Uri(url, kind);
@@ -44,9 +47,10 @@ namespace FlowMy.Converters
                 img.BeginInit();
                 img.UriSource = uri;
                 img.DecodePixelWidth = DecodePixelWidthThumb;
-                img.CacheOption = BitmapCacheOption.OnDemand;
-                img.CreateOptions = BitmapCreateOptions.None;
+                img.CacheOption = BitmapCacheOption.OnLoad;
+                img.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
                 img.EndInit();
+                if (img.CanFreeze) img.Freeze();
                 return img;
             }
             catch

@@ -490,6 +490,7 @@ namespace FlowMy.Views
 
             InitializeServices();
             SetupEventHandlers();
+            InitializeCanvasDiagnostics();
 
             // ESC key → stop all running workflows (global, works even when app is not focused)
             // Single ESC: fires EscapePressed (used for other UI purposes)
@@ -504,7 +505,10 @@ namespace FlowMy.Views
                 {
                     var vm = ViewModel;
                     if (vm != null && vm.ManualExecutionRunsInFlight > 0)
+                    {
+                        LogCanvasDiagnostic("KEY_HOOK", "Escape triple-press detected! Terminating manual execution runs in flight.");
                         vm.EndTestCommand.Execute(null);
+                    }
                 };
             }
 
@@ -512,6 +516,7 @@ namespace FlowMy.Views
             // ngay sau khi cửa sổ chính load xong (defer để CanvasHostGrid đã build visual tree).
             Loaded += async (_, _) =>
             {
+                LogCanvasDiagnostic("LIFECYCLE", "WorkflowEditorWindow Loaded event triggered.");
                 SyncExecutionTraceDetachState();
                 SyncLeftMenuForExecutionTraceDockMode();
                 LoadSavedGitRepos();
@@ -529,12 +534,17 @@ namespace FlowMy.Views
                 {
                     try
                     {
+                        LogCanvasDiagnostic("CEF", "Initializing CefSharp environment asynchronously...");
                         if (LoadingOverlay != null)
                             LoadingOverlay.Visibility = Visibility.Visible;
 
                         await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+                        LogCanvasDiagnostic("CEF", "CefSharp environment initialized successfully.");
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        LogCanvasDiagnostic("CEF_ERROR", $"CefSharp init error: {ex.Message}", isAlert: true);
+                    }
                     finally
                     {
                         if (LoadingOverlay != null && (ViewModel == null || !ViewModel.IsLoading))
@@ -545,6 +555,9 @@ namespace FlowMy.Views
             // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.
             Closed += (_, _) =>
             {
+                LogCanvasDiagnostic("LIFECYCLE", "WorkflowEditorWindow Closed event triggered. Stopping Watchdog.");
+                StopCanvasUiWatchdog();
+
                 if (_hwndSource != null)
                 {
                     try { _hwndSource.RemoveHook(WndProc); } catch { }
@@ -2148,12 +2161,17 @@ namespace FlowMy.Views
             // Highlight connection "đang truyền năng lượng" khi workflow chạy
             if (e.PropertyName == nameof(WorkflowEditorViewModel.ActiveExecutionConnection))
             {
+                var connName = ViewModel?.ActiveExecutionConnection != null
+                    ? $"{ViewModel.ActiveExecutionConnection.FromNode?.Title} ➔ {ViewModel.ActiveExecutionConnection.ToNode?.Title}"
+                    : "null";
+                LogCanvasDiagnostic("EXEC_CONN", $"ActiveExecutionConnection changed: {connName}");
                 QueueExecutionConnectionHighlightUpdate();
             }
 
             // Bắt đầu chạy: sau khi Dispatcher từng bị nghẽn, storyboard dash đôi khi không còn bám IsExecutionActive — làm mới toàn bộ rồi áp lại cạnh đang active.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsExecuting) && ViewModel?.IsExecuting == true)
             {
+                LogCanvasDiagnostic("EXEC_STATE", $"Workflow Execution STARTED. RunsInFlight={ViewModel?.ManualExecutionRunsInFlight}");
                 Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                 {
                     if (ViewModel == null) return;
@@ -2170,6 +2188,7 @@ namespace FlowMy.Views
             // Dùng Send để đồng bộ trạng thái kết thúc ngay với runtime.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsExecuting) && ViewModel?.IsExecuting == false)
             {
+                LogCanvasDiagnostic("EXEC_STATE", "Workflow Execution ENDED.");
                 Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                 {
                     ApplyExecutionConnectionHighlight(null);

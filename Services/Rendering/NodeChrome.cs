@@ -14,6 +14,11 @@ using System.Windows.Threading;
 
 namespace FlowMy.Services.Rendering
 {
+    public static class NodeChromeLazyRenderBridge
+    {
+        public static Action<WorkflowNode>? RequestResultsRender { get; set; }
+    }
+
     public static class NodeChrome
     {
         private const string RootTag = "NodeChromeRoot";
@@ -290,6 +295,10 @@ namespace FlowMy.Services.Rendering
             resultsToggle.Checked += (s, e) =>
             {
                 resultsList.Visibility = Visibility.Visible;
+                if (node.ExecutionResultsItemsPanel != null && node.ExecutionResultsItemsPanel.Children.Count == 0)
+                {
+                    NodeChromeLazyRenderBridge.RequestResultsRender?.Invoke(node);
+                }
                 UpdateExecutionResultsToggleText(resultsToggle, node.ExecutionResultsItemsPanel?.Children.Count ?? 0, true);
                 refreshResultsToggleVisual();
             };

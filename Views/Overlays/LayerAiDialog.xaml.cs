@@ -282,6 +282,13 @@ namespace FlowMy.Views.Overlays
 
             SubscribeToViewModelEvents();
 
+            // Ensure required dynamic outputs always exist on the node so downstream connections aren't lost on load
+            GetOrAddDynamicOutputPort("prompt", "Layer AI - Prompt");
+            GetOrAddDynamicOutputPort("promptJson", "Layer AI - Prompt JSON (Multimodal Parts)");
+            GetOrAddDynamicOutputPort("mainCodeId", "Layer AI - Main Code ID");
+            GetOrAddDynamicOutputPort("cropListObjects", "Layer AI - Crops List Objects (JSON)", FlowMy.Models.WorkflowDataType.ArrayDynamic, isMultiple: true);
+
+
             // Populate horizontal and vertical lists of selected layers
             UpdateSelectedLayersLists();
 
@@ -3831,8 +3838,14 @@ namespace FlowMy.Views.Overlays
                 var cropBase64Port = _node.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "cropBase64", StringComparison.OrdinalIgnoreCase));
                 if (cropBase64Port != null) cropBase64Port.UserValueOverride = b64;
 
+                // mainCodeId = Layer CodeId (identity của layer trên canvas, để downstream biết ảnh thuộc layer nào)
+                string mainCodeId = string.IsNullOrWhiteSpace(_activeLayer.CodeId) ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : _activeLayer.CodeId;
+
+                // mainCropCodeId = GUID mới cho ảnh crop mỗi lần gửi (dùng trong promptJson, cropListObjects JSON và CropGuidRegistry)
+                string mainCropCodeId = Guid.NewGuid().ToString("N");
+
                 var activePromptText = GetActivePromptText();
-                var (resolvedPrompt, promptJson) = BuildResolvedPromptAndJson(activePromptText);
+                var (resolvedPrompt, promptJson) = BuildResolvedPromptAndJson(activePromptText, mainCropCodeId);
                 _node.ProcessorPrompt = activePromptText;
 
                 GetOrAddDynamicOutputPort("prompt", "Layer AI - Prompt").UserValueOverride = resolvedPrompt;
@@ -3883,13 +3896,6 @@ namespace FlowMy.Views.Overlays
                 string? existingMainId = _activeLayer.GetImageId(selectedIndex);
                 var selectedSecItems = _secondaryImages.Where(s => s.HasImage && s.IsSelected).ToList();
                 var existingSecIds = selectedSecItems.Select(s => s.GetImageId(selectedIndex)).Where(id => !string.IsNullOrEmpty(id)).ToList();
-
-                // mainCodeId = Layer CodeId (identity của layer trên canvas, để downstream biết ảnh thuộc layer nào)
-                string mainCodeId = string.IsNullOrWhiteSpace(_activeLayer.CodeId) ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : _activeLayer.CodeId;
-
-                // mainCropCodeId = GUID mới cho ảnh crop mỗi lần gửi (tránh trùng với layer CodeId)
-                // Dùng trong cropListObjects JSON và CropGuidRegistry để map kết quả render về đúng crop
-                string mainCropCodeId = Guid.NewGuid().ToString("N");
 
                 CropGuidRegistry[mainCropCodeId] = new CodeCropMappingInfo
                 {
@@ -6659,14 +6665,16 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-                private (string resolvedPrompt, string promptJson) BuildResolvedPromptAndJson(string rawPrompt)
+                private (string resolvedPrompt, string promptJson) BuildResolvedPromptAndJson(string rawPrompt, string? overrideMainCodeId = null)
         {
             if (string.IsNullOrEmpty(rawPrompt)) rawPrompt = string.Empty;
 
-            // Real CodeId for main layer
-            string mainRealCodeId = string.IsNullOrWhiteSpace(_activeLayer?.CodeId)
-                ? (_activeLayer != null ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : Guid.NewGuid().ToString("N"))
-                : _activeLayer.CodeId;
+            // Real CodeId for main layer (or override crop codeId if provided)
+            string mainRealCodeId = !string.IsNullOrWhiteSpace(overrideMainCodeId)
+                ? overrideMainCodeId
+                : (string.IsNullOrWhiteSpace(_activeLayer?.CodeId)
+                    ? (_activeLayer != null ? (_activeLayer.CodeId = Guid.NewGuid().ToString("N")) : Guid.NewGuid().ToString("N"))
+                    : _activeLayer.CodeId);
 
             bool hasMainImage = _activeLayer != null && (_activeLayer.Thumbnail != null || _activeLayer.Bitmap != null);
 

@@ -2709,21 +2709,42 @@ namespace FlowMy.ViewModels
 
                 SyncViewStateBeforeSave?.Invoke();
 
-                _persistenceService.Save(
-                    CurrentWorkflowName,
-                    Nodes,
-                    Connections,
-                    ZoomLevel,
-                    PanX,
-                    PanY,
-                    SavedScreenWidth,
-                    SavedScreenHeight,
-                    SavedViewportCenterX,
-                    SavedViewportCenterY,
-                    IsZoomLocked,
-                    ConnectionLineStyle.ToString());
+                var name = CurrentWorkflowName;
+                var nodes = Nodes.ToList();
+                var connections = Connections.ToList();
+                var zoom = ZoomLevel;
+                var panX = PanX;
+                var panY = PanY;
+                var savedW = SavedScreenWidth;
+                var savedH = SavedScreenHeight;
+                var savedCenterX = SavedViewportCenterX;
+                var savedCenterY = SavedViewportCenterY;
+                var isZoomLocked = IsZoomLocked;
+                var lineStyle = ConnectionLineStyle.ToString();
 
-                RefreshUiAfterSave();
+                Task.Run(() =>
+                {
+                    _persistenceService.Save(
+                        name,
+                        nodes,
+                        connections,
+                        zoom,
+                        panX,
+                        panY,
+                        savedW,
+                        savedH,
+                        savedCenterX,
+                        savedCenterY,
+                        isZoomLocked,
+                        lineStyle);
+                }).ContinueWith(_ =>
+                {
+                    Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        RefreshUiAfterSave();
+                    }));
+                });
+
                 return true;
             }
             catch (Exception ex)
@@ -2805,14 +2826,17 @@ namespace FlowMy.ViewModels
 
             try
             {
-                await _workflowExecutionService.ExecuteNodeLogicOnlyAsync(
-                    node,
-                    connections,
-                    CancellationToken.None,
-                    allNodesForLookup: allNodes,
-                    onNodeStarted: OnNodeStarted,
-                    onNodeCompleted: OnNodeCompleted,
-                    onNodeFailed: OnNodeFailed);
+                await Task.Run(async () =>
+                {
+                    await _workflowExecutionService.ExecuteNodeLogicOnlyAsync(
+                        node,
+                        connections,
+                        CancellationToken.None,
+                        allNodesForLookup: allNodes,
+                        onNodeStarted: OnNodeStarted,
+                        onNodeCompleted: OnNodeCompleted,
+                        onNodeFailed: OnNodeFailed).ConfigureAwait(false);
+                }).ConfigureAwait(true);
 
                 Application.Current?.Dispatcher.Invoke(() => _executionVisualizer.RefreshSavedOutputs(new[] { node }));
 
@@ -3735,8 +3759,19 @@ namespace FlowMy.ViewModels
             if (source == null) return null;
             try
             {
+                // Resize if too large to prevent UI freezing during base64 encoding (e.g. for workflow auto-save)
+                BitmapSource target = source;
+                double maxDim = 256.0;
+                if (source.PixelWidth > maxDim || source.PixelHeight > maxDim)
+                {
+                    double scale = Math.Min(maxDim / source.PixelWidth, maxDim / source.PixelHeight);
+                    var tb = new TransformedBitmap(source, new System.Windows.Media.ScaleTransform(scale, scale));
+                    tb.Freeze();
+                    target = tb;
+                }
+
                 var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(source));
+                encoder.Frames.Add(BitmapFrame.Create(target));
                 using var ms = new MemoryStream();
                 encoder.Save(ms);
                 return Convert.ToBase64String(ms.ToArray());

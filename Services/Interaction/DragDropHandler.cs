@@ -561,7 +561,8 @@ namespace FlowMy.Services.Interaction
             if (e.LeftButton != MouseButtonState.Pressed && 
                 !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown) 
             {
-                System.Diagnostics.Debug.WriteLine($"[DragDrop] NodeMouseMove SKIP: LeftButton={e.LeftButton} VirtualLeft={FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown}");
+                if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
+                    System.Diagnostics.Debug.WriteLine($"[DragDrop] NodeMouseMove SKIP: LeftButton={e.LeftButton} VirtualLeft={FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown}");
                 return;
             }
             System.Diagnostics.Debug.WriteLine($"[DragDrop] NodeMouseMove PASSED guards, DraggedNode={host.DraggedNode?.Title ?? "?"}");

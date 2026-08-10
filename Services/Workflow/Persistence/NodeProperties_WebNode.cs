@@ -628,32 +628,43 @@ public sealed partial class FileWorkflowPersistenceService
             {
                 System.Diagnostics.Debug.WriteLine($"=== Attempting to update bindings before serialize ===");
 
-                // Tìm tất cả WorkflowEditorWindow đang mở (có thể có nhiều window)
-                var allWindows = Application.Current?.Windows.OfType<Views.WorkflowEditorWindow>().ToList();
-                if (allWindows != null && allWindows.Count > 0)
+                Action updateBindings = () =>
                 {
-                    foreach (var window in allWindows)
+                    var allWindows = Application.Current?.Windows.OfType<Views.WorkflowEditorWindow>().ToList();
+                    if (allWindows != null && allWindows.Count > 0)
                     {
-                        try
+                        foreach (var window in allWindows)
                         {
-                            var field = typeof(Views.WorkflowEditorWindow).GetField("_nodeDialogManager",
-                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                            if (field?.GetValue(window) is Services.Interaction.NodeDialogManager dialogManager)
+                            try
                             {
-                                System.Diagnostics.Debug.WriteLine($"Found NodeDialogManager, calling UpdateAllBindingsIfWebNodeDialog()");
-                                dialogManager.UpdateAllBindingsIfWebNodeDialog();
-                                System.Diagnostics.Debug.WriteLine($"✓ UpdateAllBindingsIfWebNodeDialog() called successfully");
+                                var field = typeof(Views.WorkflowEditorWindow).GetField("_nodeDialogManager",
+                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                                if (field?.GetValue(window) is Services.Interaction.NodeDialogManager dialogManager)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Found NodeDialogManager, calling UpdateAllBindingsIfWebNodeDialog()");
+                                    dialogManager.UpdateAllBindingsIfWebNodeDialog();
+                                    System.Diagnostics.Debug.WriteLine($"✓ UpdateAllBindingsIfWebNodeDialog() called successfully");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error accessing NodeDialogManager from window: {ex.Message}");
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error accessing NodeDialogManager from window: {ex.Message}");
-                        }
                     }
-                }
-                else
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"No WorkflowEditorWindow found in Application.Current.Windows");
+                    }
+                };
+
+                if (Application.Current != null && Application.Current.CheckAccess())
                 {
-                    System.Diagnostics.Debug.WriteLine($"No WorkflowEditorWindow found in Application.Current.Windows");
+                    updateBindings();
+                }
+                else if (Application.Current != null)
+                {
+                    Application.Current.Dispatcher.Invoke(updateBindings);
                 }
             }
             catch (Exception ex)

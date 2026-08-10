@@ -155,6 +155,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // prompt: text từ Image Processor
                 SetOutput(imageNode, "prompt", imageNode.ProcessorPrompt ?? string.Empty, env);
 
+                // promptJson: JSON chứa prompt + multimodal parts
+                var promptJsonPort = imageNode.DynamicOutputs?.FirstOrDefault(o => string.Equals(o.Key, "promptJson", StringComparison.OrdinalIgnoreCase));
+                SetOutput(imageNode, "promptJson", promptJsonPort?.UserValueOverride ?? string.Empty, env);
+
                 // isCombinedImage: bool (true = Ảnh chung, false = Ảnh đơn)
                 SetOutput(imageNode, "isCombinedImage", imageNode.LayerAiIsCombinedMode.ToString().ToLowerInvariant(), env);
 

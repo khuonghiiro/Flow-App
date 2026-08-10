@@ -46,6 +46,11 @@ public interface IWorkflowExecutionVisualizer
     /// Cập nhật UI kết quả output cho các node (sau khi load workflow đã lưu đầy đủ output).
     /// </summary>
     void RefreshSavedOutputs(IEnumerable<WorkflowNode> nodes);
+
+    /// <summary>
+    /// Cập nhật/dựng UI kết quả output cho 1 node cụ thể khi cần.
+    /// </summary>
+    void UpdateNodeExecutionResults(WorkflowNode node);
 }
 
 

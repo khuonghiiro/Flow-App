@@ -41,6 +41,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     public WorkflowExecutionVisualizer()
     {
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        FlowMy.Services.Rendering.NodeChromeLazyRenderBridge.RequestResultsRender = UpdateNodeExecutionResults;
     }
 
     public void ResetVisualization(IEnumerable<WorkflowNode> nodes)
@@ -352,7 +353,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         _timingNode = null;
     }
 
-    private void UpdateNodeExecutionResults(WorkflowNode node)
+    public void UpdateNodeExecutionResults(WorkflowNode node)
     {
         if (node.ExecutionResultsToggleUI == null || node.ExecutionResultsItemsPanel == null) return;
 
@@ -416,15 +417,47 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         }
 
         var panel = node.ExecutionResultsItemsPanel;
-        panel.Children.Clear();
+        bool isExpanded = node.ExecutionResultsToggleUI.IsChecked == true;
 
         if (results.Count == 0)
         {
-            panel.Visibility = Visibility.Collapsed;
-            node.ExecutionResultsToggleUI.Visibility = Visibility.Collapsed;
-            NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, 0, false);
+            panel.Children.Clear();
+            if (isExpanded)
+            {
+                panel.Visibility = Visibility.Visible;
+                node.ExecutionResultsToggleUI.Visibility = Visibility.Visible;
+                NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, 0, true);
+
+                var emptyBlock = new TextBlock
+                {
+                    Text = "Chưa có kết quả trả về",
+                    FontSize = 11,
+                    FontStyle = FontStyles.Italic,
+                    Margin = new Thickness(4, 2, 4, 2)
+                };
+                emptyBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondary");
+                panel.Children.Add(emptyBlock);
+            }
+            else
+            {
+                panel.Visibility = Visibility.Collapsed;
+                node.ExecutionResultsToggleUI.Visibility = Visibility.Collapsed;
+                NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, 0, false);
+            }
             return;
         }
+
+        node.ExecutionResultsToggleUI.Visibility = Visibility.Visible;
+        NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, results.Count, isExpanded);
+        panel.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!isExpanded)
+        {
+            panel.Children.Clear();
+            return;
+        }
+
+        panel.Children.Clear();
 
         foreach (var result in results)
         {
@@ -880,11 +913,6 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         if (node.ExecutionStatusContainerUI != null)
         {
             node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
-        }
-
-        if (node.ExecutionResultsToggleUI.IsChecked != false)
-        {
-            node.ExecutionResultsToggleUI.IsChecked = true;
         }
 
         var expanded = node.ExecutionResultsToggleUI.IsChecked == true;

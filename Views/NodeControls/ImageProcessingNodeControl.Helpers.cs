@@ -144,13 +144,14 @@ namespace FlowMy.Views.NodeControls
 
                 if (value.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
                 {
-                    value = new Uri(value).LocalPath;
+                    try { value = new Uri(value).LocalPath; } catch { }
                 }
+
+                byte[]? bytes = null;
 
                 if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
-                    byte[]? bytes = null;
                     try
                     {
                         bytes = _imageHttpClient.GetByteArrayAsync(value).ConfigureAwait(false).GetAwaiter().GetResult();
@@ -159,53 +160,36 @@ namespace FlowMy.Views.NodeControls
                     {
                         System.Diagnostics.Debug.WriteLine($"[ImageProc] HTTP download failed for {value}: {ex.Message}");
                     }
-
-                    if (bytes != null && bytes.Length > 0)
+                }
+                else
+                {
+                    // Assume local path
+                    if (File.Exists(value))
                     {
-                        using var ms = new MemoryStream(bytes);
-                        var bmp = new BitmapImage();
-                        bmp.BeginInit();
-                        bmp.CacheOption = BitmapCacheOption.OnLoad;
-                        bmp.StreamSource = ms;
-                        bmp.EndInit();
-                        bmp.Freeze();
-                        return bmp;
-                    }
-
-                    // Fallback to UriSource via Dispatcher if HttpClient failed
-                    try
-                    {
-                        BitmapImage? fallbackBmp = null;
-                        System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                        try
                         {
-                            var bmp = new BitmapImage();
-                            bmp.BeginInit();
-                            bmp.UriSource = new Uri(value, UriKind.Absolute);
-                            bmp.CacheOption = BitmapCacheOption.OnLoad;
-                            bmp.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                            bmp.EndInit();
-                            bmp.Freeze();
-                            fallbackBmp = bmp;
-                        });
-                        return fallbackBmp;
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ImageProc] UriSource fallback failed for {value}: {ex.Message}");
-                        return null;
+                            bytes = File.ReadAllBytes(value);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ImageProc] File read failed for {value}: {ex.Message}");
+                        }
                     }
                 }
 
-                // Assume local path
-                if (!File.Exists(value)) return null;
-                using var fs = File.OpenRead(value);
-                var bmpLocal = new BitmapImage();
-                bmpLocal.BeginInit();
-                bmpLocal.CacheOption = BitmapCacheOption.OnLoad;
-                bmpLocal.StreamSource = fs;
-                bmpLocal.EndInit();
-                bmpLocal.Freeze();
-                return bmpLocal;
+                if (bytes == null || bytes.Length == 0) return null;
+
+                using var ms = new MemoryStream(bytes);
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.StreamSource = ms;
+                bmp.EndInit();
+                if (bmp.CanFreeze)
+                {
+                    bmp.Freeze();
+                }
+                return bmp;
             }
             catch (Exception ex)
             {

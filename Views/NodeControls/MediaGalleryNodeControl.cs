@@ -702,7 +702,8 @@ namespace FlowMy.Views.NodeControls
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 // Không set DecodePixelWidth để có chất lượng cao nhất
                 bitmap.EndInit();
-                
+                if (bitmap.CanFreeze && !bitmap.IsFrozen) bitmap.Freeze();
+
                 // Cache bitmap
                 _imageCache[imageUrl] = bitmap;
                 return bitmap;

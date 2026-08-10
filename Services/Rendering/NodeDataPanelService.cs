@@ -608,12 +608,16 @@ namespace FlowMy.Services.Rendering
                 switch (key.ToLowerInvariant())
                 {
                     case "statuscode":
+                    case "status":
                         directResult = httpNode.LastStatusCode?.ToString();
                         break;
                     case "responsebody":
+                    case "response":
+                    case "data":
                         directResult = httpNode.LastResponseBody;
                         break;
                     case "responseheaders":
+                    case "headers":
                         if (httpNode.LastResponseHeaders != null && httpNode.LastResponseHeaders.Count > 0)
                             directResult = JsonSerializer.Serialize(httpNode.LastResponseHeaders);
                         break;
@@ -621,6 +625,7 @@ namespace FlowMy.Services.Rendering
                         directResult = httpNode.LastIsSuccess?.ToString();
                         break;
                     case "errormessage":
+                    case "error":
                         directResult = httpNode.LastErrorMessage;
                         break;
                     case "responsetimems":
@@ -639,7 +644,7 @@ namespace FlowMy.Services.Rendering
                 var execId = httpNode.LastExecutionId;
                 if (!string.IsNullOrWhiteSpace(execId))
                 {
-                    var scopedVal = TryGetScopedOutput(execId, httpNode.Id, key.ToLowerInvariant());
+                    var scopedVal = TryGetScopedOutput(execId, httpNode.Id, key);
                     if (!string.IsNullOrWhiteSpace(scopedVal))
                         return scopedVal;
                 }
@@ -682,12 +687,65 @@ namespace FlowMy.Services.Rendering
             try
             {
                 var cache = FlowMy.Services.Workflow.WorkflowExecutionService.ScopedOutputsHistoricalCache;
-                if (cache.TryGetValue(executionId, out var byNode) &&
-                    byNode.TryGetValue(nodeId, out var byKey) &&
-                    byKey.TryGetValue(key, out var val) &&
-                    !string.IsNullOrWhiteSpace(val))
+
+                string? SearchInDict(IEnumerable<KeyValuePair<string, string?>> dict, string searchKey)
                 {
-                    return val;
+                    var matchExact = dict.FirstOrDefault(kv => string.Equals(kv.Key, searchKey, StringComparison.Ordinal));
+                    if (matchExact.Key != null && !string.IsNullOrWhiteSpace(matchExact.Value) && matchExact.Value != "—")
+                        return matchExact.Value;
+
+                    var match = dict.FirstOrDefault(kv => string.Equals(kv.Key, searchKey, StringComparison.OrdinalIgnoreCase));
+                    if (match.Key != null && !string.IsNullOrWhiteSpace(match.Value) && match.Value != "—")
+                        return match.Value;
+                    return null;
+                }
+
+                // 1. Try exact executionId
+                if (cache.TryGetValue(executionId, out var byNode) &&
+                    byNode.TryGetValue(nodeId, out var byKey))
+                {
+                    var val = SearchInDict(byKey, key);
+                    if (val != null) return val;
+                }
+
+                // 2. Try mapped run ID or root execution ID
+                var rootId = executionId;
+                if (FlowMy.Services.Workflow.WorkflowExecutionService.ExecutionIdMapping.TryGetValue(executionId, out var mappedId))
+                {
+                    if (cache.TryGetValue(mappedId, out var mappedByNode) &&
+                        mappedByNode.TryGetValue(nodeId, out var mappedByKey))
+                    {
+                        var val = SearchInDict(mappedByKey, key);
+                        if (val != null) return val;
+                    }
+                }
+
+                var dispIdx = rootId.IndexOf(":dispatch-", StringComparison.Ordinal);
+                var atIdx = rootId.IndexOf(":at-manual-", StringComparison.Ordinal);
+                var firstSuffix = Math.Min(dispIdx >= 0 ? dispIdx : int.MaxValue, atIdx >= 0 ? atIdx : int.MaxValue);
+                if (firstSuffix < int.MaxValue)
+                {
+                    rootId = rootId.Substring(0, firstSuffix);
+                    if (cache.TryGetValue(rootId, out var rootByNode) &&
+                        rootByNode.TryGetValue(nodeId, out var rootByKey))
+                    {
+                        var val = SearchInDict(rootByKey, key);
+                        if (val != null) return val;
+                    }
+                }
+
+                // 3. Fallback: scan all cache entries matching prefix
+                var rootPrefix = (firstSuffix < int.MaxValue ? rootId : executionId) + ":";
+                foreach (var kv in cache)
+                {
+                    if (kv.Key.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (kv.Value.TryGetValue(nodeId, out var subByKey))
+                        {
+                            var val = SearchInDict(subByKey, key);
+                            if (val != null) return val;
+                        }
+                    }
                 }
             }
             catch { /* Ignore read errors from concurrent cleanup */ }

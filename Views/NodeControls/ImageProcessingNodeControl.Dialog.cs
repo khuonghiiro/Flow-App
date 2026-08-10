@@ -669,6 +669,11 @@ namespace FlowMy.Views.NodeControls
 
                         if (bmp == null) continue;
 
+                        if (bmp.CanFreeze && !bmp.IsFrozen)
+                        {
+                            bmp.Freeze();
+                        }
+
                         // 🔍 Nếu entry chứa CodeId, ưu tiên tìm crop có Id khớp với CodeId
                         ImageCropRegion? targetCrop = null;
                         if (!string.IsNullOrWhiteSpace(entry.CodeId))

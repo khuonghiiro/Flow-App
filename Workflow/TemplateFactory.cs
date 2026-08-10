@@ -171,6 +171,7 @@ namespace FlowMy.Workflow
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "aspectRatio", DisplayName = "Aspect Ratio (16:9 hoặc 9:16)", IsMultiple = false, OutputType = WorkflowDataType.String });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "promptSize", DisplayName = "Prompt Size (số lần gửi)", IsMultiple = false, OutputType = WorkflowDataType.Number });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "prompt", DisplayName = "Prompt (text từ Image Processor)", IsMultiple = false, OutputType = WorkflowDataType.String });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "promptJson", DisplayName = "Layer AI - Prompt JSON (Multimodal Parts)", IsMultiple = false, OutputType = WorkflowDataType.String });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "cropName", DisplayName = "Crop Name (Image_{Order}_{DateTime})", IsMultiple = false, OutputType = WorkflowDataType.String });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "cropWidth", DisplayName = "Crop Width", IsMultiple = false, OutputType = WorkflowDataType.Number });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "cropHeight", DisplayName = "Crop Height", IsMultiple = false, OutputType = WorkflowDataType.Number });
