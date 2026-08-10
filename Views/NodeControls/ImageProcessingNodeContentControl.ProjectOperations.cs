@@ -1177,6 +1177,11 @@ namespace FlowMy.Views.NodeControls
                                 }
                                 catch { }
                             }
+                            if (secImg.Bitmap == null)
+                            {
+                                secImg.ImageId = null;
+                                secImg.AspectRatioIds.Clear();
+                            }
                             layer.LayerAiSecondaryImages.Add(secImg);
                         }
                     }

@@ -93,24 +93,46 @@ namespace FlowMy.Views.Overlays
                 }
             }
 
+            public void ResetImageIdAndCodeId()
+            {
+                ImageId = null;
+                AspectRatioIds.Clear();
+                CodeId = Guid.NewGuid().ToString("N");
+            }
+
+            public void SetNewImage(BitmapSource? newBitmap, string? filePath = null)
+            {
+                ArchiveCurrentIfHasId();
+                Bitmap = newBitmap;
+                FilePath = filePath;
+                ResetImageIdAndCodeId();
+                IsSelected = newBitmap != null;
+            }
+
             /// <summary>
             /// Lưu ảnh hiện tại (nếu đã có ID) vào danh sách ô ảnh con nhỏ trước khi thay bằng ảnh mới.
             /// </summary>
             public void ArchiveCurrentIfHasId()
             {
-                if (HasImage && !string.IsNullOrWhiteSpace(ImageId))
+                if (HasImage && (!string.IsNullOrWhiteSpace(ImageId) || AspectRatioIds.Count > 0))
                 {
-                    bool exists = SavedChildImages.Any(c => string.Equals(c.ImageId, ImageId, StringComparison.OrdinalIgnoreCase));
+                    string activeId = GetImageId(0) ?? ImageId ?? string.Empty;
+                    bool exists = !string.IsNullOrEmpty(activeId) && SavedChildImages.Any(c => string.Equals(c.ImageId, activeId, StringComparison.OrdinalIgnoreCase));
                     if (!exists)
                     {
-                        SavedChildImages.Add(new SecondaryImageItem
+                        var child = new SecondaryImageItem
                         {
                             CodeId = CodeId,
-                            ImageId = ImageId,
+                            ImageId = activeId,
                             Bitmap = Bitmap,
                             FilePath = FilePath,
                             IsSelected = IsSelected
-                        });
+                        };
+                        foreach (var kvp in AspectRatioIds)
+                        {
+                            child.AspectRatioIds[kvp.Key] = kvp.Value;
+                        }
+                        SavedChildImages.Add(child);
                     }
                 }
             }
@@ -188,6 +210,7 @@ namespace FlowMy.Views.Overlays
 
             this.Closed += (s, e) =>
             {
+                IsClosed = true;
                 SaveActiveLayerState();
                 if (_ownerWindow != null)
                 {
@@ -196,6 +219,10 @@ namespace FlowMy.Views.Overlays
                     _ownerWindow.Topmost = false;
                 }
                 UnsubscribeFromViewModelEvents();
+                if (_node != null)
+                {
+                    LayerAiDialogManager.RemoveFromCache(_node.Id);
+                }
                 try
                 {
                     LayerAiWebViewCache.DisposeAll(_node.Id);
@@ -274,6 +301,8 @@ namespace FlowMy.Views.Overlays
         {
         }
 
+        public bool IsClosed { get; private set; }
+
         private bool _isForceClosing = false;
 
         public void ForceClose()
@@ -300,6 +329,16 @@ namespace FlowMy.Views.Overlays
             base.OnClosing(e);
         }
 
+        protected override void OnClosed(EventArgs e)
+        {
+            IsClosed = true;
+            base.OnClosed(e);
+            if (_node != null)
+            {
+                LayerAiDialogManager.RemoveFromCache(_node.Id);
+            }
+        }
+
         public void ReinitializeSession(System.Collections.Generic.List<EditorLayer> selectedLayers, EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
             Owner = owner;
@@ -319,7 +358,7 @@ namespace FlowMy.Views.Overlays
 
             foreach (var layer in _selectedLayers)
             {
-                if (!_layerStates.ContainsKey(layer))
+                if (!_layerStates.ContainsKey(layer) || (layer.LayerAiSecondaryImages != null && layer.LayerAiSecondaryImages.Count > 0))
                 {
                     _layerStates[layer] = CreateStateForLayer(layer);
                 }
@@ -365,8 +404,8 @@ namespace FlowMy.Views.Overlays
         {
             var state = new LayerAiState();
             
-            // 1. If the layer already has saved LayerAiPrompt, restore state from it!
-            if (!string.IsNullOrEmpty(layer.LayerAiPrompt))
+            // 1. If the layer already has saved secondary images or prompt, restore state from it!
+            if ((layer.LayerAiSecondaryImages != null && layer.LayerAiSecondaryImages.Count > 0) || !string.IsNullOrEmpty(layer.LayerAiPrompt))
             {
                 state.Prompt = layer.LayerAiPrompt;
                 state.BatchSizeIndex = layer.LayerAiBatchSizeIndex;
@@ -379,14 +418,21 @@ namespace FlowMy.Views.Overlays
                 {
                     var secItem = new SecondaryImageItem
                     {
-                        ImageId = src.ImageId,
+                        ImageId = src.Bitmap != null ? src.ImageId : null,
                         FilePath = src.FilePath,
-                        IsSelected = src.IsSelected,
+                        IsSelected = src.Bitmap != null && src.IsSelected,
                         Bitmap = src.Bitmap
                     };
-                    foreach (var kvp in src.AspectRatioIds)
+                    if (src.Bitmap != null && src.AspectRatioIds != null)
                     {
-                        secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                        foreach (var kvp in src.AspectRatioIds)
+                        {
+                            secItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                        }
+                    }
+                    else
+                    {
+                        secItem.ResetImageIdAndCodeId();
                     }
                     if (src.SavedChildImages != null)
                     {
@@ -2807,11 +2853,7 @@ namespace FlowMy.Views.Overlays
                         bmp.EndInit();
                         bmp.Freeze();
 
-                        _secondaryImages[slotIdx].ArchiveCurrentIfHasId();
-                        _secondaryImages[slotIdx].Bitmap = bmp;
-                        _secondaryImages[slotIdx].FilePath = file;
-                        _secondaryImages[slotIdx].ImageId = null;
-                        _secondaryImages[slotIdx].IsSelected = true;
+                        _secondaryImages[slotIdx].SetNewImage(bmp, file);
                         slotIdx++;
                     }
                     catch { }
@@ -2875,27 +2917,15 @@ namespace FlowMy.Views.Overlays
                             bmp.EndInit();
                             bmp.Freeze();
 
-                            _secondaryImages[idx].ArchiveCurrentIfHasId();
-                            if (_sendModeOn)
-                            {
-                                // ON mode: just add and select it
-                                _secondaryImages[idx].Bitmap = bmp;
-                                _secondaryImages[idx].FilePath = dlg.FileName;
-                                _secondaryImages[idx].ImageId = null;
-                                _secondaryImages[idx].IsSelected = true;
-                            }
-                            else
+                            if (!_sendModeOn)
                             {
                                 // OFF mode: deselect all others, select this one
                                 for (int i = 0; i < _secondaryImages.Count; i++)
                                 {
                                     _secondaryImages[i].IsSelected = false;
                                 }
-                                _secondaryImages[idx].Bitmap = bmp;
-                                _secondaryImages[idx].FilePath = dlg.FileName;
-                                _secondaryImages[idx].ImageId = null;
-                                _secondaryImages[idx].IsSelected = true;
                             }
+                            _secondaryImages[idx].SetNewImage(bmp, dlg.FileName);
                         }
                         catch { }
                         RefreshAllSlotsUI();
@@ -2914,9 +2944,10 @@ namespace FlowMy.Views.Overlays
             {
                 if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
+                    _secondaryImages[idx].ArchiveCurrentIfHasId();
                     _secondaryImages[idx].Bitmap = null;
                     _secondaryImages[idx].FilePath = null;
-                    _secondaryImages[idx].ImageId = null;
+                    _secondaryImages[idx].ResetImageIdAndCodeId();
                     _secondaryImages[idx].IsSelected = false;
                     RefreshAllSlotsUI();
                     UpdateSecondaryInfo();
@@ -3053,11 +3084,7 @@ namespace FlowMy.Views.Overlays
 
                 if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
                 {
-                    _secondaryImages[idx].ArchiveCurrentIfHasId();
-                    _secondaryImages[idx].Bitmap = bitmap;
-                    _secondaryImages[idx].FilePath = null;
-                    _secondaryImages[idx].ImageId = null;
-                    _secondaryImages[idx].IsSelected = true;
+                    _secondaryImages[idx].SetNewImage(bitmap, null);
                     RefreshAllSlotsUI();
                 }
             }
@@ -3353,7 +3380,12 @@ namespace FlowMy.Views.Overlays
                             // Chọn ảnh con này lên ô ảnh phụ to
                             item.Bitmap = capturedChild.Bitmap;
                             item.FilePath = capturedChild.FilePath;
-                            item.ImageId = capturedChild.ImageId;
+                            item.ResetImageIdAndCodeId();
+                            if (!string.IsNullOrEmpty(capturedChild.ImageId))
+                            {
+                                item.ImageId = capturedChild.ImageId;
+                                item.AspectRatioIds[CmbAspectRatio?.SelectedIndex ?? 3] = capturedChild.ImageId;
+                            }
                             item.IsSelected = true;
 
                             RefreshAllSlotsUI();
@@ -4425,6 +4457,19 @@ namespace FlowMy.Views.Overlays
                                     }
                                 }
                             }
+
+                            // Refresh any open LayerAiDialog windows so secondary images history appears immediately
+                            try
+                            {
+                                foreach (Window win in System.Windows.Application.Current.Windows)
+                                {
+                                    if (win is LayerAiDialog dlg && !dlg.IsClosed)
+                                    {
+                                        dlg.RefreshAllSlotsUI();
+                                    }
+                                }
+                            }
+                            catch { }
                         }
                     });
                     return true;
@@ -6238,9 +6283,7 @@ namespace FlowMy.Views.Overlays
 
             if (idx >= 0 && idx < _secondarySlotCount && idx < _secondaryImages.Count)
             {
-                _secondaryImages[idx].Bitmap = bitmap;
-                _secondaryImages[idx].FilePath = null;
-                _secondaryImages[idx].IsSelected = true;
+                _secondaryImages[idx].SetNewImage(bitmap, null);
                 RefreshAllSlotsUI();
             }
             else
@@ -6256,9 +6299,7 @@ namespace FlowMy.Views.Overlays
                 }
                 if (targetIdx == -1) targetIdx = 0;
 
-                _secondaryImages[targetIdx].Bitmap = bitmap;
-                _secondaryImages[targetIdx].FilePath = null;
-                _secondaryImages[targetIdx].IsSelected = true;
+                _secondaryImages[targetIdx].SetNewImage(bitmap, null);
                 RefreshAllSlotsUI();
             }
         }
@@ -6294,7 +6335,12 @@ namespace FlowMy.Views.Overlays
                 item.ArchiveCurrentIfHasId();
                 item.Bitmap = historyItem.Bitmap;
                 item.FilePath = historyItem.FilePath;
-                item.ImageId = historyItem.ImageId;
+                item.ResetImageIdAndCodeId();
+                if (!string.IsNullOrEmpty(historyItem.ImageId))
+                {
+                    item.ImageId = historyItem.ImageId;
+                    item.AspectRatioIds[CmbAspectRatio?.SelectedIndex ?? 3] = historyItem.ImageId;
+                }
                 item.IsSelected = true;
                 RefreshAllSlotsUI();
                 UpdatePreviewImage();
@@ -6316,7 +6362,12 @@ namespace FlowMy.Views.Overlays
                 item.ArchiveCurrentIfHasId();
                 item.Bitmap = historyItem.Bitmap;
                 item.FilePath = historyItem.FilePath;
-                item.ImageId = historyItem.ImageId;
+                item.ResetImageIdAndCodeId();
+                if (!string.IsNullOrEmpty(historyItem.ImageId))
+                {
+                    item.ImageId = historyItem.ImageId;
+                    item.AspectRatioIds[CmbAspectRatio?.SelectedIndex ?? 3] = historyItem.ImageId;
+                }
                 item.IsSelected = true;
                 RefreshAllSlotsUI();
                 UpdatePreviewImage();
@@ -6649,9 +6700,7 @@ namespace FlowMy.Views.Overlays
                         : _secondaryImages[i].CodeId;
                     childCodeIds.Add(secRealCodeId);
 
-                    string? secId = !string.IsNullOrWhiteSpace(_secondaryImages[i].ImageId) 
-                        ? _secondaryImages[i].ImageId 
-                        : null;
+                    string? secId = _secondaryImages[i].GetImageId(CmbAspectRatio?.SelectedIndex ?? 3);
 
                     imagesDict[secRealCodeId] = new
                     {
@@ -7017,17 +7066,41 @@ namespace FlowMy.Views.Overlays
                     item.IdleTimer?.Dispose();
                     item.IdleTimer = null;
 
-                    item.Dialog.Dispatcher.Invoke(() =>
+                    bool reusedSuccessfully = false;
+
+                    if (!item.Dialog.IsClosed)
                     {
-                        item.Dialog.ReinitializeSession(selectedLayers, activeLayer, node, host, doc, owner);
-                        if (!item.Dialog.IsVisible)
+                        try
                         {
-                            item.Dialog.Show();
+                            item.Dialog.Dispatcher.Invoke(() =>
+                            {
+                                item.Dialog.ReinitializeSession(selectedLayers, activeLayer, node, host, doc, owner);
+                                if (!item.Dialog.IsVisible)
+                                {
+                                    item.Dialog.Show();
+                                }
+                                item.Dialog.Activate();
+                                item.Dialog.Topmost = true;
+                            });
+                            reusedSuccessfully = true;
                         }
-                        item.Dialog.Activate();
-                        item.Dialog.Topmost = true;
-                    });
-                    return item.Dialog;
+                        catch (InvalidOperationException ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[LayerAiDialogManager] Cannot show closed window: {ex.Message}");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[LayerAiDialogManager] Reusing window failed: {ex.Message}");
+                        }
+                    }
+
+                    if (reusedSuccessfully)
+                    {
+                        return item.Dialog;
+                    }
+
+                    // Remove closed / dead dialog from cache
+                    _cache.Remove(nodeId);
                 }
 
                 // Create a fresh dialog instance
@@ -7042,6 +7115,19 @@ namespace FlowMy.Views.Overlays
                 newDialog.Show();
                 newDialog.Activate();
                 return newDialog;
+            }
+        }
+
+        public static void RemoveFromCache(string nodeId)
+        {
+            lock (_lock)
+            {
+                if (_cache.TryGetValue(nodeId, out var item))
+                {
+                    item.IdleTimer?.Dispose();
+                    item.IdleTimer = null;
+                    _cache.Remove(nodeId);
+                }
             }
         }
 
