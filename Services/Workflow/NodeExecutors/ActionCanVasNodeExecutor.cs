@@ -1188,7 +1188,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             bool isWindowActive = editorWindow.IsActive;
                             System.Diagnostics.Debug.WriteLine($"[MacroExecutor] {actionType} wpfPt=({wpfPoint.X:F0},{wpfPoint.Y:F0}) hitTest={hitTestSucceeded} cached={hitElement == _lastWpfHitElement && !hitTestSucceeded} hitElem={hitElement?.GetType().Name ?? "NULL"} windowActive={isWindowActive}");
 
-                            CefSharp.Wpf.ChromiumWebBrowser? webView = ActiveVirtualCdpWebView;
+                            bool isDraggingState = IsVirtualLeftButtonDown || isLeftDown || isRightDown;
+                            bool shouldBypassCache = actionType == "MouseDown" || actionType == "MouseClick" || (actionType == "MouseMove" && !isDraggingState);
+                            CefSharp.Wpf.ChromiumWebBrowser? webView = shouldBypassCache ? null : ActiveVirtualCdpWebView;
                             bool isNativeHost = webView != null;
                             FlowMy.Models.WorkflowNode? resolvedHostNode = null;
                             FlowMy.Services.Interaction.IWorkflowEditorHost? directHost = editorWindow as FlowMy.Services.Interaction.IWorkflowEditorHost;
@@ -1580,7 +1582,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     if (actionType == "MouseUp")
                                     {
                                         try {
-                                            var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left)
+                                            var args = new System.Windows.Input.MouseButtonEventArgs(GetDummyMouseDevice(), Environment.TickCount, buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left)
                                             {
                                                 RoutedEvent = UIElement.MouseUpEvent,
                                                 Source = hitElement ?? editorWindow
@@ -1697,7 +1699,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     {
                                         if (actionType == "MouseMove")
                                         {
-                                            var args = new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time)
+                                            var args = new System.Windows.Input.MouseEventArgs(GetDummyMouseDevice(), time)
                                             {
                                                 RoutedEvent = UIElement.MouseMoveEvent,
                                                 Source = hitElement
@@ -1707,7 +1709,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         else if (actionType == "MouseDown")
                                         {
                                             var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
-                                            var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                            var args = new System.Windows.Input.MouseButtonEventArgs(GetDummyMouseDevice(), time, button)
                                             {
                                                 RoutedEvent = UIElement.MouseDownEvent,
                                                 Source = hitElement
@@ -1717,7 +1719,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         else if (actionType == "MouseUp")
                                         {
                                             var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
-                                            var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                            var args = new System.Windows.Input.MouseButtonEventArgs(GetDummyMouseDevice(), time, button)
                                             {
                                                 RoutedEvent = UIElement.MouseUpEvent,
                                                 Source = hitElement
@@ -1727,14 +1729,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         else if (actionType == "MouseClick")
                                         {
                                             var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
-                                            var downArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                            var downArgs = new System.Windows.Input.MouseButtonEventArgs(GetDummyMouseDevice(), time, button)
                                             {
                                                 RoutedEvent = UIElement.MouseDownEvent,
                                                 Source = hitElement
                                             };
                                             hitElement.RaiseEvent(downArgs);
 
-                                            var upArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time + 10, button)
+                                            var upArgs = new System.Windows.Input.MouseButtonEventArgs(GetDummyMouseDevice(), time + 10, button)
                                             {
                                                 RoutedEvent = UIElement.MouseUpEvent,
                                                 Source = hitElement
@@ -1743,7 +1745,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         }
                                         else if (actionType == "MouseScroll")
                                         {
-                                            var args = new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, scrollDelta * 120)
+                                            var args = new System.Windows.Input.MouseWheelEventArgs(GetDummyMouseDevice(), time, scrollDelta * 120)
                                             {
                                                 RoutedEvent = UIElement.MouseWheelEvent,
                                                 Source = hitElement
@@ -1792,8 +1794,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (isLeftDown) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 
-                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, 0x0021 /*WM_MOUSEACTIVATE*/, topHwnd, (IntPtr)((msg << 16) | 1));
-                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, 0x0020 /*WM_SETCURSOR*/, targetHwnd, (IntPtr)((FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE << 16) | 1));
+                // Removed WM_MOUSEACTIVATE and WM_SETCURSOR to prevent focus stealing and real cursor change
 
                 int mkMv = 0x4000;
                 if (isLeftDown && isRight) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
@@ -1826,8 +1827,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 int wParam = isRight ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 wParam |= 0x4000;
                 
-                // Gửi thông điệp kích hoạt cho các ứng dụng yêu cầu MOUSEACTIVATE ở background
-                FlowMy.Helpers.WindowHelper.SendMessage(targetHwnd, 0x0021 /*WM_MOUSEACTIVATE*/, topHwnd, (IntPtr)((0x0201 /*WM_LBUTTONDOWN*/ << 16) | 1 /*HTCLIENT*/));
+                // Removed SendMessage WM_MOUSEACTIVATE to prevent focus stealing
 
                 if (!isRight) IsVirtualLeftButtonDown = true;
                 FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)0x4000, lParam);
@@ -2161,7 +2161,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             var wpfKey = System.Windows.Input.KeyInterop.KeyFromVirtualKey(vk);
                             if (wpfKey != System.Windows.Input.Key.None)
                             {
-                                var targetDevice = System.Windows.Input.Keyboard.PrimaryDevice;
+                                var targetDevice = GetDummyKeyboardDevice();
                                 var source = System.Windows.PresentationSource.FromVisual(targetElem) 
                                              ?? new System.Windows.Interop.HwndSource(0, 0, 0, 0, 0, "", IntPtr.Zero);
                                 
@@ -2509,6 +2509,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Failed to force ChromiumWebBrowser active: {ex.Message}");
             }
         }
+        private static System.Windows.Input.MouseDevice? _dummyMouseDevice;
+        private static System.Windows.Input.MouseDevice GetDummyMouseDevice()
+        {
+            if (_dummyMouseDevice == null)
+            {
+                try
+                {
+                    var ctor = typeof(System.Windows.Input.MouseDevice).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).FirstOrDefault();
+                    if (ctor != null)
+                    {
+                        _dummyMouseDevice = (System.Windows.Input.MouseDevice)ctor.Invoke(new object[] { System.Windows.Input.InputManager.Current });
+                    }
+                }
+                catch { }
+            }
+            return _dummyMouseDevice ?? System.Windows.Input.Mouse.PrimaryDevice;
+        }
+
+        private static System.Windows.Input.KeyboardDevice? _dummyKeyboardDevice;
+        private static System.Windows.Input.KeyboardDevice GetDummyKeyboardDevice()
+        {
+            if (_dummyKeyboardDevice == null)
+            {
+                try
+                {
+                    var ctor = typeof(System.Windows.Input.KeyboardDevice).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).FirstOrDefault();
+                    if (ctor != null)
+                    {
+                        _dummyKeyboardDevice = (System.Windows.Input.KeyboardDevice)ctor.Invoke(new object[] { System.Windows.Input.InputManager.Current });
+                    }
+                }
+                catch { }
+            }
+            return _dummyKeyboardDevice ?? System.Windows.Input.Keyboard.PrimaryDevice;
+        }
     }
 }
+
 
