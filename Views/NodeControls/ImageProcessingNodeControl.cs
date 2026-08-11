@@ -79,8 +79,8 @@ namespace FlowMy.Views.NodeControls
         public const double ImageNodeMinWidthPx = 480;
         /// <summary>Min chiều cao node ảnh (canvas + floating widget).</summary>
         public const double ImageNodeMinHeightPx = 360;
-        private const double ImageNodeDefaultWidthPx = 800;
-        private const double ImageNodeDefaultHeightPx = 600;
+        private const double ImageNodeDefaultWidthPx = 1366;
+        private const double ImageNodeDefaultHeightPx = 768;
 
         public static Border CreateBorder(ImageProcessingNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {

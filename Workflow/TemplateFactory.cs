@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
 using System.Linq;
@@ -136,14 +136,14 @@ namespace FlowMy.Workflow
             {
                 Id = $"Node_ImageProcessing_{Guid.NewGuid()}",
                 Title = "Xử lý ảnh",
-                X = x - 180,
-                Y = y - 140,
+                X = x - 683,
+                Y = y - 384,
                 ColorKey = "CharcoalDark",
                 IconSize = 60,
                 NodeBrush = Application.Current.TryFindResource("CharcoalDarkBrush") as Brush ?? Brushes.MediumPurple,
                 Type = NodeType.ImageProcessing,
-                Width = 360,
-                Height = 280
+                Width = 1366,
+                Height = 768
             };
 
             // Flow ports

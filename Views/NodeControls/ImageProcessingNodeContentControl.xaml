@@ -132,7 +132,13 @@ into smaller partial class files to maintain readability and ease of maintenance
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4" Padding="2">
+                                CornerRadius="4" Padding="2"
+                                UseLayoutRounding="True" SnapsToDevicePixels="True"
+                                RenderOptions.ClearTypeHint="Enabled"
+                                TextOptions.TextFormattingMode="Ideal"
+                                TextOptions.TextRenderingMode="Auto"
+                                RenderOptions.BitmapScalingMode="HighQuality"
+                                LayoutTransform="{Binding Path=PlacementTarget.LayoutTransform, RelativeSource={RelativeSource Self}}">
                             <ScrollViewer x:Name="MenuScrollViewer" CanContentScroll="True">
                                 <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
                             </ScrollViewer>
@@ -197,7 +203,13 @@ into smaller partial class files to maintain readability and ease of maintenance
                                         BorderThickness="1"
                                         CornerRadius="3"
                                         MaxHeight="200"
-                                        MinWidth="{TemplateBinding ActualWidth}">
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        UseLayoutRounding="True" SnapsToDevicePixels="True"
+                                        RenderOptions.ClearTypeHint="Enabled"
+                                        TextOptions.TextFormattingMode="Ideal"
+                                        TextOptions.TextRenderingMode="Auto"
+                                        RenderOptions.BitmapScalingMode="HighQuality"
+                                        LayoutTransform="{Binding Path=LayoutTransform, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ScrollViewer SnapsToDevicePixels="True">
                                         <ItemsPresenter/>
                                     </ScrollViewer>
@@ -614,7 +626,12 @@ into smaller partial class files to maintain readability and ease of maintenance
                     <!-- Popup for Brush Settings (Photoshop style) -->
                     <Popup x:Name="BrushSettingsPopup" PlacementTarget="{Binding ElementName=BtnBrushPreviewDropdown}" 
                            Placement="Bottom" StaysOpen="True" PopupAnimation="Fade" Closed="BrushSettingsPopup_Closed">
-                        <Border Background="#111318" BorderBrush="#353945" BorderThickness="1" CornerRadius="6" Padding="10" Width="260">
+                        <Border Background="#111318" BorderBrush="#353945" BorderThickness="1" CornerRadius="6" Padding="10" Width="260"
+                                UseLayoutRounding="True" SnapsToDevicePixels="True"
+                                RenderOptions.ClearTypeHint="Enabled"
+                                TextOptions.TextFormattingMode="Ideal"
+                                TextOptions.TextRenderingMode="Auto"
+                                RenderOptions.BitmapScalingMode="HighQuality">
                             <StackPanel>
                                 <!-- Header row: title + preview -->
                                 <DockPanel Margin="0,0,0,6">
@@ -1616,7 +1633,12 @@ into smaller partial class files to maintain readability and ease of maintenance
                Placement="Right" HorizontalOffset="6" VerticalOffset="-4"
                PopupAnimation="Fade" Closed="FxGroupPopup_Closed">
             <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
-                    CornerRadius="6" Padding="4" SnapsToDevicePixels="True" MaxWidth="136">
+                    CornerRadius="6" Padding="4" SnapsToDevicePixels="True" MaxWidth="136"
+                    UseLayoutRounding="True"
+                    RenderOptions.ClearTypeHint="Enabled"
+                    TextOptions.TextFormattingMode="Ideal"
+                    TextOptions.TextRenderingMode="Auto"
+                    RenderOptions.BitmapScalingMode="HighQuality">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000"/>
                 </Border.Effect>
@@ -1669,7 +1691,12 @@ into smaller partial class files to maintain readability and ease of maintenance
                Placement="Right" HorizontalOffset="6" VerticalOffset="-4"
                PopupAnimation="Fade" Closed="SelectionGroupPopup_Closed">
             <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
-                    CornerRadius="6" Padding="6,4" SnapsToDevicePixels="True" MinWidth="180">
+                    CornerRadius="6" Padding="6,4" SnapsToDevicePixels="True" MinWidth="180"
+                    UseLayoutRounding="True"
+                    RenderOptions.ClearTypeHint="Enabled"
+                    TextOptions.TextFormattingMode="Ideal"
+                    TextOptions.TextRenderingMode="Auto"
+                    RenderOptions.BitmapScalingMode="HighQuality">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000"/>
                 </Border.Effect>

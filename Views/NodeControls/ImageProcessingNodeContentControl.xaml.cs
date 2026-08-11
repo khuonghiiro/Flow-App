@@ -550,6 +550,9 @@ namespace FlowMy.Views.NodeControls
                 ApplyWidgetTypographyResources(typoMul);
                 RebuildWidgetImageProcessorIfNeeded(ipDip);
 
+                var widgetPopupScale = new ScaleTransform(typoMul, typoMul);
+                UpdatePopupsLayoutScale(widgetPopupScale);
+
                 ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, typoMul);
                 return;
             }
@@ -608,6 +611,8 @@ namespace FlowMy.Views.NodeControls
             EditorPanel.LayoutTransform = editorScale;
             TextOptions.SetTextFormattingMode(EditorPanel, TextFormattingMode.Ideal);
 
+            UpdatePopupsLayoutScale(editorScale);
+
             var canvasIpTextTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
             PlaceholderTextBlock.LayoutTransform = canvasIpTextTransform;
             // CropsLabelText.LayoutTransform = Transform.Identity;
@@ -617,6 +622,24 @@ namespace FlowMy.Views.NodeControls
 
             var interactionScale = Math.Max(Math.Max(heightScaleFactor, widthScaleFactor), ipTextScaleFactor);
             ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, interactionScale);
+        }
+
+        private void UpdatePopupsLayoutScale(Transform popupScale)
+        {
+            void ConfigurePopupChild(FrameworkElement? child)
+            {
+                if (child == null) return;
+                child.LayoutTransform = popupScale;
+                TextOptions.SetTextFormattingMode(child, TextFormattingMode.Ideal);
+                TextOptions.SetTextRenderingMode(child, TextRenderingMode.Auto);
+                RenderOptions.SetClearTypeHint(child, ClearTypeHint.Enabled);
+                RenderOptions.SetBitmapScalingMode(child, BitmapScalingMode.HighQuality);
+            }
+
+            ConfigurePopupChild(BrushSettingsPopup?.Child as FrameworkElement);
+            ConfigurePopupChild(FxGroupPopup?.Child as FrameworkElement);
+            ConfigurePopupChild(SelectionGroupPopup?.Child as FrameworkElement);
+            ConfigurePopupChild(EditorPanel?.LayerActionPopup?.Child as FrameworkElement);
         }
 
         private void ChromeOrSelf_MouseRightButtonUp(object sender, MouseButtonEventArgs e)

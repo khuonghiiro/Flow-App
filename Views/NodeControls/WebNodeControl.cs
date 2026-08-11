@@ -30,7 +30,7 @@ namespace FlowMy.Views.NodeControls
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
         private static readonly Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
         private static readonly Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
-        private static readonly Dictionary<Border, (double x, double y, double w, double h)> _viewportExpandRestore = new();
+        private static readonly Dictionary<Border, (double x, double y, double w, double h, int zIndex)> _viewportExpandRestore = new();
         private static readonly FontFamily ViewportExpandIconFont = new("Segoe MDL2 Assets");
         private static readonly Dictionary<Border, double> _webViewZoomLevels = new();
         private static readonly System.Threading.SemaphoreSlim _webView2InitGate = new(1, 1);
@@ -3296,8 +3296,6 @@ if (window.__elementInspector) {
                 if (isResizing) { isResizing = false; border.ReleaseMouseCapture(); e.Handled = true; }
             };
 
-            // WebView2 (HwndHost) có thể gọi SetCapture() trên Win32 HWND của nó, làm mất WPF mouse capture
-            // Khi đang resize, recapture ngay lập tức để đảm bảo PreviewMouseMove tiếp tục nhận events
             border.LostMouseCapture += (s, e) =>
             {
                 if (isResizing)
@@ -3323,10 +3321,8 @@ if (window.__elementInspector) {
             };
             node.TitleTextBlockUI = titleTextBlock;
 
-            // --- Node-specific property handlers for WebNode-specific properties ---
             var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                // Width/Height: sync border size and scale UI elements
                 [nameof(WebNode.Width)] = ctx =>
                 {
                     if (!isResizing)
@@ -3343,14 +3339,25 @@ if (window.__elementInspector) {
                         border.Height = node.Height;
                     }
 
-                    // Scale UI elements ở topBar và bottomBar theo Height
-                    var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
-                    var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
-                    var topBottomScaleFactor = Math.Max(1.0, rawScale);
+                    if (node.IsViewportExpanded)
+                    {
+                        double z = host.ScaleTransform?.ScaleX ?? 1.0;
+                        if (z <= 0.0001) z = 1.0;
+                        double invZ = 1.0 / z;
+                        var chromeScale = Math.Abs(invZ - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(invZ, invZ);
+                        topBarGrid.LayoutTransform = chromeScale;
+                        bottomGrid.LayoutTransform = chromeScale;
+                    }
+                    else
+                    {
+                        var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
+                        var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
+                        var topBottomScaleFactor = Math.Max(1.0, rawScale);
 
-                    topBarGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
-                    bottomGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
-                    UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
+                        topBarGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                        bottomGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                        UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
+                    }
                 }
             };
 
@@ -3454,12 +3461,24 @@ if (window.__elementInspector) {
             // --- Extra Loaded initialization (scale UI elements based on node height) ---
             border.Loaded += (s, e) =>
             {
-                var loadedBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
-                var loadedRawScale = loadedBaseline > 0 ? node.Height / loadedBaseline : 1.0;
-                var loadedScale = Math.Max(1.0, loadedRawScale);
-                topBarGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
-                bottomGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
-                UpdateInteractionVisualScale(handleOverlay, node, loadedScale);
+                if (node.IsViewportExpanded)
+                {
+                    double z = host.ScaleTransform?.ScaleX ?? 1.0;
+                    if (z <= 0.0001) z = 1.0;
+                    double invZ = 1.0 / z;
+                    var chromeScale = Math.Abs(invZ - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(invZ, invZ);
+                    topBarGrid.LayoutTransform = chromeScale;
+                    bottomGrid.LayoutTransform = chromeScale;
+                }
+                else
+                {
+                    var loadedBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
+                    var loadedRawScale = loadedBaseline > 0 ? node.Height / loadedBaseline : 1.0;
+                    var loadedScale = Math.Max(1.0, loadedRawScale);
+                    topBarGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
+                    bottomGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
+                    UpdateInteractionVisualScale(handleOverlay, node, loadedScale);
+                }
             };
 
             return border;
@@ -3578,6 +3597,11 @@ if (window.__elementInspector) {
                 host.UpdateNodePosition(node, saved.x, saved.y);
                 host.UpdateCanvasSize();
                 node.IsViewportExpanded = false;
+
+                // Khôi phục ZIndex ban đầu khi thu nhỏ
+                Canvas.SetZIndex(border, saved.zIndex);
+                Panel.SetZIndex(border, saved.zIndex);
+
                 if (host is WorkflowEditorWindow win)
                     win.SetViewportExpandedUiHidden(false);
                 SetViewportExpandButtonState(btn, border);
@@ -3591,6 +3615,12 @@ if (window.__elementInspector) {
                 node.RequestWake();
             }
 
+            int currentZ = Canvas.GetZIndex(border);
+
+            // Đẩy ZIndex lên cao nhất (999999) khi phóng to để đè lên mọi node & control khác
+            Canvas.SetZIndex(border, 999999);
+            Panel.SetZIndex(border, 999999);
+
             node.IsViewportExpanded = true;
             if (host is WorkflowEditorWindow win0)
                 win0.SetViewportExpandedUiHidden(true);
@@ -3599,7 +3629,7 @@ if (window.__elementInspector) {
             {
                 var r = GetWorkflowViewportCanvasRect(host);
                 if (r.IsEmpty || r.Width < 1 || r.Height < 1) return false;
-                _viewportExpandRestore[border] = (node.X, node.Y, node.Width, node.Height);
+                _viewportExpandRestore[border] = (node.X, node.Y, node.Width, node.Height, currentZ);
                 var minW = border.MinWidth > 0 ? border.MinWidth : 1;
                 var minH = border.MinHeight > 0 ? border.MinHeight : 1;
                 var w = Math.Max(r.Width, minW);
@@ -3624,6 +3654,8 @@ if (window.__elementInspector) {
                 {
                     if (host is WorkflowEditorWindow win1)
                         win1.SetViewportExpandedUiHidden(false);
+                    Canvas.SetZIndex(border, currentZ);
+                    Panel.SetZIndex(border, currentZ);
                 }
             }));
         }

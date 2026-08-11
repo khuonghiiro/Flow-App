@@ -1209,7 +1209,12 @@
             <Popup x:Name="LayerActionPopup" StaysOpen="False" AllowsTransparency="True"
                    Placement="MousePoint" PopupAnimation="None">
                 <Border Background="#12141c" BorderBrush="#2a2e3d" BorderThickness="1.2"
-                        CornerRadius="6" Padding="6,4" SnapsToDevicePixels="True" MinWidth="230">
+                        CornerRadius="6" Padding="6,4" SnapsToDevicePixels="True" MinWidth="230"
+                        UseLayoutRounding="True"
+                        RenderOptions.ClearTypeHint="Enabled"
+                        TextOptions.TextFormattingMode="Ideal"
+                        TextOptions.TextRenderingMode="Auto"
+                        RenderOptions.BitmapScalingMode="HighQuality">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Opacity="0.55" Color="#000000" RenderingBias="Performance"/>
                     </Border.Effect>

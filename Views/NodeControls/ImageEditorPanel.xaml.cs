@@ -1402,6 +1402,10 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
+                if (LayerActionPopup.Child is FrameworkElement childBorder)
+                {
+                    childBorder.LayoutTransform = this.LayoutTransform ?? Transform.Identity;
+                }
                 LayerActionPopup.PlacementTarget = fe;
                 LayerActionPopup.IsOpen = true;
                 e.Handled = true;

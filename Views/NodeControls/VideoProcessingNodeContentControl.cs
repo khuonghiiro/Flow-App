@@ -89,6 +89,7 @@ namespace FlowMy.Views.NodeControls
         private bool _isLightTheme;
         private bool _portraitVideoLogLayout;
         private bool _isNodeZoomed;
+        private int _prevZIndex;
         private double _prevNodeWidth;
         private double _prevNodeHeight;
         private double _prevNodeX;
@@ -3417,35 +3418,44 @@ namespace FlowMy.Views.NodeControls
                 if (_host is WorkflowEditorWindow win)
                     win.SetViewportExpandedUiHidden(false);
 
+                // Khôi phục ZIndex ban đầu khi thu nhỏ node
+                Canvas.SetZIndex(border, _prevZIndex);
+                Panel.SetZIndex(border, _prevZIndex);
+
                 _isNodeZoomed = false;
                 ToggleNodeSizeButton.Content = new TextBlock { Text = "⤢", FontSize = 12 };
+                RefreshLargeNodeUiScale();
                 return;
             }
 
             // Expand to current visible workflow viewport (same behavior idea as HtmlUi node).
             if (_host is WorkflowEditorWindow winExpand)
                 winExpand.SetViewportExpandedUiHidden(true);
-            var vp = GetWorkflowViewportCanvasRect();
-            if (vp.IsEmpty || vp.Width < 1 || vp.Height < 1)
-            {
-                // Fallback to previous behavior if viewport rect can't be resolved.
-                _prevNodeWidth = _node.Width;
-                _prevNodeHeight = _node.Height;
-                _prevNodeX = _node.X;
-                _prevNodeY = _node.Y;
-                _node.Width = Math.Max(1360, _node.Width);
-                _node.Height = Math.Max(768, _node.Height);
-                border.Width = _node.Width;
-                border.Height = _node.Height;
-                _isNodeZoomed = true;
-                ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
-                return;
-            }
+
+            // Lưu ZIndex và vị trí/kích thước ban đầu trước khi phóng to
+            _prevZIndex = Canvas.GetZIndex(border);
 
             _prevNodeX = _node.X;
             _prevNodeY = _node.Y;
             _prevNodeWidth = _node.Width;
             _prevNodeHeight = _node.Height;
+
+            // Đẩy ZIndex lên cao nhất (999999) để đè lên các node và control khác trên canvas
+            Canvas.SetZIndex(border, 999999);
+            Panel.SetZIndex(border, 999999);
+
+            var vp = GetWorkflowViewportCanvasRect();
+            if (vp.IsEmpty || vp.Width < 1 || vp.Height < 1)
+            {
+                _node.Width = Math.Max(1366, _node.Width);
+                _node.Height = Math.Max(768, _node.Height);
+                border.Width = _node.Width;
+                border.Height = _node.Height;
+                _isNodeZoomed = true;
+                ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
+                RefreshLargeNodeUiScale();
+                return;
+            }
 
             var nextW = Math.Max(minW, vp.Width);
             var nextH = Math.Max(minH, vp.Height);
@@ -3460,6 +3470,7 @@ namespace FlowMy.Views.NodeControls
 
             _isNodeZoomed = true;
             ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
+            RefreshLargeNodeUiScale();
         }
 
         private Rect GetWorkflowViewportCanvasRect()
@@ -3501,12 +3512,38 @@ namespace FlowMy.Views.NodeControls
             if (isWidget)
             {
                 RootContentGrid.LayoutTransform = Transform.Identity;
+                return;
+            }
+
+            if (_isNodeZoomed)
+            {
+                // Khi phóng to vừa màn hình (Zoom mode): Triệt tiêu canvas zoom scale z (invZ = 1.0 / z)
+                // để UI luôn hiển thị đúng tỉ lệ 1.0x (100% native resolution) trên màn hình thực tế,
+                // không phụ thuộc vào tỉ lệ zoom/pan của canvas.
+                double z = _host?.ScaleTransform?.ScaleX ?? 1.0;
+                if (z <= 0.0001) z = 1.0;
+
+                double invZ = 1.0 / z;
+                RootContentGrid.LayoutTransform = Math.Abs(invZ - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(invZ, invZ);
             }
             else
             {
-                // Trên workflow canvas: co dãn tỉ lệ tương đối theo kích thước node (baseline 800px)
-                double scaleVal = Math.Max(0.4, _node.Width / 800.0);
-                RootContentGrid.LayoutTransform = new ScaleTransform(scaleVal, scaleVal);
+                // Khi ở chế độ canvas: Tỉ lệ UI lấy baseline mặc định 1366px × 768px.
+                // Khi node ở kích thước 1366x768 -> scale = 1.0x (Hiển thị nét, đẹp, bố cục gọn gàng chuẩn XAML gốc).
+                double nodeW = _node != null && _node.Width > 0 ? _node.Width : (ActualWidth > 0 ? ActualWidth : 1366);
+                double nodeH = _node != null && _node.Height > 0 ? _node.Height : (ActualHeight > 0 ? ActualHeight : 768);
+
+                // Baseline 1366px × 768px
+                double scaleW = nodeW / 1366.0;
+                double scaleH = nodeH / 768.0;
+
+                // Dùng Max(scaleW, scaleH) để khi kéo node to hơn 1366x768 thì UI scale tăng mượt mà tương ứng
+                double scaleDimension = Math.Max(scaleW, scaleH);
+
+                // Sub-linear curved scale cho canvas drag
+                double scaleVal = Math.Clamp(Math.Pow(scaleDimension, 0.65), 0.6, 3.0);
+
+                RootContentGrid.LayoutTransform = Math.Abs(scaleVal - 1.0) < 0.01 ? Transform.Identity : new ScaleTransform(scaleVal, scaleVal);
             }
         }
 

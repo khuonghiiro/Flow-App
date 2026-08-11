@@ -439,6 +439,10 @@ namespace FlowMy.Views.NodeControls
                 else
                 {
                     SyncFromEditorPanelBrushProperties();
+                    if (BrushSettingsPopup.Child is FrameworkElement childBorder)
+                    {
+                        childBorder.LayoutTransform = TopOptionsBar.LayoutTransform ?? Transform.Identity;
+                    }
                     BrushSettingsPopup.IsOpen = true;
 
                     var window = Window.GetWindow(this);

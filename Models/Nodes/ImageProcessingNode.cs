@@ -155,8 +155,8 @@ namespace FlowMy.Models.Nodes
     /// </summary>
     public sealed class ImageProcessingNode : WorkflowNode
     {
-        private double _width = 360;
-        private double _height = 260;
+        private double _width = 1366;
+        private double _height = 768;
 
         private ImageInputMode _inputMode = ImageInputMode.Url;
 

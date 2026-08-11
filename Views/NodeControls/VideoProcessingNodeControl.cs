@@ -1,25 +1,31 @@
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.Windows.Threading;
-using System.Linq;
 
 namespace FlowMy.Views.NodeControls
 {
     public static class VideoProcessingNodeControl
     {
-        private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Bottom }
-        /// <summary>Phải trùng <see cref="Border.CornerRadius"/> bên dưới — clip nền/control con (vuông mặc định).</summary>
-        private const double NodeChromeCornerRadius = 10;
+        private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
+
+        /// <summary>Min kích thước node video.</summary>
+        public const double VideoNodeMinWidthPx = 540;
+        /// <summary>Min chiều cao node video.</summary>
+        public const double VideoNodeMinHeightPx = 340;
+        private const double VideoNodeDefaultWidthPx = 1366;
+        private const double VideoNodeDefaultHeightPx = 768;
 
         public static Border CreateBorder(VideoProcessingNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
@@ -43,43 +49,171 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            double initW = double.IsNaN(node.Width) ? VideoNodeDefaultWidthPx : Math.Max(node.Width, VideoNodeMinWidthPx);
+            double initH = double.IsNaN(node.Height) ? VideoNodeDefaultHeightPx : Math.Max(node.Height, VideoNodeMinHeightPx);
+
+            node.Width = initW;
+            node.Height = initH;
+
             var border = new Border
             {
-                Width = node.Width,
-                Height = node.Height,
-                MinWidth = 540,
-                MinHeight = 340,
-                Background = node.NodeBrush,
+                Width = initW,
+                Height = initH,
+                MinWidth = VideoNodeMinWidthPx,
+                MinHeight = VideoNodeMinHeightPx,
+                Background = Brushes.Transparent,
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(NodeChromeCornerRadius),
+                CornerRadius = new CornerRadius(10),
                 Cursor = Cursors.Hand,
                 Effect = null,
-                CacheMode = null,
                 Tag = node,
-                SnapsToDevicePixels = true,
-                UseLayoutRounding = true
+                CacheMode = null
             };
+
+            var shadowPlate = new Border
+            {
+                Background = node.NodeBrush,
+                CornerRadius = new CornerRadius(8),
+                Effect = GpuOptimizationHelper.CreateDropShadowEffect(),
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true,
+                UseLayoutRounding = true,
+                ClipToBounds = false
+            };
+            GpuOptimizationHelper.ApplyToElement(shadowPlate);
+
+            border.Loaded += (s, e) =>
+            {
+                border.InvalidateMeasure();
+                border.InvalidateArrange();
+                border.UpdateLayout();
+            };
+
+            bool isResizing = false;
+
+            var handleOverlay = new Grid();
             var contentControl = new VideoProcessingNodeContentControl(node, host);
-            var overlayGrid = new Grid();
-            overlayGrid.Children.Add(contentControl);
 
-            var handlesLayer = new Grid { IsHitTestVisible = true };
-            AddResizeHandle(handlesLayer, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
-            AddResizeHandle(handlesLayer, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
-            AddResizeHandle(handlesLayer, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
-            AddResizeHandle(handlesLayer, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
-            AddResizeHandle(handlesLayer, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
-            overlayGrid.Children.Add(handlesLayer);
-            GpuOptimizationHelper.ApplyToElement(overlayGrid);
-            border.Child = overlayGrid;
-            AttachResizeLogic(border, node, RefreshPortsAndConnections);
-            SyncNodeRoundedClip(border);
+            AddResizeHandle(handleOverlay, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
+            AddResizeHandle(handleOverlay, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
+            AddResizeHandle(handleOverlay, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
+            AddResizeHandle(handleOverlay, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top, new Thickness(0, 2, 0, 0));
+            AddResizeHandle(handleOverlay, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
+            AddResizeHandle(handleOverlay, ResizeDirection.Left, HorizontalAlignment.Left, VerticalAlignment.Center, new Thickness(2, 0, 0, 0));
+            AddResizeHandle(handleOverlay, ResizeDirection.Right, HorizontalAlignment.Right, VerticalAlignment.Center, new Thickness(0, 0, 2, 0));
+            AddResizeHandle(handleOverlay, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
 
-            if (node.Width < border.MinWidth) node.Width = border.MinWidth;
-            if (node.Height < border.MinHeight) node.Height = border.MinHeight;
-            border.Width = node.Width;
-            border.Height = node.Height;
+            var outerGrid = new Grid();
+            outerGrid.Children.Add(contentControl);
+            outerGrid.Children.Add(handleOverlay);
+            Panel.SetZIndex(outerGrid, 1);
+            GpuOptimizationHelper.ApplyToElement(outerGrid);
+
+            var chromeFillGrid = new Grid();
+            chromeFillGrid.Children.Add(shadowPlate);
+            chromeFillGrid.Children.Add(outerGrid);
+            border.Child = chromeFillGrid;
+
+            // --- Resize handle logic ---
+            ResizeDirection currentDir = ResizeDirection.None;
+            Point resizeStart = default;
+            double origW = 0, origH = 0, origX = 0, origY = 0;
+
+            border.PreviewMouseDown += (s, e) =>
+            {
+                if (e.OriginalSource is Ellipse handle && handle.Tag is ResizeDirection dir)
+                {
+                    isResizing = true;
+                    currentDir = dir;
+                    resizeStart = e.GetPosition(border.Parent as UIElement);
+                    origW = border.ActualWidth > 0 ? border.ActualWidth : Math.Max(border.MinWidth, border.Width);
+                    origH = border.ActualHeight > 0 ? border.ActualHeight : Math.Max(border.MinHeight, border.Height);
+                    origX = Canvas.GetLeft(border);
+                    origY = Canvas.GetTop(border);
+                    if (double.IsNaN(origX)) origX = node.X;
+                    if (double.IsNaN(origY)) origY = node.Y;
+
+                    border.CaptureMouse();
+                    e.Handled = true;
+                }
+            };
+
+            border.PreviewMouseMove += (s, e) =>
+            {
+                if (!isResizing) return;
+                var parent = border.Parent as UIElement;
+                if (parent == null) return;
+                var pos = e.GetPosition(parent);
+                var dx = pos.X - resizeStart.X;
+                var dy = pos.Y - resizeStart.Y;
+
+                double newX = origX, newY = origY, newW = origW, newH = origH;
+                var minW = border.MinWidth > 0 ? border.MinWidth : VideoNodeMinWidthPx;
+                var minH = border.MinHeight > 0 ? border.MinHeight : VideoNodeMinHeightPx;
+
+                switch (currentDir)
+                {
+                    case ResizeDirection.BottomRight:
+                        newW = Math.Max(minW, origW + dx);
+                        newH = Math.Max(minH, origH + dy);
+                        break;
+                    case ResizeDirection.TopRight:
+                        newW = Math.Max(minW, origW + dx);
+                        newH = Math.Max(minH, origH - dy);
+                        newY = origY + (origH - newH);
+                        break;
+                    case ResizeDirection.BottomLeft:
+                        newW = Math.Max(minW, origW - dx);
+                        newH = Math.Max(minH, origH + dy);
+                        newX = origX + (origW - newW);
+                        break;
+                    case ResizeDirection.TopLeft:
+                        newW = Math.Max(minW, origW - dx);
+                        newH = Math.Max(minH, origH - dy);
+                        newX = origX + (origW - newW);
+                        newY = origY + (origH - newH);
+                        break;
+                    case ResizeDirection.Top:
+                        newH = Math.Max(minH, origH - dy);
+                        newY = origY + (origH - newH);
+                        break;
+                    case ResizeDirection.Bottom:
+                        newH = Math.Max(minH, origH + dy);
+                        break;
+                    case ResizeDirection.Left:
+                        newW = Math.Max(minW, origW - dx);
+                        newX = origX + (origW - newW);
+                        break;
+                    case ResizeDirection.Right:
+                        newW = Math.Max(minW, origW + dx);
+                        break;
+                }
+
+                node.Width = newW;
+                node.Height = newH;
+                node.X = newX;
+                node.Y = newY;
+                border.Width = newW;
+                border.Height = newH;
+                if (host.WorkflowCanvas != null)
+                {
+                    Canvas.SetLeft(border, newX);
+                    Canvas.SetTop(border, newY);
+                }
+                RefreshPortsAndConnections();
+                e.Handled = true;
+            };
+
+            border.PreviewMouseUp += (s, e) =>
+            {
+                if (isResizing)
+                {
+                    isResizing = false;
+                    border.ReleaseMouseCapture();
+                    e.Handled = true;
+                }
+            };
 
             // --- Create title TextBlock (node-specific initial text and color) ---
             var titleTextBlock = new TextBlock
@@ -103,7 +237,7 @@ namespace FlowMy.Views.NodeControls
 
             contentControl.SuggestedNodeSizeReady += (suggestedWidth, suggestedHeight) =>
             {
-                // Auto-fit only grows to avoid surprising shrink after manual resize.
+                if (isResizing) return;
                 var nextWidth = Math.Max(node.Width, suggestedWidth);
                 var nextHeight = Math.Max(node.Height, suggestedHeight);
                 if (nextWidth <= node.Width + 0.01 && nextHeight <= node.Height + 0.01) return;
@@ -114,58 +248,44 @@ namespace FlowMy.Views.NodeControls
                 border.Width = node.Width;
                 border.Height = node.Height;
                 RefreshPortsAndConnections();
-                // Title position will be updated automatically via LayoutUpdated in BaseNodeControlHelper
             };
 
             border.SizeChanged += (_, _) =>
             {
-                SyncNodeRoundedClip(border);
                 RefreshPortsAndConnections();
-            };
-
-            contentControl.Loaded += (_, _) =>
-            {
-                contentControl.Measure(new Size(border.Width, double.PositiveInfinity));
-                var desired = contentControl.DesiredSize;
-                var minRequiredWidth = Math.Max(border.MinWidth, desired.Width + 8);
-                var minRequiredHeight = Math.Max(border.MinHeight, Math.Min(920, desired.Height + 10));
-
-                border.MinWidth = minRequiredWidth;
-                border.MinHeight = minRequiredHeight;
-
-                if (border.Width < minRequiredWidth) border.Width = minRequiredWidth;
-                if (border.Height < minRequiredHeight) border.Height = minRequiredHeight;
-
-                node.Width = border.Width;
-                node.Height = border.Height;
             };
 
             // --- Node-specific custom property handlers ---
             var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                // NodeBrush: update border background and title foreground
                 [nameof(WorkflowNode.NodeBrush)] = ctx =>
                 {
-                    border.Background = node.NodeBrush;
+                    border.Background = Brushes.Transparent;
+                    shadowPlate.Background = node.NodeBrush;
                     ctx.TitleTextBlock.Foreground = BaseNodeControlHelper.ResolveTitleBrush(
                         BaseNodeControlHelper.GetTitleColorMode(node),
                         BaseNodeControlHelper.GetTitleColorKey(node),
                         node.NodeBrush);
                 },
-                // Width/Height: sync border size when changed externally
                 [nameof(VideoProcessingNode.Width)] = ctx =>
                 {
-                    border.Width = node.Width;
-                    RefreshPortsAndConnections();
+                    if (!isResizing)
+                    {
+                        border.Width = node.Width;
+                        RefreshPortsAndConnections();
+                    }
                 },
                 [nameof(VideoProcessingNode.Height)] = ctx =>
                 {
-                    border.Height = node.Height;
-                    RefreshPortsAndConnections();
+                    if (!isResizing)
+                    {
+                        border.Height = node.Height;
+                        RefreshPortsAndConnections();
+                    }
                 }
             };
 
-            // --- Initialize with fluent API (replaces ~200 lines of duplicated event handler code) ---
+            // --- Initialize with fluent API ---
             BaseNodeControlHelper
                 .Initialize(border, titleTextBlock, node, host)
                 .WithTitleManagement()
@@ -181,26 +301,15 @@ namespace FlowMy.Views.NodeControls
             return border;
         }
 
-        private static void SyncNodeRoundedClip(Border border)
-        {
-            var w = Math.Max(1d, border.ActualWidth);
-            var h = Math.Max(1d, border.ActualHeight);
-            var maxR = Math.Min(w, h) / 2 - 0.001;
-            var r = Math.Min(NodeChromeCornerRadius, Math.Max(0, maxR));
-            border.Clip = r <= 0.25
-                ? new RectangleGeometry(new Rect(0, 0, w, h))
-                : new RectangleGeometry(new Rect(0, 0, w, h), r, r);
-        }
-
         private static void AddResizeHandle(Grid grid, ResizeDirection direction, HorizontalAlignment hAlign, VerticalAlignment vAlign, Thickness margin)
         {
             var handle = new Ellipse
             {
-                Width = 20,
-                Height = 20,
-                Fill = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
-                Stroke = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
-                StrokeThickness = 1.2,
+                Width = 14,
+                Height = 14,
+                Fill = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                Stroke = new SolidColorBrush(Colors.White),
+                StrokeThickness = 1,
                 HorizontalAlignment = hAlign,
                 VerticalAlignment = vAlign,
                 Margin = margin,
@@ -209,129 +318,15 @@ namespace FlowMy.Views.NodeControls
                 {
                     ResizeDirection.TopLeft or ResizeDirection.BottomRight => Cursors.SizeNWSE,
                     ResizeDirection.TopRight or ResizeDirection.BottomLeft => Cursors.SizeNESW,
-                    ResizeDirection.Bottom => Cursors.SizeNS,
+                    ResizeDirection.Left or ResizeDirection.Right => Cursors.SizeWE,
+                    ResizeDirection.Top or ResizeDirection.Bottom => Cursors.SizeNS,
                     _ => Cursors.Arrow
-                }
+                },
+                CacheMode = null
             };
-            // Prevent node drag MouseDown from hijacking resize gestures.
-            handle.PreviewMouseLeftButtonDown += (_, e) => e.Handled = true;
+            GpuOptimizationHelper.ApplyToShape(handle);
             grid.Children.Add(handle);
-        }
-
-        private static void AttachResizeLogic(Border border, VideoProcessingNode node, Action refreshPortsAndConnections)
-        {
-            bool isResizing = false;
-            ResizeDirection currentDirection = ResizeDirection.None;
-            Point resizeStartPoint = new();
-            double originalWidth = 0;
-            double originalHeight = 0;
-            double originalX = 0;
-            double originalY = 0;
-
-            border.PreviewMouseLeftButtonDown += (_, e) =>
-            {
-                if (TryGetResizeDirectionFromSource(e.OriginalSource as DependencyObject, out var direction) == false) return;
-
-                var parent = border.Parent as UIElement;
-                if (parent == null) return;
-                isResizing = true;
-                currentDirection = direction;
-                resizeStartPoint = e.GetPosition(parent);
-                // Match HtmlUi behavior: start from rendered size to avoid stale Width/Height dead-zone.
-                originalWidth = border.ActualWidth > 0 ? border.ActualWidth : Math.Max(border.MinWidth, border.Width);
-                originalHeight = border.ActualHeight > 0 ? border.ActualHeight : Math.Max(border.MinHeight, border.Height);
-                originalX = Canvas.GetLeft(border);
-                originalY = Canvas.GetTop(border);
-                if (double.IsNaN(originalX)) originalX = node.X;
-                if (double.IsNaN(originalY)) originalY = node.Y;
-
-                border.CaptureMouse();
-                e.Handled = true;
-            };
-
-            border.PreviewMouseMove += (_, e) =>
-            {
-                if (!isResizing || !border.IsMouseCaptured) return;
-                var parent = border.Parent as UIElement;
-                if (parent == null) return;
-                var current = e.GetPosition(parent);
-                var dx = current.X - resizeStartPoint.X;
-                var dy = current.Y - resizeStartPoint.Y;
-
-                var newX = originalX;
-                var newY = originalY;
-                var newWidth = originalWidth;
-                var newHeight = originalHeight;
-
-                switch (currentDirection)
-                {
-                    case ResizeDirection.BottomRight:
-                        newWidth = Math.Max(border.MinWidth, originalWidth + dx);
-                        newHeight = Math.Max(border.MinHeight, originalHeight + dy);
-                        break;
-                    case ResizeDirection.TopLeft:
-                        newWidth = Math.Max(border.MinWidth, originalWidth - dx);
-                        newHeight = Math.Max(border.MinHeight, originalHeight - dy);
-                        newX = originalX + (originalWidth - newWidth);
-                        newY = originalY + (originalHeight - newHeight);
-                        break;
-                    case ResizeDirection.TopRight:
-                        newWidth = Math.Max(border.MinWidth, originalWidth + dx);
-                        newHeight = Math.Max(border.MinHeight, originalHeight - dy);
-                        newY = originalY + (originalHeight - newHeight);
-                        break;
-                    case ResizeDirection.BottomLeft:
-                        newWidth = Math.Max(border.MinWidth, originalWidth - dx);
-                        newHeight = Math.Max(border.MinHeight, originalHeight + dy);
-                        newX = originalX + (originalWidth - newWidth);
-                        break;
-                    case ResizeDirection.Bottom:
-                        newHeight = Math.Max(border.MinHeight, originalHeight + dy);
-                        break;
-                }
-
-                border.Width = newWidth;
-                border.Height = newHeight;
-                Canvas.SetLeft(border, newX);
-                Canvas.SetTop(border, newY);
-                node.Width = newWidth;
-                node.Height = newHeight;
-                node.X = newX;
-                node.Y = newY;
-                e.Handled = true;
-            };
-
-            border.PreviewMouseUp += (_, e) =>
-            {
-                if (!isResizing) return;
-                isResizing = false;
-                currentDirection = ResizeDirection.None;
-                border.ReleaseMouseCapture();
-                e.Handled = true;
-            };
-
-            // Keep resizing stable even if child content steals mouse capture.
-            border.LostMouseCapture += (_, _) =>
-            {
-                if (isResizing)
-                    border.CaptureMouse();
-            };
-        }
-
-        private static bool TryGetResizeDirectionFromSource(DependencyObject? source, out ResizeDirection direction)
-        {
-            while (source != null)
-            {
-                if (source is FrameworkElement fe && fe.Tag is ResizeDirection rd)
-                {
-                    direction = rd;
-                    return true;
-                }
-                source = VisualTreeHelper.GetParent(source) ?? (source as FrameworkElement)?.Parent;
-            }
-
-            direction = ResizeDirection.None;
-            return false;
         }
     }
 }
+

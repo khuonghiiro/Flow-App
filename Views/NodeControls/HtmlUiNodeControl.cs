@@ -33,7 +33,7 @@ namespace FlowMy.Views.NodeControls
         private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
         private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
         /// <summary>Lưu X,Y,W,H trước khi phóng to khung nhìn — mỗi border một mục.</summary>
-        private static readonly System.Collections.Generic.Dictionary<Border, (double x, double y, double w, double h)> _viewportExpandRestore = new();
+        private static readonly System.Collections.Generic.Dictionary<Border, (double x, double y, double w, double h, int zIndex)> _viewportExpandRestore = new();
         private static readonly FontFamily ViewportExpandIconFont = new("Segoe MDL2 Assets");
         // ✅ Throttling cho SyncWebViewPosition để tránh gọi quá nhiều lần khi drag node
         private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _webViewSyncTimers = new();
@@ -3630,13 +3630,24 @@ namespace FlowMy.Views.NodeControls
 
             void RefreshHtmlUiChromeScale()
             {
-                var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
-                var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
-                var topBottomScaleFactor = Math.Max(1.0, rawScale);
+                double topBottomScaleFactor;
+                if (node.IsViewportExpanded)
+                {
+                    // Khi đang phóng to viewport (Zoom mode): Triệt tiêu canvas zoom z (invZ = 1.0 / z)
+                    // để topBar và chrome hiển thị chuẩn 1.0x native trên màn hình thực tế
+                    double z = host.ScaleTransform?.ScaleX ?? 1.0;
+                    if (z <= 0.0001) z = 1.0;
+                    topBottomScaleFactor = 1.0 / z;
+                }
+                else
+                {
+                    var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
+                    var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
+                    topBottomScaleFactor = Math.Max(1.0, rawScale);
+                }
 
                 // Top bar + tab + địa chỉ luôn cùng factor với bottom/handle (kể cả phóng to viewport).
-                // Trước đây khi expanded cố định ~0.78 và tab=1 trong khi factor theo Height có thể >>1 → topbar nhìn như vài px.
-                var chromeScale = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                var chromeScale = Math.Abs(topBottomScaleFactor - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
                 if (topBarChromeRow != null)
                     topBarChromeRow.LayoutTransform = chromeScale;
                 if (_tabControl?.Tag is (Grid tabBarG, Grid addrPanelG))
@@ -3645,7 +3656,7 @@ namespace FlowMy.Views.NodeControls
                     addrPanelG.LayoutTransform = chromeScale;
                 }
 
-                bottomGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                bottomGrid.LayoutTransform = chromeScale;
                 UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
             }
 
@@ -3905,6 +3916,11 @@ namespace FlowMy.Views.NodeControls
                 host.UpdateNodePosition(node, saved.x, saved.y);
                 host.UpdateCanvasSize();
                 node.IsViewportExpanded = false;
+
+                // Khôi phục ZIndex ban đầu khi thu nhỏ
+                Canvas.SetZIndex(border, saved.zIndex);
+                Panel.SetZIndex(border, saved.zIndex);
+
                 if (host is WorkflowEditorWindow win)
                     win.SetViewportExpandedUiHidden(false);
                 // Hiện lại footer khi thu nhỏ
@@ -3921,6 +3937,12 @@ namespace FlowMy.Views.NodeControls
                 node.RequestWake();
             }
 
+            int currentZ = Canvas.GetZIndex(border);
+
+            // Đẩy ZIndex lên cao nhất (999999) khi phóng to để đè lên mọi node & control khác
+            Canvas.SetZIndex(border, 999999);
+            Panel.SetZIndex(border, 999999);
+
             node.IsViewportExpanded = true;
             if (host is WorkflowEditorWindow win0)
                 win0.SetViewportExpandedUiHidden(true);
@@ -3932,7 +3954,7 @@ namespace FlowMy.Views.NodeControls
             {
                 var r = GetWorkflowViewportCanvasRect(host);
                 if (r.IsEmpty || r.Width < 1 || r.Height < 1) return false;
-                _viewportExpandRestore[border] = (node.X, node.Y, node.Width, node.Height);
+                _viewportExpandRestore[border] = (node.X, node.Y, node.Width, node.Height, currentZ);
                 var minW = border.MinWidth > 0 ? border.MinWidth : 1;
                 var minH = border.MinHeight > 0 ? border.MinHeight : 1;
                 var w = Math.Max(r.Width, minW);
@@ -3960,6 +3982,8 @@ namespace FlowMy.Views.NodeControls
                         bottomBar.Visibility = Visibility.Visible;
                     if (host is WorkflowEditorWindow win1)
                         win1.SetViewportExpandedUiHidden(false);
+                    Canvas.SetZIndex(border, currentZ);
+                    Panel.SetZIndex(border, currentZ);
                 }
             }));
         }

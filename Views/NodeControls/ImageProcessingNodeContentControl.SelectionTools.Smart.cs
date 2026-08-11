@@ -66,6 +66,10 @@ namespace FlowMy.Views.NodeControls
             border.Background = new SolidColorBrush(Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
             border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4fffb0"));
 
+            if (SelectionGroupPopup.Child is FrameworkElement childBorder)
+            {
+                childBorder.LayoutTransform = EditorToolbox.LayoutTransform ?? Transform.Identity;
+            }
             SelectionGroupPopup.IsOpen = true;
         }
 

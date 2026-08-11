@@ -758,6 +758,10 @@ namespace FlowMy.Views.NodeControls
             border.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
             border.BorderBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4fffb0"));
 
+            if (FxGroupPopup.Child is FrameworkElement childBorder)
+            {
+                childBorder.LayoutTransform = EditorToolbox.LayoutTransform ?? Transform.Identity;
+            }
             FxGroupPopup.IsOpen = true;
         }
 
