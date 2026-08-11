@@ -78,11 +78,15 @@ namespace FlowMy.ViewModels
             new(VideoEditorDisplayMode.AutomatedPipeline, "⚙️ Automated Pipeline (Cấu hình tự động)")
         };
 
-        public List<string> FilterPresetOptions { get; } = new() { "None", "Grayscale", "Sepia", "Vintage", "Invert" };
+        [ObservableProperty] private double _gifFps = 15.0;
+        [ObservableProperty] private int _gifScaleWidth = 480;
+        [ObservableProperty] private double _frameExtractFps = 1.0;
+
+        public List<string> FilterPresetOptions { get; } = new() { "None", "Vivid", "Warm", "Cool", "Grayscale", "Sepia", "Vintage", "Invert" };
         public List<string> RotateFlipOptions { get; } = new() { "None", "Rotate90", "Rotate180", "Rotate270", "FlipHorizontal", "FlipVertical" };
         public List<string> WatermarkPositionOptions { get; } = new() { "BottomRight", "BottomLeft", "TopRight", "TopLeft", "Center" };
         public List<string> AudioModeOptions { get; } = new() { "Keep", "Mute", "ExtractAudio", "VolumeAdjust" };
-        public List<string> ExportModeOptions { get; } = new() { "Video", "FrameSequence", "SingleFrame", "AudioOnly" };
+        public List<string> ExportModeOptions { get; } = new() { "Video", "FrameSequence", "SingleFrame", "AudioOnly", "Gif" };
         public List<string> ExportFormatOptions { get; } = new() { "mp4", "gif", "webm", "png", "jpg", "mp3" };
 
         partial void OnSourceNodeIdChanged(string value)
@@ -229,6 +233,9 @@ namespace FlowMy.ViewModels
             ExportFps = _videoEditorNode.ExportFps;
             ExportFormat = _videoEditorNode.ExportFormat;
             OutputFolderPath = _videoEditorNode.OutputFolderPath;
+            GifFps = _videoEditorNode.GifFps;
+            GifScaleWidth = _videoEditorNode.GifScaleWidth;
+            FrameExtractFps = _videoEditorNode.FrameExtractFps;
 
             RefreshAvailableNodes();
             if (InputMappingsList.Count == 0)
@@ -280,6 +287,9 @@ namespace FlowMy.ViewModels
             _videoEditorNode.ExportFps = ExportFps;
             _videoEditorNode.ExportFormat = ExportFormat;
             _videoEditorNode.OutputFolderPath = OutputFolderPath;
+            _videoEditorNode.GifFps = GifFps;
+            _videoEditorNode.GifScaleWidth = GifScaleWidth;
+            _videoEditorNode.FrameExtractFps = FrameExtractFps;
 
             _videoEditorNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);

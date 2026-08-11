@@ -59,10 +59,16 @@ namespace FlowMy.Models.Nodes
         private double _audioVolume = 1.0; // 0.0 to 3.0
 
         // --- Output & Export ---
-        private string _exportMode = "Video"; // Video, FrameSequence, SingleFrame, AudioOnly
+        private string _exportMode = "Video"; // Video, FrameSequence, SingleFrame, AudioOnly, Gif
         private double _exportFps = 30.0;
         private string _exportFormat = "mp4"; // mp4, gif, webm, png, jpg, mp3
         private string _outputFolderPath = string.Empty;
+
+        // --- Additional Video Logic Properties ---
+        private string _videoMetadataInfo = string.Empty;
+        private double _gifFps = 15.0;
+        private int _gifScaleWidth = 480;
+        private double _frameExtractFps = 1.0;
 
         // --- Dynamic Outputs ---
         private List<string> _outputKeys = new() { "video_path", "frames_folder", "audio_path", "thumbnail_path" };
@@ -239,6 +245,30 @@ namespace FlowMy.Models.Nodes
         {
             get => _outputFolderPath;
             set { if (_outputFolderPath != value) { _outputFolderPath = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        public string VideoMetadataInfo
+        {
+            get => _videoMetadataInfo;
+            set { if (_videoMetadataInfo != value) { _videoMetadataInfo = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        public double GifFps
+        {
+            get => _gifFps;
+            set { if (Math.Abs(_gifFps - value) > 0.0001) { _gifFps = value; OnPropertyChanged(); } }
+        }
+
+        public int GifScaleWidth
+        {
+            get => _gifScaleWidth;
+            set { if (_gifScaleWidth != value) { _gifScaleWidth = value; OnPropertyChanged(); } }
+        }
+
+        public double FrameExtractFps
+        {
+            get => _frameExtractFps;
+            set { if (Math.Abs(_frameExtractFps - value) > 0.0001) { _frameExtractFps = value; OnPropertyChanged(); } }
         }
 
         public List<string> OutputKeys

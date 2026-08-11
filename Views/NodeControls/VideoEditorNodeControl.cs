@@ -41,9 +41,9 @@ namespace FlowMy.Views.NodeControls
                 MinWidth = VideoNodeMinWidthPx,
                 MinHeight = VideoNodeMinHeightPx,
                 Background = Brushes.Transparent,
-                BorderBrush = new SolidColorBrush(Colors.White),
-                BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(10),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6)),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(12),
                 Cursor = Cursors.Hand,
                 Effect = null,
                 Tag = node,
@@ -52,8 +52,8 @@ namespace FlowMy.Views.NodeControls
 
             var shadowPlate = new Border
             {
-                Background = node.NodeBrush,
-                CornerRadius = new CornerRadius(8),
+                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(0x11, 0x18, 0x27)),
+                CornerRadius = new CornerRadius(10),
                 Effect = GpuOptimizationHelper.CreateDropShadowEffect(),
                 IsHitTestVisible = false,
                 SnapsToDevicePixels = true,
@@ -228,20 +228,20 @@ namespace FlowMy.Views.NodeControls
         {
             var handle = new Ellipse
             {
-                Width = 10,
-                Height = 10,
-                Fill = Brushes.LightGray,
-                Stroke = Brushes.DimGray,
+                Width = 11,
+                Height = 11,
+                Fill = new SolidColorBrush(Color.FromRgb(0x60, 0xA5, 0xFA)),
+                Stroke = new SolidColorBrush(Color.FromRgb(0x1E, 0x29, 0x3B)),
                 StrokeThickness = 1.5,
                 HorizontalAlignment = hAlign,
                 VerticalAlignment = vAlign,
                 Margin = margin,
                 Tag = dir,
                 Cursor = GetCursorForDirection(dir),
-                Opacity = 0.7
+                Opacity = 0.8
             };
             handle.MouseEnter += (s, e) => handle.Opacity = 1.0;
-            handle.MouseLeave += (s, e) => handle.Opacity = 0.7;
+            handle.MouseLeave += (s, e) => handle.Opacity = 0.8;
             parent.Children.Add(handle);
         }
 

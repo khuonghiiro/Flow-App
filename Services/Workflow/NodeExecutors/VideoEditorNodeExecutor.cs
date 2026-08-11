@@ -112,6 +112,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // Color / EQ
             vFilters.Add($"eq=brightness={node.Brightness:F2}:contrast={node.Contrast:F2}:saturation={node.Saturation:F2}:gamma={node.Gamma:F2}");
 
+            // Hue Adjustment
+            if (Math.Abs(node.Hue) > 0.1)
+            {
+                vFilters.Add($"hue=h={node.Hue:F0}");
+            }
+
             // Filter Presets
             if (string.Equals(node.FilterPreset, "Grayscale", StringComparison.OrdinalIgnoreCase))
             {
@@ -124,6 +130,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             else if (string.Equals(node.FilterPreset, "Invert", StringComparison.OrdinalIgnoreCase))
             {
                 vFilters.Add("negate");
+            }
+            else if (string.Equals(node.FilterPreset, "Vivid", StringComparison.OrdinalIgnoreCase))
+            {
+                vFilters.Add("eq=saturation=1.4:contrast=1.2");
+            }
+            else if (string.Equals(node.FilterPreset, "Warm", StringComparison.OrdinalIgnoreCase))
+            {
+                vFilters.Add("hue=h=15");
+            }
+            else if (string.Equals(node.FilterPreset, "Cool", StringComparison.OrdinalIgnoreCase))
+            {
+                vFilters.Add("hue=h=-20");
             }
 
             // Speed
@@ -170,7 +188,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             // --- Audio Filters (-af) ---
-            if (string.Equals(node.AudioMode, "Mute", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(node.AudioMode, "Mute", StringComparison.OrdinalIgnoreCase) || string.Equals(node.ExportMode, "Gif", StringComparison.OrdinalIgnoreCase))
             {
                 sb.Append("-an ");
             }
@@ -215,6 +233,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 audioPath = Path.Combine(outputDir, $"audio.{(format == "mp4" ? "mp3" : format)}");
                 primaryOutputPath = audioPath;
                 sb.Append($"\"{audioPath}\"");
+            }
+            else if (string.Equals(node.ExportMode, "Gif", StringComparison.OrdinalIgnoreCase))
+            {
+                primaryOutputPath = Path.Combine(outputDir, "output_animated.gif");
+                sb.Append($"\"{primaryOutputPath}\"");
             }
             else
             {

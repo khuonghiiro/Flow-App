@@ -52,6 +52,11 @@ namespace FlowMy.Services.Workflow
             if (properties.TryGetValue("ExportFormat", out var efm)) node.ExportFormat = efm?.ToString() ?? "mp4";
             if (properties.TryGetValue("OutputFolderPath", out var ofp)) node.OutputFolderPath = ofp?.ToString() ?? string.Empty;
 
+            if (properties.TryGetValue("GifFps", out var gfp) && gfp != null && double.TryParse(gfp.ToString(), out var dGfp)) node.GifFps = dGfp;
+            if (properties.TryGetValue("GifScaleWidth", out var gsw) && gsw != null && int.TryParse(gsw.ToString(), out var iGsw)) node.GifScaleWidth = iGsw;
+            if (properties.TryGetValue("FrameExtractFps", out var fef) && fef != null && double.TryParse(fef.ToString(), out var dFef)) node.FrameExtractFps = dFef;
+            if (properties.TryGetValue("VideoMetadataInfo", out var vmi)) node.VideoMetadataInfo = vmi?.ToString() ?? string.Empty;
+
             if (properties.TryGetValue("OutputKeys", out var okObj) && okObj != null)
             {
                 try
@@ -107,6 +112,11 @@ namespace FlowMy.Services.Workflow
             dict["ExportFps"] = node.ExportFps;
             dict["ExportFormat"] = node.ExportFormat;
             dict["OutputFolderPath"] = node.OutputFolderPath;
+
+            dict["GifFps"] = node.GifFps;
+            dict["GifScaleWidth"] = node.GifScaleWidth;
+            dict["FrameExtractFps"] = node.FrameExtractFps;
+            dict["VideoMetadataInfo"] = node.VideoMetadataInfo;
 
             if (node.OutputKeys?.Count > 0)
                 dict["OutputKeys"] = JsonSerializer.Serialize(node.OutputKeys);

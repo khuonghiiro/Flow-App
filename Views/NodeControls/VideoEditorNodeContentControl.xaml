@@ -37,17 +37,23 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Left: Title & Icon -->
+                <!-- Left: Title, Icon & Metadata Badge -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="{DynamicResource PrimaryGlowBrush}" CornerRadius="6" Padding="6" Margin="0,0,8,0">
-                        <TextBlock Text="🎬" FontSize="14" VerticalAlignment="Center"/>
+                    <Border Background="#2563EB" CornerRadius="6" Padding="6,4" Margin="0,0,8,0">
+                        <TextBlock Text="🎬" FontSize="13" VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock x:Name="HeaderTitleText"
-                               Text="Chỉnh sửa Video"
-                               FontWeight="Bold"
-                               FontSize="12"
-                               Foreground="{DynamicResource TextPrimary}"
-                               VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="HeaderTitleText"
+                                   Text="Chỉnh sửa Video"
+                                   FontWeight="Bold"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock x:Name="HeaderMetadataBadge"
+                                   Text="Chưa nạp video"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   Margin="0,1,0,0"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Center: Mode Switcher -->
@@ -59,46 +65,55 @@
                         <!-- Mode 1: Editor Button -->
                         <Button x:Name="ModeEditorBtn"
                                 Style="{DynamicResource TransparentButtonStyle}"
-                                Height="24" Padding="8,0" Margin="1,0"
+                                Height="24" Padding="10,0" Margin="1,0"
                                 Cursor="Hand"
                                 Click="ModeEditorBtn_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🎞️ Editor Trực Tiếp" FontSize="11" FontWeight="SemiBold"
+                                <TextBlock Text="🎞️ Interactive Editor" FontSize="11" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextPrimary}"/>
                             </StackPanel>
                         </Button>
                         <!-- Mode 2: Automated Pipeline Button -->
                         <Button x:Name="ModePipelineBtn"
                                 Style="{DynamicResource TransparentButtonStyle}"
-                                Height="24" Padding="8,0" Margin="1,0"
+                                Height="24" Padding="10,0" Margin="1,0"
                                 Cursor="Hand"
                                 Click="ModePipelineBtn_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="⚙️ Cấu Hình Tự Động" FontSize="11" FontWeight="SemiBold"
+                                <TextBlock Text="⚙️ Automated Pipeline" FontSize="11" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextSecondary}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
 
-                <!-- Right: Action Buttons -->
+                <!-- Right: Quick Action Buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="QuickExtractFrameBtn"
+                            Style="{DynamicResource SecondaryButton}"
+                            Height="26" Padding="8,0" Margin="0,0,4,0"
+                            Cursor="Hand" ToolTip="Trích xuất 1 ảnh (Frame) tại vị trí hiện tại"
+                            Click="QuickExtractFrameBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📸 Frame" FontSize="10.5" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="OpenFileBtn"
                             Style="{DynamicResource SecondaryButton}"
                             Height="26" Padding="8,0" Margin="0,0,4,0"
                             Cursor="Hand" ToolTip="Mở file video từ máy tính"
                             Click="OpenFileBtn_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📂 Mở Video" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="📂 Mở Video" FontSize="10.5" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="RunNodeBtn"
                             Style="{DynamicResource PrimaryButton}"
-                            Height="26" Padding="8,0"
+                            Height="26" Padding="10,0"
                             Cursor="Hand" ToolTip="Chạy xử lý FFmpeg theo cấu hình"
                             Click="RunNodeBtn_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="▶ Chạy FFmpeg" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="▶ Chạy FFmpeg" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -115,11 +130,11 @@
                     <!-- MEDIA TRANSPORT BAR -->
                     <RowDefinition Height="Auto"/>
                     <!-- QUICK EDIT TAB CONTROLS -->
-                    <RowDefinition Height="Auto" MaxHeight="220"/>
+                    <RowDefinition Height="Auto" MaxHeight="240"/>
                 </Grid.RowDefinitions>
 
                 <!-- Video Viewport Surface -->
-                <Border Grid.Row="0" Background="#0A0A0E" Margin="4" CornerRadius="6" ClipToBounds="True">
+                <Border Grid.Row="0" Background="#0A0B10" Margin="4" CornerRadius="6" ClipToBounds="True">
                     <Grid x:Name="MediaContainerGrid">
                         <!-- WPF MediaElement -->
                         <MediaElement x:Name="PreviewMediaElement"
@@ -132,21 +147,29 @@
                                       MediaOpened="PreviewMediaElement_MediaOpened"
                                       MediaEnded="PreviewMediaElement_MediaEnded"/>
 
+                        <!-- Visual Color Filter Preview Overlay -->
+                        <Border x:Name="ColorFilterPreviewOverlay"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                IsHitTestVisible="False"
+                                Background="Transparent"/>
+
                         <!-- Placeholder / Drop Overlay when no video loaded -->
                         <Border x:Name="NoVideoPlaceholder"
                                 Background="{DynamicResource SurfaceColor}"
                                 Visibility="Visible"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="🎥" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                                <TextBlock Text="Chưa có Video nào được nạp"
-                                           FontWeight="SemiBold" FontSize="13"
+                                <Border Background="#1E293B" CornerRadius="30" Width="60" Height="60" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock Text="🎬" FontSize="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Chưa Có Video Nào Được Nạp"
+                                           FontWeight="Bold" FontSize="14"
                                            Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Nhấp 'Mở Video' hoặc kết nối Input Node chứa đường dẫn Video"
+                                <TextBlock Text="Nhấp '📂 Mở Video' hoặc kết nối Input Node chứa đường dẫn file video"
                                            FontSize="11" Foreground="{DynamicResource TextMuted}"
-                                           HorizontalAlignment="Center" Margin="0,4,0,12"/>
-                                <Button Style="{DynamicResource PrimaryButton}" Content="📂 Chọn File Video"
-                                        Padding="14,6" HorizontalAlignment="Center" Cursor="Hand"
+                                           HorizontalAlignment="Center" Margin="0,4,0,14"/>
+                                <Button Style="{DynamicResource PrimaryButton}" Content="📂 Chọn File Video Từ Máy"
+                                        Padding="16,8" HorizontalAlignment="Center" Cursor="Hand"
                                         Click="OpenFileBtn_Click"/>
                             </StackPanel>
                         </Border>
@@ -155,10 +178,15 @@
                         <Border x:Name="WatermarkPreviewBorder"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                 Margin="16" Padding="8,4" CornerRadius="4"
-                                Background="#80000000"
+                                Background="#90000000"
                                 Visibility="Collapsed">
                             <TextBlock x:Name="WatermarkPreviewText" Text="Watermark Preview"
-                                       Foreground="White" FontWeight="Bold" FontSize="14"/>
+                                       Foreground="White" FontWeight="Bold" FontSize="13"/>
+                        </Border>
+
+                        <!-- Top-Right Video Badge Overlay -->
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Padding="6,2" CornerRadius="4" Background="#A0000000" IsHitTestVisible="False">
+                            <TextBlock x:Name="ViewportInfoText" Text="00:00:00.000" FontFamily="Consolas" FontSize="10" Foreground="#60A5FA"/>
                         </Border>
                     </Grid>
                 </Border>
@@ -177,50 +205,110 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Play/Pause & Stop -->
+                        <!-- Play/Pause, Stop & Tua Controls -->
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Play/Pause -->
                             <Button x:Name="PlayPauseBtn"
                                     Style="{DynamicResource PrimaryButton}"
-                                    Width="30" Height="30" Padding="0" Margin="0,0,4,0"
+                                    Width="32" Height="30" Padding="0" Margin="0,0,3,0"
                                     Cursor="Hand" ToolTip="Phát / Tạm dừng (Space)"
                                     Click="PlayPauseBtn_Click">
                                 <TextBlock x:Name="PlayPauseIconText" Text="▶" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
+
+                            <!-- Stop -->
                             <Button x:Name="StopBtn"
                                     Style="{DynamicResource SecondaryButton}"
-                                    Width="28" Height="28" Padding="0" Margin="0,0,8,0"
+                                    Width="28" Height="30" Padding="0" Margin="0,0,6,0"
                                     Cursor="Hand" ToolTip="Dừng (Stop)"
                                     Click="StopBtn_Click">
                                 <TextBlock Text="⏹" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
+
+                            <!-- Tua lùi 5s -->
+                            <Button x:Name="Rewind5sBtn"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Width="32" Height="30" Padding="0" Margin="0,0,2,0"
+                                    Cursor="Hand" ToolTip="Tua lùi 5 giây"
+                                    Click="Rewind5sBtn_Click">
+                                <TextBlock Text="⏪ 5s" FontSize="9.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Step -1 Frame -->
+                            <Button x:Name="StepBackFrameBtn"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Width="26" Height="30" Padding="0" Margin="0,0,2,0"
+                                    Cursor="Hand" ToolTip="Lùi 1 Frame (-0.04s)"
+                                    Click="StepBackFrameBtn_Click">
+                                <TextBlock Text="⏮" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Step +1 Frame -->
+                            <Button x:Name="StepForwardFrameBtn"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Width="26" Height="30" Padding="0" Margin="0,0,2,0"
+                                    Cursor="Hand" ToolTip="Tới 1 Frame (+0.04s)"
+                                    Click="StepForwardFrameBtn_Click">
+                                <TextBlock Text="⏭" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Tua tới 5s -->
+                            <Button x:Name="Forward5sBtn"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Width="32" Height="30" Padding="0" Margin="0,0,8,0"
+                                    Cursor="Hand" ToolTip="Tua tới 5 giây"
+                                    Click="Forward5sBtn_Click">
+                                <TextBlock Text="5s ⏩" FontSize="9.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
                         </StackPanel>
 
                         <!-- Timecode Display -->
-                        <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6,2" Margin="0,0,8,0" VerticalAlignment="Center">
-                            <TextBlock x:Name="TimecodeText" Text="00:00:00 / 00:00:00"
-                                       FontFamily="Consolas" FontSize="11"
-                                       Foreground="{DynamicResource TextPrimary}"/>
+                        <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="TimecodeText" Text="00:00:00.000 / 00:00:00.000"
+                                           FontFamily="Consolas" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock x:Name="SpeedBadgeText" Text=" (1.0x)"
+                                           FontFamily="Consolas" FontSize="10.5"
+                                           Foreground="#3B82F6" Margin="4,0,0,0"/>
+                            </StackPanel>
                         </Border>
 
-                        <!-- Seek Slider -->
-                        <Slider x:Name="SeekSlider" Grid.Column="2"
-                                VerticalAlignment="Center"
-                                Minimum="0" Maximum="100" Value="0"
-                                Margin="4,0,8,0" Cursor="Hand"
-                                PreviewMouseDown="SeekSlider_PreviewMouseDown"
-                                PreviewMouseUp="SeekSlider_PreviewMouseUp"
-                                ValueChanged="SeekSlider_ValueChanged"/>
+                        <!-- Seek Slider (Smooth Scrubbing - mouse release seek) -->
+                        <Grid Grid.Column="2" VerticalAlignment="Center" Margin="2,0,8,0">
+                            <Slider x:Name="SeekSlider"
+                                    Minimum="0" Maximum="100" Value="0"
+                                    Cursor="Hand" VerticalAlignment="Center"
+                                    PreviewMouseDown="SeekSlider_PreviewMouseDown"
+                                    PreviewMouseUp="SeekSlider_PreviewMouseUp"
+                                    ValueChanged="SeekSlider_ValueChanged"/>
+                        </Grid>
 
-                        <!-- Mute / Volume -->
+                        <!-- Speed Selector, Mute & Volume -->
                         <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Playback Speed Combobox -->
+                            <ComboBox x:Name="SpeedSelectCombo" Width="72" Height="26" Margin="0,0,6,0"
+                                      Style="{DynamicResource BaseComboBox}" Cursor="Hand" ToolTip="Tốc độ phát preview"
+                                      SelectionChanged="SpeedSelectCombo_SelectionChanged">
+                                <ComboBoxItem Content="0.25x" Tag="0.25"/>
+                                <ComboBoxItem Content="0.5x" Tag="0.5"/>
+                                <ComboBoxItem Content="0.75x" Tag="0.75"/>
+                                <ComboBoxItem Content="1.0x" Tag="1.0" IsSelected="True"/>
+                                <ComboBoxItem Content="1.25x" Tag="1.25"/>
+                                <ComboBoxItem Content="1.5x" Tag="1.5"/>
+                                <ComboBoxItem Content="2.0x" Tag="2.0"/>
+                                <ComboBoxItem Content="3.0x" Tag="3.0"/>
+                                <ComboBoxItem Content="4.0x" Tag="4.0"/>
+                            </ComboBox>
+
                             <Button x:Name="MuteBtn"
                                     Style="{DynamicResource TransparentButtonStyle}"
-                                    Width="26" Height="26" Padding="0" Margin="0,0,4,0"
+                                    Width="26" Height="26" Padding="0" Margin="0,0,2,0"
                                     Cursor="Hand" ToolTip="Bật / Tắt Tiếng"
                                     Click="MuteBtn_Click">
                                 <TextBlock x:Name="MuteIconText" Text="🔊" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
-                            <Slider x:Name="VolumeSlider" Width="70"
+                            <Slider x:Name="VolumeSlider" Width="65"
                                     VerticalAlignment="Center"
                                     Minimum="0" Maximum="1" Value="1" Cursor="Hand"
                                     ValueChanged="VolumeSlider_ValueChanged"/>
@@ -239,7 +327,6 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <CheckBox x:Name="TrimEnableCheckBox" Grid.Column="0"
                                           Content="Bật cắt Video" FontWeight="SemiBold"
@@ -248,16 +335,21 @@
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Bắt đầu:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBox x:Name="TrimStartTextBox" Width="90" Height="26" Style="{DynamicResource DarkTextBoxStyle}"
+                                    <TextBox x:Name="TrimStartTextBox" Width="95" Height="26" Style="{DynamicResource DarkTextBoxStyle}"
                                              Text="00:00:00.000" VerticalContentAlignment="Center" Margin="0,0,4,0"
                                              TextChanged="TrimStartTextBox_TextChanged"/>
-                                    <Button x:Name="SetTrimStartBtn" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" Content="Gán T.Gian Hiện Tại" FontSize="10" Cursor="Hand" Margin="0,0,12,0" Click="SetTrimStartBtn_Click"/>
+                                    <Button x:Name="SetTrimStartBtn" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" Content="📍 Vị Trí Hiện Tại" FontSize="10" Cursor="Hand" Margin="0,0,12,0" Click="SetTrimStartBtn_Click"/>
 
                                     <TextBlock Text="Kết thúc:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBox x:Name="TrimEndTextBox" Width="90" Height="26" Style="{DynamicResource DarkTextBoxStyle}"
+                                    <TextBox x:Name="TrimEndTextBox" Width="95" Height="26" Style="{DynamicResource DarkTextBoxStyle}"
                                              Text="00:00:10.000" VerticalContentAlignment="Center" Margin="0,0,4,0"
                                              TextChanged="TrimEndTextBox_TextChanged"/>
-                                    <Button x:Name="SetTrimEndBtn" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" Content="Gán T.Gian Hiện Tại" FontSize="10" Cursor="Hand" Click="SetTrimEndBtn_Click"/>
+                                    <Button x:Name="SetTrimEndBtn" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" Content="📍 Vị Trí Hiện Tại" FontSize="10" Cursor="Hand" Margin="0,0,12,0" Click="SetTrimEndBtn_Click"/>
+
+                                    <!-- Quick Presets -->
+                                    <Button Content="10s Đầu" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" Margin="0,0,4,0" FontSize="10" Click="TrimPreset10s_Click"/>
+                                    <Button Content="30s Đầu" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" Margin="0,0,4,0" FontSize="10" Click="TrimPreset30s_Click"/>
+                                    <Button Content="Reset Trim" Style="{DynamicResource SecondaryButton}" Height="26" Padding="6,0" FontSize="10" Click="TrimReset_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -274,9 +366,10 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Sliders row -->
+                                <!-- Sliders row (Brightness, Contrast, Saturation, Gamma, Hue) -->
                                 <Grid Grid.Row="0">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
@@ -284,7 +377,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Brightness -->
-                                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                         <Grid>
                                             <TextBlock Text="Độ sáng" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                                             <TextBlock x:Name="BrightnessValText" Text="0.0" FontSize="10" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
@@ -294,9 +387,9 @@
                                     </StackPanel>
 
                                     <!-- Contrast -->
-                                    <StackPanel Grid.Column="1" Margin="3,0,3,0">
+                                    <StackPanel Grid.Column="1" Margin="2,0,4,0">
                                         <Grid>
-                                            <TextBlock Text="Độ tương phản" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBlock Text="Tương phản" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                                             <TextBlock x:Name="ContrastValText" Text="1.0" FontSize="10" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
                                         </Grid>
                                         <Slider x:Name="ContrastSlider" Minimum="0" Maximum="2" Value="1" SmallChange="0.05"
@@ -304,9 +397,9 @@
                                     </StackPanel>
 
                                     <!-- Saturation -->
-                                    <StackPanel Grid.Column="2" Margin="3,0,3,0">
+                                    <StackPanel Grid.Column="2" Margin="2,0,4,0">
                                         <Grid>
-                                            <TextBlock Text="Độ bão hòa" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBlock Text="Bão hòa" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                                             <TextBlock x:Name="SaturationValText" Text="1.0" FontSize="10" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
                                         </Grid>
                                         <Slider x:Name="SaturationSlider" Minimum="0" Maximum="3" Value="1" SmallChange="0.05"
@@ -314,7 +407,7 @@
                                     </StackPanel>
 
                                     <!-- Gamma -->
-                                    <StackPanel Grid.Column="3" Margin="6,0,0,0">
+                                    <StackPanel Grid.Column="3" Margin="2,0,4,0">
                                         <Grid>
                                             <TextBlock Text="Gamma" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                                             <TextBlock x:Name="GammaValText" Text="1.0" FontSize="10" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
@@ -322,54 +415,82 @@
                                         <Slider x:Name="GammaSlider" Minimum="0.1" Maximum="5" Value="1" SmallChange="0.05"
                                                 ValueChanged="ColorSlider_ValueChanged"/>
                                     </StackPanel>
+
+                                    <!-- Hue -->
+                                    <StackPanel Grid.Column="4" Margin="2,0,0,0">
+                                        <Grid>
+                                            <TextBlock Text="Sắc độ (Hue)" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBlock x:Name="HueValText" Text="0°" FontSize="10" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Slider x:Name="HueSlider" Minimum="-180" Maximum="180" Value="0" SmallChange="5"
+                                                ValueChanged="ColorSlider_ValueChanged"/>
+                                    </StackPanel>
                                 </Grid>
 
                                 <!-- Preset chips row -->
                                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="Preset:" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                    <Button Content="Mặc định" Style="{DynamicResource SecondaryButton}" Height="22" Padding="8,0" Margin="0,0,4,0" FontSize="10" Click="PresetNormal_Click"/>
-                                    <Button Content="Trắng đen (Grayscale)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="8,0" Margin="0,0,4,0" FontSize="10" Click="PresetGrayscale_Click"/>
-                                    <Button Content="Cổ điển (Sepia)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="8,0" Margin="0,0,4,0" FontSize="10" Click="PresetSepia_Click"/>
-                                    <Button Content="Đảo màu (Invert)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="8,0" Margin="0,0,8,0" FontSize="10" Click="PresetInvert_Click"/>
-                                    <Button Content="🔄 Reset Màu" Style="{DynamicResource DangerButton}" Height="22" Padding="8,0" FontSize="10" Click="ResetColor_Click"/>
+                                    <TextBlock Text="Preset:" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <Button Content="Mặc định" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="PresetNormal_Click"/>
+                                    <Button Content="Rực Rỡ (Vivid)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="PresetVivid_Click"/>
+                                    <Button Content="Ấm Áp (Warm)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="PresetWarm_Click"/>
+                                    <Button Content="Lạnh (Cool)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="PresetCool_Click"/>
+                                    <Button Content="Trắng Đen (Grayscale)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="PresetGrayscale_Click"/>
+                                    <Button Content="Cổ Điển (Sepia)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="PresetSepia_Click"/>
+                                    <Button Content="Đảo Màu (Invert)" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" Margin="0,0,6,0" FontSize="10" Click="PresetInvert_Click"/>
+                                    <Button Content="🔄 Reset Màu" Style="{DynamicResource DangerButton}" Height="22" Padding="6,0" FontSize="10" Click="ResetColor_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
                     </TabItem>
 
-                    <!-- TAB 3: WATERMARK & TEXT -->
-                    <TabItem Header="💧 Watermark" Style="{StaticResource HttpTabItemStyle}">
+                    <!-- TAB 3: EXTRACT & EXPORT LOGIC -->
+                    <TabItem Header="📸 Trích Xuất &amp; Export" Style="{StaticResource HttpTabItemStyle}">
                         <Border Background="{DynamicResource CardBackgroundBrush}"
                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                 BorderThickness="1" CornerRadius="6" Padding="8">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
-                                <CheckBox x:Name="WatermarkEnableCheckBox" Grid.Column="0"
-                                          Content="Bật Watermark" FontWeight="SemiBold"
-                                          VerticalAlignment="Center" Margin="0,0,12,0"
-                                          Checked="WatermarkCheckBox_Changed" Unchecked="WatermarkCheckBox_Changed"/>
+                                <!-- Action 1: Extract Single Frame -->
+                                <Border Grid.Column="0" Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6" Margin="0,0,4,0">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="📸 Trích xuất Frame Hiện Tại" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
+                                        <Button Content="📸 Chụp Frame (PNG)" Style="{DynamicResource PrimaryButton}" Height="24" Padding="6,0" FontSize="10" Cursor="Hand" Click="ExtractCurrentFrame_Click"/>
+                                    </StackPanel>
+                                </Border>
 
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Chữ Logo:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBox x:Name="WatermarkTextBox" Width="160" Height="26" Style="{DynamicResource DarkTextBoxStyle}"
-                                             Text="" VerticalContentAlignment="Center" Margin="0,0,12,0"
-                                             TextChanged="WatermarkTextBox_TextChanged"/>
+                                <!-- Action 2: Extract Frame Sequence -->
+                                <Border Grid.Column="1" Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6" Margin="2,0,4,0">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="🎞️ Trích xuất Chuỗi Frame" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="FPS:" Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBox x:Name="ExtractFpsTextBox" Width="40" Height="22" Style="{DynamicResource DarkTextBoxStyle}" Text="1.0" VerticalContentAlignment="Center" Margin="0,0,4,0"/>
+                                            <Button Content="Tách Frames" Style="{DynamicResource SecondaryButton}" Height="22" Padding="6,0" FontSize="10" Cursor="Hand" Click="ExtractFrameSequence_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
 
-                                    <TextBlock Text="Vị trí:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <ComboBox x:Name="WatermarkPosCombo" Height="26" Width="110" Style="{DynamicResource BaseComboBox}"
-                                              SelectionChanged="WatermarkPosCombo_SelectionChanged">
-                                        <ComboBoxItem Content="Dưới - Phải" Tag="BottomRight" IsSelected="True"/>
-                                        <ComboBoxItem Content="Dưới - Trái" Tag="BottomLeft"/>
-                                        <ComboBoxItem Content="Trên - Phải" Tag="TopRight"/>
-                                        <ComboBoxItem Content="Trên - Trái" Tag="TopLeft"/>
-                                        <ComboBoxItem Content="Chính Giữa" Tag="Center"/>
-                                    </ComboBox>
-                                </StackPanel>
+                                <!-- Action 3: Export Animated GIF -->
+                                <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6" Margin="2,0,4,0">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="🎬 Tạo Ảnh Động GIF" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
+                                        <Button Content="🎬 Xuất GIF (Trim)" Style="{DynamicResource SecondaryButton}" Height="24" Padding="6,0" FontSize="10" Cursor="Hand" Click="ExportGif_Click"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Action 4: Extract Audio -->
+                                <Border Grid.Column="3" Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6" Margin="2,0,0,0">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="🎵 Trích Xuất File Âm Thanh" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
+                                        <Button Content="🎵 Tách Audio (MP3)" Style="{DynamicResource SecondaryButton}" Height="24" Padding="6,0" FontSize="10" Cursor="Hand" Click="ExtractAudioOnly_Click"/>
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </Border>
                     </TabItem>
@@ -385,28 +506,77 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
+                                <!-- Speed presets -->
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                                    <TextBlock Text="Tốc độ phát:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Tốc độ FFmpeg:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Button Content="0.5x" Style="{DynamicResource SecondaryButton}" Height="24" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="SpeedBtn_Click" Tag="0.5"/>
                                     <Button Content="1.0x (Chuẩn)" Style="{DynamicResource PrimaryButton}" Height="24" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="SpeedBtn_Click" Tag="1.0"/>
                                     <Button Content="1.5x" Style="{DynamicResource SecondaryButton}" Height="24" Padding="6,0" Margin="0,0,3,0" FontSize="10" Click="SpeedBtn_Click" Tag="1.5"/>
                                     <Button Content="2.0x" Style="{DynamicResource SecondaryButton}" Height="24" Padding="6,0" FontSize="10" Click="SpeedBtn_Click" Tag="2.0"/>
                                 </StackPanel>
 
+                                <!-- Resolution Presets & Scale -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <CheckBox x:Name="ScaleEnableCheckBox" Content="Đổi kích thước:" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" Checked="ScaleCheckBox_Changed" Unchecked="ScaleCheckBox_Changed"/>
-                                    <TextBox x:Name="TargetWidthTextBox" Width="55" Height="24" Style="{DynamicResource DarkTextBoxStyle}" Text="1280" VerticalContentAlignment="Center" Margin="0,0,2,0" TextChanged="ScaleSize_TextChanged"/>
+                                    <CheckBox x:Name="ScaleEnableCheckBox" Content="Tỉ lệ / Scale:" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" Checked="ScaleCheckBox_Changed" Unchecked="ScaleCheckBox_Changed"/>
+                                    
+                                    <!-- Preset Aspect Ratios -->
+                                    <ComboBox x:Name="ScalePresetCombo" Height="24" Width="130" Margin="0,0,6,0" Style="{DynamicResource BaseComboBox}" SelectionChanged="ScalePresetCombo_SelectionChanged">
+                                        <ComboBoxItem Content="1080p (1920x1080)" Tag="1920x1080" IsSelected="True"/>
+                                        <ComboBoxItem Content="720p (1280x720)" Tag="1280x720"/>
+                                        <ComboBoxItem Content="480p (854x480)" Tag="854x480"/>
+                                        <ComboBoxItem Content="TikTok 9:16 (1080x1920)" Tag="1080x1920"/>
+                                        <ComboBoxItem Content="Vuông 1:1 (1080x1080)" Tag="1080x1080"/>
+                                        <ComboBoxItem Content="Tùy chọn kích thước" Tag="Custom"/>
+                                    </ComboBox>
+
+                                    <TextBox x:Name="TargetWidthTextBox" Width="50" Height="24" Style="{DynamicResource DarkTextBoxStyle}" Text="1280" VerticalContentAlignment="Center" Margin="0,0,2,0" TextChanged="ScaleSize_TextChanged"/>
                                     <TextBlock Text="x" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                                    <TextBox x:Name="TargetHeightTextBox" Width="55" Height="24" Style="{DynamicResource DarkTextBoxStyle}" Text="720" VerticalContentAlignment="Center" Margin="0,0,12,0" TextChanged="ScaleSize_TextChanged"/>
+                                    <TextBox x:Name="TargetHeightTextBox" Width="50" Height="24" Style="{DynamicResource DarkTextBoxStyle}" Text="720" VerticalContentAlignment="Center" Margin="0,0,10,0" TextChanged="ScaleSize_TextChanged"/>
 
                                     <TextBlock Text="Xoay/Lật:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <ComboBox x:Name="RotateFlipCombo" Height="24" Width="100" Style="{DynamicResource BaseComboBox}" SelectionChanged="RotateFlipCombo_SelectionChanged">
+                                    <ComboBox x:Name="RotateFlipCombo" Height="24" Width="95" Style="{DynamicResource BaseComboBox}" SelectionChanged="RotateFlipCombo_SelectionChanged">
                                         <ComboBoxItem Content="Không xoay" Tag="None" IsSelected="True"/>
                                         <ComboBoxItem Content="Xoay 90°" Tag="Rotate90"/>
                                         <ComboBoxItem Content="Xoay 180°" Tag="Rotate180"/>
                                         <ComboBoxItem Content="Xoay 270°" Tag="Rotate270"/>
                                         <ComboBoxItem Content="Lật ngang" Tag="FlipHorizontal"/>
                                         <ComboBoxItem Content="Lật dọc" Tag="FlipVertical"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+
+                    <!-- TAB 5: WATERMARK -->
+                    <TabItem Header="💧 Watermark" Style="{StaticResource HttpTabItemStyle}">
+                        <Border Background="{DynamicResource CardBackgroundBrush}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox x:Name="WatermarkEnableCheckBox" Grid.Column="0"
+                                          Content="Bật Watermark" FontWeight="SemiBold"
+                                          VerticalAlignment="Center" Margin="0,0,12,0"
+                                          Checked="WatermarkCheckBox_Changed" Unchecked="WatermarkCheckBox_Changed"/>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Nội dung logo:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBox x:Name="WatermarkTextBox" Width="170" Height="26" Style="{DynamicResource DarkTextBoxStyle}"
+                                             Text="" VerticalContentAlignment="Center" Margin="0,0,12,0"
+                                             TextChanged="WatermarkTextBox_TextChanged"/>
+
+                                    <TextBlock Text="Vị trí:" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <ComboBox x:Name="WatermarkPosCombo" Height="26" Width="110" Style="{DynamicResource BaseComboBox}"
+                                              SelectionChanged="WatermarkPosCombo_SelectionChanged">
+                                        <ComboBoxItem Content="Dưới - Phải" Tag="BottomRight" IsSelected="True"/>
+                                        <ComboBoxItem Content="Dưới - Trái" Tag="BottomLeft"/>
+                                        <ComboBoxItem Content="Trên - Phải" Tag="TopRight"/>
+                                        <ComboBoxItem Content="Trên - Trái" Tag="TopLeft"/>
+                                        <ComboBoxItem Content="Chính Giữa" Tag="Center"/>
                                     </ComboBox>
                                 </StackPanel>
                             </Grid>
@@ -446,15 +616,15 @@
                     </Grid>
                 </Border>
 
-                <!-- Middle Rule Summary & Log Terminal -->
+                <!-- Middle Rules Summary & Log Terminal -->
                 <Grid Grid.Row="1" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="240"/>
                         <ColumnDefinition Width="8"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Rules Checklist -->
+                    <!-- Rules & FFmpeg Preview Checklist -->
                     <Border Grid.Column="0" Background="{DynamicResource CardBackgroundBrush}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="10">
@@ -473,9 +643,14 @@
                                 <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6" Margin="0,0,0,4">
                                     <TextBlock x:Name="RuleSpeedText" Text="⚡ Tốc độ: 1.0x" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"/>
                                 </Border>
-                                <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6">
+                                <Border Background="{DynamicResource SurfaceColor}" CornerRadius="4" Padding="6" Margin="0,0,0,8">
                                     <TextBlock x:Name="RuleExportText" Text="📦 Xuất: Video MP4 (30 fps)" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"/>
                                 </Border>
+
+                                <TextBlock Text="💻 Xem Trước Lệnh FFmpeg:" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextMuted}" Margin="0,4,0,4"/>
+                                <TextBox x:Name="FfmpegCmdPreviewBox" Style="{DynamicResource DarkTextBoxStyle}"
+                                         Text="ffmpeg -i input.mp4 output.mp4" FontFamily="Consolas" FontSize="9.5"
+                                         TextWrapping="Wrap" IsReadOnly="True" MaxHeight="80" VerticalScrollBarVisibility="Auto"/>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
