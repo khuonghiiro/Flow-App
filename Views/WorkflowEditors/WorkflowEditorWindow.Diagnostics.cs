@@ -22,6 +22,7 @@ namespace FlowMy.Views
         private DateTime _lastUiPongTime = DateTime.UtcNow;
         private volatile bool _isUiResponsive = true;
         private int _uiFreezeDetectedCount = 0;
+        private static Thread? _uiThread;
 
         /// <summary>
         /// Đường dẫn tới file log chẩn đoán đứng UI canvas.
@@ -59,6 +60,7 @@ namespace FlowMy.Views
         /// </summary>
         private void InitializeCanvasDiagnostics()
         {
+            _uiThread = Thread.CurrentThread;
             WriteCanvasLog("INIT", "WorkflowEditorWindow diagnostics logger initialized. Log file: " + LogFilePath);
             StartCanvasUiWatchdog();
 
@@ -194,26 +196,34 @@ namespace FlowMy.Views
 
                     try
                     {
-                        var dispatcher = Dispatcher;
-                        if (dispatcher != null && !dispatcher.HasShutdownStarted)
+                        if (_uiThread != null)
                         {
-                            dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
-                            {
-                                try
-                                {
-                                    var vm = ViewModel;
-                                    if (vm != null)
-                                    {
-                                        var details = $"   🔄 Workflow State: IsExecuting={vm.IsExecuting} | ManualRunsInFlight={vm.ManualExecutionRunsInFlight} | ActiveConnection={vm.ActiveExecutionConnection != null}\n" +
-                                                      $"   📌 Running Nodes Count: {vm.RunningNodes?.Count ?? 0}";
-                                        WriteCanvasLog("FREEZE_DETAILS", details, isAlert: true);
-                                    }
-                                }
-                                catch { }
-                            }));
+                            sb.AppendLine($"   🛑 UI Thread is stuck. Managed ThreadId: {_uiThread.ManagedThreadId}");
+                            sb.AppendLine($"      (Note: Automatically capturing Call Stack of another thread is not supported in modern .NET. Please attach a debugger or use Task Manager -> Create Dump file to see the exact stack trace.)");
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"      [Could not log UI thread info: {ex.GetType().Name} - {ex.Message}]");
+                    }
+
+                    try
+                    {
+                        // Attempting to read ViewModel directly without Dispatcher. 
+                        // If it throws InvalidOperationException (due to thread affinity), it will be caught.
+                        // We CANNOT use Dispatcher.BeginInvoke here because the UI thread is frozen!
+                        var vm = ViewModel;
+                        if (vm != null)
+                        {
+                            var details = $"   🔄 Workflow State: IsExecuting={vm.IsExecuting} | ManualRunsInFlight={vm.ManualExecutionRunsInFlight} | ActiveConnection={vm.ActiveExecutionConnection != null}\n" +
+                                          $"   📌 Running Nodes Count: {vm.RunningNodes?.Count ?? 0}";
+                            sb.AppendLine(details);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"   ⚠️ [Could not read ViewModel state due to cross-thread exception: {ex.Message}]");
+                    }
 
                     WriteCanvasLog("FREEZE_ALERT", sb.ToString().TrimEnd(), isAlert: true);
                 }

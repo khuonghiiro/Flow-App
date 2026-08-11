@@ -7055,9 +7055,9 @@ namespace FlowMy.Views.Overlays
     {
         private class DialogCacheItem
         {
-            public LayerAiDialog Dialog { get; set; }
+            public LayerAiDialog Dialog { get; set; } = null!;
             public System.Threading.Timer? IdleTimer { get; set; }
-            public string NodeId { get; set; }
+            public string NodeId { get; set; } = string.Empty;
         }
 
         private static readonly System.Collections.Generic.Dictionary<string, DialogCacheItem> _cache = new();
@@ -7065,78 +7065,118 @@ namespace FlowMy.Views.Overlays
 
         public static LayerAiDialog OpenDialog(System.Collections.Generic.List<EditorLayer> selectedLayers, EditorLayer activeLayer, ImageProcessingNode node, IWorkflowEditorHost host, EditorDocument doc, Window? owner)
         {
+            DialogCacheItem? item = null;
+            string nodeId = node.Id;
+
             lock (_lock)
             {
-                string nodeId = node.Id;
-                if (_cache.TryGetValue(nodeId, out var item) && item.Dialog != null)
+                if (_cache.TryGetValue(nodeId, out var existingItem) && existingItem.Dialog != null)
                 {
-                    // Cancel 3-minute idle timer
+                    item = existingItem;
                     item.IdleTimer?.Dispose();
                     item.IdleTimer = null;
+                }
+            }
 
-                    bool reusedSuccessfully = false;
+            if (item != null && item.Dialog != null)
+            {
+                bool reusedSuccessfully = false;
+                var dialog = item.Dialog;
 
-                    if (!item.Dialog.IsClosed)
+                try
+                {
+                    void ReinitUI()
                     {
-                        try
+                        if (!dialog.IsClosed)
                         {
-                            item.Dialog.Dispatcher.Invoke(() =>
+                            dialog.ReinitializeSession(selectedLayers, activeLayer, node, host, doc, owner);
+                            if (!dialog.IsVisible)
                             {
-                                item.Dialog.ReinitializeSession(selectedLayers, activeLayer, node, host, doc, owner);
-                                if (!item.Dialog.IsVisible)
-                                {
-                                    item.Dialog.Show();
-                                }
-                                item.Dialog.Activate();
-                                item.Dialog.Topmost = true;
-                            });
+                                dialog.Show();
+                            }
+                            dialog.Activate();
+                            dialog.Topmost = true;
                             reusedSuccessfully = true;
                         }
-                        catch (InvalidOperationException ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[LayerAiDialogManager] Cannot show closed window: {ex.Message}");
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[LayerAiDialogManager] Reusing window failed: {ex.Message}");
-                        }
                     }
 
-                    if (reusedSuccessfully)
+                    if (dialog.Dispatcher.CheckAccess())
                     {
-                        return item.Dialog;
+                        ReinitUI();
                     }
-
-                    // Remove closed / dead dialog from cache
-                    _cache.Remove(nodeId);
+                    else
+                    {
+                        dialog.Dispatcher.Invoke(ReinitUI);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LayerAiDialogManager] Reusing window failed: {ex.Message}");
                 }
 
-                // Create a fresh dialog instance
-                var newDialog = new LayerAiDialog(selectedLayers, activeLayer, node, host, doc, owner);
-                var newItem = new DialogCacheItem
+                if (reusedSuccessfully)
                 {
-                    Dialog = newDialog,
-                    NodeId = nodeId
-                };
-                _cache[nodeId] = newItem;
+                    return dialog;
+                }
 
+                RemoveFromCache(nodeId);
+            }
+
+            LayerAiDialog newDialog;
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                newDialog = dispatcher.Invoke(() => new LayerAiDialog(selectedLayers, activeLayer, node, host, doc, owner));
+            }
+            else
+            {
+                newDialog = new LayerAiDialog(selectedLayers, activeLayer, node, host, doc, owner);
+            }
+
+            var newItem = new DialogCacheItem
+            {
+                Dialog = newDialog,
+                NodeId = nodeId
+            };
+
+            lock (_lock)
+            {
+                _cache[nodeId] = newItem;
+            }
+
+            void ShowUI()
+            {
                 newDialog.Show();
                 newDialog.Activate();
-                return newDialog;
             }
+
+            if (newDialog.Dispatcher.CheckAccess())
+            {
+                ShowUI();
+            }
+            else
+            {
+                newDialog.Dispatcher.BeginInvoke(new Action(ShowUI));
+            }
+
+            return newDialog;
         }
 
         public static void RemoveFromCache(string nodeId)
         {
+            System.Threading.Timer? timerToDispose = null;
             lock (_lock)
             {
                 if (_cache.TryGetValue(nodeId, out var item))
                 {
-                    item.IdleTimer?.Dispose();
+                    timerToDispose = item.IdleTimer;
                     item.IdleTimer = null;
                     _cache.Remove(nodeId);
                 }
             }
+
+            timerToDispose?.Dispose();
         }
 
         public static void OnDialogHidden(string nodeId)
@@ -7145,7 +7185,6 @@ namespace FlowMy.Views.Overlays
             {
                 if (_cache.TryGetValue(nodeId, out var item))
                 {
-                    // Start or reset 3-minute (180,000 ms) idle timer
                     item.IdleTimer?.Dispose();
                     item.IdleTimer = new System.Threading.Timer(OnIdleTimerExpired, nodeId, TimeSpan.FromMinutes(3), System.Threading.Timeout.InfiniteTimeSpan);
                 }
@@ -7162,41 +7201,60 @@ namespace FlowMy.Views.Overlays
 
         public static void CloseAndDisposeDialog(string nodeId)
         {
+            LayerAiDialog? dialogToClose = null;
+            System.Threading.Timer? timerToDispose = null;
+
             lock (_lock)
             {
                 if (_cache.TryGetValue(nodeId, out var item))
                 {
-                    item.IdleTimer?.Dispose();
+                    timerToDispose = item.IdleTimer;
                     item.IdleTimer = null;
-
-                    try
-                    {
-                        item.Dialog?.Dispatcher.Invoke(() =>
-                        {
-                            item.Dialog.ForceClose();
-                        });
-                    }
-                    catch { }
-
+                    dialogToClose = item.Dialog;
                     _cache.Remove(nodeId);
                 }
+            }
+
+            timerToDispose?.Dispose();
+
+            if (dialogToClose != null)
+            {
                 try
                 {
-                    LayerAiWebViewCache.DisposeAll(nodeId);
+                    var disp = dialogToClose.Dispatcher;
+                    if (disp != null && !disp.HasShutdownFinished && !disp.HasShutdownStarted)
+                    {
+                        disp.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                dialogToClose.ForceClose();
+                            }
+                            catch { }
+                        }));
+                    }
                 }
                 catch { }
             }
+
+            try
+            {
+                LayerAiWebViewCache.DisposeAll(nodeId);
+            }
+            catch { }
         }
 
         public static void CloseAll()
         {
+            System.Collections.Generic.List<string> keys;
             lock (_lock)
             {
-                var keys = System.Linq.Enumerable.ToList(_cache.Keys);
-                foreach (var key in keys)
-                {
-                    CloseAndDisposeDialog(key);
-                }
+                keys = System.Linq.Enumerable.ToList(_cache.Keys);
+            }
+
+            foreach (var key in keys)
+            {
+                CloseAndDisposeDialog(key);
             }
         }
     }
