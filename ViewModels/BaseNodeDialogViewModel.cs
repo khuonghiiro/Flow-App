@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowMy.Helpers;
 using FlowMy.Models;
@@ -935,6 +935,7 @@ namespace FlowMy.ViewModels
                 NodeType.ShowInputMsg => "Nhập dữ liệu",
                 NodeType.BorderHighlight => "Border Highlight",
                 NodeType.ActionCanVas => "Action Canvas",
+                NodeType.VideoEditor => "Chỉnh sửa video",
                 _ => type.ToString()
             };
         }

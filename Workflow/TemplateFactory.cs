@@ -1,4 +1,4 @@
-using FlowMy.Models;
+﻿using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
 using System.Linq;
@@ -68,6 +68,7 @@ namespace FlowMy.Workflow
                 "ShowInputMsgNode" => CreateShowInputMsgNode(x, y),
                 "DynamicUi" => CreateDynamicUiNode(x, y),
                 "DynamicUiNode" => CreateDynamicUiNode(x, y),
+                                "VideoEditorNode" => CreateVideoEditorNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1679,6 +1680,25 @@ namespace FlowMy.Workflow
             node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
 
             node.RebuildDynamicPorts();
+
+            return node;
+        }
+
+        private WorkflowNode CreateVideoEditorNode(double x, double y)
+        {
+            var node = new FlowMy.Models.Nodes.VideoEditorNode
+            {
+                Id = $"Node_VideoEditor_{Guid.NewGuid()}",
+                Title = "Chỉnh sửa video",
+                X = x - 30,
+                Y = y - 30,
+                ColorKey = "Retro",
+                NodeBrush = Application.Current.TryFindResource("RetroBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.CornflowerBlue,
+                IconSize = 32,
+                Type = NodeType.VideoEditor
+            };
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
 
             return node;
         }

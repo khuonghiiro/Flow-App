@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using FlowMy.Models;
 
 namespace FlowMy.Helpers
@@ -66,6 +66,7 @@ namespace FlowMy.Helpers
                 NodeType.ActionCanVas => "square-share-nodes light",
                 NodeType.ShowInputMsg => "user-message regular",
                 NodeType.DynamicUi => "desktop-designer Custom-icons.color",
+                NodeType.VideoEditor => "circle-video solid",
                 _ => "circle-nodes duotone-regular"
             };
         }

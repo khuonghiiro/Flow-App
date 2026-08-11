@@ -1,4 +1,4 @@
-namespace FlowMy.Models
+﻿namespace FlowMy.Models
 {
     /// <summary>
     /// Enum cho loại node
@@ -70,7 +70,9 @@ namespace FlowMy.Models
         /// <summary>Nhập dữ liệu node — được tạo tự động.</summary>
         ShowInputMsg,
         /// <summary>Thiết kế UI động bằng WPF controls gốc.</summary>
-        DynamicUi
+        DynamicUi,
+        /// <summary>Chỉnh sửa video node — được tạo tự động.</summary>
+        VideoEditor
     }
 }
 
