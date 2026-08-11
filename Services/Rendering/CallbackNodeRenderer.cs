@@ -62,23 +62,38 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            foreach (var port in node.Ports.Where(p => p.IsVisible))
+            foreach (var port in node.Ports)
             {
-                var portColor = ResolvePortColor(port);
-
-                if (port.PortUI == null)
+                if (port.IsVisible)
                 {
-                    port.PortUI = _portRenderer.CreatePort(portColor);
-                    port.PortUI.Tag = port;
-                }
-                else if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
-                {
-                    ellipse.Fill = new SolidColorBrush(portColor);
-                }
+                    var portColor = ResolvePortColor(port);
 
-                _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
-                _portRenderer.EnsurePortAddedToCanvas(port);
-                Host.ZIndexManager.SetPortZIndex(node, port.PortUI);
+                    if (port.PortUI == null)
+                    {
+                        port.PortUI = _portRenderer.CreatePort(portColor);
+                        port.PortUI.Tag = port;
+                    }
+                    else if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
+                    {
+                        ellipse.Fill = new SolidColorBrush(portColor);
+                    }
+
+                    port.PortUI.Visibility = Visibility.Visible;
+                    _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
+                    _portRenderer.EnsurePortAddedToCanvas(port);
+                    Host.ZIndexManager.SetPortZIndex(node, port.PortUI);
+                }
+                else
+                {
+                    if (port.PortUI != null)
+                    {
+                        port.PortUI.Visibility = Visibility.Collapsed;
+                        if (canvas.Children.Contains(port.PortUI))
+                        {
+                            canvas.Children.Remove(port.PortUI);
+                        }
+                    }
+                }
             }
         }
 
@@ -115,23 +130,39 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            foreach (var port in node.Ports.Where(p => p.IsVisible))
+            var canvas = Host.WorkflowCanvas;
+            foreach (var port in node.Ports)
             {
-                var portColor = ResolvePortColor(port);
-
-                if (port.PortUI == null)
+                if (port.IsVisible)
                 {
-                    port.PortUI = _portRenderer.CreatePort(portColor);
-                    port.PortUI.Tag = port;
-                }
-                else if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
-                {
-                    ellipse.Fill = new SolidColorBrush(portColor);
-                }
+                    var portColor = ResolvePortColor(port);
 
-                _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
-                _portRenderer.EnsurePortAddedToCanvas(port);
-                Host.ZIndexManager.SetPortZIndex(node, port.PortUI);
+                    if (port.PortUI == null)
+                    {
+                        port.PortUI = _portRenderer.CreatePort(portColor);
+                        port.PortUI.Tag = port;
+                    }
+                    else if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
+                    {
+                        ellipse.Fill = new SolidColorBrush(portColor);
+                    }
+
+                    port.PortUI.Visibility = Visibility.Visible;
+                    _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
+                    _portRenderer.EnsurePortAddedToCanvas(port);
+                    Host.ZIndexManager.SetPortZIndex(node, port.PortUI);
+                }
+                else
+                {
+                    if (port.PortUI != null)
+                    {
+                        port.PortUI.Visibility = Visibility.Collapsed;
+                        if (canvas != null && canvas.Children.Contains(port.PortUI))
+                        {
+                            canvas.Children.Remove(port.PortUI);
+                        }
+                    }
+                }
             }
 
             Host.SyncAllPortsZIndex(node);

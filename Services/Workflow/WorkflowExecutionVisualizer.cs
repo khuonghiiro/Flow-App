@@ -806,7 +806,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
                 var displayFullValue = NodeDataPanelService.IsBase64Value(result.Key, result.RawValue)
                     ? NodeDataPanelService.TruncateBase64ForDisplay(result.RawValue, 300)
-                    : (result.RawValue.Length > 2000 ? result.RawValue.Substring(0, 2000) + "..." : result.RawValue);
+                    : (result.RawValue.Length > 500 ? result.RawValue.Substring(0, 500) + "..." : result.RawValue);
 
                 var fullValueRun = new Run(displayFullValue)
                 {

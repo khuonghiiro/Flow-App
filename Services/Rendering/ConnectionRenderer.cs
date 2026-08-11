@@ -445,7 +445,7 @@ namespace FlowMy.Services.Rendering
 
             PathGeometry geometry = lineStyle switch
             {
-                ConnectionLineStyle.Orthogonal => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection), 4),
+                ConnectionLineStyle.Orthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
                 ConnectionLineStyle.Straight => _straight.Generate(start, end, startDirection, endDirection),
                 ConnectionLineStyle.SmoothOrthogonal => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection), 24),
                 ConnectionLineStyle.Arc => GenerateArcGeometry(start, end, startDirection, endDirection),
