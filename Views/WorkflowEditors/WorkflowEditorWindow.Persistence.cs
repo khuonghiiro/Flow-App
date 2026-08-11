@@ -628,6 +628,12 @@ namespace FlowMy.Views
             }
         }
 
+        private void EnvironmentPathsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new FlowMy.Views.Overlays.EnvironmentPathsConfigDialog(this);
+            dialog.ShowDialog();
+        }
+
         private void AddGitRepoButton_Click(object sender, RoutedEventArgs e)
         {
             GitManagerButton_Click(sender, e);

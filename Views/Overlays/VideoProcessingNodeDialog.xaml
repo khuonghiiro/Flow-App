@@ -334,58 +334,19 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="⚙️ Đường dẫn FFmpeg" 
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Đường dẫn FFmpeg &amp; Thư viện Hệ thống" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
-
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0"
-                                                 Height="32"
-                                                 Style="{DynamicResource BaseTextBoxV2}"
-                                                 VerticalContentAlignment="Center"
-                                                 Text="{Binding FfmpegPath, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <Button Grid.Column="2"
-                                                MinWidth="92"
-                                                Height="32"
-                                                Content="Chọn thư mục"
-                                                Style="{DynamicResource PrimaryButton}"
-                                                Click="BrowseFfmpegFolderButton_Click"/>
-                                        <Button Grid.Column="4"
-                                                MinWidth="92"
-                                                Height="32"
-                                                Content="Chọn file..."
-                                                Style="{DynamicResource PrimaryButton}"
-                                                Click="BrowseFfmpegPathButton_Click"/>
-                                    </Grid>
-                                    <TextBlock Foreground="{DynamicResource TextMuted}"
-                                               FontSize="10"
-                                               TextWrapping="Wrap">
-                                        Có thể nhập đường dẫn thư mục chứa <Run FontWeight="SemiBold">ffmpeg.exe</Run> hoặc nhập trực tiếp file <Run FontWeight="SemiBold">ffmpeg.exe</Run>.
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,10">
+                                        Đường dẫn FFmpeg được quản lý tập trung trong cài đặt hệ thống. Nhấn nút bên dưới để xem hoặc thay đổi vị trí file ffmpeg.exe.
                                     </TextBlock>
-                                    <TextBlock Foreground="{DynamicResource TextMuted}"
-                                               FontSize="10"
-                                               TextWrapping="Wrap"
-                                               Margin="0,8,0,0">
-                                        Nếu chưa có FFmpeg, tải bản full build tại
-                                        <Hyperlink NavigateUri="https://www.gyan.dev/ffmpeg/builds/"
-                                                   RequestNavigate="OpenFfmpegGuideLink_Click">gyan.dev/ffmpeg/builds</Hyperlink>,
-                                        giải nén và chọn file <Run FontWeight="SemiBold">bin\ffmpeg.exe</Run>.
-                                    </TextBlock>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                    <Button Height="32" Content="⚙️ Mở Cấu Hình Đường Dẫn Hệ Thống (FFmpeg / Tools)"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            HorizontalAlignment="Left" Padding="12,0" Cursor="Hand"
+                                            Click="OpenGlobalEnvironmentPaths_Click"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

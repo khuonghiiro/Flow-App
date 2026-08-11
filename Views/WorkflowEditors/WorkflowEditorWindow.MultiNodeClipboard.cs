@@ -765,6 +765,10 @@ namespace FlowMy.Views
                         track.SourceNodeId = RemapNodeId(track.SourceNodeId, sourceToNewNodeMap);
                     break;
 
+                case VideoEditorNode videoEditorNode:
+                    videoEditorNode.SourceNodeId = RemapNodeId(videoEditorNode.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
                 case KeyValueBridgeNode keyValueBridgeNode:
                     keyValueBridgeNode.SelectedSourceBridgeNodeId = RemapNodeId(keyValueBridgeNode.SelectedSourceBridgeNodeId, sourceToNewNodeMap);
                     keyValueBridgeNode.CleanupTargetBridgeNodeId = RemapNodeId(keyValueBridgeNode.CleanupTargetBridgeNodeId, sourceToNewNodeMap);

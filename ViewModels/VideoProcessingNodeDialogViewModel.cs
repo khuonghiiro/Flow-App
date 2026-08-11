@@ -191,6 +191,11 @@ namespace FlowMy.ViewModels
             _host.RequestSyncDataPanels(immediate: true);
         }
 
+        public void LoadFfmpegPathPreference()
+        {
+            FfmpegPath = FfmpegPathPreferencesStore.Load().FfmpegPath ?? string.Empty;
+        }
+
         public void SaveFfmpegPathPreference()
         {
             var normalized = FfmpegPathPreferencesStore.NormalizeUserInput(FfmpegPath);

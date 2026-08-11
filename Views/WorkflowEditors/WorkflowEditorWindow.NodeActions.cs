@@ -273,6 +273,53 @@ namespace FlowMy.Views
                 dstGallery.TitleColorKey = srcGallery.TitleColorKey;
                 dstGallery.NotifyTitleChanged();
             }
+            else if (source is VideoEditorNode srcVideoEd && node is VideoEditorNode dstVideoEd)
+            {
+                dstVideoEd.Width = srcVideoEd.Width;
+                dstVideoEd.Height = srcVideoEd.Height;
+                dstVideoEd.DisplayMode = srcVideoEd.DisplayMode;
+                dstVideoEd.SourceNodeId = srcVideoEd.SourceNodeId;
+                dstVideoEd.SourceOutputKey = srcVideoEd.SourceOutputKey;
+                dstVideoEd.CustomKey = srcVideoEd.CustomKey;
+                dstVideoEd.InputVideoUrl = srcVideoEd.InputVideoUrl;
+
+                dstVideoEd.TrimEnabled = srcVideoEd.TrimEnabled;
+                dstVideoEd.TrimStartTime = srcVideoEd.TrimStartTime;
+                dstVideoEd.TrimEndTime = srcVideoEd.TrimEndTime;
+
+                dstVideoEd.Brightness = srcVideoEd.Brightness;
+                dstVideoEd.Contrast = srcVideoEd.Contrast;
+                dstVideoEd.Saturation = srcVideoEd.Saturation;
+                dstVideoEd.Gamma = srcVideoEd.Gamma;
+                dstVideoEd.Hue = srcVideoEd.Hue;
+                dstVideoEd.FilterPreset = srcVideoEd.FilterPreset;
+
+                dstVideoEd.ScaleEnabled = srcVideoEd.ScaleEnabled;
+                dstVideoEd.TargetWidth = srcVideoEd.TargetWidth;
+                dstVideoEd.TargetHeight = srcVideoEd.TargetHeight;
+                dstVideoEd.Speed = srcVideoEd.Speed;
+                dstVideoEd.RotateFlip = srcVideoEd.RotateFlip;
+
+                dstVideoEd.WatermarkEnabled = srcVideoEd.WatermarkEnabled;
+                dstVideoEd.WatermarkText = srcVideoEd.WatermarkText;
+                dstVideoEd.WatermarkImagePath = srcVideoEd.WatermarkImagePath;
+                dstVideoEd.WatermarkPosition = srcVideoEd.WatermarkPosition;
+
+                dstVideoEd.AudioMode = srcVideoEd.AudioMode;
+                dstVideoEd.AudioVolume = srcVideoEd.AudioVolume;
+
+                dstVideoEd.ExportMode = srcVideoEd.ExportMode;
+                dstVideoEd.ExportFps = srcVideoEd.ExportFps;
+                dstVideoEd.ExportFormat = srcVideoEd.ExportFormat;
+                dstVideoEd.OutputFolderPath = srcVideoEd.OutputFolderPath;
+
+                dstVideoEd.OutputKeys = new List<string>(srcVideoEd.OutputKeys);
+                dstVideoEd.TitleDisplayMode = srcVideoEd.TitleDisplayMode;
+                dstVideoEd.TitleColorMode = srcVideoEd.TitleColorMode;
+                dstVideoEd.TitleColorKey = srcVideoEd.TitleColorKey;
+                dstVideoEd.RebuildDynamicOutputs();
+                dstVideoEd.NotifyTitleChanged();
+            }
             else if (source is ImageProcessingNode srcImage && node is ImageProcessingNode dstImage)
             {
                 dstImage.Width = srcImage.Width;

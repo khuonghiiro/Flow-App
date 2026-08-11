@@ -954,6 +954,9 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case VideoProcessingNode videoNode:
                 RestoreVideoProcessingNodeProperties(videoNode, properties);
                 break;
+            case VideoEditorNode videoEditorNode:
+                RestoreVideoEditorNodeProperties(videoEditorNode, properties);
+                break;
             case DataFetcherNode fetcherNode:
                 RestoreDataFetcherNodeProperties(fetcherNode, properties);
                 break;
@@ -1071,6 +1074,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case EmbedApplicationNode embedApp: GetEmbedApplicationNodeProperties(embedApp, dict); break;
             case StorageNode storageNode: GetStorageNodeProperties(storageNode, dict); break;
             case KeyScopedNode keyScopedNode: GetKeyScopedNodeProperties(keyScopedNode, dict); break;
+            case VideoEditorNode videoEditorNode: GetVideoEditorNodeProperties(videoEditorNode, dict); break;
         }
         GetReuseRoutes(node, dict);
         GetSharedFooterProperties(node, dict);

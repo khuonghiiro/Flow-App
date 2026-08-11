@@ -701,6 +701,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.MediaGalleryNodeExecutor(),
                 new NodeExecutors.ImageProcessingNodeExecutor(),
                 new NodeExecutors.VideoProcessingNodeExecutor(),
+                new NodeExecutors.VideoEditorNodeExecutor(),
                 new NodeExecutors.DataFetcherNodeExecutor(),
                 new NodeExecutors.KeyValueBridgeNodeExecutor(),
                 new NodeExecutors.FlowOverwriteNodeExecutor(),

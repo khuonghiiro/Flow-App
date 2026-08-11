@@ -85,49 +85,11 @@ namespace FlowMy.Views.Overlays
             VideoOutputFolderKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.VideoOutputFolderSourceNodeId);
         }
 
-        private void BrowseFfmpegPathButton_Click(object sender, RoutedEventArgs e)
+        private void OpenGlobalEnvironmentPaths_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                var picker = new OpenFileDialog
-                {
-                    Title = "Chon ffmpeg.exe",
-                    Filter = "ffmpeg.exe|ffmpeg.exe|Executable files|*.exe|All files|*.*",
-                    CheckFileExists = true,
-                    Multiselect = false
-                };
-
-                if (picker.ShowDialog(this) == true)
-                {
-                    _viewModel.FfmpegPath = picker.FileName;
-                    _viewModel.SaveFfmpegPathPreference();
-                }
-            }
-            catch
-            {
-                // best-effort
-            }
-        }
-
-        private void BrowseFfmpegFolderButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var picker = new OpenFolderDialog
-                {
-                    Title = "Chon thu muc chua ffmpeg.exe",
-                    Multiselect = false
-                };
-                if (picker.ShowDialog(this) == true)
-                {
-                    _viewModel.FfmpegPath = picker.FolderName;
-                    _viewModel.SaveFfmpegPathPreference();
-                }
-            }
-            catch
-            {
-                // best-effort
-            }
+            var dialog = new EnvironmentPathsConfigDialog(this);
+            dialog.ShowDialog();
+            _viewModel.LoadFfmpegPathPreference();
         }
 
         private void OpenFfmpegGuideLink_Click(object sender, RequestNavigateEventArgs e)
