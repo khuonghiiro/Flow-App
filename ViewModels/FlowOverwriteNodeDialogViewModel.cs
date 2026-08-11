@@ -59,7 +59,8 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     [ObservableProperty] private string _outputKey = "outputKey";
     [ObservableProperty] private bool _appendMode;
     [ObservableProperty] private bool _includeIndirectSources;
-    [ObservableProperty] private bool _scopeToFlowExecution;
+    [ObservableProperty] private bool _scopeToFlowExecution = true;
+    [ObservableProperty] private bool _flattenArrayValues;
 
     [ObservableProperty] private string _sourcesHeader = "📍 Nguồn override (0 items)";
 
@@ -74,6 +75,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         _appendMode = node.AppendMode;
         _includeIndirectSources = node.IncludeIndirectSources;
         _scopeToFlowExecution = node.ScopeToFlowExecution;
+        _flattenArrayValues = node.FlattenArrayValues;
         LoadSourcesFromNode();
 
         Sources.CollectionChanged += (_, _) => UpdateSourcesHeader();
@@ -131,6 +133,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         _nodeTyped.AppendMode = AppendMode;
         _nodeTyped.IncludeIndirectSources = IncludeIndirectSources;
         _nodeTyped.ScopeToFlowExecution = ScopeToFlowExecution;
+        _nodeTyped.FlattenArrayValues = FlattenArrayValues;
         _nodeTyped.Mappings = Sources
             .Where(s => !string.IsNullOrWhiteSpace(s.SelectedSourceNodeId))
             .Select(s => new FlowOverwriteMapping

@@ -508,6 +508,12 @@ public sealed partial class FileWorkflowPersistenceService
             {
                 flowOverwriteNode.ScopeToFlowExecution = scopeToFlow;
             }
+            if (properties.TryGetValue("FlattenArrayValues", out var flattenObj) &&
+                flattenObj != null &&
+                bool.TryParse(flattenObj.ToString(), out var flattenArray))
+            {
+                flowOverwriteNode.FlattenArrayValues = flattenArray;
+            }
             if (properties.TryGetValue("Mappings", out var mappingsObj))
             {
                 List<FlowOverwriteMapping>? parsedMappings = null;
@@ -708,6 +714,7 @@ public sealed partial class FileWorkflowPersistenceService
             dict["AppendMode"] = flowOverwriteNode.AppendMode;
             dict["IncludeIndirectSources"] = flowOverwriteNode.IncludeIndirectSources;
             dict["ScopeToFlowExecution"] = flowOverwriteNode.ScopeToFlowExecution;
+            dict["FlattenArrayValues"] = flowOverwriteNode.FlattenArrayValues;
 
             if (flowOverwriteNode.Mappings != null && flowOverwriteNode.Mappings.Count > 0)
             {

@@ -16,7 +16,8 @@ public sealed class FlowOverwriteNode : WorkflowNode
     private string _outputKey = "outputKey";
     private bool _appendMode;
     private bool _includeIndirectSources;
-    private bool _scopeToFlowExecution;
+    private bool _scopeToFlowExecution = true;
+    private bool _flattenArrayValues;
 
     public FlowOverwriteNode()
     {
@@ -86,6 +87,17 @@ public sealed class FlowOverwriteNode : WorkflowNode
         {
             if (_scopeToFlowExecution == value) return;
             _scopeToFlowExecution = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool FlattenArrayValues
+    {
+        get => _flattenArrayValues;
+        set
+        {
+            if (_flattenArrayValues == value) return;
+            _flattenArrayValues = value;
             OnPropertyChanged();
         }
     }

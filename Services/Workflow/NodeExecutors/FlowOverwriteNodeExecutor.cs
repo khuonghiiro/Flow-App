@@ -13,7 +13,7 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
     private sealed class RuntimeState
     {
         public string? LastValue { get; set; }
-        public List<string> Values { get; } = new();
+        public List<object?> Values { get; } = new();
         public object SyncRoot { get; } = new();
     }
 
@@ -89,65 +89,99 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         }
 
         var runId = string.IsNullOrWhiteSpace(env.ExecutionId) ? "single" : env.ExecutionId;
-        // ScopeToFlowExecution: nếu bật thì giữ nguyên executionId riêng của luồng flow (không gộp chung với các luồng khác).
-        // Ngược lại (bất kỳ luồng): gom theo lần chạy gốc (AsyncTask mỗi vòng có :dispatch-i / nhánh :at-manual-… — cùng state một mảng).
-        var stateKeyBase = typed.ScopeToFlowExecution
-            ? runId
-            : (typed.AppendMode
-                ? WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(runId).LastOrDefault() ?? runId
-                : runId);
+        // ScopeToFlowExecution:
+        // - True (Mặc định): Gom tất cả kết quả từ các luồng con/vòng lặp về luồng cha gốc (Root ExecutionId) để luồng cha thu thập đầy đủ mảng.
+        // - False: Cô lập theo riêng từng luồng con (Current ExecutionId).
+        var stateKeyBase = (typed.AppendMode && typed.ScopeToFlowExecution)
+            ? (WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(runId).LastOrDefault() ?? runId)
+            : runId;
         var stateKey = $"{stateKeyBase}:{typed.Id}";
         var state = _stateByExecutionAndNode.GetOrAdd(stateKey, _ => new RuntimeState());
 
-            if (resolvedValues.Count == 0)
+        if (resolvedValues.Count == 0)
+        {
+            // Không có giá trị mới ở iteration này:
+            // nếu AppendMode đã có state trước đó thì vẫn publish snapshot hiện tại vào scoped của execution hiện tại
+            // để downstream (Output/...) không bị empty do thiếu bản ghi scoped.
+            if (typed.AppendMode)
             {
-                // Không có giá trị mới ở iteration này:
-                // nếu AppendMode đã có state trước đó thì vẫn publish snapshot hiện tại vào scoped của execution hiện tại
-                // để downstream (Output/...) không bị empty do thiếu bản ghi scoped.
-                if (typed.AppendMode)
+                string? existingJson = null;
+                lock (state.SyncRoot)
                 {
-                    string? existingJson = null;
-                    lock (state.SyncRoot)
-                    {
-                        if (state.Values.Count > 0)
-                            existingJson = JsonSerializer.Serialize(state.Values);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(existingJson))
-                    {
-                        lock (typed.ResolvedOutputsSyncRoot)
-                        {
-                            typed.ResolvedOutputs.Clear();
-                            typed.ResolvedOutputs[key] = existingJson;
-                        }
-                        var outPortNoNew = typed.DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
-                        if (outPortNoNew != null)
-                            outPortNoNew.UserValueOverride = existingJson;
-                        // Publish từ snapshot cục bộ, KHÔNG dùng typed.ResolvedOutputs (shared):
-                        // nhiều dispatch song song cùng FlowOverwrite instance sẽ race → scoped(dispatch-X)
-                        // bị ghi nhầm bằng giá trị của dispatch-Y nào ghi sau cùng vào shared dict.
-                        if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-                        {
-                            var localOutputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
-                            {
-                                [key] = existingJson,
-                            };
-                            env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, localOutputs);
-                        }
-                    }
+                    if (state.Values.Count > 0)
+                        existingJson = JsonSerializer.Serialize(state.Values);
                 }
 
-                env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
-                await env.TraverseOutputsAsync(node);
-                return;
+                if (!string.IsNullOrWhiteSpace(existingJson))
+                {
+                    lock (typed.ResolvedOutputsSyncRoot)
+                    {
+                        typed.ResolvedOutputs.Clear();
+                        typed.ResolvedOutputs[key] = existingJson;
+                    }
+                    var outPortNoNew = typed.DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                    if (outPortNoNew != null)
+                        outPortNoNew.UserValueOverride = existingJson;
+
+                    if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
+                    {
+                        var localOutputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            [key] = existingJson,
+                        };
+                        env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, localOutputs);
+                    }
+                }
             }
+
+            env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
+            await env.TraverseOutputsAsync(node);
+            return;
+        }
 
         string outputValue;
         lock (state.SyncRoot)
         {
             if (typed.AppendMode)
             {
-                state.Values.AddRange(resolvedValues);
+                foreach (var resolved in resolvedValues)
+                {
+                    if (string.IsNullOrWhiteSpace(resolved)) continue;
+
+                    var trimmed = resolved.Trim();
+                    bool parsed = false;
+
+                    if (trimmed.StartsWith("{", StringComparison.Ordinal) || trimmed.StartsWith("[", StringComparison.Ordinal))
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(trimmed);
+                            var root = doc.RootElement.Clone();
+
+                            if (typed.FlattenArrayValues && root.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in root.EnumerateArray())
+                                {
+                                    state.Values.Add(item.Clone());
+                                }
+                            }
+                            else
+                            {
+                                state.Values.Add(root);
+                            }
+                            parsed = true;
+                        }
+                        catch
+                        {
+                            parsed = false;
+                        }
+                    }
+
+                    if (!parsed)
+                    {
+                        state.Values.Add(resolved);
+                    }
+                }
                 outputValue = JsonSerializer.Serialize(state.Values);
             }
             else

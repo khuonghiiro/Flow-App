@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+        xmlns:conv="clr-namespace:FlowMy.Converters"
         Title="Flow Overwrite"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -13,6 +14,11 @@
         MinWidth="420"
         MaxWidth="900"
         MinHeight="420">
+    <local:BaseNodeDialog.Resources>
+        <ResourceDictionary>
+            <conv:BoolToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        </ResourceDictionary>
+    </local:BaseNodeDialog.Resources>
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -60,23 +66,17 @@
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,6,0,0">
                                     <StackPanel>
                                         <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap" LineHeight="18">
-                                            <Run Text="1. Khái niệm Append Mode:" FontWeight="Bold"/><LineBreak/>
-                                            <Run Text="   • Tắt Append mode (mặc định): Ghi đè - mỗi lần chạy giữ 1 giá trị mới nhất."/><LineBreak/>
-                                            <Run Text="   • Bật Append mode: Gom cộng dồn tất cả giá trị qua các lần thực thi thành mảng JSON."/><LineBreak/><LineBreak/>
-                                            
-                                            <Run Text="2. Ví dụ minh họa khi đặt trong Async Task / Loop:" FontWeight="Bold" Foreground="#E6A23C"/><LineBreak/>
-                                            <Run Text="   Giả sử Async Task lặp 4 lần qua mảng ['5', '2', '7', '8']:"/><LineBreak/>
-                                            <Run Text="   • " FontWeight="Bold"/><Run Text="Trường hợp BẬT Append mode + KHÔNG chọn Dữ liệu thuộc riêng luồng:"/><LineBreak/>
-                                            <Run Text="     - Vòng 1 sinh: ['5'] (1 phần tử)"/><LineBreak/>
-                                            <Run Text="     - Vòng 2 sinh: ['5', '2'] (2 phần tử)"/><LineBreak/>
-                                            <Run Text="     - Vòng 3 sinh: ['5', '2', '7'] (3 phần tử)"/><LineBreak/>
-                                            <Run Text="     - Vòng 4 sinh: ['5', '2', '7', '8'] (4 phần tử)"/><LineBreak/>
-                                            <Run Text="     ➔ Async Task gom tổng lại tất cả mảng của 4 vòng = 1 + 2 + 3 + 4 = "/>
-                                            <Run Text="10 phần tử" FontWeight="Bold" Foreground="#F56C6C"/><Run Text=" (['5', '5', '2', '5', '2', '7', '5', '2', '7', '8'])."/><LineBreak/><LineBreak/>
-                                            
-                                            <Run Text="   • " FontWeight="Bold"/><Run Text="Khắc phục (Để lấy đúng 4 phần tử):"/><LineBreak/>
-                                            <Run Text="     - Cách A: TẮT Append mode trong Flow Overwrite (Async Task đã tự động gom mảng kết quả của các vòng thành mảng 4 phần tử)."/><LineBreak/>
-                                            <Run Text="     - Cách B: BẬT 'Dữ liệu thuộc riêng luồng flow' để cô lập mảng cộng dồn cho riêng từng luồng."/>
+                                            <Run Text="1. Khái niệm Gom mảng (Append Mode):" FontWeight="Bold"/><LineBreak/>
+                                            <Run Text="   • Tắt 'Tích để gom mảng' (Mặc định): Ghi đè — mỗi lần chạy chỉ giữ 1 giá trị mới nhất."/><LineBreak/>
+                                            <Run Text="   • Bật 'Tích để gom mảng': Cộng dồn tất cả giá trị qua các lần thực thi thành một mảng JSON."/><LineBreak/><LineBreak/>
+
+                                            <Run Text="2. Phạm vi luồng cha / luồng con (Scope to parent flow):" FontWeight="Bold"/><LineBreak/>
+                                            <Run Text="   • Tích chọn (Mặc định khi bật gom mảng): Gom tất cả dữ liệu từ các vòng lặp / luồng con về luồng cha chung. Luồng cha thu thập được đầy đủ mảng kết quả của mọi lần lặp."/><LineBreak/>
+                                            <Run Text="   • Bỏ tích chọn: Cô lập dữ liệu theo riêng từng luồng/vòng lặp (luồng con nào chỉ thấy mảng cộng dồn của luồng đó)."/><LineBreak/><LineBreak/>
+
+                                            <Run Text="3. Gộp mảng (Flatten array values):" FontWeight="Bold"/><LineBreak/>
+                                            <Run Text="   • Tích chọn: Nếu giá trị truyền vào là một mảng JSON (vd: [1, 2]), các phần tử sẽ được gộp phẳng vào mảng chung → [1, 2, 3, 4]."/><LineBreak/>
+                                            <Run Text="   • Bỏ tích chọn: Giá trị mảng truyền vào sẽ được giữ nguyên dưới dạng một phần tử mảng con → [[1, 2], [3, 4]]."/>
                                         </TextBlock>
                                     </StackPanel>
                                 </Border>
@@ -104,15 +104,24 @@
 
                             <!-- 📝 Append mode -->
                             <CheckBox IsChecked="{Binding AppendMode, Mode=TwoWay}" Margin="0,0,0,12">
-                                <TextBlock Text="Append mode (gom thành mảng, mặc định tắt = ghi đè)"
+                                <TextBlock Text="Tích để gom mảng (cộng dồn các kết quả thành mảng JSON, mặc định tắt = ghi đè)"
                                            Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
                             </CheckBox>
 
-                            <!-- 🧵 Scope to flow execution -->
-                            <CheckBox IsChecked="{Binding ScopeToFlowExecution, Mode=TwoWay}" Margin="0,0,0,12">
-                                <TextBlock Text="Dữ liệu thuộc riêng luồng flow (Checked = theo ExecutionId luồng hiện tại, Unchecked = bất kỳ luồng)"
-                                           Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
-                            </CheckBox>
+                            <!-- ⚙️ Sub-options when AppendMode is active -->
+                            <StackPanel Visibility="{Binding AppendMode, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="16,0,0,12">
+                                <!-- 🧵 Scope to flow execution (Gom theo luồng cha) -->
+                                <CheckBox IsChecked="{Binding ScopeToFlowExecution, Mode=TwoWay}" Margin="0,0,0,10">
+                                    <TextBlock Text="Tích để gom dữ liệu về luồng cha (Checked = gom tất cả kết quả từ luồng con/vòng lặp về luồng cha, Unchecked = cô lập theo từng luồng con)"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
+                                </CheckBox>
+
+                                <!-- 🔗 Flatten array values (Gộp mảng) -->
+                                <CheckBox IsChecked="{Binding FlattenArrayValues, Mode=TwoWay}" Margin="0,0,0,10">
+                                    <TextBlock Text="Tích để gộp mảng (nếu value là mảng JSON thì gộp các phần tử vào mảng chung thay vì tạo mảng lồng mảng)"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap"/>
+                                </CheckBox>
+                            </StackPanel>
 
                             <!-- 🔗 Include indirect sources -->
                             <CheckBox IsChecked="{Binding IncludeIndirectSources, Mode=TwoWay}" Margin="0,0,0,12">
