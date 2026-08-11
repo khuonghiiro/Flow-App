@@ -487,11 +487,29 @@ namespace FlowMy.Services.Interaction
 
             if (e.OldItems != null)
             {
+                // Reset Host.DraggedNode if any removed node was the currently dragged node
+                if (Host.DraggedNode != null)
+                {
+                    if (e.OldItems.Contains(Host.DraggedNode) || (vm != null && !vm.Nodes.Contains(Host.DraggedNode)))
+                    {
+                        Host.DraggedNode = null;
+                    }
+                }
+
+                // Ensure any mouse capture held by deleted nodes/controls is released
+                if (Mouse.Captured != null)
+                {
+                    try { Mouse.Captured.ReleaseMouseCapture(); } catch { }
+                }
+
                 foreach (WorkflowNode node in e.OldItems)
                 {
                     UntrackNodeNotifier(node);
                     _nodeRenderer.RemoveNode(node, Host.WorkflowCanvas);
                 }
+
+                // Restore focus to WorkflowCanvas so keyboard shortcuts and panning operate immediately
+                try { Host.WorkflowCanvas.Focus(); } catch { }
 
                 _connectionRenderer.RenderAllConnections(
                     vm.Connections,

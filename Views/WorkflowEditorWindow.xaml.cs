@@ -1974,7 +1974,8 @@ namespace FlowMy.Views
             }
 
             // Loại trừ phím tắt của Window khi đang thao tác trong WebNode, HtmlUiNode, ImageNode, VideoNode
-            if (IsInteractingWithSpecialNode(e))
+            // (Ngoại lệ: phím Delete vẫn được phép xóa node/connection đã chọn khi không gõ chữ)
+            if (e.Key != Key.Delete && IsInteractingWithSpecialNode(e))
             {
                 return;
             }

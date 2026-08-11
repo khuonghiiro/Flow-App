@@ -881,6 +881,12 @@ namespace FlowMy.Services.Interaction
                     return;
                 }
 
+                // Defensive check: nếu DraggedNode không còn thuộc ViewModel.Nodes thì reset
+                if (_host.DraggedNode != null && (viewModel == null || !viewModel.Nodes.Contains(_host.DraggedNode)))
+                {
+                    _host.DraggedNode = null;
+                }
+
                 // Chỉ bắt đầu pan nếu không đang drag
                 if (_host.DraggedNode == null)
                 {

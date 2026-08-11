@@ -465,6 +465,15 @@ namespace FlowMy.Views.NodeControls.Helpers
             /// <returns>The configured NodeControlContext instance.</returns>
             public NodeControlContext Build()
             {
+                // Ensure clicking anywhere inside node selects it in ViewModel
+                _context.Border.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    if (_context.Host.ViewModel != null && _context.Host.ViewModel.SelectedNode != _context.Node)
+                    {
+                        _context.Host.ViewModel.SelectedNode = _context.Node;
+                    }
+                };
+
                 // Execute all event registrations
                 foreach (var registration in _eventRegistrations)
                 {

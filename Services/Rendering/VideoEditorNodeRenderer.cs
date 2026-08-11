@@ -1,4 +1,4 @@
-﻿// NOTICE TO AI DEVELOPERS / AGENTS:
+// NOTICE TO AI DEVELOPERS / AGENTS:
 // 1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.
 // 2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.
 // 3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.
@@ -11,6 +11,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -128,6 +129,19 @@ namespace FlowMy.Services.Rendering
 
         public void RemoveNode(WorkflowNode node, Canvas canvas)
         {
+            if (node == null || canvas == null) return;
+
+            // 1. Release mouse capture if mouse is captured by node, border, or any child control
+            if (Mouse.Captured is DependencyObject captured)
+            {
+                if (IsDescendantOf(captured, node.Border) || node.Ports.Any(p => p.PortUI != null && IsDescendantOf(captured, p.PortUI)))
+                {
+                    (captured as FrameworkElement)?.ReleaseMouseCapture();
+                }
+            }
+            try { node.Border?.ReleaseMouseCapture(); } catch { }
+
+            // 2. Remove Title
             if (node is VideoEditorNode videoEditorN && videoEditorN.TitleTextBlockUI != null)
             {
                 if (canvas.Children.Contains(videoEditorN.TitleTextBlockUI))
@@ -135,14 +149,50 @@ namespace FlowMy.Services.Rendering
                 videoEditorN.TitleTextBlockUI = null;
             }
 
-            if (node.Border != null && canvas.Children.Contains(node.Border))
-                canvas.Children.Remove(node.Border);
+            // 3. Remove Border
+            if (node.Border != null)
+            {
+                if (canvas.Children.Contains(node.Border))
+                    canvas.Children.Remove(node.Border);
+                node.Border = null;
+            }
 
+            // 4. Remove Ports
             foreach (var port in node.Ports)
             {
-                if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
-                    canvas.Children.Remove(port.PortUI);
+                if (port.PortUI != null)
+                {
+                    if (canvas.Children.Contains(port.PortUI))
+                    {
+                        canvas.Children.Remove(port.PortUI);
+                    }
+                    else if (port.PortUI.Parent is Panel parentPanel)
+                    {
+                        parentPanel.Children.Remove(port.PortUI);
+                    }
+                    port.PortUI = null;
+                }
             }
+
+            // 5. Clean up any remaining orphaned elements on canvas tagged with port or node
+            var orphans = canvas.Children.OfType<FrameworkElement>()
+                .Where(el => el.Tag == node || node.Ports.Any(p => p == el.Tag))
+                .ToList();
+            foreach (var orphan in orphans)
+            {
+                canvas.Children.Remove(orphan);
+            }
+        }
+
+        private static bool IsDescendantOf(DependencyObject? child, DependencyObject? parent)
+        {
+            if (child == null || parent == null) return false;
+            while (child != null)
+            {
+                if (child == parent) return true;
+                child = VisualTreeHelper.GetParent(child) ?? (child as FrameworkElement)?.Parent;
+            }
+            return false;
         }
 
         public void RemoveAllNodeVisuals(Canvas canvas)
