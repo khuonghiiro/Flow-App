@@ -278,6 +278,19 @@ namespace FlowMy.Views.NodeControls
             {
                 RunProcessingFlow();
             };
+            RunExportButton.Click += (_, _) =>
+            {
+                RunProcessingFlow();
+            };
+            ApplyGradingButton.Click += (_, _) =>
+            {
+                _previewEffectTemporarilyDisabled = false;
+                ApplyPreviewColorTransform();
+                RunProcessingFlow();
+            };
+            ResetGradingButton2.Click += (_, _) => ApplyGradingPreset(0, 1, 1, 0, 1);
+            ApplyOverlayToVideoActionButton.Click += (_, _) => ApplyOverlaysToVideo();
+            MixAudioButton.Click += (_, _) => RunProcessingFlow();
             ToggleQuickGradeButton.Click += (_, _) =>
             {
                 QuickGradingPanel.Visibility = QuickGradingPanel.Visibility == Visibility.Visible
