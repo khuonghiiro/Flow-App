@@ -628,15 +628,30 @@ namespace FlowMy.Views.NodeControls
                                         {
                                             FilePath = childSec.FilePath,
                                             IsSelected = childSec.IsSelected,
-                                            ImageId = childSec.ImageId
+                                            CodeId = childSec.ImageId,
+                                            ImageId = childSec.ImageId,
+                                            AspectRatioIds = childSec.AspectRatioIds != null ? new System.Collections.Generic.Dictionary<int, string>(childSec.AspectRatioIds) : new()
                                         };
 
-                                        if (childSec.Bitmap != null)
+                                        var childBmp = childSec.Bitmap;
+                                        if (childBmp == null && childSec.PngBytes != null && childSec.PngBytes.Length > 0)
+                                        {
+                                            try
+                                            {
+                                                using (var ms = new MemoryStream(childSec.PngBytes))
+                                                {
+                                                    var dec = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                                    childBmp = dec.Frames[0];
+                                                }
+                                            }
+                                            catch { }
+                                        }
+
+                                        if (childBmp != null)
                                         {
                                             string childEntryName = $"layers/{l.Id}_sec_{i}_child_{cIdx}.png";
                                             childDto.ImageFileName = childEntryName;
 
-                                            var childBmp = childSec.Bitmap;
                                             if (!childBmp.IsFrozen)
                                             {
                                                 try
@@ -665,12 +680,25 @@ namespace FlowMy.Views.NodeControls
                                     }
                                 }
 
-                                if (sec.Bitmap != null)
+                                var bmp = sec.Bitmap;
+                                if (bmp == null && sec.PngBytes != null && sec.PngBytes.Length > 0)
+                                {
+                                    try
+                                    {
+                                        using (var ms = new MemoryStream(sec.PngBytes))
+                                        {
+                                            var dec = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                                            bmp = dec.Frames[0];
+                                        }
+                                    }
+                                    catch { }
+                                }
+
+                                if (bmp != null)
                                 {
                                     string entryName = $"layers/{l.Id}_sec_{i}.png";
                                     secDto.ImageFileName = entryName;
 
-                                    var bmp = sec.Bitmap;
                                     if (!bmp.IsFrozen)
                                     {
                                         try
@@ -683,7 +711,7 @@ namespace FlowMy.Views.NodeControls
                                         {
                                             int wbW = bmp.PixelWidth;
                                             int wbH = bmp.PixelHeight;
-                                            int wbStride = wbW * 4;
+                                            int wbStride = bmp.PixelWidth * 4;
                                             byte[] wbPixels = new byte[wbH * wbStride];
                                             bmp.CopyPixels(wbPixels, wbStride, 0);
                                             var clonedBmp = BitmapSource.Create(wbW, wbH, bmp.DpiX, bmp.DpiY, PixelFormats.Bgra32, null, wbPixels, wbStride);
@@ -1093,7 +1121,6 @@ namespace FlowMy.Views.NodeControls
                     layer.TextHeight = lDto.TextHeight;
                     layer.TextFontSize = lDto.TextFontSize;
                     layer.TextFontFamily = lDto.TextFontFamily ?? "Arial";
-                    layer.TextFontStyle = lDto.TextFontStyle ?? "Bold";
                     layer.TextAlignment = lDto.TextAlignment ?? "Left";
 
                     // Restore layer-specific Layer AI configurations
@@ -1146,6 +1173,13 @@ namespace FlowMy.Views.NodeControls
                                         IsSelected = childDto.IsSelected,
                                         ImageId = childDto.ImageId
                                     };
+                                    if (childDto.AspectRatioIds != null)
+                                    {
+                                        foreach (var kvp in childDto.AspectRatioIds)
+                                        {
+                                            childImg.AspectRatioIds[kvp.Key] = kvp.Value;
+                                        }
+                                    }
 
                                     if (!string.IsNullOrEmpty(childDto.ImageFileName) && layerBytesMap.TryGetValue(childDto.ImageFileName, out var childPngBytes))
                                     {
@@ -1176,11 +1210,6 @@ namespace FlowMy.Views.NodeControls
                                     }
                                 }
                                 catch { }
-                            }
-                            if (secImg.Bitmap == null)
-                            {
-                                secImg.ImageId = null;
-                                secImg.AspectRatioIds.Clear();
                             }
                             layer.LayerAiSecondaryImages.Add(secImg);
                         }

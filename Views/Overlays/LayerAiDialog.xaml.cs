@@ -425,33 +425,37 @@ namespace FlowMy.Views.Overlays
                 {
                     var secItem = new SecondaryImageItem
                     {
-                        ImageId = src.Bitmap != null ? src.ImageId : null,
+                        ImageId = src.ImageId,
                         FilePath = src.FilePath,
                         IsSelected = src.Bitmap != null && src.IsSelected,
                         Bitmap = src.Bitmap
                     };
-                    if (src.Bitmap != null && src.AspectRatioIds != null)
+                    if (src.AspectRatioIds != null)
                     {
                         foreach (var kvp in src.AspectRatioIds)
                         {
                             secItem.AspectRatioIds[kvp.Key] = kvp.Value;
                         }
                     }
-                    else
-                    {
-                        secItem.ResetImageIdAndCodeId();
-                    }
                     if (src.SavedChildImages != null)
                     {
                         foreach (var child in src.SavedChildImages)
                         {
-                            secItem.SavedChildImages.Add(new SecondaryImageItem
+                            var childItem = new SecondaryImageItem
                             {
                                 ImageId = child.ImageId,
                                 FilePath = child.FilePath,
                                 IsSelected = child.IsSelected,
                                 Bitmap = child.Bitmap
-                            });
+                            };
+                            if (child.AspectRatioIds != null)
+                            {
+                                foreach (var kvp in child.AspectRatioIds)
+                                {
+                                    childItem.AspectRatioIds[kvp.Key] = kvp.Value;
+                                }
+                            }
+                            secItem.SavedChildImages.Add(childItem);
                         }
                     }
                     state.SecondaryImages.Add(secItem);
@@ -572,13 +576,35 @@ namespace FlowMy.Views.Overlays
                 }
                 foreach (var child in img.SavedChildImages)
                 {
-                    layerImg.SavedChildImages.Add(new EditorLayer.LayerAiSecondaryImage
+                    var childLayerImg = new EditorLayer.LayerAiSecondaryImage
                     {
                         ImageId = child.ImageId,
                         FilePath = child.FilePath,
                         IsSelected = child.IsSelected,
                         Bitmap = child.Bitmap
-                    });
+                    };
+                    if (child.AspectRatioIds != null)
+                    {
+                        foreach (var kvp in child.AspectRatioIds)
+                        {
+                            childLayerImg.AspectRatioIds[kvp.Key] = kvp.Value;
+                        }
+                    }
+                    if (child.Bitmap is BitmapSource childBmp)
+                    {
+                        try
+                        {
+                            using (var ms = new MemoryStream())
+                            {
+                                var enc = new PngBitmapEncoder();
+                                enc.Frames.Add(BitmapFrame.Create(childBmp));
+                                enc.Save(ms);
+                                childLayerImg.PngBytes = ms.ToArray();
+                            }
+                        }
+                        catch { }
+                    }
+                    layerImg.SavedChildImages.Add(childLayerImg);
                 }
 
                 // Sync PNG bytes
@@ -3435,22 +3461,76 @@ namespace FlowMy.Views.Overlays
             HistoryImagesWrapPanel.Children.Clear();
 
             var allHistory = new List<SecondaryImageItem>();
+
+            // 1. Gather from all layers in document
+            if (_doc?.Layers != null)
+            {
+                foreach (var layer in _doc.Layers)
+                {
+                    if (layer.LayerAiSecondaryImages != null)
+                    {
+                        foreach (var sec in layer.LayerAiSecondaryImages)
+                        {
+                            if (sec.SavedChildImages != null)
+                            {
+                                foreach (var child in sec.SavedChildImages)
+                                {
+                                    if (!string.IsNullOrEmpty(child.ImageId))
+                                    {
+                                        allHistory.Add(new SecondaryImageItem
+                                        {
+                                            ImageId = child.ImageId,
+                                            FilePath = child.FilePath,
+                                            IsSelected = child.IsSelected,
+                                            Bitmap = child.Bitmap
+                                        });
+                                    }
+                                }
+                            }
+                            if (!string.IsNullOrEmpty(sec.ImageId))
+                            {
+                                allHistory.Add(new SecondaryImageItem
+                                {
+                                    ImageId = sec.ImageId,
+                                    FilePath = sec.FilePath,
+                                    IsSelected = sec.IsSelected,
+                                    Bitmap = sec.Bitmap
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Gather from current dialog _secondaryImages
             foreach (var slot in _secondaryImages)
             {
                 if (slot.SavedChildImages != null)
                 {
                     allHistory.AddRange(slot.SavedChildImages.Where(s => !string.IsNullOrEmpty(s.ImageId)));
                 }
+                if (!string.IsNullOrEmpty(slot.ImageId))
+                {
+                    allHistory.Add(slot);
+                }
             }
 
             // Remove duplicates by ImageId
             var distinctHistory = allHistory
+                .Where(s => !string.IsNullOrEmpty(s.ImageId))
                 .GroupBy(s => s.ImageId, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.First())
                 .ToList();
 
             foreach (var child in distinctHistory)
             {
+                if (child.Bitmap == null && !string.IsNullOrEmpty(child.FilePath) && File.Exists(child.FilePath))
+                {
+                    try { child.Bitmap = CreateBitmapFromUrlOrFile(child.FilePath); } catch { }
+                }
+
+                if (child.Bitmap == null) continue;
+
                 var border = new Border
                 {
                     Width = 60,
@@ -3513,7 +3593,22 @@ namespace FlowMy.Views.Overlays
                             item.ArchiveCurrentIfHasId();
                             item.Bitmap = capturedChild.Bitmap;
                             item.FilePath = capturedChild.FilePath;
-                            item.ImageId = capturedChild.ImageId;
+                            item.ResetImageIdAndCodeId();
+                            if (!string.IsNullOrEmpty(capturedChild.ImageId))
+                            {
+                                item.ImageId = capturedChild.ImageId;
+                            }
+                            if (!string.IsNullOrEmpty(capturedChild.CodeId))
+                            {
+                                item.CodeId = capturedChild.CodeId;
+                            }
+                            if (capturedChild.AspectRatioIds != null)
+                            {
+                                foreach (var kvp in capturedChild.AspectRatioIds)
+                                {
+                                    item.AspectRatioIds[kvp.Key] = kvp.Value;
+                                }
+                            }
                             item.IsSelected = true;
                             RefreshAllSlotsUI();
                             UpdatePreviewImage();
@@ -6345,7 +6440,17 @@ namespace FlowMy.Views.Overlays
                 if (!string.IsNullOrEmpty(historyItem.ImageId))
                 {
                     item.ImageId = historyItem.ImageId;
-                    item.AspectRatioIds[CmbAspectRatio?.SelectedIndex ?? 3] = historyItem.ImageId;
+                }
+                if (!string.IsNullOrEmpty(historyItem.CodeId))
+                {
+                    item.CodeId = historyItem.CodeId;
+                }
+                if (historyItem.AspectRatioIds != null)
+                {
+                    foreach (var kvp in historyItem.AspectRatioIds)
+                    {
+                        item.AspectRatioIds[kvp.Key] = kvp.Value;
+                    }
                 }
                 item.IsSelected = true;
                 RefreshAllSlotsUI();
@@ -6372,7 +6477,17 @@ namespace FlowMy.Views.Overlays
                 if (!string.IsNullOrEmpty(historyItem.ImageId))
                 {
                     item.ImageId = historyItem.ImageId;
-                    item.AspectRatioIds[CmbAspectRatio?.SelectedIndex ?? 3] = historyItem.ImageId;
+                }
+                if (!string.IsNullOrEmpty(historyItem.CodeId))
+                {
+                    item.CodeId = historyItem.CodeId;
+                }
+                if (historyItem.AspectRatioIds != null)
+                {
+                    foreach (var kvp in historyItem.AspectRatioIds)
+                    {
+                        item.AspectRatioIds[kvp.Key] = kvp.Value;
+                    }
                 }
                 item.IsSelected = true;
                 RefreshAllSlotsUI();
