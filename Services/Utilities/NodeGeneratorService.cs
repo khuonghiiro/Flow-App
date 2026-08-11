@@ -2190,12 +2190,31 @@ namespace FlowMy.Services.Utilities
                 {
                     try
                     {
-                        var content = File.ReadAllText(iconHelperPath);
-                        var pattern = $@"(?:(NodeType\.{System.Text.RegularExpressions.Regex.Escape(baseName)})|(""{System.Text.RegularExpressions.Regex.Escape(baseName)}"")|(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""))\s*=>\s*"")[^""]+("")";
-                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}${{2}}${{3}} => \"{iconKey}\"${{4}}");
-                        if (replaced != content)
+                        var lines = File.ReadAllLines(iconHelperPath);
+                        bool modified = false;
+                        var enumArm = $"NodeType.{baseName} =>";
+                        var strArm1 = $"\"{baseName}\" =>";
+                        var strArm2 = $"\"{nodeName}\" =>";
+
+                        for (int i = 0; i < lines.Length; i++)
                         {
-                            File.WriteAllText(iconHelperPath, replaced, utf8NoBom);
+                            var trimmed = lines[i].Trim();
+                            if (trimmed.StartsWith(enumArm) || trimmed.StartsWith(strArm1) || trimmed.StartsWith(strArm2))
+                            {
+                                var arrowIdx = lines[i].IndexOf("=>");
+                                if (arrowIdx > 0)
+                                {
+                                    var prefix = lines[i].Substring(0, arrowIdx + 2);
+                                    var comma = lines[i].TrimEnd().EndsWith(",") ? "," : "";
+                                    lines[i] = $"{prefix} \"{iconKey}\"{comma}";
+                                    modified = true;
+                                }
+                            }
+                        }
+
+                        if (modified)
+                        {
+                            File.WriteAllLines(iconHelperPath, lines, utf8NoBom);
                             result.ModifiedFiles.Add(iconHelperPath);
                         }
                     }

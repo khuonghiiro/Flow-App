@@ -7,6 +7,7 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.Services.Workflow.NodeExecutors;
+using FlowMy.Views.Overlays;
 using Microsoft.Win32;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -376,41 +377,11 @@ namespace FlowMy.Views.NodeControls
                     Clipboard.SetText(LogTextBox.Text);
             };
 
-            BrowseFfmpegFolderButton.Click += (_, _) =>
+            OpenGlobalEnvironmentPathsButton.Click += (_, _) =>
             {
-                var dlg = new System.Windows.Forms.FolderBrowserDialog
-                {
-                    Description = "Chọn thư mục chứa ffmpeg.exe và ffprobe.exe"
-                };
-                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                {
-                    FfmpegFolderText.Text = dlg.SelectedPath;
-                    var prefs = FfmpegPathPreferencesStore.Load();
-                    prefs.FfmpegPath = dlg.SelectedPath;
-                    FfmpegPathPreferencesStore.Save(prefs);
-                }
-            };
-            VerifyFfmpegButton.Click += (_, _) =>
-            {
-                var folder = FfmpegFolderText.Text?.Trim() ?? string.Empty;
-                var ffmpegOk = File.Exists(System.IO.Path.Combine(folder, "ffmpeg.exe"));
-                var ffprobeOk = File.Exists(System.IO.Path.Combine(folder, "ffprobe.exe"));
-
-                if (ffmpegOk && ffprobeOk)
-                {
-                    FfmpegVerifyText.Text = "✓ ffmpeg.exe và ffprobe.exe tìm thấy";
-                    FfmpegVerifyText.Foreground = new SolidColorBrush(Color.FromRgb(74, 222, 128));
-                    FfmpegVerifyBadge.Background = new SolidColorBrush(Color.FromArgb(0x1A, 74, 222, 128));
-                }
-                else
-                {
-                    var missing = (!ffmpegOk ? "ffmpeg.exe" : "") +
-                                  (!ffmpegOk && !ffprobeOk ? ", " : "") +
-                                  (!ffprobeOk ? "ffprobe.exe" : "");
-                    FfmpegVerifyText.Text = $"✗ Không tìm thấy: {missing}";
-                    FfmpegVerifyText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
-                    FfmpegVerifyBadge.Background = new SolidColorBrush(Color.FromArgb(0x1A, 248, 113, 113));
-                }
+                var owner = Window.GetWindow(this);
+                var dlg = new EnvironmentPathsConfigDialog(owner);
+                dlg.ShowDialog();
             };
             BrowseFrameOutputFolderButton.Click += (_, _) =>
             {
@@ -448,13 +419,6 @@ namespace FlowMy.Views.NodeControls
             OutputPathText.TextChanged += (_, _) => RefreshOutputsSummaryUi();
             SaveSettingsButton.Click += (_, _) =>
             {
-                var folder = FfmpegFolderText.Text?.Trim() ?? string.Empty;
-                if (!string.IsNullOrWhiteSpace(folder))
-                {
-                    var prefs = FfmpegPathPreferencesStore.Load();
-                    prefs.FfmpegPath = folder;
-                    FfmpegPathPreferencesStore.Save(prefs);
-                }
 
                 var frameFolder = FrameOutputFolderText.Text?.Trim() ?? string.Empty;
                 EnsureDirectoryExists(frameFolder);
@@ -858,7 +822,7 @@ namespace FlowMy.Views.NodeControls
             TitleText.Foreground = primary;
             IconView.Fill = primary;
             VideoPathText.Foreground = secondary;
-            HwBadgeText.Foreground = onAccent;
+            UpdateHwBadgeUi();
         }
 
         private void InitializeIcon()
@@ -1085,7 +1049,7 @@ namespace FlowMy.Views.NodeControls
                 RefreshOutputsSummaryUi();
             }
             if (propertyName == nameof(VideoProcessingNode.SourceFps)) UpdateFrameExtractionPreview();
-            if (propertyName == nameof(VideoProcessingNode.PreferredHwAccel)) HwBadgeText.Text = _node.PreferredHwAccel;
+            if (propertyName == nameof(VideoProcessingNode.PreferredHwAccel)) UpdateHwBadgeUi();
             if (propertyName == nameof(VideoProcessingNode.UseDialogVideoConfig))
             {
                 _suppressControlSync = true;
@@ -1307,7 +1271,7 @@ namespace FlowMy.Views.NodeControls
         {
             var path = _node.VideoPath?.Trim() ?? string.Empty;
             VideoPathText.Text = string.IsNullOrWhiteSpace(path) ? "Chua chon file video" : path;
-            HwBadgeText.Text = (_node.PreferredHwAccel ?? "none").ToUpperInvariant();
+            UpdateHwBadgeUi();
             StatFpsText.Text = $"{_node.SourceFps:0.##}";
             StatResolutionText.Text = PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--";
             StatDurationText.Text = FormatTime(TimeSpan.FromSeconds(GetNaturalDurationSeconds()));
@@ -3359,14 +3323,33 @@ namespace FlowMy.Views.NodeControls
             TitleText.Foreground = textPrimary;
             if (IconView != null)
                 IconView.Fill = textPrimary;
-            if (HwBadgeText != null)
-                HwBadgeText.Foreground = (Brush)Resources["ThemeOnAccentTextBrush"];
+            UpdateHwBadgeUi();
 
             ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
             SetTransportIcons();
             SyncUserControlRoundedClip();
             UpdateBottomBarGroupHighlight(Math.Max(0, TabNavList.SelectedIndex));
             ApplyThemeBrushes(GetTextBrush(_node.ColorKey));
+        }
+
+        private void UpdateHwBadgeUi()
+        {
+            if (HwBadge == null) return;
+
+            var hw = (_node?.PreferredHwAccel ?? string.Empty).Trim().ToLowerInvariant();
+            bool isCudaOrGpu = !string.IsNullOrEmpty(hw) && hw != "cpu" && hw != "none";
+
+            if (isCudaOrGpu)
+            {
+                HwBadge.Background = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+                var label = string.IsNullOrWhiteSpace(_node?.PreferredHwAccel) ? "CUDA" : _node.PreferredHwAccel.ToUpperInvariant();
+                HwBadge.ToolTip = label;
+            }
+            else
+            {
+                HwBadge.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+                HwBadge.ToolTip = "CPU";
+            }
         }
 
         private void SetForegroundIfExists(string elementName, Brush brush)

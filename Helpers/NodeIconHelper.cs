@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using FlowMy.Models;
 
 namespace FlowMy.Helpers
@@ -41,7 +41,7 @@ namespace FlowMy.Helpers
                 NodeType.AssignData => "arrows-left-right duotone",
                 NodeType.MediaGallery => "image-stack duotone",
                 NodeType.ImageProcessing => "adobe_pts Custom-icons.color",
-                NodeType.VideoProcessing => "circle-video sharp-light",
+                NodeType.VideoProcessing => "video regular",
                 NodeType.Code => "code duotone-regular",
                 NodeType.HtmlUi => "html5 brands",
                 NodeType.Folder => "folder-open duotone-thin",

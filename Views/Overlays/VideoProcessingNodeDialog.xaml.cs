@@ -37,19 +37,6 @@ namespace FlowMy.Views.Overlays
             Close();
         }
 
-        protected override void OnClosing(CancelEventArgs e)
-        {
-            try
-            {
-                _viewModel.SaveFfmpegPathPreference();
-            }
-            catch
-            {
-                // best-effort
-            }
-            base.OnClosing(e);
-        }
-
         private void VideoSourceNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
             => RefreshVideoSourceKeyOptions();
 
@@ -83,30 +70,6 @@ namespace FlowMy.Views.Overlays
         {
             if (VideoOutputFolderKeyComboBox == null) return;
             VideoOutputFolderKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.VideoOutputFolderSourceNodeId);
-        }
-
-        private void OpenGlobalEnvironmentPaths_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new EnvironmentPathsConfigDialog(this);
-            dialog.ShowDialog();
-            _viewModel.LoadFfmpegPathPreference();
-        }
-
-        private void OpenFfmpegGuideLink_Click(object sender, RequestNavigateEventArgs e)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = e.Uri.AbsoluteUri,
-                    UseShellExecute = true
-                });
-                e.Handled = true;
-            }
-            catch
-            {
-                // ignore
-            }
         }
     }
 }

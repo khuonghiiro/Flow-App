@@ -305,8 +305,8 @@ namespace FlowMy.Views.NodeControls
         {
             var handle = new Ellipse
             {
-                Width = 14,
-                Height = 14,
+                Width = 32,
+                Height = 32,
                 Fill = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
                 Stroke = new SolidColorBrush(Colors.White),
                 StrokeThickness = 1,

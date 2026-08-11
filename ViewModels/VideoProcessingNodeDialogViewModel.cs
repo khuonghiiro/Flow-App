@@ -24,7 +24,6 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _useDialogVideoConfig = true;
         [ObservableProperty] private string? _frameOutputFolderPath;
         [ObservableProperty] private string? _defaultOutputVideoPath;
-        [ObservableProperty] private string _ffmpegPath = string.Empty;
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -43,7 +42,6 @@ namespace FlowMy.ViewModels
             UseDialogVideoConfig = node.UseDialogVideoConfig;
             FrameOutputFolderPath = node.FrameOutputFolderPath;
             DefaultOutputVideoPath = node.DefaultOutputVideoPath;
-            FfmpegPath = FfmpegPathPreferencesStore.Load().FfmpegPath ?? string.Empty;
 
             RefreshAvailableNodes();
 
@@ -186,24 +184,9 @@ namespace FlowMy.ViewModels
             _videoNode.UseDialogVideoConfig = UseDialogVideoConfig;
             _videoNode.FrameOutputFolderPath = string.IsNullOrWhiteSpace(FrameOutputFolderPath) ? null : FrameOutputFolderPath;
             _videoNode.DefaultOutputVideoPath = string.IsNullOrWhiteSpace(DefaultOutputVideoPath) ? null : DefaultOutputVideoPath;
-            SaveFfmpegPathPreference();
             _videoNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
         }
 
-        public void LoadFfmpegPathPreference()
-        {
-            FfmpegPath = FfmpegPathPreferencesStore.Load().FfmpegPath ?? string.Empty;
-        }
-
-        public void SaveFfmpegPathPreference()
-        {
-            var normalized = FfmpegPathPreferencesStore.NormalizeUserInput(FfmpegPath);
-            FfmpegPath = normalized;
-            FfmpegPathPreferencesStore.Save(new FfmpegPathPreferences
-            {
-                FfmpegPath = normalized
-            });
-        }
     }
 }

@@ -162,6 +162,7 @@ namespace FlowMy.Models.Nodes
         public VideoProcessingNode()
         {
             Type = NodeType.VideoProcessing;
+            IconSize = 32;
             Title = "Video Processing";
             AudioTracks = new ObservableCollection<VideoAudioTrackConfig>();
             Overlays = new ObservableCollection<OverlayItem>();

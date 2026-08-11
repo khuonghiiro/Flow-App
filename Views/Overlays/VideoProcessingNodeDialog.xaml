@@ -329,24 +329,6 @@
                                               SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Grid>
-
-                            <!-- ⚙️ Đường dẫn FFmpeg -->
-                            <Border Background="{DynamicResource WindowBackground}"
-                                    BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="⚙️ Đường dẫn FFmpeg &amp; Thư viện Hệ thống" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,10">
-                                        Đường dẫn FFmpeg được quản lý tập trung trong cài đặt hệ thống. Nhấn nút bên dưới để xem hoặc thay đổi vị trí file ffmpeg.exe.
-                                    </TextBlock>
-                                    <Button Height="32" Content="⚙️ Mở Cấu Hình Đường Dẫn Hệ Thống (FFmpeg / Tools)"
-                                            Style="{DynamicResource PrimaryButton}"
-                                            HorizontalAlignment="Left" Padding="12,0" Cursor="Hand"
-                                            Click="OpenGlobalEnvironmentPaths_Click"/>
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

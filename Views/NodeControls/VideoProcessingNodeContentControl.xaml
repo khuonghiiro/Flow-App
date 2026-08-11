@@ -948,11 +948,10 @@
                                     Orientation="Horizontal"
                                     Margin="8,0,0,0">
                             <Border x:Name="HwBadge"
-                                    Background="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
-                                    BorderThickness="1" CornerRadius="10" Height="15" Width="15"
-                                    Margin="0,0,6,0" VerticalAlignment="Center">
-                                <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeOnAccentTextBrush}"/>
-                            </Border>
+                                    Background="#10B981"
+                                    Width="10" Height="10" CornerRadius="5"
+                                    Margin="0,0,6,0" VerticalAlignment="Center"
+                                    ToolTip="CUDA"/>
                             <Border Padding="7,8" CornerRadius="8"
                                     Background="{DynamicResource ThemeOverlayBackgroundBrush}"
                                     BorderBrush="{DynamicResource ThemeOverlayBorderBrush}" BorderThickness="1">
@@ -2098,22 +2097,11 @@
                     </ScrollViewer>
                     <ScrollViewer x:Name="SettingsTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                         <StackPanel Margin="0,2,0,0">
-                            <TextBlock Text="Đường dẫn FFmpeg" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Đường dẫn FFmpeg &amp; Hệ thống" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Thư mục chứa ffmpeg.exe, ffprobe.exe" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="FfmpegFolderText" Height="28" FontSize="11"/>
-                                        <Button x:Name="BrowseFfmpegFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
-                                    </Grid>
-                                    <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="#1A4ADE80">
-                                        <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="#4ADE80"/>
-                                    </Border>
-                                    <Button x:Name="VerifyFfmpegButton" Content="Xác minh FFmpeg" Height="30" Margin="0,8,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                    <TextBlock Text="Đường dẫn FFmpeg được quản lý tập trung trong cài đặt hệ thống." FontSize="10" Opacity="0.7" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                    <Button x:Name="OpenGlobalEnvironmentPathsButton" Content="⚙️ Cấu Hình Đường Dẫn Hệ Thống" Height="30" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                 </StackPanel>
                             </Border>
 
