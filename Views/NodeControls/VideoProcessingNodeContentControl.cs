@@ -215,7 +215,7 @@ namespace FlowMy.Views.NodeControls
             foreach (var t in allTabs) t.Visibility = Visibility.Collapsed;
 
             var idx = TabNavList.SelectedIndex;
-            var targetTab = idx switch
+            FrameworkElement targetTab = (FrameworkElement)(idx switch
             {
                 0 => GeneralTabContent,
                 1 => GradingTabContent,
@@ -225,7 +225,7 @@ namespace FlowMy.Views.NodeControls
                 5 => OutputsTabContent,
                 6 => SettingsTabContent,
                 _ => GeneralTabContent
-            };
+            });
             targetTab.Visibility = Visibility.Visible;
             targetTab.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)));
 
@@ -234,95 +234,10 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateBottomBarGroupHighlight(int tabIndex)
         {
-            Border[] groups =
-            {
-                BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
-                BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
-            };
-
-            var warmBrush = TryFindResource("ThemeWarmAccentBrush") as SolidColorBrush;
-            var inactiveBorder = TryFindResource("ThemeBottomBarGroupInactiveBorderBrush") as Brush
-                ?? TryFindResource("ThemeActionBarBorderBrush") as Brush ?? Brushes.Gray;
-            var activeBg = TryFindResource("ThemeBottomBarActiveGroupBackgroundBrush") as Brush;
-
-            for (var i = 0; i < groups.Length; i++)
-            {
-                var g = groups[i];
-                if (g == null) continue;
-
-                var active = i == tabIndex;
-                g.BorderBrush = active ? warmBrush ?? inactiveBorder : inactiveBorder;
-                g.BorderThickness = new Thickness(active ? 2 : 1);
-
-                if (active)
-                    g.Background = activeBg ?? Brushes.Transparent;
-                else
-                    g.Background = Brushes.Transparent;
-            }
-
-            UpdateActionButtonLabelVisibility();
         }
 
-        /// <summary>
-        /// Chỉ nhóm nút của tab đang chọn (<see cref="TabNavList.SelectedIndex"/>) bung label và full-width nút;
-        /// hover không còn bung (logic hover + đo chiều rộng dòng đã được bỏ, xem khối comment trong InitializeInteractiveControls).
-        /// </summary>
         private void UpdateActionButtonLabelVisibility()
         {
-            var activeIdx = Math.Max(0, TabNavList.SelectedIndex);
-            Border[] groups =
-            {
-                BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
-                BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
-            };
-
-            /*
-            Logic cũ (hover bung):
-            - availableWidth của ActionButtonsBorder → đo compact/expanded width từng nhóm → gán chỉ số “dòng” như WrapPanel compact.
-            - Nếu i == hovered index và không phải tab active: bung nếu tổng width dòng (1 nhóm expanded, còn lại compact) ≤ availableWidth.
-            Đã tắt; chỉ còn i == activeIdx bung.
-            for (...)
-            */
-
-            for (var i = 0; i < groups.Length; i++)
-            {
-                var showLabel = i == activeIdx;
-                ToggleLabelsInGroup(groups[i], showLabel);
-                ToggleButtonsInGroup(groups[i], showLabel);
-            }
-        }
-
-        private static void ToggleLabelsInGroup(DependencyObject root, bool show)
-        {
-            if (root is TextBlock tb && tb.Name.EndsWith("Label", StringComparison.Ordinal))
-            {
-                tb.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-                return;
-            }
-
-            var count = VisualTreeHelper.GetChildrenCount(root);
-            for (var i = 0; i < count; i++)
-                ToggleLabelsInGroup(VisualTreeHelper.GetChild(root, i), show);
-        }
-
-        private static void ToggleButtonsInGroup(DependencyObject root, bool expanded)
-        {
-            if (root is Button btn && btn.Visibility == Visibility.Visible)
-            {
-                if (expanded)
-                {
-                    btn.Width = double.NaN;
-                }
-                else
-                {
-                    btn.Width = 50;
-                    btn.MinWidth = 50;
-                }
-            }
-
-            var count = VisualTreeHelper.GetChildrenCount(root);
-            for (var i = 0; i < count; i++)
-                ToggleButtonsInGroup(VisualTreeHelper.GetChild(root, i), expanded);
         }
 
         private async void RunProcessingFlow()
@@ -330,6 +245,7 @@ namespace FlowMy.Views.NodeControls
             if (_host == null) return;
             try
             {
+                SwitchToLogView();
                 SyncRuntimeConfigFromUi();
                 _lastRunStartedAtUtc = DateTime.UtcNow;
                 ProgressStatusText.Text = "Running...";
@@ -492,12 +408,63 @@ namespace FlowMy.Views.NodeControls
 
         private void AppendLog(string line)
         {
+            if (string.IsNullOrWhiteSpace(line)) return;
+
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                LogTextBox.AppendText(line + Environment.NewLine);
-                LogScrollViewer.ScrollToBottom();
+                var brush = GetLogLineBrush(line, out var isBold);
+                var p = new Paragraph(new Run(line))
+                {
+                    Foreground = brush,
+                    Margin = new Thickness(0, 1, 0, 1),
+                    FontWeight = isBold ? FontWeights.Bold : FontWeights.Normal
+                };
+
+                if (LogRichTextBox.Document == null)
+                    LogRichTextBox.Document = new FlowDocument();
+
+                LogRichTextBox.Document.Blocks.Add(p);
+                LogScrollViewer.ScrollToEnd();
                 LogLineReceived?.Invoke(line);
             }));
+        }
+
+        private Brush GetLogLineBrush(string line, out bool isBold)
+        {
+            isBold = false;
+            var lower = line.ToLowerInvariant();
+
+            // 1. Success / Saved Video / Completed (Vibrant Green)
+            if (line.Contains("✓") || line.Contains("✅") || lower.Contains("[success]") || lower.Contains("[lưu video]") ||
+                lower.Contains("thành công") || lower.Contains("saved") || lower.Contains("export complete") || lower.Contains("video saved"))
+            {
+                isBold = true;
+                return new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80)); // Emerald Green #4ADE80
+            }
+
+            // 2. Error / Failed / Exception (Vibrant Red)
+            if (line.Contains("❌") || lower.Contains("[err]") || lower.Contains("[error]") || lower.Contains("failed") ||
+                lower.Contains("exception") || lower.Contains("lỗi"))
+            {
+                isBold = true;
+                return new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71)); // Crimson Red #F87171
+            }
+
+            // 3. Warning (Warm Amber/Yellow)
+            if (line.Contains("⚠") || lower.Contains("[warn]") || lower.Contains("[warning]") || lower.Contains("cảnh báo"))
+            {
+                return new SolidColorBrush(Color.FromRgb(0xFB, 0xBF, 0x24)); // Amber #FBBF24
+            }
+
+            // 4. Info / Process / Action (Cyan / Blue)
+            if (line.Contains("▶") || line.Contains("🎬") || line.Contains("🎞") || line.Contains("✂") || line.Contains("💾") ||
+                lower.Contains("[info]") || lower.Contains("[dbg]") || lower.Contains("running..."))
+            {
+                return new SolidColorBrush(Color.FromRgb(0x38, 0xBD, 0xF8)); // Sky Blue #38BDF8
+            }
+
+            // Default primary text color
+            return _isLightTheme ? new SolidColorBrush(Color.FromRgb(0x1E, 0x29, 0x3B)) : new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0));
         }
 
         private void RunOnUiThread(Action action)
@@ -525,5 +492,19 @@ namespace FlowMy.Views.NodeControls
             }));
         }
 
+        public void SwitchToLogView()
+        {
+            RunOnUiThread(() =>
+            {
+                if (PortraitVideoLogTabControl != null && PortraitVideoLogTabControl.Visibility == Visibility.Visible)
+                {
+                    PortraitVideoLogTabControl.SelectedIndex = 1;
+                }
+                if (LogScrollViewer != null)
+                {
+                    LogScrollViewer.ScrollToEnd();
+                }
+            });
+        }
     }
 }

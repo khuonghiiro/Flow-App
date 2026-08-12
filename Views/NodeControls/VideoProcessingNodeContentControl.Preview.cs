@@ -156,7 +156,7 @@ namespace FlowMy.Views.NodeControls
         private void RefreshInfoText()
         {
             var path = _node.VideoPath?.Trim() ?? string.Empty;
-            VideoPathText.Text = string.IsNullOrWhiteSpace(path) ? "Chua chon file video" : path;
+            VideoPathText.Text = string.IsNullOrWhiteSpace(path) ? "Chưa chọn file video" : path;
             UpdateHwBadgeUi();
             StatFpsText.Text = $"{_node.SourceFps:0.##}";
             StatResolutionText.Text = PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--";

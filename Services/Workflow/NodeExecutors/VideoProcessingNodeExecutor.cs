@@ -347,6 +347,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, postStabilizedPath, videoOutputDestination).ConfigureAwait(false);
                 SetOutput(videoNode, "video_output", mixedVideo);
                 SetOutput(videoNode, "video_path", mixedVideo);
+                if (!string.IsNullOrWhiteSpace(mixedVideo) && File.Exists(mixedVideo))
+                {
+                    var videoFolder = Path.GetDirectoryName(mixedVideo) ?? string.Empty;
+                    LogLine?.Invoke(videoNode, $"✅ [SUCCESS] Lưu video thành công vào thư mục: {videoFolder}");
+                    LogLine?.Invoke(videoNode, $"🎬 [INFO] Đường dẫn file video: {mixedVideo}");
+                }
                 }
 
                 var extractedAudioPath = string.Empty;
@@ -358,6 +364,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             ResolveOutputDirectory(audioOutputFolder, defaultAudioOutputFolder),
                             env.CancellationToken)
                         .ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(extractedAudioPath) && File.Exists(extractedAudioPath))
+                    {
+                        var audioFolder = Path.GetDirectoryName(extractedAudioPath) ?? string.Empty;
+                        LogLine?.Invoke(videoNode, $"✅ [SUCCESS] Trích xuất audio thành công vào thư mục: {audioFolder}");
+                    }
                 }
 
                 SetOutput(videoNode, "audio_output", extractedAudioPath);
@@ -366,6 +377,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch (Exception ex)
             {
+                LogLine?.Invoke(node as VideoProcessingNode ?? videoNode, $"❌ [ERROR] Thao tác thất bại với lỗi: {ex.Message}");
                 env.OnNodeFailed?.Invoke(node, ex.Message);
                 throw;
             }
@@ -1871,7 +1883,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static async Task<string> ResolveHwAccelAsync(bool preferGpu, CancellationToken ct)
         {
             if (!preferGpu) return "none";
-            foreach (var accel in new[] { "cuda", "d3d11va" })
+            foreach (var accel in new[] { "auto", "d3d11va", "cuda" })
             {
                 var ok = await RunProcessExitCodeAsync(ResolveBinary("ffmpeg"), new[]
                 {

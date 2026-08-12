@@ -70,7 +70,6 @@ namespace FlowMy.Views.NodeControls
                 UpdateActionButtonLabelVisibility();
             };
             */
-            ActionButtonsBorder.SizeChanged += (_, _) => UpdateActionButtonLabelVisibility();
             SizeChanged += (_, _) =>
             {
                 SyncUserControlRoundedClip();
@@ -91,7 +90,7 @@ namespace FlowMy.Views.NodeControls
                 UpdateWatermarkPreviewUi();
             };
 
-            OpenVideoButton.Click += (_, _) => SelectVideo();
+            OpenVideoButtonHeader.Click += (_, _) => SelectVideo();
             //OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
             Aspect169.Checked += (_, _) => SetAspectRatio(16, 9, false);
             Aspect916.Checked += (_, _) => SetAspectRatio(9, 16, false);
@@ -107,60 +106,31 @@ namespace FlowMy.Views.NodeControls
             ToggleNodeSizeButton.Click += (_, _) => ToggleNodeZoom();
             RunProcessingButton.Click += (_, _) =>
             {
+                SwitchToLogView();
+                RunProcessingFlow();
+            };
+            SaveEditedVideoButton.Click += (_, _) =>
+            {
+                SwitchToLogView();
+                _node.ExportVideoEnabled = true;
+                AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
                 RunProcessingFlow();
             };
             ExtractFramesButton.Click += (_, _) =>
             {
+                SwitchToLogView();
                 RunSpecificOperation("extract_frames");
             };
-            BurnSubtitleButton.Click += (_, _) =>
+            SnapshotButton.Click += (_, _) =>
             {
-                var dlg = new OpenFileDialog
-                {
-                    Title = "Chọn file subtitle",
-                    Filter = "Subtitle Files|*.srt;*.ass;*.vtt;*.sub|All|*.*"
-                };
-                if (dlg.ShowDialog() == true)
-                {
-                    _node.SubtitlePath = dlg.FileName;
-                    _node.BurnSubtitleEnabled = true;
-                    RunSpecificOperation("burn_subtitle");
-                }
+                SwitchToLogView();
+                TakeSnapshot();
             };
-            QuickWatermarkButton.Click += (_, _) => TabNavList.SelectedIndex = 2;
-            ConvertFormatButton.Click += (_, _) => TabNavList.SelectedIndex = 4;
-            QuickTrimButton.Click += (_, _) =>
-            {
-                _node.TrimStartSec = PreviewMedia.Position.TotalSeconds;
-                _node.TrimEnabled = true;
-                TabNavList.SelectedIndex = 4;
-                TrimToggle.IsChecked = true;
-                RefreshInfoText();
-            };
-            SnapshotButton.Click += (_, _) => TakeSnapshot();
-            RunAllButton.Click += (_, _) =>
-            {
-                RunProcessingFlow();
-            };
-            RunExportButton.Click += (_, _) =>
-            {
-                _node.ExportVideoEnabled = true;
-                RunProcessingFlow();
-            };
-            ApplyGradingButton.Click += (_, _) =>
-            {
-                _previewEffectTemporarilyDisabled = false;
-                ApplyPreviewColorTransform();
-                RunProcessingFlow();
-            };
-            ResetGradingButton2.Click += (_, _) => ApplyGradingPreset(0, 1, 1, 0, 1);
-            ApplyOverlayToVideoActionButton.Click += (_, _) => ApplyOverlaysToVideo();
-            MixAudioButton.Click += (_, _) =>
-            {
-                _node.ExportVideoEnabled = true;
-                RunProcessingFlow();
-            };
-            ExtractAudioButton.Click += (_, _) => RunSpecificOperation("extract_audio");
+            ResetGradingButton2.Click += (_, _) => ResetGradingTabToDefaults();
+            ResetFiltersTabButton.Click += (_, _) => ResetFiltersTabToDefaults();
+            ResetAudioTabButton.Click += (_, _) => ResetAudioTabToDefaults();
+            ResetExportTabButton.Click += (_, _) => ResetExportTabToDefaults();
+            SaveSettingsTabButton.Click += (_, _) => SaveSettingsTabConfig();
             ToggleQuickGradeButton.Click += (_, _) =>
             {
                 QuickGradingPanel.Visibility = QuickGradingPanel.Visibility == Visibility.Visible
@@ -253,15 +223,17 @@ namespace FlowMy.Views.NodeControls
                 _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
             };
             OpenOutputVideoButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
-            OpenFramesFolderButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
             OpenOutputVideoActionButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
+            OpenFramesFolderButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
             OpenFramesFolderActionButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
-            OpenOutputVideoFolderQuickButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
-            OpenFramesFolderQuickButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
             CopyLogButton.Click += (_, _) =>
             {
-                if (!string.IsNullOrWhiteSpace(LogTextBox.Text))
-                    Clipboard.SetText(LogTextBox.Text);
+                if (LogRichTextBox.Document != null)
+                {
+                    var range = new TextRange(LogRichTextBox.Document.ContentStart, LogRichTextBox.Document.ContentEnd);
+                    if (!string.IsNullOrWhiteSpace(range.Text))
+                        Clipboard.SetText(range.Text);
+                }
             };
 
             OpenGlobalEnvironmentPathsButton.Click += (_, _) =>
@@ -319,26 +291,6 @@ namespace FlowMy.Views.NodeControls
                 RefreshOutputsSummaryUi();
             };
             OutputPathText.TextChanged += (_, _) => RefreshOutputsSummaryUi();
-            SaveSettingsButton.Click += (_, _) =>
-            {
-
-                var frameFolder = FrameOutputFolderText.Text?.Trim() ?? string.Empty;
-                EnsureDirectoryExists(frameFolder);
-                _node.FrameOutputFolderPath = frameFolder;
-
-                var audioFolder = AudioOutputFolderText.Text?.Trim() ?? string.Empty;
-                EnsureDirectoryExists(audioFolder);
-                _node.AudioOutputFolderPath = audioFolder;
-
-                var outputPath = DefaultOutputVideoPathText.Text?.Trim() ?? string.Empty;
-                EnsureParentDirectoryExists(outputPath);
-                _node.DefaultOutputVideoPath = outputPath;
-                if (!_node.UseDialogVideoConfig)
-                    _node.OutputPathOverride = outputPath;
-                OutputPathText.Text = outputPath;
-                AppendLog("✓ Đã lưu cài đặt.");
-                RefreshOutputsSummaryUi();
-            };
 
             PreviewMedia.MediaOpened += async (_, _) =>
             {
@@ -553,7 +505,15 @@ namespace FlowMy.Views.NodeControls
                 ProgressBarHitArea.Opacity = 1.0;
             };
             BrowseOutputButton.Click += (_, _) => BrowseOutputPath();
-            ClearLogButton.Click += (_, _) => LogTextBox.Clear();
+            ClearLogButton.Click += (_, _) => LogRichTextBox.Document?.Blocks?.Clear();
+            CopyLogButton.Click += (_, _) =>
+            {
+                if (LogRichTextBox.Document != null)
+                {
+                    var range = new TextRange(LogRichTextBox.Document.ContentStart, LogRichTextBox.Document.ContentEnd);
+                    Clipboard.SetText(range.Text);
+                }
+            };
             AddAudioTrackButton.Click += (_, _) => _node.AudioTracks.Add(new VideoAudioTrackConfig());
             AddTextOverlayItemButton.Click += (_, _) => AddOverlayItem("text");
             AddImageOverlayItemButton.Click += (_, _) => AddOverlayItem("image");

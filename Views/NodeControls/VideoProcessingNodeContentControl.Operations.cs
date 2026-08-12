@@ -1151,7 +1151,6 @@ namespace FlowMy.Views.NodeControls
             {
                 OutputVideoPathText.Text = GetDefaultVideoOutputFolder();
                 OpenOutputVideoButton.IsEnabled = false;
-                OpenOutputVideoActionButton.IsEnabled = false;
             }
             else
             {
@@ -1159,7 +1158,6 @@ namespace FlowMy.Views.NodeControls
                 var outputDir = System.IO.Path.GetDirectoryName(outputVideoPath) ?? string.Empty;
                 var ready = File.Exists(outputVideoPath) || Directory.Exists(outputDir);
                 OpenOutputVideoButton.IsEnabled = ready;
-                OpenOutputVideoActionButton.IsEnabled = ready;
             }
 
             var framesDir = (_node.UseDialogVideoConfig
@@ -1171,7 +1169,6 @@ namespace FlowMy.Views.NodeControls
             {
                 OutputFramesFolderText.Text = "Chưa xác định thư mục frame";
                 OpenFramesFolderButton.IsEnabled = false;
-                OpenFramesFolderActionButton.IsEnabled = false;
                 OpenFramesFolderButton.Visibility = Visibility.Visible;
             }
             else
@@ -1179,7 +1176,6 @@ namespace FlowMy.Views.NodeControls
                 OutputFramesFolderText.Text = framesDir;
                 var framesReady = Directory.Exists(framesDir) || !_node.OutputBase64;
                 OpenFramesFolderButton.IsEnabled = framesReady;
-                OpenFramesFolderActionButton.IsEnabled = framesReady;
                 OpenFramesFolderButton.Visibility = Visibility.Visible;
             }
 
@@ -1222,6 +1218,32 @@ namespace FlowMy.Views.NodeControls
                 "Downloads",
                 "flow-video");
             return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
+        }
+
+        public string GetCurrentVideoOutputFolder()
+        {
+            var overridePath = (_node.OutputPathOverride ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                try
+                {
+                    var dir = System.IO.Path.GetDirectoryName(overridePath);
+                    if (!string.IsNullOrWhiteSpace(dir)) return dir;
+                }
+                catch { }
+            }
+            var defaultPath = (_node.DefaultOutputVideoPath ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(defaultPath))
+            {
+                try
+                {
+                    var dir = System.IO.Path.GetDirectoryName(defaultPath);
+                    if (!string.IsNullOrWhiteSpace(dir)) return dir;
+                    return defaultPath;
+                }
+                catch { }
+            }
+            return GetDefaultVideoOutputFolder();
         }
 
         private string GetVideoFileNameStem()
@@ -1436,6 +1458,108 @@ namespace FlowMy.Views.NodeControls
 
         private static string FormatTime(TimeSpan value)
             => value.TotalHours >= 1 ? $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}" : $"{value.Minutes:00}:{value.Seconds:00}";
+
+        public void ResetGradingTabToDefaults()
+        {
+            _previewEffectTemporarilyDisabled = false;
+            _node.Brightness = 0;
+            _node.Contrast = 1.0;
+            _node.Saturation = 1.0;
+            _node.Hue = 0;
+            _node.Gamma = 1.0;
+
+            _node.SharpenEnabled = false;
+            _node.SharpenStrength = 1.0;
+
+            _node.DenoiseEnabled = false;
+            _node.DenoiseStrength = 3.0;
+
+            _node.BlurEnabled = false;
+            _node.BlurRadius = 3.0;
+
+            _node.RotationDegrees = 0;
+            _node.FlipH = false;
+            _node.FlipV = false;
+
+            _node.StabilizeEnabled = false;
+            _node.SpeedFactor = 1.0;
+
+            SyncControlValuesFromModel();
+            ApplyPreviewColorTransform();
+            AppendLog("🔄 Đã đặt lại mặc định các thông số bộ lọc màu.");
+        }
+
+        public void ResetFiltersTabToDefaults()
+        {
+            _node.WatermarkEnabled = false;
+            _node.WatermarkImagePath = string.Empty;
+
+            _node.TextOverlayEnabled = false;
+            _node.OverlayText = string.Empty;
+
+            _node.FrameLabelEnabled = false;
+            _node.FrameLabelTemplate = "Frame {index} - {time}";
+            _node.FrameLabelX = 0;
+            _node.FrameLabelY = 0;
+            _node.FrameLabelFontSize = 18;
+            _node.FrameLabelTimeFormat = "HHMMSS";
+            _node.FrameLabelPaddingLeft = 10;
+            _node.FrameLabelPaddingTop = 6;
+            _node.FrameLabelPaddingRight = 10;
+            _node.FrameLabelPaddingBottom = 6;
+            _node.FrameLabelTextColor = "black";
+            _node.FrameLabelBackgroundColor = "white";
+            _node.FrameLabelDebugSamplesEnabled = false;
+
+            _node.Overlays.Clear();
+
+            SyncControlValuesFromModel();
+            UpdateWatermarkPreviewUi();
+            UpdateFrameLabelPreviewUi();
+            AppendLog("🔄 Đã đặt lại cài đặt tab chèn ảnh/nhãn/overlay.");
+        }
+
+        public void ResetAudioTabToDefaults()
+        {
+            _node.SourceAudioEnabled = true;
+            _node.AudioTracks.Clear();
+
+            SyncControlValuesFromModel();
+            AppendLog("🔄 Đã đặt lại cài đặt âm thanh về mặc định.");
+        }
+
+        public void ResetExportTabToDefaults()
+        {
+            _node.OutputFormat = "mp4_h264";
+            _node.EncoderPreset = "medium";
+            _node.Crf = 23;
+            _node.TwoPassEnabled = false;
+
+            _node.AudioCodec = "aac";
+            _node.AudioBitrate = "192k";
+
+            _frameResizeScale = 1.0;
+            _node.FrameResizeScale = 1.0;
+            _node.ResolutionScale = 1.0;
+
+            _node.TrimEnabled = false;
+            _node.TrimStartSec = 0;
+            _node.TrimEndSec = 0;
+            _node.OutputPathOverride = string.Empty;
+
+            SyncControlValuesFromModel();
+            AppendLog("🔄 Đã đặt lại cấu hình xuất file về mặc định.");
+        }
+
+        public void SaveSettingsTabConfig()
+        {
+            SyncRuntimeConfigFromUi();
+            _node.RaisePropertyChanged(nameof(VideoProcessingNode.FrameOutputFolderPath));
+            _node.RaisePropertyChanged(nameof(VideoProcessingNode.DefaultOutputVideoPath));
+            _node.RaisePropertyChanged(nameof(VideoProcessingNode.AudioOutputFolderPath));
+            _node.RaisePropertyChanged(nameof(VideoProcessingNode.UseDialogVideoConfig));
+            AppendLog("💾 Đã lưu cấu hình cài đặt node thành công!");
+        }
 
         private static Brush GetTextBrush(string? colorKey)
         {
