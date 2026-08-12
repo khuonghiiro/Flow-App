@@ -2161,6 +2161,9 @@ namespace FlowMy.Views
             // Bắt đầu chạy: sau khi Dispatcher từng bị nghẽn, storyboard dash đôi khi không còn bám IsExecutionActive — làm mới toàn bộ rồi áp lại cạnh đang active.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsExecuting) && ViewModel?.IsExecuting == true)
             {
+                if (ViewModel?.SuppressExecutionVisualRendering == true)
+                    return;
+
                 LogCanvasDiagnostic("EXEC_STATE", $"Workflow Execution STARTED. RunsInFlight={ViewModel?.ManualExecutionRunsInFlight}");
                 Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                 {
@@ -2178,6 +2181,9 @@ namespace FlowMy.Views
             // Dùng Send để đồng bộ trạng thái kết thúc ngay với runtime.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsExecuting) && ViewModel?.IsExecuting == false)
             {
+                if (ViewModel?.SuppressExecutionVisualRendering == true)
+                    return;
+
                 LogCanvasDiagnostic("EXEC_STATE", "Workflow Execution ENDED.");
                 Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                 {

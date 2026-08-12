@@ -127,6 +127,28 @@ namespace FlowMy.ViewModels
             {
                 _executionVisualizer.SuppressExecutionVisualRendering = value;
             }
+
+            if (value)
+            {
+                void ClearSuppressedVisualState()
+                {
+                    ActiveExecutionConnection = null;
+                    RunningNodes.Clear();
+                    RunningNodesOverflowText = string.Empty;
+                }
+
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher == null || dispatcher.CheckAccess())
+                    ClearSuppressedVisualState();
+                else
+                    dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(ClearSuppressedVisualState));
+
+                lock (_executionTraceUiQueueLock)
+                {
+                    _executionTraceUiQueue.Clear();
+                    _executionTraceUiFlushQueued = false;
+                }
+            }
         }
 
         [ObservableProperty]
@@ -1459,7 +1481,7 @@ namespace FlowMy.ViewModels
 
         private void TraceNodeStarted(WorkflowNode node, WorkflowConnection? incoming, string laneId)
         {
-            if (!EnableExecutionTraceLog || node == null) return;
+            if (SuppressExecutionVisualRendering || !EnableExecutionTraceLog || node == null) return;
             // Ưu tiên AsyncLocal (an toàn với AsyncTask dispatch song song) rồi mới fallback field chia sẻ.
             var ambient = FlowMy.Services.Workflow.WorkflowExecutionContext.CurrentExecutionId;
             var executionKey = !string.IsNullOrWhiteSpace(ambient)
@@ -1661,7 +1683,7 @@ namespace FlowMy.ViewModels
 
         private void TraceNodeCompleted(WorkflowNode node, TimeSpan elapsed)
         {
-            if (!EnableExecutionTraceLog || node == null) return;
+            if (SuppressExecutionVisualRendering || !EnableExecutionTraceLog || node == null) return;
             var ambient = FlowMy.Services.Workflow.WorkflowExecutionContext.CurrentExecutionId;
             var executionKey = !string.IsNullOrWhiteSpace(ambient)
                 ? ambient!
@@ -1720,7 +1742,7 @@ namespace FlowMy.ViewModels
         /// <summary>Cập nhật card gốc "Run …" (không gắn với WorkflowNode nên không qua TraceNodeCompleted).</summary>
         private void TraceRunRootSetStatus(string executionId, string status, string? elapsedText = null)
         {
-            if (!EnableExecutionTraceLog || string.IsNullOrWhiteSpace(executionId)) return;
+            if (SuppressExecutionVisualRendering || !EnableExecutionTraceLog || string.IsNullOrWhiteSpace(executionId)) return;
             var rootKey = NormalizeRootExecutionId(executionId);
             QueueExecutionTraceUiUpdate(() =>
             {
@@ -1738,7 +1760,7 @@ namespace FlowMy.ViewModels
 
         private void TraceNodeFailed(WorkflowNode node, string errorMessage)
         {
-            if (!EnableExecutionTraceLog || node == null) return;
+            if (SuppressExecutionVisualRendering || !EnableExecutionTraceLog || node == null) return;
             var ambient = FlowMy.Services.Workflow.WorkflowExecutionContext.CurrentExecutionId;
             var executionKey = !string.IsNullOrWhiteSpace(ambient)
                 ? ambient!
@@ -1942,11 +1964,25 @@ namespace FlowMy.ViewModels
 
         private void RegisterRunningNodeVisual(WorkflowNode node)
         {
+            bool wasEmpty;
+            int total;
             lock (_runningNodesBookkeepingLock)
             {
+                wasEmpty = !_nodeRunningRefCount.Any(kvp => kvp.Value > 0);
                 _nodeRunningRefCount.TryGetValue(node, out var c);
                 _nodeRunningRefCount[node] = c + 1;
+                total = _nodeRunningRefCount.Count(kvp => kvp.Value > 0);
             }
+
+            if (SuppressExecutionVisualRendering)
+            {
+                if (ShouldKeepNodeRenderedWhenExecutionVisualsSuppressed(node))
+                    ScheduleRunningNodesPanelRefresh();
+                else if (wasEmpty && total > 0)
+                    PostToUi(() => HasRunningNodes = true, DispatcherPriority.ContextIdle);
+                return;
+            }
+
             ScheduleRunningNodesPanelRefresh();
         }
 
@@ -1955,10 +1991,14 @@ namespace FlowMy.ViewModels
         {
             if (nodes == null || nodes.Count == 0) return;
             var batch = nodes.ToList();
+            var touchesRenderedHeadlessNode = false;
+            int total;
             lock (_runningNodesBookkeepingLock)
             {
                 foreach (var node in batch)
                 {
+                    if (ShouldKeepNodeRenderedWhenExecutionVisualsSuppressed(node))
+                        touchesRenderedHeadlessNode = true;
                     if (!_nodeRunningRefCount.TryGetValue(node, out var c))
                         continue;
                     c--;
@@ -1967,7 +2007,16 @@ namespace FlowMy.ViewModels
                     else
                         _nodeRunningRefCount[node] = c;
                 }
+                total = _nodeRunningRefCount.Count(kvp => kvp.Value > 0);
             }
+
+            if (SuppressExecutionVisualRendering)
+            {
+                if (total == 0 || touchesRenderedHeadlessNode)
+                    ScheduleRunningNodesPanelRefresh();
+                return;
+            }
+
             ScheduleRunningNodesPanelRefresh();
         }
 
@@ -2021,9 +2070,23 @@ namespace FlowMy.ViewModels
                     : visibleNodes;
             }
 
-            RunningNodes.Clear();
-            foreach (var node in snapshot)
-                RunningNodes.Add(node);
+            var changed = RunningNodes.Count != snapshot.Count;
+            if (!changed)
+            {
+                for (var i = 0; i < snapshot.Count; i++)
+                {
+                    if (ReferenceEquals(RunningNodes[i], snapshot[i])) continue;
+                    changed = true;
+                    break;
+                }
+            }
+
+            if (changed)
+            {
+                RunningNodes.Clear();
+                foreach (var node in snapshot)
+                    RunningNodes.Add(node);
+            }
 
             HasRunningNodes = total > 0;
             RunningNodesOverflowText = SuppressExecutionVisualRendering && visibleTotal > snapshot.Count
