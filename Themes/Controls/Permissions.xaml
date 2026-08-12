@@ -34,7 +34,7 @@
 
     <Storyboard x:Key="SmoothGlowAnimation">
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
-                         From="15" To="30" Duration="0:0:2"
+                         From="8" To="14" Duration="0:0:2"
                          RepeatBehavior="Forever"
                          AutoReverse="True">
             <DoubleAnimation.EasingFunction>
@@ -42,7 +42,7 @@
             </DoubleAnimation.EasingFunction>
         </DoubleAnimation>
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
-                         From="0.3" To="0.7" Duration="0:0:2"
+                         From="0.12" To="0.24" Duration="0:0:2"
                          RepeatBehavior="Forever"
                          AutoReverse="True">
             <DoubleAnimation.EasingFunction>
@@ -135,14 +135,14 @@
                 <Setter Property="Background" Value="{DynamicResource PrimaryColor}"/>
                 <Setter Property="Effect">
                     <Setter.Value>
-                        <DropShadowEffect Color="#FF2563EB" BlurRadius="20" ShadowDepth="0" Opacity="0.5"/>
+                        <DropShadowEffect Color="{DynamicResource PrimaryShadowColor}" BlurRadius="8" ShadowDepth="0" Opacity="0.18"/>
                     </Setter.Value>
                 </Setter>
                 <DataTrigger.EnterActions>
                     <BeginStoryboard>
                         <Storyboard>
                             <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
-                                             From="15" To="30" Duration="0:0:2"
+                                             From="8" To="14" Duration="0:0:2"
                                              RepeatBehavior="Forever"
                                              AutoReverse="True">
                                 <DoubleAnimation.EasingFunction>
@@ -211,7 +211,7 @@
         <Setter Property="Margin" Value="12"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect Color="#FF000000" BlurRadius="15" Opacity="0.2" ShadowDepth="0"/>
+                <DropShadowEffect Color="{DynamicResource ShadowColor}" BlurRadius="4" Opacity="0.08" ShadowDepth="0"/>
             </Setter.Value>
         </Setter>
         <Setter Property="UseLayoutRounding" Value="True"/>
@@ -227,7 +227,7 @@
                         <Storyboard>
                              <!--Chỉ giữ shadow animation--> 
                             <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
-                               To="25" Duration="0:0:0.3">
+                               To="8" Duration="0:0:0.3">
                                 <DoubleAnimation.EasingFunction>
                                     <CubicEase EasingMode="EaseOut"/>
                                 </DoubleAnimation.EasingFunction>
@@ -239,7 +239,7 @@
                     <BeginStoryboard>
                         <Storyboard>
                             <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
-                               To="15" Duration="0:0:0.3">
+                               To="4" Duration="0:0:0.3">
                                 <DoubleAnimation.EasingFunction>
                                     <CubicEase EasingMode="EaseOut"/>
                                 </DoubleAnimation.EasingFunction>
@@ -255,7 +255,7 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Effect">
                     <Setter.Value>
-                        <DropShadowEffect Color="#FF22C55E" BlurRadius="12" ShadowDepth="0" Opacity="0.3"/>
+                        <DropShadowEffect Color="{DynamicResource PrimaryShadowColor}" BlurRadius="6" ShadowDepth="0" Opacity="0.14"/>
                     </Setter.Value>
                 </Setter>
             </DataTrigger>
@@ -266,7 +266,7 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Effect">
                     <Setter.Value>
-                        <DropShadowEffect Color="#FF2563EB" BlurRadius="18" ShadowDepth="0" Opacity="0.4"/>
+                        <DropShadowEffect Color="{DynamicResource PrimaryShadowColor}" BlurRadius="8" ShadowDepth="0" Opacity="0.16"/>
                     </Setter.Value>
                 </Setter>
                 
@@ -474,7 +474,7 @@
         <Setter Property="Margin" Value="12"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect Color="#FF000000" BlurRadius="20" Opacity="0.25" ShadowDepth="0"/>
+                <DropShadowEffect Color="{DynamicResource ShadowColor}" BlurRadius="6" Opacity="0.10" ShadowDepth="0"/>
             </Setter.Value>
         </Setter>
     </Style>

@@ -10,9 +10,9 @@
         <Setter Property="Foreground"               Value="{DynamicResource TextBrush}"/>
         <Setter Property="Background"               Value="{DynamicResource TextBoxBackground}"/>
         <Setter Property="BorderBrush"              Value="{DynamicResource ControlBorderBrush}"/>
-        <Setter Property="BorderThickness"          Value="1"/>
+        <Setter Property="BorderThickness"          Value="{DynamicResource ControlBorderThickness}"/>
         <Setter Property="FontSize"                 Value="13"/>
-        <Setter Property="Padding"                  Value="10,0"/>
+        <Setter Property="Padding"                  Value="{DynamicResource InputPadding}"/>
         <Setter Property="Height"                   Value="34"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="CaretBrush"               Value="{DynamicResource TextBrush}"/>
@@ -36,7 +36,7 @@
                     <!-- Outer focus ring layer -->
                     <Grid>
                         <Border x:Name="focusRing"
-                                CornerRadius="9"
+                                CornerRadius="{DynamicResource PopupCornerRadius}"
                                 BorderThickness="2"
                                 BorderBrush="Transparent"
                                 Margin="-2"
@@ -45,7 +45,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="7"
+                                CornerRadius="{DynamicResource ControlCornerRadius}"
                                 SnapsToDevicePixels="True"
                                 UseLayoutRounding="True">
                             <ScrollViewer x:Name="PART_ContentHost"
@@ -213,7 +213,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"/>
+                                CornerRadius="{DynamicResource PanelCornerRadius}"/>
                         <TextBlock Text="👤" FontSize="15" Foreground="{DynamicResource TextMuted}"
                                    VerticalAlignment="Center" HorizontalAlignment="Left"
                                    Margin="10,0,0,0" IsHitTestVisible="False"/>

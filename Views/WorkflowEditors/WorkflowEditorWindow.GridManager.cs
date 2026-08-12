@@ -20,9 +20,10 @@ namespace FlowMy.Views
         {
             if (_gridPatternService == null || _colorThemeService == null) return;
 
-            // Use CanvasGridBrush for theme-aware grid colors
+            // Use theme-aware grid colors and canvas background so the pattern stays subtle/readable.
             var gridColor = _colorThemeService.GetColor("CanvasGridBrush") ?? Colors.LightGray;
-            _gridPatternService.UpdatePattern(_currentGridType, gridColor);
+            var canvasBackgroundColor = _colorThemeService.GetColor("CanvasBackgroundBrush");
+            _gridPatternService.UpdatePattern(_currentGridType, gridColor, canvasBackgroundColor);
         }
 
 

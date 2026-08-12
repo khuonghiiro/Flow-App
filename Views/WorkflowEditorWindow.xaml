@@ -1,4 +1,4 @@
-<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
+﻿<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -746,7 +746,7 @@ Cursor="Hand"
                         <!-- ===== Icon-only palette (3 columns) ===== -->
 
                         <TextBlock Text="Flow" Style="{StaticResource PaletteGroupHeaderStyle}"/>
-                        <WrapPanel Orientation="Horizontal">
+                        <WrapPanel Orientation="Horizontal" x:Name="FlowWrapPanel">
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
                                     Background="{DynamicResource SkyAzureBrush}"
                                     Tag="Start">
@@ -812,18 +812,16 @@ Cursor="Hand"
                             </Border>
                         </WrapPanel>
 
-                        <TextBlock Text="Events" Style="{StaticResource PaletteGroupHeaderStyle}"/>
-                        <WrapPanel Orientation="Horizontal" x:Name="EventsWrapPanel">
-                            <!-- KeyPressEvent -->
+                        <TextBlock Text="Control Flow" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="ControlFlowWrapPanel">
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource ChocolateBrownBrush}"
-                                    Tag="KeyPressEvent">
+                                    Background="{DynamicResource LavenderBrush}"
+                                    Tag="IfElse">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Key Press (Event)" FontWeight="Bold"/>
-                                            <TextBlock Text="Chờ đến khi nhấn đúng phím (global) thì workflow mới đi tiếp." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            <TextBlock Text="Output: key" Opacity="0.85" Margin="0,4,0,0"/>
+                                            <TextBlock Text="If / Else" FontWeight="Bold"/>
+                                            <TextBlock Text="Rẽ nhánh theo điều kiện." TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
@@ -831,11 +829,10 @@ Cursor="Hand"
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource ChocolateBrownBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                <Border Background="{DynamicResource LavenderBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
-                                                        <TextBlock Text="Key Press (Event)" Foreground="{DynamicResource TextOnChocolateBrownBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Sự kiện nhấn phím: chờ phím được nhấn (global) rồi mới đi tiếp." Foreground="{DynamicResource TextOnChocolateBrownBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Data Output: key (String)" Foreground="{DynamicResource TextOnChocolateBrownBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                        <TextBlock Text="If / Else" Foreground="{DynamicResource TextOnLavenderBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Chia nhánh theo điều kiện (if / else if / else)." Foreground="{DynamicResource TextOnLavenderBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -844,21 +841,19 @@ Cursor="Hand"
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='key duotone-regular'}"
-                                                          Fill="{DynamicResource TextOnChocolateBrownBrush}"/>
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-tree sharp-light'}"
+                                                          Fill="{DynamicResource TextOnLavenderBrush}"/>
                                 </Grid>
                             </Border>
 
-                            <!-- HotkeyPressEvent -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource IndigoBrush}"
-                                    Tag="HotkeyPressEvent">
+                                    Background="{DynamicResource ForestPineBrush}"
+                                    Tag="Delay">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Hotkey Press (Event)" FontWeight="Bold"/>
-                                            <TextBlock Text="Chờ đến khi nhấn đúng tổ hợp phím (global) thì workflow mới đi tiếp." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            <TextBlock Text="Output: key" Opacity="0.85" Margin="0,4,0,0"/>
+                                            <TextBlock Text="Delay" FontWeight="Bold"/>
+                                            <TextBlock Text="Chờ một khoảng thời gian (ms) rồi đi tiếp." TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
@@ -866,11 +861,10 @@ Cursor="Hand"
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource IndigoBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                <Border Background="{DynamicResource ForestPineBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
-                                                        <TextBlock Text="Hotkey Press (Event)" Foreground="{DynamicResource TextOnIndigoBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Sự kiện nhấn tổ hợp phím: chờ hotkey được nhấn (global) rồi mới đi tiếp." Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Data Output: key (String)" Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                        <TextBlock Text="Delay" Foreground="{DynamicResource TextOnForestPineBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Tạm dừng workflow một khoảng thời gian." Foreground="{DynamicResource TextOnForestPineBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -879,167 +873,61 @@ Cursor="Hand"
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='keyboard duotone'}"
-                                                          Fill="{DynamicResource TextOnIndigoBrush}"/>
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='timer regular'}"
+                                                          Fill="{DynamicResource TextOnForestPineBrush}"/>
                                 </Grid>
                             </Border>
 
-                            <!-- Mouse Event Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-        Background="{DynamicResource TurquoiseBrush}"
-        Tag="MouseEvent">
+                                    Background="{DynamicResource MintChocolateBrush}"
+                                    Tag="AsyncTask">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Mouse Event" FontWeight="Bold"/>
-                                            <TextBlock Text="Gửi sự kiện chuột: click trái/phải/giữa, lăn chuột lên/xuống." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Async Task" FontWeight="Bold"/>
+                                            <TextBlock Text="Chạy nhiều task song song (parallel) để tối ưu hiệu suất." TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
-
-                                <!-- Right-click: full info card -->
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource TurquoiseBrush}"
-                  CornerRadius="10"
-                  Padding="10"
-                  BorderBrush="{DynamicResource BorderColor}"
-                  BorderThickness="1">
+                                                <Border Background="{DynamicResource MintChocolateBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
-                                                        <TextBlock Text="Mouse Event" Foreground="{DynamicResource TextOnTurquoiseBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Gửi sự kiện chuột (click/giữ/lăn) với cấu hình tùy chỉnh: số lần nhấn, thời gian giữ, tốc độ lăn." Foreground="{DynamicResource TextOnTurquoiseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Async Task" Foreground="{DynamicResource TextOnMintChocolateBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Cho phép nhiều node logic chạy bất đồng bộ song song. Mỗi task branch có một port out riêng để kết nối với các node tiếp theo." Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
                                         </MenuItem>
                                     </ContextMenu>
                                 </Border.ContextMenu>
-
                                 <Grid>
-                                    <!-- Icon: mouse (Font Awesome) -->
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-      Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='computer-mouse duotone'}"
-      Fill="{DynamicResource TextOnTurquoiseBrush}"/>
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='diagram-project duotone-light'}"
+                                                          Fill="{DynamicResource TextOnMintChocolateBrush}"/>
                                 </Grid>
                             </Border>
 
-                            <!-- Macro Recorder Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource MangoTangoBrush}"
-                                    Tag="MacroRecorder">
+                            <!-- <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource MintChocolateBrush}"
+                                    Tag="AsyncTaskDispatchCollect">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Macro Recorder" FontWeight="Bold"/>
-                                            <TextBlock Text="Ghi lại và phát lại thao tác chuột/bàn phím." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            <TextBlock Text="Output: macroData" Opacity="0.85" Margin="0,4,0,0"/>
+                                            <TextBlock Text="Collect AsyncTask Results" FontWeight="Bold"/>
+                                            <TextBlock Text="Gom N kết quả từ các iteration song song của AsyncTask (parallel-safe) để đọc sau loopOut." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource MangoTangoBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Macro Recorder" Foreground="{DynamicResource TextOnMangoTangoBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Ghi lại thao tác chuột và bàn phím, sau đó phát lại tự động trong workflow." Foreground="{DynamicResource TextOnMangoTangoBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Data Output: macroData (String)" Foreground="{DynamicResource TextOnMangoTangoBrush}" Opacity="0.85" Margin="0,6,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chart-network light'}"
-                                                          Fill="{DynamicResource TextOnMangoTangoBrush}"/>
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-radio regular'}"
+                                                          Fill="{DynamicResource TextOnMintChocolateBrush}"/>
                                 </Grid>
-                            </Border>
-
-                            <!-- Border Highlight Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource AzureBlueBrush}"
-                                    Tag="BorderHighlight">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Border Highlight" FontWeight="Bold"/>
-                                            <TextBlock Text="Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            <TextBlock Text="Có thể tắt các node BorderHighlight khác trước khi chạy." Opacity="0.85" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource AzureBlueBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Border Highlight" Foreground="{DynamicResource TextOnAzureBlueBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng. Có thể tắt các node BorderHighlight khác trước khi chạy." Foreground="{DynamicResource TextOnAzureBlueBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt-lightning sharp-light'}"
-                                                          Fill="{DynamicResource TextOnAzureBlueBrush}"/>
-                                </Grid>
-                            </Border>
-                            
-                        
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource AmethystBrush}"
-                                    Tag="ActionCanVasNode"
-                                    MouseDown="NodeTemplate_MouseDown"
-                                    MouseMove="NodeTemplate_MouseMove"
-                                    MouseUp="NodeTemplate_MouseUp"
-                                    MouseEnter="NodeTemplate_MouseEnter"
-                                    MouseLeave="NodeTemplate_MouseLeave">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="240">
-                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
-                                                <Run Text="Thao tác canvas"/>
-                                            </TextBlock>
-                                            <TextBlock Text="Node được tạo bởi Node Generator."
-                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource AmethystBrush}"
-                                                        CornerRadius="10" Padding="10"
-                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Thao tác canvas"
-                                                                   Foreground="{DynamicResource TextOnAmethystBrush}"
-                                                                   FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Node tự động sinh bởi Node Generator."
-                                                                   Foreground="{DynamicResource TextOnAmethystBrush}"
-                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='square-share-nodes light'}"
-                                                          Fill="{DynamicResource TextOnAmethystBrush}"/>
-                                </Grid>
-                            </Border></WrapPanel>
+                            </Border> -->
+                        </WrapPanel>
 
                         <TextBlock Text="Loop" Style="{StaticResource PaletteGroupHeaderStyle}"/>
                         <WrapPanel Orientation="Horizontal" x:Name="LoopWrapPanel">
@@ -1214,13 +1102,303 @@ Cursor="Hand"
                                                           Fill="{DynamicResource TextOnInfoBrush}"/>
                                 </Grid>
                             </Border>
+                        </WrapPanel>
 
+                        <TextBlock Text="Events" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="EventsWrapPanel">
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource ChocolateBrownBrush}"
+                                    Tag="KeyPressEvent">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Key Press (Event)" FontWeight="Bold"/>
+                                            <TextBlock Text="Chờ đến khi nhấn đúng phím (global) thì workflow mới đi tiếp." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Output: key" Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource ChocolateBrownBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Key Press (Event)" Foreground="{DynamicResource TextOnChocolateBrownBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Sự kiện nhấn phím: chờ phím được nhấn (global) rồi mới đi tiếp." Foreground="{DynamicResource TextOnChocolateBrownBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Data Output: key (String)" Foreground="{DynamicResource TextOnChocolateBrownBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='key duotone-regular'}"
+                                                          Fill="{DynamicResource TextOnChocolateBrownBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource IndigoBrush}"
+                                    Tag="HotkeyPressEvent">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Hotkey Press (Event)" FontWeight="Bold"/>
+                                            <TextBlock Text="Chờ đến khi nhấn đúng tổ hợp phím (global) thì workflow mới đi tiếp." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Output: key" Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource IndigoBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Hotkey Press (Event)" Foreground="{DynamicResource TextOnIndigoBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Sự kiện nhấn tổ hợp phím: chờ hotkey được nhấn (global) rồi mới đi tiếp." Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Data Output: key (String)" Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='keyboard duotone'}"
+                                                          Fill="{DynamicResource TextOnIndigoBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+        Background="{DynamicResource TurquoiseBrush}"
+        Tag="MouseEvent">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Mouse Event" FontWeight="Bold"/>
+                                            <TextBlock Text="Gửi sự kiện chuột: click trái/phải/giữa, lăn chuột lên/xuống." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+
+                                <!-- Right-click: full info card -->
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource TurquoiseBrush}"
+                  CornerRadius="10"
+                  Padding="10"
+                  BorderBrush="{DynamicResource BorderColor}"
+                  BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Mouse Event" Foreground="{DynamicResource TextOnTurquoiseBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Gửi sự kiện chuột (click/giữ/lăn) với cấu hình tùy chỉnh: số lần nhấn, thời gian giữ, tốc độ lăn." Foreground="{DynamicResource TextOnTurquoiseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+
+                                <Grid>
+                                    <!-- Icon: mouse (Font Awesome) -->
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+      Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='computer-mouse duotone'}"
+      Fill="{DynamicResource TextOnTurquoiseBrush}"/>
+                                </Grid>
+                            </Border>
+                        </WrapPanel>
+
+                        <TextBlock Text="Actions / Automation" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="ActionsAutomationWrapPanel">
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource MangoTangoBrush}"
+                                    Tag="MacroRecorder">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Macro Recorder" FontWeight="Bold"/>
+                                            <TextBlock Text="Ghi lại và phát lại thao tác chuột/bàn phím." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Output: macroData" Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource MangoTangoBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Macro Recorder" Foreground="{DynamicResource TextOnMangoTangoBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Ghi lại thao tác chuột và bàn phím, sau đó phát lại tự động trong workflow." Foreground="{DynamicResource TextOnMangoTangoBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Data Output: macroData (String)" Foreground="{DynamicResource TextOnMangoTangoBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chart-network light'}"
+                                                          Fill="{DynamicResource TextOnMangoTangoBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource AzureBlueBrush}"
+                                    Tag="BorderHighlight">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Border Highlight" FontWeight="Bold"/>
+                                            <TextBlock Text="Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Có thể tắt các node BorderHighlight khác trước khi chạy." Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource AzureBlueBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Border Highlight" Foreground="{DynamicResource TextOnAzureBlueBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng. Có thể tắt các node BorderHighlight khác trước khi chạy." Foreground="{DynamicResource TextOnAzureBlueBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt-lightning sharp-light'}"
+                                                          Fill="{DynamicResource TextOnAzureBlueBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource AmethystBrush}"
+                                    Tag="ActionCanVasNode"
+                                    MouseDown="NodeTemplate_MouseDown"
+                                    MouseMove="NodeTemplate_MouseMove"
+                                    MouseUp="NodeTemplate_MouseUp"
+                                    MouseEnter="NodeTemplate_MouseEnter"
+                                    MouseLeave="NodeTemplate_MouseLeave">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
+                                                <Run Text="Thao tác canvas"/>
+                                            </TextBlock>
+                                            <TextBlock Text="Node được tạo bởi Node Generator."
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource AmethystBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Thao tác canvas"
+                                                                   Foreground="{DynamicResource TextOnAmethystBrush}"
+                                                                   FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Node tự động sinh bởi Node Generator."
+                                                                   Foreground="{DynamicResource TextOnAmethystBrush}"
+                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='square-share-nodes light'}"
+                                                          Fill="{DynamicResource TextOnAmethystBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource WineRedBrush}"
+                                    Tag="EmbedApplicationNode">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
+                                                <Run Text="Embed Application"/>
+                                            </TextBlock>
+                                            <TextBlock Text="Nhúng ứng dụng desktop vào canvas với kích thước và tương tác tùy chỉnh."
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                                            <TextBlock Margin="0,6,0,0">
+                                                <Run Text="• "/>
+                                                <Run Text="Chọn ứng dụng đang chạy" FontWeight="SemiBold"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="• "/>
+                                                <Run Text="Điều chỉnh kích thước hiển thị"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="• "/>
+                                                <Run Text="Tương tác trực tiếp hoặc chỉ xem"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="• "/>
+                                                <Run Text="Output: Handle, PID, Title"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource WineRedBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Embed Application"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Nhúng ứng dụng desktop vào canvas. Hỗ trợ nhiều ứng dụng đồng thời với kích thước tùy chỉnh."
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Chọn từ danh sách processes đang chạy"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.85" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Active window tự động nếu cần"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.85"/>
+                                                        <TextBlock Text="• Chế độ: Interactive / Display Only / Snapshot"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.85"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='desktop-arrow-down light'}"
+                                                          Fill="{DynamicResource TextOnWineRedBrush}"/>
+                                </Grid>
+                            </Border>
                         </WrapPanel>
 
                         <TextBlock Text="Logic / Data" Style="{StaticResource PaletteGroupHeaderStyle}"/>
                         <WrapPanel Orientation="Horizontal" x:Name="LogicDataWrapPanel">
-                           
-
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
                                     Background="{DynamicResource OceanBrush}"
                                     Tag="Input">
@@ -1285,7 +1463,6 @@ Cursor="Hand"
                                 </Grid>
                             </Border>
 
-                            <!-- List Out Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
 Background="{DynamicResource FluidityBrush}"
 Tag="ListOut">
@@ -1319,8 +1496,278 @@ Tag="ListOut">
                                 </Grid>
                             </Border>
 
-                                
-                            <!-- Notification Node -->
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource BerryPurpleBrush}"
+         Tag="AssignData">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Gán dữ liệu" FontWeight="Bold"/>
+                                            <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource BerryPurpleBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Gán dữ liệu" Foreground="{DynamicResource TextOnBerryPurpleBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích. Ví dụ: node Input có value sẽ đồng bộ với dữ liệu gán." Foreground="{DynamicResource TextOnBerryPurpleBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-left-right duotone'}"
+                               Fill="{DynamicResource TextOnBerryPurpleBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource VioletHazeBrush}"
+         Tag="Storage">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Storage" FontWeight="Bold"/>
+                                            <TextBlock Text="Lưu trữ dữ liệu toàn cục. Các node khác đọc theo Node + Key mà không cần nối flow." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource VioletHazeBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Storage" Foreground="{DynamicResource TextOnVioletHazeBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Node lưu trữ dữ liệu toàn cục. Các node khác có thể đọc theo Node + Key mà không cần nối flow." Foreground="{DynamicResource TextOnVioletHazeBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Giá trị được lưu vào JSON workflow để lần mở sau không mất dữ liệu." Foreground="{DynamicResource TextOnVioletHazeBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrow-progress sharp-regular'}"
+                               Fill="{DynamicResource TextOnVioletHazeBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource CrimsonRoseBrush}"
+         Tag="Callback">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Callback" FontWeight="Bold"/>
+                                            <TextBlock Text="Chạy lại workflow từ node đã chọn. Giới hạn số lần callback để tránh vòng lặp." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource CrimsonRoseBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Callback" Foreground="{DynamicResource TextOnCrimsonRoseBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Node callback - cho phép chạy lại workflow từ một node đã chọn." Foreground="{DynamicResource TextOnCrimsonRoseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Chỉ có port IN, không có port OUT. Có giới hạn số lần callback." Foreground="{DynamicResource TextOnCrimsonRoseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-turn-right regular'}"
+                               Fill="{DynamicResource TextOnCrimsonRoseBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource RetroBrush}"
+         Tag="StringSplit">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="String Split" FontWeight="Bold"/>
+                                            <TextBlock Text="Cắt chuỗi thành danh sách item dựa trên regex pattern. Output: ListItems (String[])." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource RetroBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+
+                                                    <StackPanel>
+                                                        <TextBlock Text="String Split" Foreground="{DynamicResource TextOnRetroBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Cắt chuỗi thành danh sách item dựa trên regex pattern." Foreground="{DynamicResource TextOnRetroBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Output: ListItems (String[])" Foreground="{DynamicResource TextOnRetroBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='scissors light'}"
+                               Fill="{DynamicResource TextOnRetroBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource PrussianBlueBrush}"
+         Tag="Code">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Code" FontWeight="Bold"/>
+                                            <TextBlock Text="Viết JavaScript, chọn node + key làm input, return object { key: value } làm outputs." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource PrussianBlueBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Code" Foreground="{DynamicResource TextOnPrussianBlueBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Chọn node + key làm input; viết JavaScript, return object { key: value } làm outputs. Key tùy chỉnh = tên biến trong code." Foreground="{DynamicResource TextOnPrussianBlueBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code duotone-regular'}"
+                               Fill="{DynamicResource TextOnPrussianBlueBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource SeaFoamBrush}"
+                                    Tag="KeyValueBridge">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock Text="KeyValue Bridge" FontWeight="Bold"/>
+                                            <TextBlock Text="Kênh key/value runtime chung cho một lần chạy: Pass Key (truyền key trong flow) hoặc Get Value (đọc store sau interval). Code node: biến kv[...]." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource SeaFoamBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="KeyValue Bridge" Foreground="{DynamicResource TextOnSeaFoamBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Kênh key/value runtime chung cho một lần chạy." Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Pass Key: truyền key vào store trong flow" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Get Value: đọc store sau interval" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85"/>
+                                                        <TextBlock Text="Code node: dùng biến kv[key]" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-check solid'}"
+                                                          Fill="{DynamicResource TextOnSeaFoamBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource KiwiGreenBrush}"
+                                    Tag="FlowOverwrite">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock Text="Flow Overwrite" FontWeight="Bold"/>
+                                            <TextBlock Text="Ghi đè hoặc gom mảng giá trị theo node chạy vào cuối cùng. Chỉ map node nối trực tiếp vào cổng IN." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource KiwiGreenBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Flow Overwrite" Foreground="{DynamicResource TextOnKiwiGreenBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Ghi đè hoặc gom mảng giá trị theo node chạy vào cuối cùng." Foreground="{DynamicResource TextOnKiwiGreenBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Chỉ map node nối trực tiếp vào cổng IN. Hỗ trợ Append mode để gom thành mảng." Foreground="{DynamicResource TextOnKiwiGreenBrush}" Opacity="0.85" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='merge sharp-regular'}"
+                                                          Fill="{DynamicResource TextOnKiwiGreenBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource MintChocolateBrush}"
+                                    Tag="DataFetcher">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Data Fetcher" FontWeight="Bold"/>
+                                            <TextBlock Text="Lấy output của bất kỳ node nào. Hỗ trợ chờ WebNode load xong, tự động lấy theo Timer, hoặc nhận realtime khi node nguồn hoàn thành." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Output: value" Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource MintChocolateBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Data Fetcher" Foreground="{DynamicResource TextOnMintChocolateBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Lấy giá trị output từ bất kỳ node nào trong workflow." Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Chờ WebNode load xong mới lấy" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Tự lấy theo Timer (ms / giây / phút)" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85"/>
+                                                        <TextBlock Text="• Nhận realtime khi node nguồn hoàn thành" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85"/>
+                                                        <TextBlock Text="Output: value (String)" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='inbox-out duotone-light'}"
+                                                          Fill="{DynamicResource TextOnMintChocolateBrush}"/>
+                                </Grid>
+                            </Border>
+                        </WrapPanel>
+
+                        <TextBlock Text="UI / Messages" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="UiMessagesWrapPanel">
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
                                     Background="{DynamicResource CantaloupeOrangeBrush}"
                                     Tag="Notification">
@@ -1403,7 +1850,6 @@ Tag="ListOut">
                                 </Grid>
                             </Border>
 
-                            <!-- Dynamic UI Form Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
                                     Background="{DynamicResource AubergineBrush}"
                                     Tag="DynamicUiNode"
@@ -1447,16 +1893,15 @@ Tag="ListOut">
                                                             Fill="{DynamicResource TextOnAubergineBrush}" Width="48" Height="48"/>
                                 </Grid>
                             </Border>
-                            
-                            <!-- Storage Node (global data store) -->
+
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource VioletHazeBrush}"
-         Tag="Storage">
+         Background="{DynamicResource EspressoBrownBrush}"
+         Tag="HtmlUi">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Storage" FontWeight="Bold"/>
-                                            <TextBlock Text="Lưu trữ dữ liệu toàn cục. Các node khác đọc theo Node + Key mà không cần nối flow." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="HTML UI" FontWeight="Bold"/>
+                                            <TextBlock Text="Tạo UI HTML với WebView2 (Html/Js/Css/Params). Inputs/outputs để trả value ra các node khác." TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
@@ -1464,11 +1909,10 @@ Tag="ListOut">
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource VioletHazeBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                <Border Background="{DynamicResource EspressoBrownBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
-                                                        <TextBlock Text="Storage" Foreground="{DynamicResource TextOnVioletHazeBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Node lưu trữ dữ liệu toàn cục. Các node khác có thể đọc theo Node + Key mà không cần nối flow." Foreground="{DynamicResource TextOnVioletHazeBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Giá trị được lưu vào JSON workflow để lần mở sau không mất dữ liệu." Foreground="{DynamicResource TextOnVioletHazeBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="HTML UI" Foreground="{DynamicResource TextOnEspressoBrownBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Tạo UI HTML với WebView2, cấu hình 4 tab (Html/Js/Css/Params); có thể co dãn node. Cấu hình inputs/outputs để trả value ra các node khác." Foreground="{DynamicResource TextOnEspressoBrownBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -1477,20 +1921,22 @@ Tag="ListOut">
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrow-progress sharp-regular'}"
-                               Fill="{DynamicResource TextOnVioletHazeBrush}"/>
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='html5 brands'}"
+                               Fill="{DynamicResource TextOnEspressoBrownBrush}"/>
                                 </Grid>
                             </Border>
+                        </WrapPanel>
 
-                            <!-- Callback Node -->
+                        <TextBlock Text="Files" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="FilesWrapPanel">
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource CrimsonRoseBrush}"
-         Tag="Callback">
+         Background="{DynamicResource GoldenYellowBrush}"
+         Tag="Folder">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Callback" FontWeight="Bold"/>
-                                            <TextBlock Text="Chạy lại workflow từ node đã chọn. Giới hạn số lần callback để tránh vòng lặp." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Folder" FontWeight="Bold"/>
+                                            <TextBlock Text="Chọn thư mục gốc, path con (dùng key từ inputs và {DateTime.*}), tạo folder. Output: folder, fullPath." TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
@@ -1498,11 +1944,10 @@ Tag="ListOut">
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource CrimsonRoseBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                <Border Background="{DynamicResource GoldenYellowBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
-                                                        <TextBlock Text="Callback" Foreground="{DynamicResource TextOnCrimsonRoseBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Node callback - cho phép chạy lại workflow từ một node đã chọn." Foreground="{DynamicResource TextOnCrimsonRoseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Chỉ có port IN, không có port OUT. Có giới hạn số lần callback." Foreground="{DynamicResource TextOnCrimsonRoseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Folder" Foreground="{DynamicResource TextOnGoldenYellowBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Chọn thư mục gốc, path con (dùng key từ inputs và {DateTime.*}), tạo folder. Output: folder, fullPath." Foreground="{DynamicResource TextOnGoldenYellowBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -1511,20 +1956,19 @@ Tag="ListOut">
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-turn-right regular'}"
-                               Fill="{DynamicResource TextOnCrimsonRoseBrush}"/>
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone-thin'}"
+                               Fill="{DynamicResource TextOnGoldenYellowBrush}"/>
                                 </Grid>
                             </Border>
 
-                            <!-- Gán dữ liệu Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource BerryPurpleBrush}"
-         Tag="AssignData">
+         Background="{DynamicResource ForestPineBrush}"
+         Tag="FolderFilePaths">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Gán dữ liệu" FontWeight="Bold"/>
-                                            <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="File trong thư mục" FontWeight="Bold"/>
+                                            <TextBlock Text="Liệt kê đường dẫn file trong folder; lọc đuôi; đọc nội dung (text/base64). Output: paths (JSON array)." TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
@@ -1532,10 +1976,10 @@ Tag="ListOut">
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource BerryPurpleBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                <Border Background="{DynamicResource ForestPineBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
-                                                        <TextBlock Text="Gán dữ liệu" Foreground="{DynamicResource TextOnBerryPurpleBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích. Ví dụ: node Input có value sẽ đồng bộ với dữ liệu gán." Foreground="{DynamicResource TextOnBerryPurpleBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="File trong thư mục" Foreground="{DynamicResource TextOnForestPineBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Liệt kê đường dẫn file trong một folder; lọc đuôi; tuỳ chọn đọc nội dung (text/base64). Output paths (JSON array)." Foreground="{DynamicResource TextOnForestPineBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -1544,12 +1988,115 @@ Tag="ListOut">
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-left-right duotone'}"
-                               Fill="{DynamicResource TextOnBerryPurpleBrush}"/>
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-import duotone-light'}"
+                               Fill="{DynamicResource TextOnForestPineBrush}"/>
                                 </Grid>
                             </Border>
 
-                            <!-- Gallery ảnh/video Node -->
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource CantaloupeOrangeBrush}"
+         Tag="FileDownload">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Tải file" FontWeight="Bold"/>
+                                            <TextBlock Text="Tải ảnh/video/file từ URL hoặc cURL. Output: filePath, completed, errorMessage." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource CantaloupeOrangeBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Tải file" Foreground="{DynamicResource TextOnCantaloupeOrangeBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Tải ảnh/video/file từ URL hoặc cURL; tên file có {date}/{time}/{datetime}/{index}; output filePath, completed, errorMessage." Foreground="{DynamicResource TextOnCantaloupeOrangeBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='download solid'}"
+                               Fill="{DynamicResource TextOnCantaloupeOrangeBrush}"/>
+                                </Grid>
+                            </Border>
+                        </WrapPanel>
+
+                        <TextBlock Text="Web / API" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="WebApiWrapPanel">
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource SkyAzureBrush}"
+         Tag="Web">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Web" FontWeight="Bold"/>
+                                            <TextBlock Text="WebView2: lấy cookie/bearer/access_token, input cookie từ node+key, chặn/thay request." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource SkyAzureBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Web" Foreground="{DynamicResource TextOnSkyAzureBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="WebView2: cấu hình request lấy cookie/bearer/access_token, input cookie từ node+key, chặn/thay request." Foreground="{DynamicResource TextOnSkyAzureBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Output: cookie, bearer, access_token" Foreground="{DynamicResource TextOnSkyAzureBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='internet-explorer brands'}"
+                               Fill="{DynamicResource TextOnSkyAzureBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+         Background="{DynamicResource TurquoiseBrush}"
+         Tag="HttpRequest">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="HTTP Request" FontWeight="Bold"/>
+                                            <TextBlock Text="Gửi HTTP request (GET/POST/PUT/DELETE...) với headers, params, body. Output: Status Code, Response Body, Success, Error." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource TurquoiseBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="HTTP Request" Foreground="{DynamicResource TextOnTurquoiseBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Gửi HTTP request (GET, POST, PUT, DELETE...) với headers, params, body và authorization." Foreground="{DynamicResource TextOnTurquoiseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Output: Status Code, Response Body, Headers, Success, Error" Foreground="{DynamicResource TextOnTurquoiseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='globe-pointer sharp-duotone-light'}"
+                               Fill="{DynamicResource TextOnTurquoiseBrush}"/>
+                                </Grid>
+                            </Border>
+                        </WrapPanel>
+
+                        <TextBlock Text="Media" Style="{StaticResource PaletteGroupHeaderStyle}"/>
+                        <WrapPanel Orientation="Horizontal" x:Name="MediaWrapPanel">
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource CharcoalMistBrush}"
          Tag="MediaGallery">
@@ -1582,7 +2129,6 @@ Tag="ListOut">
                                 </Grid>
                             </Border>
 
-                            <!-- Xử lý ảnh (Ffmpeg/GPU) Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource CharcoalDarkBrush}"
          Tag="ImageProcessing" Padding="0">
@@ -1647,275 +2193,6 @@ Tag="ListOut">
                                 </Grid>
                             </Border>
 
-                            <!-- Code Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource PrussianBlueBrush}"
-         Tag="Code">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Code" FontWeight="Bold"/>
-                                            <TextBlock Text="Viết JavaScript, chọn node + key làm input, return object { key: value } làm outputs." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource PrussianBlueBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Code" Foreground="{DynamicResource TextOnPrussianBlueBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Chọn node + key làm input; viết JavaScript, return object { key: value } làm outputs. Key tùy chỉnh = tên biến trong code." Foreground="{DynamicResource TextOnPrussianBlueBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code duotone-regular'}"
-                               Fill="{DynamicResource TextOnPrussianBlueBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- HTML UI Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource EspressoBrownBrush}"
-         Tag="HtmlUi">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="HTML UI" FontWeight="Bold"/>
-                                            <TextBlock Text="Tạo UI HTML với WebView2 (Html/Js/Css/Params). Inputs/outputs để trả value ra các node khác." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource EspressoBrownBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="HTML UI" Foreground="{DynamicResource TextOnEspressoBrownBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Tạo UI HTML với WebView2, cấu hình 4 tab (Html/Js/Css/Params); có thể co dãn node. Cấu hình inputs/outputs để trả value ra các node khác." Foreground="{DynamicResource TextOnEspressoBrownBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='html5 brands'}"
-                               Fill="{DynamicResource TextOnEspressoBrownBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Folder Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource GoldenYellowBrush}"
-         Tag="Folder">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Folder" FontWeight="Bold"/>
-                                            <TextBlock Text="Chọn thư mục gốc, path con (dùng key từ inputs và {DateTime.*}), tạo folder. Output: folder, fullPath." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource GoldenYellowBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Folder" Foreground="{DynamicResource TextOnGoldenYellowBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Chọn thư mục gốc, path con (dùng key từ inputs và {DateTime.*}), tạo folder. Output: folder, fullPath." Foreground="{DynamicResource TextOnGoldenYellowBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone-thin'}"
-                               Fill="{DynamicResource TextOnGoldenYellowBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- File Download Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource CantaloupeOrangeBrush}"
-         Tag="FileDownload">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Tải file" FontWeight="Bold"/>
-                                            <TextBlock Text="Tải ảnh/video/file từ URL hoặc cURL. Output: filePath, completed, errorMessage." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource CantaloupeOrangeBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Tải file" Foreground="{DynamicResource TextOnCantaloupeOrangeBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Tải ảnh/video/file từ URL hoặc cURL; tên file có {date}/{time}/{datetime}/{index}; output filePath, completed, errorMessage." Foreground="{DynamicResource TextOnCantaloupeOrangeBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='download solid'}"
-                               Fill="{DynamicResource TextOnCantaloupeOrangeBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Folder file paths -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource ForestPineBrush}"
-         Tag="FolderFilePaths">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="File trong thư mục" FontWeight="Bold"/>
-                                            <TextBlock Text="Liệt kê đường dẫn file trong folder; lọc đuôi; đọc nội dung (text/base64). Output: paths (JSON array)." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource ForestPineBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="File trong thư mục" Foreground="{DynamicResource TextOnForestPineBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Liệt kê đường dẫn file trong một folder; lọc đuôi; tuỳ chọn đọc nội dung (text/base64). Output paths (JSON array)." Foreground="{DynamicResource TextOnForestPineBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-import duotone-light'}"
-                               Fill="{DynamicResource TextOnForestPineBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- String Split Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource RetroBrush}"
-         Tag="StringSplit">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="String Split" FontWeight="Bold"/>
-                                            <TextBlock Text="Cắt chuỗi thành danh sách item dựa trên regex pattern. Output: ListItems (String[])." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource RetroBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-
-                                                    <StackPanel>
-                                                        <TextBlock Text="String Split" Foreground="{DynamicResource TextOnRetroBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Cắt chuỗi thành danh sách item dựa trên regex pattern." Foreground="{DynamicResource TextOnRetroBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Output: ListItems (String[])" Foreground="{DynamicResource TextOnRetroBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='scissors light'}"
-                               Fill="{DynamicResource TextOnRetroBrush}"/>
-                                </Grid>
-                            </Border>
-                            
-                            <!-- HTTP Request Node -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource TurquoiseBrush}"
-         Tag="HttpRequest">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="HTTP Request" FontWeight="Bold"/>
-                                            <TextBlock Text="Gửi HTTP request (GET/POST/PUT/DELETE...) với headers, params, body. Output: Status Code, Response Body, Success, Error." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource TurquoiseBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="HTTP Request" Foreground="{DynamicResource TextOnTurquoiseBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Gửi HTTP request (GET, POST, PUT, DELETE...) với headers, params, body và authorization." Foreground="{DynamicResource TextOnTurquoiseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Output: Status Code, Response Body, Headers, Success, Error" Foreground="{DynamicResource TextOnTurquoiseBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='globe-pointer sharp-duotone-light'}"
-                               Fill="{DynamicResource TextOnTurquoiseBrush}"/>
-                                </Grid>
-                            </Border>
-                            
-                            <!-- Web Node (WebView2) -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-         Background="{DynamicResource SkyAzureBrush}"
-         Tag="Web">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Web" FontWeight="Bold"/>
-                                            <TextBlock Text="WebView2: lấy cookie/bearer/access_token, input cookie từ node+key, chặn/thay request." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource SkyAzureBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Web" Foreground="{DynamicResource TextOnSkyAzureBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="WebView2: cấu hình request lấy cookie/bearer/access_token, input cookie từ node+key, chặn/thay request." Foreground="{DynamicResource TextOnSkyAzureBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Output: cookie, bearer, access_token" Foreground="{DynamicResource TextOnSkyAzureBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='internet-explorer brands'}"
-                               Fill="{DynamicResource TextOnSkyAzureBrush}"/>
-                                </Grid>
-                            </Border>
-                           
-                        
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
                                     Background="{DynamicResource RetroBrush}"
                                     Tag="VideoEditorNode"
@@ -1959,224 +2236,6 @@ Tag="ListOut">
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}" Width="20" Height="20"
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-video solid'}"
                                                           Fill="{DynamicResource TextOnRetroBrush}"/>
-                                </Grid>
-                            </Border></WrapPanel>
-
-                        <TextBlock Text="Control Flow" Style="{StaticResource PaletteGroupHeaderStyle}"/>
-                        <WrapPanel Orientation="Horizontal" x:Name="ControlFlowWrapPanel">
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource LavenderBrush}"
-                                    Tag="IfElse">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="If / Else" FontWeight="Bold"/>
-                                            <TextBlock Text="Rẽ nhánh theo điều kiện." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource LavenderBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="If / Else" Foreground="{DynamicResource TextOnLavenderBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Chia nhánh theo điều kiện (if / else if / else)." Foreground="{DynamicResource TextOnLavenderBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-tree sharp-light'}"
-                                                          Fill="{DynamicResource TextOnLavenderBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource ForestPineBrush}"
-                                    Tag="Delay">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Delay" FontWeight="Bold"/>
-                                            <TextBlock Text="Chờ một khoảng thời gian (ms) rồi đi tiếp." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource ForestPineBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Delay" Foreground="{DynamicResource TextOnForestPineBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Tạm dừng workflow một khoảng thời gian." Foreground="{DynamicResource TextOnForestPineBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='timer regular'}"
-                                                          Fill="{DynamicResource TextOnForestPineBrush}"/>
-                                </Grid>
-                            </Border>
-
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource MintChocolateBrush}"
-                                    Tag="AsyncTask">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Async Task" FontWeight="Bold"/>
-                                            <TextBlock Text="Chạy nhiều task song song (parallel) để tối ưu hiệu suất." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource MintChocolateBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Async Task" Foreground="{DynamicResource TextOnMintChocolateBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Cho phép nhiều node logic chạy bất đồng bộ song song. Mỗi task branch có một port out riêng để kết nối với các node tiếp theo." Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='diagram-project duotone-light'}"
-                                                          Fill="{DynamicResource TextOnMintChocolateBrush}"/>
-                                </Grid>
-                            </Border>
-                            <!-- DataFetcher Node -->
-                            <!-- <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource MintChocolateBrush}"
-                                    Tag="AsyncTaskDispatchCollect">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Collect AsyncTask Results" FontWeight="Bold"/>
-                                            <TextBlock Text="Gom N kết quả từ các iteration song song của AsyncTask (parallel-safe) để đọc sau loopOut." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-radio regular'}"
-                                                          Fill="{DynamicResource TextOnMintChocolateBrush}"/>
-                                </Grid>
-                            </Border> -->
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource MintChocolateBrush}"
-                                    Tag="DataFetcher">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="220">
-                                            <TextBlock Text="Data Fetcher" FontWeight="Bold"/>
-                                            <TextBlock Text="Lấy output của bất kỳ node nào. Hỗ trợ chờ WebNode load xong, tự động lấy theo Timer, hoặc nhận realtime khi node nguồn hoàn thành." TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            <TextBlock Text="Output: value" Opacity="0.85" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource MintChocolateBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Data Fetcher" Foreground="{DynamicResource TextOnMintChocolateBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Lấy giá trị output từ bất kỳ node nào trong workflow." Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Chờ WebNode load xong mới lấy" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Tự lấy theo Timer (ms / giây / phút)" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85"/>
-                                                        <TextBlock Text="• Nhận realtime khi node nguồn hoàn thành" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85"/>
-                                                        <TextBlock Text="Output: value (String)" Foreground="{DynamicResource TextOnMintChocolateBrush}" Opacity="0.85" Margin="0,6,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='inbox-out duotone-light'}"
-                                                          Fill="{DynamicResource TextOnMintChocolateBrush}"/>
-                                </Grid>
-                            </Border>
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource SeaFoamBrush}"
-                                    Tag="KeyValueBridge">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="240">
-                                            <TextBlock Text="KeyValue Bridge" FontWeight="Bold"/>
-                                            <TextBlock Text="Kênh key/value runtime chung cho một lần chạy: Pass Key (truyền key trong flow) hoặc Get Value (đọc store sau interval). Code node: biến kv[...]." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource SeaFoamBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="KeyValue Bridge" Foreground="{DynamicResource TextOnSeaFoamBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Kênh key/value runtime chung cho một lần chạy." Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Pass Key: truyền key vào store trong flow" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Get Value: đọc store sau interval" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85"/>
-                                                        <TextBlock Text="Code node: dùng biến kv[key]" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-check solid'}"
-                                                          Fill="{DynamicResource TextOnSeaFoamBrush}"/>
-                                </Grid>
-                            </Border>
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource KiwiGreenBrush}"
-                                    Tag="FlowOverwrite">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="240">
-                                            <TextBlock Text="Flow Overwrite" FontWeight="Bold"/>
-                                            <TextBlock Text="Ghi đè hoặc gom mảng giá trị theo node chạy vào cuối cùng. Chỉ map node nối trực tiếp vào cổng IN." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource KiwiGreenBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Flow Overwrite" Foreground="{DynamicResource TextOnKiwiGreenBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Ghi đè hoặc gom mảng giá trị theo node chạy vào cuối cùng." Foreground="{DynamicResource TextOnKiwiGreenBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="Chỉ map node nối trực tiếp vào cổng IN. Hỗ trợ Append mode để gom thành mảng." Foreground="{DynamicResource TextOnKiwiGreenBrush}" Opacity="0.85" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='merge sharp-regular'}"
-                                                          Fill="{DynamicResource TextOnKiwiGreenBrush}"/>
                                 </Grid>
                             </Border>
                         </WrapPanel>
@@ -2279,74 +2338,7 @@ Tag="ListOut">
                                                           Fill="{DynamicResource TextOnVioletDeepBrush}"/>
                                 </Grid>
                             </Border>
-
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource WineRedBrush}"
-                                    Tag="EmbedApplicationNode">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="240">
-                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
-                                                <Run Text="Embed Application"/>
-                                            </TextBlock>
-                                            <TextBlock Text="Nhúng ứng dụng desktop vào canvas với kích thước và tương tác tùy chỉnh."
-                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
-                                            <TextBlock Margin="0,6,0,0">
-                                                <Run Text="• "/>
-                                                <Run Text="Chọn ứng dụng đang chạy" FontWeight="SemiBold"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="• "/>
-                                                <Run Text="Điều chỉnh kích thước hiển thị"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="• "/>
-                                                <Run Text="Tương tác trực tiếp hoặc chỉ xem"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="• "/>
-                                                <Run Text="Output: Handle, PID, Title"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource WineRedBrush}"
-                                                        CornerRadius="10" Padding="10"
-                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Embed Application"
-                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
-                                                                   FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Nhúng ứng dụng desktop vào canvas. Hỗ trợ nhiều ứng dụng đồng thời với kích thước tùy chỉnh."
-                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
-                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Chọn từ danh sách processes đang chạy"
-                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
-                                                                   Opacity="0.85" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Active window tự động nếu cần"
-                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
-                                                                   Opacity="0.85"/>
-                                                        <TextBlock Text="• Chế độ: Interactive / Display Only / Snapshot"
-                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
-                                                                   Opacity="0.85"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='desktop-arrow-down light'}"
-                                                          Fill="{DynamicResource TextOnWineRedBrush}"/>
-                                </Grid>
-                            </Border>
                         </WrapPanel>
-
                         <!-- Git Repos palette — TẠM COMMENT: logic chuyển sang GitManagerDialog tab Tổng hợp -->
                         <!--
                         <StackPanel x:Name="GitReposPaletteSection"

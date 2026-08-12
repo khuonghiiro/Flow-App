@@ -113,6 +113,9 @@ namespace FlowMy.Views
         private GridLength _prevSplitterColumnWidth = new GridLength(5);
         private double _prevSplitterColumnMinWidth = 5;
         private double _prevSplitterColumnMaxWidth = 5;
+        private int _prevMinimapPanelZIndex = 0;
+        private int _prevScrollViewerZIndex = 0;
+        private Visibility _prevMinimapPanelVisibility = Visibility.Visible;
 
         /// <summary>
         /// Đánh dấu menu trái đang bị auto-collapse vì user đặt panel log ở dock Left.
@@ -1607,15 +1610,33 @@ namespace FlowMy.Views
                         ViewModel.IsExecutionTracePanelExpanded = false;
                 }
 
-                // Hide canvas scrollbars (bottom/right)
+                // Hide canvas scrollbars (bottom/right) and elevate canvas container ZIndex
                 if (ScrollViewer != null)
                 {
+                    _prevScrollViewerZIndex = Panel.GetZIndex(ScrollViewer);
+                    Panel.SetZIndex(ScrollViewer, 100);
                     ScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
                     ScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                }
+
+                // Lower ZIndex and hide MinimapPanel so zoomed node renders cleanly on top
+                if (MinimapPanel != null)
+                {
+                    _prevMinimapPanelZIndex = Panel.GetZIndex(MinimapPanel);
+                    _prevMinimapPanelVisibility = MinimapPanel.Visibility;
+                    Panel.SetZIndex(MinimapPanel, -1);
+                    MinimapPanel.Visibility = Visibility.Collapsed;
                 }
             }
             else
             {
+                // Restore MinimapPanel ZIndex and Visibility
+                if (MinimapPanel != null)
+                {
+                    Panel.SetZIndex(MinimapPanel, _prevMinimapPanelZIndex);
+                    MinimapPanel.Visibility = _prevMinimapPanelVisibility;
+                }
+
                 // Restore visibilities.
                 if (LeftMenuBorder != null) LeftMenuBorder.Visibility = _prevLeftMenuBorderVisibility;
                 if (NodePaletteExpandButton != null) NodePaletteExpandButton.Visibility = _prevNodePaletteExpandButtonVisibility;
@@ -1630,9 +1651,10 @@ namespace FlowMy.Views
                     ViewModel.IsExecutionTracePanelExpanded = _prevIsExecutionTracePanelVisibleVm.Value;
                 _prevIsExecutionTracePanelVisibleVm = null;
 
-                // Restore canvas scrollbars
+                // Restore canvas scrollbars and ZIndex
                 if (ScrollViewer != null)
                 {
+                    Panel.SetZIndex(ScrollViewer, _prevScrollViewerZIndex);
                     ScrollViewer.HorizontalScrollBarVisibility = _prevCanvasHScroll;
                     ScrollViewer.VerticalScrollBarVisibility = _prevCanvasVScroll;
                 }

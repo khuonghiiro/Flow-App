@@ -35,6 +35,16 @@
     <SolidColorBrush x:Key="ControlBorderBrush" Color="#FF252A38"/>
     <SolidColorBrush x:Key="BorderColor"        Color="#FF2E3448"/>
 
+    <CornerRadius x:Key="ControlCornerRadius">7</CornerRadius>
+    <CornerRadius x:Key="ControlCornerRadiusSmall">5</CornerRadius>
+    <CornerRadius x:Key="PanelCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="PopupCornerRadius">9</CornerRadius>
+    <CornerRadius x:Key="DialogCornerRadius">12</CornerRadius>
+    <Thickness x:Key="ControlBorderThickness">1</Thickness>
+    <Thickness x:Key="ControlPadding">12,6</Thickness>
+    <Thickness x:Key="CompactControlPadding">8,4</Thickness>
+    <Thickness x:Key="InputPadding">10,0</Thickness>
+
     <!-- ── SURFACE / WINDOW ── -->
     <SolidColorBrush x:Key="SurfaceColor"          Color="#FF141720"/>
     <SolidColorBrush x:Key="CardColor"             Color="#FF141720"/>
@@ -126,9 +136,10 @@
     <SolidColorBrush x:Key="TextOnInfoBrush"  Color="#FF041820"/>
 
     <!-- ── SHADOW ── -->
-    <Color x:Key="ShadowColor">#CC000000</Color>
-    <Color x:Key="PrimaryShadowColor">#500D0F14</Color>
-    <Color x:Key="NodeShadowColor">#90000000</Color>
+    <Color x:Key="ShadowColor">#44000000</Color>
+    <Color x:Key="PopupShadowColor">#30000000</Color>
+    <Color x:Key="PrimaryShadowColor">#220D0F14</Color>
+    <Color x:Key="NodeShadowColor">#50000000</Color>
 
     <!-- ── SURFACE / CARD EXTRAS ── -->
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FF141720"/>

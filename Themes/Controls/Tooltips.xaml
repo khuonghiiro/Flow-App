@@ -13,7 +13,7 @@
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderColor}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="MaxWidth"        Value="360"/>
-        <Setter Property="HasDropShadow"   Value="True"/>
+        <Setter Property="HasDropShadow"   Value="False"/>
         <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
         <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
         <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
@@ -25,14 +25,9 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="{DynamicResource PopupCornerRadius}"
                             Padding="{TemplateBinding Padding}"
                             MaxWidth="{TemplateBinding MaxWidth}">
-                        <Border.Effect>
-                            <DropShadowEffect Color="{DynamicResource ShadowColor}" Direction="315"
-                                             ShadowDepth="3" BlurRadius="6"
-                                             Opacity="0.35"/>
-                        </Border.Effect>
                         <ContentPresenter Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}"/>
                     </Border>
@@ -60,7 +55,7 @@
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="{DynamicResource PopupCornerRadius}"
                             Padding="{TemplateBinding Padding}"
                             MaxWidth="{TemplateBinding MaxWidth}">
                         <ContentPresenter Content="{TemplateBinding Content}"/>

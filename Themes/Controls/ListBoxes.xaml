@@ -7,6 +7,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="4" />
+        <Setter Property="UseLayoutRounding" Value="True"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -22,9 +23,10 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border Name="Bd"
-                    Background="{TemplateBinding Background}"
-                    SnapsToDevicePixels="true"
-                    UseLayoutRounding="True">
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource ControlCornerRadiusSmall}"
+                            SnapsToDevicePixels="true"
+                            UseLayoutRounding="True">
                         <ContentPresenter
                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -32,10 +34,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ListItemHoverBackground}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonPressedBrush}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ListItemSelectedBackground}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.5" />
@@ -53,11 +55,6 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="20"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#3B82F6" Direction="315" ShadowDepth="8" Opacity="0.25" BlurRadius="15"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <Style x:Key="ModernBlueListBox" TargetType="ListBox">
@@ -76,11 +73,6 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="16"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="Black" Direction="315" ShadowDepth="5" Opacity="0.5" BlurRadius="12"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <Style x:Key="DarkListBox" TargetType="ListBox">
@@ -133,11 +125,6 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="20"/>
         <Setter Property="Padding" Value="28"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#A855F7" Direction="315" ShadowDepth="10" Opacity="0.3" BlurRadius="20"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <Style x:Key="PurplePremiumListBox" TargetType="ListBox">
@@ -163,11 +150,6 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="20"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#FB923C" Direction="315" ShadowDepth="6" Opacity="0.4" BlurRadius="12"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <Style x:Key="OrangeWarmListBox" TargetType="ListBox">
@@ -212,11 +194,6 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="Padding" Value="24"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <BlurEffect Radius="2"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <Style x:Key="GlassMorphismListBox" TargetType="ListBox">

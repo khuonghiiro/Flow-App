@@ -163,7 +163,7 @@
                                     <Setter TargetName="Border" Property="Effect">
                                         <Setter.Value>
                                             <DropShadowEffect Color="{DynamicResource ButtonShadowColor}"
-                                                              Opacity="0.4" BlurRadius="15" ShadowDepth="0"/>
+                                                              Opacity="0.16" BlurRadius="6" ShadowDepth="0"/>
                                         </Setter.Value>
                                     </Setter>
                                 </Trigger>
@@ -213,7 +213,7 @@
                             <Setter TargetName="Border" Property="Effect">
                                 <Setter.Value>
                                     <DropShadowEffect Color="{DynamicResource ButtonShadowColor}"
-                                                      Opacity="0.3" BlurRadius="10" ShadowDepth="0"/>
+                                                      Opacity="0.12" BlurRadius="5" ShadowDepth="0"/>
                                 </Setter.Value>
                             </Setter>
                         </Trigger>
@@ -271,7 +271,7 @@
                             <Setter TargetName="Border" Property="Effect">
                                 <Setter.Value>
                                     <DropShadowEffect Color="{DynamicResource ButtonShadowColor}"
-                                                      Opacity="0.5" BlurRadius="15" ShadowDepth="0"/>
+                                                      Opacity="0.18" BlurRadius="6" ShadowDepth="0"/>
                                 </Setter.Value>
                             </Setter>
                         </Trigger>
@@ -300,7 +300,7 @@
                             <Setter TargetName="Border" Property="Effect">
                                 <Setter.Value>
                                     <DropShadowEffect Color="{DynamicResource ButtonShadowColor}"
-                                                      Opacity="0.6" BlurRadius="20" ShadowDepth="0"/>
+                                                      Opacity="0.20" BlurRadius="8" ShadowDepth="0"/>
                                 </Setter.Value>
                             </Setter>
                         </MultiTrigger>

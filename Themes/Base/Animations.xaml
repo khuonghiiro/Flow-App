@@ -37,7 +37,7 @@
         <Setter Property="StrokeEndLineCap" Value="Round"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#3B82F6" Opacity="0.6"/>
+                <DropShadowEffect BlurRadius="5" ShadowDepth="0" Color="#3B82F6" Opacity="0.20"/>
             </Setter.Value>
         </Setter>
     </Style>
@@ -50,7 +50,7 @@
         <Setter Property="StrokeEndLineCap" Value="Round"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.5"/>
+                <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#10B981" Opacity="0.18"/>
             </Setter.Value>
         </Setter>
     </Style>
@@ -63,7 +63,7 @@
         <Setter Property="StrokeEndLineCap" Value="Round"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#F59E0B" Opacity="0.4"/>
+                <DropShadowEffect BlurRadius="3" ShadowDepth="0" Color="#F59E0B" Opacity="0.16"/>
             </Setter.Value>
         </Setter>
     </Style>
@@ -75,7 +75,7 @@
         <Setter Property="Height" Value="8"/>
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#3B82F6" Opacity="0.8"/>
+                <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#3B82F6" Opacity="0.24"/>
             </Setter.Value>
         </Setter>
     </Style>
@@ -93,7 +93,7 @@
                         Padding="15"
                         MinHeight="120">
                         <Border.Effect>
-                            <DropShadowEffect BlurRadius="15" ShadowDepth="2" Color="#000000" Opacity="0.3"/>
+                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Color="{DynamicResource ShadowColor}" Opacity="0.12"/>
                         </Border.Effect>
 
                         <Grid>

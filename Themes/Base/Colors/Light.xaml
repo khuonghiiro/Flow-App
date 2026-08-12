@@ -14,122 +14,122 @@
                      Center="0.5,0.5"
                      GradientOrigin="0.5,0.5">
         <GradientStop Color="#FFFFFFFF" Offset="0"/>
-        <GradientStop Color="#FFEEF1F6" Offset="1"/>
+        <GradientStop Color="#FFF1F5F9" Offset="1"/>
     </RadialGradientBrush>
 
-    <SolidColorBrush x:Key="BorderBrush"  Color="#FFD0D8E8"/>
+    <SolidColorBrush x:Key="BorderBrush"  Color="#FFD6DEE9"/>
     <SolidColorBrush x:Key="CardColor"    Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="BorderColor"  Color="#FFB8C4D8"/>
+    <SolidColorBrush x:Key="BorderColor"  Color="#FFC3CEDD"/>
 
     <!-- Header — white with subtle bottom border -->
-    <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FFFAFBFD"/>
+    <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FFFBFCFE"/>
 
     <!-- Overlay -->
     <SolidColorBrush x:Key="OverlayBackground"        Color="#88FFFFFF"/>
     <SolidColorBrush x:Key="OverlayBackgroundReverse" Color="#88000000"/>
-    <SolidColorBrush x:Key="BackgroundAll"             Color="#FFF5F7FA"/>
+    <SolidColorBrush x:Key="BackgroundAll"             Color="#FFF6F8FB"/>
 
     <!-- ===== PRIMARY — Vivid Blue ===== -->
-    <SolidColorBrush x:Key="PrimaryBrush"        Color="#2563EB"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush"   Color="#1D55D4"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#1848BC"/>
+    <SolidColorBrush x:Key="PrimaryBrush"        Color="#2F6FEB"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush"   Color="#1F5FD7"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#184EB8"/>
     <SolidColorBrush x:Key="TextOnPrimaryBrush"  Color="#FFFFFF"/>
 
     <!-- ===== SECONDARY ===== -->
-    <SolidColorBrush x:Key="SecondaryBrush"        Color="#64748B"/>
-    <SolidColorBrush x:Key="SecondaryHoverBrush"   Color="#556070"/>
-    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#475260"/>
+    <SolidColorBrush x:Key="SecondaryBrush"        Color="#5B677A"/>
+    <SolidColorBrush x:Key="SecondaryHoverBrush"   Color="#4B5568"/>
+    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#3F4858"/>
     <SolidColorBrush x:Key="TextOnSecondaryBrush"  Color="White"/>
 
     <!-- ===== SUCCESS ===== -->
-    <SolidColorBrush x:Key="SuccessBrush"        Color="#059669"/>
+    <SolidColorBrush x:Key="SuccessBrush"        Color="#0E9F6E"/>
     <SolidColorBrush x:Key="SuccessHoverBrush"   Color="#047857"/>
     <SolidColorBrush x:Key="SuccessPressedBrush" Color="#036640"/>
     <SolidColorBrush x:Key="TextOnSuccessBrush"  Color="White"/>
 
     <!-- ===== DANGER ===== -->
-    <SolidColorBrush x:Key="DangerBrush"        Color="#DC2626"/>
-    <SolidColorBrush x:Key="DangerHoverBrush"   Color="#C81E1E"/>
-    <SolidColorBrush x:Key="DangerPressedBrush" Color="#B41818"/>
+    <SolidColorBrush x:Key="DangerBrush"        Color="#E11D48"/>
+    <SolidColorBrush x:Key="DangerHoverBrush"   Color="#BE123C"/>
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="#9F1239"/>
     <SolidColorBrush x:Key="TextOnDangerBrush"  Color="White"/>
 
     <!-- ===== WARNING ===== -->
-    <SolidColorBrush x:Key="WarningBrush"        Color="#D97706"/>
-    <SolidColorBrush x:Key="WarningHoverBrush"   Color="#C06800"/>
-    <SolidColorBrush x:Key="WarningPressedBrush" Color="#A85800"/>
+    <SolidColorBrush x:Key="WarningBrush"        Color="#B7791F"/>
+    <SolidColorBrush x:Key="WarningHoverBrush"   Color="#975A16"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#7C4A12"/>
     <SolidColorBrush x:Key="TextOnWarningBrush"  Color="White"/>
 
     <!-- ===== INFO ===== -->
-    <SolidColorBrush x:Key="InfoBrush"        Color="#0284C7"/>
-    <SolidColorBrush x:Key="InfoHoverBrush"   Color="#0174B0"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#016498"/>
+    <SolidColorBrush x:Key="InfoBrush"        Color="#0EA5E9"/>
+    <SolidColorBrush x:Key="InfoHoverBrush"   Color="#0284C7"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#0369A1"/>
     <SolidColorBrush x:Key="TextOnInfoBrush"  Color="White"/>
 
     <!-- ===== LIGHT / DARK variants ===== -->
-    <SolidColorBrush x:Key="LightBrush"        Color="#F5F7FA"/>
-    <SolidColorBrush x:Key="LightHoverBrush"   Color="#EEF1F6"/>
-    <SolidColorBrush x:Key="LightPressedBrush" Color="#E4E9F2"/>
-    <SolidColorBrush x:Key="TextOnLightBrush"  Color="#1E2A3A"/>
+    <SolidColorBrush x:Key="LightBrush"        Color="#F6F8FB"/>
+    <SolidColorBrush x:Key="LightHoverBrush"   Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="LightPressedBrush" Color="#E8EEF6"/>
+    <SolidColorBrush x:Key="TextOnLightBrush"  Color="#111827"/>
 
-    <SolidColorBrush x:Key="DarkBrush"        Color="#1E2A3A"/>
-    <SolidColorBrush x:Key="DarkHoverBrush"   Color="#162030"/>
-    <SolidColorBrush x:Key="DarkPressedBrush" Color="#101828"/>
+    <SolidColorBrush x:Key="DarkBrush"        Color="#111827"/>
+    <SolidColorBrush x:Key="DarkHoverBrush"   Color="#1F2937"/>
+    <SolidColorBrush x:Key="DarkPressedBrush" Color="#0B1220"/>
     <SolidColorBrush x:Key="TextOnDarkBrush"  Color="White"/>
 
     <!-- ===== WINDOW BACKGROUNDS ===== -->
-    <SolidColorBrush x:Key="WindowBodyBackground"  Color="#FFF5F7FA"/>
-    <SolidColorBrush x:Key="WindowBackground"      Color="#FFF5F7FA"/>
-    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFF5F7FA"/>
+    <SolidColorBrush x:Key="WindowBodyBackground"  Color="#FFF6F8FB"/>
+    <SolidColorBrush x:Key="WindowBackground"      Color="#FFF6F8FB"/>
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFF6F8FB"/>
 
     <!-- ===== TEXT ===== -->
-    <SolidColorBrush x:Key="TextBrush"        Color="#FF0F172A"/>
-    <SolidColorBrush x:Key="TextBrushReverse" Color="#FFEEEEEE"/>
+    <SolidColorBrush x:Key="TextBrush"        Color="#FF111827"/>
+    <SolidColorBrush x:Key="TextBrushReverse" Color="#FFF8FAFC"/>
     <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
-    <SolidColorBrush x:Key="TransparentHoverBrush" Color="#260F172A"/>
-    <SolidColorBrush x:Key="TransparentPressedBrush" Color="#4D0F172A"/>
-    <SolidColorBrush x:Key="TransparentFocusBrush" Color="#4D0F172A"/>
-    <SolidColorBrush x:Key="TextOnTransparentBrush" Color="#FF0F172A"/>
+    <SolidColorBrush x:Key="TransparentHoverBrush" Color="#26111827"/>
+    <SolidColorBrush x:Key="TransparentPressedBrush" Color="#4D111827"/>
+    <SolidColorBrush x:Key="TransparentFocusBrush" Color="#4D111827"/>
+    <SolidColorBrush x:Key="TextOnTransparentBrush" Color="#FF111827"/>
 
     <!-- ===== INPUT BACKGROUNDS ===== -->
     <SolidColorBrush x:Key="TextBoxBackground"         Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="ControlBorderBrush"        Color="#FFB8C4D8"/>
-    <SolidColorBrush x:Key="TextBoxHoverBackground"    Color="#FFF8F9FC"/>
+    <SolidColorBrush x:Key="ControlBorderBrush"        Color="#FFC7D2E0"/>
+    <SolidColorBrush x:Key="TextBoxHoverBackground"    Color="#FFFAFBFD"/>
     <SolidColorBrush x:Key="TextBoxFocusBackground"    Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="TextBoxDisabledBackground" Color="#FFECEFF5"/>
-    <SolidColorBrush x:Key="TextBoxReadOnlyBackground" Color="#FFF5F7FA"/>
+    <SolidColorBrush x:Key="TextBoxDisabledBackground" Color="#FFEEF2F7"/>
+    <SolidColorBrush x:Key="TextBoxReadOnlyBackground" Color="#FFF6F8FB"/>
 
     <!-- ===== BORDER COLORS ===== -->
-    <SolidColorBrush x:Key="TextBoxHoverBorderBrush" Color="#FF8898B8"/>
-    <SolidColorBrush x:Key="TextBoxFocusBorderBrush" Color="#FF2563EB"/>
+    <SolidColorBrush x:Key="TextBoxHoverBorderBrush" Color="#FF94A3B8"/>
+    <SolidColorBrush x:Key="TextBoxFocusBorderBrush" Color="#FF2F6FEB"/>
 
     <!-- ===== TEXT STATES ===== -->
-    <SolidColorBrush x:Key="PlaceholderBrush"   Color="#FF94A3B8"/>
+    <SolidColorBrush x:Key="PlaceholderBrush"   Color="#FF7C8BA1"/>
     <SolidColorBrush x:Key="DisabledTextBrush"  Color="#FF94A3B8"/>
-    <SolidColorBrush x:Key="DisabledBackground" Color="#FFECEFF5"/>
-    <SolidColorBrush x:Key="ReadOnlyTextBrush"  Color="#FF475569"/>
+    <SolidColorBrush x:Key="DisabledBackground" Color="#FFEEF2F7"/>
+    <SolidColorBrush x:Key="ReadOnlyTextBrush"  Color="#FF4B5563"/>
 
     <!-- ===== GLOW EFFECTS ===== -->
-    <SolidColorBrush x:Key="PrimaryGlowBrush" Color="#1A2563EB"/>
-    <SolidColorBrush x:Key="HoverGlowBrush"   Color="#102563EB"/>
+    <SolidColorBrush x:Key="PrimaryGlowBrush" Color="#1A2F6FEB"/>
+    <SolidColorBrush x:Key="HoverGlowBrush"   Color="#102F6FEB"/>
 
     <!-- ===== READONLY ===== -->
-    <SolidColorBrush x:Key="ReadOnlyBackground"  Color="#FFF5F7FA"/>
-    <SolidColorBrush x:Key="ReadOnlyForeground"  Color="#FF475569"/>
+    <SolidColorBrush x:Key="ReadOnlyBackground"  Color="#FFF6F8FB"/>
+    <SolidColorBrush x:Key="ReadOnlyForeground"  Color="#FF4B5563"/>
     <SolidColorBrush x:Key="BorderInverseColor">#50344050</SolidColorBrush>
-    <SolidColorBrush x:Key="ControlBorderColor">#FFD0D8E8</SolidColorBrush>
-    <SolidColorBrush x:Key="ReadOnlyBorderBrush">#40808080</SolidColorBrush>
+    <SolidColorBrush x:Key="ControlBorderColor">#FFD6DEE9</SolidColorBrush>
+    <SolidColorBrush x:Key="ReadOnlyBorderBrush">#407C8BA1</SolidColorBrush>
 
     <!-- ===== BUTTON BRUSHES ===== -->
-    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#FFEEF1F6"/>
-    <SolidColorBrush x:Key="ControlBackground"     Color="#FFEEF1F6"/>
-    <SolidColorBrush x:Key="ButtonHoverBrush"      Color="#FFE4E9F2"/>
-    <SolidColorBrush x:Key="ButtonPressedBrush"    Color="#FFD8E0EE"/>
-    <SolidColorBrush x:Key="ButtonBorderBrush"     Color="#FFB8C4D8"/>
+    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#FFF2F5FA"/>
+    <SolidColorBrush x:Key="ControlBackground"     Color="#FFF2F5FA"/>
+    <SolidColorBrush x:Key="ButtonHoverBrush"      Color="#FFE8EEF6"/>
+    <SolidColorBrush x:Key="ButtonPressedBrush"    Color="#FFDDE6F2"/>
+    <SolidColorBrush x:Key="ButtonBorderBrush"     Color="#FFC7D2E0"/>
 
     <!-- ===== SCROLLBAR ===== -->
-    <Color x:Key="ScrollBarThumbColor">#882563EB</Color>
-    <Color x:Key="ScrollBarThumbHoverColor">#AA2563EB</Color>
-    <Color x:Key="ScrollBarThumbPressedColor">#CC2563EB</Color>
+    <Color x:Key="ScrollBarThumbColor">#882F6FEB</Color>
+    <Color x:Key="ScrollBarThumbHoverColor">#AA2F6FEB</Color>
+    <Color x:Key="ScrollBarThumbPressedColor">#CC2F6FEB</Color>
     <Color x:Key="ScrollBarTrackColor">Transparent</Color>
     <SolidColorBrush x:Key="ScrollBarThumbBrush"        Color="{StaticResource ScrollBarThumbColor}"/>
     <SolidColorBrush x:Key="ScrollBarThumbHoverBrush"   Color="{StaticResource ScrollBarThumbHoverColor}"/>
@@ -137,100 +137,101 @@
     <SolidColorBrush x:Key="ScrollBarTrackBackground"   Color="{StaticResource ScrollBarTrackColor}"/>
 
     <!-- ===== PROGRESS ===== -->
-    <SolidColorBrush x:Key="ProgressBackground">#FFE4E9F2</SolidColorBrush>
-    <SolidColorBrush x:Key="ProgressFill">#FF2563EB</SolidColorBrush>
+    <SolidColorBrush x:Key="ProgressBackground">#FFE8EEF6</SolidColorBrush>
+    <SolidColorBrush x:Key="ProgressFill">#FF2F6FEB</SolidColorBrush>
 
     <!-- ===== SHADOW ===== -->
-    <Color x:Key="ShadowColor">#28000000</Color>
-    <Color x:Key="PrimaryShadowColor">#18000000</Color>
+    <Color x:Key="ShadowColor">#22000000</Color>
+    <Color x:Key="PopupShadowColor">#18000000</Color>
+    <Color x:Key="PrimaryShadowColor">#14000000</Color>
 
     <!-- ===== RADIO OPTIONS ===== -->
-    <SolidColorBrush x:Key="OptionHoverBrush"    Color="#FFE4E9F2"/>
-    <SolidColorBrush x:Key="OptionSelectedBrush" Color="#FF2563EB"/>
+    <SolidColorBrush x:Key="OptionHoverBrush"    Color="#FFEAF1FF"/>
+    <SolidColorBrush x:Key="OptionSelectedBrush" Color="#FF2F6FEB"/>
 
     <!-- ===== MISC ===== -->
-    <SolidColorBrush x:Key="TitleBackgroundBrush" Color="#FFFAFBFD"/>
-    <SolidColorBrush x:Key="TextNoteBrush"        Color="#FF475569"/>
+    <SolidColorBrush x:Key="TitleBackgroundBrush" Color="#FFFBFCFE"/>
+    <SolidColorBrush x:Key="TextNoteBrush"        Color="#FF4B5563"/>
 
     <!-- ===== DATAGRID ===== -->
-    <SolidColorBrush x:Key="DataGridHeaderBrush"          Color="#FF0F172A"/>
+    <SolidColorBrush x:Key="DataGridHeaderBrush"          Color="#FF111827"/>
     <SolidColorBrush x:Key="DataGridRowBackground">#FFFFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridAltRowBackground">#FFF5F7FA</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridHeaderBackground">#FFEEF1F6</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridBorderBrush">#FFD0D8E8</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridRowHoverBackground">#152563EB</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridSelectionBackground">#402563EB</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridSelectedCellBackground">#402563EB</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridAltRowBackground">#FFF8FAFC</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridHeaderBackground">#FFF1F5F9</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridBorderBrush">#FFD6DEE9</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridRowHoverBackground">#182F6FEB</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridSelectionBackground">#442F6FEB</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridSelectedCellBackground">#442F6FEB</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridSelectedTextBrush">#FFFFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridHoverCellBackground" Color="#302563EB"/>
+    <SolidColorBrush x:Key="DataGridHoverCellBackground" Color="#302F6FEB"/>
 
     <!-- ===== COMBOBOX ===== -->
-    <SolidColorBrush x:Key="SelectionBrush"    Color="#FFE4E9F2"/>
-    <SolidColorBrush x:Key="SelectedTextBrush" Color="#FF2563EB"/>
+    <SolidColorBrush x:Key="SelectionBrush"    Color="#FFEAF1FF"/>
+    <SolidColorBrush x:Key="SelectedTextBrush" Color="#FF1F5FD7"/>
 
-    <SolidColorBrush x:Key="ComboBoxFieldBackground"             Color="#FFF5F7FA"/>
-    <SolidColorBrush x:Key="ComboBoxFieldBorderBrush"            Color="#FF8898B8"/>
-    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground"        Color="#FFEEF1F6"/>
-    <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush"       Color="#FF6070A0"/>
-    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground"        Color="#FFF5F7FA"/>
-    <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush"       Color="#FF2563EB"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBackground"             Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBorderBrush"            Color="#FFB8C4D6"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground"        Color="#FFF8FAFC"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush"       Color="#FF8EA0B8"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground"        Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush"       Color="#FF2F6FEB"/>
     <SolidColorBrush x:Key="ComboBoxPopupBackground"             Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="ComboBoxPopupBorderBrush"            Color="#FF94A3B8"/>
-    <SolidColorBrush x:Key="ComboBoxGlyphBrush"                  Color="#FF344060"/>
-    <SolidColorBrush x:Key="ComboBoxItemHoverBrush"              Color="#FFB8D0F8"/>
-    <SolidColorBrush x:Key="ComboBoxItemSelectedBrush"           Color="#FF90B8F0"/>
-    <SolidColorBrush x:Key="ComboBoxItemSelectedHoverBrush"      Color="#FF70A0E8"/>
-    <SolidColorBrush x:Key="ComboBoxItemSelectedForegroundBrush" Color="#FF001840"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBorderBrush"            Color="#FFC7D2E0"/>
+    <SolidColorBrush x:Key="ComboBoxGlyphBrush"                  Color="#FF334155"/>
+    <SolidColorBrush x:Key="ComboBoxItemHoverBrush"              Color="#FFEAF1FF"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedBrush"           Color="#FFD9E7FF"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedHoverBrush"      Color="#FFC8DAFF"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedForegroundBrush" Color="#FF0B2F6A"/>
 
     <!-- ===== CARD ===== -->
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFFFF"/>
 
     <!-- ===== SEMANTIC ALIASES ===== -->
-    <SolidColorBrush x:Key="PrimaryColor"    Color="#FF2563EB"/>
-    <SolidColorBrush x:Key="PrimaryHover"    Color="#FF1D55D4"/>
-    <SolidColorBrush x:Key="SecondaryColor"  Color="#FF059669"/>
+    <SolidColorBrush x:Key="PrimaryColor"    Color="#FF2F6FEB"/>
+    <SolidColorBrush x:Key="PrimaryHover"    Color="#FF1F5FD7"/>
+    <SolidColorBrush x:Key="SecondaryColor"  Color="#FF0E9F6E"/>
     <SolidColorBrush x:Key="AccentColor"     Color="#FF7C3AED"/>
     <SolidColorBrush x:Key="AccentBrush"     Color="#FF7C3AED"/>
-    <SolidColorBrush x:Key="BackgroundColor" Color="#FFF5F7FA"/>
+    <SolidColorBrush x:Key="BackgroundColor" Color="#FFF6F8FB"/>
     <SolidColorBrush x:Key="SurfaceColor"    Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="TextPrimary"     Color="#FF0F172A"/>
-    <SolidColorBrush x:Key="TextSecondary"   Color="#FF334155"/>
-    <SolidColorBrush x:Key="TextMuted"       Color="#FF475569"/>
-    <SolidColorBrush x:Key="DangerColor"     Color="#FFDC2626"/>
-    <SolidColorBrush x:Key="SuccessColor"    Color="#FF059669"/>
-    <SolidColorBrush x:Key="WarningColor"    Color="#FFD97706"/>
+    <SolidColorBrush x:Key="TextPrimary"     Color="#FF111827"/>
+    <SolidColorBrush x:Key="TextSecondary"   Color="#FF374151"/>
+    <SolidColorBrush x:Key="TextMuted"       Color="#FF4B5563"/>
+    <SolidColorBrush x:Key="DangerColor"     Color="#FFE11D48"/>
+    <SolidColorBrush x:Key="SuccessColor"    Color="#FF0E9F6E"/>
+    <SolidColorBrush x:Key="WarningColor"    Color="#FFB7791F"/>
 
     <!-- ===== POPUP ===== -->
-    <SolidColorBrush x:Key="PopupHoverBrush"         Color="#FFEEF1F6"/>
+    <SolidColorBrush x:Key="PopupHoverBrush"         Color="#FFEEF4FF"/>
     <SolidColorBrush x:Key="PopupSelectedBackground" Color="Transparent"/>
 
     <!-- ===== LAVENDER (ComboBox selection highlight) ===== -->
-    <SolidColorBrush x:Key="LavenderHoverBrush"   Color="#152563EB"/>
-    <SolidColorBrush x:Key="LavenderPressedBrush" Color="#402563EB"/>
-    <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FF2563EB"/>
+    <SolidColorBrush x:Key="LavenderHoverBrush"   Color="#182F6FEB"/>
+    <SolidColorBrush x:Key="LavenderPressedBrush" Color="#442F6FEB"/>
+    <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FF1F5FD7"/>
 
     <!-- ===== LISTVIEW HEADER ===== -->
-    <SolidColorBrush x:Key="ListViewHeaderBrush" Color="#FF2563EB"/>
-    <SolidColorBrush x:Key="ListViewItemBrush"   Color="#FF0F172A"/>
-    <SolidColorBrush x:Key="HoverBackground"     Color="#FFEEF1F6"/>
+    <SolidColorBrush x:Key="ListViewHeaderBrush" Color="#FF2F6FEB"/>
+    <SolidColorBrush x:Key="ListViewItemBrush"   Color="#FF111827"/>
+    <SolidColorBrush x:Key="HoverBackground"     Color="#FFEEF4FF"/>
 
     <!-- ===== CANVAS ===== -->
     <!-- Light canvas — clean dot-grid like Figma light mode -->
-    <SolidColorBrush x:Key="CanvasBackgroundBrush"    Color="#FFECEEF3"/>
-    <SolidColorBrush x:Key="CanvasGridBrush"          Color="#C0A0AABF"/>
-    <SolidColorBrush x:Key="ExecutionTraceGuideBrush" Color="#C0708898"/>
-    <Color x:Key="NodeShadowColor">#25000000</Color>
+    <SolidColorBrush x:Key="CanvasBackgroundBrush"    Color="#FFEEF2F7"/>
+    <SolidColorBrush x:Key="CanvasGridBrush"          Color="#B8B8C4D4"/>
+    <SolidColorBrush x:Key="ExecutionTraceGuideBrush" Color="#A08EA0B6"/>
+    <Color x:Key="NodeShadowColor">#1C000000</Color>
 
     <!-- ===== FOCUS &amp; INTERACTION ===== -->
-    <SolidColorBrush x:Key="FocusRingBrush"                Color="#382563EB"/>
-    <SolidColorBrush x:Key="CardHoverBackground"           Color="#FFEEF1F6"/>
-    <Color x:Key="ButtonShadowColor">#202563EB</Color>
-    <SolidColorBrush x:Key="TabIndicatorBrush"             Color="#FF2563EB"/>
-    <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FFEEF1F6"/>
-    <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush"  Color="#FFEEF1F6"/>
+    <SolidColorBrush x:Key="FocusRingBrush"                Color="#382F6FEB"/>
+    <SolidColorBrush x:Key="CardHoverBackground"           Color="#FFF1F5F9"/>
+    <Color x:Key="ButtonShadowColor">#162F6FEB</Color>
+    <SolidColorBrush x:Key="TabIndicatorBrush"             Color="#FF2F6FEB"/>
+    <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FFF1F5F9"/>
+    <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush"  Color="#FFF1F5F9"/>
 
     <!-- Toolbar / editor header — deep navy for contrast on light theme -->
-    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF1E2A3A"/>
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF162033"/>
 
     <!-- ===== COMMON PALETTE OVERRIDES ===== -->
     <SolidColorBrush x:Key="OceanBrush"        Color="#0284C7"/>

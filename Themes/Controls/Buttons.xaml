@@ -15,8 +15,8 @@
         <Setter Property="Background"                Value="{DynamicResource ButtonBackgroundBrush}"/>
         <Setter Property="Foreground"                Value="{DynamicResource TextBrush}"/>
         <Setter Property="BorderBrush"               Value="{DynamicResource ButtonBorderBrush}"/>
-        <Setter Property="BorderThickness"           Value="1"/>
-        <Setter Property="Padding"                   Value="12,6"/>
+        <Setter Property="BorderThickness"           Value="{DynamicResource ControlBorderThickness}"/>
+        <Setter Property="Padding"                   Value="{DynamicResource ControlPadding}"/>
         <Setter Property="Cursor"                    Value="Hand"/>
         <Setter Property="SnapsToDevicePixels"        Value="True"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -30,7 +30,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="7"
+                            CornerRadius="{DynamicResource ControlCornerRadius}"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">
@@ -110,7 +110,7 @@
         <Setter Property="Cursor"      Value="Hand"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="BorderBrush"     Value="Transparent"/>
-        <Setter Property="Padding"         Value="14,0"/>
+        <Setter Property="Padding"         Value="{DynamicResource ControlPadding}"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment"   Value="Center"/>
         <Setter Property="SnapsToDevicePixels"         Value="True"/>
@@ -126,7 +126,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="{DynamicResource ControlCornerRadius}"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">
@@ -424,7 +424,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="{DynamicResource ControlCornerRadius}"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center"
@@ -457,7 +457,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="{DynamicResource ControlCornerRadius}"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center"

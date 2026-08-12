@@ -10,7 +10,7 @@
         <Setter Property="Background"       Value="{DynamicResource CardColor}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
-        <Setter Property="CornerRadius"     Value="12"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource DialogCornerRadius}"/>
         <Setter Property="Padding"          Value="24"/>
         <Setter Property="Margin"           Value="8"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -28,7 +28,7 @@
         <Setter Property="Background"       Value="{DynamicResource CardColor}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
-        <Setter Property="CornerRadius"     Value="8"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource PanelCornerRadius}"/>
         <Setter Property="Padding"          Value="20"/>
         <Setter Property="Margin"           Value="10"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -45,7 +45,7 @@
         <Setter Property="Background"       Value="{DynamicResource CardColor}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
-        <Setter Property="CornerRadius"     Value="14"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource DialogCornerRadius}"/>
         <Setter Property="Padding"          Value="20"/>
         <Setter Property="Margin"           Value="8"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -71,7 +71,7 @@
         <Setter Property="Background"       Value="{DynamicResource CardColor}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
-        <Setter Property="CornerRadius"     Value="8"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource PanelCornerRadius}"/>
         <Setter Property="Margin"           Value="0,4"/>
         <Setter Property="Padding"          Value="16"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -123,22 +123,13 @@
 
     <!-- Outer container (full background + border + shadow) -->
     <Style x:Key="DialogOuterBorder" TargetType="Border">
-        <Setter Property="CornerRadius"     Value="12"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource DialogCornerRadius}"/>
         <Setter Property="Background"       Value="{DynamicResource WindowBodyBackground}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
         <Setter Property="Padding"          Value="0"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="UseLayoutRounding"   Value="True"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="{DynamicResource ShadowColor}"
-                                  BlurRadius="24"
-                                  ShadowDepth="4"
-                                  Direction="270"
-                                  Opacity="0.35"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <!-- Dialog header bar (title area) -->
@@ -155,7 +146,7 @@
         <Setter Property="Background"       Value="{DynamicResource CardBackgroundBrush}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
-        <Setter Property="CornerRadius"     Value="8"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource PanelCornerRadius}"/>
         <Setter Property="Padding"          Value="12"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="UseLayoutRounding"   Value="True"/>
@@ -166,7 +157,7 @@
         <Setter Property="Background"       Value="{DynamicResource WindowBackground}"/>
         <Setter Property="BorderBrush"      Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness"  Value="1"/>
-        <Setter Property="CornerRadius"     Value="8"/>
+        <Setter Property="CornerRadius"     Value="{DynamicResource PanelCornerRadius}"/>
         <Setter Property="Padding"          Value="10"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="UseLayoutRounding"   Value="True"/>

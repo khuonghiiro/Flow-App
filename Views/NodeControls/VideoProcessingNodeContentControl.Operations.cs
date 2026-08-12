@@ -554,7 +554,7 @@ namespace FlowMy.Views.NodeControls
         {
             _node.RotationDegrees = deg;
             foreach (var b in new[] { Rotate0Button, Rotate90Button, Rotate180Button, Rotate270Button })
-                b.Background = new SolidColorBrush(Color.FromArgb(0x18, 255, 255, 255));
+                b.ClearValue(BackgroundProperty);
             activeButton.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
         }
 
@@ -562,7 +562,10 @@ namespace FlowMy.Views.NodeControls
         {
             if (isHorizontal) _node.FlipH = !_node.FlipH; else _node.FlipV = !_node.FlipV;
             var enabled = isHorizontal ? _node.FlipH : _node.FlipV;
-            button.Background = enabled ? new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8)) : new SolidColorBrush(Color.FromArgb(0x18, 255, 255, 255));
+            if (enabled)
+                button.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
+            else
+                button.ClearValue(BackgroundProperty);
         }
 
         private void SetScale(double scale, int? fixedHeight, Button activeButton)
@@ -571,7 +574,7 @@ namespace FlowMy.Views.NodeControls
             _node.ResolutionScale = scale;
             _node.FixedResolutionHeight = fixedHeight;
             foreach (var b in new[] { Scale100Button, Scale75Button, Scale50Button, Scale25Button, Scale1080Button, Scale720Button })
-                b.Background = new SolidColorBrush(Color.FromArgb(0x18, 255, 255, 255));
+                b.ClearValue(BackgroundProperty);
             activeButton.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
         }
 
@@ -617,118 +620,110 @@ namespace FlowMy.Views.NodeControls
         private void ApplyLocalTheme()
         {
             var isLight = _isLightTheme;
-            var shellBg = isLight ? Color.FromRgb(242, 245, 252) : Color.FromRgb(15, 15, 23);
+            var shellBg = isLight ? Color.FromRgb(235, 240, 248) : Color.FromRgb(15, 15, 23);
             Background = new SolidColorBrush(shellBg);
-            Foreground = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(shellBg));
 
             Color accentColor = Color.FromRgb(124, 107, 248);
             if (Application.Current?.TryFindResource("PrimaryBrush") is SolidColorBrush appPrimary && appPrimary.Color.A > 0)
                 accentColor = appPrimary.Color;
 
-            Color cardTop = isLight ? Color.FromArgb(245, 255, 255, 255) : Color.FromArgb(26, 255, 255, 255);
-            Color cardEffective = SurfaceContrast.CompositeOver(cardTop, shellBg);
-            Color innerTop = isLight ? Color.FromArgb(216, 242, 245, 250) : Color.FromArgb(24, 0, 0, 0);
-            Color innerEffective = SurfaceContrast.CompositeOver(innerTop, shellBg);
+            Color cardTop = isLight ? Color.FromRgb(255, 255, 255) : Color.FromArgb(26, 255, 255, 255);
+            Color innerTop = isLight ? Color.FromRgb(244, 247, 253) : Color.FromArgb(24, 0, 0, 0);
 
-            Color primaryText = SurfaceContrast.TextPrimaryOnSurface(cardEffective);
-            Color secondaryText = SurfaceContrast.TextSecondaryOnSurface(innerEffective);
+            Color primaryText = isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(236, 236, 244);
+            Color secondaryText = isLight ? Color.FromRgb(51, 65, 85) : Color.FromRgb(156, 163, 184);
+            Foreground = new SolidColorBrush(primaryText);
 
             Resources["ThemeTextPrimaryBrush"] = new SolidColorBrush(primaryText);
             Resources["ThemeTextSecondaryBrush"] = new SolidColorBrush(secondaryText);
             Resources["ThemeCardBackgroundBrush"] = new SolidColorBrush(cardTop);
-            Resources["ThemeCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x4A, 0x6B, 0x7A, 0x8A) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(196, 207, 224) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
             Resources["ThemeInnerCardBackgroundBrush"] = new SolidColorBrush(innerTop);
-            Resources["ThemeInnerCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x52, 0x9C, 0xAA, 0xBC) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeInputBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 251, 255) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeInputBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(178, 191, 212) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(
-                SurfaceContrast.CompositeOver(isLight ? Color.FromRgb(248, 251, 255) : Color.FromRgb(34, 36, 46), shellBg)));
-            Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xEC, 0xF1, 0xF8) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
-            Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x58, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF0, 0xE9, 0xEF, 0xF8) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
-            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x60, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(208, 216, 228) : Color.FromRgb(52, 54, 66));
+            Resources["ThemeInnerCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(204, 215, 232) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(255, 255, 255) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(168, 184, 208) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(241, 245, 255));
+            Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF2, 238, 243, 252) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
+            Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(176, 192, 216) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(226, 234, 246) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
+            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 220, 236) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(184, 198, 220) : Color.FromRgb(52, 54, 66));
             Resources["ThemeTimelineProgressBrush"] = new SolidColorBrush(accentColor);
-            Resources["ThemeTimelineThumbStrokeBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(72, 82, 98) : Color.FromRgb(226, 232, 245));
+            Resources["ThemeTimelineThumbStrokeBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(30, 41, 59) : Color.FromRgb(226, 232, 245));
             Resources["ThemeAccentGlowColor"] = accentColor;
             Resources["ThemeAccentBrush"] = new SolidColorBrush(accentColor);
+
+            Resources["ThemePanelHeaderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(222, 230, 244) : Color.FromRgb(32, 35, 48));
+            Resources["ThemePanelHeaderBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(172, 188, 214) : Color.FromRgb(53, 58, 77));
+            Resources["ThemeVideoViewportBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(200, 210, 228) : Color.FromRgb(12, 15, 23));
 
             Color warmAmber = Color.FromRgb(0xF5, 0x9E, 0x0B);
             Resources["ThemeWarmAccentBrush"] = new SolidColorBrush(warmAmber);
             Resources["ThemeWarmAccentBrushSoft"] = new SolidColorBrush(Color.FromArgb(0x66, warmAmber.R, warmAmber.G, warmAmber.B));
             Resources["ThemeBottomBarGroupInactiveBorderBrush"] = new SolidColorBrush(
-                isLight ? Color.FromArgb(0x90, 0x9A, 0xAA, 0xBC) : Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(0x2A, warmAmber.R, warmAmber.G, warmAmber.B));
+                isLight ? Color.FromRgb(164, 180, 206) : Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)0x35 : (byte)0x2A, warmAmber.R, warmAmber.G, warmAmber.B));
 
-            Color chromePrimaryBg = isLight ? Color.FromRgb(226, 232, 246) : Color.FromRgb(48, 50, 64);
-            Color chromePrimaryHover = isLight ? Color.FromRgb(210, 218, 238) : Color.FromRgb(58, 61, 78);
-            Color chromeSecondaryBg = isLight ? Color.FromRgb(236, 240, 250) : Color.FromRgb(40, 42, 54);
-            Color chromeSecondaryHover = isLight ? Color.FromRgb(220, 228, 244) : Color.FromRgb(50, 52, 68);
+            Color chromePrimaryBg = isLight ? Color.FromRgb(218, 226, 242) : Color.FromRgb(48, 50, 64);
+            Color chromePrimaryHover = isLight ? Color.FromRgb(200, 210, 234) : Color.FromRgb(58, 61, 78);
+            Color chromeSecondaryBg = isLight ? Color.FromRgb(228, 235, 248) : Color.FromRgb(40, 42, 54);
+            Color chromeSecondaryHover = isLight ? Color.FromRgb(212, 222, 240) : Color.FromRgb(50, 52, 68);
             Resources["ThemeVideoChromePrimaryBgBrush"] = new SolidColorBrush(chromePrimaryBg);
             Resources["ThemeVideoChromePrimaryHoverBgBrush"] = new SolidColorBrush(chromePrimaryHover);
-            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromePrimaryBg, shellBg)));
-            Resources["ThemeVideoChromePrimaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 200) : Color.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(241, 245, 255));
+            Resources["ThemeVideoChromePrimaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(164, 180, 206) : Color.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
             Resources["ThemeVideoChromeSecondaryBgBrush"] = new SolidColorBrush(chromeSecondaryBg);
             Resources["ThemeVideoChromeSecondaryHoverBgBrush"] = new SolidColorBrush(chromeSecondaryHover);
-            Resources["ThemeVideoChromeSecondaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromeSecondaryBg, shellBg)));
-            Resources["ThemeVideoChromeSecondaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(150, 168, 192) : Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF));
-            Resources["ThemePresetChipBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(230, 234, 244) : Color.FromRgb(36, 37, 48));
-            Resources["ThemePresetChipBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 198) : Color.FromRgb(58, 60, 76));
-            Resources["ThemePresetChipHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(212, 220, 238) : Color.FromRgb(48, 50, 66));
-            Resources["ThemePresetChipPressedBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(198, 208, 230) : Color.FromRgb(44, 46, 60));
-            Resources["ThemePresetChipResetBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 224, 234) : Color.FromRgb(40, 44, 56));
-            Resources["ThemePresetChipResetBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(140, 155, 180) : Color.FromRgb(70, 74, 90));
-            Color transportPlayBg = isLight ? Color.FromRgb(86, 78, 220) : Color.FromRgb(99, 102, 241);
-            Color transportPlayHoverBg = isLight ? Color.FromRgb(72, 64, 200) : Color.FromRgb(79, 82, 220);
+            Resources["ThemeVideoChromeSecondaryFgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(232, 236, 248));
+            Resources["ThemeVideoChromeSecondaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 176, 202) : Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF));
+            Resources["ThemePresetChipBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(226, 234, 246) : Color.FromRgb(36, 37, 48));
+            Resources["ThemePresetChipBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(164, 180, 206) : Color.FromRgb(58, 60, 76));
+            Resources["ThemePresetChipHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(208, 218, 238) : Color.FromRgb(48, 50, 66));
+            Resources["ThemePresetChipPressedBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(192, 204, 228) : Color.FromRgb(44, 46, 60));
+            Resources["ThemePresetChipResetBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(216, 224, 238) : Color.FromRgb(40, 44, 56));
+            Resources["ThemePresetChipResetBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(148, 164, 192) : Color.FromRgb(70, 74, 90));
+            Color transportPlayBg = isLight ? Color.FromRgb(79, 70, 229) : Color.FromRgb(99, 102, 241);
+            Color transportPlayHoverBg = isLight ? Color.FromRgb(67, 56, 202) : Color.FromRgb(79, 82, 220);
             Resources["ThemeTransportPlayBgBrush"] = new SolidColorBrush(transportPlayBg);
             Resources["ThemeTransportPlayHoverBgBrush"] = new SolidColorBrush(transportPlayHoverBg);
-            Resources["ThemeTransportPlayFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(transportPlayBg));
-            Resources["ThemeTransportIconHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 218, 235) : Color.FromRgb(48, 50, 64));
-            Resources["ThemeQuickOverlayHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(214, 222, 238) : Color.FromRgb(52, 54, 70));
-            Resources["ThemeVideoOpenButtonFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(Color.FromRgb(220, 38, 38)));
-            Resources["ThemeValueBadgeBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 228, 240) : Color.FromRgb(42, 43, 56));
+            Resources["ThemeTransportPlayFgBrush"] = new SolidColorBrush(Color.FromRgb(255, 255, 255));
+            Resources["ThemeTransportIconHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(204, 214, 234) : Color.FromRgb(48, 50, 64));
+            Resources["ThemeQuickOverlayHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(208, 218, 236) : Color.FromRgb(52, 54, 70));
+            Resources["ThemeVideoOpenButtonFgBrush"] = new SolidColorBrush(Color.FromRgb(255, 255, 255));
+            Resources["ThemeValueBadgeBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(212, 222, 238) : Color.FromRgb(42, 43, 56));
 
-            Color framePreviewBg = isLight ? Color.FromArgb(250, 255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
-            Color framePreviewFg = SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(framePreviewBg, shellBg));
+            Color framePreviewBg = isLight ? Color.FromRgb(255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
+            Color framePreviewFg = isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(241, 245, 255);
             Resources["ThemeFrameLabelPreviewBg"] = new SolidColorBrush(framePreviewBg);
             Resources["ThemeFrameLabelPreviewFg"] = new SolidColorBrush(framePreviewFg);
-            Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xE8, 0xEE, 0xF7) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF5, 0xF8, 0xFD) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
-            Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xEF, 0xEA, 0xF1, 0xFB) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(222, 230, 244) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(250, 252, 255) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
+            Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(224, 232, 246) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
             Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(
-                isLight ? Color.FromArgb(0xAA, warmAmber.R, warmAmber.G, warmAmber.B) : Color.FromArgb(0x5A, warmAmber.R, warmAmber.G, warmAmber.B));
-            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(accentColor));
-            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
-            Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));
-            Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeTabSelectedBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)210 : (byte)200, accentColor.R, accentColor.G, accentColor.B));
-            Resources["ThemeVideoLogSegmentTrackBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x95, 236, 240, 248) : Color.FromArgb(0x55, 24, 26, 34));
-            Resources["ThemeComboSelectedItemBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)180 : (byte)90, accentColor.R, accentColor.G, accentColor.B));
-            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
-            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
-            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
-            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
-            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
-            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
-            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
-            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
-            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
-            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
-            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
-            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
-            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
-            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
-            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
-            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+                isLight ? Color.FromRgb(234, 179, 8) : Color.FromArgb(0x5A, warmAmber.R, warmAmber.G, warmAmber.B));
+            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(Color.FromRgb(255, 255, 255));
+            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(30, 41, 59) : Color.FromRgb(255, 255, 255));
+            Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(255, 255, 255) : Color.FromRgb(30, 30, 48));
+            Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(214, 226, 246) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 222, 242) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabSelectedBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(99, 102, 241) : Color.FromArgb(200, accentColor.R, accentColor.G, accentColor.B));
+            Resources["ThemeVideoLogSegmentTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(216, 226, 242) : Color.FromArgb(0x55, 24, 26, 34));
+            Resources["ThemeComboSelectedItemBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(224, 231, 255) : Color.FromArgb(90, accentColor.R, accentColor.G, accentColor.B));
+            
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0x3B, 0x82, 0xF6) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0x63, 0x66, 0xF1) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0x0D, 0x94, 0x88) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0x8B, 0x5C, 0xF6) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0x10, 0xB9, 0x81) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x50, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
 
-            // Secondary button chips — contrast checked against real fill colors.
-            Color secBgTop = isLight ? Color.FromArgb(221, 210, 220, 235) : Color.FromArgb(37, 255, 255, 255);
-            Color secEffective = SurfaceContrast.CompositeOver(secBgTop, shellBg);
+            // Secondary button chips
+            Color secBgTop = isLight ? Color.FromRgb(220, 228, 242) : Color.FromArgb(37, 255, 255, 255);
             Resources["SecondaryButtonBackground"] = new SolidColorBrush(secBgTop);
-            Resources["SecondaryButtonForeground"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(secEffective));
-            Resources["SecondaryButtonBorder"] = new SolidColorBrush(
-                isLight ? Color.FromRgb(160, 175, 195) : Color.FromArgb(0x40, 255, 255, 255));
+            Resources["SecondaryButtonForeground"] = new SolidColorBrush(isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(236, 236, 244));
+            Resources["SecondaryButtonBorder"] = new SolidColorBrush(isLight ? Color.FromRgb(164, 180, 206) : Color.FromArgb(0x40, 255, 255, 255));
 
             var textPrimary = (Brush)Resources["ThemeTextPrimaryBrush"];
             var textSecondary = (Brush)Resources["ThemeTextSecondaryBrush"];

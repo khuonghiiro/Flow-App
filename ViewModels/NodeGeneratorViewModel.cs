@@ -250,10 +250,15 @@ namespace FlowMy.ViewModels
             {
                 var content = File.ReadAllText(path);
                 var matches = System.Text.RegularExpressions.Regex.Matches(content, @"<TextBlock\s+Text=""([^""]+)""\s+Style=""\{StaticResource\s+PaletteGroupHeaderStyle\}""");
-                var cats = new System.Collections.Generic.HashSet<string>();
+                var cats = new System.Collections.Generic.List<string>();
+                var seen = new System.Collections.Generic.HashSet<string>();
                 foreach (System.Text.RegularExpressions.Match m in matches)
                 {
-                    if (m.Groups.Count > 1) cats.Add(m.Groups[1].Value);
+                    if (m.Groups.Count <= 1) continue;
+
+                    var category = m.Groups[1].Value;
+                    if (seen.Add(category))
+                        cats.Add(category);
                 }
                 if (cats.Count > 0)
                 {

@@ -24,15 +24,15 @@
 
     <!-- Light card/popup shadow (keep subtle: avoid large BlurRadius on UI near text) -->
     <DropShadowEffect x:Key="DropShadowEffect"
-                      Color="#000000"
-                      Opacity="0.1"
+                      Color="{DynamicResource ShadowColor}"
+                      Opacity="0.08"
                       ShadowDepth="1"
                       BlurRadius="3"/>
 
     <!-- Style cho Button có thể select như RadioButton -->
     <Style x:Key="SelectableOptionButtonStyle" TargetType="Button">
-        <Setter Property="Background" Value="#10000000"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -44,7 +44,7 @@
                             Padding="15"
                             CornerRadius="12"
                             Background="{TemplateBinding Background}"
-                            BorderBrush="#FFCCCCCC"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="2"
                             MinHeight="60">
                         <Grid>
@@ -59,7 +59,7 @@
                                     Width="28" Height="28"
                                     CornerRadius="14"
                                     Background="Transparent"
-                                    BorderBrush="#FFCCCCCC"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="2"
                                     VerticalAlignment="Center"
                                     Margin="0,0,15,0">
@@ -67,7 +67,7 @@
                                            Text="{Binding Value}"
                                            FontSize="16"
                                            FontWeight="Bold"
-                                           Foreground="White"
+                                           Foreground="{DynamicResource TextBrush}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                             </Border>
@@ -87,14 +87,14 @@
                     <ControlTemplate.Triggers>
                         <!-- Hover Effect -->
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="#803B82F6" />
-                            <Setter TargetName="Border" Property="BorderBrush" Value="#50FFFFFF" />
-                            <Setter TargetName="OptionCircle" Property="BorderBrush" Value="#50FFFFFF" />
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource OptionHoverBrush}" />
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="OptionCircle" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
                         </Trigger>
 
                         <!-- Pressed Effect -->
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="#3B82F6" />
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryPressedBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -111,8 +111,8 @@
                             <Border x:Name="Border"
                                     Padding="15"
                                     CornerRadius="12"
-                                    Background="#EFF6FF"
-                                    BorderBrush="#3B82F6"
+                                    Background="{DynamicResource ListItemSelectedBackground}"
+                                    BorderBrush="{DynamicResource PrimaryBrush}"
                                     BorderThickness="2"
                                     MinHeight="60">
                                 <Grid>
@@ -125,13 +125,13 @@
                                     <Border Grid.Column="0"
                                             Width="28" Height="28"
                                             CornerRadius="14"
-                                            Background="#3B82F6"
+                                            Background="{DynamicResource PrimaryBrush}"
                                             VerticalAlignment="Center"
                                             Margin="0,0,15,0">
                                         <TextBlock Text="{Binding Value}"
                                                    FontSize="14"
                                                    FontWeight="Bold"
-                                                   Foreground="White"
+                                                   Foreground="{DynamicResource TextOnPrimaryBrush}"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Border>
@@ -143,12 +143,12 @@
                                                TextWrapping="Wrap"
                                                TextAlignment="Justify"
                                                FontSize="16"
-                                               Foreground="Black"/>
+                                               Foreground="{DynamicResource TextBrush}"/>
                                 </Grid>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Border" Property="Background" Value="#DBEAFE" />
+                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource LavenderHoverBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

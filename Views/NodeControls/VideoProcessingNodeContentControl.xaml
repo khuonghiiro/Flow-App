@@ -783,7 +783,7 @@
                                     </Grid>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="#2A000000"/>
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeTabSelectedBackgroundBrush}"/>
                                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                                             <Setter TargetName="Bd" Property="Padding" Value="12,8"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
