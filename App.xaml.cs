@@ -47,7 +47,7 @@ namespace FlowMy
         #endregion
 
         #region Application Lifecycle
-        protected override async void OnStartup(StartupEventArgs e)
+        protected override void OnStartup(StartupEventArgs e)
         {
             // ✅ Đăng ký native DLL search paths (runtimes/win-x64/native) TRƯỚC BẤT KỲ thao tác CefSharp nào
             CefSharpNativeLoader.RegisterNativeDllSearchPaths();
@@ -62,11 +62,11 @@ namespace FlowMy
 
                 InitializeApplication();
 
-                // ✅ Đợi nạp CefSharp engine hoàn tất trước khi hiển thị MainWindow
-                // Nhờ đó khi MainWindow mở ra, CefSharp đã ready 100% -> 0ms delay khi kéo/mở node trình duyệt sau đó
+                // Non-blocking warm-up: keep MainWindow startup independent from Chromium.
+                // Browser nodes still await readiness when they actually need CefSharp.
                 try
                 {
-                    await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
+                    FlowMy.Services.Workflow.CefSharpEnvironmentManager.BeginInitializeInBackground(TimeSpan.FromMilliseconds(1200));
                 }
                 catch (Exception cefEx)
                 {

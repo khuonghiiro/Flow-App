@@ -206,7 +206,7 @@ namespace FlowMy.Views.Overlays
             };
         }
 
-        private void InitDynamicWebViewAsync()
+        private async void InitDynamicWebViewAsync()
         {
             try
             {
@@ -215,7 +215,7 @@ namespace FlowMy.Views.Overlays
                 {
                     if (!CefSharpEnvironmentManager.IsInitialized)
                     {
-                        CefSharpEnvironmentManager.EnsureInitialized();
+                        await CefSharpEnvironmentManager.EnsureInitializedAsync();
                     }
 
                     var webView = new ChromiumWebBrowser
@@ -285,7 +285,7 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void InitWebBrowserAsync()
+        private async void InitWebBrowserAsync()
         {
             _webBrowserInitialized = true;
 
@@ -302,6 +302,11 @@ namespace FlowMy.Views.Overlays
 
                 // Render tab strip UI
                 RefreshWebTabStrip();
+
+                if (!CefSharpEnvironmentManager.IsInitialized)
+                {
+                    await CefSharpEnvironmentManager.EnsureInitializedAsync();
+                }
 
                 // Build initial split layout
                 UpdateWebBrowserLayout();

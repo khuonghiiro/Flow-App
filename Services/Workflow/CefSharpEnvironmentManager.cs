@@ -84,6 +84,37 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
+        /// Starts CefSharp warm-up without making the caller wait.
+        /// Use this from startup/editor load paths so the first paint stays smooth.
+        /// </summary>
+        public static void BeginInitializeInBackground(TimeSpan? delay = null)
+        {
+            if (IsInitialized) return;
+
+            _ = InitializeInBackgroundAsync(delay ?? TimeSpan.Zero);
+        }
+
+        private static async Task InitializeInBackgroundAsync(TimeSpan delay)
+        {
+            try
+            {
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay).ConfigureAwait(false);
+                }
+
+                if (!IsInitialized)
+                {
+                    await EnsureInitializedAsync().ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CefSharp] Background warm-up error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Đảm bảo CefSharp đã được khởi tạo (sync fallback — CHỈ dùng khi bắt buộc phải sync).
         /// Nếu đang ở UI thread, sẽ chặn UI thread. Ưu tiên dùng EnsureInitializedAsync().
         /// </summary>
@@ -114,8 +145,8 @@ namespace FlowMy.Services.Workflow
                         return;
                     }
 
-                    // Phase 2: Dispatcher.BeginInvoke lên UI Thread (ManagedThreadId 1) ở Normal priority
-                    // Đảm bảo khởi tạo hoàn tất ngay trong quá trình mở ứng dụng trước khi MainWindow hiển thị
+                    // Phase 2: Dispatcher.BeginInvoke lên UI Thread (ManagedThreadId 1) ở Background priority
+                    // Để input/render của UI được ưu tiên hơn trong lúc app/editor vừa mở.
                     app.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         try
@@ -164,7 +195,7 @@ namespace FlowMy.Services.Workflow
                             System.Diagnostics.Debug.WriteLine($"[CefSharp] ❌ Init error: {ex.Message}");
                             tcs.TrySetException(ex);
                         }
-                    }), System.Windows.Threading.DispatcherPriority.Normal);
+                    }), System.Windows.Threading.DispatcherPriority.Background);
                 }
                 catch (Exception ex)
                 {
@@ -241,6 +272,46 @@ namespace FlowMy.Services.Workflow
             return settings;
         }
 
+        private static void InitializeOnUiThread(CefSettings settings, System.Windows.Application app)
+        {
+            TaskCompletionSource<bool>? pendingTcs = null;
+
+            lock (_lock)
+            {
+                if (_isInitialized || Cef.IsInitialized == true)
+                {
+                    _isInitialized = true;
+                    pendingTcs = _initTcs;
+                    _initTcs = null;
+                }
+                else
+                {
+                    try
+                    {
+                        if (app.MainWindow != null)
+                        {
+                            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(app.MainWindow);
+                            if (dpi.DpiScaleX > 0)
+                            {
+                                settings.CefCommandLineArgs["force-device-scale-factor"] =
+                                    dpi.DpiScaleX.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            }
+                        }
+                    }
+                    catch { }
+
+                    Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null);
+                    _isInitialized = true;
+                    pendingTcs = _initTcs;
+                    _initTcs = null;
+                }
+            }
+
+            pendingTcs?.TrySetResult(true);
+            System.Diagnostics.Debug.WriteLine("[CefSharp] Initialized on UI thread");
+            PreWarmBrowserSubprocess();
+        }
+
         /// <summary>
         /// Khởi tạo CefSharp đồng bộ (sync fallback).
         /// Ưu tiên dùng EnsureInitializedAsync().
@@ -248,6 +319,13 @@ namespace FlowMy.Services.Workflow
         public static void Initialize()
         {
             if (IsInitialized) return;
+            var app = System.Windows.Application.Current;
+            if (app?.Dispatcher != null && app.Dispatcher.CheckAccess())
+            {
+                InitializeOnUiThread(PrepareSettings(), app);
+                return;
+            }
+
             EnsureInitializedAsync().GetAwaiter().GetResult();
         }
 

@@ -514,7 +514,7 @@ namespace FlowMy.Views
 
             // Nếu preferences đã lưu mode=Detached thì reparent panel log sang cửa sổ riêng
             // ngay sau khi cửa sổ chính load xong (defer để CanvasHostGrid đã build visual tree).
-            Loaded += async (_, _) =>
+            Loaded += (_, _) =>
             {
                 LogCanvasDiagnostic("LIFECYCLE", "WorkflowEditorWindow Loaded event triggered.");
                 SyncExecutionTraceDetachState();
@@ -527,19 +527,15 @@ namespace FlowMy.Views
                     _hwndSource.AddHook(WndProc);
                 }
 
-                // ✅ Khi mở Editor (tạo new workflow, mở file, import workflow):
-                // Nếu CefSharp chưa init, hiển thị LoadingOverlay trong chớp mắt để nạp CefSharp engine.
-                // Nhờ đó khi người dùng kéo/thả node Web vào canvas sau đó, CefSharp đã ready 100% -> 0ms delay, 0% đơ UI!
+                // Schedule CefSharp warm-up after the editor has loaded.
+                // Web/HtmlUi renderers keep their own placeholders while Chromium becomes ready.
                 if (!FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
                 {
                     try
                     {
                         LogCanvasDiagnostic("CEF", "Initializing CefSharp environment asynchronously...");
-                        if (LoadingOverlay != null)
-                            LoadingOverlay.Visibility = Visibility.Visible;
-
-                        await FlowMy.Services.Workflow.CefSharpEnvironmentManager.EnsureInitializedAsync();
-                        LogCanvasDiagnostic("CEF", "CefSharp environment initialized successfully.");
+                        FlowMy.Services.Workflow.CefSharpEnvironmentManager.BeginInitializeInBackground(TimeSpan.FromMilliseconds(250));
+                        LogCanvasDiagnostic("CEF", "CefSharp background warm-up scheduled.");
                     }
                     catch (Exception ex)
                     {

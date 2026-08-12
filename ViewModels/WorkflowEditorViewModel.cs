@@ -3908,7 +3908,7 @@ namespace FlowMy.ViewModels
                 // Lazy init CefSharp nếu workflow chứa node trình duyệt (Web, HtmlUi)
                 if (CefSharpEnvironmentManager.RequiresCefSharp(result.Nodes))
                 {
-                    await CefSharpEnvironmentManager.EnsureInitializedAsync();
+                    CefSharpEnvironmentManager.BeginInitializeInBackground();
                 }
 
                 ApplyWorkflowLoadResult(result);

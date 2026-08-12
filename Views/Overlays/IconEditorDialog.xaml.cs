@@ -1503,7 +1503,7 @@ namespace FlowMy.Views.Overlays
 
             if (!CefSharpEnvironmentManager.IsInitialized)
             {
-                CefSharpEnvironmentManager.EnsureInitialized();
+                await CefSharpEnvironmentManager.EnsureInitializedAsync();
             }
 
             _webView = new ChromiumWebBrowser
