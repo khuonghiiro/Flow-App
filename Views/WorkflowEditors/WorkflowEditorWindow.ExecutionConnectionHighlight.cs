@@ -106,8 +106,10 @@ namespace FlowMy.Views
 
             foreach (var c in affected)
             {
-                // Update color/thickness/effects and bring to correct Z-index
-                UpdateConnectionPath(c);
+                // Geometry normally stays stable while workflow is executing; avoid recalculating
+                // every active-step highlight because that can jank the canvas on fast workflows.
+                if (c.LineUI == null)
+                    UpdateConnectionPath(c);
                 UpdateConnectionColor(c);
             }
 
@@ -127,7 +129,8 @@ namespace FlowMy.Views
                 if (pinned.Count == 0) return;
                 foreach (var c in pinned)
                 {
-                    UpdateConnectionPath(c);
+                    if (c.LineUI == null)
+                        UpdateConnectionPath(c);
                     UpdateConnectionColor(c);
                 }
                 ConnectionRendererService.UpdateAllConnectionAnimations(pinned);
@@ -135,7 +138,8 @@ namespace FlowMy.Views
             }
 
             // Refresh visuals theo config mới
-            UpdateConnectionPath(active);
+            if (active.LineUI == null)
+                UpdateConnectionPath(active);
             UpdateConnectionColor(active);
             ConnectionRendererService.UpdateAllConnectionAnimations(new[] { active });
         }

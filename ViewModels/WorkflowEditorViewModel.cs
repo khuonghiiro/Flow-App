@@ -184,6 +184,7 @@ namespace FlowMy.ViewModels
         private readonly Dictionary<string, List<ExecutionTraceTreeNodeViewModel>> _executionTraceTreeNodesByExecutionId = new(StringComparer.Ordinal);
         private readonly Dictionary<WorkflowNode, List<ExecutionTraceLogItemViewModel>> _pendingTraceRowsByNode = new();
         private readonly Dictionary<WorkflowNode, List<ExecutionTraceTreeNodeViewModel>> _pendingTraceTreeRowsByNode = new();
+        private bool _executionTraceFilterRefreshQueued;
         private const int MaxExecutionTraceRows = 1200;
         public ICollectionView? ExecutionTraceFilteredView { get; private set; }
         private string _executionTraceProfileKey = "release";
@@ -856,10 +857,29 @@ namespace FlowMy.ViewModels
                 ApplyExecutionTraceFilterToTree();
                 return;
             }
-            dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+
+            if (!dispatcher.CheckAccess())
             {
-                ExecutionTraceFilteredView?.Refresh();
-                ApplyExecutionTraceFilterToTree();
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RefreshExecutionTraceFilter));
+                return;
+            }
+
+            if (_executionTraceFilterRefreshQueued)
+                return;
+
+            _executionTraceFilterRefreshQueued = true;
+            dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                _executionTraceFilterRefreshQueued = false;
+                try
+                {
+                    ExecutionTraceFilteredView?.Refresh();
+                    ApplyExecutionTraceFilterToTree();
+                }
+                catch
+                {
+                    // Trace UI is best-effort; never let log filtering block workflow execution.
+                }
             }));
         }
 

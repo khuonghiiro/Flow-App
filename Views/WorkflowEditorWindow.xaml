@@ -2436,12 +2436,20 @@ Tag="ListOut">
                         HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Hidden"
                         Background="{DynamicResource CanvasBackgroundBrush}"
+                        UseLayoutRounding="True"
+                        SnapsToDevicePixels="True"
                         PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                     <Grid>
                         <!-- Grid background layer -->
                         <Canvas x:Name="GridCanvas"
                                 Background="Transparent"
+                                IsHitTestVisible="False"
+                                RenderOptions.EdgeMode="Aliased"
+                                SnapsToDevicePixels="True"
                                 ClipToBounds="False">
+                            <Canvas.CacheMode>
+                                <BitmapCache RenderAtScale="1"/>
+                            </Canvas.CacheMode>
                             <Canvas.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform x:Name="GridScaleTransform"/>
@@ -2456,6 +2464,8 @@ Tag="ListOut">
                                 MouseMove="WorkflowCanvas_MouseMove"
                                 MouseUp="WorkflowCanvas_MouseUp"
                                 MouseDown="WorkflowCanvas_MouseDown"
+                                UseLayoutRounding="True"
+                                SnapsToDevicePixels="True"
                                 ClipToBounds="False">
                             <Canvas.RenderTransform>
                                 <TransformGroup>
@@ -2950,10 +2960,25 @@ Tag="ListOut">
                         </Border>
 
                         <Grid Grid.Row="1">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            <ScrollViewer x:Name="ExecutionTraceTreeScrollViewer"
+                                          VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Auto"
+                                          CanContentScroll="True"
+                                          IsDeferredScrollingEnabled="True"
+                                          VirtualizingPanel.IsVirtualizing="True"
+                                          VirtualizingPanel.VirtualizationMode="Recycling"
                                           Padding="10,6,14,10"
                                           ClipToBounds="False">
+                                <ScrollViewer.Style>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsExecuting}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ScrollViewer.Style>
                                 <Grid x:Name="ExecutionTraceTreeOuterGrid"
                                       Margin="0"
                                       HorizontalAlignment="Left"
@@ -2964,10 +2989,12 @@ Tag="ListOut">
                                     </Grid.LayoutTransform>
                                     <ItemsControl x:Name="ExecutionTraceTreeItemsControl"
                                                   ItemsSource="{Binding ExecutionTraceRunRoots}"
+                                                  VirtualizingPanel.IsVirtualizing="True"
+                                                  VirtualizingPanel.VirtualizationMode="Recycling"
                                                   HorizontalAlignment="Left">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Vertical"/>
+                                                <VirtualizingStackPanel Orientation="Vertical"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <!-- Collapse ngay ở ContentPresenter khi run-root bị filter ẩn toàn bộ children. -->
@@ -3752,6 +3779,42 @@ Tag="ListOut">
                                     </ItemsControl>
                                 </Grid>
                             </ScrollViewer>
+                            <Border Padding="18"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsExecuting}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <controls:SvgViewboxEx Width="26"
+                                                           Height="26"
+                                                           Fill="{DynamicResource PrimaryBrush}"
+                                                           Opacity="0.9"
+                                                           HorizontalAlignment="Center"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='timeline-arrow duotone-light'}"/>
+                                    <TextBlock Text="&#x0110;ang ch&#x1EA1;y workflow..."
+                                               Margin="0,10,0,0"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Log v&#x1EAB;n &#x0111;&#x01B0;&#x1EE3;c ghi l&#x1EA1;i v&#x00E0; s&#x1EBD; hi&#x1EC3;n th&#x1ECB; khi workflow k&#x1EBF;t th&#x00FA;c."
+                                               Margin="0,4,0,0"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="420"/>
+                                </StackPanel>
+                            </Border>
                         </Grid>
                     </Grid>
                 </Border>
@@ -3761,10 +3824,22 @@ Tag="ListOut">
                 <Grid x:Name="MinimapPanel"
                       Grid.Row="0"
                       Grid.Column="2"
-                      Visibility="{Binding IsExecutionTracePanelMaximized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                       HorizontalAlignment="Right"
                       VerticalAlignment="Bottom"
                       Margin="20">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExecutionTracePanelMaximized}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsExecuting}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>

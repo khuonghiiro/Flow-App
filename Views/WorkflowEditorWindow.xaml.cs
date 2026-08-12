@@ -2225,7 +2225,7 @@ namespace FlowMy.Views
             {
                 _executionHighlightThrottleTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
                 {
-                    Interval = TimeSpan.FromMilliseconds(20) // ~50 FPS: đủ mượt, giảm bão update khi stop.
+                    Interval = TimeSpan.FromMilliseconds(60)
                 };
                 _executionHighlightThrottleTimer.Tick += (_, __) =>
                 {
