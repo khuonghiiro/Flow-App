@@ -88,6 +88,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     if (string.IsNullOrWhiteSpace(frameOutputFolder))
                         throw new InvalidOperationException("VideoProcessingNode: Output Base64 tắt nhưng chưa có folder output.");
                     Directory.CreateDirectory(frameOutputFolder);
+                    foreach (var existingFile in Directory.GetFiles(frameOutputFolder, "frame_*.*"))
+                    {
+                        try { File.Delete(existingFile); } catch { }
+                    }
                 }
 
                 string? audioOutputFolder;
@@ -177,6 +181,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
+                if (!videoNode.ExtractAllFrames && producedFrames.Count > 0)
+                {
+                    var targetCount = Math.Max(1, videoNode.ExtractFrameCount);
+                    if (producedFrames.Count > targetCount)
+                    {
+                        var extraFiles = producedFrames.Skip(targetCount).ToList();
+                        producedFrames = producedFrames.Take(targetCount).ToList();
+                        foreach (var extraFile in extraFiles)
+                        {
+                            try { File.Delete(extraFile); } catch { }
+                        }
+                    }
+                }
+
                 if (HasVisibleCanvasTextOverlays(videoNode) && producedFrames.Count > 0)
                 {
                     await ApplyCanvasTextOverlaysToStillFilesAsync(
@@ -235,6 +253,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 SetOutput(videoNode, "frames_paths", framePathsJson);
                 SetOutput(videoNode, "frames_base64", frameBase64Json);
                 SetOutput(videoNode, "frame_folder", producedFrames.Count > 0 ? Path.GetDirectoryName(producedFrames[0]) ?? string.Empty : string.Empty);
+
+                if (producedFrames.Count > 0)
+                {
+                    var count = producedFrames.Count;
+                    var frameRangeText = count > 0 ? (count == 1 ? "frame #1" : $"frame #1 -> #{count}") : "0 frame";
+                    var modeText = videoNode.OutputBase64 ? "Base64" : "File Link";
+                    LogLine?.Invoke(videoNode, $"✅ [TÁCH FRAME] Đã tách thành công {count} frame ({frameRangeText}) [{modeText}]");
+                }
 
                 if (ShouldSkipVideoEncode(videoNode))
                 {
@@ -1437,6 +1463,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 ? Math.Max(0.001, sourceFps)
                 : (node.ExtractFps >= sourceFps ? sourceFps : Math.Max(0.001, node.ExtractFps));
 
+            Directory.CreateDirectory(outputFolder);
+            foreach (var existingFile in Directory.GetFiles(outputFolder, "frame_*.*"))
+            {
+                try { File.Delete(existingFile); } catch { }
+            }
+
             onLog($"📁 Output: {outputFolder}");
             onLog($"🎞 Mode: {(node.ExtractAllFrames ? "All frames" : $"{node.ExtractFps:0.###} frame/s với offset")}");
             onLog($"🧵 Parallel jobs: {node.ExtractParallelJobs}");
@@ -1550,6 +1582,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            if (!node.ExtractAllFrames && orderedStills.Count > 0)
+            {
+                var targetCount = Math.Max(1, node.ExtractFrameCount);
+                if (orderedStills.Count > targetCount)
+                {
+                    var extraFiles = orderedStills.Skip(targetCount).ToList();
+                    orderedStills = orderedStills.Take(targetCount).ToList();
+                    foreach (var extraFile in extraFiles)
+                    {
+                        try { File.Delete(extraFile); } catch { }
+                    }
+                }
+            }
+
             if (orderedStills.Count > 0)
             {
                 await ApplyCanvasTextOverlaysToStillFilesAsync(
@@ -1610,7 +1656,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             SetOutput(node, "frames_paths", pathsJson);
             SetOutput(node, "frames_base64", base64Json);
             SetOutput(node, "frame_folder", outputFolder);
-            onLog($"✅ Extracted {count} frames → {outputFolder}");
+            var frameRangeText = count > 0 ? (count == 1 ? "frame #1" : $"frame #1 -> #{count}") : "0 frame";
+            var modeText = node.OutputBase64 ? "Base64" : "File Link";
+            onLog($"✅ Đã tách thành công {count} frame ({frameRangeText}) [{modeText}]");
             onProgress(100, $"Done: {count} frames");
         }
 

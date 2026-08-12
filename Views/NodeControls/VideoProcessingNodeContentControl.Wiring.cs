@@ -116,10 +116,23 @@ namespace FlowMy.Views.NodeControls
                 AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
                 RunProcessingFlow();
             };
-            ExtractFramesButton.Click += (_, _) =>
+            ExtractFramesBase64Button.Click += (_, _) =>
             {
-                SwitchToLogView();
-                RunSpecificOperation("extract_frames");
+                _node.OutputBase64 = true;
+                _node.ExtractFramesEnabled = true;
+                _node.ExportVideoEnabled = false;
+                RefreshOutputsSummaryUi();
+                AppendLog("📷 [TÁCH FRAME] Đang trích xuất frame (Base64)...");
+                RunProcessingFlow();
+            };
+            ExtractFramesLinkButton.Click += (_, _) =>
+            {
+                _node.OutputBase64 = false;
+                _node.ExtractFramesEnabled = true;
+                _node.ExportVideoEnabled = false;
+                RefreshOutputsSummaryUi();
+                AppendLog("📷 [TÁCH FRAME] Đang trích xuất frame (Đường dẫn file)...");
+                RunProcessingFlow();
             };
             SnapshotButton.Click += (_, _) =>
             {
@@ -366,8 +379,7 @@ namespace FlowMy.Views.NodeControls
                 FpsValueText.Text = $"{framesPerWindow}";
                 UpdateFrameExtractionPreview();
             };
-            OutputBase64CheckBox.Checked += (_, _) => _node.OutputBase64 = true;
-            OutputBase64CheckBox.Unchecked += (_, _) => _node.OutputBase64 = false;
+
             UseDialogVideoConfigCheckBox.Checked += (_, _) =>
             {
                 if (_suppressControlSync) return;

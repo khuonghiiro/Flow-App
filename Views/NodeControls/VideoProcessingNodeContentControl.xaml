@@ -242,6 +242,47 @@
             </Setter>
         </Style>
 
+        <Style x:Key="VideoChromeResetButtonStyle" TargetType="Button">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="#FDE68A"/>
+            <Setter Property="Background" Value="#2A1B14"/>
+            <Setter Property="BorderBrush" Value="#B45309"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="FillBdReset"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                RenderTransformOrigin="0.5,0.5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="FillBdReset" Property="Background" Value="#3D2418"/>
+                                <Setter TargetName="FillBdReset" Property="BorderBrush" Value="#D97706"/>
+                                <Setter Property="Foreground" Value="#FEF3C7"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="FillBdReset" Property="Background" Value="#22140D"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="FillBdReset" Property="Opacity" Value="0.48"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="GlassCardStyle" TargetType="Border">
             <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
@@ -1519,9 +1560,14 @@
                                     <StackPanel>
                                         <TextBlock Text="Cấu hình" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                         <Grid Margin="0,0,0,10">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
-                                            <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
+                                            <Border Grid.Column="1" x:Name="OutputModeBadgeBorder" Background="#266366F1" BorderBrush="#6366F1" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center" ToolTip="Chế độ định dạng đầu ra của cổng frames_output">
+                                                <TextBlock x:Name="OutputModeBadgeText" Text="Chế độ: Base64" FontSize="11" FontWeight="SemiBold" Foreground="#818CF8"/>
+                                            </Border>
                                         </Grid>
                                         <Grid Margin="0,0,0,10" Visibility="Collapsed">
                                             <Grid.ColumnDefinitions>
@@ -1546,7 +1592,8 @@
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="ExtractFramesButton" Content="Tách Frame ngay" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"/>
+                                <Button x:Name="ExtractFramesBase64Button" Content="Tách Frame (Base64)" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Tách frame và trả về kết quả mã hóa Base64 string"/>
+                                <Button x:Name="ExtractFramesLinkButton" Content="Tách Frame (Đường dẫn)" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Tách frame và xuất ảnh vào thư mục (trả về đường dẫn file)"/>
                                 <Button x:Name="SnapshotButton" Content="Chụp ảnh Snapshot" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                             </StackPanel>
                         </Border>
@@ -1620,7 +1667,7 @@
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="ResetGradingButton2" Content="Đặt lại mặc định" Height="30" Padding="14,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                <Button x:Name="ResetGradingButton2" Content="Đặt lại mặc định" Height="30" Padding="14,0" Style="{StaticResource VideoChromeResetButtonStyle}"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -1943,7 +1990,7 @@
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="ResetFiltersTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                <Button x:Name="ResetFiltersTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Style="{StaticResource VideoChromeResetButtonStyle}"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -2018,7 +2065,7 @@
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="ResetAudioTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                <Button x:Name="ResetAudioTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Style="{StaticResource VideoChromeResetButtonStyle}"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -2139,7 +2186,7 @@
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="ResetExportTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                <Button x:Name="ResetExportTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Style="{StaticResource VideoChromeResetButtonStyle}"/>
                             </StackPanel>
                         </Border>
                     </Grid>

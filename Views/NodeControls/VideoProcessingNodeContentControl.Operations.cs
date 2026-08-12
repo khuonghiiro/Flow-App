@@ -1131,6 +1131,19 @@ namespace FlowMy.Views.NodeControls
         private void RefreshOutputsSummaryUi()
         {
             SetTextIfExists("OutputModeSummaryText", _node.OutputBase64 ? "Base64" : "File");
+            if (FindName("OutputModeBadgeText") is TextBlock badgeText && FindName("OutputModeBadgeBorder") is Border badgeBorder)
+            {
+                badgeText.Text = _node.OutputBase64 ? "Chế độ: Base64" : "Chế độ: Đường dẫn (Link)";
+                badgeText.Foreground = _node.OutputBase64
+                    ? new SolidColorBrush(Color.FromRgb(129, 140, 248))
+                    : new SolidColorBrush(Color.FromRgb(56, 189, 248));
+                badgeBorder.Background = _node.OutputBase64
+                    ? new SolidColorBrush(Color.FromArgb(0x33, 0x63, 0x66, 0xF1))
+                    : new SolidColorBrush(Color.FromArgb(0x33, 0x0E, 0xA5, 0xE9));
+                badgeBorder.BorderBrush = _node.OutputBase64
+                    ? new SolidColorBrush(Color.FromRgb(0x63, 0x66, 0xF1))
+                    : new SolidColorBrush(Color.FromRgb(0x0E, 0xA5, 0xE9));
+            }
             SetTextIfExists("OutputFormatSummaryText", (OutputFormatCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "MP4 (H.264)");
             SetTextIfExists("OutputAudioSummaryText", $"{_node.AudioTracks.Count} track | codec: {_node.AudioCodec} | bitrate: {_node.AudioBitrate}");
             var estimatedFrames = Math.Round(GetNaturalDurationSeconds() * (_node.ExtractAllFrames ? _node.SourceFps : _node.ExtractFps));
@@ -1272,69 +1285,47 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node.ExtractAllFrames)
             {
-                var durationAll = GetNaturalDurationSeconds();
-                var sourceFpsAll = _node.SourceFps > 0 ? _node.SourceFps : 30;
-                if (durationAll <= 0) durationAll = 1;
+                var durationAll = Math.Max(0.1, GetNaturalDurationSeconds());
+                var sourceFpsAll = _node.SourceFps > 0 ? _node.SourceFps : 24;
                 var total = Math.Max(1, (int)Math.Floor(durationAll * sourceFpsAll));
                 FpsSlider.Maximum = total;
                 EstFramePerSecText.Text = $"{sourceFpsAll:0.##}";
                 EstimatedFrameCountText.Text = $"{total:N0}";
                 EstFrameIntervalText.Text = $"{(1000.0 / sourceFpsAll):0.#} ms";
-                SetTextIfExists("FrameIndexPreviewText", $"All frames mode: 0..{Math.Max(0, (int)sourceFpsAll - 1)} mỗi giây");
+                SetTextIfExists("FrameIndexPreviewText", $"All frames mode: 0..{Math.Max(0, total - 1)} ({sourceFpsAll:0.##} fps)");
                 return;
             }
 
-            var duration = GetNaturalDurationSeconds();
-            var sourceFps = _node.SourceFps > 0 ? _node.SourceFps : 30;
-            if (duration <= 0) duration = 1;
+            var duration = Math.Max(0.1, GetNaturalDurationSeconds());
+            var sourceFps = _node.SourceFps > 0 ? _node.SourceFps : 24;
+            var totalFramesInVideo = Math.Max(1, (int)Math.Floor(duration * sourceFps));
 
-            // New semantics:
-            // SecondsPerFrameSlider is the window size (seconds).
-            // FpsSlider is how many frames to extract inside that window.
-            var windowSec = Math.Max(1, (int)Math.Round(_node.SecondsPerFrame));
-            windowSec = Math.Clamp(windowSec, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
-            var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
-            FpsSlider.Maximum = maxInWindow;
+            FpsSlider.Maximum = totalFramesInVideo;
+            var targetCount = Math.Clamp(_node.ExtractFrameCount, 1, totalFramesInVideo);
+            _node.ExtractFrameCount = targetCount;
 
-            var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
-            _node.ExtractFrameCount = framesPerWindow;
+            // Direct 1-to-1 semantics: targetCount is EXACTLY the number of frames to extract!
+            EstimatedFrameCountText.Text = $"{targetCount:N0}";
+            _node.ExtractFps = (double)targetCount / duration;
+            EstFramePerSecText.Text = $"{_node.ExtractFps:0.##} fps";
 
-            var totalWindows = Math.Floor(duration / windowSec);
-            var estimatedTotal = (int)(totalWindows * framesPerWindow);
-            EstimatedFrameCountText.Text = $"{estimatedTotal:N0}";
-            EstFramePerSecText.Text = $"{framesPerWindow}/{windowSec}s";
-
-            _node.ExtractFps = framesPerWindow / (double)windowSec;
-
-            // Keep slider value/text consistent.
             _isFrameControlSync = true;
             try
             {
-                if (FpsSlider.Value != framesPerWindow) FpsSlider.Value = framesPerWindow;
-                FpsValueText.Text = $"{framesPerWindow}";
+                if (FpsSlider.Value != targetCount) FpsSlider.Value = targetCount;
+                FpsValueText.Text = $"{targetCount}";
             }
             finally
             {
                 _isFrameControlSync = false;
             }
 
-            var extractFps = _node.ExtractFps;
-            var extractFpsSafe = Math.Max(0.001, extractFps);
-            EstFrameIntervalText.Text = $"{(1000.0 / extractFpsSafe):0.#} ms";
+            var extractFpsSafe = Math.Max(0.001, _node.ExtractFps);
+            var intervalMs = 1000.0 / extractFpsSafe;
+            EstFrameIntervalText.Text = intervalMs >= 1000 ? $"{intervalMs / 1000.0:0.##} s" : $"{intervalMs:0.#} ms";
 
-            if (extractFpsSafe >= 1)
-            {
-                var framesPerSec = Math.Max(1, (int)Math.Round(extractFpsSafe));
-                var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
-                var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
-                if (indices.Count > 4) indicesStr += "…";
-                SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Mục tiêu/win: {framesPerWindow:N0}");
-            }
-            else
-            {
-                var secondsPerFrame = 1.0 / extractFpsSafe;
-                SetTextIfExists("FrameIndexPreviewText", $"~1 frame mỗi {secondsPerFrame:0.##}s | Mục tiêu/win: {framesPerWindow:N0}");
-            }
+            var stepSec = duration / Math.Max(1, targetCount);
+            SetTextIfExists("FrameIndexPreviewText", $"Tách đúng {targetCount} frame trong {duration:0.#}s video (~1 frame mỗi {stepSec:0.##}s | FPS gốc: {sourceFps:0.##})");
         }
 
         private void SetTextIfExists(string elementName, string text)

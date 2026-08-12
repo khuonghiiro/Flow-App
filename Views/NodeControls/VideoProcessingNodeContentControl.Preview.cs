@@ -72,6 +72,8 @@ namespace FlowMy.Views.NodeControls
 
         private void SyncFrameCountFromSeconds()
         {
+            var duration = Math.Max(0.1, GetNaturalDurationSeconds());
+            var sourceFps = Math.Max(1, _node.SourceFps);
             var windowSec = Math.Clamp(
                 (int)Math.Round(_node.SecondsPerFrame),
                 (int)SecondsPerFrameSlider.Minimum,
@@ -79,18 +81,19 @@ namespace FlowMy.Views.NodeControls
             _node.SecondsPerFrame = windowSec;
             SecondsPerFrameValueText.Text = $"{windowSec}s";
 
-            var sourceFps = Math.Max(1, _node.SourceFps);
             var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
+            FpsSlider.Maximum = maxInWindow;
+            var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
+            _node.ExtractFrameCount = framesPerWindow;
+
+            var estimatedTotal = Math.Max(1, (int)Math.Round((duration / (double)windowSec) * framesPerWindow));
+            _node.ExtractFps = (double)estimatedTotal / duration;
 
             _isFrameControlSync = true;
             try
             {
-                FpsSlider.Maximum = maxInWindow;
-                var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
-                _node.ExtractFrameCount = framesPerWindow;
                 FpsSlider.Value = framesPerWindow;
                 FpsValueText.Text = $"{framesPerWindow}";
-                _node.ExtractFps = framesPerWindow / (double)windowSec;
             }
             finally
             {
@@ -102,23 +105,24 @@ namespace FlowMy.Views.NodeControls
         {
             var duration = Math.Max(0.1, GetNaturalDurationSeconds());
             var sourceFps = Math.Max(1, _node.SourceFps);
-            var fpsInt = Math.Max(1, (int)Math.Round(sourceFps));
+            var windowSec = Math.Clamp(
+                (int)Math.Round(_node.SecondsPerFrame),
+                (int)SecondsPerFrameSlider.Minimum,
+                (int)SecondsPerFrameSlider.Maximum);
 
-            var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
-            var count = Math.Clamp(_node.ExtractFrameCount, 1, totalFrames);
-            _node.ExtractFrameCount = count;
-            FpsSlider.Maximum = totalFrames;
-            _node.ExtractFps = Math.Max(1, count / duration);
+            var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
+            FpsSlider.Maximum = maxInWindow;
+            var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
+            _node.ExtractFrameCount = framesPerWindow;
 
-            var secondsInt = (int)Math.Round((double)count / fpsInt);
-            secondsInt = Math.Clamp(secondsInt, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
-            _node.SecondsPerFrame = secondsInt;
+            var estimatedTotal = Math.Max(1, (int)Math.Round((duration / (double)windowSec) * framesPerWindow));
+            _node.ExtractFps = (double)estimatedTotal / duration;
 
             _isFrameControlSync = true;
             try
             {
-                SecondsPerFrameSlider.Value = secondsInt;
-                SecondsPerFrameValueText.Text = $"{secondsInt}s";
+                FpsSlider.Value = framesPerWindow;
+                FpsValueText.Text = $"{framesPerWindow}";
             }
             finally
             {
@@ -180,6 +184,10 @@ namespace FlowMy.Views.NodeControls
             _suppressControlSync = true;
             try
             {
+                if (!string.IsNullOrWhiteSpace(_node.VideoPath))
+                {
+                    _ = ProbeSourceFpsAndRefreshUiAsync();
+                }
                 var duration = Math.Max(0.1, GetNaturalDurationSeconds());
                 var sourceFps = Math.Max(1, _node.SourceFps);
 
@@ -192,7 +200,6 @@ namespace FlowMy.Views.NodeControls
                 FpsSlider.Value = Math.Clamp(_node.ExtractFrameCount, 1, (int)FpsSlider.Maximum);
                 SecondsPerFrameSlider.Value = windowSec;
                 UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
-                OutputBase64CheckBox.IsChecked = _node.OutputBase64;
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
                 SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
                 VolumeSlider.Value = _node.PreviewVolume;
