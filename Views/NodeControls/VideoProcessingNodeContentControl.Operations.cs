@@ -1,0 +1,1423 @@
+using FlowMy.Controls;
+using FlowMy.Converters;
+using FlowMy.Effects;
+using FlowMy.Helpers;
+using FlowMy.Models.Nodes;
+using FlowMy.Services.Interaction;
+using FlowMy.Services.Utilities;
+using FlowMy.Services.Workflow;
+using FlowMy.Services.Workflow.NodeExecutors;
+using FlowMy.Views.Overlays;
+using Microsoft.Win32;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
+using System.Windows.Threading;
+using DrawingBitmap = System.Drawing.Bitmap;
+using WinForms = System.Windows.Forms;
+
+namespace FlowMy.Views.NodeControls
+{
+    public partial class VideoProcessingNodeContentControl : UserControl
+    {
+        private void ApplyGradingPreset(double brightness, double contrast, double saturation, double hue, double gamma)
+        {
+            _previewEffectTemporarilyDisabled = false;
+            _node.Brightness = brightness;
+            _node.Contrast = contrast;
+            _node.Saturation = saturation;
+            _node.Hue = hue;
+            _node.Gamma = gamma;
+            SyncControlValuesFromModel();
+            ApplyPreviewColorTransform();
+        }
+
+        private void ApplyPreviewColorTransform()
+        {
+            if (_previewEffectTemporarilyDisabled)
+            {
+                PreviewMedia.Effect = null;
+                GradingOverlay.Background = Brushes.Transparent;
+                PreviewMedia.Opacity = 1.0;
+                return;
+            }
+
+            var brightness = Math.Clamp(_node.Brightness, -1.0, 1.0);
+            var contrast = Math.Clamp(_node.Contrast, 0.1, 3.0);
+            var saturation = Math.Clamp(_node.Saturation, 0.0, 3.0);
+            var hueDeg = Math.Clamp(_node.Hue, -180.0, 180.0);
+            var gamma = Math.Clamp(_node.Gamma, 0.1, 3.0);
+
+            if (VideoEqEffect.ShaderAvailable)
+            {
+                _videoEqEffect ??= new VideoEqEffect();
+                var hueRad = hueDeg * (Math.PI / 180.0);
+                _videoEqEffect.Bc = new System.Windows.Point(brightness, contrast);
+                _videoEqEffect.Sg = new System.Windows.Point(saturation, gamma);
+                _videoEqEffect.HueCs = new System.Windows.Point(Math.Cos(hueRad), Math.Sin(hueRad));
+                PreviewMedia.Effect = _videoEqEffect;
+                GradingOverlay.Background = Brushes.Transparent;
+                PreviewMedia.Opacity = 1.0;
+                return;
+            }
+
+            // Software fallback — approximate tint + opacity (legacy preview).
+            var strength = (_node.PreviewVisualStrengthMode ?? "balanced").ToLowerInvariant();
+            var strengthScale = strength switch
+            {
+                "fast" => 0.65,
+                "strong" => 1.45,
+                _ => 1.0
+            };
+
+            var tintStrength = Math.Min(0.45, (Math.Abs(hueDeg) / 180.0 * 0.28 + Math.Max(0, saturation - 1.0) * 0.06) * strengthScale);
+            var hueColor = HsvToColor((hueDeg + 360.0) % 360.0, 0.9, 1.0);
+            byte tintAlpha;
+            Color tintRgb;
+
+            if (brightness >= 0)
+            {
+                tintAlpha = (byte)Math.Clamp((int)((brightness * 90 + tintStrength * 100) * strengthScale), 0, 170);
+                tintRgb = tintStrength > 0.01 ? hueColor : Color.FromRgb(255, 255, 255);
+            }
+            else
+            {
+                tintAlpha = (byte)Math.Clamp((int)((-brightness * 120 + tintStrength * 90) * strengthScale), 0, 190);
+                if (tintStrength > 0.01)
+                {
+                    tintRgb = Color.FromRgb(
+                        (byte)Math.Max(0, hueColor.R - 55),
+                        (byte)Math.Max(0, hueColor.G - 55),
+                        (byte)Math.Max(0, hueColor.B - 55));
+                }
+                else
+                {
+                    tintRgb = Color.FromRgb(0, 0, 0);
+                }
+            }
+
+            PreviewMedia.Effect = null;
+            GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(tintAlpha, tintRgb.R, tintRgb.G, tintRgb.B));
+
+            var contrastOpacityBoost = (contrast - 1.0) * 0.11 * strengthScale;
+            var saturationPenalty = (1.0 - Math.Min(1.0, saturation)) * 0.18 * strengthScale;
+            var gammaPenalty = Math.Max(0, 1.0 - gamma) * 0.12 * strengthScale;
+            PreviewMedia.Opacity = Math.Clamp(1.0 + contrastOpacityBoost - saturationPenalty - gammaPenalty, 0.52, 1.0);
+        }
+
+        private static Color HsvToColor(double hue, double saturation, double value)
+        {
+            var c = value * saturation;
+            var x = c * (1 - Math.Abs((hue / 60.0 % 2) - 1));
+            var m = value - c;
+            double r1, g1, b1;
+            if (hue < 60) { r1 = c; g1 = x; b1 = 0; }
+            else if (hue < 120) { r1 = x; g1 = c; b1 = 0; }
+            else if (hue < 180) { r1 = 0; g1 = c; b1 = x; }
+            else if (hue < 240) { r1 = 0; g1 = x; b1 = c; }
+            else if (hue < 300) { r1 = x; g1 = 0; b1 = c; }
+            else { r1 = c; g1 = 0; b1 = x; }
+
+            return Color.FromRgb(
+                (byte)Math.Clamp((int)((r1 + m) * 255), 0, 255),
+                (byte)Math.Clamp((int)((g1 + m) * 255), 0, 255),
+                (byte)Math.Clamp((int)((b1 + m) * 255), 0, 255));
+        }
+
+        private void RemoveAudioTrack_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is VideoAudioTrackConfig track)
+                _node.AudioTracks.Remove(track);
+        }
+
+        private void AddOverlayItem(string type)
+        {
+            if (type == "image")
+            {
+                var dlg = new OpenFileDialog
+                {
+                    Title = "Chọn ảnh overlay",
+                    Filter = "Image Files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All|*.*"
+                };
+                if (dlg.ShowDialog() != true) return;
+                _node.Overlays.Add(new OverlayItem
+                {
+                    Type = "image",
+                    Source = dlg.FileName,
+                    X = 0.08,
+                    Y = 0.08,
+                    Width = 0.24,
+                    Height = 0.24,
+                    Opacity = 1.0,
+                    IsVisible = true
+                });
+            }
+            else
+            {
+                _node.Overlays.Add(new OverlayItem
+                {
+                    Type = "text",
+                    Source = "Double-click để sửa text",
+                    X = 0.12,
+                    Y = 0.12,
+                    Width = 0.35,
+                    Height = 0.15,
+                    FontFamily = "Arial",
+                    FontColor = "White",
+                    FontSize = 28,
+                    TextAlignment = "Left",
+                    Opacity = 1.0,
+                    IsVisible = true
+                });
+            }
+
+            var selected = _node.Overlays.LastOrDefault();
+            OverlayCanvasControl.SelectedItem = selected;
+            OverlayLayerList.SelectedItem = selected;
+        }
+
+        private void RemoveSelectedOverlayItem()
+        {
+            if (OverlayLayerList.SelectedItem is not OverlayItem selected) return;
+            _node.Overlays.Remove(selected);
+            OverlayCanvasControl.SelectedItem = null;
+            OverlayLayerList.SelectedItem = null;
+        }
+
+        private void MoveSelectedOverlay(int direction)
+        {
+            if (OverlayLayerList.SelectedItem is not OverlayItem selected) return;
+            var currentIndex = _node.Overlays.IndexOf(selected);
+            if (currentIndex < 0) return;
+            var targetIndex = Math.Clamp(currentIndex + direction, 0, _node.Overlays.Count - 1);
+            if (targetIndex == currentIndex) return;
+            _node.Overlays.Move(currentIndex, targetIndex);
+            OverlayLayerList.SelectedItem = selected;
+        }
+
+        private void OverlayLayerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OverlayLayerList.SelectedItem is OverlayItem selected)
+            {
+                OverlayCanvasControl.SelectedItem = selected;
+                SyncOverlayEditorFromSelection(selected);
+            }
+            else
+            {
+                SyncOverlayEditorFromSelection(null);
+            }
+        }
+
+        private void OverlayCanvasControl_SelectionChanged(object? sender, OverlayItem? item)
+        {
+            OverlayLayerList.SelectedItem = item;
+            SyncOverlayEditorFromSelection(item);
+        }
+
+        private void ApplyOverlaysToVideo()
+        {
+            var visibleCount = _node.Overlays.Count(o => o.IsVisible);
+            if (visibleCount == 0)
+            {
+                AppendLog("⚠ Chưa có overlay nào đang hiển thị để áp dụng.");
+                return;
+            }
+
+            _pendingOverlayApply = true;
+            _beforePreviewPath = _node.VideoPath;
+            _showAfterPreview = false;
+            _isFlickerMode = false;
+            _beforeAfterFlickerTimer.Stop();
+            TabNavList.SelectedIndex = 6;
+            AppendLog($"🎞 Bắt đầu áp dụng {visibleCount} overlay item lên video...");
+            RunProcessingFlow();
+        }
+
+        private void OnOverlayApplyCompleted()
+        {
+            if (!_pendingOverlayApply) return;
+            _pendingOverlayApply = false;
+
+            var outputCandidate = (_node.OutputPathOverride ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(outputCandidate) || !File.Exists(outputCandidate))
+            {
+                outputCandidate = OutputVideoPathText.Text?.Trim() ?? string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(outputCandidate) && File.Exists(outputCandidate))
+            {
+                _afterPreviewPath = outputCandidate;
+                _showAfterPreview = true;
+                _isFlickerMode = false;
+                _beforeAfterFlickerTimer.Stop();
+                LoadPreviewFromPath(_afterPreviewPath, isAfterPath: true);
+                ToggleBeforeAfterButton.Content = "After";
+                AppendLog("✅ Đã áp dụng overlay và chuyển preview sang bản After.");
+            }
+            else
+            {
+                AppendLog("ℹ Xử lý xong nhưng chưa tìm thấy file output để bật preview After.");
+            }
+        }
+
+        private void ToggleBeforeAfterPreview()
+        {
+            if (string.IsNullOrWhiteSpace(_beforePreviewPath) || string.IsNullOrWhiteSpace(_afterPreviewPath))
+            {
+                AppendLog("ℹ Chưa có đủ before/after để so sánh.");
+                return;
+            }
+
+            if (!_showAfterPreview && !_isFlickerMode)
+            {
+                _showAfterPreview = true;
+                LoadPreviewFromPath(_afterPreviewPath, isAfterPath: true);
+                ToggleBeforeAfterButton.Content = "After";
+                return;
+            }
+
+            if (_showAfterPreview && !_isFlickerMode)
+            {
+                _isFlickerMode = true;
+                _beforeAfterFlickerTimer.Start();
+                ToggleBeforeAfterButton.Content = "Flicker";
+                return;
+            }
+
+            _isFlickerMode = false;
+            _beforeAfterFlickerTimer.Stop();
+            _showAfterPreview = false;
+            LoadPreviewFromPath(_beforePreviewPath, isAfterPath: false);
+            ToggleBeforeAfterButton.Content = "Before";
+        }
+
+        private void LoadPreviewFromPath(string? path, bool isAfterPath)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+            _showAfterPreview = isAfterPath;
+            _isSwitchingComparePreview = true;
+            _node.VideoPath = path;
+            _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
+        }
+
+        private void StopComparePreviewMode()
+        {
+            _isFlickerMode = false;
+            _beforeAfterFlickerTimer.Stop();
+            _showAfterPreview = false;
+            ToggleBeforeAfterButton.Content = "Before/After";
+        }
+
+        private void SyncOverlayEditorFromSelection(OverlayItem? item)
+        {
+            _suppressOverlayEditorSync = true;
+            try
+            {
+                var has = item != null;
+                OverlayTypeCombo.IsEnabled = has;
+                OverlaySourcePathTextBox.IsEnabled = has;
+                OverlaySourceTextArea.IsEnabled = has;
+                OverlayXSlider.IsEnabled = has;
+                OverlayYSlider.IsEnabled = has;
+                OverlayWidthSlider.IsEnabled = has;
+                OverlayHeightSlider.IsEnabled = has;
+                OverlayOpacitySlider.IsEnabled = has;
+                OverlayRotationSlider.IsEnabled = has;
+                OverlayFontFamilyCombo.IsEnabled = has;
+                OverlayFontColorTextBox.IsEnabled = has;
+                OverlayFontSizeSlider.IsEnabled = has;
+                OverlayTextAlignRow.IsEnabled = has;
+                OverlayVisibleCheckBox.IsEnabled = has;
+                OverlayLockedCheckBox.IsEnabled = has;
+
+                if (!has)
+                {
+                    OverlayTypeCombo.SelectedIndex = -1;
+                    OverlaySourcePathTextBox.Text = string.Empty;
+                    OverlaySourceTextArea.Text = string.Empty;
+                    OverlayTextPropsPanel.Visibility = Visibility.Collapsed;
+                    OverlayImageSourcePanel.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                OverlayTypeCombo.SelectedIndex = (item!.Type ?? "text").ToLowerInvariant() switch
+                {
+                    "image" => 1,
+                    "logo" => 2,
+                    _ => 0
+                };
+
+                var isText = string.Equals((item.Type ?? "text").Trim(), "text", StringComparison.OrdinalIgnoreCase);
+                OverlayTextPropsPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+                OverlayImageSourcePanel.Visibility = isText ? Visibility.Collapsed : Visibility.Visible;
+
+                if (isText)
+                    OverlaySourceTextArea.Text = item.Source;
+                else
+                    OverlaySourcePathTextBox.Text = item.Source;
+
+                OverlayXSlider.Value = item.X;
+                OverlayYSlider.Value = item.Y;
+                OverlayWidthSlider.Value = item.Width;
+                OverlayHeightSlider.Value = item.Height;
+                OverlayOpacitySlider.Value = item.Opacity;
+                OverlayRotationSlider.Value = item.Rotation;
+                var desiredFont = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily.Trim();
+                var match = OverlayFontFamilyCombo.Items.OfType<string>()
+                    .FirstOrDefault(s => string.Equals(s, desiredFont, StringComparison.OrdinalIgnoreCase));
+                if (match == null)
+                {
+                    OverlayFontFamilyCombo.Items.Add(desiredFont);
+                    match = desiredFont;
+                }
+                OverlayFontFamilyCombo.SelectedItem = match;
+                OverlayFontColorTextBox.Text = item.FontColor;
+                OverlayFontSizeSlider.Value = item.FontSize;
+                var align = (item.TextAlignment ?? "Left").Trim().ToLowerInvariant();
+                OverlayAlignLeftRadio.IsChecked = align != "center" && align != "right";
+                OverlayAlignCenterRadio.IsChecked = align == "center";
+                OverlayAlignRightRadio.IsChecked = align == "right";
+                OverlayVisibleCheckBox.IsChecked = item.IsVisible;
+                OverlayLockedCheckBox.IsChecked = item.IsLocked;
+            }
+            finally
+            {
+                _suppressOverlayEditorSync = false;
+            }
+        }
+
+        private void ApplyOverlayPropertyEditorChanges()
+        {
+            if (_suppressOverlayEditorSync) return;
+            if (OverlayLayerList.SelectedItem is not OverlayItem selected) return;
+
+            var selectedType = (OverlayTypeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "text";
+            selected.Type = selectedType;
+            var isText = string.Equals(selectedType, "text", StringComparison.OrdinalIgnoreCase);
+            OverlayTextPropsPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+            OverlayImageSourcePanel.Visibility = isText ? Visibility.Collapsed : Visibility.Visible;
+            selected.Source = isText ? (OverlaySourceTextArea.Text ?? string.Empty) : (OverlaySourcePathTextBox.Text ?? string.Empty);
+            selected.X = OverlayXSlider.Value;
+            selected.Y = OverlayYSlider.Value;
+            selected.Width = OverlayWidthSlider.Value;
+            selected.Height = OverlayHeightSlider.Value;
+            selected.Opacity = OverlayOpacitySlider.Value;
+            selected.Rotation = OverlayRotationSlider.Value;
+            if (isText)
+            {
+                var family = (OverlayFontFamilyCombo.SelectedItem as string)
+                    ?? "Arial";
+                selected.FontFamily = family;
+                selected.FontColor = OverlayFontColorTextBox.Text;
+                selected.FontSize = (int)OverlayFontSizeSlider.Value;
+                selected.TextAlignment = OverlayAlignCenterRadio.IsChecked == true ? "Center"
+                    : OverlayAlignRightRadio.IsChecked == true ? "Right"
+                    : "Left";
+            }
+            selected.IsVisible = OverlayVisibleCheckBox.IsChecked == true;
+            selected.IsLocked = OverlayLockedCheckBox.IsChecked == true;
+            OverlayLayerList.Items.Refresh();
+        }
+
+        private void BrowseAudioTrack_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not VideoAudioTrackConfig track) return;
+            var dlg = new OpenFileDialog
+            {
+                Title = "Chọn file audio",
+                Filter = "Audio Files|*.mp3;*.wav;*.aac;*.flac;*.ogg;*.m4a|All|*.*"
+            };
+            if (dlg.ShowDialog() != true) return;
+            track.SourceOutputKey = dlg.FileName;
+            AudioTracksList.Items.Refresh();
+        }
+
+        private void RunSpecificOperation(string operationType)
+        {
+            if (string.IsNullOrWhiteSpace(_node.VideoPath))
+            {
+                AppendLog("⚠ Chưa chọn video nguồn.");
+                return;
+            }
+
+            SyncRuntimeConfigFromUi();
+            _lastRunStartedAtUtc = DateTime.UtcNow;
+            ProgressStatusText.Text = $"Running: {operationType}...";
+
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    switch (operationType)
+                    {
+                        case "extract_frames":
+                            var configuredFrameFolder = (_node.FrameOutputFolderPath ?? string.Empty).Trim();
+                            if (!string.IsNullOrWhiteSpace(configuredFrameFolder))
+                                EnsureDirectoryExists(configuredFrameFolder);
+                            await VideoProcessingNodeExecutor.RunExtractFramesOnlyAsync(
+                                _node,
+                                line => AppendLog(line),
+                                (pct, status) => UpdateProgress(pct, status),
+                                configuredFrameFolder,
+                                System.Threading.CancellationToken.None);
+                            break;
+                        case "burn_subtitle":
+                            if (string.IsNullOrWhiteSpace(_node.SubtitlePath))
+                            {
+                                _ = Dispatcher.BeginInvoke(new Action(() => AppendLog("⚠ Chưa chọn file subtitle.")));
+                                return;
+                            }
+                            await VideoProcessingNodeExecutor.RunBurnSubtitleAsync(
+                                _node,
+                                line => AppendLog(line),
+                                (pct, status) => UpdateProgress(pct, status),
+                                System.Threading.CancellationToken.None);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"❌ Error: {ex.Message}")));
+                }
+            });
+        }
+
+        private void TakeSnapshot()
+        {
+            if (PreviewMedia.Source == null) return;
+            var dlg = new SaveFileDialog
+            {
+                Filter = "PNG Image|*.png",
+                FileName = $"snapshot_{DateTime.Now:HHmmss}.png"
+            };
+            if (dlg.ShowDialog() != true) return;
+            var outputPath = dlg.FileName;
+            var position = PreviewMedia.Position.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    // Source of truth: FFmpeg pipeline (same as extract output).
+                    await VideoProcessingNodeExecutor.RunSnapshotAsync(_node, position, outputPath, System.Threading.CancellationToken.None);
+                    _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"✅ Snapshot saved (ffmpeg): {outputPath}")));
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        // UI capture fallback if FFmpeg fails.
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            var root = GetVideoColumnRenderRoot();
+                            root.UpdateLayout();
+                            VideoAreaGrid.UpdateLayout();
+                            var dpi = VisualTreeHelper.GetDpi(root);
+                            var containerW = Math.Max(1, (int)Math.Round(root.ActualWidth * dpi.DpiScaleX));
+                            var containerH = Math.Max(1, (int)Math.Round(root.ActualHeight * dpi.DpiScaleY));
+                            var rtb = new RenderTargetBitmap(containerW, containerH, 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+                            rtb.Render(root);
+                            var displayedRect = GetDisplayedVideoRect();
+                            var topLeft = VideoAreaGrid.TranslatePoint(new Point(displayedRect.X, displayedRect.Y), root);
+                            var cropX = Math.Max(0, (int)Math.Floor(topLeft.X * dpi.DpiScaleX));
+                            var cropY = Math.Max(0, (int)Math.Floor(topLeft.Y * dpi.DpiScaleY));
+                            var cropW = Math.Max(1, Math.Min(containerW - cropX, (int)Math.Round(displayedRect.Width * dpi.DpiScaleX)));
+                            var cropH = Math.Max(1, Math.Min(containerH - cropY, (int)Math.Round(displayedRect.Height * dpi.DpiScaleY)));
+                            var cropped = new CroppedBitmap(rtb, new Int32Rect(cropX, cropY, cropW, cropH));
+                            var encoder = new PngBitmapEncoder();
+                            encoder.Frames.Add(BitmapFrame.Create(cropped));
+                            using var fs = new System.IO.FileStream(outputPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.None);
+                            encoder.Save(fs);
+                        });
+                        _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"✅ Snapshot saved (UI fallback): {outputPath}")));
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"❌ Snapshot failed: {ex.Message} | fallback: {fallbackEx.Message}")));
+                    }
+                }
+            });
+        }
+
+        private void SetRotate(double deg, Button activeButton)
+        {
+            _node.RotationDegrees = deg;
+            foreach (var b in new[] { Rotate0Button, Rotate90Button, Rotate180Button, Rotate270Button })
+                b.Background = new SolidColorBrush(Color.FromArgb(0x18, 255, 255, 255));
+            activeButton.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
+        }
+
+        private void ToggleFlip(Button button, bool isHorizontal)
+        {
+            if (isHorizontal) _node.FlipH = !_node.FlipH; else _node.FlipV = !_node.FlipV;
+            var enabled = isHorizontal ? _node.FlipH : _node.FlipV;
+            button.Background = enabled ? new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8)) : new SolidColorBrush(Color.FromArgb(0x18, 255, 255, 255));
+        }
+
+        private void SetScale(double scale, int? fixedHeight, Button activeButton)
+        {
+            _fixedResolutionHeight = fixedHeight;
+            _node.ResolutionScale = scale;
+            _node.FixedResolutionHeight = fixedHeight;
+            foreach (var b in new[] { Scale100Button, Scale75Button, Scale50Button, Scale25Button, Scale1080Button, Scale720Button })
+                b.Background = new SolidColorBrush(Color.FromArgb(0x18, 255, 255, 255));
+            activeButton.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
+        }
+
+        private void UpdateVolumeIcon()
+        {
+            MuteButton.Content = CreateTransportIcon(_isMuted ? "volume-xmark duotone-light" : (PreviewMedia.Volume > 0.5 ? "volume-high duotone-light" : "volume-low duotone-light"));
+        }
+
+        private void SetTransportIcons()
+        {
+            SkipBackButton.Content = CreateTransportIcon("backward regular");
+            SkipForwardButton.Content = CreateTransportIcon("forward sharp-regular");
+            PlayPauseButton.Content = CreateTransportIcon("play regular");
+            StopButton.Content = CreateTransportIcon("stop sharp-regular");
+        }
+
+        private SvgViewboxEx CreateTransportIcon(string iconKey)
+        {
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), iconKey,
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            return new SvgViewboxEx
+            {
+                Width = 14,
+                Height = 14,
+                Source = iconUri!,
+                Fill = GetThemeIconBrush()
+            };
+        }
+
+        private Brush GetThemeIconBrush()
+        {
+            if (Resources["ThemeTextPrimaryBrush"] is Brush brush)
+            {
+                return brush;
+            }
+
+            return _isLightTheme
+                ? new SolidColorBrush(Color.FromRgb(35, 42, 52))
+                : new SolidColorBrush(Color.FromRgb(232, 240, 255));
+        }
+
+        private void ApplyLocalTheme()
+        {
+            var isLight = _isLightTheme;
+            var shellBg = isLight ? Color.FromRgb(242, 245, 252) : Color.FromRgb(15, 15, 23);
+            Background = new SolidColorBrush(shellBg);
+            Foreground = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(shellBg));
+
+            Color accentColor = Color.FromRgb(124, 107, 248);
+            if (Application.Current?.TryFindResource("PrimaryBrush") is SolidColorBrush appPrimary && appPrimary.Color.A > 0)
+                accentColor = appPrimary.Color;
+
+            Color cardTop = isLight ? Color.FromArgb(245, 255, 255, 255) : Color.FromArgb(26, 255, 255, 255);
+            Color cardEffective = SurfaceContrast.CompositeOver(cardTop, shellBg);
+            Color innerTop = isLight ? Color.FromArgb(216, 242, 245, 250) : Color.FromArgb(24, 0, 0, 0);
+            Color innerEffective = SurfaceContrast.CompositeOver(innerTop, shellBg);
+
+            Color primaryText = SurfaceContrast.TextPrimaryOnSurface(cardEffective);
+            Color secondaryText = SurfaceContrast.TextSecondaryOnSurface(innerEffective);
+
+            Resources["ThemeTextPrimaryBrush"] = new SolidColorBrush(primaryText);
+            Resources["ThemeTextSecondaryBrush"] = new SolidColorBrush(secondaryText);
+            Resources["ThemeCardBackgroundBrush"] = new SolidColorBrush(cardTop);
+            Resources["ThemeCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x4A, 0x6B, 0x7A, 0x8A) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInnerCardBackgroundBrush"] = new SolidColorBrush(innerTop);
+            Resources["ThemeInnerCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x52, 0x9C, 0xAA, 0xBC) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 251, 255) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(178, 191, 212) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(
+                SurfaceContrast.CompositeOver(isLight ? Color.FromRgb(248, 251, 255) : Color.FromRgb(34, 36, 46), shellBg)));
+            Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xEC, 0xF1, 0xF8) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
+            Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x58, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF0, 0xE9, 0xEF, 0xF8) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
+            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x60, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(208, 216, 228) : Color.FromRgb(52, 54, 66));
+            Resources["ThemeTimelineProgressBrush"] = new SolidColorBrush(accentColor);
+            Resources["ThemeTimelineThumbStrokeBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(72, 82, 98) : Color.FromRgb(226, 232, 245));
+            Resources["ThemeAccentGlowColor"] = accentColor;
+            Resources["ThemeAccentBrush"] = new SolidColorBrush(accentColor);
+
+            Color warmAmber = Color.FromRgb(0xF5, 0x9E, 0x0B);
+            Resources["ThemeWarmAccentBrush"] = new SolidColorBrush(warmAmber);
+            Resources["ThemeWarmAccentBrushSoft"] = new SolidColorBrush(Color.FromArgb(0x66, warmAmber.R, warmAmber.G, warmAmber.B));
+            Resources["ThemeBottomBarGroupInactiveBorderBrush"] = new SolidColorBrush(
+                isLight ? Color.FromArgb(0x90, 0x9A, 0xAA, 0xBC) : Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(0x2A, warmAmber.R, warmAmber.G, warmAmber.B));
+
+            Color chromePrimaryBg = isLight ? Color.FromRgb(226, 232, 246) : Color.FromRgb(48, 50, 64);
+            Color chromePrimaryHover = isLight ? Color.FromRgb(210, 218, 238) : Color.FromRgb(58, 61, 78);
+            Color chromeSecondaryBg = isLight ? Color.FromRgb(236, 240, 250) : Color.FromRgb(40, 42, 54);
+            Color chromeSecondaryHover = isLight ? Color.FromRgb(220, 228, 244) : Color.FromRgb(50, 52, 68);
+            Resources["ThemeVideoChromePrimaryBgBrush"] = new SolidColorBrush(chromePrimaryBg);
+            Resources["ThemeVideoChromePrimaryHoverBgBrush"] = new SolidColorBrush(chromePrimaryHover);
+            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromePrimaryBg, shellBg)));
+            Resources["ThemeVideoChromePrimaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 200) : Color.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeVideoChromeSecondaryBgBrush"] = new SolidColorBrush(chromeSecondaryBg);
+            Resources["ThemeVideoChromeSecondaryHoverBgBrush"] = new SolidColorBrush(chromeSecondaryHover);
+            Resources["ThemeVideoChromeSecondaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromeSecondaryBg, shellBg)));
+            Resources["ThemeVideoChromeSecondaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(150, 168, 192) : Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF));
+            Resources["ThemePresetChipBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(230, 234, 244) : Color.FromRgb(36, 37, 48));
+            Resources["ThemePresetChipBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 198) : Color.FromRgb(58, 60, 76));
+            Resources["ThemePresetChipHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(212, 220, 238) : Color.FromRgb(48, 50, 66));
+            Resources["ThemePresetChipPressedBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(198, 208, 230) : Color.FromRgb(44, 46, 60));
+            Resources["ThemePresetChipResetBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 224, 234) : Color.FromRgb(40, 44, 56));
+            Resources["ThemePresetChipResetBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(140, 155, 180) : Color.FromRgb(70, 74, 90));
+            Color transportPlayBg = isLight ? Color.FromRgb(86, 78, 220) : Color.FromRgb(99, 102, 241);
+            Color transportPlayHoverBg = isLight ? Color.FromRgb(72, 64, 200) : Color.FromRgb(79, 82, 220);
+            Resources["ThemeTransportPlayBgBrush"] = new SolidColorBrush(transportPlayBg);
+            Resources["ThemeTransportPlayHoverBgBrush"] = new SolidColorBrush(transportPlayHoverBg);
+            Resources["ThemeTransportPlayFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(transportPlayBg));
+            Resources["ThemeTransportIconHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 218, 235) : Color.FromRgb(48, 50, 64));
+            Resources["ThemeQuickOverlayHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(214, 222, 238) : Color.FromRgb(52, 54, 70));
+            Resources["ThemeVideoOpenButtonFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(Color.FromRgb(220, 38, 38)));
+            Resources["ThemeValueBadgeBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 228, 240) : Color.FromRgb(42, 43, 56));
+
+            Color framePreviewBg = isLight ? Color.FromArgb(250, 255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
+            Color framePreviewFg = SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(framePreviewBg, shellBg));
+            Resources["ThemeFrameLabelPreviewBg"] = new SolidColorBrush(framePreviewBg);
+            Resources["ThemeFrameLabelPreviewFg"] = new SolidColorBrush(framePreviewFg);
+            Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xE8, 0xEE, 0xF7) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF5, 0xF8, 0xFD) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
+            Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xEF, 0xEA, 0xF1, 0xFB) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(
+                isLight ? Color.FromArgb(0xAA, warmAmber.R, warmAmber.G, warmAmber.B) : Color.FromArgb(0x5A, warmAmber.R, warmAmber.G, warmAmber.B));
+            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(accentColor));
+            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
+            Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));
+            Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabSelectedBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)210 : (byte)200, accentColor.R, accentColor.G, accentColor.B));
+            Resources["ThemeVideoLogSegmentTrackBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x95, 236, 240, 248) : Color.FromArgb(0x55, 24, 26, 34));
+            Resources["ThemeComboSelectedItemBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)180 : (byte)90, accentColor.R, accentColor.G, accentColor.B));
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+
+            // Secondary button chips — contrast checked against real fill colors.
+            Color secBgTop = isLight ? Color.FromArgb(221, 210, 220, 235) : Color.FromArgb(37, 255, 255, 255);
+            Color secEffective = SurfaceContrast.CompositeOver(secBgTop, shellBg);
+            Resources["SecondaryButtonBackground"] = new SolidColorBrush(secBgTop);
+            Resources["SecondaryButtonForeground"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(secEffective));
+            Resources["SecondaryButtonBorder"] = new SolidColorBrush(
+                isLight ? Color.FromRgb(160, 175, 195) : Color.FromArgb(0x40, 255, 255, 255));
+
+            var textPrimary = (Brush)Resources["ThemeTextPrimaryBrush"];
+            var textSecondary = (Brush)Resources["ThemeTextSecondaryBrush"];
+            SetForegroundIfExists("TimeCurrentText", textSecondary);
+            SetForegroundIfExists("TimeTotalText", textSecondary);
+            SetForegroundIfExists("SeekPerfText", textSecondary);
+            SetForegroundIfExists("FrameInfoText", textPrimary);
+            SetForegroundIfExists("VideoPathText", textSecondary);
+            SetForegroundIfExists("CodecInfoText", textSecondary);
+            SetForegroundIfExists("AudioSummaryText", textSecondary);
+            SetForegroundIfExists("ConfigMissingSummaryText", textPrimary);
+            SetForegroundIfExists("ProgressPercentText", textSecondary);
+            SetForegroundIfExists("ElapsedTimeText", textSecondary);
+            SetForegroundIfExists("EstimatedTimeText", textSecondary);
+            TitleText.Foreground = textPrimary;
+            if (IconView != null)
+                IconView.Fill = textPrimary;
+            UpdateHwBadgeUi();
+
+            ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
+            SetTransportIcons();
+            SyncUserControlRoundedClip();
+            UpdateBottomBarGroupHighlight(Math.Max(0, TabNavList.SelectedIndex));
+            ApplyThemeBrushes(GetTextBrush(_node.ColorKey));
+        }
+
+        private void UpdateHwBadgeUi()
+        {
+            if (HwBadge == null) return;
+
+            var hw = (_node?.PreferredHwAccel ?? string.Empty).Trim().ToLowerInvariant();
+            bool isCudaOrGpu = !string.IsNullOrEmpty(hw) && hw != "cpu" && hw != "none";
+
+            if (isCudaOrGpu)
+            {
+                HwBadge.Background = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+                var label = string.IsNullOrWhiteSpace(_node?.PreferredHwAccel) ? "CUDA" : _node.PreferredHwAccel.ToUpperInvariant();
+                HwBadge.ToolTip = label;
+            }
+            else
+            {
+                HwBadge.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+                HwBadge.ToolTip = "CPU";
+            }
+        }
+
+        private void SetForegroundIfExists(string elementName, Brush brush)
+        {
+            if (FindName(elementName) is TextBlock tb)
+            {
+                tb.Foreground = brush;
+            }
+        }
+
+        private static SvgViewboxEx CreateThemeModeIcon(string iconKey, bool isLightMode)
+        {
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), iconKey,
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            return new SvgViewboxEx
+            {
+                Width = 15,
+                Height = 15,
+                Source = iconUri!,
+                Fill = isLightMode ? new SolidColorBrush(Color.FromRgb(56, 63, 74)) : new SolidColorBrush(Color.FromRgb(255, 219, 116))
+            };
+        }
+
+        private void ToggleNodeZoom()
+        {
+            if (_node == null || _host == null || _node.Border == null) return;
+
+            var border = _node.Border;
+            var minW = border.MinWidth > 0 ? border.MinWidth : 540;
+            var minH = border.MinHeight > 0 ? border.MinHeight : 340;
+
+            // Collapse back to pre-expand frame.
+            if (_isNodeZoomed)
+            {
+                var restoreX = _prevNodeX;
+                var restoreY = _prevNodeY;
+                var restoreW = _prevNodeWidth > 0 ? _prevNodeWidth : minW;
+                var restoreH = _prevNodeHeight > 0 ? _prevNodeHeight : minH;
+
+                _node.X = restoreX;
+                _node.Y = restoreY;
+                _node.Width = Math.Max(minW, restoreW);
+                _node.Height = Math.Max(minH, restoreH);
+                border.Width = _node.Width;
+                border.Height = _node.Height;
+                _host.UpdateNodePosition(_node, restoreX, restoreY);
+                _host.UpdateCanvasSize();
+                if (_host is WorkflowEditorWindow win)
+                    win.SetViewportExpandedUiHidden(false);
+
+                // Khôi phục ZIndex ban đầu khi thu nhỏ node
+                Canvas.SetZIndex(border, _prevZIndex);
+                Panel.SetZIndex(border, _prevZIndex);
+
+                _isNodeZoomed = false;
+                ToggleNodeSizeButton.Content = CreateTransportIcon("expand utility-fill-semibold");
+                RefreshLargeNodeUiScale();
+                return;
+            }
+
+            // Expand to current visible workflow viewport (same behavior idea as HtmlUi node).
+            if (_host is WorkflowEditorWindow winExpand)
+                winExpand.SetViewportExpandedUiHidden(true);
+
+            // Lưu ZIndex và vị trí/kích thước ban đầu trước khi phóng to
+            _prevZIndex = Canvas.GetZIndex(border);
+
+            _prevNodeX = _node.X;
+            _prevNodeY = _node.Y;
+            _prevNodeWidth = _node.Width;
+            _prevNodeHeight = _node.Height;
+
+            // Đẩy ZIndex lên cao nhất (999999) để đè lên các node và control khác trên canvas
+            Canvas.SetZIndex(border, 999999);
+            Panel.SetZIndex(border, 999999);
+
+            var vp = GetWorkflowViewportCanvasRect();
+            if (vp.IsEmpty || vp.Width < 1 || vp.Height < 1)
+            {
+                _node.Width = Math.Max(1366, _node.Width);
+                _node.Height = Math.Max(768, _node.Height);
+                border.Width = _node.Width;
+                border.Height = _node.Height;
+                _isNodeZoomed = true;
+                ToggleNodeSizeButton.Content = CreateTransportIcon("compress utility-fill-semibold");
+                RefreshLargeNodeUiScale();
+                return;
+            }
+
+            var nextW = Math.Max(minW, vp.Width);
+            var nextH = Math.Max(minH, vp.Height);
+            _node.X = vp.Left;
+            _node.Y = vp.Top;
+            _node.Width = nextW;
+            _node.Height = nextH;
+            border.Width = nextW;
+            border.Height = nextH;
+            _host.UpdateNodePosition(_node, vp.Left, vp.Top);
+            _host.UpdateCanvasSize();
+
+            _isNodeZoomed = true;
+            ToggleNodeSizeButton.Content = CreateTransportIcon("compress utility-fill-semibold");
+            RefreshLargeNodeUiScale();
+        }
+
+        private Rect GetWorkflowViewportCanvasRect()
+        {
+            if (_host == null) return Rect.Empty;
+            var sv = _host.ScrollViewer;
+            if (sv == null) return Rect.Empty;
+            try { sv.UpdateLayout(); } catch { /* ignore */ }
+
+            var scrollX = sv.HorizontalOffset;
+            var scrollY = sv.VerticalOffset;
+            var viewportW = sv.ViewportWidth > 1 ? sv.ViewportWidth : sv.ActualWidth;
+            var viewportH = sv.ViewportHeight > 1 ? sv.ViewportHeight : sv.ActualHeight;
+            if (viewportW < 1 || viewportH < 1) return Rect.Empty;
+
+            var z = _host.ScaleTransform?.ScaleX ?? 1.0;
+            if (z <= 0.0001) z = 1.0;
+            var tx = _host.TranslateTransform?.X ?? 0;
+            var ty = _host.TranslateTransform?.Y ?? 0;
+
+            var canvasLeft = (scrollX - tx) / z;
+            var canvasTop = (scrollY - ty) / z;
+            var canvasW = viewportW / z;
+            var canvasH = viewportH / z;
+            if (double.IsNaN(canvasLeft) || double.IsInfinity(canvasLeft) ||
+                double.IsNaN(canvasTop) || double.IsInfinity(canvasTop))
+                return Rect.Empty;
+
+            return new Rect(canvasLeft, canvasTop, canvasW, canvasH);
+        }
+
+        private void RefreshLargeNodeUiScale()
+        {
+            if (RootContentGrid == null) return;
+
+            var owner = Window.GetWindow(this);
+            bool isWidget = owner != null && owner.GetType().Name == "FloatingWidgetWindow";
+
+            if (isWidget)
+            {
+                RootContentGrid.LayoutTransform = Transform.Identity;
+                return;
+            }
+
+            if (_isNodeZoomed)
+            {
+                // Khi phóng to vừa màn hình (Zoom mode): Triệt tiêu canvas zoom scale z (invZ = 1.0 / z)
+                // để UI luôn hiển thị đúng tỉ lệ 1.0x (100% native resolution) trên màn hình thực tế,
+                // không phụ thuộc vào tỉ lệ zoom/pan của canvas.
+                double z = _host?.ScaleTransform?.ScaleX ?? 1.0;
+                if (z <= 0.0001) z = 1.0;
+
+                double invZ = 1.0 / z;
+                RootContentGrid.LayoutTransform = Math.Abs(invZ - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(invZ, invZ);
+            }
+            else
+            {
+                // Khi ở chế độ canvas: Tỉ lệ UI lấy baseline mặc định 1366px × 768px.
+                // Khi node ở kích thước 1366x768 -> scale = 1.0x (Hiển thị nét, đẹp, bố cục gọn gàng chuẩn XAML gốc).
+                double nodeW = _node != null && _node.Width > 0 ? _node.Width : (ActualWidth > 0 ? ActualWidth : 1366);
+                double nodeH = _node != null && _node.Height > 0 ? _node.Height : (ActualHeight > 0 ? ActualHeight : 768);
+
+                // Baseline 1366px × 768px
+                double scaleW = nodeW / 1366.0;
+                double scaleH = nodeH / 768.0;
+
+                // Dùng Max(scaleW, scaleH) để khi kéo node to hơn 1366x768 thì UI scale tăng mượt mà tương ứng
+                double scaleDimension = Math.Max(scaleW, scaleH);
+
+                // Sub-linear curved scale cho canvas drag
+                double scaleVal = Math.Clamp(Math.Pow(scaleDimension, 0.65), 0.6, 3.0);
+
+                RootContentGrid.LayoutTransform = Math.Abs(scaleVal - 1.0) < 0.01 ? Transform.Identity : new ScaleTransform(scaleVal, scaleVal);
+            }
+        }
+
+        private void EmitAutoFitSizeSuggestion()
+        {
+            var naturalW = PreviewMedia.NaturalVideoWidth;
+            var naturalH = PreviewMedia.NaturalVideoHeight;
+            if (naturalW <= 0 || naturalH <= 0) return;
+            var aspect = naturalW / (double)naturalH;
+            if (aspect <= 0 || double.IsNaN(aspect) || double.IsInfinity(aspect)) return;
+
+            var previewHeight = Math.Clamp(naturalH, MinPreviewHeight, Math.Min(MaxPreviewHeight, MaxAutoFitNodeHeight - NonPreviewContentHeight));
+            var previewWidth = previewHeight * aspect;
+            var suggestedWidth = Math.Clamp(previewWidth + HorizontalPadding, MinAutoFitNodeWidth, MaxAutoFitNodeWidth);
+            var suggestedHeight = Math.Clamp(previewHeight + NonPreviewContentHeight, MinAutoFitNodeHeight, MaxAutoFitNodeHeight);
+            SuggestedNodeSizeReady?.Invoke(suggestedWidth, suggestedHeight);
+        }
+
+        /// <summary>Khi cột preview cao hơn rộng: tab Video (toolbar + preview + timeline) và tab Log. Ngược lại giữ layout xếp dọc.</summary>
+        private void UpdateVideoLogColumnLayout()
+        {
+            if (PreviewColumnShellGrid == null || VideoContainerGrid == null || VideoTopPackGrid == null ||
+                LogPanelBorder == null || PortraitVideoLogTabControl == null ||
+                PortraitVideoHostPanel == null || PortraitLogHostPanel == null)
+                return;
+
+            var w = PreviewColumnShellGrid.ActualWidth;
+            var h = PreviewColumnShellGrid.ActualHeight;
+            if (w < 40 || h < 40 || double.IsNaN(w) || double.IsNaN(h)) return;
+
+            var portrait = h > w;
+            if (portrait == _portraitVideoLogLayout) return;
+
+            _portraitVideoLogLayout = portrait;
+
+            if (portrait)
+            {
+                VideoContainerGrid.Children.Remove(VideoTopPackGrid);
+                Grid.SetRow(VideoTopPackGrid, 0);
+                Grid.SetRowSpan(VideoTopPackGrid, 1);
+                PortraitVideoHostPanel.Children.Clear();
+                PortraitVideoHostPanel.Children.Add(VideoTopPackGrid);
+
+                VideoContainerGrid.Children.Remove(LogPanelBorder);
+                Grid.SetRow(LogPanelBorder, 0);
+                PortraitLogHostPanel.Children.Clear();
+                PortraitLogHostPanel.Children.Add(LogPanelBorder);
+
+                VideoContainerGrid.Visibility = Visibility.Collapsed;
+                PortraitVideoLogTabControl.Visibility = Visibility.Visible;
+                PortraitVideoLogTabControl.SelectedIndex = 0;
+
+                if (VideoTopPackGrid.RowDefinitions.Count > 1)
+                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+            }
+            else
+            {
+                PortraitVideoHostPanel.Children.Remove(VideoTopPackGrid);
+                Grid.SetRow(VideoTopPackGrid, 0);
+                Grid.SetRowSpan(VideoTopPackGrid, 3);
+                VideoContainerGrid.Children.Insert(0, VideoTopPackGrid);
+
+                PortraitLogHostPanel.Children.Remove(LogPanelBorder);
+                Grid.SetRow(LogPanelBorder, 3);
+                VideoContainerGrid.Children.Add(LogPanelBorder);
+
+                PortraitVideoLogTabControl.Visibility = Visibility.Collapsed;
+                VideoContainerGrid.Visibility = Visibility.Visible;
+
+                if (VideoTopPackGrid.RowDefinitions.Count > 1)
+                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(2, GridUnitType.Star);
+                if (VideoContainerGrid.RowDefinitions.Count > 3)
+                    VideoContainerGrid.RowDefinitions[3].Height = new GridLength(1, GridUnitType.Star);
+            }
+
+            UpdatePreviewAspectRatio();
+        }
+
+        private FrameworkElement GetVideoColumnRenderRoot()
+        {
+            return (_portraitVideoLogLayout && PreviewColumnShellGrid != null) ? PreviewColumnShellGrid : VideoContainerGrid;
+        }
+
+        private void UpdatePreviewAspectRatio()
+        {
+            if (PreviewContainerBorder == null || VideoContainerGrid == null) return;
+
+            var outerH = PreviewContainerBorder.ActualHeight;
+            if (outerH <= 0) return;
+
+            UpdateAdaptivePreviewRows(outerH);
+
+            if (PreviewMedia.Source != null)
+            {
+                VideoViewbox.Visibility = Visibility.Visible;
+                PreviewPlaceholder.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                VideoViewbox.Visibility = Visibility.Collapsed;
+                PreviewPlaceholder.Visibility = Visibility.Visible;
+            }
+
+            SyncVideoViewportClip();
+            UpdateOverlayCanvasBounds();
+            UpdateWatermarkPreviewUi();
+        }
+
+        private void SetAspectRatio(double w, double h, bool auto)
+        {
+            _selectedAspectW = w;
+            _selectedAspectH = h;
+            _aspectAuto = auto;
+            ApplyAspectRatioToMedia();
+        }
+
+        private void ApplyAspectRatioToMedia()
+        {
+            double targetW;
+            double targetH;
+            if (_aspectAuto)
+            {
+                var natW = PreviewMedia.NaturalVideoWidth > 0 ? PreviewMedia.NaturalVideoWidth : 1280;
+                var natH = PreviewMedia.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 720;
+                targetW = natW;
+                targetH = natH;
+            }
+            else if (_selectedAspectW > 0 && _selectedAspectH > 0)
+            {
+                var baseW = 1280.0;
+                targetW = baseW;
+                targetH = baseW * (_selectedAspectH / _selectedAspectW);
+            }
+            else
+            {
+                targetW = 1280;
+                targetH = 720;
+            }
+
+            var qualityCap = GetConfiguredPreviewMaxHeight();
+            if (qualityCap.HasValue && qualityCap.Value > 0 && targetH > qualityCap.Value)
+            {
+                var scale = qualityCap.Value / targetH;
+                targetW *= scale;
+                targetH = qualityCap.Value;
+            }
+
+            PreviewMedia.Width = targetW;
+            PreviewMedia.Height = targetH;
+
+            UpdatePreviewAspectRatio();
+        }
+
+        private void UpdateAdaptivePreviewRows(double containerHeight)
+        {
+            if (VideoContainerGrid.RowDefinitions.Count < 4 || VideoTopPackGrid.RowDefinitions.Count < 3) return;
+
+            if (_portraitVideoLogLayout)
+            {
+                if (VideoTopPackGrid.RowDefinitions.Count > 1)
+                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+                return;
+            }
+
+            var rowAspect = VideoTopPackGrid.RowDefinitions[0];
+            var rowVideo = VideoTopPackGrid.RowDefinitions[1];
+            var rowTimeline = VideoTopPackGrid.RowDefinitions[2];
+            var rowLog = VideoContainerGrid.RowDefinitions[3];
+
+            var topH = rowAspect.ActualHeight > 0 ? rowAspect.ActualHeight : 44;
+            var timelineH = rowTimeline.ActualHeight > 0 ? rowTimeline.ActualHeight : 120;
+            var available = containerHeight - topH - timelineH - 12;
+            if (available <= 32) return;
+
+            // Keep a stable 2/3 (video) + 1/3 (log) split so the log fills
+            // all remaining height and stays visually balanced.
+            var targetVideoH = Math.Max(16, available * (2.0 / 3.0));
+            var targetLogH = Math.Max(16, available - targetVideoH);
+
+            rowVideo.Height = new GridLength(targetVideoH, GridUnitType.Pixel);
+            rowLog.Height = new GridLength(targetLogH, GridUnitType.Pixel);
+        }
+
+        private void RefreshOutputsSummaryUi()
+        {
+            SetTextIfExists("OutputModeSummaryText", _node.OutputBase64 ? "Base64" : "File");
+            SetTextIfExists("OutputFormatSummaryText", (OutputFormatCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "MP4 (H.264)");
+            SetTextIfExists("OutputAudioSummaryText", $"{_node.AudioTracks.Count} track | codec: {_node.AudioCodec} | bitrate: {_node.AudioBitrate}");
+            var estimatedFrames = Math.Round(GetNaturalDurationSeconds() * (_node.ExtractAllFrames ? _node.SourceFps : _node.ExtractFps));
+            SetTextIfExists("OutputEstimatedFramesText", $"{estimatedFrames:0} frame");
+
+            var outputVideoPath = (_node.UseDialogVideoConfig
+                ? (_node.DefaultOutputVideoPath ?? string.Empty)
+                : (OutputPathText.Text ?? string.Empty)).Trim();
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+                outputVideoPath = (DefaultOutputVideoPathText.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+                outputVideoPath = (_node.OutputPathOverride ?? string.Empty).Trim();
+
+            if (!string.IsNullOrWhiteSpace(outputVideoPath))
+                _node.OutputPathOverride = outputVideoPath;
+
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+            {
+                OutputVideoPathText.Text = GetDefaultVideoOutputFolder();
+                OpenOutputVideoButton.IsEnabled = false;
+                OpenOutputVideoActionButton.IsEnabled = false;
+            }
+            else
+            {
+                OutputVideoPathText.Text = outputVideoPath;
+                var outputDir = System.IO.Path.GetDirectoryName(outputVideoPath) ?? string.Empty;
+                var ready = File.Exists(outputVideoPath) || Directory.Exists(outputDir);
+                OpenOutputVideoButton.IsEnabled = ready;
+                OpenOutputVideoActionButton.IsEnabled = ready;
+            }
+
+            var framesDir = (_node.UseDialogVideoConfig
+                ? (_node.FrameOutputFolderPath ?? string.Empty)
+                : (FrameOutputFolderText.Text ?? string.Empty)).Trim();
+            if (string.IsNullOrWhiteSpace(framesDir))
+                framesDir = GetDefaultFrameOutputFolder();
+            if (string.IsNullOrWhiteSpace(framesDir))
+            {
+                OutputFramesFolderText.Text = "Chưa xác định thư mục frame";
+                OpenFramesFolderButton.IsEnabled = false;
+                OpenFramesFolderActionButton.IsEnabled = false;
+                OpenFramesFolderButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                OutputFramesFolderText.Text = framesDir;
+                var framesReady = Directory.Exists(framesDir) || !_node.OutputBase64;
+                OpenFramesFolderButton.IsEnabled = framesReady;
+                OpenFramesFolderActionButton.IsEnabled = framesReady;
+                OpenFramesFolderButton.Visibility = Visibility.Visible;
+            }
+
+            var okVideo = !string.IsNullOrWhiteSpace(_node.VideoPath);
+            var okOutput = !string.IsNullOrWhiteSpace(_node.OutputPathOverride);
+            var okSubtitle = !_node.BurnSubtitleEnabled || !string.IsNullOrWhiteSpace(_node.SubtitlePath);
+            var okWatermark = !_node.WatermarkEnabled || !string.IsNullOrWhiteSpace(_node.WatermarkImagePath);
+            var okTextOverlay = !_node.TextOverlayEnabled || !string.IsNullOrWhiteSpace(_node.OverlayText);
+
+            SetConfigCheck(ConfigCheckVideoText, okVideo, "Đã chọn video nguồn", "Thiếu video nguồn");
+            SetConfigCheck(ConfigCheckOutputText, okOutput, "Đã đặt đường dẫn video đầu ra", "Chưa đặt đường dẫn video đầu ra");
+            SetConfigCheck(ConfigCheckSubtitleText, okSubtitle, "Subtitle hợp lệ", "Đã bật burn subtitle nhưng chưa chọn file subtitle");
+            SetConfigCheck(ConfigCheckWatermarkText, okWatermark, "Watermark hợp lệ", "Đã bật watermark nhưng chưa chọn ảnh");
+            SetConfigCheck(ConfigCheckTextOverlayText, okTextOverlay, "Text overlay hợp lệ", "Đã bật chèn chữ nhưng nội dung chữ đang trống");
+
+            var missingCount = new[] { okVideo, okOutput, okSubtitle, okWatermark, okTextOverlay }.Count(x => !x);
+            if (missingCount == 0)
+            {
+                SetTextStyleIfExists("ConfigMissingSummaryText", "✓ Tất cả cấu hình đã đầy đủ", new SolidColorBrush(Color.FromRgb(74, 222, 128)));
+            }
+            else
+            {
+                SetTextStyleIfExists("ConfigMissingSummaryText", $"⚠ Còn thiếu {missingCount} cấu hình cần thiết", new SolidColorBrush(Color.FromRgb(248, 113, 113)));
+            }
+        }
+
+        private string GetDefaultFrameOutputFolder()
+        {
+            var downloadsRoot = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "flow-frame");
+            return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
+        }
+
+        private string GetDefaultVideoOutputFolder()
+        {
+            var downloadsRoot = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "flow-video");
+            return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
+        }
+
+        private string GetVideoFileNameStem()
+        {
+            var source = (_node.VideoPath ?? string.Empty).Trim();
+            var stem = string.Empty;
+            try
+            {
+                stem = System.IO.Path.GetFileNameWithoutExtension(source);
+            }
+            catch
+            {
+                stem = string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(stem))
+                stem = "video";
+
+            foreach (var c in System.IO.Path.GetInvalidFileNameChars())
+                stem = stem.Replace(c, '_');
+
+            return stem;
+        }
+
+        private void UpdateFrameExtractionPreview()
+        {
+            if (_node.ExtractAllFrames)
+            {
+                var durationAll = GetNaturalDurationSeconds();
+                var sourceFpsAll = _node.SourceFps > 0 ? _node.SourceFps : 30;
+                if (durationAll <= 0) durationAll = 1;
+                var total = Math.Max(1, (int)Math.Floor(durationAll * sourceFpsAll));
+                FpsSlider.Maximum = total;
+                EstFramePerSecText.Text = $"{sourceFpsAll:0.##}";
+                EstimatedFrameCountText.Text = $"{total:N0}";
+                EstFrameIntervalText.Text = $"{(1000.0 / sourceFpsAll):0.#} ms";
+                SetTextIfExists("FrameIndexPreviewText", $"All frames mode: 0..{Math.Max(0, (int)sourceFpsAll - 1)} mỗi giây");
+                return;
+            }
+
+            var duration = GetNaturalDurationSeconds();
+            var sourceFps = _node.SourceFps > 0 ? _node.SourceFps : 30;
+            if (duration <= 0) duration = 1;
+
+            // New semantics:
+            // SecondsPerFrameSlider is the window size (seconds).
+            // FpsSlider is how many frames to extract inside that window.
+            var windowSec = Math.Max(1, (int)Math.Round(_node.SecondsPerFrame));
+            windowSec = Math.Clamp(windowSec, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
+            var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
+            FpsSlider.Maximum = maxInWindow;
+
+            var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
+            _node.ExtractFrameCount = framesPerWindow;
+
+            var totalWindows = Math.Floor(duration / windowSec);
+            var estimatedTotal = (int)(totalWindows * framesPerWindow);
+            EstimatedFrameCountText.Text = $"{estimatedTotal:N0}";
+            EstFramePerSecText.Text = $"{framesPerWindow}/{windowSec}s";
+
+            _node.ExtractFps = framesPerWindow / (double)windowSec;
+
+            // Keep slider value/text consistent.
+            _isFrameControlSync = true;
+            try
+            {
+                if (FpsSlider.Value != framesPerWindow) FpsSlider.Value = framesPerWindow;
+                FpsValueText.Text = $"{framesPerWindow}";
+            }
+            finally
+            {
+                _isFrameControlSync = false;
+            }
+
+            var extractFps = _node.ExtractFps;
+            var extractFpsSafe = Math.Max(0.001, extractFps);
+            EstFrameIntervalText.Text = $"{(1000.0 / extractFpsSafe):0.#} ms";
+
+            if (extractFpsSafe >= 1)
+            {
+                var framesPerSec = Math.Max(1, (int)Math.Round(extractFpsSafe));
+                var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
+                var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
+                if (indices.Count > 4) indicesStr += "…";
+                SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Mục tiêu/win: {framesPerWindow:N0}");
+            }
+            else
+            {
+                var secondsPerFrame = 1.0 / extractFpsSafe;
+                SetTextIfExists("FrameIndexPreviewText", $"~1 frame mỗi {secondsPerFrame:0.##}s | Mục tiêu/win: {framesPerWindow:N0}");
+            }
+        }
+
+        private void SetTextIfExists(string elementName, string text)
+        {
+            if (FindName(elementName) is TextBlock tb)
+            {
+                tb.Text = text;
+            }
+        }
+
+        private void SetTextStyleIfExists(string elementName, string text, Brush foreground)
+        {
+            if (FindName(elementName) is TextBlock tb)
+            {
+                tb.Text = text;
+                tb.Foreground = foreground;
+            }
+        }
+
+        private static void SetConfigCheck(TextBlock target, bool ok, string okText, string warningText)
+        {
+            target.Text = ok ? $"✓ {okText}" : $"⚠ {warningText}";
+            target.Foreground = ok ? new SolidColorBrush(Color.FromRgb(74, 222, 128)) : new SolidColorBrush(Color.FromRgb(248, 113, 113));
+            target.FontWeight = ok ? FontWeights.Normal : FontWeights.SemiBold;
+        }
+
+        private static void OpenPathFromText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            try
+            {
+                if (text.IndexOfAny(new[] { '*', '?' }) >= 0)
+                    return;
+                var extension = System.IO.Path.GetExtension(text);
+                if (!string.IsNullOrWhiteSpace(extension))
+                {
+                    var fileParent = System.IO.Path.GetDirectoryName(text);
+                    if (!string.IsNullOrWhiteSpace(fileParent) && !Directory.Exists(fileParent))
+                        Directory.CreateDirectory(fileParent);
+                }
+                else if (!Directory.Exists(text))
+                {
+                    Directory.CreateDirectory(text);
+                }
+            }
+            catch
+            {
+                // best-effort for opening path
+            }
+
+            if (Directory.Exists(text) || File.Exists(text))
+            {
+                Process.Start(new ProcessStartInfo { FileName = text, UseShellExecute = true });
+                return;
+            }
+
+            var parent = System.IO.Path.GetDirectoryName(text);
+            if (!string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent))
+            {
+                Process.Start(new ProcessStartInfo { FileName = parent, UseShellExecute = true });
+            }
+        }
+
+        private static void EnsureParentDirectoryExists(string? filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+            try
+            {
+                var parent = System.IO.Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrWhiteSpace(parent) && !Directory.Exists(parent))
+                    Directory.CreateDirectory(parent);
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
+        private static void EnsureDirectoryExists(string? directoryPath)
+        {
+            if (string.IsNullOrWhiteSpace(directoryPath)) return;
+            try
+            {
+                if (!Directory.Exists(directoryPath))
+                    Directory.CreateDirectory(directoryPath);
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
+        private static string FormatTime(TimeSpan value)
+            => value.TotalHours >= 1 ? $"{(int)value.TotalHours:00}:{value.Minutes:00}:{value.Seconds:00}" : $"{value.Minutes:00}:{value.Seconds:00}";
+
+        private static Brush GetTextBrush(string? colorKey)
+        {
+            if (string.IsNullOrWhiteSpace(colorKey)) return new SolidColorBrush(Color.FromRgb(229, 231, 235));
+            return Application.Current.TryFindResource($"TextOn{colorKey}Brush") as Brush ?? new SolidColorBrush(Color.FromRgb(229, 231, 235));
+        }
+    }
+}
