@@ -64,6 +64,12 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private ObservableCollection<WorkflowNode> runningNodes = new();
 
+        private const int MaxRunningNodesPanelItems = 12;
+        private bool _runningNodesPanelRefreshQueued;
+
+        [ObservableProperty]
+        private string runningNodesOverflowText = string.Empty;
+
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(DeleteNodeCommand))]
         private WorkflowNode? selectedNode;
@@ -111,6 +117,17 @@ namespace FlowMy.ViewModels
 
         [ObservableProperty]
         private bool isExecuting;
+
+        [ObservableProperty]
+        private bool suppressExecutionVisualRendering;
+
+        partial void OnSuppressExecutionVisualRenderingChanged(bool value)
+        {
+            if (_executionVisualizer != null)
+            {
+                _executionVisualizer.SuppressExecutionVisualRendering = value;
+            }
+        }
 
         [ObservableProperty]
         private WorkflowConnection? activeExecutionConnection;
@@ -178,6 +195,10 @@ namespace FlowMy.ViewModels
         private ObservableCollection<ExecutionTraceTreeNodeViewModel> executionTraceRunRoots = new();
 
         private readonly object _executionTraceLock = new();
+        private readonly object _executionTraceUiQueueLock = new();
+        private readonly Queue<Action> _executionTraceUiQueue = new();
+        private bool _executionTraceUiFlushQueued;
+        private const int ExecutionTraceUiFlushBatchSize = 24;
         private readonly Dictionary<string, Dictionary<string, int>> _executionTraceDepthByRun = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ExecutionTraceTreeNodeViewModel> _executionTraceTreeRootByRun = new(StringComparer.Ordinal);
         private readonly Dictionary<string, List<ExecutionTraceTreeNodeViewModel>> _executionTraceTreeNodesByRunAndNode = new(StringComparer.OrdinalIgnoreCase);
@@ -186,6 +207,8 @@ namespace FlowMy.ViewModels
         private readonly Dictionary<WorkflowNode, List<ExecutionTraceTreeNodeViewModel>> _pendingTraceTreeRowsByNode = new();
         private bool _executionTraceFilterRefreshQueued;
         private const int MaxExecutionTraceRows = 1200;
+        private const int ExecutionTraceCompactValueLength = 220;
+        private const int ExecutionTraceExpandedValueLength = 1200;
         public ICollectionView? ExecutionTraceFilteredView { get; private set; }
         private string _executionTraceProfileKey = "release";
         private bool _isApplyingExecutionTracePreferences;
@@ -329,6 +352,7 @@ namespace FlowMy.ViewModels
             _workflowExecutionService = workflowExecutionService ?? throw new ArgumentNullException(nameof(workflowExecutionService));
             _persistenceService = persistenceService ?? throw new ArgumentNullException(nameof(persistenceService));
             _executionVisualizer = executionVisualizer ?? throw new ArgumentNullException(nameof(executionVisualizer));
+            _executionVisualizer.SuppressExecutionVisualRendering = SuppressExecutionVisualRendering;
             RefreshSavedWorkflows();
 
             if (Nodes.Count == 0)
@@ -597,7 +621,7 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void ClearExecutionTraceLogs()
         {
-            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            QueueExecutionTraceUiUpdate(() =>
             {
                 lock (_executionTraceLock)
                 {
@@ -614,7 +638,7 @@ namespace FlowMy.ViewModels
                     ExecutionTraceNodeTypeFilter = "All";
                 }
                 RefreshExecutionTraceFilter();
-            }));
+            });
         }
 
         public void ClearExecutionTraceRuntimeCache()
@@ -861,6 +885,23 @@ namespace FlowMy.ViewModels
             if (!dispatcher.CheckAccess())
             {
                 dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RefreshExecutionTraceFilter));
+                return;
+            }
+
+            if (!SuppressExecutionVisualRendering)
+            {
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                {
+                    try
+                    {
+                        ExecutionTraceFilteredView?.Refresh();
+                        ApplyExecutionTraceFilterToTree();
+                    }
+                    catch
+                    {
+                        // Trace UI is best-effort; never let log filtering block workflow execution.
+                    }
+                }));
                 return;
             }
 
@@ -1150,11 +1191,104 @@ namespace FlowMy.ViewModels
             return $"{ms:0} ms";
         }
 
-        private static string ToCompactText(string? raw, int maxLen = 220)
+        private static string ToCompactText(string? raw, int maxLen = ExecutionTraceCompactValueLength)
         {
-            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
-            var t = raw.Replace("\r", " ").Replace("\n", " ").Trim();
-            return t.Length <= maxLen ? t : t[..maxLen] + "...";
+            if (string.IsNullOrEmpty(raw)) return string.Empty;
+
+            var start = 0;
+            while (start < raw.Length && char.IsWhiteSpace(raw[start]))
+                start++;
+            if (start >= raw.Length) return string.Empty;
+
+            var text = raw.AsSpan(start);
+            var payload = DescribeLargePayload(text);
+            if (!string.IsNullOrEmpty(payload))
+                return payload;
+
+            var limit = Math.Min(Math.Min(maxLen, ExecutionTraceExpandedValueLength), text.Length);
+            var builder = new System.Text.StringBuilder(limit + 3);
+            var consumed = 0;
+            for (; consumed < limit; consumed++)
+            {
+                var ch = text[consumed];
+                builder.Append(ch == '\r' || ch == '\n' || ch == '\t' ? ' ' : ch);
+            }
+
+            var preview = builder.ToString().Trim();
+            if (preview.Length == 0) return string.Empty;
+            return consumed < text.Length ? preview + "..." : preview;
+        }
+
+        private static string DescribeLargePayload(ReadOnlySpan<char> value)
+        {
+            const int largePayloadThreshold = 8192;
+            if (value.Length < largePayloadThreshold)
+                return string.Empty;
+
+            if (StartsWithOrdinalIgnoreCase(value, "data:"))
+            {
+                var headerLen = IndexOfOrdinalIgnoreCase(value, ";base64");
+                if (headerLen > 0 && headerLen <= 128)
+                {
+                    var mime = value.Slice(5, Math.Max(0, headerLen - 5)).ToString();
+                    var approxBytes = EstimateBase64Bytes(value.Length - headerLen);
+                    return $"[{(string.IsNullOrWhiteSpace(mime) ? "data" : mime)} base64 ~{FormatByteSize(approxBytes)}]";
+                }
+            }
+
+            if (LooksLikeBase64Prefix(value))
+            {
+                return $"[base64 ~{FormatByteSize(EstimateBase64Bytes(value.Length))}]";
+            }
+
+            return string.Empty;
+        }
+
+        private static bool LooksLikeBase64Prefix(ReadOnlySpan<char> value)
+        {
+            var sampleLen = Math.Min(value.Length, 256);
+            var seen = 0;
+            for (var i = 0; i < sampleLen; i++)
+            {
+                var ch = value[i];
+                if (char.IsWhiteSpace(ch))
+                    continue;
+                if (!(char.IsLetterOrDigit(ch) || ch == '+' || ch == '/' || ch == '=' || ch == '-' || ch == '_'))
+                    return false;
+                seen++;
+            }
+
+            return seen >= 128;
+        }
+
+        private static bool StartsWithOrdinalIgnoreCase(ReadOnlySpan<char> value, string prefix)
+            => value.Length >= prefix.Length && value[..prefix.Length].Equals(prefix.AsSpan(), StringComparison.OrdinalIgnoreCase);
+
+        private static int IndexOfOrdinalIgnoreCase(ReadOnlySpan<char> value, string needle)
+        {
+            if (needle.Length == 0 || value.Length < needle.Length)
+                return -1;
+
+            var max = Math.Min(value.Length - needle.Length, 256);
+            for (var i = 0; i <= max; i++)
+            {
+                if (value.Slice(i, needle.Length).Equals(needle.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        private static long EstimateBase64Bytes(int encodedLength)
+            => Math.Max(0, (long)encodedLength * 3 / 4);
+
+        private static string FormatByteSize(long bytes)
+        {
+            if (bytes >= 1024L * 1024L)
+                return $"{bytes / 1024d / 1024d:0.#} MB";
+            if (bytes >= 1024)
+                return $"{bytes / 1024d:0.#} KB";
+            return $"{bytes} B";
         }
 
         private static string BuildInputSummary(WorkflowNode node)
@@ -1190,11 +1324,11 @@ namespace FlowMy.ViewModels
         }
 
         private string BuildInputSummaryForExecution(WorkflowNode node, WorkflowConnection? incoming, string executionId)
-            => BuildInputSummaryForExecutionCore(node, incoming, executionId, maxPerValue: 220, maxParts: 4);
+            => BuildInputSummaryForExecutionCore(node, incoming, executionId, maxPerValue: ExecutionTraceCompactValueLength, maxParts: 4);
 
         /// <summary>Bản không cắt ngắn của <see cref="BuildInputSummaryForExecution"/> — dùng khi user mở rộng card trace.</summary>
         private string BuildFullInputSummaryForExecution(WorkflowNode node, WorkflowConnection? incoming, string executionId)
-            => BuildInputSummaryForExecutionCore(node, incoming, executionId, maxPerValue: int.MaxValue, maxParts: int.MaxValue);
+            => BuildInputSummaryForExecutionCore(node, incoming, executionId, maxPerValue: ExecutionTraceExpandedValueLength, maxParts: 8);
 
         private string BuildInputSummaryForExecutionCore(WorkflowNode node, WorkflowConnection? incoming, string executionId, int maxPerValue, int maxParts)
         {
@@ -1222,11 +1356,11 @@ namespace FlowMy.ViewModels
         }
 
         private string BuildOutputSummaryForExecution(WorkflowNode node, string executionId)
-            => BuildOutputSummaryForExecutionCore(node, executionId, maxPerValue: 220, maxParts: 4);
+            => BuildOutputSummaryForExecutionCore(node, executionId, maxPerValue: ExecutionTraceCompactValueLength, maxParts: 4);
 
         /// <summary>Bản không cắt ngắn của <see cref="BuildOutputSummaryForExecution"/> — dùng khi user mở rộng card trace.</summary>
         private string BuildFullOutputSummaryForExecution(WorkflowNode node, string executionId)
-            => BuildOutputSummaryForExecutionCore(node, executionId, maxPerValue: int.MaxValue, maxParts: int.MaxValue);
+            => BuildOutputSummaryForExecutionCore(node, executionId, maxPerValue: ExecutionTraceExpandedValueLength, maxParts: 8);
 
         private string BuildOutputSummaryForExecutionCore(WorkflowNode node, string executionId, int maxPerValue, int maxParts)
         {
@@ -1271,6 +1405,56 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(executionId)) return string.Empty;
             var list = WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(executionId).ToList();
             return list.Count > 0 ? list[^1] : executionId;
+        }
+
+        private void QueueExecutionTraceUiUpdate(Action action)
+        {
+            if (action == null) return;
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                action();
+                return;
+            }
+
+            if (!SuppressExecutionVisualRendering)
+            {
+                dispatcher.BeginInvoke(DispatcherPriority.Background, action);
+                return;
+            }
+
+            lock (_executionTraceUiQueueLock)
+            {
+                _executionTraceUiQueue.Enqueue(action);
+                if (_executionTraceUiFlushQueued)
+                    return;
+                _executionTraceUiFlushQueued = true;
+            }
+
+            dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(FlushExecutionTraceUiQueue));
+        }
+
+        private void FlushExecutionTraceUiQueue()
+        {
+            List<Action> batch = new();
+            var hasMore = false;
+            lock (_executionTraceUiQueueLock)
+            {
+                while (_executionTraceUiQueue.Count > 0 && batch.Count < ExecutionTraceUiFlushBatchSize)
+                    batch.Add(_executionTraceUiQueue.Dequeue());
+
+                hasMore = _executionTraceUiQueue.Count > 0;
+                _executionTraceUiFlushQueued = hasMore;
+            }
+
+            foreach (var action in batch)
+            {
+                try { action(); }
+                catch { }
+            }
+
+            if (hasMore)
+                Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.ContextIdle, new Action(FlushExecutionTraceUiQueue));
         }
 
         private void TraceNodeStarted(WorkflowNode node, WorkflowConnection? incoming, string laneId)
@@ -1345,7 +1529,7 @@ namespace FlowMy.ViewModels
                 Status = "running"
             };
 
-            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            QueueExecutionTraceUiUpdate(() =>
             {
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
@@ -1472,7 +1656,7 @@ namespace FlowMy.ViewModels
                         ExecutionTraceLogs.RemoveAt(0);
                 }
                 RefreshExecutionTraceFilter();
-            }));
+            });
         }
 
         private void TraceNodeCompleted(WorkflowNode node, TimeSpan elapsed)
@@ -1492,7 +1676,7 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(fullOutputSummarySnapshot))
                 fullOutputSummarySnapshot = outputSummarySnapshot;
 
-            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            QueueExecutionTraceUiUpdate(() =>
             {
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
@@ -1530,7 +1714,7 @@ namespace FlowMy.ViewModels
                             : fullOutputSummarySnapshot;
                     }
                 }
-            }));
+            });
         }
 
         /// <summary>Cập nhật card gốc "Run …" (không gắn với WorkflowNode nên không qua TraceNodeCompleted).</summary>
@@ -1538,7 +1722,7 @@ namespace FlowMy.ViewModels
         {
             if (!EnableExecutionTraceLog || string.IsNullOrWhiteSpace(executionId)) return;
             var rootKey = NormalizeRootExecutionId(executionId);
-            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            QueueExecutionTraceUiUpdate(() =>
             {
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
@@ -1549,7 +1733,7 @@ namespace FlowMy.ViewModels
                     if (elapsedText != null)
                         rootNode.ElapsedText = elapsedText;
                 }
-            }));
+            });
         }
 
         private void TraceNodeFailed(WorkflowNode node, string errorMessage)
@@ -1564,7 +1748,7 @@ namespace FlowMy.ViewModels
                 : (string.IsNullOrWhiteSpace(node.LastExecutionId) ? "failed" : node.LastExecutionId!);
             var err = ToCompactText(errorMessage, 400);
             var fullErr = errorMessage ?? string.Empty;
-            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            QueueExecutionTraceUiUpdate(() =>
             {
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
@@ -1604,7 +1788,7 @@ namespace FlowMy.ViewModels
                         trow.FullErrorMessage = fullErr;
                     }
                 }
-            }));
+            });
         }
 
         /// <summary>
@@ -1674,6 +1858,26 @@ namespace FlowMy.ViewModels
             d.BeginInvoke(DispatcherPriority.Background, new Action(() => OnPropertyChanged(nameof(ManualExecutionRunsInFlight))));
         }
 
+        private void QueueActiveExecutionConnectionUpdate(WorkflowConnection? incoming, CancellationToken token)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null) return;
+
+            if (!SuppressExecutionVisualRendering)
+            {
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                {
+                    if (token.IsCancellationRequested)
+                        return;
+                    if (!ReferenceEquals(ActiveExecutionConnection, incoming))
+                        ActiveExecutionConnection = incoming;
+                }));
+                return;
+            }
+
+            return;
+        }
+
         private void FinalizeManualRunUiState(int remaining, bool operationCancelled)
         {
             void Apply()
@@ -1689,6 +1893,7 @@ namespace FlowMy.ViewModels
                             _nodeRunningRefCount.Clear();
                         RunningNodes.Clear();
                         HasRunningNodes = false;
+                        RunningNodesOverflowText = string.Empty;
 
                         if (operationCancelled)
                             _executionVisualizer.OnExecutionCancelled();
@@ -1721,6 +1926,7 @@ namespace FlowMy.ViewModels
                     _nodeRunningRefCount.Clear();
                 RunningNodes.Clear();
                 HasRunningNodes = false;
+                RunningNodesOverflowText = string.Empty;
             }
 
             var dispatcher = Application.Current?.Dispatcher;
@@ -1736,66 +1942,93 @@ namespace FlowMy.ViewModels
 
         private void RegisterRunningNodeVisual(WorkflowNode node)
         {
-            var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher == null) return;
-            void Apply()
+            lock (_runningNodesBookkeepingLock)
             {
-                lock (_runningNodesBookkeepingLock)
-                {
-                    _nodeRunningRefCount.TryGetValue(node, out var c);
-                    c++;
-                    _nodeRunningRefCount[node] = c;
-                    if (c == 1 && !RunningNodes.Contains(node))
-                        RunningNodes.Add(node);
-                    HasRunningNodes = RunningNodes.Count > 0;
-                }
+                _nodeRunningRefCount.TryGetValue(node, out var c);
+                _nodeRunningRefCount[node] = c + 1;
             }
-
-            if (dispatcher.CheckAccess())
-                Apply();
-            else
-            {
-                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
-            }
+            ScheduleRunningNodesPanelRefresh();
         }
 
         /// <summary>Gỡ ref-count trên UI thread (luôn qua Background) để finally của async không chặn UI khi hủy nhiều node.</summary>
         private void ReleaseRunningNodeVisualBatch(IReadOnlyList<WorkflowNode> nodes)
         {
             if (nodes == null || nodes.Count == 0) return;
-            var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher == null) return;
             var batch = nodes.ToList();
-            void Apply()
+            lock (_runningNodesBookkeepingLock)
             {
-                lock (_runningNodesBookkeepingLock)
+                foreach (var node in batch)
                 {
-                    foreach (var node in batch)
-                    {
-                        if (!_nodeRunningRefCount.TryGetValue(node, out var c))
-                            continue;
-                        c--;
-                        if (c <= 0)
-                        {
-                            _nodeRunningRefCount.Remove(node);
-                            RunningNodes.Remove(node);
-                        }
-                        else
-                        {
-                            _nodeRunningRefCount[node] = c;
-                        }
-                    }
-
-                    HasRunningNodes = RunningNodes.Count > 0;
+                    if (!_nodeRunningRefCount.TryGetValue(node, out var c))
+                        continue;
+                    c--;
+                    if (c <= 0)
+                        _nodeRunningRefCount.Remove(node);
+                    else
+                        _nodeRunningRefCount[node] = c;
                 }
             }
+            ScheduleRunningNodesPanelRefresh();
+        }
 
-            if (dispatcher.CheckAccess())
-                Apply();
-            else
+        private void ScheduleRunningNodesPanelRefresh()
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null) return;
+
+            lock (_runningNodesBookkeepingLock)
             {
-                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+                if (_runningNodesPanelRefreshQueued)
+                    return;
+                _runningNodesPanelRefreshQueued = true;
             }
+
+            var priority = SuppressExecutionVisualRendering
+                ? DispatcherPriority.ContextIdle
+                : DispatcherPriority.Background;
+            dispatcher.BeginInvoke(priority, new Action(ApplyRunningNodesPanelSnapshot));
+        }
+
+        private static bool ShouldKeepNodeRenderedWhenExecutionVisualsSuppressed(WorkflowNode node)
+        {
+            if (node == null) return false;
+            return node.Type == NodeType.Web
+                   || node.Type == NodeType.HtmlUi
+                   || node.Type == NodeType.ActionCanVas
+                   || node.Type == NodeType.ShowInputMsg
+                   || node.Type == NodeType.VideoEditor;
+        }
+
+        private void ApplyRunningNodesPanelSnapshot()
+        {
+            List<WorkflowNode> snapshot;
+            int total;
+            int visibleTotal;
+            lock (_runningNodesBookkeepingLock)
+            {
+                _runningNodesPanelRefreshQueued = false;
+                var activeNodes = _nodeRunningRefCount
+                    .Where(kvp => kvp.Value > 0)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+                total = activeNodes.Count;
+                var visibleNodes = SuppressExecutionVisualRendering
+                    ? activeNodes.Where(ShouldKeepNodeRenderedWhenExecutionVisualsSuppressed).ToList()
+                    : activeNodes;
+                visibleTotal = visibleNodes.Count;
+                snapshot = SuppressExecutionVisualRendering
+                    ? visibleNodes.Take(MaxRunningNodesPanelItems).ToList()
+                    : visibleNodes;
+            }
+
+            RunningNodes.Clear();
+            foreach (var node in snapshot)
+                RunningNodes.Add(node);
+
+            HasRunningNodes = total > 0;
+            RunningNodesOverflowText = SuppressExecutionVisualRendering && visibleTotal > snapshot.Count
+                ? $"+{visibleTotal - snapshot.Count} node khac dang chay"
+                : string.Empty;
         }
 
         private bool IsStrictFinalSyncEnabled()
@@ -1859,12 +2092,7 @@ namespace FlowMy.ViewModels
                 var sessionToken = sessionCts.Token;
                 void NotifyEnteringNode(WorkflowConnection? incoming)
                 {
-                    PostToUi(() =>
-                    {
-                        if (sessionToken.IsCancellationRequested)
-                            return;
-                        ActiveExecutionConnection = incoming;
-                    });
+                    QueueActiveExecutionConnectionUpdate(incoming, sessionToken);
                 }
 
                 void OnNodeStarted(WorkflowNode node, WorkflowConnection? incoming)
@@ -1924,7 +2152,7 @@ namespace FlowMy.ViewModels
                             {
                                 try
                                 {
-                                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
                                     {
                                         if (System.Windows.Application.Current?.MainWindow is FlowMy.Services.Interaction.IWorkflowEditorHost host)
                                         {
@@ -1936,7 +2164,7 @@ namespace FlowMy.ViewModels
                                                 }
                                             }
                                         }
-                                    });
+                                    }));
                                 }
                                 catch { }
 
@@ -1973,7 +2201,7 @@ namespace FlowMy.ViewModels
                 {
                     ManualRunSessions.Remove(sessionRow);
                     HasManualRunSessions = ManualRunSessions.Count > 0;
-                }), DispatcherPriority.Send);
+                }), DispatcherPriority.Background);
 
                 var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
                 NotifyManualRunsInFlightChanged();
@@ -2033,12 +2261,7 @@ namespace FlowMy.ViewModels
                 var sessionTokenFromNode = sessionCts.Token;
                 void NotifyEnteringNode(WorkflowConnection? incoming)
                 {
-                    PostToUi(() =>
-                    {
-                        if (sessionTokenFromNode.IsCancellationRequested)
-                            return;
-                        ActiveExecutionConnection = incoming;
-                    });
+                    QueueActiveExecutionConnectionUpdate(incoming, sessionTokenFromNode);
                 }
 
                 void OnNodeStarted(WorkflowNode node, WorkflowConnection? incoming)
@@ -2124,7 +2347,7 @@ namespace FlowMy.ViewModels
                 {
                     ManualRunSessions.Remove(sessionRow);
                     HasManualRunSessions = ManualRunSessions.Count > 0;
-                }), DispatcherPriority.Send);
+                }), DispatcherPriority.Background);
 
                 var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
                 NotifyManualRunsInFlightChanged();
@@ -2155,12 +2378,7 @@ namespace FlowMy.ViewModels
 
                 void NotifyEnteringNode(WorkflowConnection? incoming)
                 {
-                    PostToUi(() =>
-                    {
-                        if (laneToken.IsCancellationRequested)
-                            return;
-                        ActiveExecutionConnection = incoming;
-                    });
+                    QueueActiveExecutionConnectionUpdate(incoming, laneToken);
                 }
 
                 void OnNodeStarted(WorkflowNode node, WorkflowConnection? incoming)
@@ -2285,9 +2503,10 @@ namespace FlowMy.ViewModels
                 {
                     _executionVisualizer.OnExecutionCancelled();
                     lock (_runningNodesBookkeepingLock)
-                        _nodeRunningRefCount.Clear();
+                    _nodeRunningRefCount.Clear();
                     RunningNodes.Clear();
                     HasRunningNodes = false;
+                    RunningNodesOverflowText = string.Empty;
                     ActiveExecutionConnection = null;
                 }));
             }
@@ -3923,12 +4142,6 @@ namespace FlowMy.ViewModels
                     if (string.Equals(_loadedWorkflowName, name, StringComparison.OrdinalIgnoreCase))
                         _loadedWorkflowName = null;
                     return;
-                }
-
-                // Lazy init CefSharp nếu workflow chứa node trình duyệt (Web, HtmlUi)
-                if (CefSharpEnvironmentManager.RequiresCefSharp(result.Nodes))
-                {
-                    CefSharpEnvironmentManager.BeginInitializeInBackground();
                 }
 
                 ApplyWorkflowLoadResult(result);

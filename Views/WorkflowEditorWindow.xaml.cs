@@ -176,6 +176,8 @@ namespace FlowMy.Views
         public void ConfigureHeadlessCanvasOptimization(IEnumerable<string>? widgetNodeIdsToHide)
         {
             _headlessCanvasOptimizationEnabled = true;
+            if (ViewModel != null)
+                ViewModel.SuppressExecutionVisualRendering = true;
             _headlessHiddenWidgetNodeIds = (widgetNodeIdsToHide ?? Enumerable.Empty<string>())
                 .Where(id => !string.IsNullOrWhiteSpace(id))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -190,6 +192,8 @@ namespace FlowMy.Views
         public void DisableHeadlessCanvasOptimizationForDebug()
         {
             _headlessCanvasOptimizationEnabled = false;
+            if (ViewModel != null)
+                ViewModel.SuppressExecutionVisualRendering = false;
             _headlessHiddenWidgetNodeIds.Clear();
             RestoreHeadlessNodeSizes();
 
@@ -310,6 +314,7 @@ namespace FlowMy.Views
         private void ApplyHeadlessCanvasOptimization()
         {
             if (!_headlessCanvasOptimizationEnabled || ViewModel == null) return;
+            ViewModel.SuppressExecutionVisualRendering = true;
 
             // Chạy logic workflow, tắt tối đa phần render connection/animation.
             SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Off);
@@ -527,26 +532,8 @@ namespace FlowMy.Views
                     _hwndSource.AddHook(WndProc);
                 }
 
-                // Schedule CefSharp warm-up after the editor has loaded.
-                // Web/HtmlUi renderers keep their own placeholders while Chromium becomes ready.
-                if (!FlowMy.Services.Workflow.CefSharpEnvironmentManager.IsInitialized)
-                {
-                    try
-                    {
-                        LogCanvasDiagnostic("CEF", "Initializing CefSharp environment asynchronously...");
-                        FlowMy.Services.Workflow.CefSharpEnvironmentManager.BeginInitializeInBackground(TimeSpan.FromMilliseconds(250));
-                        LogCanvasDiagnostic("CEF", "CefSharp background warm-up scheduled.");
-                    }
-                    catch (Exception ex)
-                    {
-                        LogCanvasDiagnostic("CEF_ERROR", $"CefSharp init error: {ex.Message}", isAlert: true);
-                    }
-                    finally
-                    {
-                        if (LoadingOverlay != null && (ViewModel == null || !ViewModel.IsLoading))
-                            LoadingOverlay.Visibility = Visibility.Collapsed;
-                    }
-                }
+                if (LoadingOverlay != null && (ViewModel == null || !ViewModel.IsLoading))
+                    LoadingOverlay.Visibility = Visibility.Collapsed;
             };
             // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.
             Closed += (_, _) =>
@@ -2158,6 +2145,12 @@ namespace FlowMy.Views
             // Highlight connection "đang truyền năng lượng" khi workflow chạy
             if (e.PropertyName == nameof(WorkflowEditorViewModel.ActiveExecutionConnection))
             {
+                if (ViewModel?.SuppressExecutionVisualRendering == true)
+                {
+                    _executionActiveConnection = null;
+                    return;
+                }
+
                 var connName = ViewModel?.ActiveExecutionConnection != null
                     ? $"{ViewModel.ActiveExecutionConnection.FromNode?.Title} ➔ {ViewModel.ActiveExecutionConnection.ToNode?.Title}"
                     : "null";

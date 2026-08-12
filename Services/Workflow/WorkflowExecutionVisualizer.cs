@@ -20,9 +20,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 {
     private readonly Dispatcher _dispatcher;
 
-    private DispatcherTimer? _nodeTimingTimer;
-    private Stopwatch? _nodeTimingStopwatch;
-    private WorkflowNode? _timingNode;
+    private DispatcherTimer? _activeNodeStatusTimer;
     
     private sealed class ActiveNodeTiming
     {
@@ -38,6 +36,8 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     public bool IsDebugMode { get; set; }
 
+    public bool SuppressExecutionVisualRendering { get; set; }
+
     public WorkflowExecutionVisualizer()
     {
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
@@ -46,21 +46,18 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     public void ResetVisualization(IEnumerable<WorkflowNode> nodes)
     {
-        RunOnUi(() =>
+        if (nodes == null) return;
+        var snapshot = nodes.ToList();
+        _dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
-            StopTimingTimer();
-            _timingNode = null;
-            _nodeTimingStopwatch = null;
+            StopActiveNodeStatusTimer();
             
             // Stop và clear tất cả active node timers
-            foreach (var kvp in _activeNodeTimers.ToList())
-            {
-                kvp.Value.Timer.Stop();
-                _activeNodeTimers.Remove(kvp.Key);
-            }
+            _activeNodeTimers.Clear();
 
-            foreach (var n in nodes)
+            foreach (var n in snapshot)
             {
+                if (!ShouldUpdateNodeExecutionChrome(n)) continue;
                 if (n.ExecutionStatusTextUI != null) n.ExecutionStatusTextUI.Text = "";
                 if (n.ExecutionStatusContainerUI != null) n.ExecutionStatusContainerUI.Visibility = Visibility.Collapsed;
                 if (n.ExecutionBusySpinnerUI != null) n.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
@@ -81,22 +78,25 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                     NodeChrome.UpdateExecutionErrorToggleText(n.ExecutionErrorToggleUI, false);
                 }
             }
-        });
+        }));
     }
 
     public void OnNodeStarted(WorkflowNode node, string? manualRunSessionId = null)
     {
+        if (!ShouldUpdateNodeExecutionChrome(node)) return;
         var runKey = manualRunSessionId ?? "";
         _dispatcher.BeginInvoke(GetExecutionStatusPriority(), () => StartNodeTiming(node, runKey));
     }
 
     public void OnNodeCompleted(WorkflowNode node, TimeSpan elapsed, string? manualRunSessionId = null)
     {
+        if (SuppressExecutionVisualRendering && !ShouldUpdateNodeExecutionChrome(node)) return;
         _dispatcher.BeginInvoke(GetExecutionStatusPriority(), () =>
         {
             StopNodeTiming(node, elapsed, manualRunSessionId);
         });
         // Render results có thể nặng, giữ ở Background để không giật UI.
+        if (SuppressExecutionVisualRendering) return;
         _dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
             UpdateNodeExecutionResults(node);
@@ -117,6 +117,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 _activeNodeTimers.Remove(kvp.Key);
                 touchedNodes.Add(kvp.Key.Node);
             }
+            StopActiveNodeStatusTimerIfIdle();
 
             var nodesStillActive = _activeNodeTimers.Keys
                 .Select(k => k.Node)
@@ -159,6 +160,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     public void OnNodeFailed(WorkflowNode node, string errorMessage)
     {
+        if (!ShouldUpdateNodeExecutionChrome(node)) return;
         // Luôn dùng BeginInvoke để tránh đứng hình: nếu đang trên UI thread, gọi trực tiếp sẽ block
         // trong lúc build nhiều WPF controls. Đẩy sang message sau để call stack hiện tại unwind trước.
         var msg = errorMessage ?? "";
@@ -173,7 +175,21 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     private DispatcherPriority GetExecutionStatusPriority()
     {
-        return DispatcherPriority.Background;
+        return SuppressExecutionVisualRendering
+            ? DispatcherPriority.ContextIdle
+            : DispatcherPriority.Background;
+    }
+
+    private bool ShouldUpdateNodeExecutionChrome(WorkflowNode node)
+    {
+        if (!SuppressExecutionVisualRendering) return true;
+        if (node == null) return false;
+
+        return node.Type == NodeType.Web
+               || node.Type == NodeType.HtmlUi
+               || node.Type == NodeType.ActionCanVas
+               || node.Type == NodeType.ShowInputMsg
+               || node.Type == NodeType.VideoEditor;
     }
 
     private void RefreshAggregateTimingForNode(WorkflowNode node)
@@ -273,6 +289,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             {
                 timerInfo.Timer.Stop();
                 _activeNodeTimers.Remove(key);
+                StopActiveNodeStatusTimerIfIdle();
             }
         }
 
@@ -282,9 +299,6 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             RefreshAggregateTimingForNode(node);
             return;
         }
-
-        if (ReferenceEquals(_timingNode, node) && _activeNodeTimers.Count == 0)
-            StopTimingTimer();
 
         if (node.ExecutionStatusContainerUI != null)
             node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
@@ -318,6 +332,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             kvp.Value.Timer.Stop();
             _activeNodeTimers.Remove(kvp.Key);
         }
+        StopActiveNodeStatusTimer();
 
         foreach (var node in nodes)
         {
@@ -329,32 +344,53 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 node.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
         }
 
-        if (_timingNode != null)
-        {
-            if (_timingNode.ExecutionStatusContainerUI != null)
-                _timingNode.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
-            if (_timingNode.ExecutionStatusTextUI != null)
-                _timingNode.ExecutionStatusTextUI.Text = "⏹ Cancelled";
-            if (_timingNode.ExecutionBusySpinnerUI != null)
-                _timingNode.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
-        }
-
-        StopTimingTimer();
     }
 
-    private void StopTimingTimer()
+    private void StartActiveNodeStatusTimer()
     {
-        if (_nodeTimingTimer != null)
+        if (_activeNodeStatusTimer != null)
         {
-            _nodeTimingTimer.Stop();
-            _nodeTimingTimer = null;
+            if (!_activeNodeStatusTimer.IsEnabled)
+                _activeNodeStatusTimer.Start();
+            return;
         }
-        _nodeTimingStopwatch = null;
-        _timingNode = null;
+
+        _activeNodeStatusTimer = new DispatcherTimer(DispatcherPriority.ContextIdle)
+        {
+            Interval = TimeSpan.FromMilliseconds(750)
+        };
+        _activeNodeStatusTimer.Tick += (_, __) => RefreshAllActiveNodeTimings();
+        _activeNodeStatusTimer.Start();
+    }
+
+    private void StopActiveNodeStatusTimerIfIdle()
+    {
+        if (_activeNodeTimers.Count == 0)
+            StopActiveNodeStatusTimer();
+    }
+
+    private void StopActiveNodeStatusTimer()
+    {
+        if (_activeNodeStatusTimer == null) return;
+        _activeNodeStatusTimer.Stop();
+        _activeNodeStatusTimer = null;
+    }
+
+    private void RefreshAllActiveNodeTimings()
+    {
+        if (_activeNodeTimers.Count == 0)
+        {
+            StopActiveNodeStatusTimer();
+            return;
+        }
+
+        foreach (var node in _activeNodeTimers.Keys.Select(k => k.Node).Distinct().ToList())
+            RefreshAggregateTimingForNode(node);
     }
 
     public void UpdateNodeExecutionResults(WorkflowNode node)
     {
+        if (SuppressExecutionVisualRendering) return;
         if (node.ExecutionResultsToggleUI == null || node.ExecutionResultsItemsPanel == null) return;
 
         var keysToProcess = new List<string>();
@@ -399,6 +435,20 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
         if (keysToProcess.Count == 0) return;
 
+        var panel = node.ExecutionResultsItemsPanel;
+        bool isExpanded = node.ExecutionResultsToggleUI.IsChecked == true;
+
+        if (!isExpanded)
+        {
+            panel.Children.Clear();
+            panel.Visibility = Visibility.Collapsed;
+            node.ExecutionResultsToggleUI.Visibility = Visibility.Visible;
+            NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, keysToProcess.Count, false);
+            if (node.ExecutionStatusContainerUI != null)
+                node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
+            return;
+        }
+
         var results = new List<(string Key, string RawValue, bool IsArray, List<string> ArrayItems)>();
 
         foreach (var key in keysToProcess)
@@ -415,9 +465,6 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 results.Add((key, value, false, new List<string>()));
             }
         }
-
-        var panel = node.ExecutionResultsItemsPanel;
-        bool isExpanded = node.ExecutionResultsToggleUI.IsChecked == true;
 
         if (results.Count == 0)
         {
@@ -936,10 +983,8 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 kvp.Value.Timer.Stop();
                 _activeNodeTimers.Remove(kvp.Key);
             }
+            StopActiveNodeStatusTimerIfIdle();
         }
-
-        if (ReferenceEquals(_timingNode, node) && _activeNodeTimers.Count == 0)
-            StopTimingTimer();
 
         node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
         var elapsedBadge = elapsedSec > 0 ? $" {elapsedSec:0.00}s" : "";

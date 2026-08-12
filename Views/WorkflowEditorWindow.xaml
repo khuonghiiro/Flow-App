@@ -2543,6 +2543,7 @@ Tag="ListOut">
                                         <Condition Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True"/>
                                         <Condition Binding="{Binding IsTraceDockBottom}" Value="True"/>
                                         <Condition Binding="{Binding IsExecutionLogMaximizedOverCanvas}" Value="False"/>
+                                        <Condition Binding="{Binding SuppressExecutionVisualRendering}" Value="False"/>
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </MultiDataTrigger>
@@ -2571,6 +2572,7 @@ Tag="ListOut">
                                         <Condition Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True"/>
                                         <Condition Binding="{Binding IsTraceDockLeft}" Value="True"/>
                                         <Condition Binding="{Binding IsExecutionLogMaximizedOverCanvas}" Value="False"/>
+                                        <Condition Binding="{Binding SuppressExecutionVisualRendering}" Value="False"/>
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </MultiDataTrigger>
@@ -2599,6 +2601,7 @@ Tag="ListOut">
                                         <Condition Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True"/>
                                         <Condition Binding="{Binding IsTraceDockRight}" Value="True"/>
                                         <Condition Binding="{Binding IsExecutionLogMaximizedOverCanvas}" Value="False"/>
+                                        <Condition Binding="{Binding SuppressExecutionVisualRendering}" Value="False"/>
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </MultiDataTrigger>
@@ -2631,9 +2634,13 @@ Tag="ListOut">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <!-- Chỉ hiện trong main grid khi KHÔNG detached và panel expanded. -->
-                                <DataTrigger Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True">
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True"/>
+                                        <Condition Binding="{Binding SuppressExecutionVisualRendering}" Value="False"/>
+                                    </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
+                                </MultiDataTrigger>
                                 <!-- Dock Left: spans all rows, column 0.
                                      ZIndex=150 để nằm trên NodePaletteExpandButton (ZIndex=120) ở góc trái,
                                      nếu không nút toggle ẩn/hiện palette sẽ đè lên panel log. -->
@@ -2973,7 +2980,7 @@ Tag="ListOut">
                                     <Style TargetType="ScrollViewer">
                                         <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsExecuting}" Value="True">
+                                            <DataTrigger Binding="{Binding SuppressExecutionVisualRendering}" Value="True">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -3786,7 +3793,7 @@ Tag="ListOut">
                                     <Style TargetType="Border">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsExecuting}" Value="True">
+                                            <DataTrigger Binding="{Binding SuppressExecutionVisualRendering}" Value="True">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -3834,7 +3841,7 @@ Tag="ListOut">
                                 <DataTrigger Binding="{Binding IsExecutionTracePanelMaximized}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding IsExecuting}" Value="True">
+                                <DataTrigger Binding="{Binding SuppressExecutionVisualRendering}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -4494,6 +4501,12 @@ Tag="ListOut">
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
+                            <TextBlock Text="{Binding RunningNodesOverflowText}"
+                                       Margin="0,6,0,0"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       TextAlignment="Center"
+                                       Visibility="{Binding RunningNodesOverflowText, Converter={StaticResource NullOrEmptyToCollapsed}}"/>
                         </StackPanel>
                     </Border>
                 </Canvas>

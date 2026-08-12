@@ -62,17 +62,6 @@ namespace FlowMy
 
                 InitializeApplication();
 
-                // Non-blocking warm-up: keep MainWindow startup independent from Chromium.
-                // Browser nodes still await readiness when they actually need CefSharp.
-                try
-                {
-                    FlowMy.Services.Workflow.CefSharpEnvironmentManager.BeginInitializeInBackground(TimeSpan.FromMilliseconds(1200));
-                }
-                catch (Exception cefEx)
-                {
-                    LogError("CefSharp init error on startup", cefEx);
-                }
-
                 ShowMainWindow();
 
                 // Không khởi tạo tray icon khi startup.

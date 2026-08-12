@@ -12,6 +12,12 @@ public interface IWorkflowExecutionVisualizer
     bool IsDebugMode { get; set; }
 
     /// <summary>
+    /// True khi workflow đang chạy nền/headless cho widget: giảm render phụ của editor,
+    /// nhưng vẫn giữ những node runtime cần visual thật như Web/HtmlUi/ActionCanVas.
+    /// </summary>
+    bool SuppressExecutionVisualRendering { get; set; }
+
+    /// <summary>
     /// Reset toàn bộ trạng thái hiển thị kết quả/timing cho các node.
     /// </summary>
     void ResetVisualization(IEnumerable<WorkflowNode> nodes);

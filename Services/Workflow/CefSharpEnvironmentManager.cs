@@ -184,9 +184,6 @@ namespace FlowMy.Services.Workflow
 
                             System.Diagnostics.Debug.WriteLine("[CefSharp] ✅ Initialized on UI thread (App Startup)");
 
-                            // Pre-warm subprocess
-                            PreWarmBrowserSubprocess();
-
                             tcs.TrySetResult(true);
                         }
                         catch (Exception ex)
@@ -309,7 +306,6 @@ namespace FlowMy.Services.Workflow
 
             pendingTcs?.TrySetResult(true);
             System.Diagnostics.Debug.WriteLine("[CefSharp] Initialized on UI thread");
-            PreWarmBrowserSubprocess();
         }
 
         /// <summary>
