@@ -148,13 +148,17 @@ namespace FlowMy.Models.Nodes
         private string _frameLabelPosition = "TL";
         private string _frameLabelTextColor = "black";
         private string _frameLabelBackgroundColor = "white";
-        private int _frameLabelFontSize = 12;
-        private double _frameLabelX = 0.765223;
-        private double _frameLabelY = 0.005624;
-        private double _frameLabelW = 0.233889;
-        private double _frameLabelH = 0.090679;
-        private int _frameLabelHorizontalPadding = 2;
-        private int _frameLabelVerticalPadding = 4;
+        private int _frameLabelFontSize = 18;
+        private double _frameLabelX;
+        private double _frameLabelY;
+        private double _frameLabelW = 0.20;
+        private double _frameLabelH = 0.05;
+        private int _frameLabelHorizontalPadding = 10;
+        private int _frameLabelVerticalPadding = 6;
+        private int _frameLabelPaddingLeft = 10;
+        private int _frameLabelPaddingTop = 6;
+        private int _frameLabelPaddingRight = 10;
+        private int _frameLabelPaddingBottom = 6;
         private string _frameLabelTimeFormat = "HHMMSS";
         private int _extractParallelJobs = 1;
         private string _frameOutputFormat = "png";
@@ -911,21 +915,97 @@ namespace FlowMy.Models.Nodes
 
         public int FrameLabelHorizontalPadding
         {
-            get => _frameLabelHorizontalPadding;
+            get => _frameLabelPaddingLeft;
             set
             {
                 var next = value < 0 ? 0 : (value > 120 ? 120 : value);
-                if (_frameLabelHorizontalPadding != next) { _frameLabelHorizontalPadding = next; OnPropertyChanged(); }
+                if (_frameLabelHorizontalPadding != next)
+                {
+                    _frameLabelHorizontalPadding = next;
+                    _frameLabelPaddingLeft = next;
+                    _frameLabelPaddingRight = next;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(FrameLabelPaddingLeft));
+                    OnPropertyChanged(nameof(FrameLabelPaddingRight));
+                }
             }
         }
 
         public int FrameLabelVerticalPadding
         {
-            get => _frameLabelVerticalPadding;
+            get => _frameLabelPaddingTop;
             set
             {
                 var next = value < 0 ? 0 : (value > 80 ? 80 : value);
-                if (_frameLabelVerticalPadding != next) { _frameLabelVerticalPadding = next; OnPropertyChanged(); }
+                if (_frameLabelVerticalPadding != next)
+                {
+                    _frameLabelVerticalPadding = next;
+                    _frameLabelPaddingTop = next;
+                    _frameLabelPaddingBottom = next;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(FrameLabelPaddingTop));
+                    OnPropertyChanged(nameof(FrameLabelPaddingBottom));
+                }
+            }
+        }
+
+        public int FrameLabelPaddingLeft
+        {
+            get => _frameLabelPaddingLeft;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 120 ? 120 : value);
+                if (_frameLabelPaddingLeft != next)
+                {
+                    _frameLabelPaddingLeft = next;
+                    _frameLabelHorizontalPadding = next;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public int FrameLabelPaddingTop
+        {
+            get => _frameLabelPaddingTop;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 80 ? 80 : value);
+                if (_frameLabelPaddingTop != next)
+                {
+                    _frameLabelPaddingTop = next;
+                    _frameLabelVerticalPadding = next;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public int FrameLabelPaddingRight
+        {
+            get => _frameLabelPaddingRight;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 120 ? 120 : value);
+                if (_frameLabelPaddingRight != next)
+                {
+                    _frameLabelPaddingRight = next;
+                    _frameLabelHorizontalPadding = next;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public int FrameLabelPaddingBottom
+        {
+            get => _frameLabelPaddingBottom;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 80 ? 80 : value);
+                if (_frameLabelPaddingBottom != next)
+                {
+                    _frameLabelPaddingBottom = next;
+                    _frameLabelVerticalPadding = next;
+                    OnPropertyChanged();
+                }
             }
         }
 

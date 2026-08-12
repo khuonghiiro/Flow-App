@@ -290,12 +290,14 @@ namespace FlowMy.Views.NodeControls
                 FrameLabelTemplateTextBox.Text = _node.FrameLabelTemplate;
                 FrameLabelXSlider.Value = _node.FrameLabelX;
                 FrameLabelYSlider.Value = _node.FrameLabelY;
-                FrameLabelWSlider.Value = _node.FrameLabelW;
-                FrameLabelHSlider.Value = _node.FrameLabelH;
-                FrameLabelPaddingSlider.Value = _node.FrameLabelHorizontalPadding;
-                FrameLabelPaddingLabel.Text = $"{_node.FrameLabelHorizontalPadding}px";
-                FrameLabelPaddingVSlider.Value = _node.FrameLabelVerticalPadding;
-                FrameLabelPaddingVLabel.Text = $"{_node.FrameLabelVerticalPadding}px";
+                FrameLabelPaddingLeftSlider.Value = _node.FrameLabelPaddingLeft;
+                FrameLabelPaddingLeftLabel.Text = $"{_node.FrameLabelPaddingLeft}px";
+                FrameLabelPaddingTopSlider.Value = _node.FrameLabelPaddingTop;
+                FrameLabelPaddingTopLabel.Text = $"{_node.FrameLabelPaddingTop}px";
+                FrameLabelPaddingRightSlider.Value = _node.FrameLabelPaddingRight;
+                FrameLabelPaddingRightLabel.Text = $"{_node.FrameLabelPaddingRight}px";
+                FrameLabelPaddingBottomSlider.Value = _node.FrameLabelPaddingBottom;
+                FrameLabelPaddingBottomLabel.Text = $"{_node.FrameLabelPaddingBottom}px";
                 FrameLabelTimeFormatCombo.SelectedIndex = string.Equals(_node.FrameLabelTimeFormat, "HHMMSS", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
                 FrameLabelTextColorTextBox.Text = _node.FrameLabelTextColor;
                 FrameLabelBackgroundColorTextBox.Text = _node.FrameLabelBackgroundColor;
@@ -440,45 +442,32 @@ namespace FlowMy.Views.NodeControls
             var natH = PreviewMedia.NaturalVideoHeight;
             var srcW = Math.Max(1, natW);
             var srcH = Math.Max(1, natH);
+            var isPortrait = srcH > srcW;
+            var defaultWFrac = isPortrait ? (2.0 / 3.0) : 0.20;
             var usePreset = FrameLabelRasterComposer.TryGetLabelPresetFractions(srcW, srcH, out var labelWFrac, out var labelHFrac);
             if (!usePreset)
             {
-                labelWFrac = _node.FrameLabelW;
+                labelWFrac = (_node.FrameLabelW <= 0.05 || Math.Abs(_node.FrameLabelW - 0.18) < 0.001 || Math.Abs(_node.FrameLabelW - 0.20) < 0.001)
+                    ? defaultWFrac
+                    : _node.FrameLabelW;
                 labelHFrac = _node.FrameLabelH;
             }
 
-            FrameLabelPreviewOverlay.HorizontalAlignment = HorizontalAlignment.Left;
-            FrameLabelPreviewOverlay.VerticalAlignment = VerticalAlignment.Top;
-            FrameLabelPreviewOverlay.Width = Math.Max(20, labelWFrac * areaW);
-            FrameLabelPreviewOverlay.Height = Math.Max(18, labelHFrac * areaH);
             var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(natH > 0 ? natH : (int?)null);
-            var padVidX = Math.Max(0, (int)Math.Round(_node.FrameLabelHorizontalPadding * sourceScale));
-            var padVidY = Math.Max(0, (int)Math.Round(_node.FrameLabelVerticalPadding * sourceScale));
-            var padPx = padVidX * (areaW / srcW);
-            var padPy = padVidY * (areaH / srcH);
-            FrameLabelPreviewOverlay.Padding = new Thickness(padPx, padPy, padPx, padPy);
-            var left = usePreset
-                ? rect.X + areaW - FrameLabelPreviewOverlay.Width - padPx
-                : rect.X + (_node.FrameLabelX * areaW);
-            var top = usePreset
-                ? rect.Y + padPy
-                : rect.Y + (_node.FrameLabelY * areaH);
-            FrameLabelPreviewOverlay.Margin = new Thickness(Math.Max(0, left), Math.Max(0, top), 0, 0);
-            AutoFitFrameLabelTextToBounds();
-            FrameLabelPosLabel.Text = usePreset ? "X auto | Y auto" : $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
-            FrameLabelSizeLabel.Text = $"W {labelWFrac:0.###} | H {labelHFrac:0.###}";
-        }
+            var padVidLeft = Math.Max(0, (int)Math.Round(_node.FrameLabelPaddingLeft * sourceScale));
+            var padVidTop = Math.Max(0, (int)Math.Round(_node.FrameLabelPaddingTop * sourceScale));
+            var padVidRight = Math.Max(0, (int)Math.Round(_node.FrameLabelPaddingRight * sourceScale));
+            var padVidBottom = Math.Max(0, (int)Math.Round(_node.FrameLabelPaddingBottom * sourceScale));
 
-        private void AutoFitFrameLabelTextToBounds()
-        {
-            if (FrameLabelPreviewOverlay == null || FrameLabelPreviewText == null)
-                return;
+            var scaleX = areaW / srcW;
+            var scaleY = areaH / srcH;
 
-            var availableW = Math.Max(1, FrameLabelPreviewOverlay.Width - FrameLabelPreviewOverlay.Padding.Left - FrameLabelPreviewOverlay.Padding.Right);
-            var availableH = Math.Max(1, FrameLabelPreviewOverlay.Height - FrameLabelPreviewOverlay.Padding.Top - FrameLabelPreviewOverlay.Padding.Bottom);
-            var text = FrameLabelPreviewText.Text ?? string.Empty;
-            if (string.IsNullOrEmpty(text))
-                return;
+            var padPl = padVidLeft * scaleX;
+            var padPt = padVidTop * scaleY;
+            var padPr = padVidRight * scaleX;
+            var padPb = padVidBottom * scaleY;
+
+            var fontSize = FrameLabelPreviewText.FontSize > 0 ? FrameLabelPreviewText.FontSize : 14;
 
             var dpi = VisualTreeHelper.GetDpi(FrameLabelPreviewText);
             var typeface = new Typeface(
@@ -487,28 +476,37 @@ namespace FlowMy.Views.NodeControls
                 FrameLabelPreviewText.FontWeight,
                 FrameLabelPreviewText.FontStretch);
 
-            var originalSize = Math.Max(4, FrameLabelPreviewText.FontSize);
-            var fitSize = originalSize;
-            for (var size = originalSize; size >= 7; size -= 0.5)
-            {
-                var ft = new FormattedText(
-                    text,
-                    System.Globalization.CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
-                    typeface,
-                    size,
-                    Brushes.Black,
-                    dpi.PixelsPerDip);
+            var ft = new FormattedText(
+                FrameLabelPreviewText.Text ?? string.Empty,
+                System.Globalization.CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                fontSize,
+                Brushes.Black,
+                dpi.PixelsPerDip);
 
-                if (ft.Width <= availableW && ft.Height <= availableH)
-                {
-                    fitSize = size;
-                    break;
-                }
-            }
+            var capsH = typeface.CapsHeight * fontSize;
+            var fontTopLeading = Math.Max(0, ft.Baseline - capsH);
+            var visibleTextH = Math.Max(4, capsH + 0.5);
 
-            FrameLabelPreviewText.FontSize = fitSize;
+            FrameLabelPreviewText.Margin = new Thickness(0, -fontTopLeading, 0, 0);
+            FrameLabelPreviewOverlay.Padding = new Thickness(padPl, padPt, padPr, padPb);
+
+            var boxW = Math.Max(10, Math.Ceiling(ft.Width) + padPl + padPr);
+            var boxH = Math.Max(10, visibleTextH + padPt + padPb);
+
+            FrameLabelPreviewOverlay.HorizontalAlignment = HorizontalAlignment.Left;
+            FrameLabelPreviewOverlay.VerticalAlignment = VerticalAlignment.Top;
+            FrameLabelPreviewOverlay.Width = boxW;
+            FrameLabelPreviewOverlay.Height = boxH;
+
+            var left = rect.X + (_node.FrameLabelX * areaW);
+            var top = rect.Y + (_node.FrameLabelY * areaH);
+            FrameLabelPreviewOverlay.Margin = new Thickness(Math.Max(0, left), Math.Max(0, top), 0, 0);
+            FrameLabelPosLabel.Text = $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
         }
+
+
 
         /// <summary>
         /// Rectangle in <see cref="VideoAreaGrid"/> coordinates that matches the actual decoded video pixels

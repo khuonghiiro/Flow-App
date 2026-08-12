@@ -697,20 +697,34 @@ namespace FlowMy.Views.NodeControls
             FrameLabelToggle.Checked += (_, _) => { _node.FrameLabelEnabled = true; UpdateFrameLabelPreviewUi(); };
             FrameLabelToggle.Unchecked += (_, _) => { _node.FrameLabelEnabled = false; UpdateFrameLabelPreviewUi(); };
             FrameLabelTemplateTextBox.TextChanged += (_, _) => { _node.FrameLabelTemplate = FrameLabelTemplateTextBox.Text; UpdateFrameLabelPreviewUi(); };
-            FrameLabelXSlider.ValueChanged += (_, e) => { _node.FrameLabelX = e.NewValue; UpdateFrameLabelPreviewUi(); };
-            FrameLabelYSlider.ValueChanged += (_, e) => { _node.FrameLabelY = e.NewValue; UpdateFrameLabelPreviewUi(); };
-            FrameLabelWSlider.ValueChanged += (_, e) => { _node.FrameLabelW = e.NewValue; UpdateFrameLabelPreviewUi(); };
-            FrameLabelHSlider.ValueChanged += (_, e) => { _node.FrameLabelH = e.NewValue; UpdateFrameLabelPreviewUi(); };
-            FrameLabelPaddingSlider.ValueChanged += (_, e) =>
+            FrameLabelXSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.FrameLabelX = e.NewValue; UpdateFrameLabelPreviewUi(); };
+            FrameLabelYSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.FrameLabelY = e.NewValue; UpdateFrameLabelPreviewUi(); };
+            FrameLabelPaddingLeftSlider.ValueChanged += (_, e) =>
             {
-                _node.FrameLabelHorizontalPadding = (int)e.NewValue;
-                FrameLabelPaddingLabel.Text = $"{(int)e.NewValue}px";
+                if (_suppressControlSync) return;
+                _node.FrameLabelPaddingLeft = (int)e.NewValue;
+                FrameLabelPaddingLeftLabel.Text = $"{(int)e.NewValue}px";
                 UpdateFrameLabelPreviewUi();
             };
-            FrameLabelPaddingVSlider.ValueChanged += (_, e) =>
+            FrameLabelPaddingTopSlider.ValueChanged += (_, e) =>
             {
-                _node.FrameLabelVerticalPadding = (int)e.NewValue;
-                FrameLabelPaddingVLabel.Text = $"{(int)e.NewValue}px";
+                if (_suppressControlSync) return;
+                _node.FrameLabelPaddingTop = (int)e.NewValue;
+                FrameLabelPaddingTopLabel.Text = $"{(int)e.NewValue}px";
+                UpdateFrameLabelPreviewUi();
+            };
+            FrameLabelPaddingRightSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.FrameLabelPaddingRight = (int)e.NewValue;
+                FrameLabelPaddingRightLabel.Text = $"{(int)e.NewValue}px";
+                UpdateFrameLabelPreviewUi();
+            };
+            FrameLabelPaddingBottomSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.FrameLabelPaddingBottom = (int)e.NewValue;
+                FrameLabelPaddingBottomLabel.Text = $"{(int)e.NewValue}px";
                 UpdateFrameLabelPreviewUi();
             };
             FrameLabelTimeFormatCombo.SelectionChanged += (_, _) =>

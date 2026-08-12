@@ -928,8 +928,8 @@
             </Grid.RowDefinitions>
             <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" MinWidth="300"/>
-                <ColumnDefinition Width="2*" MinWidth="340"/>
+                <ColumnDefinition Width="2*" MinWidth="300"/>
+                <ColumnDefinition Width="3*" MinWidth="340"/>
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,10,0" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
@@ -1187,10 +1187,10 @@
                         VerticalAlignment="Top"
                         Margin="12"
                         Padding="10,6"
-                        CornerRadius="4"
+                        CornerRadius="0"
                         Background="{DynamicResource ThemeFrameLabelPreviewBg}"
                         BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
-                        BorderThickness="1"
+                        BorderThickness="0"
                         Visibility="Collapsed"
                         IsHitTestVisible="False">
                     <TextBlock x:Name="FrameLabelPreviewText"
@@ -1198,6 +1198,7 @@
                                FontFamily="Segoe UI Semibold"
                                VerticalAlignment="Top"
                                HorizontalAlignment="Left"
+                               Margin="0,-1.5,0,0"
                                TextTrimming="None"
                                TextWrapping="NoWrap"
                                Foreground="{DynamicResource ThemeFrameLabelPreviewFg}"/>
@@ -1653,49 +1654,68 @@
                                                Text="Params: {index}=thứ tự frame xuất, {frame}=số frame theo FPS nguồn, {time}=thời gian (MM:SS/HH:MM:SS)."/>
                                     <Grid Margin="0,8,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Slider x:Name="FrameLabelXSlider" Minimum="0" Maximum="1" Value="0.765223" Style="{StaticResource ModernSliderStyle}"/>
-                                        <Slider x:Name="FrameLabelYSlider" Grid.Column="1" Minimum="0" Maximum="1" Value="0.005624" Margin="6,0,0,0" Style="{StaticResource ModernSliderStyle}"/>
+                                        <Slider x:Name="FrameLabelXSlider" Minimum="0" Maximum="1" Value="0" Style="{StaticResource ModernSliderStyle}"/>
+                                        <Slider x:Name="FrameLabelYSlider" Grid.Column="1" Minimum="0" Maximum="1" Value="0" Margin="6,0,0,0" Style="{StaticResource ModernSliderStyle}"/>
                                     </Grid>
-                                    <TextBlock x:Name="FrameLabelPosLabel" Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="X 0.765 | Y 0.006"/>
-                                    <Grid Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Slider x:Name="FrameLabelWSlider" Minimum="0.05" Maximum="1" Value="0.233889" Style="{StaticResource ModernSliderStyle}"/>
-                                        <Slider x:Name="FrameLabelHSlider" Grid.Column="1" Minimum="0.03" Maximum="1" Value="0.090679" Margin="6,0,0,0" Style="{StaticResource ModernSliderStyle}"/>
-                                    </Grid>
-                                    <TextBlock x:Name="FrameLabelSizeLabel" Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="W 0.234 | H 0.091"/>
+                                    <TextBlock x:Name="FrameLabelPosLabel" Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="X 0.000 | Y 0.000"/>
                                     <Grid Margin="0,6,0,0">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <Slider x:Name="FrameLabelFontSizeSlider" Grid.Column="0" Minimum="8" Maximum="60" Value="12" Style="{StaticResource ModernSliderStyle}"/>
-                                        <TextBlock x:Name="FrameLabelFontSizeLabel" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="12px"/>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="FrameLabelFontSizeSlider" Grid.Column="0" Minimum="8" Maximum="60" Value="18" Style="{StaticResource ModernSliderStyle}"/>
+                                        <TextBlock x:Name="FrameLabelFontSizeLabel" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="18px"/>
                                     </Grid>
                                     <Grid Margin="0,6,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="8"/>
                                             <ColumnDefinition Width="120"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="Time format" VerticalAlignment="Center" FontSize="11" Opacity="0.8"/>
                                         <ComboBox x:Name="FrameLabelTimeFormatCombo" Grid.Column="2" Height="24" Style="{StaticResource DarkComboBoxStyle}">
                                             <ComboBoxItem Content="MM:SS" Tag="MMSS"/>
                                             <ComboBoxItem Content="HH:MM:SS" Tag="HHMMSS" IsSelected="True"/>
                                         </ComboBox>
-                                        <TextBlock Grid.Column="4" Text="Pad L/R" VerticalAlignment="Center" FontSize="11" Opacity="0.8"/>
-                                        <TextBlock x:Name="FrameLabelPaddingLabel" Grid.Column="5" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="2px"/>
                                     </Grid>
-                                    <Slider x:Name="FrameLabelPaddingSlider" Margin="0,6,0,0" Minimum="0" Maximum="48" Value="2" Style="{StaticResource ModernSliderStyle}"/>
-                                    <Grid Margin="0,6,0,0">
+                                    <TextBlock Text="Padding 4 phía (px)" Margin="0,8,0,2" FontSize="11" FontWeight="SemiBold" Opacity="0.9"/>
+                                    <Grid Margin="0,4,0,0">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="8"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="6"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Pad T/B" VerticalAlignment="Center" FontSize="11" Opacity="0.8"/>
-                                        <Slider x:Name="FrameLabelPaddingVSlider" Grid.Column="2" Margin="0,0,8,0" Minimum="0" Maximum="32" Value="4" Style="{StaticResource ModernSliderStyle}"/>
-                                        <TextBlock x:Name="FrameLabelPaddingVLabel" Grid.Column="3" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="4px"/>
+                                        <Grid Grid.Column="0">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Trái" VerticalAlignment="Center" FontSize="10" Opacity="0.7"/>
+                                            <Slider x:Name="FrameLabelPaddingLeftSlider" Grid.Column="1" Margin="4,0,4,0" Minimum="0" Maximum="50" Value="10" Style="{StaticResource ModernSliderStyle}"/>
+                                            <TextBlock x:Name="FrameLabelPaddingLeftLabel" Grid.Column="2" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="10px"/>
+                                        </Grid>
+                                        <Grid Grid.Column="2">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Trên" VerticalAlignment="Center" FontSize="10" Opacity="0.7"/>
+                                            <Slider x:Name="FrameLabelPaddingTopSlider" Grid.Column="1" Margin="4,0,4,0" Minimum="0" Maximum="50" Value="6" Style="{StaticResource ModernSliderStyle}"/>
+                                            <TextBlock x:Name="FrameLabelPaddingTopLabel" Grid.Column="2" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="6px"/>
+                                        </Grid>
+                                    </Grid>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="6"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Grid.Column="0">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Phải" VerticalAlignment="Center" FontSize="10" Opacity="0.7"/>
+                                            <Slider x:Name="FrameLabelPaddingRightSlider" Grid.Column="1" Margin="4,0,4,0" Minimum="0" Maximum="50" Value="10" Style="{StaticResource ModernSliderStyle}"/>
+                                            <TextBlock x:Name="FrameLabelPaddingRightLabel" Grid.Column="2" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="10px"/>
+                                        </Grid>
+                                        <Grid Grid.Column="2">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Dưới" VerticalAlignment="Center" FontSize="10" Opacity="0.7"/>
+                                            <Slider x:Name="FrameLabelPaddingBottomSlider" Grid.Column="1" Margin="4,0,4,0" Minimum="0" Maximum="50" Value="6" Style="{StaticResource ModernSliderStyle}"/>
+                                            <TextBlock x:Name="FrameLabelPaddingBottomLabel" Grid.Column="2" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="6px"/>
+                                        </Grid>
                                     </Grid>
                                     <Grid Margin="0,8,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

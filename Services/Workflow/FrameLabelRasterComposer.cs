@@ -41,25 +41,6 @@ internal static class FrameLabelRasterComposer
     {
         wFrac = 0;
         hFrac = 0;
-        var ratio = frameW / (double)Math.Max(1, frameH);
-        // Portrait bucket (includes 9:16, 2:3 like 720x1080, and nearby resized variants)
-        if (frameH > frameW && ratio <= 0.80)
-        {
-            // 9:16 -> width ~35-40%, height ~5%
-            wFrac = 0.38;
-            hFrac = 0.05;
-            return true;
-        }
-
-        // Landscape bucket (includes 16:9 and close resized variants)
-        if (frameW >= frameH && ratio >= 1.25)
-        {
-            // 16:9 -> width ~20-25%, height ~10-15%
-            wFrac = 0.23;
-            hFrac = 0.12;
-            return true;
-        }
-
         return false;
     }
 
@@ -115,13 +96,15 @@ internal static class FrameLabelRasterComposer
                 fontSizePx,
                 new SolidColorBrush(fg),
                 pixelsPerDip: 1);
-            ft.MaxTextWidth = innerW;
-            ft.MaxTextHeight = innerH;
+            ft.MaxTextWidth = Math.Max(1, Math.Max(innerW, (int)Math.Ceiling(ft.Width) + 10));
+            ft.MaxTextHeight = Math.Max(1000, (int)Math.Ceiling(ft.Height) + 10);
             ft.TextAlignment = TextAlignment.Left;
-            ft.Trimming = TextTrimming.CharacterEllipsis;
+            ft.Trimming = TextTrimming.None;
 
-            // Match WPF preview: TextBlock in Border is top-aligned in the padded client area (not vertically centered).
-            var textY = padTop;
+            // Trim font top leading gap (distance above cap height) so padTop = 0 sits flush against the top edge.
+            var capsH = FrameLabelTypeface.CapsHeight * fontSizePx;
+            var fontTopLeading = Math.Max(0, ft.Baseline - capsH);
+            var textY = padTop - fontTopLeading;
             dc.DrawText(ft, new Point(padLeft, textY));
         }
 
@@ -171,8 +154,10 @@ internal static class FrameLabelRasterComposer
         var (estW, estH) = GetEstimatedSourceFrameSize(probeSrcW, probeSrcH, node);
 
         var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null);
-        var padVidX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
-        var padVidY = Math.Max(0, (int)Math.Round(node.FrameLabelVerticalPadding * sourceScale));
+        var padVidLeft = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingLeft * sourceScale));
+        var padVidTop = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingTop * sourceScale));
+        var padVidRight = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingRight * sourceScale));
+        var padVidBottom = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingBottom * sourceScale));
 
         BitmapSource baseFrame;
         using (var streamIn = File.OpenRead(imagePath))
@@ -186,27 +171,47 @@ internal static class FrameLabelRasterComposer
         var hf = baseFrame.PixelHeight;
         if (wf <= 0 || hf <= 0) return;
 
+        var isPortrait = hf > wf;
+        var defaultWFrac = isPortrait ? (2.0 / 3.0) : 0.20;
         var usePreset = TryGetLabelPresetFractions(wf, hf, out var labelWFrac, out var labelHFrac);
         if (!usePreset)
         {
-            labelWFrac = node.FrameLabelW;
+            labelWFrac = (node.FrameLabelW <= 0.05 || Math.Abs(node.FrameLabelW - 0.18) < 0.001 || Math.Abs(node.FrameLabelW - 0.20) < 0.001)
+                ? defaultWFrac
+                : node.FrameLabelW;
             labelHFrac = node.FrameLabelH;
         }
         var labelBoxSrcH = Math.Max(4, (int)Math.Round(estH * labelHFrac));
 
-        var padX = (int)Math.Round(padVidX * (wf / (double)Math.Max(1, estW)));
-        var padY = (int)Math.Round(padVidY * (hf / (double)Math.Max(1, estH)));
-
-        var boxW = Math.Max(4, (int)Math.Round(wf * labelWFrac));
-        var boxH = Math.Max(4, (int)Math.Round(hf * labelHFrac));
-        var boxX = usePreset ? Math.Max(0, wf - boxW - padX) : (int)Math.Round(wf * node.FrameLabelX);
-        var boxY = usePreset ? Math.Max(0, padY) : (int)Math.Round(hf * node.FrameLabelY);
+        var padLeft = (int)Math.Round(padVidLeft * (wf / (double)Math.Max(1, estW)));
+        var padTop = (int)Math.Round(padVidTop * (hf / (double)Math.Max(1, estH)));
+        var padRight = (int)Math.Round(padVidRight * (wf / (double)Math.Max(1, estW)));
+        var padBottom = (int)Math.Round(padVidBottom * (hf / (double)Math.Max(1, estH)));
 
         var fontPx = VideoProcessingNodeExecutor.ComputeFrameLabelDrawtextFontPixelSize(node, probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null)
-            * (boxH / (double)Math.Max(1, labelBoxSrcH));
-        fontPx = Math.Max(4, fontPx);
+            * (labelBoxSrcH / (double)Math.Max(1, labelBoxSrcH));
+        fontPx = Math.Max(6, fontPx);
 
-        RenderLabelStrip(node, text, boxW, boxH, padX, padY, padX, padY, fontPx, out var labelBmp);
+        var ft = new FormattedText(
+            text,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            FrameLabelTypeface,
+            fontPx,
+            Brushes.Black,
+            pixelsPerDip: 1);
+
+        var capsH = FrameLabelTypeface.CapsHeight * fontPx;
+        var visibleTextH = Math.Max(4, capsH + 0.5);
+        var minBoxW = (int)Math.Ceiling(ft.Width) + padLeft + padRight;
+        var minBoxH = Math.Max(1, (int)Math.Ceiling(visibleTextH) + padTop + padBottom);
+
+        var boxW = minBoxW;
+        var boxH = minBoxH;
+        var boxX = (int)Math.Round(wf * node.FrameLabelX);
+        var boxY = (int)Math.Round(hf * node.FrameLabelY);
+
+        RenderLabelStrip(node, text, boxW, boxH, padLeft, padTop, padRight, padBottom, fontPx, out var labelBmp);
 
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
@@ -307,24 +312,27 @@ internal static class FrameLabelRasterComposer
         if (sourceFps <= 0) sourceFps = 30;
 
         var (estW, estH) = GetEstimatedSourceFrameSize(probeSrcW, probeSrcH, node);
+        var isPortrait = estH > estW;
+        var defaultWFrac = isPortrait ? (2.0 / 3.0) : 0.20;
         var usePreset = TryGetLabelPresetFractions(estW, estH, out var labelWFrac, out var labelHFrac);
         if (!usePreset)
         {
-            labelWFrac = node.FrameLabelW;
+            labelWFrac = (node.FrameLabelW <= 0.05 || Math.Abs(node.FrameLabelW - 0.18) < 0.001 || Math.Abs(node.FrameLabelW - 0.20) < 0.001)
+                ? defaultWFrac
+                : node.FrameLabelW;
             labelHFrac = node.FrameLabelH;
         }
         var labelBoxSrcW = Math.Max(4, (int)Math.Round(estW * labelWFrac));
         var labelBoxSrcH = Math.Max(4, (int)Math.Round(estH * labelHFrac));
 
         var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null);
-        var padVidX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
-        var padVidY = Math.Max(0, (int)Math.Round(node.FrameLabelVerticalPadding * sourceScale));
+        var padVidLeft = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingLeft * sourceScale));
+        var padVidTop = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingTop * sourceScale));
+        var padVidRight = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingRight * sourceScale));
+        var padVidBottom = Math.Max(0, (int)Math.Round(node.FrameLabelPaddingBottom * sourceScale));
 
         var fontPx = VideoProcessingNodeExecutor.ComputeFrameLabelDrawtextFontPixelSize(node, probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null);
         fontPx = Math.Max(4, fontPx);
-
-        var padX = padVidX;
-        var padY = padVidY;
 
         for (var i = 1; i <= count; i++)
         {
@@ -333,7 +341,23 @@ internal static class FrameLabelRasterComposer
             var sourceFrameApprox = Math.Max(0, (int)Math.Round(tSec * sourceFps));
             var text = FormatResolvedLabelText(node, i, sourceFrameApprox, mediaTime);
 
-            RenderLabelStrip(node, text, labelBoxSrcW, labelBoxSrcH, padX, padY, padX, padY, fontPx, out var bmp);
+            var ftSeq = new FormattedText(
+                text,
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                FrameLabelTypeface,
+                fontPx,
+                Brushes.Black,
+                pixelsPerDip: 1);
+            var seqCapsH = FrameLabelTypeface.CapsHeight * fontPx;
+            var seqVisibleH = Math.Max(4, seqCapsH + 0.5);
+            var seqMinW = (int)Math.Ceiling(ftSeq.Width) + padVidLeft + padVidRight;
+            var seqMinH = Math.Max(1, (int)Math.Ceiling(seqVisibleH) + padVidTop + padVidBottom);
+
+            var finalStripW = seqMinW;
+            var finalStripH = seqMinH;
+
+            RenderLabelStrip(node, text, finalStripW, finalStripH, padVidLeft, padVidTop, padVidRight, padVidBottom, fontPx, out var bmp);
 
             var path = Path.Combine(outputDirectory, $"label_{i:D6}.png");
             var enc = new PngBitmapEncoder();
