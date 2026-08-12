@@ -2,6 +2,7 @@ using FlowMy.Models;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
@@ -79,10 +80,16 @@ namespace FlowMy.Models.Nodes
         private string? _outputFolderSourceOutputKey;
         private string? _videoOutputFolderSourceNodeId;
         private string? _videoOutputFolderSourceOutputKey;
+        private string? _audioOutputFolderSourceNodeId;
+        private string? _audioOutputFolderSourceOutputKey;
         private bool _outputBase64 = true;
         private bool _useDialogVideoConfig = true;
+        private bool _extractFramesEnabled = true;
+        private bool _exportVideoEnabled = true;
+        private bool _extractAudioEnabled;
         private string? _frameOutputFolderPath;
         private string? _defaultOutputVideoPath;
+        private string? _audioOutputFolderPath;
         private double _secondsPerFrame = 1;
         private int _extractFrameCount = 10;
 
@@ -166,6 +173,7 @@ namespace FlowMy.Models.Nodes
             Title = "Video Processing";
             AudioTracks = new ObservableCollection<VideoAudioTrackConfig>();
             Overlays = new ObservableCollection<OverlayItem>();
+            EnsureStandardDynamicOutputs();
         }
 
         public new TextBlock? TitleTextBlockUI { get; set; }
@@ -250,6 +258,32 @@ namespace FlowMy.Models.Nodes
             }
         }
 
+        public string? AudioOutputFolderSourceNodeId
+        {
+            get => _audioOutputFolderSourceNodeId;
+            set
+            {
+                if (_audioOutputFolderSourceNodeId != value)
+                {
+                    _audioOutputFolderSourceNodeId = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string? AudioOutputFolderSourceOutputKey
+        {
+            get => _audioOutputFolderSourceOutputKey;
+            set
+            {
+                if (_audioOutputFolderSourceOutputKey != value)
+                {
+                    _audioOutputFolderSourceOutputKey = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public bool OutputBase64
         {
             get => _outputBase64;
@@ -262,6 +296,24 @@ namespace FlowMy.Models.Nodes
             set { if (_useDialogVideoConfig != value) { _useDialogVideoConfig = value; OnPropertyChanged(); } }
         }
 
+        public bool ExtractFramesEnabled
+        {
+            get => _extractFramesEnabled;
+            set { if (_extractFramesEnabled != value) { _extractFramesEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool ExportVideoEnabled
+        {
+            get => _exportVideoEnabled;
+            set { if (_exportVideoEnabled != value) { _exportVideoEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool ExtractAudioEnabled
+        {
+            get => _extractAudioEnabled;
+            set { if (_extractAudioEnabled != value) { _extractAudioEnabled = value; OnPropertyChanged(); } }
+        }
+
         public string? FrameOutputFolderPath
         {
             get => _frameOutputFolderPath;
@@ -272,6 +324,12 @@ namespace FlowMy.Models.Nodes
         {
             get => _defaultOutputVideoPath;
             set { if (_defaultOutputVideoPath != value) { _defaultOutputVideoPath = value; OnPropertyChanged(); } }
+        }
+
+        public string? AudioOutputFolderPath
+        {
+            get => _audioOutputFolderPath;
+            set { if (_audioOutputFolderPath != value) { _audioOutputFolderPath = value; OnPropertyChanged(); } }
         }
 
         public double SecondsPerFrame
@@ -957,6 +1015,39 @@ namespace FlowMy.Models.Nodes
 
         public ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }
         public ObservableCollection<OverlayItem> Overlays { get; }
+
+        public void EnsureStandardDynamicOutputs()
+        {
+            AddOrUpdateOutput("frames_output", "Frames Output (base64 or file paths)", WorkflowDataType.ArrayString, true);
+            AddOrUpdateOutput("frames_paths", "Frame File Paths", WorkflowDataType.ArrayString, true);
+            AddOrUpdateOutput("frames_base64", "Frame Base64", WorkflowDataType.ArrayString, true);
+            AddOrUpdateOutput("frame_folder", "Frame Output Folder", WorkflowDataType.String, false);
+            AddOrUpdateOutput("video_output", "Video Output", WorkflowDataType.String, false);
+            AddOrUpdateOutput("video_path", "Video File Path", WorkflowDataType.String, false);
+            AddOrUpdateOutput("audio_output", "Extracted Audio Path", WorkflowDataType.String, false);
+            AddOrUpdateOutput("output_manifest", "Output Manifest JSON", WorkflowDataType.String, false);
+        }
+
+        private void AddOrUpdateOutput(string key, string displayName, WorkflowDataType type, bool isMultiple)
+        {
+            var existing = DynamicOutputs.FirstOrDefault(o =>
+                string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                DynamicOutputs.Add(new WorkflowDynamicDataPort
+                {
+                    Key = key,
+                    DisplayName = displayName,
+                    OutputType = type,
+                    IsMultiple = isMultiple
+                });
+                return;
+            }
+
+            existing.DisplayName = displayName;
+            existing.OutputType = type;
+            existing.IsMultiple = isMultiple;
+        }
 
         public void RaisePropertyChanged(string propertyName) => OnPropertyChanged(propertyName);
     }

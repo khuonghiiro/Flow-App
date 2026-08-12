@@ -1323,6 +1323,34 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private static void SelectComboBoxItemByTag(ComboBox comboBox, string? tag)
+        {
+            if (comboBox == null || string.IsNullOrWhiteSpace(tag)) return;
+            for (var i = 0; i < comboBox.Items.Count; i++)
+            {
+                if (comboBox.Items[i] is ComboBoxItem item &&
+                    string.Equals(item.Tag?.ToString(), tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    comboBox.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
+        private static void SelectComboBoxItemByContent(ComboBox comboBox, string? content)
+        {
+            if (comboBox == null || string.IsNullOrWhiteSpace(content)) return;
+            for (var i = 0; i < comboBox.Items.Count; i++)
+            {
+                if (comboBox.Items[i] is ComboBoxItem item &&
+                    string.Equals(item.Content?.ToString(), content, StringComparison.OrdinalIgnoreCase))
+                {
+                    comboBox.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
         private void SetTextStyleIfExists(string elementName, string text, Brush foreground)
         {
             if (FindName(elementName) is TextBlock tb)

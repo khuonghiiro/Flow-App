@@ -246,20 +246,7 @@ namespace FlowMy.Workflow
                 OutputType = WorkflowDataType.String
             });
 
-            node.DynamicOutputs.Add(new WorkflowDynamicDataPort
-            {
-                Key = "frames_output",
-                DisplayName = "Frames Output",
-                IsMultiple = true,
-                OutputType = WorkflowDataType.String
-            });
-            node.DynamicOutputs.Add(new WorkflowDynamicDataPort
-            {
-                Key = "video_output",
-                DisplayName = "Video Output",
-                IsMultiple = false,
-                OutputType = WorkflowDataType.String
-            });
+            node.EnsureStandardDynamicOutputs();
 
             return node;
         }

@@ -33,12 +33,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
+                videoNode.EnsureStandardDynamicOutputs();
+                ClearStandardOutputs(videoNode);
+
                 var videoInput = ResolveFromMapping(env, videoNode.VideoSourceNodeId, videoNode.VideoSourceOutputKey);
                 if (string.IsNullOrWhiteSpace(videoInput))
                     videoInput = videoNode.VideoPath;
                 if (string.IsNullOrWhiteSpace(videoInput))
                     throw new InvalidOperationException("VideoProcessingNode: thiếu input video.");
                 var videoSubfolderName = BuildOutputSubfolderNameFromVideoPath(videoInput);
+                var (codecArgs, extension) = BuildOutputArgs(videoNode);
 
                 var downloadsRoot = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -46,6 +50,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var defaultFrameOutputFolder = Path.Combine(downloadsRoot, "flow-frame", videoSubfolderName);
                 var defaultVideoOutputFolder = Path.Combine(downloadsRoot, "flow-video", videoSubfolderName);
+                var defaultAudioOutputFolder = Path.Combine(downloadsRoot, "flow-audio", videoSubfolderName);
 
                 string? frameOutputFolder;
                 if (videoNode.UseDialogVideoConfig)
@@ -61,34 +66,43 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     frameOutputFolder = videoNode.FrameOutputFolderPath;
                 }
+                if (string.IsNullOrWhiteSpace(frameOutputFolder))
+                    frameOutputFolder = defaultFrameOutputFolder;
 
-                string? videoOutputFolder;
+                string? videoOutputDestination;
                 if (videoNode.UseDialogVideoConfig)
                 {
-                    videoOutputFolder = ResolveFromMapping(env, videoNode.VideoOutputFolderSourceNodeId, videoNode.VideoOutputFolderSourceOutputKey);
-                    if (string.IsNullOrWhiteSpace(videoOutputFolder))
-                        videoOutputFolder = videoNode.DefaultOutputVideoPath;
+                    videoOutputDestination = ResolveFromMapping(env, videoNode.VideoOutputFolderSourceNodeId, videoNode.VideoOutputFolderSourceOutputKey);
+                    if (string.IsNullOrWhiteSpace(videoOutputDestination))
+                        videoOutputDestination = videoNode.DefaultOutputVideoPath;
 
-                    if (string.IsNullOrWhiteSpace(videoOutputFolder))
-                        videoOutputFolder = defaultVideoOutputFolder;
+                    if (string.IsNullOrWhiteSpace(videoOutputDestination))
+                        videoOutputDestination = defaultVideoOutputFolder;
                 }
                 else
                 {
-                    videoOutputFolder = videoNode.DefaultOutputVideoPath;
+                    videoOutputDestination = videoNode.DefaultOutputVideoPath;
                 }
-                if (!string.IsNullOrWhiteSpace(videoOutputFolder) &&
-                    !Directory.Exists(videoOutputFolder) &&
-                    !string.IsNullOrWhiteSpace(Path.GetExtension(videoOutputFolder)))
-                {
-                    var dir = Path.GetDirectoryName(videoOutputFolder);
-                    if (!string.IsNullOrWhiteSpace(dir)) videoOutputFolder = dir;
-                }
-
-                if (!videoNode.OutputBase64)
+                if (videoNode.ExtractFramesEnabled && !videoNode.OutputBase64)
                 {
                     if (string.IsNullOrWhiteSpace(frameOutputFolder))
                         throw new InvalidOperationException("VideoProcessingNode: Output Base64 tắt nhưng chưa có folder output.");
                     Directory.CreateDirectory(frameOutputFolder);
+                }
+
+                string? audioOutputFolder;
+                if (videoNode.UseDialogVideoConfig)
+                {
+                    audioOutputFolder = ResolveFromMapping(env, videoNode.AudioOutputFolderSourceNodeId, videoNode.AudioOutputFolderSourceOutputKey);
+                    if (string.IsNullOrWhiteSpace(audioOutputFolder))
+                        audioOutputFolder = videoNode.AudioOutputFolderPath;
+
+                    if (string.IsNullOrWhiteSpace(audioOutputFolder))
+                        audioOutputFolder = defaultAudioOutputFolder;
+                }
+                else
+                {
+                    audioOutputFolder = videoNode.AudioOutputFolderPath;
                 }
 
                 var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
@@ -126,6 +140,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     : totalDuration;
                 var effectiveDurationTrim = Math.Max(0.01, effectiveEnd - effectiveStart);
 
+                var producedFrames = new List<string>();
+                if (videoNode.ExtractFramesEnabled)
+                {
                 var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
                 if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
                 var overlayFrameCleanup = new List<string>();
@@ -154,7 +171,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     TryDeleteOverlayRasterFiles(overlayFrameCleanup);
                 }
 
-                var producedFrames = Directory.GetFiles(
+                producedFrames = Directory.GetFiles(
                         Path.GetDirectoryName(framePattern)!,
                         Path.GetFileName(framePattern).Replace("%06d", "*"))
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
@@ -205,23 +222,27 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             env.CancellationToken)
                         .ConfigureAwait(false);
                 }
+                }
 
-                var framesOutput = videoNode.OutputBase64
+                var framePathsJson = JsonSerializer.Serialize(producedFrames);
+                var frameBase64Json = videoNode.OutputBase64 && producedFrames.Count > 0
                     ? JsonSerializer.Serialize(producedFrames.Select(File.ReadAllBytes).Select(Convert.ToBase64String).ToList())
-                    : JsonSerializer.Serialize(producedFrames);
+                    : string.Empty;
+                var framesOutput = videoNode.OutputBase64
+                    ? frameBase64Json
+                    : framePathsJson;
                 SetOutput(videoNode, "frames_output", framesOutput);
+                SetOutput(videoNode, "frames_paths", framePathsJson);
+                SetOutput(videoNode, "frames_base64", frameBase64Json);
+                SetOutput(videoNode, "frame_folder", producedFrames.Count > 0 ? Path.GetDirectoryName(producedFrames[0]) ?? string.Empty : string.Empty);
 
                 if (ShouldSkipVideoEncode(videoNode))
                 {
-                    // Frame-first mode for VideoProcessing node:
-                    // apply visual pipeline (filters/overlays/labels) and emit frames output,
-                    // skip video encode/audio merge for now.
                     SetOutput(videoNode, "video_output", string.Empty);
-                    ProgressChanged?.Invoke(videoNode, 100, "Completed");
-                    return;
+                    SetOutput(videoNode, "video_path", string.Empty);
                 }
-
-                var (codecArgs, extension) = BuildOutputArgs(videoNode);
+                else
+                {
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
                 var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
                 var mainArgs = BuildTrimAwareArgs(videoNode, new[]
@@ -323,8 +344,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     postStabilizedPath = stabilizedPath;
                 }
 
-                var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, postStabilizedPath, videoOutputFolder).ConfigureAwait(false);
+                var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, postStabilizedPath, videoOutputDestination).ConfigureAwait(false);
                 SetOutput(videoNode, "video_output", mixedVideo);
+                SetOutput(videoNode, "video_path", mixedVideo);
+                }
+
+                var extractedAudioPath = string.Empty;
+                if (videoNode.ExtractAudioEnabled)
+                {
+                    extractedAudioPath = await TryExtractAudioOutputAsync(
+                            videoNode,
+                            videoInput,
+                            ResolveOutputDirectory(audioOutputFolder, defaultAudioOutputFolder),
+                            env.CancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                SetOutput(videoNode, "audio_output", extractedAudioPath);
+                SetOutput(videoNode, "output_manifest", BuildOutputManifest(videoNode, producedFrames, extractedAudioPath));
                 ProgressChanged?.Invoke(videoNode, 100, "Completed");
             }
             catch (Exception ex)
@@ -347,30 +384,175 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return env.Service.ResolveValueByNodeIdAndKeyForExecution(env.Connections, sourceNodeId, key, env);
         }
 
+        private static void ClearStandardOutputs(VideoProcessingNode node)
+        {
+            foreach (var key in new[]
+            {
+                "frames_output",
+                "frames_paths",
+                "frames_base64",
+                "frame_folder",
+                "video_output",
+                "video_path",
+                "audio_output",
+                "output_manifest"
+            })
+            {
+                SetOutput(node, key, string.Empty);
+            }
+        }
+
+        private static string ResolveVideoOutputPath(VideoProcessingNode node, string? mappedDestination, string extension)
+        {
+            foreach (var candidate in new[] { node.OutputPathOverride, node.DefaultOutputVideoPath, mappedDestination })
+            {
+                if (string.IsNullOrWhiteSpace(candidate)) continue;
+                return BuildOutputPathFromDestination(candidate, "video_processed", extension);
+            }
+
+            return Path.Combine(Path.GetTempPath(), $"video_processed_{Guid.NewGuid():N}{extension}");
+        }
+
+        private static string ResolveOutputDirectory(string? configuredPath, string fallbackDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(configuredPath))
+                return fallbackDirectory;
+
+            var cleaned = configuredPath.Trim().Trim('"');
+            if (LooksLikeFileDestination(cleaned))
+            {
+                var parent = Path.GetDirectoryName(cleaned);
+                if (!string.IsNullOrWhiteSpace(parent))
+                    return parent;
+            }
+
+            return cleaned;
+        }
+
+        private static string BuildOutputPathFromDestination(string destination, string filePrefix, string extension)
+        {
+            var cleaned = destination.Trim().Trim('"');
+            if (LooksLikeFileDestination(cleaned))
+                return cleaned;
+
+            var folder = string.IsNullOrWhiteSpace(cleaned)
+                ? Path.GetTempPath()
+                : cleaned;
+            return Path.Combine(folder, $"{filePrefix}_{DateTime.Now:yyyyMMddHHmmss}{extension}");
+        }
+
+        private static bool LooksLikeFileDestination(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            try
+            {
+                return !string.IsNullOrWhiteSpace(Path.GetExtension(path));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string BuildOutputManifest(VideoProcessingNode node, IReadOnlyList<string> framePaths, string? audioPath)
+        {
+            var videoPath = node.DynamicOutputs?
+                .FirstOrDefault(o => string.Equals(o.Key, "video_output", StringComparison.OrdinalIgnoreCase))
+                ?.UserValueOverride ?? string.Empty;
+
+            return JsonSerializer.Serialize(new
+            {
+                framesMode = node.OutputBase64 ? "base64" : "paths",
+                framesCount = framePaths.Count,
+                framesPaths = framePaths,
+                frameFolder = framePaths.Count > 0 ? Path.GetDirectoryName(framePaths[0]) ?? string.Empty : string.Empty,
+                videoPath,
+                audioPath = audioPath ?? string.Empty,
+                exportedVideo = !string.IsNullOrWhiteSpace(videoPath),
+                extractedAudio = !string.IsNullOrWhiteSpace(audioPath)
+            });
+        }
+
+        private static async Task<string> TryExtractAudioOutputAsync(
+            VideoProcessingNode node,
+            string sourceVideoInput,
+            string outputFolder,
+            CancellationToken ct)
+        {
+            try
+            {
+                if (!await ProbeHasAudioStreamAsync(sourceVideoInput, ct).ConfigureAwait(false))
+                {
+                    LogLine?.Invoke(node, "Audio extract skipped: source video has no audio stream.");
+                    return string.Empty;
+                }
+
+                Directory.CreateDirectory(outputFolder);
+                var extension = ResolveAudioOutputExtension(node.AudioCodec);
+                var outputPath = Path.Combine(outputFolder, $"audio_extracted_{DateTime.Now:yyyyMMddHHmmss}{extension}");
+                var duration = await ProbeDurationSecondsAsync(sourceVideoInput, ct).ConfigureAwait(false);
+                var codec = ResolveAudioCodecArg(node.AudioCodec);
+                var args = new List<string>
+                {
+                    "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", sourceVideoInput,
+                    "-map", "0:a:0",
+                    "-vn"
+                };
+
+                if (string.Equals(codec, "copy", StringComparison.OrdinalIgnoreCase))
+                {
+                    args.AddRange(new[] { "-c:a", "copy" });
+                }
+                else
+                {
+                    args.AddRange(new[] { "-c:a", codec, "-b:a", node.AudioBitrate });
+                }
+
+                args.Add(outputPath);
+                await RunFfmpegWithProgressAsync(
+                    args,
+                    duration,
+                    (pct, status) => ProgressChanged?.Invoke(node, pct, $"Extract audio... {status}"),
+                    line => LogLine?.Invoke(node, line),
+                    ct).ConfigureAwait(false);
+
+                return File.Exists(outputPath) ? outputPath : string.Empty;
+            }
+            catch (Exception ex)
+            {
+                LogLine?.Invoke(node, $"Audio extract failed: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private static string ResolveAudioOutputExtension(string? codec)
+            => (codec ?? "aac").Trim().ToLowerInvariant() switch
+            {
+                "mp3" => ".mp3",
+                "opus" => ".opus",
+                "copy" => ".m4a",
+                _ => ".m4a"
+            };
+
         private static async Task<string> MergeAudioTracksAsync(
             VideoProcessingNode node,
             NodeExecutionEnvironment env,
             string sourceVideoInput,
             string baseVideoPath,
-            string? outputFolder)
+            string? outputDestination)
         {
             var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
             Directory.CreateDirectory(tempRoot);
 
             var (_, extension) = BuildOutputArgs(node);
-            var outputVideo = !string.IsNullOrWhiteSpace(node.OutputPathOverride)
-                ? node.OutputPathOverride!
-                : !string.IsNullOrWhiteSpace(node.DefaultOutputVideoPath)
-                    ? node.DefaultOutputVideoPath!
-                : string.IsNullOrWhiteSpace(outputFolder)
-                    ? Path.Combine(Path.GetTempPath(), $"video_processed_{Guid.NewGuid():N}{extension}")
-                    : Path.Combine(outputFolder, $"video_processed_{DateTime.Now:yyyyMMddHHmmss}{extension}");
+            var outputVideo = ResolveVideoOutputPath(node, outputDestination, extension);
             var outputDir = Path.GetDirectoryName(outputVideo);
             if (!string.IsNullOrWhiteSpace(outputDir))
                 Directory.CreateDirectory(outputDir);
 
             var audioInputs = new List<(string path, VideoAudioTrackConfig cfg)>();
-            if (node.SourceAudioEnabled)
+            if (node.SourceAudioEnabled && await ProbeHasAudioStreamAsync(sourceVideoInput, env.CancellationToken).ConfigureAwait(false))
             {
                 var sourceAudioPath = Path.Combine(tempRoot, $"audio_source_{Guid.NewGuid():N}.wav");
                 await ExtractAudioTrackAsync(sourceVideoInput, sourceAudioPath, env.CancellationToken).ConfigureAwait(false);
@@ -383,6 +565,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         LongerMode = AudioSyncMode.Trim
                     }));
                 }
+            }
+            else if (node.SourceAudioEnabled)
+            {
+                LogLine?.Invoke(node, "Audio source stream not found; exporting video without source audio.");
             }
 
             foreach (var t in node.AudioTracks)
@@ -688,9 +874,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (rasterFrameLabelUsesInput1)
             {
                 var nextLabel = $"v{++stageIndex}";
-                var fx = node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture);
-                var fy = node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture);
-                filterChains.Add($"[{currentLabel}][1:v]overlay=x='W*{fx}':y='H*{fy}':shortest=1:format=auto[{nextLabel}]");
+                var (xExprLabel, yExprLabel) = BuildFrameLabelOverlayExpression(node, estW, estH, phf);
+                filterChains.Add($"[{currentLabel}][1:v]overlay=x='{xExprLabel}':y='{yExprLabel}':shortest=1:format=auto[{nextLabel}]");
                 currentLabel = nextLabel;
             }
 
@@ -871,17 +1056,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (useRasterLabels)
             {
-                var fx = node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture);
-                var fy = node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture);
+                var (xExprLbl, yExprLbl) = BuildFrameLabelOverlayExpression(node, overlayProbeSrcW, overlayProbeSrcH, overlayProbeSrcHForFontScale);
                 var tailScale = BuildTailScaleFilter(node);
                 string chain;
                 if (string.IsNullOrWhiteSpace(tailScale))
                 {
-                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='W*{fx}':y='H*{fy}':shortest=1:format=auto[outv]";
+                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='{xExprLbl}':y='{yExprLbl}':shortest=1:format=auto[outv]";
                 }
                 else
                 {
-                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='W*{fx}':y='H*{fy}':shortest=1:format=auto[flb];[flb]{tailScale}[outv]";
+                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='{xExprLbl}':y='{yExprLbl}':shortest=1:format=auto[flb];[flb]{tailScale}[outv]";
                 }
 
                 args.AddRange(new[]
@@ -921,6 +1105,40 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             var sourceScale = ComputeFrameLabelSourceScale(sourceHeightPx);
             return Math.Max(8, (int)Math.Round((node.FrameLabelFontSize + 2) * sourceScale));
+        }
+
+        /// <summary>
+        /// Builds FFmpeg overlay x/y expressions for raster frame label, matching the preset logic
+        /// used by preview (UpdateFrameLabelPreviewLayout) and still export (CompositeLabelOntoStillFile).
+        /// When a preset is active (portrait/landscape), the label is right-aligned at top with padding.
+        /// Otherwise, raw FrameLabelX/Y fractions are used.
+        /// </summary>
+        private static (string xExpr, string yExpr) BuildFrameLabelOverlayExpression(
+            VideoProcessingNode node,
+            int probeSrcW,
+            int probeSrcH,
+            int probeSrcHForFontScale)
+        {
+            var (estW, estH) = FrameLabelRasterComposer.GetEstimatedSourceFrameSize(
+                probeSrcW > 0 ? probeSrcW : 1920,
+                probeSrcH > 0 ? probeSrcH : 1080,
+                node);
+            var usePreset = FrameLabelRasterComposer.TryGetLabelPresetFractions(estW, estH, out _, out _);
+            if (!usePreset)
+            {
+                // Manual positioning: same as before
+                var fx = node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture);
+                var fy = node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture);
+                return ($"W*{fx}", $"H*{fy}");
+            }
+
+            // Preset mode: right-aligned at top, with padding.
+            // Matches CompositeLabelOntoStillFile: boxX = wf - boxW - padX, boxY = padY
+            // In FFmpeg overlay: W = main width, H = main height, w = overlay width, h = overlay height
+            var sourceScale = ComputeFrameLabelSourceScale(probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null);
+            var padVidX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
+            var padVidY = Math.Max(0, (int)Math.Round(node.FrameLabelVerticalPadding * sourceScale));
+            return ($"W-w-{padVidX}", $"{padVidY}");
         }
 
         private static string BuildTailScaleFilter(VideoProcessingNode node)
@@ -1368,9 +1586,49 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            var count = Directory.GetFiles(outputFolder, $"frame_*.{extension}").Length;
+            var extractedFiles = Directory.GetFiles(outputFolder, $"frame_*.{extension}")
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var count = extractedFiles.Count;
+            var pathsJson = JsonSerializer.Serialize(extractedFiles);
+            var base64Json = node.OutputBase64 && extractedFiles.Count > 0
+                ? JsonSerializer.Serialize(extractedFiles.Select(File.ReadAllBytes).Select(Convert.ToBase64String).ToList())
+                : string.Empty;
+            SetOutput(node, "frames_output", node.OutputBase64 ? base64Json : pathsJson);
+            SetOutput(node, "frames_paths", pathsJson);
+            SetOutput(node, "frames_base64", base64Json);
+            SetOutput(node, "frame_folder", outputFolder);
             onLog($"✅ Extracted {count} frames → {outputFolder}");
             onProgress(100, $"Done: {count} frames");
+        }
+
+        public static async Task<string> RunExtractAudioOnlyAsync(
+            VideoProcessingNode node,
+            Action<string> onLog,
+            Action<double, string> onProgress,
+            string? outputFolderOverride,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(node.VideoPath))
+                throw new InvalidOperationException("VideoProcessingNode: missing source video for audio extract.");
+
+            node.EnsureStandardDynamicOutputs();
+            var videoSubfolderName = BuildOutputSubfolderNameFromVideoPath(node.VideoPath);
+            var fallbackFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "flow-audio",
+                videoSubfolderName);
+            var configuredFolder = string.IsNullOrWhiteSpace(outputFolderOverride)
+                ? node.AudioOutputFolderPath
+                : outputFolderOverride;
+            var outputFolder = ResolveOutputDirectory(configuredFolder, fallbackFolder);
+
+            onLog($"Audio output: {outputFolder}");
+            var outputPath = await TryExtractAudioOutputAsync(node, node.VideoPath, outputFolder, ct).ConfigureAwait(false);
+            SetOutput(node, "audio_output", outputPath);
+            onProgress(100, string.IsNullOrWhiteSpace(outputPath) ? "No audio extracted" : "Audio extract done");
+            return outputPath;
         }
 
         private static List<string> BuildExtractArgs(
@@ -1506,6 +1764,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
             var output = await RunProcessCaptureAsync(ResolveBinary("ffprobe"), args, ct).ConfigureAwait(false);
             return double.TryParse(output.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) ? seconds : 0;
+        }
+
+        private static async Task<bool> ProbeHasAudioStreamAsync(string inputPath, CancellationToken ct)
+        {
+            var args = new[]
+            {
+                "-v", "error",
+                "-select_streams", "a:0",
+                "-show_entries", "stream=index",
+                "-of", "default=nokey=1:noprint_wrappers=1",
+                inputPath
+            };
+            var output = await RunProcessCaptureAsync(ResolveBinary("ffprobe"), args, ct).ConfigureAwait(false);
+            return !string.IsNullOrWhiteSpace(output.Trim());
         }
 
         private static async Task<int> ProbeSourceHeightAsync(string inputPath, CancellationToken ct)
@@ -1836,12 +2108,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static bool ShouldSkipVideoEncode(VideoProcessingNode node)
         {
-            _ = node;
-            return true;
+            return !node.ExportVideoEnabled;
         }
 
         private static void SetOutput(VideoProcessingNode node, string key, string value)
         {
+            node.EnsureStandardDynamicOutputs();
             var port = node.DynamicOutputs?.FirstOrDefault(o =>
                 string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
             if (port != null) port.UserValueOverride = value ?? string.Empty;

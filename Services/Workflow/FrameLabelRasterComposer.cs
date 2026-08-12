@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -222,6 +223,38 @@ internal static class FrameLabelRasterComposer
     }
 
     private static void WriteBitmapToFile(string path, BitmapSource bitmap)
+    {
+        // Frozen BitmapSource is thread-safe (Dispatcher is null).
+        // BitmapEncoder still requires an STA thread.
+        // If already on STA, encode directly. Otherwise spin up a temp STA thread.
+        if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+        {
+            WriteBitmapToFileCore(path, bitmap);
+            return;
+        }
+
+        // Use a dedicated STA thread instead of Dispatcher.Invoke to avoid
+        // blocking the main UI thread (which could cause a freeze).
+        var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                WriteBitmapToFileCore(path, bitmap);
+                tcs.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+        tcs.Task.GetAwaiter().GetResult();
+    }
+
+    private static void WriteBitmapToFileCore(string path, BitmapSource bitmap)
     {
         var ext = Path.GetExtension(path);
         BitmapEncoder encoder;

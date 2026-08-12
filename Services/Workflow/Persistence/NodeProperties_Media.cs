@@ -318,15 +318,31 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.OutputFolderSourceNodeId = fsnObj?.ToString();
             if (properties.TryGetValue("OutputFolderSourceOutputKey", out var fskObj))
                 videoNode.OutputFolderSourceOutputKey = fskObj?.ToString();
+            if (properties.TryGetValue("VideoOutputFolderSourceNodeId", out var vosnObj))
+                videoNode.VideoOutputFolderSourceNodeId = vosnObj?.ToString();
+            if (properties.TryGetValue("VideoOutputFolderSourceOutputKey", out var voskObj))
+                videoNode.VideoOutputFolderSourceOutputKey = voskObj?.ToString();
+            if (properties.TryGetValue("AudioOutputFolderSourceNodeId", out var aosnObj))
+                videoNode.AudioOutputFolderSourceNodeId = aosnObj?.ToString();
+            if (properties.TryGetValue("AudioOutputFolderSourceOutputKey", out var aoskObj))
+                videoNode.AudioOutputFolderSourceOutputKey = aoskObj?.ToString();
 
             if (properties.TryGetValue("OutputBase64", out var obObj) && obObj != null && bool.TryParse(obObj.ToString(), out var ob))
                 videoNode.OutputBase64 = ob;
             if (properties.TryGetValue("UseDialogVideoConfig", out var udvcObj) && udvcObj != null && bool.TryParse(udvcObj.ToString(), out var udvc))
                 videoNode.UseDialogVideoConfig = udvc;
+            if (properties.TryGetValue("ExtractFramesEnabled", out var efeObj) && efeObj != null && bool.TryParse(efeObj.ToString(), out var efe))
+                videoNode.ExtractFramesEnabled = efe;
+            if (properties.TryGetValue("ExportVideoEnabled", out var eveObj) && eveObj != null && bool.TryParse(eveObj.ToString(), out var eve))
+                videoNode.ExportVideoEnabled = eve;
+            if (properties.TryGetValue("ExtractAudioEnabled", out var eaeObj) && eaeObj != null && bool.TryParse(eaeObj.ToString(), out var eae))
+                videoNode.ExtractAudioEnabled = eae;
             if (properties.TryGetValue("FrameOutputFolderPath", out var fofpObj))
                 videoNode.FrameOutputFolderPath = fofpObj?.ToString();
             if (properties.TryGetValue("DefaultOutputVideoPath", out var dovpObj))
                 videoNode.DefaultOutputVideoPath = dovpObj?.ToString();
+            if (properties.TryGetValue("AudioOutputFolderPath", out var aofpObj))
+                videoNode.AudioOutputFolderPath = aofpObj?.ToString();
             if (properties.TryGetValue("SecondsPerFrame", out var spfObj) && spfObj != null && double.TryParse(spfObj.ToString(), out var spf))
                 videoNode.SecondsPerFrame = spf;
             if (properties.TryGetValue("ExtractFrameCount", out var efcObj) && efcObj != null && int.TryParse(efcObj.ToString(), out var efc))
@@ -509,6 +525,8 @@ public sealed partial class FileWorkflowPersistenceService
                 catch { }
             }
 
+            videoNode.EnsureStandardDynamicOutputs();
+
     }
 
     // -- GET (Serialize) --
@@ -682,13 +700,26 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["OutputFolderSourceNodeId"] = videoNode.OutputFolderSourceNodeId;
             if (!string.IsNullOrWhiteSpace(videoNode.OutputFolderSourceOutputKey))
                 dict["OutputFolderSourceOutputKey"] = videoNode.OutputFolderSourceOutputKey;
+            if (!string.IsNullOrWhiteSpace(videoNode.VideoOutputFolderSourceNodeId))
+                dict["VideoOutputFolderSourceNodeId"] = videoNode.VideoOutputFolderSourceNodeId;
+            if (!string.IsNullOrWhiteSpace(videoNode.VideoOutputFolderSourceOutputKey))
+                dict["VideoOutputFolderSourceOutputKey"] = videoNode.VideoOutputFolderSourceOutputKey;
+            if (!string.IsNullOrWhiteSpace(videoNode.AudioOutputFolderSourceNodeId))
+                dict["AudioOutputFolderSourceNodeId"] = videoNode.AudioOutputFolderSourceNodeId;
+            if (!string.IsNullOrWhiteSpace(videoNode.AudioOutputFolderSourceOutputKey))
+                dict["AudioOutputFolderSourceOutputKey"] = videoNode.AudioOutputFolderSourceOutputKey;
 
             dict["OutputBase64"] = videoNode.OutputBase64;
             dict["UseDialogVideoConfig"] = videoNode.UseDialogVideoConfig;
+            dict["ExtractFramesEnabled"] = videoNode.ExtractFramesEnabled;
+            dict["ExportVideoEnabled"] = videoNode.ExportVideoEnabled;
+            dict["ExtractAudioEnabled"] = videoNode.ExtractAudioEnabled;
             if (!string.IsNullOrWhiteSpace(videoNode.FrameOutputFolderPath))
                 dict["FrameOutputFolderPath"] = videoNode.FrameOutputFolderPath;
             if (!string.IsNullOrWhiteSpace(videoNode.DefaultOutputVideoPath))
                 dict["DefaultOutputVideoPath"] = videoNode.DefaultOutputVideoPath;
+            if (!string.IsNullOrWhiteSpace(videoNode.AudioOutputFolderPath))
+                dict["AudioOutputFolderPath"] = videoNode.AudioOutputFolderPath;
             dict["SecondsPerFrame"] = videoNode.SecondsPerFrame;
             dict["ExtractFrameCount"] = videoNode.ExtractFrameCount;
             dict["PreferGpu"] = videoNode.PreferGpu;

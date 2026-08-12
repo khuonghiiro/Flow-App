@@ -144,6 +144,7 @@ namespace FlowMy.Views.NodeControls
             };
             RunExportButton.Click += (_, _) =>
             {
+                _node.ExportVideoEnabled = true;
                 RunProcessingFlow();
             };
             ApplyGradingButton.Click += (_, _) =>
@@ -154,7 +155,12 @@ namespace FlowMy.Views.NodeControls
             };
             ResetGradingButton2.Click += (_, _) => ApplyGradingPreset(0, 1, 1, 0, 1);
             ApplyOverlayToVideoActionButton.Click += (_, _) => ApplyOverlaysToVideo();
-            MixAudioButton.Click += (_, _) => RunProcessingFlow();
+            MixAudioButton.Click += (_, _) =>
+            {
+                _node.ExportVideoEnabled = true;
+                RunProcessingFlow();
+            };
+            ExtractAudioButton.Click += (_, _) => RunSpecificOperation("extract_audio");
             ToggleQuickGradeButton.Click += (_, _) =>
             {
                 QuickGradingPanel.Visibility = QuickGradingPanel.Visibility == Visibility.Visible
@@ -273,6 +279,15 @@ namespace FlowMy.Views.NodeControls
                 if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     FrameOutputFolderText.Text = dlg.SelectedPath;
             };
+            BrowseAudioOutputFolderButton.Click += (_, _) =>
+            {
+                var dlg = new System.Windows.Forms.FolderBrowserDialog
+                {
+                    Description = "Chon thu muc luu audio"
+                };
+                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    AudioOutputFolderText.Text = dlg.SelectedPath;
+            };
             BrowseDefaultOutputVideoButton.Click += (_, _) =>
             {
                 var dlg = new SaveFileDialog
@@ -297,6 +312,12 @@ namespace FlowMy.Views.NodeControls
                 _node.FrameOutputFolderPath = FrameOutputFolderText.Text?.Trim();
                 RefreshOutputsSummaryUi();
             };
+            AudioOutputFolderText.TextChanged += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.AudioOutputFolderPath = AudioOutputFolderText.Text?.Trim();
+                RefreshOutputsSummaryUi();
+            };
             OutputPathText.TextChanged += (_, _) => RefreshOutputsSummaryUi();
             SaveSettingsButton.Click += (_, _) =>
             {
@@ -304,6 +325,10 @@ namespace FlowMy.Views.NodeControls
                 var frameFolder = FrameOutputFolderText.Text?.Trim() ?? string.Empty;
                 EnsureDirectoryExists(frameFolder);
                 _node.FrameOutputFolderPath = frameFolder;
+
+                var audioFolder = AudioOutputFolderText.Text?.Trim() ?? string.Empty;
+                EnsureDirectoryExists(audioFolder);
+                _node.AudioOutputFolderPath = audioFolder;
 
                 var outputPath = DefaultOutputVideoPathText.Text?.Trim() ?? string.Empty;
                 EnsureParentDirectoryExists(outputPath);
@@ -704,6 +729,17 @@ namespace FlowMy.Views.NodeControls
             FrameLabelDebugSamplesCheckBox.Checked += (_, _) => { _node.FrameLabelDebugSamplesEnabled = true; };
             FrameLabelDebugSamplesCheckBox.Unchecked += (_, _) => { _node.FrameLabelDebugSamplesEnabled = false; };
 
+            OutputFormatCombo.SelectionChanged += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.OutputFormat = (OutputFormatCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "mp4_h264";
+                RefreshOutputsSummaryUi();
+            };
+            EncoderPresetCombo.SelectionChanged += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.EncoderPreset = (EncoderPresetCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "medium";
+            };
             TwoPassToggle.Checked += (_, _) => _node.TwoPassEnabled = true;
             TwoPassToggle.Unchecked += (_, _) => _node.TwoPassEnabled = false;
             AudioCodecCombo.SelectionChanged += (_, _) => _node.AudioCodec = (AudioCodecCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "aac";

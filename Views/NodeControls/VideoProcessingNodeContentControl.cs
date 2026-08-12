@@ -352,6 +352,9 @@ namespace FlowMy.Views.NodeControls
 
         private void SyncRuntimeConfigFromUi()
         {
+            _node.OutputBase64 = OutputBase64CheckBox.IsChecked == true;
+            _node.AudioOutputFolderPath = (AudioOutputFolderText.Text ?? string.Empty).Trim();
+
             if (_node.UseDialogVideoConfig)
             {
                 // When using dialog config, let executor resolve output paths from dialog fields.
@@ -360,7 +363,6 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            _node.OutputBase64 = OutputBase64CheckBox.IsChecked == true;
             _node.FrameOutputFolderPath = (FrameOutputFolderText.Text ?? string.Empty).Trim();
             var outputVideoPath = (OutputPathText.Text ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(outputVideoPath))
@@ -411,6 +413,19 @@ namespace FlowMy.Views.NodeControls
             if (propertyName == nameof(VideoProcessingNode.OutputBase64))
             {
                 OutputBase64CheckBox.IsChecked = _node.OutputBase64;
+                RefreshOutputsSummaryUi();
+            }
+            if (propertyName is nameof(VideoProcessingNode.ExtractFramesEnabled)
+                or nameof(VideoProcessingNode.ExportVideoEnabled)
+                or nameof(VideoProcessingNode.ExtractAudioEnabled))
+            {
+                RefreshOutputsSummaryUi();
+            }
+            if (propertyName == nameof(VideoProcessingNode.AudioOutputFolderPath))
+            {
+                _suppressControlSync = true;
+                AudioOutputFolderText.Text = _node.AudioOutputFolderPath ?? string.Empty;
+                _suppressControlSync = false;
                 RefreshOutputsSummaryUi();
             }
             if (propertyName == nameof(VideoProcessingNode.SourceFps)) UpdateFrameExtractionPreview();

@@ -20,10 +20,16 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string? _outputFolderSourceOutputKey;
         [ObservableProperty] private string? _videoOutputFolderSourceNodeId;
         [ObservableProperty] private string? _videoOutputFolderSourceOutputKey;
+        [ObservableProperty] private string? _audioOutputFolderSourceNodeId;
+        [ObservableProperty] private string? _audioOutputFolderSourceOutputKey;
         [ObservableProperty] private bool _outputBase64 = true;
         [ObservableProperty] private bool _useDialogVideoConfig = true;
+        [ObservableProperty] private bool _extractFramesEnabled = true;
+        [ObservableProperty] private bool _exportVideoEnabled = true;
+        [ObservableProperty] private bool _extractAudioEnabled;
         [ObservableProperty] private string? _frameOutputFolderPath;
         [ObservableProperty] private string? _defaultOutputVideoPath;
+        [ObservableProperty] private string? _audioOutputFolderPath;
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -31,6 +37,8 @@ namespace FlowMy.ViewModels
             : base(node, host)
         {
             _videoNode = node;
+            _videoNode.EnsureStandardDynamicOutputs();
+            RefreshOutputs();
 
             VideoSourceNodeId = node.VideoSourceNodeId;
             VideoSourceOutputKey = node.VideoSourceOutputKey;
@@ -38,10 +46,16 @@ namespace FlowMy.ViewModels
             OutputFolderSourceOutputKey = node.OutputFolderSourceOutputKey;
             VideoOutputFolderSourceNodeId = node.VideoOutputFolderSourceNodeId;
             VideoOutputFolderSourceOutputKey = node.VideoOutputFolderSourceOutputKey;
+            AudioOutputFolderSourceNodeId = node.AudioOutputFolderSourceNodeId;
+            AudioOutputFolderSourceOutputKey = node.AudioOutputFolderSourceOutputKey;
             OutputBase64 = node.OutputBase64;
             UseDialogVideoConfig = node.UseDialogVideoConfig;
+            ExtractFramesEnabled = node.ExtractFramesEnabled;
+            ExportVideoEnabled = node.ExportVideoEnabled;
+            ExtractAudioEnabled = node.ExtractAudioEnabled;
             FrameOutputFolderPath = node.FrameOutputFolderPath;
             DefaultOutputVideoPath = node.DefaultOutputVideoPath;
+            AudioOutputFolderPath = node.AudioOutputFolderPath;
 
             RefreshAvailableNodes();
 
@@ -90,6 +104,24 @@ namespace FlowMy.ViewModels
                     case nameof(VideoProcessingNode.VideoOutputFolderSourceOutputKey):
                         VideoOutputFolderSourceOutputKey = _videoNode.VideoOutputFolderSourceOutputKey;
                         break;
+                    case nameof(VideoProcessingNode.AudioOutputFolderSourceNodeId):
+                        AudioOutputFolderSourceNodeId = _videoNode.AudioOutputFolderSourceNodeId;
+                        break;
+                    case nameof(VideoProcessingNode.AudioOutputFolderSourceOutputKey):
+                        AudioOutputFolderSourceOutputKey = _videoNode.AudioOutputFolderSourceOutputKey;
+                        break;
+                    case nameof(VideoProcessingNode.ExtractFramesEnabled):
+                        ExtractFramesEnabled = _videoNode.ExtractFramesEnabled;
+                        break;
+                    case nameof(VideoProcessingNode.ExportVideoEnabled):
+                        ExportVideoEnabled = _videoNode.ExportVideoEnabled;
+                        break;
+                    case nameof(VideoProcessingNode.ExtractAudioEnabled):
+                        ExtractAudioEnabled = _videoNode.ExtractAudioEnabled;
+                        break;
+                    case nameof(VideoProcessingNode.AudioOutputFolderPath):
+                        AudioOutputFolderPath = _videoNode.AudioOutputFolderPath;
+                        break;
                 }
             }
             finally
@@ -135,6 +167,24 @@ namespace FlowMy.ViewModels
                 case nameof(VideoOutputFolderSourceOutputKey):
                     _videoNode.VideoOutputFolderSourceOutputKey = VideoOutputFolderSourceOutputKey;
                     break;
+                case nameof(AudioOutputFolderSourceNodeId):
+                    _videoNode.AudioOutputFolderSourceNodeId = AudioOutputFolderSourceNodeId;
+                    break;
+                case nameof(AudioOutputFolderSourceOutputKey):
+                    _videoNode.AudioOutputFolderSourceOutputKey = AudioOutputFolderSourceOutputKey;
+                    break;
+                case nameof(ExtractFramesEnabled):
+                    _videoNode.ExtractFramesEnabled = ExtractFramesEnabled;
+                    break;
+                case nameof(ExportVideoEnabled):
+                    _videoNode.ExportVideoEnabled = ExportVideoEnabled;
+                    break;
+                case nameof(ExtractAudioEnabled):
+                    _videoNode.ExtractAudioEnabled = ExtractAudioEnabled;
+                    break;
+                case nameof(AudioOutputFolderPath):
+                    _videoNode.AudioOutputFolderPath = AudioOutputFolderPath;
+                    break;
             }
         }
 
@@ -150,7 +200,7 @@ namespace FlowMy.ViewModels
 
             var mappedNodeIds = new List<string?>
             {
-                VideoSourceNodeId, OutputFolderSourceNodeId, VideoOutputFolderSourceNodeId
+                VideoSourceNodeId, OutputFolderSourceNodeId, VideoOutputFolderSourceNodeId, AudioOutputFolderSourceNodeId
             }
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.OrdinalIgnoreCase);
@@ -180,10 +230,17 @@ namespace FlowMy.ViewModels
             _videoNode.OutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(OutputFolderSourceOutputKey) ? null : OutputFolderSourceOutputKey;
             _videoNode.VideoOutputFolderSourceNodeId = string.IsNullOrWhiteSpace(VideoOutputFolderSourceNodeId) ? null : VideoOutputFolderSourceNodeId;
             _videoNode.VideoOutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(VideoOutputFolderSourceOutputKey) ? null : VideoOutputFolderSourceOutputKey;
+            _videoNode.AudioOutputFolderSourceNodeId = string.IsNullOrWhiteSpace(AudioOutputFolderSourceNodeId) ? null : AudioOutputFolderSourceNodeId;
+            _videoNode.AudioOutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(AudioOutputFolderSourceOutputKey) ? null : AudioOutputFolderSourceOutputKey;
             _videoNode.OutputBase64 = OutputBase64;
             _videoNode.UseDialogVideoConfig = UseDialogVideoConfig;
+            _videoNode.ExtractFramesEnabled = ExtractFramesEnabled;
+            _videoNode.ExportVideoEnabled = ExportVideoEnabled;
+            _videoNode.ExtractAudioEnabled = ExtractAudioEnabled;
             _videoNode.FrameOutputFolderPath = string.IsNullOrWhiteSpace(FrameOutputFolderPath) ? null : FrameOutputFolderPath;
             _videoNode.DefaultOutputVideoPath = string.IsNullOrWhiteSpace(DefaultOutputVideoPath) ? null : DefaultOutputVideoPath;
+            _videoNode.AudioOutputFolderPath = string.IsNullOrWhiteSpace(AudioOutputFolderPath) ? null : AudioOutputFolderPath;
+            _videoNode.EnsureStandardDynamicOutputs();
             _videoNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
         }

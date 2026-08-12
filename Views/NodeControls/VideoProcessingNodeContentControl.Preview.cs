@@ -410,12 +410,16 @@ namespace FlowMy.Views.NodeControls
                 .Replace("{frame}", currentFrame.ToString())
                 .Replace("{time}", currentTime);
 
+            var natW = PreviewMedia.NaturalVideoWidth;
             var natH = PreviewMedia.NaturalVideoHeight;
             var rect = GetDisplayedVideoRect();
             var areaH = Math.Max(1, rect.Height);
-            var srcPixelH = natH > 0 ? natH : 720;
+            // Use GetEstimatedSourceFrameSize (accounts for rotation/crop/resize) to match
+            // CompositeLabelOntoStillFile font scaling: fontPx * (boxH / labelBoxSrcH).
+            var (_, estH) = FrameLabelRasterComposer.GetEstimatedSourceFrameSize(
+                natW > 0 ? natW : 1280, natH > 0 ? natH : 720, _node);
             var drawtextPx = VideoProcessingNodeExecutor.ComputeFrameLabelDrawtextFontPixelSize(_node, natH > 0 ? natH : (int?)null);
-            var previewFontDip = drawtextPx * (areaH / (double)srcPixelH);
+            var previewFontDip = drawtextPx * (areaH / (double)Math.Max(1, estH));
             FrameLabelPreviewText.FontFamily = FrameLabelPreviewFontFamily;
             FrameLabelPreviewText.FontWeight = FontWeights.Normal;
             FrameLabelPreviewText.FontSize = Math.Max(4, previewFontDip);

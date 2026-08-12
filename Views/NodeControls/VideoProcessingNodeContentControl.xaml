@@ -462,17 +462,31 @@
         </Style>
         <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBoxStyle}"/>
         <Style TargetType="Slider" x:Key="ModernSliderStyle">
+            <Setter Property="MinHeight" Value="20"/>
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
-                        <Grid>
+                        <Grid MinHeight="20">
                             <Border Height="5" CornerRadius="3" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton Background="{DynamicResource ThemeAccentBrush}" Opacity="0.9" BorderThickness="0" Height="5" VerticalAlignment="Center"/>
+                                    <RepeatButton>
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="{DynamicResource ThemeAccentBrush}" Opacity="0.9" Height="5" CornerRadius="3,0,0,3" VerticalAlignment="Center"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
                                 </Track.DecreaseRepeatButton>
                                 <Track.IncreaseRepeatButton>
-                                    <RepeatButton Background="Transparent" BorderThickness="0" Height="5" VerticalAlignment="Center"/>
+                                    <RepeatButton>
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" Height="5" VerticalAlignment="Center"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
                                 </Track.IncreaseRepeatButton>
                                 <Track.Thumb>
                                     <Thumb>
@@ -1478,7 +1492,7 @@
                             </Border>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,6" Padding="10,8">
                                 <StackPanel>
-                                    <TextBlock Text="Configuration" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Cấu hình" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <Grid Margin="0,0,0,10">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
@@ -2160,6 +2174,22 @@
                                         <TextBox x:Name="DefaultOutputVideoPathText" Height="28" FontSize="11"/>
                                         <Button x:Name="BrowseDefaultOutputVideoButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                     </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="Thư mục xuất audio" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Để trống = lưu tại Downloads/flow-audio/&lt;tên-file-video&gt;" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="AudioOutputFolderText" Height="28" FontSize="11"/>
+                                        <Button x:Name="BrowseAudioOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
+                                    </Grid>
+                                    <Button x:Name="ExtractAudioButton" Content="Trích xuất Audio" Height="30" Margin="0,8,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                 </StackPanel>
                             </Border>
 
