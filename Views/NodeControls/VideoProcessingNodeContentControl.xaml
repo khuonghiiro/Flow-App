@@ -1157,7 +1157,7 @@
                                 VerticalAlignment="Top"
                                 Margin="12"
                                 Padding="10,6"
-                                CornerRadius="4"
+                                CornerRadius="0"
                                 Background="{DynamicResource ThemeFrameLabelPreviewBg}"
                                 BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
                                 BorderThickness="0"

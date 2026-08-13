@@ -74,26 +74,18 @@ namespace FlowMy.Views.NodeControls
         {
             var duration = Math.Max(0.1, GetNaturalDurationSeconds());
             var sourceFps = Math.Max(1, _node.SourceFps);
-            var windowSec = Math.Clamp(
-                (int)Math.Round(_node.SecondsPerFrame),
-                (int)SecondsPerFrameSlider.Minimum,
-                (int)SecondsPerFrameSlider.Maximum);
-            _node.SecondsPerFrame = windowSec;
-            SecondsPerFrameValueText.Text = $"{windowSec}s";
+            var totalFramesInVideo = Math.Max(1, (int)Math.Floor(duration * sourceFps));
 
-            var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
-            FpsSlider.Maximum = maxInWindow;
-            var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
-            _node.ExtractFrameCount = framesPerWindow;
-
-            var estimatedTotal = Math.Max(1, (int)Math.Round((duration / (double)windowSec) * framesPerWindow));
-            _node.ExtractFps = (double)estimatedTotal / duration;
+            FpsSlider.Maximum = totalFramesInVideo;
+            var targetCount = Math.Clamp(_node.ExtractFrameCount, 1, totalFramesInVideo);
+            _node.ExtractFrameCount = targetCount;
+            _node.ExtractFps = (double)targetCount / duration;
 
             _isFrameControlSync = true;
             try
             {
-                FpsSlider.Value = framesPerWindow;
-                FpsValueText.Text = $"{framesPerWindow}";
+                FpsSlider.Value = targetCount;
+                FpsValueText.Text = $"{targetCount}";
             }
             finally
             {
@@ -105,24 +97,18 @@ namespace FlowMy.Views.NodeControls
         {
             var duration = Math.Max(0.1, GetNaturalDurationSeconds());
             var sourceFps = Math.Max(1, _node.SourceFps);
-            var windowSec = Math.Clamp(
-                (int)Math.Round(_node.SecondsPerFrame),
-                (int)SecondsPerFrameSlider.Minimum,
-                (int)SecondsPerFrameSlider.Maximum);
+            var totalFramesInVideo = Math.Max(1, (int)Math.Floor(duration * sourceFps));
 
-            var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
-            FpsSlider.Maximum = maxInWindow;
-            var framesPerWindow = Math.Clamp(_node.ExtractFrameCount, 1, maxInWindow);
-            _node.ExtractFrameCount = framesPerWindow;
-
-            var estimatedTotal = Math.Max(1, (int)Math.Round((duration / (double)windowSec) * framesPerWindow));
-            _node.ExtractFps = (double)estimatedTotal / duration;
+            FpsSlider.Maximum = totalFramesInVideo;
+            var targetCount = Math.Clamp(_node.ExtractFrameCount, 1, totalFramesInVideo);
+            _node.ExtractFrameCount = targetCount;
+            _node.ExtractFps = (double)targetCount / duration;
 
             _isFrameControlSync = true;
             try
             {
-                FpsSlider.Value = framesPerWindow;
-                FpsValueText.Text = $"{framesPerWindow}";
+                FpsSlider.Value = targetCount;
+                FpsValueText.Text = $"{targetCount}";
             }
             finally
             {

@@ -703,13 +703,18 @@ namespace FlowMy.Views.NodeControls
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), iconKey,
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
-            return new SvgViewboxEx
+            var icon = new SvgViewboxEx
             {
                 Width = 14,
                 Height = 14,
                 Source = iconUri!,
                 Fill = GetThemeIconBrush()
             };
+            if (iconKey != null && iconKey.StartsWith("play", StringComparison.OrdinalIgnoreCase))
+            {
+                icon.Margin = new System.Windows.Thickness(2, 0, 0, 0);
+            }
+            return icon;
         }
 
         private Brush GetThemeIconBrush()

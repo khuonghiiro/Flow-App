@@ -153,9 +153,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var sourceHeight = await ProbeSourceHeightAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 var sourceWidth = await ProbeSourceWidthAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 var sourceFpsClamped = Math.Max(0.001, videoNode.SourceFps);
+                var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
+                var effectiveStart = videoNode.TrimEnabled ? Math.Max(0, videoNode.TrimStartSec) : 0;
+                var effectiveEnd = videoNode.TrimEnabled && videoNode.TrimEndSec > effectiveStart
+                    ? Math.Min(totalDuration, videoNode.TrimEndSec)
+                    : totalDuration;
+                var effectiveDurationTrim = Math.Max(0.01, effectiveEnd - effectiveStart);
+                var targetFrameCount = Math.Max(1, videoNode.ExtractFrameCount);
+                var calculatedExtractFps = (double)targetFrameCount / effectiveDurationTrim;
+
                 var extractFps = videoNode.ExtractAllFrames
                     ? sourceFpsClamped
-                    : Math.Max(0.001, Math.Min(videoNode.ExtractFps, sourceFpsClamped));
+                    : Math.Max(0.001, calculatedExtractFps);
 
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
@@ -172,13 +181,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var framePattern = videoNode.OutputBase64
                     ? Path.Combine(tempRoot, $"frames_{Guid.NewGuid():N}_%06d.{frameExt}")
                     : Path.Combine(frameOutputFolder!, $"frame_%06d.{frameExt}");
-
-                var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
-                var effectiveStart = videoNode.TrimEnabled ? Math.Max(0, videoNode.TrimStartSec) : 0;
-                var effectiveEnd = videoNode.TrimEnabled && videoNode.TrimEndSec > effectiveStart
-                    ? Math.Min(totalDuration, videoNode.TrimEndSec)
-                    : totalDuration;
-                var effectiveDurationTrim = Math.Max(0.01, effectiveEnd - effectiveStart);
 
                 var producedFrames = new List<string>();
                 if (videoNode.ExtractFramesEnabled)
@@ -219,11 +221,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (!videoNode.ExtractAllFrames && producedFrames.Count > 0)
                 {
-                    var targetCount = Math.Max(1, videoNode.ExtractFrameCount);
-                    if (producedFrames.Count > targetCount)
+                    if (producedFrames.Count > targetFrameCount)
                     {
-                        var extraFiles = producedFrames.Skip(targetCount).ToList();
-                        producedFrames = producedFrames.Take(targetCount).ToList();
+                        var extraFiles = producedFrames.Skip(targetFrameCount).ToList();
+                        producedFrames = producedFrames.Take(targetFrameCount).ToList();
                         foreach (var extraFile in extraFiles)
                         {
                             try { File.Delete(extraFile); } catch { }
@@ -1540,26 +1541,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var effectiveEnd = node.TrimEnabled && node.TrimEndSec > effectiveStart ? Math.Min(duration, node.TrimEndSec) : duration;
             var effectiveDuration = Math.Max(0.01, effectiveEnd - effectiveStart);
 
+            var targetFrameCount = Math.Max(1, node.ExtractFrameCount);
+            var calculatedExtractFps = (double)targetFrameCount / effectiveDuration;
+            var effectiveExtractFps = node.ExtractAllFrames
+                ? Math.Max(0.001, sourceFps)
+                : Math.Max(0.001, calculatedExtractFps);
+
             string vfArg;
             var useVsync0 = false;
             if (node.ExtractAllFrames)
             {
                 vfArg = BuildVideoFilterChain(node, Math.Max(0.001, sourceFps), includeTextOverlay: true, sourceHeight);
             }
-            else if (node.ExtractFps >= sourceFps)
-            {
-                vfArg = BuildVideoFilterChain(node, sourceFps, includeTextOverlay: true, sourceHeight);
-            }
             else
             {
-                // Allow fractional FPS (e.g. 0.333 fps) directly in the fps filter.
-                // This avoids rounding extractFps to an integer frame-per-second.
-                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: true, sourceHeight);
+                vfArg = BuildVideoFilterChain(node, effectiveExtractFps, includeTextOverlay: true, sourceHeight);
             }
-
-            var effectiveExtractFps = node.ExtractAllFrames
-                ? Math.Max(0.001, sourceFps)
-                : (node.ExtractFps >= sourceFps ? sourceFps : Math.Max(0.001, node.ExtractFps));
 
             Directory.CreateDirectory(outputFolder);
             foreach (var existingFile in Directory.GetFiles(outputFolder, "frame_*.*"))
