@@ -102,6 +102,7 @@ namespace FlowMy.Views.NodeControls
         private double _lastSeekLatencyMs = -1;
         private bool _isSeekLatencyPending;
         private CancellationTokenSource? _sourceFpsProbeCts;
+        private bool _isProbingFps;
         private DateTime _dragReleaseBoostUntilUtc = DateTime.MinValue;
         private TimelineDragMode _timelineDragMode = TimelineDragMode.None;
         private TimelineDragMode _trimReviewDragMode = TimelineDragMode.None;
@@ -240,7 +241,7 @@ namespace FlowMy.Views.NodeControls
         {
         }
 
-        private async void RunProcessingFlow()
+        private async void RunProcessingFlow(bool singleNodeOnly = false)
         {
             if (_host == null) return;
             try
@@ -251,14 +252,22 @@ namespace FlowMy.Views.NodeControls
                 ProgressStatusText.Text = "Running...";
                 var vm = _host.ViewModel;
                 if (vm == null) return;
-                if (!string.IsNullOrWhiteSpace(_node.VideoSourceNodeId))
+
+                if (singleNodeOnly)
                 {
-                    var sourceNode = vm.Nodes?.FirstOrDefault(n =>
-                        string.Equals(n.Id, _node.VideoSourceNodeId, StringComparison.OrdinalIgnoreCase));
-                    if (sourceNode != null)
-                        await vm.RunSingleNodeAsync(sourceNode);
+                    await vm.RunSingleNodeAsync(_node);
                 }
-                await vm.RunWorkflowFromNodeAsync(_node);
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(_node.VideoSourceNodeId))
+                    {
+                        var sourceNode = vm.Nodes?.FirstOrDefault(n =>
+                            string.Equals(n.Id, _node.VideoSourceNodeId, StringComparison.OrdinalIgnoreCase));
+                        if (sourceNode != null)
+                            await vm.RunSingleNodeAsync(sourceNode);
+                    }
+                    await vm.RunWorkflowFromNodeAsync(_node);
+                }
             }
             catch (Exception ex)
             {
@@ -306,6 +315,7 @@ namespace FlowMy.Views.NodeControls
                     _beforePreviewPath = _node.VideoPath;
                 }
                 RefreshVideoPreview();
+                _isProbingFps = true;
                 _ = ProbeSourceFpsAndRefreshUiAsync();
             }
             if (propertyName == nameof(VideoProcessingNode.FrameOutputFolderPath))

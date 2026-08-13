@@ -116,6 +116,60 @@ namespace FlowMy.Views.NodeControls
             PreviewMedia.Opacity = Math.Clamp(1.0 + contrastOpacityBoost - saturationPenalty - gammaPenalty, 0.52, 1.0);
         }
 
+        /// <summary>
+        /// Applies real-time preview transforms: Blur, Rotate/Flip, Speed.
+        /// Blur uses BlurEffect on VideoViewbox (separate from color grading on PreviewMedia).
+        /// Rotate/Flip uses RenderTransform on VideoViewbox.
+        /// Speed uses MediaElement.SpeedRatio.
+        /// </summary>
+        private void ApplyPreviewTransformEffects()
+        {
+            // --- Blur ---
+            if (_node.BlurEnabled && _node.BlurRadius > 0)
+            {
+                VideoViewbox.Effect = new BlurEffect { Radius = _node.BlurRadius * 1.5, KernelType = KernelType.Gaussian };
+            }
+            else
+            {
+                VideoViewbox.Effect = null;
+            }
+
+            // --- Rotate / Flip ---
+            var rotation = _node.RotationDegrees % 360;
+            var scaleX = _node.FlipH ? -1.0 : 1.0;
+            var scaleY = _node.FlipV ? -1.0 : 1.0;
+
+            if (Math.Abs(rotation) < 0.1 && scaleX > 0 && scaleY > 0)
+            {
+                VideoViewbox.RenderTransform = null;
+            }
+            else
+            {
+                var group = new TransformGroup();
+                if (Math.Abs(rotation) > 0.1)
+                    group.Children.Add(new RotateTransform(rotation));
+                if (scaleX < 0 || scaleY < 0)
+                    group.Children.Add(new ScaleTransform(scaleX, scaleY));
+                VideoViewbox.RenderTransformOrigin = new Point(0.5, 0.5);
+                VideoViewbox.RenderTransform = group;
+            }
+
+            // --- Speed ---
+            try
+            {
+                if (PreviewMedia.Source != null)
+                {
+                    var targetSpeed = Math.Clamp(_node.SpeedFactor, 0.1, 8.0);
+                    if (Math.Abs(PreviewMedia.SpeedRatio - targetSpeed) > 0.01)
+                        PreviewMedia.SpeedRatio = targetSpeed;
+                }
+            }
+            catch
+            {
+                /* best-effort: avoid WPF MediaElement exception when uninitialized */
+            }
+        }
+
         private static Color HsvToColor(double hue, double saturation, double value)
         {
             var c = value * saturation;
@@ -151,14 +205,41 @@ namespace FlowMy.Views.NodeControls
                     Filter = "Image Files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All|*.*"
                 };
                 if (dlg.ShowDialog() != true) return;
+
+                double wFrac = 0.3;
+                double hFrac = 0.3;
+
+                try
+                {
+                    using var stream = File.OpenRead(dlg.FileName);
+                    var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                    if (decoder.Frames.Count > 0 && decoder.Frames[0].PixelWidth > 0 && decoder.Frames[0].PixelHeight > 0)
+                    {
+                        var imgW = (double)decoder.Frames[0].PixelWidth;
+                        var imgH = (double)decoder.Frames[0].PixelHeight;
+                        var imgAspect = imgW / imgH;
+
+                        var surfaceW = PreviewMedia.NaturalVideoWidth > 0 ? (double)PreviewMedia.NaturalVideoWidth : 1920.0;
+                        var surfaceH = PreviewMedia.NaturalVideoHeight > 0 ? (double)PreviewMedia.NaturalVideoHeight : 1080.0;
+
+                        wFrac = 0.3;
+                        hFrac = (wFrac * surfaceW / imgAspect) / surfaceH;
+                        hFrac = Math.Clamp(hFrac, 0.05, 0.9);
+                    }
+                }
+                catch
+                {
+                    /* best-effort image aspect ratio probing */
+                }
+
                 _node.Overlays.Add(new OverlayItem
                 {
                     Type = "image",
                     Source = dlg.FileName,
                     X = 0.08,
                     Y = 0.08,
-                    Width = 0.24,
-                    Height = 0.24,
+                    Width = Math.Round(wFrac, 4),
+                    Height = Math.Round(hFrac, 4),
                     Opacity = 1.0,
                     IsVisible = true
                 });
@@ -556,6 +637,7 @@ namespace FlowMy.Views.NodeControls
             foreach (var b in new[] { Rotate0Button, Rotate90Button, Rotate180Button, Rotate270Button })
                 b.ClearValue(BackgroundProperty);
             activeButton.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
+            ApplyPreviewTransformEffects();
         }
 
         private void ToggleFlip(Button button, bool isHorizontal)
@@ -566,6 +648,7 @@ namespace FlowMy.Views.NodeControls
                 button.Background = new SolidColorBrush(Color.FromRgb(0x7C, 0x6B, 0xF8));
             else
                 button.ClearValue(BackgroundProperty);
+            ApplyPreviewTransformEffects();
         }
 
         private void SetScale(double scale, int? fixedHeight, Button activeButton)
@@ -1477,6 +1560,7 @@ namespace FlowMy.Views.NodeControls
 
             SyncControlValuesFromModel();
             ApplyPreviewColorTransform();
+            ApplyPreviewTransformEffects();
             AppendLog("🔄 Đã đặt lại mặc định các thông số bộ lọc màu.");
         }
 

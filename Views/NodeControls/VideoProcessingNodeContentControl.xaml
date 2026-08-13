@@ -567,6 +567,11 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.35"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="IconButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -1204,17 +1209,17 @@
                             VerticalAlignment="Bottom"
                             Orientation="Vertical"
                             Margin="0,0,8,8">
-                    <Button x:Name="ToggleQuickGradeButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
+                    <Button x:Name="ToggleQuickGradeButton" Width="30" Height="30" Padding="0" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
                         <controls:SvgViewboxEx Width="14" Height="14"
                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='display-code duotone-light'}"/>
                     </Button>
-                    <Button x:Name="QuickSnapshotButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
+                    <Button x:Name="QuickSnapshotButton" Width="30" Height="30" Padding="0" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
                         <controls:SvgViewboxEx Width="14" Height="14"
                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='camera-retro duotone-light'}"/>
                     </Button>
-                    <Button x:Name="QuickSetTrimButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}">
+                    <Button x:Name="QuickSetTrimButton" Width="30" Height="30" Padding="0" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}">
                         <controls:SvgViewboxEx Width="14" Height="14"
                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='scissors duotone-light'}"/>
@@ -1308,27 +1313,27 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="72"/>
                             </Grid.ColumnDefinitions>
-                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Lùi 5 giây">
+                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="28" Height="28" Padding="0" Style="{StaticResource IconButtonStyle}" ToolTip="Lùi 5 giây">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='backward regular'}"/>
                             </Button>
-                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="38" Height="38" Style="{StaticResource PlayButtonStyle}">
+                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="38" Height="38" Padding="0" Style="{StaticResource PlayButtonStyle}">
                                 <controls:SvgViewboxEx Width="14" Height="14" Margin="3,0,0,0"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play regular'}"/>
                             </Button>
-                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Tiến 5 giây">
+                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="28" Height="28" Padding="0" Style="{StaticResource IconButtonStyle}" ToolTip="Tiến 5 giây">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='forward sharp-regular'}"/>
                             </Button>
-                            <Button x:Name="StopButton" Grid.Column="6" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Dừng">
+                            <Button x:Name="StopButton" Grid.Column="6" Width="28" Height="28" Padding="0" Style="{StaticResource IconButtonStyle}" ToolTip="Dừng">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='stop sharp-regular'}"/>
                             </Button>
-                            <Button x:Name="MuteButton" Grid.Column="8" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
+                            <Button x:Name="MuteButton" Grid.Column="8" Width="28" Height="28" Padding="0" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='volume-high duotone-light'}"/>
@@ -1442,21 +1447,13 @@
                                         <TextBlock x:Name="AudioSummaryText" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Số giây cần lấy frame" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions>
-                                    <Slider x:Name="SecondsPerFrameSlider"
-                                             Minimum="1"
-                                             Maximum="60"
-                                             Value="1"
-                                             TickFrequency="1"
-                                             IsSnapToTickEnabled="True"
-                                             Style="{StaticResource ModernSliderStyle}"
-                                             ToolTip="Chọn số giây (1-60). Số frame ~= giây x FPS nguồn."/>
-                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
-                                        <TextBlock x:Name="SecondsPerFrameValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
-                                    </Border>
+
+                                <!-- Hidden: slider removed from UI but kept for code-behind calculation references -->
+                                <Grid Visibility="Collapsed">
+                                    <Slider x:Name="SecondsPerFrameSlider" Minimum="1" Maximum="60" Value="1" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock x:Name="SecondsPerFrameValueText"/>
                                 </Grid>
+
                                 <TextBlock Text="Số lượng frame cần lấy" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
@@ -1556,38 +1553,7 @@
                                                    TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,6" Padding="10,8">
-                                    <StackPanel>
-                                        <TextBlock Text="Cấu hình" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                        <Grid Margin="0,0,0,10">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
-                                            <Border Grid.Column="1" x:Name="OutputModeBadgeBorder" Background="#266366F1" BorderBrush="#6366F1" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center" ToolTip="Chế độ định dạng đầu ra của cổng frames_output">
-                                                <TextBlock x:Name="OutputModeBadgeText" Text="Chế độ: Base64" FontSize="11" FontWeight="SemiBold" Foreground="#818CF8"/>
-                                            </Border>
-                                        </Grid>
-                                        <Grid Margin="0,0,0,10" Visibility="Collapsed">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="8"/>
-                                                <ColumnDefinition Width="160"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Preview Color" VerticalAlignment="Center" FontSize="11" Opacity="0.8"/>
-                                            <ComboBox x:Name="PreviewVisualStrengthCombo"
-                                                      Grid.Column="2"
-                                                      Height="26"
-                                                      ToolTip="Fast: nhẹ, Balanced: cân bằng, Strong: hiệu ứng rõ nhất trên preview."
-                                                      Style="{StaticResource DarkComboBoxStyle}">
-                                                <ComboBoxItem Content="Fast" Tag="fast"/>
-                                                <ComboBoxItem Content="Balanced" Tag="balanced"/>
-                                                <ComboBoxItem Content="Strong" Tag="strong"/>
-                                            </ComboBox>
-                                        </Grid>
-                                    </StackPanel>
-                                </Border>
+
                             </StackPanel>
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
@@ -1688,7 +1654,7 @@
                                         <Grid Margin="0,8,0,0">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <TextBox x:Name="WatermarkPathText" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" Height="28"/>
-                                            <Button x:Name="BrowseWatermarkButton" Grid.Column="1" Content="..." Width="32" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                            <Button x:Name="BrowseWatermarkButton" Grid.Column="1" Content="..." Width="32" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                         </Grid>
                                         <ComboBox x:Name="WatermarkPositionCombo" Margin="0,8,0,0" Height="28" Style="{StaticResource DarkComboBoxStyle}">
                                             <ComboBoxItem Content="Top Left" Tag="TL"/><ComboBoxItem Content="Top Center" Tag="TC"/><ComboBoxItem Content="Top Right" Tag="TR"/>
@@ -1814,11 +1780,11 @@
                                         <Grid Margin="0,8,0,0">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <TextBox x:Name="FrameLabelTextColorTextBox" Height="28" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" Text="black" ToolTip="Màu text, ví dụ: black, white, #111111"/>
-                                            <Button Grid.Column="1" Width="30" Height="28" Padding="0" Margin="6,0,0,0" ToolTip="Chọn màu chữ nhãn" Click="PickFrameLabelTextColor_Click">
+                                            <Button Grid.Column="1" Width="30" Height="28" Padding="0" Margin="6,0,0,0" ToolTip="Chọn màu chữ nhãn" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Click="PickFrameLabelTextColor_Click">
                                                 <controls:SvgViewboxEx Width="14" Height="14" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone-light'}"/>
                                             </Button>
                                             <TextBox x:Name="FrameLabelBackgroundColorTextBox" Grid.Column="3" Height="28" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" Text="white" ToolTip="Màu nền, ví dụ: white, #FFFFFFCC"/>
-                                            <Button Grid.Column="4" Width="30" Height="28" Padding="0" Margin="6,0,0,0" ToolTip="Chọn màu nền nhãn" Click="PickFrameLabelBackgroundColor_Click">
+                                            <Button Grid.Column="4" Width="30" Height="28" Padding="0" Margin="6,0,0,0" ToolTip="Chọn màu nền nhãn" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Click="PickFrameLabelBackgroundColor_Click">
                                                 <controls:SvgViewboxEx Width="14" Height="14" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone-light'}"/>
                                             </Button>
                                         </Grid>
@@ -1835,7 +1801,7 @@
                                                   ToolTip="Tắt mặc định. Khi bật: lưu thư mục con debug-frame-label bên cạnh ảnh frame đang xuất và ghi đường dẫn đầy đủ vào log. Nếu chưa có thư mục xuất hợp lệ thì dùng %TEMP%\FlowMy_VideoProcessing\debug-frame-label\. Snapshot dùng cùng thư mục với file ảnh lưu."/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Canvas Overlay Layers" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,6"/>
+                                <TextBlock Text="Canvas Overlay Layers" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,6" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                 <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8">
                                     <StackPanel>
                                         <WrapPanel Margin="0,0,0,6">
@@ -1868,13 +1834,13 @@
                                                 CornerRadius="8"
                                                 Padding="8">
                                             <StackPanel>
-                                                <TextBlock Text="Selected Overlay Properties" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                                <TextBlock Text="Selected Overlay Properties" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                                 <Grid Margin="0,0,0,6">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="Type" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="Type" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <ComboBox x:Name="OverlayTypeCombo" Grid.Column="1" Height="24" Style="{StaticResource DarkComboBoxStyle}">
                                                         <ComboBoxItem Content="text" Tag="text"/>
                                                         <ComboBoxItem Content="image" Tag="image"/>
@@ -1898,11 +1864,11 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="Align" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="Align" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                            <RadioButton x:Name="OverlayAlignLeftRadio" Content="Left" GroupName="OverlayTextAlign" Margin="0,0,10,0"/>
-                                                            <RadioButton x:Name="OverlayAlignCenterRadio" Content="Center" GroupName="OverlayTextAlign" Margin="0,0,10,0"/>
-                                                            <RadioButton x:Name="OverlayAlignRightRadio" Content="Right" GroupName="OverlayTextAlign"/>
+                                                            <RadioButton x:Name="OverlayAlignLeftRadio" Content="Left" GroupName="OverlayTextAlign" Margin="0,0,10,0" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                            <RadioButton x:Name="OverlayAlignCenterRadio" Content="Center" GroupName="OverlayTextAlign" Margin="0,0,10,0" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                            <RadioButton x:Name="OverlayAlignRightRadio" Content="Right" GroupName="OverlayTextAlign" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                                         </StackPanel>
                                                     </Grid>
 
@@ -1915,7 +1881,7 @@
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="Font" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="Font" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                         <ComboBox x:Name="OverlayFontFamilyCombo"
                                                                   Grid.Column="1"
                                                                   Height="24"
@@ -1923,9 +1889,9 @@
                                                                   IsTextSearchEnabled="True"
                                                                   Style="{StaticResource DarkComboBoxStyle}"
                                                                   ToolTip="Font family"/>
-                                                        <TextBlock Text="Color" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="Color" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                         <TextBox x:Name="OverlayFontColorTextBox" Grid.Column="4" Height="24"/>
-                                                        <Button x:Name="PickOverlayFontColorButton" Padding="0" Grid.Column="5" Width="28" Height="24" Margin="6,0,0,0" ToolTip="Chọn màu chữ overlay" Click="PickOverlayFontColor_Click">
+                                                        <Button x:Name="PickOverlayFontColorButton" Padding="0" Grid.Column="5" Width="28" Height="24" Margin="6,0,0,0" ToolTip="Chọn màu chữ overlay" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Click="PickOverlayFontColor_Click">
                                                             <controls:SvgViewboxEx Width="14" Height="14" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone-light'}"/>
                                                         </Button>
                                                     </Grid>
@@ -1935,7 +1901,7 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="Font Size" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="Font Size" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                         <Slider x:Name="OverlayFontSizeSlider" Grid.Column="1" Minimum="8" Maximum="200" Style="{StaticResource ModernSliderStyle}"/>
                                                     </Grid>
                                                 </StackPanel>
@@ -1947,9 +1913,9 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <Slider x:Name="OverlayXSlider" Grid.Column="1" Minimum="0" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
-                                                    <TextBlock Text="Y" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Y" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <Slider x:Name="OverlayYSlider" Grid.Column="4" Minimum="0" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
                                                 </Grid>
                                                 <Grid Margin="0,0,0,6">
@@ -1960,9 +1926,9 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="W" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="W" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <Slider x:Name="OverlayWidthSlider" Grid.Column="1" Minimum="0.01" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
-                                                    <TextBlock Text="H" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="H" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <Slider x:Name="OverlayHeightSlider" Grid.Column="4" Minimum="0.01" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
                                                 </Grid>
                                                 <Grid Margin="0,0,0,6">
@@ -1973,9 +1939,9 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="Opacity" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Opacity" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <Slider x:Name="OverlayOpacitySlider" Grid.Column="1" Minimum="0" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
-                                                    <TextBlock Text="Rotation" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Rotation" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                     <Slider x:Name="OverlayRotationSlider" Grid.Column="4" Minimum="-180" Maximum="180" Style="{StaticResource ModernSliderStyle}"/>
                                                 </Grid>
                                                 <StackPanel Orientation="Horizontal">
@@ -2014,7 +1980,7 @@
                                                     </Grid.RowDefinitions>
                                                     <Grid Grid.Row="0" Margin="0,0,0,8">
                                                         <TextBlock Text="Track âm thanh" Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                        <Button HorizontalAlignment="Right" Content="✕" Width="22" Height="22" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="RemoveAudioTrack_Click"/>
+                                                        <Button HorizontalAlignment="Right" Content="✕" Width="22" Height="22" Padding="0" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="RemoveAudioTrack_Click"/>
                                                     </Grid>
                                                     <Grid Grid.Row="1" Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
@@ -2022,7 +1988,7 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
                                                         <TextBox Height="26" FontSize="11" Padding="6,3" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" Text="{Binding SourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"/>
-                                                        <Button Grid.Column="1" Width="28" Height="26" Margin="4,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="BrowseAudioTrack_Click">
+                                                        <Button Grid.Column="1" Width="28" Height="26" Padding="0" Margin="4,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="BrowseAudioTrack_Click">
                                                             <controls:SvgViewboxEx Width="14" Height="14" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone-light'}"/>
                                                         </Button>
                                                     </Grid>
@@ -2315,7 +2281,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBox x:Name="FrameOutputFolderText" Height="28" FontSize="11"/>
-                                            <Button x:Name="BrowseFrameOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
+                                            <Button x:Name="BrowseFrameOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -2330,7 +2296,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBox x:Name="DefaultOutputVideoPathText" Height="28" FontSize="11"/>
-                                            <Button x:Name="BrowseDefaultOutputVideoButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
+                                            <Button x:Name="BrowseDefaultOutputVideoButton" Grid.Column="1" Content="..." Width="32" Height="28" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -2345,17 +2311,49 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBox x:Name="AudioOutputFolderText" Height="28" FontSize="11"/>
-                                            <Button x:Name="BrowseAudioOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
+                                            <Button x:Name="BrowseAudioOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                         </Grid>
                                         <Button x:Name="ExtractAudioSettingsButton" Content="Trích xuất Audio" Height="30" Margin="0,8,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                     </StackPanel>
                                 </Border>
 
-                                 <CheckBox x:Name="UseDialogVideoConfigCheckBox"
-                                           Content="Sử dụng cấu hình dialog video (real-time)"
-                                           Style="{StaticResource ReadableCheckBoxStyle}"
-                                           Margin="0,0,0,14"
-                                           IsChecked="True"/>
+                                <TextBlock Text="Cấu hình xử lý" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU (CUDA/D3D11)" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
+                                            <Border Grid.Column="1" x:Name="OutputModeBadgeBorder" Background="#266366F1" BorderBrush="#6366F1" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center" ToolTip="Chế độ định dạng đầu ra của cổng frames_output">
+                                                <TextBlock x:Name="OutputModeBadgeText" Text="Chế độ: Base64" FontSize="11" FontWeight="SemiBold" Foreground="#818CF8"/>
+                                            </Border>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,0" Visibility="Collapsed">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="160"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Preview Color" VerticalAlignment="Center" FontSize="11" Opacity="0.8"/>
+                                            <ComboBox x:Name="PreviewVisualStrengthCombo"
+                                                      Grid.Column="2"
+                                                      Height="26"
+                                                      ToolTip="Fast: nhẹ, Balanced: cân bằng, Strong: hiệu ứng rõ nhất trên preview."
+                                                      Style="{StaticResource DarkComboBoxStyle}">
+                                                <ComboBoxItem Content="Fast" Tag="fast"/>
+                                                <ComboBoxItem Content="Balanced" Tag="balanced"/>
+                                                <ComboBoxItem Content="Strong" Tag="strong"/>
+                                            </ComboBox>
+                                        </Grid>
+                                        <CheckBox x:Name="UseDialogVideoConfigCheckBox"
+                                                  Content="Sử dụng cấu hình dialog video (real-time)"
+                                                  Style="{StaticResource ReadableCheckBoxStyle}"
+                                                  Margin="0,8,0,0"
+                                                  IsChecked="True"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">

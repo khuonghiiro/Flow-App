@@ -10,6 +10,7 @@ namespace FlowMy.ViewModels
     {
         [ObservableProperty] private string _ffmpegPath = string.Empty;
         [ObservableProperty] private string _ffprobePath = string.Empty;
+        [ObservableProperty] private string _ffplayPath = string.Empty;
         [ObservableProperty] private string _gitPath = string.Empty;
         [ObservableProperty] private string _pythonPath = string.Empty;
         [ObservableProperty] private string _customBinariesPath = string.Empty;
@@ -17,6 +18,12 @@ namespace FlowMy.ViewModels
         // Status Badges
         [ObservableProperty] private string _ffmpegStatusText = "Chưa kiểm tra";
         [ObservableProperty] private bool _isFfmpegValid;
+
+        [ObservableProperty] private string _ffprobeStatusText = "Chưa kiểm tra";
+        [ObservableProperty] private bool _isFfprobeValid;
+
+        [ObservableProperty] private string _ffplayStatusText = "Chưa kiểm tra";
+        [ObservableProperty] private bool _isFfplayValid;
 
         [ObservableProperty] private string _gitStatusText = "Chưa kiểm tra";
         [ObservableProperty] private bool _isGitValid;
@@ -34,6 +41,7 @@ namespace FlowMy.ViewModels
             var prefs = EnvironmentPathPreferencesStore.Load();
             FfmpegPath = prefs.FfmpegPath;
             FfprobePath = prefs.FfprobePath;
+            FfplayPath = prefs.FfplayPath;
             GitPath = prefs.GitPath;
             PythonPath = prefs.PythonPath;
             CustomBinariesPath = prefs.CustomBinariesPath;
@@ -47,6 +55,7 @@ namespace FlowMy.ViewModels
             {
                 FfmpegPath = EnvironmentPathPreferencesStore.NormalizeUserInput(FfmpegPath, "ffmpeg.exe"),
                 FfprobePath = EnvironmentPathPreferencesStore.NormalizeUserInput(FfprobePath, "ffprobe.exe"),
+                FfplayPath = EnvironmentPathPreferencesStore.NormalizeUserInput(FfplayPath, "ffplay.exe"),
                 GitPath = EnvironmentPathPreferencesStore.NormalizeUserInput(GitPath, "git.exe"),
                 PythonPath = EnvironmentPathPreferencesStore.NormalizeUserInput(PythonPath, "python.exe"),
                 CustomBinariesPath = CustomBinariesPath?.Trim() ?? string.Empty
@@ -55,6 +64,7 @@ namespace FlowMy.ViewModels
             EnvironmentPathPreferencesStore.Save(prefs);
             FfmpegPath = prefs.FfmpegPath;
             FfprobePath = prefs.FfprobePath;
+            FfplayPath = prefs.FfplayPath;
             GitPath = prefs.GitPath;
             PythonPath = prefs.PythonPath;
 
@@ -75,6 +85,32 @@ namespace FlowMy.ViewModels
             {
                 IsFfmpegValid = false;
                 FfmpegStatusText = "❌ Chưa tìm thấy ffmpeg.exe trong đường dẫn đã cấu hình";
+            }
+
+            // Validate FFprobe
+            var resolvedFfprobe = EnvironmentPathPreferencesStore.ResolveBinaryPath("ffprobe");
+            if (File.Exists(resolvedFfprobe))
+            {
+                IsFfprobeValid = true;
+                FfprobeStatusText = $"✓ Đã tìm thấy: {Path.GetFileName(resolvedFfprobe)} ({resolvedFfprobe})";
+            }
+            else
+            {
+                IsFfprobeValid = false;
+                FfprobeStatusText = "⚠️ Chưa tìm thấy ffprobe.exe — sẽ dùng fallback từ thư mục ffmpeg";
+            }
+
+            // Validate FFplay
+            var resolvedFfplay = EnvironmentPathPreferencesStore.ResolveBinaryPath("ffplay");
+            if (File.Exists(resolvedFfplay))
+            {
+                IsFfplayValid = true;
+                FfplayStatusText = $"✓ Đã tìm thấy: {Path.GetFileName(resolvedFfplay)} ({resolvedFfplay})";
+            }
+            else
+            {
+                IsFfplayValid = false;
+                FfplayStatusText = "⚠️ Chưa tìm thấy ffplay.exe — sẽ dùng fallback từ thư mục ffmpeg";
             }
 
             // Validate Git
@@ -120,6 +156,19 @@ namespace FlowMy.ViewModels
             if (!string.IsNullOrWhiteSpace(detected))
             {
                 FfmpegPath = detected;
+
+                // Auto-fill ffprobe & ffplay from the same directory
+                var dir = File.Exists(detected) ? Path.GetDirectoryName(detected) : null;
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    var probePath = Path.Combine(dir, "ffprobe.exe");
+                    if (File.Exists(probePath) && string.IsNullOrWhiteSpace(FfprobePath))
+                        FfprobePath = probePath;
+
+                    var playPath = Path.Combine(dir, "ffplay.exe");
+                    if (File.Exists(playPath) && string.IsNullOrWhiteSpace(FfplayPath))
+                        FfplayPath = playPath;
+                }
             }
             ValidateAll();
         }

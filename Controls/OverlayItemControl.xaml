@@ -14,7 +14,7 @@
                    Visibility="Collapsed"/>
 
         <Grid x:Name="ContentRoot" ClipToBounds="True">
-            <Image x:Name="ImageContent" Stretch="Fill" Visibility="Collapsed"/>
+            <Image x:Name="ImageContent" Stretch="Uniform" Visibility="Collapsed"/>
             <TextBlock x:Name="TextContent"
                        Visibility="Collapsed"
                        TextWrapping="Wrap"

@@ -107,32 +107,45 @@ namespace FlowMy.Views.NodeControls
             RunProcessingButton.Click += (_, _) =>
             {
                 SwitchToLogView();
-                RunProcessingFlow();
+                RunProcessingFlow(singleNodeOnly: false);
             };
             SaveEditedVideoButton.Click += (_, _) =>
             {
                 SwitchToLogView();
                 _node.ExportVideoEnabled = true;
+                _node.ExtractFramesEnabled = false;
+                _node.ExtractAudioEnabled = false;
                 AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
-                RunProcessingFlow();
+                RunProcessingFlow(singleNodeOnly: true);
             };
             ExtractFramesBase64Button.Click += (_, _) =>
             {
                 _node.OutputBase64 = true;
                 _node.ExtractFramesEnabled = true;
                 _node.ExportVideoEnabled = false;
+                _node.ExtractAudioEnabled = false;
                 RefreshOutputsSummaryUi();
                 AppendLog("📷 [TÁCH FRAME] Đang trích xuất frame (Base64)...");
-                RunProcessingFlow();
+                RunProcessingFlow(singleNodeOnly: true);
             };
             ExtractFramesLinkButton.Click += (_, _) =>
             {
                 _node.OutputBase64 = false;
                 _node.ExtractFramesEnabled = true;
                 _node.ExportVideoEnabled = false;
+                _node.ExtractAudioEnabled = false;
                 RefreshOutputsSummaryUi();
                 AppendLog("📷 [TÁCH FRAME] Đang trích xuất frame (Đường dẫn file)...");
-                RunProcessingFlow();
+                RunProcessingFlow(singleNodeOnly: true);
+            };
+            ExtractAudioSettingsButton.Click += (_, _) =>
+            {
+                SwitchToLogView();
+                _node.ExtractAudioEnabled = true;
+                _node.ExportVideoEnabled = false;
+                _node.ExtractFramesEnabled = false;
+                AppendLog("🎵 [TRÍCH XUẤT AUDIO] Đang trích xuất file audio từ video...");
+                RunProcessingFlow(singleNodeOnly: true);
             };
             SnapshotButton.Click += (_, _) =>
             {
@@ -440,18 +453,18 @@ namespace FlowMy.Views.NodeControls
                 AppendLog("ℹ Preview effect reset (không thay đổi thông số node).");
             };
 
-            SharpenToggle.Checked += (_, _) => { _node.SharpenEnabled = true; SharpenSlider.IsEnabled = true; };
-            SharpenToggle.Unchecked += (_, _) => { _node.SharpenEnabled = false; SharpenSlider.IsEnabled = false; };
-            DenoiseToggle.Checked += (_, _) => { _node.DenoiseEnabled = true; DenoiseSlider.IsEnabled = true; };
-            DenoiseToggle.Unchecked += (_, _) => { _node.DenoiseEnabled = false; DenoiseSlider.IsEnabled = false; };
-            BlurToggle.Checked += (_, _) => { _node.BlurEnabled = true; BlurSlider.IsEnabled = true; };
-            BlurToggle.Unchecked += (_, _) => { _node.BlurEnabled = false; BlurSlider.IsEnabled = false; };
-            StabilizeToggle.Checked += (_, _) => _node.StabilizeEnabled = true;
-            StabilizeToggle.Unchecked += (_, _) => _node.StabilizeEnabled = false;
-            SharpenSlider.ValueChanged += (_, e) => { _node.SharpenStrength = e.NewValue; SharpenLabel.Text = $"{e.NewValue:0.#}"; };
-            DenoiseSlider.ValueChanged += (_, e) => { _node.DenoiseStrength = e.NewValue; DenoiseLabel.Text = $"{e.NewValue:0.#}"; };
-            BlurSlider.ValueChanged += (_, e) => { _node.BlurRadius = e.NewValue; BlurLabel.Text = $"{e.NewValue:0.#}"; };
-            SpeedSlider.ValueChanged += (_, e) => { _node.SpeedFactor = e.NewValue; SpeedLabel.Text = $"{e.NewValue:0.##}x"; };
+            SharpenToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.SharpenEnabled = true; SharpenSlider.IsEnabled = true; };
+            SharpenToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.SharpenEnabled = false; SharpenSlider.IsEnabled = false; };
+            DenoiseToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.DenoiseEnabled = true; DenoiseSlider.IsEnabled = true; };
+            DenoiseToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.DenoiseEnabled = false; DenoiseSlider.IsEnabled = false; };
+            BlurToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.BlurEnabled = true; BlurSlider.IsEnabled = true; ApplyPreviewTransformEffects(); };
+            BlurToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.BlurEnabled = false; BlurSlider.IsEnabled = false; ApplyPreviewTransformEffects(); };
+            StabilizeToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.StabilizeEnabled = true; };
+            StabilizeToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.StabilizeEnabled = false; };
+            SharpenSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.SharpenStrength = e.NewValue; SharpenLabel.Text = $"{e.NewValue:0.#}"; };
+            DenoiseSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.DenoiseStrength = e.NewValue; DenoiseLabel.Text = $"{e.NewValue:0.#}"; };
+            BlurSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.BlurRadius = e.NewValue; BlurLabel.Text = $"{e.NewValue:0.#}"; ApplyPreviewTransformEffects(); };
+            SpeedSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.SpeedFactor = e.NewValue; SpeedLabel.Text = $"{e.NewValue:0.##}x"; ApplyPreviewTransformEffects(); };
 
             Rotate0Button.Click += (_, _) => SetRotate(0, Rotate0Button);
             Rotate90Button.Click += (_, _) => SetRotate(90, Rotate90Button);

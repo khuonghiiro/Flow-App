@@ -246,10 +246,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var frameBase64Json = videoNode.OutputBase64 && producedFrames.Count > 0
                     ? JsonSerializer.Serialize(producedFrames.Select(File.ReadAllBytes).Select(Convert.ToBase64String).ToList())
                     : string.Empty;
-                var framesOutput = videoNode.OutputBase64
-                    ? frameBase64Json
-                    : framePathsJson;
-                SetOutput(videoNode, "frames_output", framesOutput);
+                // Only set frames_output when NOT in Base64 mode to avoid duplicating heavy data
+                // (frames_base64 already carries the base64 payload)
+                if (!videoNode.OutputBase64)
+                    SetOutput(videoNode, "frames_output", framePathsJson);
                 SetOutput(videoNode, "frames_paths", framePathsJson);
                 SetOutput(videoNode, "frames_base64", frameBase64Json);
                 SetOutput(videoNode, "frame_folder", producedFrames.Count > 0 ? Path.GetDirectoryName(producedFrames[0]) ?? string.Empty : string.Empty);
@@ -270,7 +270,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 else
                 {
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
-                var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
+                var mainFilter = BuildVideoFilterChain(videoNode, extractFps: null, includeTextOverlay: true, sourceHeight);
                 var mainArgs = BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
@@ -284,12 +284,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 try
                 {
                     FrameLabelSequenceFfmpegInput? labelFf = null;
-                    if (videoNode.FrameLabelEnabled)
+                    if (videoNode.FrameLabelEnabled && !videoNode.ExportVideoEnabled)
                     {
                         lblEncDir = videoNode.FrameLabelDebugSamplesEnabled
                             ? CreateFrameLabelDebugFolder("enc_seq", Path.GetDirectoryName(framePattern))
                             : Path.Combine(tempRoot, $"enc_lbl_{Guid.NewGuid():N}");
-                        var nLbl = Math.Max(producedFrames.Count + 48, (int)Math.Ceiling(effectiveDurationTrim * extractFps) + 64);
+                        var videoEncodeFps = sourceFpsClamped;
+                        var nLbl = (int)Math.Ceiling(effectiveDurationTrim * videoEncodeFps) + 64;
                         var srcFpsForSeq = videoNode.SourceFps > 0 ? videoNode.SourceFps : 30;
                         await RunWpfCompositorAsync(
                             () => FrameLabelRasterComposer.WriteLabelSequencePngs(
@@ -297,7 +298,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 lblEncDir,
                                 nLbl,
                                 effectiveStart,
-                                extractFps,
+                                videoEncodeFps,
                                 srcFpsForSeq,
                                 sourceWidth > 0 ? sourceWidth : 1920,
                                 sourceHeight > 0 ? sourceHeight : 1080,
@@ -309,7 +310,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                         labelFf = new FrameLabelSequenceFfmpegInput(
                             Path.Combine(lblEncDir, "label_%06d.png").Replace('\\', '/'),
-                            extractFps);
+                            videoEncodeFps);
                     }
 
                     AppendVisualFilterArgs(
@@ -321,7 +322,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         deferCanvasTextOverlayToWpfRaster: false,
                         overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
                         overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
-                        overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1));
+                        overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1),
+                        isVideoExport: true);
+                    mainArgs.AddRange(new[] { "-r", sourceFpsClamped.ToString("0.###", CultureInfo.InvariantCulture) });
                     mainArgs.AddRange(codecArgs);
                     mainArgs.Add(outputBasePath);
 
@@ -664,7 +667,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "-map", "[aout]",
                 "-c:a", ResolveAudioCodecArg(node.AudioCodec),
                 "-b:a", node.AudioBitrate,
-                "-shortest",
                 outputVideo
             });
 
@@ -788,11 +790,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return string.Join(",", parts.Select(p => $"atempo={p.ToString("0.######", CultureInfo.InvariantCulture)}"));
         }
 
-        private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay, int? sourceHeightOverride = null)
+        private static string BuildVideoFilterChain(VideoProcessingNode node, double? extractFps, bool includeTextOverlay, int? sourceHeightOverride = null)
         {
             var filters = new List<string>();
 
-            filters.Add($"fps={extractFps:0.###}");
+            if (extractFps.HasValue && extractFps.Value > 0)
+            {
+                filters.Add($"fps={extractFps.Value:0.###}");
+            }
             filters.Add(VideoColorGrading.BuildEqFilter(node));
             var hueF = VideoColorGrading.BuildHueFilter(node.Hue);
             if (hueF != null) filters.Add(hueF);
@@ -896,7 +901,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             bool deferCanvasTextOverlayToWpfRasterOnStills,
             int overlayProbeSrcW,
             int overlayProbeSrcH,
-            int overlayProbeSrcHForFontScale)
+            int overlayProbeSrcHForFontScale,
+            bool isVideoExport = false)
         {
             var pw = overlayProbeSrcW > 0 ? overlayProbeSrcW : 1920;
             var ph = overlayProbeSrcH > 0 ? overlayProbeSrcH : 1080;
@@ -913,7 +919,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 var nextLabel = $"v{++stageIndex}";
                 var (xExprLabel, yExprLabel) = BuildFrameLabelOverlayExpression(node, estW, estH, phf);
-                filterChains.Add($"[{currentLabel}][1:v]overlay=x='{xExprLabel}':y='{yExprLabel}':shortest=1:format=auto[{nextLabel}]");
+                filterChains.Add($"[{currentLabel}][1:v]overlay=x='{xExprLabel}':y='{yExprLabel}':repeatlast=1:format=auto[{nextLabel}]");
                 currentLabel = nextLabel;
             }
 
@@ -922,15 +928,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var overlayAlpha = node.WatermarkOpacity.ToString("0.###", CultureInfo.InvariantCulture);
                 var wScaled = $"wms{stageIndex}";
                 var wRgba = $"wmrgba{stageIndex}";
-                var vRef = $"vref{stageIndex}";
                 var nextLabel = $"v{++stageIndex}";
-                var wExpr = VideoWatermarkGeometry.BuildScaleWidthExpression(node.WatermarkWidthFraction);
+                var wmPixelW = Math.Max(1, (int)Math.Round(estW * Math.Clamp(node.WatermarkWidthFraction, 0.01, 1)));
                 var xy = VideoWatermarkGeometry.BuildOverlayPositionExpression(node.WatermarkPosition, node.WatermarkInsetFraction);
                 imageInputs.Add(node.WatermarkImagePath!);
-                // scale2ref: input0 = stream to resize (logo), input1 = ref (main); out0=scaled logo, out1=unchanged main
-                filterChains.Add($"[{imageInputIndex}:v][{currentLabel}]scale2ref=w={wExpr}:h=-2[{wScaled}][{vRef}]");
+                // Direct scale on image input prevents scale2ref from disrupting main video stream timebase/framerate.
+                filterChains.Add($"[{imageInputIndex}:v]scale=w={wmPixelW}:h=-2[{wScaled}]");
                 filterChains.Add($"[{wScaled}]format=rgba,colorchannelmixer=aa={overlayAlpha}[{wRgba}]");
-                filterChains.Add($"[{vRef}][{wRgba}]overlay={xy}[{nextLabel}]");
+                filterChains.Add($"[{currentLabel}][{wRgba}]overlay={xy}:repeatlast=1:format=auto[{nextLabel}]");
                 currentLabel = nextLabel;
                 imageInputIndex++;
             }
@@ -956,9 +961,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if ((type == "image" || type == "logo") && !string.IsNullOrWhiteSpace(item.Source) && File.Exists(item.Source))
                 {
                     imageInputs.Add(item.Source);
-                    filterChains.Add($"[{imageInputIndex}:v]scale=w={overlayPixelW}:h={overlayPixelH}[{ovScaled}]");
+                    filterChains.Add($"[{imageInputIndex}:v]scale=w={overlayPixelW}:h={overlayPixelH}:force_original_aspect_ratio=decrease[{ovScaled}]");
                     filterChains.Add($"[{ovScaled}]format=rgba,colorchannelmixer=aa={opacity}[{ovRgba}]");
-                    filterChains.Add($"[{currentLabel}][{ovRgba}]overlay=x='{xExpr}':y='{yExpr}':format=auto[{nextLabel}]");
+                    filterChains.Add($"[{currentLabel}][{ovRgba}]overlay=x='{xExpr}':y='{yExpr}':repeatlast=1:format=auto[{nextLabel}]");
                     imageInputIndex++;
                     currentLabel = nextLabel;
                 }
@@ -971,7 +976,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     // Text PNG is already rendered to the target box pixel size (matches OverlayItemControl AutoFit).
                     // Overlay directly to avoid any resampling that would drift font size/metrics from UI.
                     filterChains.Add($"[{imageInputIndex}:v]format=rgba,colorchannelmixer=aa={opacity}[{ovRgba}]");
-                    filterChains.Add($"[{currentLabel}][{ovRgba}]overlay=x='{xExpr}':y='{yExpr}':alpha=1:format=auto[{nextLabel}]");
+                    filterChains.Add($"[{currentLabel}][{ovRgba}]overlay=x='{xExpr}':y='{yExpr}':repeatlast=1:format=auto[{nextLabel}]");
                     imageInputIndex++;
                     currentLabel = nextLabel;
                 }
@@ -979,7 +984,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             // Apply all output-size transforms at the very end:
             // watermark/text/overlays are first composed on source frame, then resized once.
-            var tailScale = BuildTailScaleFilter(node);
+            var tailScale = BuildTailScaleFilter(node, isVideoExport);
             if (!string.IsNullOrWhiteSpace(tailScale))
             {
                 var nextLabelTail = $"v{++stageIndex}";
@@ -1043,7 +1048,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             bool deferCanvasTextOverlayToWpfRaster = false,
             int overlayProbeSrcW = 0,
             int overlayProbeSrcH = 0,
-            int overlayProbeSrcHForFontScale = 0)
+            int overlayProbeSrcHForFontScale = 0,
+            bool isVideoExport = false)
         {
             var hasWatermark = node.WatermarkEnabled &&
                                !string.IsNullOrWhiteSpace(node.WatermarkImagePath) &&
@@ -1078,7 +1084,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     deferCanvasTextOverlayToWpfRaster,
                     overlayProbeSrcW,
                     overlayProbeSrcH,
-                    overlayProbeSrcHForFontScale);
+                    overlayProbeSrcHForFontScale,
+                    isVideoExport);
                 foreach (var inputPath in imageInputs)
                 {
                     args.AddRange(new[] { "-i", inputPath });
@@ -1095,15 +1102,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (useRasterLabels)
             {
                 var (xExprLbl, yExprLbl) = BuildFrameLabelOverlayExpression(node, overlayProbeSrcW, overlayProbeSrcH, overlayProbeSrcHForFontScale);
-                var tailScale = BuildTailScaleFilter(node);
+                var tailScale = BuildTailScaleFilter(node, isVideoExport);
                 string chain;
                 if (string.IsNullOrWhiteSpace(tailScale))
                 {
-                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='{xExprLbl}':y='{yExprLbl}':shortest=1:format=auto[outv]";
+                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='{xExprLbl}':y='{yExprLbl}':repeatlast=1:format=auto[outv]";
                 }
                 else
                 {
-                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='{xExprLbl}':y='{yExprLbl}':shortest=1:format=auto[flb];[flb]{tailScale}[outv]";
+                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='{xExprLbl}':y='{yExprLbl}':repeatlast=1:format=auto[flb];[flb]{tailScale}[outv]";
                 }
 
                 args.AddRange(new[]
@@ -1115,7 +1122,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             var finalFilter = baseFilter;
-            var tail = BuildTailScaleFilter(node);
+            var tail = BuildTailScaleFilter(node, isVideoExport);
             if (!string.IsNullOrWhiteSpace(tail))
                 finalFilter = string.IsNullOrWhiteSpace(finalFilter) ? tail : $"{finalFilter},{tail}";
             args.AddRange(new[] { "-vf", finalFilter });
@@ -1179,7 +1186,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return ($"W-w-{padVidX}", $"{padVidY}");
         }
 
-        private static string BuildTailScaleFilter(VideoProcessingNode node)
+        private static string BuildTailScaleFilter(VideoProcessingNode node, bool isVideoExport = false)
         {
             var parts = new List<string>();
             var requiresEvenDimensions = string.Equals(node.OutputFormat, "mp4_h264", StringComparison.OrdinalIgnoreCase) ||
@@ -1200,7 +1207,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     parts.Add($"scale=iw*{sc}:ih*{sc}");
                 }
             }
-            if (node.FrameResizeScale < 0.999)
+            // FrameResizeScale (from Tab "Tổng quan") applies ONLY when extracting STILL frames, NOT for Video Export!
+            if (!isVideoExport && node.FrameResizeScale < 0.999)
             {
                 var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
                 if (requiresEvenDimensions)
@@ -1258,8 +1266,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             return (node.OutputFormat ?? "mp4_h264") switch
             {
-                "mp4_h264" => (new[] { "-c:v", "libx264", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString() }, ".mp4"),
-                "mp4_h265" => (new[] { "-c:v", "libx265", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString(), "-tag:v", "hvc1" }, ".mp4"),
+                "mp4_h264" => (new[] { "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString() }, ".mp4"),
+                "mp4_h265" => (new[] { "-c:v", "libx265", "-pix_fmt", "yuv420p", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString(), "-tag:v", "hvc1" }, ".mp4"),
                 "webm_vp9" => (new[] { "-c:v", "libvpx-vp9", "-crf", ((int)node.Crf).ToString(), "-b:v", "0" }, ".webm"),
                 "mov_prores" => (new[] { "-c:v", "prores_ks", "-profile:v", "3" }, ".mov"),
                 "gif" => (new[] { "-loop", "0" }, ".gif"),
@@ -1652,7 +1660,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var base64Json = node.OutputBase64 && extractedFiles.Count > 0
                 ? JsonSerializer.Serialize(extractedFiles.Select(File.ReadAllBytes).Select(Convert.ToBase64String).ToList())
                 : string.Empty;
-            SetOutput(node, "frames_output", node.OutputBase64 ? base64Json : pathsJson);
+            // Only set frames_output when NOT in Base64 mode to avoid duplicating heavy data
+            if (!node.OutputBase64)
+                SetOutput(node, "frames_output", pathsJson);
             SetOutput(node, "frames_paths", pathsJson);
             SetOutput(node, "frames_base64", base64Json);
             SetOutput(node, "frame_folder", outputFolder);
@@ -1761,16 +1771,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             onProgress(100, "Burn subtitle done");
         }
 
+        private static string EscapeFfmpegFilterPath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return string.Empty;
+            return path.Replace("\\", "/").Replace(":", "\\:");
+        }
+
         private static async Task StabilizeVideoAsync(string inputPath, string outputPath, CancellationToken ct)
         {
             var tempVectors = Path.Combine(Path.GetTempPath(), $"vidstab_{Guid.NewGuid():N}.trf");
+            var escapedVectors = EscapeFfmpegFilterPath(tempVectors);
             try
             {
                 await RunFfmpegAsync(new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
                     "-i", inputPath,
-                    "-vf", $"vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result={tempVectors}",
+                    "-vf", $"vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result='{escapedVectors}'",
                     "-f", "null", "-"
                 }, ct).ConfigureAwait(false);
 
@@ -1778,7 +1795,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
                     "-i", inputPath,
-                    "-vf", $"vidstabtransform=input={tempVectors}:zoom=1:smoothing=30,unsharp=5:5:0.8",
+                    "-vf", $"vidstabtransform=input='{escapedVectors}':zoom=1:smoothing=30,unsharp=5:5:0.8",
                     outputPath
                 }, ct).ConfigureAwait(false);
             }

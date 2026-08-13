@@ -162,7 +162,7 @@ namespace FlowMy.Views.NodeControls
             var path = _node.VideoPath?.Trim() ?? string.Empty;
             VideoPathText.Text = string.IsNullOrWhiteSpace(path) ? "Chưa chọn file video" : path;
             UpdateHwBadgeUi();
-            StatFpsText.Text = $"{_node.SourceFps:0.##}";
+            StatFpsText.Text = _isProbingFps ? "⏳" : $"{_node.SourceFps:0.##}";
             StatResolutionText.Text = PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--";
             StatDurationText.Text = FormatTime(TimeSpan.FromSeconds(GetNaturalDurationSeconds()));
             CodecInfoText.Text = $"HW: {_node.PreferredHwAccel} | Extract: {_node.ExtractFps:0.##}/s";
@@ -247,14 +247,18 @@ namespace FlowMy.Views.NodeControls
                 SharpenToggle.IsChecked = _node.SharpenEnabled;
                 SharpenSlider.IsEnabled = _node.SharpenEnabled;
                 SharpenSlider.Value = _node.SharpenStrength;
+                SharpenLabel.Text = $"{_node.SharpenStrength:0.#}";
                 DenoiseToggle.IsChecked = _node.DenoiseEnabled;
                 DenoiseSlider.IsEnabled = _node.DenoiseEnabled;
                 DenoiseSlider.Value = _node.DenoiseStrength;
+                DenoiseLabel.Text = $"{_node.DenoiseStrength:0.#}";
                 BlurToggle.IsChecked = _node.BlurEnabled;
                 BlurSlider.IsEnabled = _node.BlurEnabled;
                 BlurSlider.Value = _node.BlurRadius;
+                BlurLabel.Text = $"{_node.BlurRadius:0.#}";
                 StabilizeToggle.IsChecked = _node.StabilizeEnabled;
                 SpeedSlider.Value = _node.SpeedFactor;
+                SpeedLabel.Text = $"{_node.SpeedFactor:0.##}x";
 
                 CrfSlider.Value = _node.Crf;
                 CrfLabel.Text = $"{(int)_node.Crf}";
@@ -331,6 +335,7 @@ namespace FlowMy.Views.NodeControls
             ApplyPreviewQualitySettings();
             ApplyConfigSourceMode();
             UpdateFrameLabelPreviewUi();
+            ApplyPreviewTransformEffects();
         }
 
         private void RefreshVideoPreview()
@@ -783,27 +788,46 @@ namespace FlowMy.Views.NodeControls
         private async Task ProbeSourceFpsAndRefreshUiAsync()
         {
             var path = _node.VideoPath?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(path)) return;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                _isProbingFps = false;
+                return;
+            }
 
             _sourceFpsProbeCts?.Cancel();
             _sourceFpsProbeCts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             var ct = _sourceFpsProbeCts.Token;
 
+            _isProbingFps = true;
+            // Update UI immediately if we're on the UI thread, otherwise queue it
+            if (Dispatcher.CheckAccess())
+                StatFpsText.Text = "⏳";
+            else
+                await Dispatcher.InvokeAsync(() => StatFpsText.Text = "⏳");
+
             try
             {
                 var fps = await ProbeSourceFpsAsync(path, ct);
-                if (fps > 0)
+                // Clear flag and update SourceFps atomically on the UI thread
+                // to prevent race where RefreshInfoText sees _isProbingFps=false but old SourceFps
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    await Dispatcher.InvokeAsync(() =>
+                    _isProbingFps = false;
+                    if (fps > 0)
                     {
                         _node.SourceFps = fps;
-                        RefreshInfoText(); // includes UpdateFrameExtractionPreview()
-                    }, DispatcherPriority.Loaded);
-                }
+                    }
+                    RefreshInfoText(); // includes UpdateFrameExtractionPreview()
+                }, DispatcherPriority.Loaded);
             }
             catch
             {
                 // best-effort: don't block UI if probing fails.
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    _isProbingFps = false;
+                    RefreshInfoText();
+                });
             }
         }
 

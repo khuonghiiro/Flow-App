@@ -56,6 +56,34 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        private void BrowseFfprobeFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Chọn file ffprobe.exe",
+                Filter = "FFprobe Executable (ffprobe.exe)|ffprobe.exe|Executable Files (*.exe)|*.exe|All Files (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                _viewModel.FfprobePath = dialog.FileName;
+            }
+        }
+
+        private void BrowseFfplayFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Chọn file ffplay.exe",
+                Filter = "FFplay Executable (ffplay.exe)|ffplay.exe|Executable Files (*.exe)|*.exe|All Files (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                _viewModel.FfplayPath = dialog.FileName;
+            }
+        }
+
         private void BrowseGitFile_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog

@@ -7,7 +7,7 @@
         WindowStyle="None" ResizeMode="CanResize"
         AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True"
-        Width="640" MinWidth="520" Height="620" MinHeight="480"
+        Width="640" MinWidth="520" Height="740" MinHeight="560"
         WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
@@ -60,14 +60,14 @@
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
 
-                    <!-- 🎬 FFMPEG / FFPROBE CARD -->
+                    <!-- 🎬 FFMPEG SUITE CARD -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                         <StackPanel>
                             <Grid Margin="0,0,0,8">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="🎬 FFmpeg &amp; FFprobe Video Engine"
+                                    <TextBlock Text="🎬 FFmpeg Suite (ffmpeg / ffprobe / ffplay)"
                                                FontSize="12.5" FontWeight="Bold"
                                                Foreground="{DynamicResource TextPrimary}"/>
                                 </StackPanel>
@@ -78,10 +78,11 @@
                                         Command="{Binding AutoDetectFfmpegCommand}"/>
                             </Grid>
 
-                            <TextBlock Text="Đường dẫn file ffmpeg.exe hoặc thư mục chứa ffmpeg.exe:"
+                            <!-- ── ffmpeg.exe ── -->
+                            <TextBlock Text="ffmpeg.exe — Encode / decode / convert video:"
                                        FontSize="10.5" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
 
-                            <Grid Margin="0,0,0,8">
+                            <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="6"/>
@@ -106,13 +107,72 @@
                                         Click="BrowseFfmpegFolder_Click"/>
                             </Grid>
 
-                            <!-- Status Indicator -->
-                            <Border Background="{DynamicResource SurfaceColor}" CornerRadius="6" Padding="8,4">
+                            <Border Background="{DynamicResource SurfaceColor}" CornerRadius="6" Padding="8,4" Margin="0,0,0,10">
                                 <TextBlock Text="{Binding FfmpegStatusText}" FontSize="10.5"
                                            Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                             </Border>
+
+                            <!-- ── ffprobe.exe ── -->
+                            <TextBlock Text="ffprobe.exe — Phân tích thông tin video (FPS, codec, duration):"
+                                       FontSize="10.5" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
+
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0" Height="30"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         Text="{Binding FfprobePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         VerticalContentAlignment="Center"/>
+
+                                <Button Grid.Column="2" Content="📁 File ffprobe.exe"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Height="30" Padding="8,0" FontSize="11" Cursor="Hand"
+                                        Click="BrowseFfprobeFile_Click"/>
+                            </Grid>
+
+                            <Border Background="{DynamicResource SurfaceColor}" CornerRadius="6" Padding="8,4" Margin="0,0,0,10">
+                                <TextBlock Text="{Binding FfprobeStatusText}" FontSize="10.5"
+                                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                            </Border>
+
+                            <!-- ── ffplay.exe ── -->
+                            <TextBlock Text="ffplay.exe — Trình phát media (preview, playback):"
+                                       FontSize="10.5" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
+
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0" Height="30"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         Text="{Binding FfplayPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         VerticalContentAlignment="Center"/>
+
+                                <Button Grid.Column="2" Content="📁 File ffplay.exe"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Height="30" Padding="8,0" FontSize="11" Cursor="Hand"
+                                        Click="BrowseFfplayFile_Click"/>
+                            </Grid>
+
+                            <Border Background="{DynamicResource SurfaceColor}" CornerRadius="6" Padding="8,4">
+                                <TextBlock Text="{Binding FfplayStatusText}" FontSize="10.5"
+                                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                            </Border>
+
+                            <!-- Hint -->
+                            <TextBlock Text="💡 Nếu ffprobe / ffplay nằm cùng thư mục với ffmpeg, chỉ cần cấu hình ffmpeg — hệ thống sẽ tự tìm."
+                                       FontSize="10" Foreground="{DynamicResource TextMuted}" FontStyle="Italic"
+                                       TextWrapping="Wrap" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
+
 
                     <!-- 🔀 GIT EXECUTABLE CARD -->
                     <Border Background="{DynamicResource WindowBackground}"

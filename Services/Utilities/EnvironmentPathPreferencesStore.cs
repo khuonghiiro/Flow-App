@@ -8,6 +8,7 @@ namespace FlowMy.Services.Utilities
     {
         public string FfmpegPath { get; set; } = string.Empty;
         public string FfprobePath { get; set; } = string.Empty;
+        public string FfplayPath { get; set; } = string.Empty;
         public string GitPath { get; set; } = string.Empty;
         public string PythonPath { get; set; } = string.Empty;
         public string CustomBinariesPath { get; set; } = string.Empty;
@@ -154,6 +155,23 @@ namespace FlowMy.Services.Utilities
                         if (!string.IsNullOrWhiteSpace(folder))
                         {
                             var sibling = Path.Combine(folder, "ffprobe.exe");
+                            if (File.Exists(sibling)) return sibling;
+                        }
+                    }
+                }
+                else if (cleanName.Equals("ffplay", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(prefs.FfplayPath))
+                    {
+                        var norm = NormalizeUserInput(prefs.FfplayPath, "ffplay.exe");
+                        if (File.Exists(norm)) return norm;
+                    }
+                    if (!string.IsNullOrWhiteSpace(prefs.FfmpegPath))
+                    {
+                        var folder = Directory.Exists(prefs.FfmpegPath) ? prefs.FfmpegPath : Path.GetDirectoryName(prefs.FfmpegPath);
+                        if (!string.IsNullOrWhiteSpace(folder))
+                        {
+                            var sibling = Path.Combine(folder, "ffplay.exe");
                             if (File.Exists(sibling)) return sibling;
                         }
                     }
