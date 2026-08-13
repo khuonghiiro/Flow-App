@@ -189,10 +189,52 @@ namespace FlowMy.Views.NodeControls
                 (byte)Math.Clamp((int)((b1 + m) * 255), 0, 255));
         }
 
+        private readonly System.Windows.Media.MediaPlayer _audioTrackPreviewPlayer = new System.Windows.Media.MediaPlayer();
+
+        private void PreviewMixAudio_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not VideoAudioTrackConfig track) return;
+
+            var audioPath = track.SourceOutputKey;
+            if (string.IsNullOrWhiteSpace(audioPath) || !File.Exists(audioPath))
+            {
+                AppendLog("⚠ Không tìm thấy file audio để nghe thử. Vui lòng chọn file audio hợp lệ.");
+                return;
+            }
+
+            try
+            {
+                var startSec = Math.Max(0, track.StartAtSec);
+                if (PreviewMedia != null)
+                {
+                    if (PreviewMedia.NaturalDuration.HasTimeSpan && startSec <= PreviewMedia.NaturalDuration.TimeSpan.TotalSeconds)
+                        PreviewMedia.Position = TimeSpan.FromSeconds(startSec);
+                    PreviewMedia.Play();
+                }
+
+                _audioTrackPreviewPlayer.Close();
+                _audioTrackPreviewPlayer.Open(new Uri(audioPath, UriKind.Absolute));
+                _audioTrackPreviewPlayer.Volume = Math.Clamp(track.VolumePercent / 100.0, 0.0, 1.0);
+
+                var trimStartSec = Math.Max(0, track.TrimStartSec);
+                _audioTrackPreviewPlayer.Position = TimeSpan.FromSeconds(trimStartSec);
+                _audioTrackPreviewPlayer.Play();
+
+                AppendLog($"▶ Đang nghe thử track audio lồng tại vị trí {startSec:0.##}s (Trim start: {trimStartSec:0.##}s)...");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"⚠ Lỗi nghe thử audio: {ex.Message}");
+            }
+        }
+
         private void RemoveAudioTrack_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is VideoAudioTrackConfig track)
+            {
+                _audioTrackPreviewPlayer.Close();
                 _node.AudioTracks.Remove(track);
+            }
         }
 
         private void BrowseConcatVideoItem_Click(object sender, RoutedEventArgs e)
@@ -1181,32 +1223,62 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateAdaptivePreviewRows(double containerHeight)
         {
-            if (VideoContainerGrid.RowDefinitions.Count < 4 || VideoTopPackGrid.RowDefinitions.Count < 3) return;
+            if (VideoContainerGrid == null || VideoContainerGrid.RowDefinitions.Count < 4) return;
 
-            if (_portraitVideoLogLayout)
-            {
-                if (VideoTopPackGrid.RowDefinitions.Count > 1)
-                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
-                return;
-            }
-
-            var rowAspect = VideoTopPackGrid.RowDefinitions[0];
-            var rowVideo = VideoTopPackGrid.RowDefinitions[1];
-            var rowTimeline = VideoTopPackGrid.RowDefinitions[2];
+            var rowVideoPlayerCard = VideoContainerGrid.RowDefinitions[1];
             var rowLog = VideoContainerGrid.RowDefinitions[3];
 
-            var topH = rowAspect.ActualHeight > 0 ? rowAspect.ActualHeight : 44;
-            var timelineH = rowTimeline.ActualHeight > 0 ? rowTimeline.ActualHeight : 120;
-            var available = containerHeight - topH - timelineH - 12;
-            if (available <= 32) return;
+            // Determine actual video aspect ratio
+            double natW = 1280;
+            double natH = 720;
 
-            // Keep a stable 2/3 (video) + 1/3 (log) split so the log fills
-            // all remaining height and stays visually balanced.
-            var targetVideoH = Math.Max(16, available * (2.0 / 3.0));
-            var targetLogH = Math.Max(16, available - targetVideoH);
+            if (_aspectAuto)
+            {
+                if (PreviewMedia != null && PreviewMedia.NaturalVideoWidth > 0 && PreviewMedia.NaturalVideoHeight > 0)
+                {
+                    natW = PreviewMedia.NaturalVideoWidth;
+                    natH = PreviewMedia.NaturalVideoHeight;
+                }
+            }
+            else if (_selectedAspectW > 0 && _selectedAspectH > 0)
+            {
+                natW = _selectedAspectW;
+                natH = _selectedAspectH;
+            }
 
-            rowVideo.Height = new GridLength(targetVideoH, GridUnitType.Pixel);
-            rowLog.Height = new GridLength(targetLogH, GridUnitType.Pixel);
+            var isPortrait = natH > natW;
+            var aspect = natW / Math.Max(1.0, natH);
+
+            var outerW = PreviewContainerBorder != null && PreviewContainerBorder.ActualWidth > 0
+                ? PreviewContainerBorder.ActualWidth
+                : 480.0;
+            var cardWidth = Math.Max(100.0, outerW - 20.0);
+
+            double timelineH = 108.0;
+            double minLogH = 120.0;
+            double maxViewportH = Math.Max(120.0, containerHeight - timelineH - minLogH - 30.0);
+
+            double targetViewportH;
+            if (isPortrait)
+            {
+                // Vertical/portrait video: Fix height proportionally (max 320px or 42% container height) so log takes all remaining height
+                var maxPortraitViewportH = Math.Min(320.0, Math.Max(160.0, containerHeight * 0.42));
+                targetViewportH = Math.Clamp(cardWidth / aspect, 160.0, maxPortraitViewportH);
+            }
+            else
+            {
+                // Horizontal/landscape video: Fix width to container width, calculate exact height matching aspect ratio
+                var idealViewportH = cardWidth / aspect;
+                targetViewportH = Math.Clamp(idealViewportH, 140.0, maxViewportH);
+            }
+
+            if (VideoViewportClipBorder != null)
+            {
+                VideoViewportClipBorder.Height = targetViewportH;
+            }
+
+            rowVideoPlayerCard.Height = GridLength.Auto;
+            rowLog.Height = new GridLength(1, GridUnitType.Star);
         }
 
         private void RefreshOutputsSummaryUi()

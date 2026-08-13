@@ -482,15 +482,25 @@ namespace FlowMy.Views.NodeControls
                 _node.AudioFadeOutSec = val;
                 AudioFadeOutLabel.Text = $"{val:0.#}s";
             };
-            AudioNormalizeCheckBox.Click += (_, _) =>
+            AudioNormalizeCheckBox.Checked += (_, _) =>
             {
                 if (_suppressControlSync) return;
-                _node.AudioNormalizeEnabled = AudioNormalizeCheckBox.IsChecked == true;
+                _node.AudioNormalizeEnabled = true;
             };
-            AudioDenoiseCheckBox.Click += (_, _) =>
+            AudioNormalizeCheckBox.Unchecked += (_, _) =>
             {
                 if (_suppressControlSync) return;
-                _node.AudioDenoiseEnabled = AudioDenoiseCheckBox.IsChecked == true;
+                _node.AudioNormalizeEnabled = false;
+            };
+            AudioDenoiseCheckBox.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.AudioDenoiseEnabled = true;
+            };
+            AudioDenoiseCheckBox.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.AudioDenoiseEnabled = false;
             };
         }
 

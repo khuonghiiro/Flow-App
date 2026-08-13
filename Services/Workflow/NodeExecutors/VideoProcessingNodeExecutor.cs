@@ -746,7 +746,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 var inputIndex = i + 1;
                 var volume = Math.Max(0, preparedAudio[i].cfg.VolumePercent) / 100d;
-                filterChains.Add($"[{inputIndex}:a]volume={volume:0.###}[a{i}]");
+                var delayMs = (int)Math.Max(0, Math.Round(preparedAudio[i].cfg.StartAtSec * 1000));
+                var delayFilter = delayMs > 0 ? $"adelay={delayMs}|{delayMs}," : string.Empty;
+                filterChains.Add($"[{inputIndex}:a]{delayFilter}volume={volume:0.###}[a{i}]");
                 mixInputs.Add($"[a{i}]");
             }
             filterChains.Add($"{string.Join(string.Empty, mixInputs)}amix=inputs={preparedAudio.Count}:dropout_transition=0:normalize=0[aout]");
@@ -784,8 +786,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             string tempRoot,
             CancellationToken ct)
         {
-            var audioDuration = await ProbeDurationSecondsAsync(inputAudioPath, ct).ConfigureAwait(false);
-            if (audioDuration <= 0) return inputAudioPath;
+            var sourceAudio = inputAudioPath;
+            if (cfg.TrimStartSec > 0 || cfg.TrimEndSec > cfg.TrimStartSec)
+            {
+                var trimmedPath = Path.Combine(tempRoot, $"audio_trimmed_{Guid.NewGuid():N}.wav");
+                var trimArgs = new List<string> { "-y", "-hide_banner", "-loglevel", "error" };
+                if (cfg.TrimStartSec > 0)
+                    trimArgs.AddRange(new[] { "-ss", cfg.TrimStartSec.ToString("0.###", CultureInfo.InvariantCulture) });
+                if (cfg.TrimEndSec > cfg.TrimStartSec)
+                    trimArgs.AddRange(new[] { "-to", cfg.TrimEndSec.ToString("0.###", CultureInfo.InvariantCulture) });
+                trimArgs.AddRange(new[] { "-i", inputAudioPath, "-c:a", "pcm_s16le", trimmedPath });
+                await RunFfmpegAsync(trimArgs, ct).ConfigureAwait(false);
+                if (File.Exists(trimmedPath)) sourceAudio = trimmedPath;
+            }
+
+            var audioDuration = await ProbeDurationSecondsAsync(sourceAudio, ct).ConfigureAwait(false);
+            if (audioDuration <= 0) return sourceAudio;
 
             var isShorter = audioDuration < videoDurationSec - 0.0001;
             var mode = isShorter ? cfg.ShorterMode : cfg.LongerMode;
@@ -799,7 +815,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         "-y", "-hide_banner", "-loglevel", "error",
                         "-stream_loop", "-1",
-                        "-i", inputAudioPath,
+                        "-i", sourceAudio,
                         "-t", trim,
                         "-c:a", "pcm_s16le",
                         output

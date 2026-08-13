@@ -604,7 +604,6 @@ namespace FlowMy.Views.NodeControls
             OverlayCanvasControl.Height = Math.Max(1, rect.Height);
         }
 
-        /// <summary>WPF <see cref="MediaElement"/> không luôn clip theo CornerRadius — ép clip hình chữ nhật bo góc.</summary>
         private void SyncVideoViewportClip()
         {
             if (VideoViewportClipBorder == null || !VideoViewportClipBorder.IsLoaded)
@@ -612,11 +611,7 @@ namespace FlowMy.Views.NodeControls
 
             var w = Math.Max(1d, VideoViewportClipBorder.ActualWidth);
             var h = Math.Max(1d, VideoViewportClipBorder.ActualHeight);
-            var maxR = Math.Min(w, h) / 2 - 0.001;
-            var r = Math.Min(VideoNodeCornerRadius, Math.Max(0, maxR));
-            VideoViewportClipBorder.Clip = r <= 0.25
-                ? new RectangleGeometry(new Rect(0, 0, w, h))
-                : new RectangleGeometry(new Rect(0, 0, w, h), r, r);
+            VideoViewportClipBorder.Clip = new RectangleGeometry(new Rect(0, 0, w, h));
         }
 
         /// <summary>Clip toàn bộ UserControl (nền vuông từ ApplyLocalTheme) khớp bo góc node + XAML designer.</summary>

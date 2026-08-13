@@ -36,6 +36,9 @@ namespace FlowMy.Models.Nodes
         private string? _sourceNodeId;
         private string? _sourceOutputKey;
         private double _volumePercent = 100;
+        private double _startAtSec;
+        private double _trimStartSec;
+        private double _trimEndSec;
         private AudioSyncMode _shorterMode = AudioSyncMode.Loop;
         private AudioSyncMode _longerMode = AudioSyncMode.Trim;
 
@@ -60,6 +63,48 @@ namespace FlowMy.Models.Nodes
                 if (Math.Abs(_volumePercent - clamped) > 0.01)
                 {
                     _volumePercent = clamped;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public double StartAtSec
+        {
+            get => _startAtSec;
+            set
+            {
+                var clamped = value < 0 ? 0 : value;
+                if (Math.Abs(_startAtSec - clamped) > 0.001)
+                {
+                    _startAtSec = clamped;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public double TrimStartSec
+        {
+            get => _trimStartSec;
+            set
+            {
+                var clamped = value < 0 ? 0 : value;
+                if (Math.Abs(_trimStartSec - clamped) > 0.001)
+                {
+                    _trimStartSec = clamped;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public double TrimEndSec
+        {
+            get => _trimEndSec;
+            set
+            {
+                var clamped = value < 0 ? 0 : value;
+                if (Math.Abs(_trimEndSec - clamped) > 0.001)
+                {
+                    _trimEndSec = clamped;
                     OnPropertyChanged();
                 }
             }
