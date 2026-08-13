@@ -211,9 +211,9 @@ namespace FlowMy.Views.NodeControls
             var allTabs = new FrameworkElement[]
             {
                 GeneralTabContent, GradingTabContent, FiltersTabContent,
-                AudioTabContent, ExportTabContent, OutputsTabContent, SettingsTabContent
+                AudioTabContent, TrimConcatTabContent, OutputsTabContent, SettingsTabContent
             };
-            foreach (var t in allTabs) t.Visibility = Visibility.Collapsed;
+            foreach (var t in allTabs) if (t != null) t.Visibility = Visibility.Collapsed;
 
             var idx = TabNavList.SelectedIndex;
             FrameworkElement targetTab = (FrameworkElement)(idx switch
@@ -222,7 +222,7 @@ namespace FlowMy.Views.NodeControls
                 1 => GradingTabContent,
                 2 => FiltersTabContent,
                 3 => AudioTabContent,
-                4 => ExportTabContent,
+                4 => TrimConcatTabContent,
                 5 => OutputsTabContent,
                 6 => SettingsTabContent,
                 _ => GeneralTabContent

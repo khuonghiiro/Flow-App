@@ -202,6 +202,16 @@ namespace FlowMy.Views.NodeControls
                 UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
                 SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
+                SourceAudioVolumeSlider.Value = Math.Clamp(_node.SourceAudioVolumePercent, 0, 300);
+                SourceAudioVolumeLabel.Text = $"{_node.SourceAudioVolumePercent:0}%";
+                SourceAudioVolumeGrid.IsEnabled = _node.SourceAudioEnabled;
+                AudioFadeInSlider.Value = _node.AudioFadeInSec;
+                AudioFadeInLabel.Text = $"{_node.AudioFadeInSec:0.#}s";
+                AudioFadeOutSlider.Value = _node.AudioFadeOutSec;
+                AudioFadeOutLabel.Text = $"{_node.AudioFadeOutSec:0.#}s";
+                AudioNormalizeCheckBox.IsChecked = _node.AudioNormalizeEnabled;
+                AudioDenoiseCheckBox.IsChecked = _node.AudioDenoiseEnabled;
+                UpdatePreviewAudioVolume();
                 VolumeSlider.Value = _node.PreviewVolume;
                 _node.PreviewQualityMode = "high";
                 RebuildPreviewQualityOptions(PreviewMedia.NaturalVideoHeight);
@@ -263,9 +273,23 @@ namespace FlowMy.Views.NodeControls
                 CrfSlider.Value = _node.Crf;
                 CrfLabel.Text = $"{(int)_node.Crf}";
                 OutputPathText.Text = _node.OutputPathOverride ?? string.Empty;
-                DefaultOutputVideoPathText.Text = _node.DefaultOutputVideoPath ?? _node.OutputPathOverride ?? string.Empty;
+                DefaultOutputVideoPathText.Text = _node.DefaultOutputVideoPath ?? string.Empty;
                 FrameOutputFolderText.Text = _node.FrameOutputFolderPath ?? string.Empty;
+                AudioOutputFolderText.Text = _node.AudioOutputFolderPath ?? string.Empty;
+
+                var defaultVideoFolder = GetDefaultVideoOutputFolder();
+                var defaultFrameFolder = GetDefaultFrameOutputFolder();
+                var defaultAudioFolder = GetDefaultAudioOutputFolder();
+                var videoStem = GetVideoFileNameStem();
+
+                if (OutputPathHintText != null) OutputPathHintText.Text = $"📍 Mặc định (khi để trống): {defaultVideoFolder}\\{videoStem}.mp4";
+                if (DefaultVideoFolderHintText != null) DefaultVideoFolderHintText.Text = $"📍 Mặc định (khi để trống): {defaultVideoFolder}";
+                if (DefaultFrameFolderHintText != null) DefaultFrameFolderHintText.Text = $"📍 Mặc định (khi để trống): {defaultFrameFolder}";
+                if (DefaultAudioFolderHintText != null) DefaultAudioFolderHintText.Text = $"📍 Mặc định (khi để trống): {defaultAudioFolder}";
+
                 TrimToggle.IsChecked = _node.TrimEnabled;
+                ConcatToggle.IsChecked = _node.ConcatEnabled;
+                ConcatVideosList.ItemsSource = _node.ConcatVideos;
                 TrimReviewCheckBox.IsChecked = false;
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
                 ProgressBarHitArea.IsEnabled = true;

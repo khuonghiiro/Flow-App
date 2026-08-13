@@ -195,6 +195,30 @@ namespace FlowMy.Views.NodeControls
                 _node.AudioTracks.Remove(track);
         }
 
+        private void BrowseConcatVideoItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is VideoConcatItemConfig item)
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Title = "Chọn video ghép",
+                    Filter = "Media Files|*.mp4;*.avi;*.mov;*.mkv;*.webm;*.flv;*.ts;*.m4v|All Files|*.*"
+                };
+                if (dialog.ShowDialog() == true)
+                {
+                    item.SourcePath = dialog.FileName;
+                }
+            }
+        }
+
+        private void RemoveConcatVideoItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is VideoConcatItemConfig item)
+            {
+                _node.ConcatVideos.Remove(item);
+            }
+        }
+
         private void AddOverlayItem(string type)
         {
             if (type == "image")
@@ -1316,6 +1340,60 @@ namespace FlowMy.Views.NodeControls
             return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
         }
 
+        private string GetDefaultAudioOutputFolder()
+        {
+            var downloadsRoot = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "flow-audio");
+            return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
+        }
+
+        private void OpenDefaultVideoFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var folder = GetDefaultVideoOutputFolder();
+            try
+            {
+                Directory.CreateDirectory(folder);
+                System.Diagnostics.Process.Start("explorer.exe", folder);
+                AppendLog($"📁 Đã tạo & mở thư mục xuất video mặc định: {folder}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Lỗi tạo thư mục: {ex.Message}");
+            }
+        }
+
+        private void OpenDefaultFrameFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var folder = GetDefaultFrameOutputFolder();
+            try
+            {
+                Directory.CreateDirectory(folder);
+                System.Diagnostics.Process.Start("explorer.exe", folder);
+                AppendLog($"📁 Đã tạo & mở thư mục xuất frame mặc định: {folder}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Lỗi tạo thư mục: {ex.Message}");
+            }
+        }
+
+        private void OpenDefaultAudioFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var folder = GetDefaultAudioOutputFolder();
+            try
+            {
+                Directory.CreateDirectory(folder);
+                System.Diagnostics.Process.Start("explorer.exe", folder);
+                AppendLog($"📁 Đã tạo & mở thư mục xuất audio mặc định: {folder}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Lỗi tạo thư mục: {ex.Message}");
+            }
+        }
+
         public string GetCurrentVideoOutputFolder()
         {
             var overridePath = (_node.OutputPathOverride ?? string.Empty).Trim();
@@ -1594,16 +1672,50 @@ namespace FlowMy.Views.NodeControls
             AppendLog("🔄 Đã đặt lại cài đặt tab chèn ảnh/nhãn/overlay.");
         }
 
+        public void UpdatePreviewAudioVolume()
+        {
+            try
+            {
+                if (PreviewMedia != null)
+                {
+                    var isMuted = !_node.SourceAudioEnabled || _node.SourceAudioVolumePercent <= 0;
+                    PreviewMedia.IsMuted = isMuted;
+                    if (!isMuted)
+                    {
+                        PreviewMedia.Volume = Math.Clamp(_node.SourceAudioVolumePercent / 100.0, 0.0, 1.0);
+                    }
+                }
+            }
+            catch { /* best effort */ }
+        }
+
         public void ResetAudioTabToDefaults()
         {
             _node.SourceAudioEnabled = true;
+            _node.SourceAudioVolumePercent = 100.0;
+            _node.AudioFadeInSec = 0.0;
+            _node.AudioFadeOutSec = 0.0;
+            _node.AudioNormalizeEnabled = false;
+            _node.AudioDenoiseEnabled = false;
             _node.AudioTracks.Clear();
 
             SyncControlValuesFromModel();
             AppendLog("🔄 Đã đặt lại cài đặt âm thanh về mặc định.");
         }
 
-        public void ResetExportTabToDefaults()
+        public void ResetTrimConcatTabToDefaults()
+        {
+            _node.TrimEnabled = false;
+            _node.TrimStartSec = 0;
+            _node.TrimEndSec = 0;
+            _node.ConcatEnabled = false;
+            _node.ConcatVideos.Clear();
+
+            SyncControlValuesFromModel();
+            AppendLog("🔄 Đã đặt lại cài đặt Cắt ghép video về mặc định.");
+        }
+
+        public void ResetSettingsTabToDefaults()
         {
             _node.OutputFormat = "mp4_h264";
             _node.EncoderPreset = "medium";
@@ -1616,14 +1728,10 @@ namespace FlowMy.Views.NodeControls
             _frameResizeScale = 1.0;
             _node.FrameResizeScale = 1.0;
             _node.ResolutionScale = 1.0;
-
-            _node.TrimEnabled = false;
-            _node.TrimStartSec = 0;
-            _node.TrimEndSec = 0;
             _node.OutputPathOverride = string.Empty;
 
             SyncControlValuesFromModel();
-            AppendLog("🔄 Đã đặt lại cấu hình xuất file về mặc định.");
+            AppendLog("🔄 Đã đặt lại cài đặt hệ thống & cấu hình xuất file về mặc định.");
         }
 
         public void SaveSettingsTabConfig()
@@ -1634,6 +1742,93 @@ namespace FlowMy.Views.NodeControls
             _node.RaisePropertyChanged(nameof(VideoProcessingNode.AudioOutputFolderPath));
             _node.RaisePropertyChanged(nameof(VideoProcessingNode.UseDialogVideoConfig));
             AppendLog("💾 Đã lưu cấu hình cài đặt node thành công!");
+        }
+
+        public async Task LoadTrimConcatToPreviewAsync()
+        {
+            var currentVideo = _node.VideoPath;
+            if (string.IsNullOrWhiteSpace(currentVideo) && !_node.ConcatEnabled)
+            {
+                AppendLog("⚠️ Chưa có video đầu vào hoặc danh sách video ghép.");
+                return;
+            }
+
+            SwitchToLogView();
+            AppendLog("🎬 [XEM TRƯỚC CẮT/GHÉP] Đang xử lý tạo file video cắt/ghép để phát thử...");
+
+            var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
+            Directory.CreateDirectory(tempRoot);
+
+            var videoInput = currentVideo ?? string.Empty;
+
+            try
+            {
+                if (_node.ConcatEnabled && _node.ConcatVideos.Count > 0)
+                {
+                    var concatList = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(videoInput) && File.Exists(videoInput)) concatList.Add(videoInput);
+                    foreach (var item in _node.ConcatVideos)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.SourcePath) && File.Exists(item.SourcePath))
+                            concatList.Add(item.SourcePath);
+                    }
+
+                    if (concatList.Count > 0)
+                    {
+                        var concatTxtPath = Path.Combine(tempRoot, $"concat_preview_{Guid.NewGuid():N}.txt");
+                        var lines = concatList.Select(p => $"file '{p.Replace("'", "'\\''")}'");
+                        await File.WriteAllLinesAsync(concatTxtPath, lines).ConfigureAwait(false);
+
+                        var concatOutPath = Path.Combine(tempRoot, $"concat_result_{Guid.NewGuid():N}.mp4");
+                        await VideoProcessingNodeExecutor.RunFfmpegAsync(new[]
+                        {
+                            "-y", "-hide_banner", "-loglevel", "error",
+                            "-f", "concat", "-safe", "0",
+                            "-i", concatTxtPath,
+                            "-c", "copy",
+                            concatOutPath
+                        }, CancellationToken.None).ConfigureAwait(false);
+
+                        if (File.Exists(concatOutPath))
+                            videoInput = concatOutPath;
+                    }
+                }
+
+                if (_node.TrimEnabled && _node.TrimEndSec > _node.TrimStartSec && !string.IsNullOrWhiteSpace(videoInput) && File.Exists(videoInput))
+                {
+                    var trimOutPath = Path.Combine(tempRoot, $"trim_preview_{Guid.NewGuid():N}.mp4");
+                    await VideoProcessingNodeExecutor.RunFfmpegAsync(new[]
+                    {
+                        "-y", "-hide_banner", "-loglevel", "error",
+                        "-ss", _node.TrimStartSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+                        "-to", _node.TrimEndSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+                        "-i", videoInput,
+                        "-c", "copy",
+                        trimOutPath
+                    }, CancellationToken.None).ConfigureAwait(false);
+
+                    if (File.Exists(trimOutPath))
+                        videoInput = trimOutPath;
+                }
+
+                if (File.Exists(videoInput))
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        _node.VideoPath = videoInput;
+                        RefreshVideoPreview();
+                        AppendLog($"✅ [XEM TRƯỚC CẮT/GHÉP] Đã tải video cắt/ghép lên Preview! ({videoInput})");
+                    });
+                }
+                else
+                {
+                    AppendLog("❌ Không thể tạo video cắt/ghép xem trước.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"❌ Lỗi tạo video cắt/ghép xem trước: {ex.Message}");
+            }
         }
 
         private static Brush GetTextBrush(string? colorKey)

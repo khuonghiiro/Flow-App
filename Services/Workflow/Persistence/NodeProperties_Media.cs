@@ -404,10 +404,37 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.TrimStartSec = tss;
             if (properties.TryGetValue("TrimEndSec", out var tesObj) && tesObj != null && double.TryParse(tesObj.ToString(), out var tes))
                 videoNode.TrimEndSec = tes;
+            if (properties.TryGetValue("ConcatEnabled", out var ceObj) && ceObj != null && bool.TryParse(ceObj.ToString(), out var ce))
+                videoNode.ConcatEnabled = ce;
+            if (properties.TryGetValue("ConcatVideos", out var cvObj) && cvObj != null)
+            {
+                videoNode.ConcatVideos.Clear();
+                if (cvObj is JsonElement cvElem && cvElem.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in cvElem.EnumerateArray())
+                    {
+                        var path = item.ValueKind == JsonValueKind.Object && item.TryGetProperty("SourcePath", out var pProp) ? pProp.GetString() : item.GetString();
+                        if (!string.IsNullOrWhiteSpace(path))
+                        {
+                            videoNode.ConcatVideos.Add(new VideoConcatItemConfig { SourcePath = path });
+                        }
+                    }
+                }
+            }
             if (properties.TryGetValue("OutputPathOverride", out var opoObj))
                 videoNode.OutputPathOverride = opoObj?.ToString();
             if (properties.TryGetValue("SourceAudioEnabled", out var saeObj) && saeObj != null && bool.TryParse(saeObj.ToString(), out var sae))
                 videoNode.SourceAudioEnabled = sae;
+            if (properties.TryGetValue("SourceAudioVolumePercent", out var savpObj) && savpObj != null && double.TryParse(savpObj.ToString(), out var savp))
+                videoNode.SourceAudioVolumePercent = savp;
+            if (properties.TryGetValue("AudioFadeInSec", out var afiObj) && afiObj != null && double.TryParse(afiObj.ToString(), out var afi))
+                videoNode.AudioFadeInSec = afi;
+            if (properties.TryGetValue("AudioFadeOutSec", out var afoObj) && afoObj != null && double.TryParse(afoObj.ToString(), out var afo))
+                videoNode.AudioFadeOutSec = afo;
+            if (properties.TryGetValue("AudioNormalizeEnabled", out var aneObj) && aneObj != null && bool.TryParse(aneObj.ToString(), out var ane))
+                videoNode.AudioNormalizeEnabled = ane;
+            if (properties.TryGetValue("AudioDenoiseEnabled", out var adeObj) && adeObj != null && bool.TryParse(adeObj.ToString(), out var ade))
+                videoNode.AudioDenoiseEnabled = ade;
             if (properties.TryGetValue("PreviewVolume", out var pvObj) && pvObj != null && double.TryParse(pvObj.ToString(), out var pv))
                 videoNode.PreviewVolume = pv;
             if (properties.TryGetValue("PreviewQualityMode", out var pqmObj))
@@ -743,6 +770,29 @@ public sealed partial class FileWorkflowPersistenceService
             dict["RotationDegrees"] = videoNode.RotationDegrees;
             dict["FlipH"] = videoNode.FlipH;
             dict["FlipV"] = videoNode.FlipV;
+            dict["SecondsPerFrame"] = videoNode.SecondsPerFrame;
+            dict["ExtractFrameCount"] = videoNode.ExtractFrameCount;
+            dict["PreferGpu"] = videoNode.PreferGpu;
+            if (!string.IsNullOrWhiteSpace(videoNode.PreferredHwAccel))
+                dict["PreferredHwAccel"] = videoNode.PreferredHwAccel;
+            dict["SourceFps"] = videoNode.SourceFps;
+            dict["ExtractFps"] = videoNode.ExtractFps;
+            dict["Brightness"] = videoNode.Brightness;
+            dict["Contrast"] = videoNode.Contrast;
+            dict["Saturation"] = videoNode.Saturation;
+            dict["Hue"] = videoNode.Hue;
+            dict["Gamma"] = videoNode.Gamma;
+            dict["SharpenEnabled"] = videoNode.SharpenEnabled;
+            dict["SharpenStrength"] = videoNode.SharpenStrength;
+            dict["DenoiseEnabled"] = videoNode.DenoiseEnabled;
+            dict["DenoiseStrength"] = videoNode.DenoiseStrength;
+            dict["BlurEnabled"] = videoNode.BlurEnabled;
+            dict["BlurRadius"] = videoNode.BlurRadius;
+            dict["StabilizeEnabled"] = videoNode.StabilizeEnabled;
+            dict["SpeedFactor"] = videoNode.SpeedFactor;
+            dict["RotationDegrees"] = videoNode.RotationDegrees;
+            dict["FlipH"] = videoNode.FlipH;
+            dict["FlipV"] = videoNode.FlipV;
             dict["OutputFormat"] = videoNode.OutputFormat;
             dict["EncoderPreset"] = videoNode.EncoderPreset;
             dict["Crf"] = videoNode.Crf;
@@ -751,9 +801,16 @@ public sealed partial class FileWorkflowPersistenceService
             dict["TrimEnabled"] = videoNode.TrimEnabled;
             dict["TrimStartSec"] = videoNode.TrimStartSec;
             dict["TrimEndSec"] = videoNode.TrimEndSec;
+            dict["ConcatEnabled"] = videoNode.ConcatEnabled;
+            dict["ConcatVideos"] = videoNode.ConcatVideos.Select(c => new { c.SourcePath }).ToList();
             if (!string.IsNullOrWhiteSpace(videoNode.OutputPathOverride))
                 dict["OutputPathOverride"] = videoNode.OutputPathOverride;
             dict["SourceAudioEnabled"] = videoNode.SourceAudioEnabled;
+            dict["SourceAudioVolumePercent"] = videoNode.SourceAudioVolumePercent;
+            dict["AudioFadeInSec"] = videoNode.AudioFadeInSec;
+            dict["AudioFadeOutSec"] = videoNode.AudioFadeOutSec;
+            dict["AudioNormalizeEnabled"] = videoNode.AudioNormalizeEnabled;
+            dict["AudioDenoiseEnabled"] = videoNode.AudioDenoiseEnabled;
             dict["PreviewVolume"] = videoNode.PreviewVolume;
             dict["PreviewQualityMode"] = videoNode.PreviewQualityMode;
             dict["PreviewVisualStrengthMode"] = videoNode.PreviewVisualStrengthMode;

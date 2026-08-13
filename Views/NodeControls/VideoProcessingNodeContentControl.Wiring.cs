@@ -118,6 +118,19 @@ namespace FlowMy.Views.NodeControls
                 AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
                 RunProcessingFlow(singleNodeOnly: true);
             };
+            SaveTrimConcatTabButton.Click += (_, _) =>
+            {
+                SwitchToLogView();
+                _node.ExportVideoEnabled = true;
+                _node.ExtractFramesEnabled = false;
+                _node.ExtractAudioEnabled = false;
+                AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
+                RunProcessingFlow(singleNodeOnly: true);
+            };
+            LoadTrimConcatPreviewButton.Click += async (_, _) =>
+            {
+                await LoadTrimConcatToPreviewAsync();
+            };
             ExtractFramesBase64Button.Click += (_, _) =>
             {
                 _node.OutputBase64 = true;
@@ -138,7 +151,7 @@ namespace FlowMy.Views.NodeControls
                 AppendLog("📷 [TÁCH FRAME] Đang trích xuất frame (Đường dẫn file)...");
                 RunProcessingFlow(singleNodeOnly: true);
             };
-            ExtractAudioSettingsButton.Click += (_, _) =>
+            ExtractAudioTabButton.Click += (_, _) =>
             {
                 SwitchToLogView();
                 _node.ExtractAudioEnabled = true;
@@ -146,6 +159,15 @@ namespace FlowMy.Views.NodeControls
                 _node.ExtractFramesEnabled = false;
                 AppendLog("🎵 [TRÍCH XUẤT AUDIO] Đang trích xuất file audio từ video...");
                 RunProcessingFlow(singleNodeOnly: true);
+            };
+            RunFlowAudioTabButton.Click += (_, _) =>
+            {
+                SwitchToLogView();
+                _node.ExtractAudioEnabled = true;
+                _node.ExportVideoEnabled = false;
+                _node.ExtractFramesEnabled = false;
+                AppendLog("🚀 [CHẠY WORKFLOW - AUDIO] Đang trích xuất audio và kích hoạt chạy workflow...");
+                RunProcessingFlow(singleNodeOnly: false);
             };
             SnapshotButton.Click += (_, _) =>
             {
@@ -155,8 +177,12 @@ namespace FlowMy.Views.NodeControls
             ResetGradingButton2.Click += (_, _) => ResetGradingTabToDefaults();
             ResetFiltersTabButton.Click += (_, _) => ResetFiltersTabToDefaults();
             ResetAudioTabButton.Click += (_, _) => ResetAudioTabToDefaults();
-            ResetExportTabButton.Click += (_, _) => ResetExportTabToDefaults();
+            ResetTrimConcatTabButton.Click += (_, _) => ResetTrimConcatTabToDefaults();
+            ResetSettingsTabButton.Click += (_, _) => ResetSettingsTabToDefaults();
             SaveSettingsTabButton.Click += (_, _) => SaveSettingsTabConfig();
+            ConcatToggle.Checked += (_, _) => _node.ConcatEnabled = true;
+            ConcatToggle.Unchecked += (_, _) => _node.ConcatEnabled = false;
+            AddConcatVideoButton.Click += (_, _) => _node.ConcatVideos.Add(new VideoConcatItemConfig());
             ToggleQuickGradeButton.Click += (_, _) =>
             {
                 QuickGradingPanel.Visibility = QuickGradingPanel.Visibility == Visibility.Visible
@@ -420,8 +446,52 @@ namespace FlowMy.Views.NodeControls
                 _node.PreviewVisualStrengthMode = GetSelectedPreviewVisualStrengthTag();
                 ApplyPreviewColorTransform();
             };
-            SourceAudioToggle.Checked += (_, _) => _node.SourceAudioEnabled = true;
-            SourceAudioToggle.Unchecked += (_, _) => _node.SourceAudioEnabled = false;
+            SourceAudioToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.SourceAudioEnabled = true;
+                SourceAudioVolumeGrid.IsEnabled = true;
+                UpdatePreviewAudioVolume();
+            };
+            SourceAudioToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.SourceAudioEnabled = false;
+                SourceAudioVolumeGrid.IsEnabled = false;
+                UpdatePreviewAudioVolume();
+            };
+            SourceAudioVolumeSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                var vol = Math.Round(e.NewValue);
+                _node.SourceAudioVolumePercent = vol;
+                SourceAudioVolumeLabel.Text = $"{vol:0}%";
+                UpdatePreviewAudioVolume();
+            };
+            AudioFadeInSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                var val = Math.Round(e.NewValue * 2) / 2.0;
+                _node.AudioFadeInSec = val;
+                AudioFadeInLabel.Text = $"{val:0.#}s";
+            };
+            AudioFadeOutSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                var val = Math.Round(e.NewValue * 2) / 2.0;
+                _node.AudioFadeOutSec = val;
+                AudioFadeOutLabel.Text = $"{val:0.#}s";
+            };
+            AudioNormalizeCheckBox.Click += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.AudioNormalizeEnabled = AudioNormalizeCheckBox.IsChecked == true;
+            };
+            AudioDenoiseCheckBox.Click += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.AudioDenoiseEnabled = AudioDenoiseCheckBox.IsChecked == true;
+            };
         }
 
         private void WireGradingAndTransformEvents()

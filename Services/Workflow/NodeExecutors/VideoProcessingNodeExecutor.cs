@@ -112,6 +112,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
                 Directory.CreateDirectory(tempRoot);
 
+                if (videoNode.ConcatEnabled && videoNode.ConcatVideos.Count > 0)
+                {
+                    var concatList = new List<string> { videoInput };
+                    foreach (var item in videoNode.ConcatVideos)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.SourcePath) && File.Exists(item.SourcePath))
+                        {
+                            concatList.Add(item.SourcePath);
+                        }
+                    }
+
+                    if (concatList.Count > 1)
+                    {
+                        var concatenatedVideoPath = Path.Combine(tempRoot, $"video_concat_{Guid.NewGuid():N}.mp4");
+                        var concatTxtPath = Path.Combine(tempRoot, $"concat_list_{Guid.NewGuid():N}.txt");
+                        var lines = concatList.Select(p => $"file '{p.Replace("'", "'\\''")}'");
+                        await File.WriteAllLinesAsync(concatTxtPath, lines, env.CancellationToken).ConfigureAwait(false);
+
+                        var concatArgs = new[]
+                        {
+                            "-y", "-hide_banner", "-loglevel", "error",
+                            "-f", "concat", "-safe", "0",
+                            "-i", concatTxtPath,
+                            "-c", "copy",
+                            concatenatedVideoPath
+                        };
+                        await RunFfmpegAsync(concatArgs, env.CancellationToken).ConfigureAwait(false);
+
+                        if (File.Exists(concatenatedVideoPath))
+                        {
+                            videoInput = concatenatedVideoPath;
+                            LogLine?.Invoke(videoNode, $"✅ [GHÉP VIDEO] Đã ghép thành công {concatList.Count} file video thành 1.");
+                        }
+                    }
+                }
+
                 var sourceFps = await ProbeSourceFpsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 if (sourceFps > 0) videoNode.SourceFps = sourceFps;
                 var sourceHeight = await ProbeSourceHeightAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
@@ -401,6 +437,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 SetOutput(videoNode, "audio_output", extractedAudioPath);
+                SetOutput(videoNode, "linkAudio", extractedAudioPath);
                 SetOutput(videoNode, "output_manifest", BuildOutputManifest(videoNode, producedFrames, extractedAudioPath));
                 ProgressChanged?.Invoke(videoNode, 100, "Completed");
             }
@@ -550,6 +587,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     args.AddRange(new[] { "-c:a", codec, "-b:a", node.AudioBitrate });
                 }
 
+                var afFilter = BuildSourceAudioFilterGraph(node, duration);
+                if (!string.IsNullOrWhiteSpace(afFilter))
+                {
+                    args.AddRange(new[] { "-af", afFilter });
+                }
+
                 args.Add(outputPath);
                 await RunFfmpegWithProgressAsync(
                     args,
@@ -565,6 +608,38 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 LogLine?.Invoke(node, $"Audio extract failed: {ex.Message}");
                 return string.Empty;
             }
+        }
+
+        private static string BuildSourceAudioFilterGraph(VideoProcessingNode node, double duration)
+        {
+            var filters = new List<string>();
+
+            if (Math.Abs(node.SourceAudioVolumePercent - 100.0) > 0.1)
+            {
+                var vol = (node.SourceAudioVolumePercent / 100.0).ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"volume={vol}");
+            }
+            if (node.AudioFadeInSec > 0.05)
+            {
+                var d = node.AudioFadeInSec.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"afade=t=in:ss=0:d={d}");
+            }
+            if (node.AudioFadeOutSec > 0.05 && duration > node.AudioFadeOutSec)
+            {
+                var st = (duration - node.AudioFadeOutSec).ToString("0.###", CultureInfo.InvariantCulture);
+                var d = node.AudioFadeOutSec.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"afade=t=out:st={st}:d={d}");
+            }
+            if (node.AudioDenoiseEnabled)
+            {
+                filters.Add("highpass=f=200,lowpass=f=3000");
+            }
+            if (node.AudioNormalizeEnabled)
+            {
+                filters.Add("loudnorm=I=-16:TP=-1.5:LRA=11");
+            }
+
+            return filters.Count > 0 ? string.Join(",", filters) : string.Empty;
         }
 
         private static string ResolveAudioOutputExtension(string? codec)
@@ -593,10 +668,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 Directory.CreateDirectory(outputDir);
 
             var audioInputs = new List<(string path, VideoAudioTrackConfig cfg)>();
-            if (node.SourceAudioEnabled && await ProbeHasAudioStreamAsync(sourceVideoInput, env.CancellationToken).ConfigureAwait(false))
+            if (node.SourceAudioEnabled && node.SourceAudioVolumePercent > 0 && await ProbeHasAudioStreamAsync(sourceVideoInput, env.CancellationToken).ConfigureAwait(false))
             {
                 var sourceAudioPath = Path.Combine(tempRoot, $"audio_source_{Guid.NewGuid():N}.wav");
-                await ExtractAudioTrackAsync(sourceVideoInput, sourceAudioPath, env.CancellationToken).ConfigureAwait(false);
+                var duration = await ProbeDurationSecondsAsync(sourceVideoInput, env.CancellationToken).ConfigureAwait(false);
+                var afFilter = BuildSourceAudioFilterGraph(node, duration);
+
+                var extractArgs = new List<string>
+                {
+                    "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", sourceVideoInput,
+                    "-map", "0:a:0",
+                    "-vn"
+                };
+                if (!string.IsNullOrWhiteSpace(afFilter))
+                    extractArgs.AddRange(new[] { "-af", afFilter });
+
+                extractArgs.AddRange(new[] { "-c:a", "pcm_s16le", sourceAudioPath });
+                await RunFfmpegAsync(extractArgs, env.CancellationToken).ConfigureAwait(false);
+
                 if (File.Exists(sourceAudioPath))
                 {
                     audioInputs.Add((sourceAudioPath, new VideoAudioTrackConfig
@@ -607,7 +697,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }));
                 }
             }
-            else if (node.SourceAudioEnabled)
+            else if (node.SourceAudioEnabled && node.SourceAudioVolumePercent > 0)
             {
                 LogLine?.Invoke(node, "Audio source stream not found; exporting video without source audio.");
             }
@@ -1970,7 +2060,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return new[] { "-hwaccel", hwaccel }.Concat(args);
         }
 
-        private static async Task RunFfmpegAsync(IEnumerable<string> args, CancellationToken ct)
+        public static async Task RunFfmpegAsync(IEnumerable<string> args, CancellationToken ct)
         {
             var (exit, stderr) = await RunProcessExitCodeWithStderrAsync(ResolveBinary("ffmpeg"), args, ct).ConfigureAwait(false);
             if (exit != 0)

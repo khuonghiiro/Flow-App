@@ -17,6 +17,20 @@ namespace FlowMy.Models.Nodes
         Compress = 4
     }
 
+    public sealed class VideoConcatItemConfig : INotifyPropertyChanged
+    {
+        private string _sourcePath = string.Empty;
+        public string SourcePath
+        {
+            get => _sourcePath;
+            set { if (_sourcePath != value) { _sourcePath = value; OnPropertyChanged(); } }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? propName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+    }
+
     public sealed class VideoAudioTrackConfig : INotifyPropertyChanged
     {
         private string? _sourceNodeId;
@@ -122,10 +136,16 @@ namespace FlowMy.Models.Nodes
         private double _frameResizeScale = 1.0;
         private int? _fixedResolutionHeight;
         private bool _trimEnabled;
+        private bool _concatEnabled;
         private double _trimStartSec;
         private double _trimEndSec;
         private string? _outputPathOverride;
         private bool _sourceAudioEnabled = true;
+        private double _sourceAudioVolumePercent = 100.0;
+        private double _audioFadeInSec;
+        private double _audioFadeOutSec;
+        private bool _audioNormalizeEnabled;
+        private bool _audioDenoiseEnabled;
         private double _previewVolume = 0.7;
         private string _previewQualityMode = "normal";
         private string _previewVisualStrengthMode = "balanced";
@@ -176,6 +196,7 @@ namespace FlowMy.Models.Nodes
             IconSize = 32;
             Title = "Video Processing";
             AudioTracks = new ObservableCollection<VideoAudioTrackConfig>();
+            ConcatVideos = new ObservableCollection<VideoConcatItemConfig>();
             Overlays = new ObservableCollection<OverlayItem>();
             EnsureStandardDynamicOutputs();
         }
@@ -642,6 +663,36 @@ namespace FlowMy.Models.Nodes
             set { if (_sourceAudioEnabled != value) { _sourceAudioEnabled = value; OnPropertyChanged(); } }
         }
 
+        public double SourceAudioVolumePercent
+        {
+            get => _sourceAudioVolumePercent;
+            set { if (Math.Abs(_sourceAudioVolumePercent - value) > 0.01) { _sourceAudioVolumePercent = Math.Clamp(value, 0, 300); OnPropertyChanged(); } }
+        }
+
+        public double AudioFadeInSec
+        {
+            get => _audioFadeInSec;
+            set { if (Math.Abs(_audioFadeInSec - value) > 0.01) { _audioFadeInSec = Math.Clamp(value, 0, 10); OnPropertyChanged(); } }
+        }
+
+        public double AudioFadeOutSec
+        {
+            get => _audioFadeOutSec;
+            set { if (Math.Abs(_audioFadeOutSec - value) > 0.01) { _audioFadeOutSec = Math.Clamp(value, 0, 10); OnPropertyChanged(); } }
+        }
+
+        public bool AudioNormalizeEnabled
+        {
+            get => _audioNormalizeEnabled;
+            set { if (_audioNormalizeEnabled != value) { _audioNormalizeEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool AudioDenoiseEnabled
+        {
+            get => _audioDenoiseEnabled;
+            set { if (_audioDenoiseEnabled != value) { _audioDenoiseEnabled = value; OnPropertyChanged(); } }
+        }
+
         public double PreviewVolume
         {
             get => _previewVolume;
@@ -1093,7 +1144,14 @@ namespace FlowMy.Models.Nodes
             set { if (_burnSubtitleEnabled != value) { _burnSubtitleEnabled = value; OnPropertyChanged(); } }
         }
 
+        public bool ConcatEnabled
+        {
+            get => _concatEnabled;
+            set { if (_concatEnabled != value) { _concatEnabled = value; OnPropertyChanged(); } }
+        }
+
         public ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }
+        public ObservableCollection<VideoConcatItemConfig> ConcatVideos { get; }
         public ObservableCollection<OverlayItem> Overlays { get; }
 
         public void EnsureStandardDynamicOutputs()
@@ -1105,6 +1163,7 @@ namespace FlowMy.Models.Nodes
             AddOrUpdateOutput("video_output", "Video Output", WorkflowDataType.String, false);
             AddOrUpdateOutput("video_path", "Video File Path", WorkflowDataType.String, false);
             AddOrUpdateOutput("audio_output", "Extracted Audio Path", WorkflowDataType.String, false);
+            AddOrUpdateOutput("linkAudio", "Extracted Audio Path (linkAudio)", WorkflowDataType.String, false);
             AddOrUpdateOutput("output_manifest", "Output Manifest JSON", WorkflowDataType.String, false);
         }
 
