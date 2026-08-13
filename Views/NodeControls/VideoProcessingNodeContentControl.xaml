@@ -85,7 +85,8 @@
         <SolidColorBrush x:Key="ThemeOpenVideoHoverBrush" Color="#EF4444"/>
         <SolidColorBrush x:Key="ThemeOpenVideoPressedBrush" Color="#B91C1C"/>
         <SolidColorBrush x:Key="ThemeTimelineTrackBrush" Color="#32344A"/>
-        <SolidColorBrush x:Key="ThemeTimelineProgressBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="ThemeTimelineProgressBrush" Color="#EF4444"/>
+        <SolidColorBrush x:Key="ThemeSliderActiveBrush" Color="#EF4444"/>
         <SolidColorBrush x:Key="ThemeTimelineThumbStrokeBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeFrameLabelPreviewBg" Color="#F8FAFC"/>
         <SolidColorBrush x:Key="ThemeFrameLabelPreviewFg" Color="#0F172A"/>
@@ -468,7 +469,13 @@
                                                   ClickMode="Press"
                                                   IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                                   Background="Transparent"
-                                                  BorderThickness="0"/>
+                                                  BorderThickness="0">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
                                 </Grid>
                             </Border>
                             <Popup x:Name="Popup"
@@ -526,27 +533,79 @@
             </Setter>
         </Style>
 
-        <!-- Modern Red Slider Style with Round Circle Thumb -->
-        <Style x:Key="ModernSliderThumbStyle" TargetType="Thumb">
+        <!-- Modern Red Slider Style with Round Circle Thumb (Material Design 2 Style) -->
+        <Style x:Key="SliderDecreaseTrackStyle" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="IsTabStop" Value="False"/>
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Height="4"
+                                Margin="7,0,-14,0"
+                                CornerRadius="2"
+                                Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
+                                VerticalAlignment="Center"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SliderIncreaseTrackStyle" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Height="4" Background="Transparent" VerticalAlignment="Center"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernSliderThumbStyle" TargetType="Thumb">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
-                        <Grid x:Name="ThumbRoot" Width="14" Height="14" RenderTransformOrigin="0.5,0.5">
-                            <!-- Chấm tròn màu đỏ giống slider -->
+                        <Grid x:Name="ThumbRoot" Width="28" Height="28" Background="Transparent" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <!-- Material Hover / Active Ripple Halo Ring -->
+                            <Ellipse x:Name="HaloRing"
+                                     Width="0" Height="0"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
+                                     Opacity="0"/>
+
+                            <!-- Circular Main Thumb -->
                             <Ellipse x:Name="ThumbCircle"
+                                     Width="14" Height="14"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
                                      Stroke="{DynamicResource ThemeSliderThumbStrokeBrush}"
-                                     StrokeThickness="2"/>
+                                     StrokeThickness="2">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.4"/>
+                                </Ellipse.Effect>
+                            </Ellipse>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ThumbRoot" Property="Width" Value="16"/>
-                                <Setter TargetName="ThumbRoot" Property="Height" Value="16"/>
+                                <Setter TargetName="HaloRing" Property="Opacity" Value="0.25"/>
+                                <Setter TargetName="HaloRing" Property="Width" Value="24"/>
+                                <Setter TargetName="HaloRing" Property="Height" Value="24"/>
+                                <Setter TargetName="ThumbCircle" Property="Width" Value="16"/>
+                                <Setter TargetName="ThumbCircle" Property="Height" Value="16"/>
                             </Trigger>
                             <Trigger Property="IsDragging" Value="True">
-                                <Setter TargetName="ThumbRoot" Property="Width" Value="16"/>
-                                <Setter TargetName="ThumbRoot" Property="Height" Value="16"/>
+                                <Setter TargetName="HaloRing" Property="Opacity" Value="0.4"/>
+                                <Setter TargetName="HaloRing" Property="Width" Value="28"/>
+                                <Setter TargetName="HaloRing" Property="Height" Value="28"/>
+                                <Setter TargetName="ThumbCircle" Property="Width" Value="18"/>
+                                <Setter TargetName="ThumbCircle" Property="Height" Value="18"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -559,15 +618,56 @@
             <Setter Property="Background" Value="{DynamicResource ThemeTrackBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeSliderActiveBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid x:Name="TemplateRoot" SnapsToDevicePixels="True" VerticalAlignment="Center">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="1" Height="28" Background="Transparent" VerticalAlignment="Center" ClipToBounds="True">
+                                <Grid VerticalAlignment="Center">
+                                    <!-- Inactive Track (Full background bar aligned to circle bounds) -->
+                                    <Border x:Name="InactiveTrack"
+                                            Height="4"
+                                            Margin="7,0,7,0"
+                                            CornerRadius="2"
+                                            Background="{TemplateBinding Background}"
+                                            VerticalAlignment="Center"/>
+
+                                    <!-- Active Track (Decrease) + Inactive Click Target (Increase) + Thumb -->
+                                    <Track x:Name="PART_Track" VerticalAlignment="Center">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Style="{StaticResource SliderDecreaseTrackStyle}" Command="{x:Static Slider.DecreaseLarge}"/>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Style="{StaticResource SliderIncreaseTrackStyle}" Command="{x:Static Slider.IncreaseLarge}"/>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb x:Name="Thumb" Style="{StaticResource ModernSliderThumbStyle}"/>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
                 <!-- Khi Disabled: đổi màu active track và chấm tròn sang màu đỏ nhạt -->
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Foreground" Value="{DynamicResource ThemeSliderDisabledBrush}"/>
-                    <Setter Property="Opacity" Value="0.75"/>
+                    <Setter Property="Opacity" Value="0.6"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <Style TargetType="Slider" BasedOn="{StaticResource ModernSliderStyle}"/>
 
         <!-- Pill Tab Navigation Style -->
         <Style x:Key="PillTabNavStyle" TargetType="ListBox">
@@ -669,29 +769,73 @@
             </Setter>
         </Style>
 
-        <!-- Toggle Switch Style -->
+        <!-- Modern Toggle Switch Style -->
         <Style x:Key="ToggleSwitchStyle" TargetType="ToggleButton">
-            <Setter Property="Width" Value="36"/>
-            <Setter Property="Height" Value="20"/>
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="24"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Grid>
-                            <Border x:Name="Track" CornerRadius="10" Background="{DynamicResource ThemeTrackBackgroundBrush}" BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}" BorderThickness="1"/>
-                            <Ellipse x:Name="Thumb" Width="14" Height="14" Fill="{DynamicResource ThemeSliderThumbBrush}" Margin="3" HorizontalAlignment="Left"/>
+                        <Grid x:Name="RootGrid" Background="Transparent" SnapsToDevicePixels="True">
+                            <Border x:Name="Track"
+                                    Width="42" Height="24"
+                                    CornerRadius="12"
+                                    Background="{DynamicResource ThemeTrackBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}"
+                                    BorderThickness="1.5">
+                                <Grid VerticalAlignment="Center">
+                                    <!-- Glow Ring around Thumb when checked/hovered -->
+                                    <Ellipse x:Name="ThumbGlow"
+                                             Width="24" Height="24"
+                                             HorizontalAlignment="Left"
+                                             Margin="0,0,0,0"
+                                             Fill="#30818CF8"
+                                             Opacity="0"/>
+
+                                    <!-- Circular Thumb -->
+                                    <Ellipse x:Name="Thumb"
+                                             Width="16" Height="16"
+                                             HorizontalAlignment="Left"
+                                             Margin="3,0,0,0"
+                                             Fill="#94A3B8">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Color="#000000" Opacity="0.4"/>
+                                        </Ellipse.Effect>
+                                    </Ellipse>
+                                </Grid>
+                            </Border>
                         </Grid>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter TargetName="ThumbGlow" Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="Thumb" Property="Fill" Value="#F1F5F9"/>
+                            </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Track" Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
                                 <Setter TargetName="Track" Property="BorderBrush" Value="#818CF8"/>
+                                <Setter TargetName="Thumb" Property="Fill" Value="#FFFFFF"/>
                                 <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0"/>
+                                <Setter TargetName="ThumbGlow" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="ThumbGlow" Property="Margin" Value="0,0,0,0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Thumb" Property="Width" Value="18"/>
+                                <Setter TargetName="Thumb" Property="Height" Value="14"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="RootGrid" Property="Opacity" Value="0.45"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style TargetType="ToggleButton" BasedOn="{StaticResource ToggleSwitchStyle}"/>
 
         <Style x:Key="ReadableCheckBoxStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
@@ -780,7 +924,7 @@
                     <Button x:Name="ToggleNodeSizeButton" Width="34" Height="32" MinWidth="34" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Phóng to/thu nhỏ node video" Margin="0,0,6,0">
                         <controls:SvgViewboxEx Width="15" Height="15" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='expand utility-fill-semibold'}"/>
                     </Button>
-                    <Button x:Name="RunProcessingButton" Height="32" MinWidth="100" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy xử lý video qua FFmpeg">
+                    <Button Visibility="Collapsed" x:Name="RunProcessingButton" Height="32" MinWidth="100" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy xử lý video qua FFmpeg">
                         <StackPanel Orientation="Horizontal">
                             <controls:SvgViewboxEx Width="14" Height="14" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-light'}"/>
                             <TextBlock Text="Chạy" Margin="6,0,0,0" FontWeight="SemiBold"/>
@@ -1042,19 +1186,22 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="TimeCurrentText" Text="00:00" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <Grid Grid.Column="1" MinHeight="28" Cursor="Hand" x:Name="ProgressBarHitArea"
-                                  VerticalAlignment="Center" Background="Transparent"
+                            <Grid Grid.Column="1" Height="28" MinHeight="28" Cursor="Hand" x:Name="ProgressBarHitArea"
+                                  VerticalAlignment="Center" Background="Transparent" ClipToBounds="True"
                                   PreviewMouseLeftButtonDown="ProgressBarHitArea_MouseDown"
                                   PreviewMouseMove="ProgressBarHitArea_MouseMove"
                                   PreviewMouseLeftButtonUp="ProgressBarHitArea_MouseUp"
                                   MouseEnter="ProgressBarHitArea_MouseEnter"
                                   MouseLeave="ProgressBarHitArea_MouseLeave">
-                                <Border Background="{DynamicResource ThemeTimelineTrackBrush}" CornerRadius="4" Height="8" VerticalAlignment="Center"/>
-                                <Border x:Name="ProgressBarFill" Background="{DynamicResource ThemeTimelineProgressBrush}" CornerRadius="4" Height="8" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
+                                <Border Background="{DynamicResource ThemeTimelineTrackBrush}" CornerRadius="2" Height="4" Margin="7,0,7,0" VerticalAlignment="Center"/>
+                                <Border x:Name="ProgressBarFill" Background="{DynamicResource ThemeSliderActiveBrush}" CornerRadius="2" Height="4" Margin="7,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
                                 <Canvas VerticalAlignment="Center" Height="28">
-                                    <Ellipse x:Name="ProgressThumb" Width="14" Height="14" Canvas.Top="7" Visibility="Collapsed"
-                                             Fill="{DynamicResource ThemeTimelineProgressBrush}"
+                                    <Ellipse x:Name="ProgressThumb" Width="14" Height="14" Canvas.Top="7" Visibility="Visible"
+                                             Fill="{DynamicResource ThemeSliderActiveBrush}"
                                              Stroke="{DynamicResource ThemeTimelineThumbStrokeBrush}" StrokeThickness="2">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.4"/>
+                                        </Ellipse.Effect>
                                         <Ellipse.RenderTransformOrigin>0.5,0.5</Ellipse.RenderTransformOrigin>
                                         <Ellipse.RenderTransform>
                                             <ScaleTransform x:Name="ProgressThumbScale" ScaleX="1" ScaleY="1"/>
@@ -1991,25 +2138,38 @@
                                                   Style="{StaticResource ReadableCheckBoxStyle}"
                                                   Margin="0,0,0,8"/>
                                         <Grid x:Name="TrimReviewHitArea"
-                                              Height="22"
-                                              Cursor="Hand"
-                                              Visibility="Collapsed"
-                                              ToolTip="Kéo để chỉnh Trim. Thả chuột để load ảnh Start/End."
-                                              MouseEnter="TrimReviewHitArea_MouseEnter"
-                                              MouseLeave="TrimReviewHitArea_MouseLeave"
-                                              PreviewMouseLeftButtonDown="TrimReviewHitArea_MouseDown"
-                                              PreviewMouseMove="TrimReviewHitArea_MouseMove"
-                                              PreviewMouseLeftButtonUp="TrimReviewHitArea_MouseUp">
-                                            <Border x:Name="TrimReviewTrackBorder"
-                                                    Background="{DynamicResource ThemeTrackBackgroundBrush}"
-                                                    CornerRadius="3" Height="6" VerticalAlignment="Center"/>
-                                            <Border x:Name="TrimReviewRangeFill" Background="#4487A7FF" CornerRadius="3" Height="6" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
-                                            <Canvas>
-                                                <Ellipse x:Name="TrimReviewStartThumb" Width="14" Height="14" Fill="#4ADE80"/>
-                                                <Ellipse x:Name="TrimReviewEndThumb" Width="14" Height="14" Fill="#FB7185"/>
-                                                <Ellipse x:Name="TrimReviewPlayheadThumb" Width="14" Height="14" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
-                                            </Canvas>
-                                        </Grid>
+                                               Height="28"
+                                               Cursor="Hand"
+                                               Visibility="Collapsed"
+                                               ToolTip="Kéo để chỉnh Trim. Thả chuột để load ảnh Start/End."
+                                               MouseEnter="TrimReviewHitArea_MouseEnter"
+                                               MouseLeave="TrimReviewHitArea_MouseLeave"
+                                               PreviewMouseLeftButtonDown="TrimReviewHitArea_MouseDown"
+                                               PreviewMouseMove="TrimReviewHitArea_MouseMove"
+                                               PreviewMouseLeftButtonUp="TrimReviewHitArea_MouseUp"
+                                               ClipToBounds="True">
+                                             <Border x:Name="TrimReviewTrackBorder"
+                                                     Background="{DynamicResource ThemeTrackBackgroundBrush}"
+                                                     CornerRadius="2" Height="4" Margin="7,0,7,0" VerticalAlignment="Center"/>
+                                             <Border x:Name="TrimReviewRangeFill" Background="#706366F1" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
+                                             <Canvas VerticalAlignment="Stretch">
+                                                 <Ellipse x:Name="TrimReviewStartThumb" Width="14" Height="14" Fill="#4ADE80" Stroke="#FFFFFF" StrokeThickness="2" Canvas.Top="7">
+                                                     <Ellipse.Effect>
+                                                         <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.4"/>
+                                                     </Ellipse.Effect>
+                                                 </Ellipse>
+                                                 <Ellipse x:Name="TrimReviewEndThumb" Width="14" Height="14" Fill="#FB7185" Stroke="#FFFFFF" StrokeThickness="2" Canvas.Top="7">
+                                                     <Ellipse.Effect>
+                                                         <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.4"/>
+                                                     </Ellipse.Effect>
+                                                 </Ellipse>
+                                                 <Ellipse x:Name="TrimReviewPlayheadThumb" Width="14" Height="14" Fill="{DynamicResource ThemeAccentBrush}" Stroke="#FFFFFF" StrokeThickness="2" Canvas.Top="7">
+                                                     <Ellipse.Effect>
+                                                         <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.4"/>
+                                                     </Ellipse.Effect>
+                                                 </Ellipse>
+                                             </Canvas>
+                                         </Grid>
 
                                         <Grid x:Name="TrimReviewFramesPanel"
                                               Margin="0,8,0,8"

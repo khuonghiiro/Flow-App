@@ -965,8 +965,9 @@ namespace FlowMy.Views.NodeControls
         private void UpdateProgressVisualByRatio(double ratio)
         {
             var barWidth = ProgressBarHitArea.ActualWidth;
-            ProgressBarFill.Width = barWidth * ratio;
-            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - ProgressThumbHalfWidth));
+            var availableWidth = Math.Max(1, barWidth - 14);
+            ProgressBarFill.Width = availableWidth * ratio;
+            Canvas.SetLeft(ProgressThumb, Math.Clamp(availableWidth * ratio, 0, availableWidth));
             TimeCurrentText.Text = FormatTime(TimeSpan.FromSeconds(ratio * GetNaturalDurationSeconds()));
         }
 
@@ -1023,7 +1024,7 @@ namespace FlowMy.Views.NodeControls
             {
                 ProgressBarHitArea.ReleaseMouseCapture();
             }
-            ProgressThumb.Visibility = Visibility.Collapsed;
+            ProgressThumb.Visibility = Visibility.Visible;
             e.Handled = true;
         }
 
@@ -1035,8 +1036,7 @@ namespace FlowMy.Views.NodeControls
 
         private void ProgressBarHitArea_MouseLeave(object sender, MouseEventArgs e)
         {
-            if (!_isProgressDragging)
-                ProgressThumb.Visibility = Visibility.Collapsed;
+            ProgressThumb.Visibility = Visibility.Visible;
             ApplyTimelineThumbHoverVisual(false);
             e.Handled = true;
         }
@@ -1055,8 +1055,8 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            Color glow = Color.FromRgb(99, 102, 241);
-            if (TryFindResource("ThemeAccentBrush") is SolidColorBrush ab && ab.Color.A > 0)
+            Color glow = Color.FromRgb(239, 68, 68);
+            if (TryFindResource("ThemeSliderActiveBrush") is SolidColorBrush ab && ab.Color.A > 0)
                 glow = ab.Color;
             ProgressThumb.Effect = new DropShadowEffect
             {
@@ -1275,8 +1275,9 @@ namespace FlowMy.Views.NodeControls
                 position = TimeSpan.FromSeconds(ratio * duration.TotalSeconds);
             }
             var barWidth = ProgressBarHitArea.ActualWidth;
-            ProgressBarFill.Width = barWidth * ratio;
-            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - ProgressThumbHalfWidth));
+            var availableWidth = Math.Max(1, barWidth - 14);
+            ProgressBarFill.Width = availableWidth * ratio;
+            Canvas.SetLeft(ProgressThumb, Math.Clamp(availableWidth * ratio, 0, availableWidth));
             TimeCurrentText.Text = FormatTime(position);
             TimeTotalText.Text = FormatTime(duration);
             if (PreviewMedia.Source != null && _node.SourceFps > 0)
@@ -1453,11 +1454,12 @@ namespace FlowMy.Views.NodeControls
             var barWidth = TrimReviewHitArea.ActualWidth;
             if (duration <= 0 || barWidth <= 1) return TimelineDragMode.Scrub;
 
+            var availableWidth = Math.Max(1, barWidth - 14);
             var pos = e.GetPosition(TrimReviewHitArea);
-            var startX = Math.Clamp(_node.TrimStartSec / duration, 0, 1) * barWidth;
+            var startX = Math.Clamp(_node.TrimStartSec / duration, 0, 1) * availableWidth + 7;
             var endSec = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
-            var endX = Math.Clamp(endSec / duration, 0, 1) * barWidth;
-            const double handleHitRange = 12;
+            var endX = Math.Clamp(endSec / duration, 0, 1) * availableWidth + 7;
+            const double handleHitRange = 14;
 
             if (Math.Abs(pos.X - startX) <= handleHitRange) return TimelineDragMode.TrimStart;
             if (Math.Abs(pos.X - endX) <= handleHitRange) return TimelineDragMode.TrimEnd;
@@ -1467,8 +1469,11 @@ namespace FlowMy.Views.NodeControls
         private void HandleTrimReviewDrag(MouseEventArgs e, bool commitPreviewSeek)
         {
             var duration = GetNaturalDurationSeconds();
-            if (duration <= 0 || TrimReviewHitArea.ActualWidth <= 1) return;
-            var ratio = Math.Clamp(e.GetPosition(TrimReviewHitArea).X / TrimReviewHitArea.ActualWidth, 0, 1);
+            var barWidth = TrimReviewHitArea.ActualWidth;
+            if (duration <= 0 || barWidth <= 1) return;
+            var availableWidth = Math.Max(1, barWidth - 14);
+            var clickX = e.GetPosition(TrimReviewHitArea).X - 7;
+            var ratio = Math.Clamp(clickX / availableWidth, 0, 1);
             var targetSec = ratio * duration;
 
             if (_trimReviewDragMode == TimelineDragMode.TrimStart)
@@ -1507,15 +1512,16 @@ namespace FlowMy.Views.NodeControls
             var width = TrimReviewHitArea.ActualWidth;
             if (duration <= 0 || width <= 1) return;
 
+            var availableWidth = Math.Max(1, width - 14);
             var startRatio = Math.Clamp(_node.TrimStartSec / duration, 0, 1);
             var endSec = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
             var endRatio = Math.Clamp(endSec / duration, 0, 1);
             if (endRatio < startRatio) (startRatio, endRatio) = (endRatio, startRatio);
 
-            var targetStartX = Math.Max(0, (startRatio * width) - 5.5);
-            var targetEndX = Math.Max(0, (endRatio * width) - 5.5);
+            var targetStartX = startRatio * availableWidth;
+            var targetEndX = endRatio * availableWidth;
             var playRatio = Math.Clamp(PreviewMedia.Position.TotalSeconds / duration, 0, 1);
-            var targetPlayX = Math.Max(0, (playRatio * width) - 5.5);
+            var targetPlayX = playRatio * availableWidth;
 
             const double ease = 0.38;
             if (!_trimUiInitialized)
@@ -1539,8 +1545,8 @@ namespace FlowMy.Views.NodeControls
                 _trimUiPlayX += (targetPlayX - _trimUiPlayX) * ease;
             }
 
-            var left = Math.Min(_trimUiStartX, _trimUiEndX) + 5.5;
-            var right = Math.Max(_trimUiStartX, _trimUiEndX) + 5.5;
+            var left = Math.Min(_trimUiStartX, _trimUiEndX) + 7.0;
+            var right = Math.Max(_trimUiStartX, _trimUiEndX) + 7.0;
             TrimReviewRangeFill.Width = Math.Max(0, right - left);
             TrimReviewRangeFill.Margin = new Thickness(left, 0, 0, 0);
             Canvas.SetLeft(TrimReviewStartThumb, _trimUiStartX);

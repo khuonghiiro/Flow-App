@@ -66,7 +66,7 @@ namespace FlowMy.Views.NodeControls
         private const double MaxPreviewHeight = 620;
         private const double HorizontalPadding = 18;
         /// <summary>Half visual diameter of timeline scrub thumb (matches XAML ellipse).</summary>
-        private const double ProgressThumbHalfWidth = 11;
+        private const double ProgressThumbHalfWidth = 7;
         private const double NonPreviewContentHeight = 230;
         /// <summary>Bo góc node + khung preview — đồng bộ <c>NodeChromeCornerRadius</c> trong <see cref="VideoProcessingNodeControl"/>.</summary>
         private const double VideoNodeCornerRadius = 10;
