@@ -753,8 +753,8 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF2, 238, 243, 252) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
             Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(176, 192, 216) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
             Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(226, 234, 246) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
-            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 220, 236) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(184, 198, 220) : Color.FromRgb(52, 54, 66));
+            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(148, 163, 184) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(148, 163, 184) : Color.FromRgb(52, 54, 66));
             Resources["ThemeTimelineProgressBrush"] = new SolidColorBrush(accentColor);
             Resources["ThemeTimelineThumbStrokeBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(30, 41, 59) : Color.FromRgb(226, 232, 245));
             Resources["ThemeAccentGlowColor"] = accentColor;
@@ -771,13 +771,13 @@ namespace FlowMy.Views.NodeControls
                 isLight ? Color.FromRgb(164, 180, 206) : Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF));
             Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)0x35 : (byte)0x2A, warmAmber.R, warmAmber.G, warmAmber.B));
 
-            Color chromePrimaryBg = isLight ? Color.FromRgb(218, 226, 242) : Color.FromRgb(48, 50, 64);
-            Color chromePrimaryHover = isLight ? Color.FromRgb(200, 210, 234) : Color.FromRgb(58, 61, 78);
-            Color chromeSecondaryBg = isLight ? Color.FromRgb(228, 235, 248) : Color.FromRgb(40, 42, 54);
-            Color chromeSecondaryHover = isLight ? Color.FromRgb(212, 222, 240) : Color.FromRgb(50, 52, 68);
+            Color chromePrimaryBg = isLight ? Color.FromRgb(79, 70, 229) : Color.FromRgb(48, 50, 64);
+            Color chromePrimaryHover = isLight ? Color.FromRgb(67, 56, 202) : Color.FromRgb(58, 61, 78);
+            Color chromeSecondaryBg = isLight ? Color.FromRgb(226, 232, 244) : Color.FromRgb(40, 42, 54);
+            Color chromeSecondaryHover = isLight ? Color.FromRgb(210, 220, 238) : Color.FromRgb(50, 52, 68);
             Resources["ThemeVideoChromePrimaryBgBrush"] = new SolidColorBrush(chromePrimaryBg);
             Resources["ThemeVideoChromePrimaryHoverBgBrush"] = new SolidColorBrush(chromePrimaryHover);
-            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(15, 23, 42) : Color.FromRgb(241, 245, 255));
+            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(Color.FromRgb(255, 255, 255));
             Resources["ThemeVideoChromePrimaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(164, 180, 206) : Color.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
             Resources["ThemeVideoChromeSecondaryBgBrush"] = new SolidColorBrush(chromeSecondaryBg);
             Resources["ThemeVideoChromeSecondaryHoverBgBrush"] = new SolidColorBrush(chromeSecondaryHover);
@@ -808,8 +808,14 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(224, 232, 246) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
             Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(
                 isLight ? Color.FromRgb(234, 179, 8) : Color.FromArgb(0x5A, warmAmber.R, warmAmber.G, warmAmber.B));
+            Color sliderRedActive = isLight ? Color.FromRgb(220, 38, 38) : Color.FromRgb(239, 68, 68);
+            Color sliderRedDisabled = isLight ? Color.FromRgb(248, 113, 113) : Color.FromRgb(252, 165, 165);
+            Resources["ThemeSliderActiveBrush"] = new SolidColorBrush(sliderRedActive);
+            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(sliderRedActive);
+            Resources["ThemeSliderThumbStrokeBrush"] = new SolidColorBrush(Color.FromRgb(255, 255, 255));
+            Resources["ThemeSliderDisabledBrush"] = new SolidColorBrush(sliderRedDisabled);
+
             Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(Color.FromRgb(255, 255, 255));
-            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(30, 41, 59) : Color.FromRgb(255, 255, 255));
             Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(255, 255, 255) : Color.FromRgb(30, 30, 48));
             Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(214, 226, 246) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
             Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 222, 242) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
@@ -1070,62 +1076,25 @@ namespace FlowMy.Views.NodeControls
             SuggestedNodeSizeReady?.Invoke(suggestedWidth, suggestedHeight);
         }
 
-        /// <summary>Khi cột preview cao hơn rộng: tab Video (toolbar + preview + timeline) và tab Log. Ngược lại giữ layout xếp dọc.</summary>
+        private void ApplyPortraitVideoLogLayout()
+        {
+            if (PortraitVideoLogTabControl != null)
+                PortraitVideoLogTabControl.Visibility = Visibility.Collapsed;
+            if (VideoContainerGrid != null)
+                VideoContainerGrid.Visibility = Visibility.Visible;
+            _portraitVideoLogLayout = false;
+
+            UpdatePreviewAspectRatio();
+        }
+
+        /// <summary>Đảm bảo Video và Log luôn được xếp cùng 1 cột duy nhất.</summary>
         private void UpdateVideoLogColumnLayout()
         {
-            if (PreviewColumnShellGrid == null || VideoContainerGrid == null || VideoTopPackGrid == null ||
-                LogPanelBorder == null || PortraitVideoLogTabControl == null ||
-                PortraitVideoHostPanel == null || PortraitLogHostPanel == null)
-                return;
-
-            var w = PreviewColumnShellGrid.ActualWidth;
-            var h = PreviewColumnShellGrid.ActualHeight;
-            if (w < 40 || h < 40 || double.IsNaN(w) || double.IsNaN(h)) return;
-
-            var portrait = h > w;
-            if (portrait == _portraitVideoLogLayout) return;
-
-            _portraitVideoLogLayout = portrait;
-
-            if (portrait)
-            {
-                VideoContainerGrid.Children.Remove(VideoTopPackGrid);
-                Grid.SetRow(VideoTopPackGrid, 0);
-                Grid.SetRowSpan(VideoTopPackGrid, 1);
-                PortraitVideoHostPanel.Children.Clear();
-                PortraitVideoHostPanel.Children.Add(VideoTopPackGrid);
-
-                VideoContainerGrid.Children.Remove(LogPanelBorder);
-                Grid.SetRow(LogPanelBorder, 0);
-                PortraitLogHostPanel.Children.Clear();
-                PortraitLogHostPanel.Children.Add(LogPanelBorder);
-
-                VideoContainerGrid.Visibility = Visibility.Collapsed;
-                PortraitVideoLogTabControl.Visibility = Visibility.Visible;
-                PortraitVideoLogTabControl.SelectedIndex = 0;
-
-                if (VideoTopPackGrid.RowDefinitions.Count > 1)
-                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
-            }
-            else
-            {
-                PortraitVideoHostPanel.Children.Remove(VideoTopPackGrid);
-                Grid.SetRow(VideoTopPackGrid, 0);
-                Grid.SetRowSpan(VideoTopPackGrid, 3);
-                VideoContainerGrid.Children.Insert(0, VideoTopPackGrid);
-
-                PortraitLogHostPanel.Children.Remove(LogPanelBorder);
-                Grid.SetRow(LogPanelBorder, 3);
-                VideoContainerGrid.Children.Add(LogPanelBorder);
-
+            if (PortraitVideoLogTabControl != null)
                 PortraitVideoLogTabControl.Visibility = Visibility.Collapsed;
+            if (VideoContainerGrid != null)
                 VideoContainerGrid.Visibility = Visibility.Visible;
-
-                if (VideoTopPackGrid.RowDefinitions.Count > 1)
-                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(2, GridUnitType.Star);
-                if (VideoContainerGrid.RowDefinitions.Count > 3)
-                    VideoContainerGrid.RowDefinitions[3].Height = new GridLength(1, GridUnitType.Star);
-            }
+            _portraitVideoLogLayout = false;
 
             UpdatePreviewAspectRatio();
         }
