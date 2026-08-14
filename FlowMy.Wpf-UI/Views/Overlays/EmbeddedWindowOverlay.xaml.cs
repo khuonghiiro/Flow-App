@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -62,17 +62,13 @@ namespace FlowMy.Views
         {
             try
             {
-                // Activate overlay window
                 this.Activate();
                 this.Focus();
                 
-                // Also try SetForegroundWindow
                 var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
                 SetForegroundWindow(hwnd);
                 
-                // Small delay để window activation complete
                 System.Threading.Thread.Sleep(50);
-                
                 System.Diagnostics.Debug.WriteLine("[EmbeddedWindowOverlay] ✅ Activated for input");
             }
             catch (Exception ex)
@@ -91,7 +87,6 @@ namespace FlowMy.Views
 
             try
             {
-                // Get original window position and size
                 if (!GetWindowRect(windowHandle, out _originalWindowRect))
                 {
                     System.Diagnostics.Debug.WriteLine("[EmbeddedWindowOverlay] Failed to get window rect");
@@ -102,27 +97,20 @@ namespace FlowMy.Views
                     $"({_originalWindowRect.Left},{_originalWindowRect.Top}) " +
                     $"{_originalWindowRect.Width}x{_originalWindowRect.Height}");
 
-                // Set overlay size to match original window (plus header)
                 this.Width = _originalWindowRect.Width;
-                this.Height = _originalWindowRect.Height + 28; // +28 for header bar
+                this.Height = _originalWindowRect.Height + 28;
 
-                // Position overlay at original window location
                 this.Left = _originalWindowRect.Left;
-                this.Top = _originalWindowRect.Top - 28; // Offset for header
+                this.Top = _originalWindowRect.Top - 28;
 
-                // Update title
                 if (!string.IsNullOrEmpty(windowTitle))
                 {
                     TitleText.Text = $"Controlling: {windowTitle}";
                 }
 
-                // Show overlay first
                 this.Show();
-
-                // Small delay to ensure overlay is rendered
                 System.Threading.Thread.Sleep(100);
 
-                // Embed the window
                 bool success = WindowHost.EmbedWindow(windowHandle);
 
                 if (success)
@@ -167,7 +155,6 @@ namespace FlowMy.Views
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Allow dragging overlay by header
             if (e.ChangedButton == MouseButton.Left)
             {
                 this.DragMove();
@@ -178,7 +165,6 @@ namespace FlowMy.Views
         {
             if (_isMinimized)
             {
-                // Restore
                 this.Height = _originalWindowRect.Height + 28;
                 WindowHost.Visibility = Visibility.Visible;
                 MinimizeButton.Content = "−";
@@ -186,7 +172,6 @@ namespace FlowMy.Views
             }
             else
             {
-                // Minimize to header only
                 this.Height = 28;
                 WindowHost.Visibility = Visibility.Collapsed;
                 MinimizeButton.Content = "□";

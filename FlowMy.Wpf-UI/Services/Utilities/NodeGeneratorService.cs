@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -112,6 +112,30 @@ namespace FlowMy.Services.Utilities
         /// <summary>
         /// Sinh tất cả file và trả về danh sách file đã tạo + lỗi nếu có.
         /// </summary>
+        public static (string coreRoot, string wpfUiRoot) ResolveProjectRoots(string projectRoot)
+        {
+            if (string.IsNullOrWhiteSpace(projectRoot))
+                projectRoot = Directory.GetCurrentDirectory();
+
+            string coreRoot = projectRoot;
+            string wpfUiRoot = projectRoot;
+
+            if (Directory.Exists(Path.Combine(projectRoot, "FlowMy.Core")))
+                coreRoot = Path.Combine(projectRoot, "FlowMy.Core");
+            else if (Directory.Exists(Path.Combine(projectRoot, "..", "FlowMy.Core")))
+                coreRoot = Path.GetFullPath(Path.Combine(projectRoot, "..", "FlowMy.Core"));
+
+            if (Directory.Exists(Path.Combine(projectRoot, "FlowMy.Wpf-UI")))
+                wpfUiRoot = Path.Combine(projectRoot, "FlowMy.Wpf-UI");
+            else if (Directory.Exists(Path.Combine(projectRoot, "Views", "NodeControls")))
+                wpfUiRoot = projectRoot;
+
+            return (coreRoot, wpfUiRoot);
+        }
+
+        /// <summary>
+        /// Sinh tất cả file và trả về danh sách file đã tạo + lỗi nếu có.
+        /// </summary>
         public NodeGenerationResult GenerateAll(NodeGeneratorConfig config)
         {
             var result = new NodeGenerationResult();
@@ -128,34 +152,36 @@ namespace FlowMy.Services.Utilities
                 return result;
             }
 
-            // 1. Node Model
-            TryWrite(result, Path.Combine(config.ProjectRoot, "Models", "Nodes", $"{config.NodeClassName}.cs"),
+            var (coreRoot, wpfUiRoot) = ResolveProjectRoots(config.ProjectRoot);
+
+            // 1. Node Model -> FlowMy.Core/Models/Nodes/{config.NodeClassName}.cs
+            TryWrite(result, Path.Combine(coreRoot, "Models", "Nodes", $"{config.NodeClassName}.cs"),
                 GenerateNodeModel(config));
 
-            // 2. NodeControl
-            TryWrite(result, Path.Combine(config.ProjectRoot, "Views", "NodeControls", $"{config.ControlClassName}.cs"),
+            // 2. NodeControl -> FlowMy.Wpf-UI/Views/NodeControls/{config.ControlClassName}.cs
+            TryWrite(result, Path.Combine(wpfUiRoot, "Views", "NodeControls", $"{config.ControlClassName}.cs"),
                 GenerateNodeControl(config));
 
-            // 3. Dialog XAML
-            TryWrite(result, Path.Combine(config.ProjectRoot, "Views", "Overlays", $"{config.DialogClassName}.xaml"),
+            // 3. Dialog XAML -> FlowMy.Wpf-UI/Views/NodeDialogs/{config.DialogClassName}.xaml
+            TryWrite(result, Path.Combine(wpfUiRoot, "Views", "NodeDialogs", $"{config.DialogClassName}.xaml"),
                 GenerateDialogXaml(config));
 
-            // 4. Dialog Code-behind
-            TryWrite(result, Path.Combine(config.ProjectRoot, "Views", "Overlays", $"{config.DialogClassName}.xaml.cs"),
+            // 4. Dialog Code-behind -> FlowMy.Wpf-UI/Views/NodeDialogs/{config.DialogClassName}.xaml.cs
+            TryWrite(result, Path.Combine(wpfUiRoot, "Views", "NodeDialogs", $"{config.DialogClassName}.xaml.cs"),
                 GenerateDialogCodeBehind(config));
 
-            // 5. ViewModel
-            TryWrite(result, Path.Combine(config.ProjectRoot, "ViewModels", $"{config.ViewModelClassName}.cs"),
+            // 5. ViewModel -> FlowMy.Wpf-UI/ViewModels/{config.ViewModelClassName}.cs
+            TryWrite(result, Path.Combine(wpfUiRoot, "ViewModels", $"{config.ViewModelClassName}.cs"),
                 GenerateViewModel(config));
 
-            // 6. Renderer
-            TryWrite(result, Path.Combine(config.ProjectRoot, "Services", "Rendering", $"{config.RendererClassName}.cs"),
+            // 6. Renderer -> FlowMy.Wpf-UI/Services/Rendering/{config.RendererClassName}.cs
+            TryWrite(result, Path.Combine(wpfUiRoot, "Services", "Rendering", $"{config.RendererClassName}.cs"),
                 GenerateRenderer(config));
 
             // 7. NodeType.cs — append enum value nếu cần
             if (config.AddNewNodeType)
             {
-                TryAppendNodeType(result, config);
+                TryAppendNodeType(result, config, coreRoot);
             }
 
             return result;
@@ -243,7 +269,8 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("using FlowMy.Models.Nodes;");
             sb.AppendLine("using FlowMy.Services.Interaction;");
             sb.AppendLine("using FlowMy.Views.NodeControls.Helpers;");
-            sb.AppendLine($"using FlowMy.Views.Overlays;");
+            sb.AppendLine("using FlowMy.Views.NodeDialogs;");
+sb.AppendLine("using FlowMy.Views.Overlays;");
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using System.Windows;");
@@ -349,17 +376,14 @@ namespace FlowMy.Services.Utilities
         public string GenerateDialogXaml(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("<!--");
-            sb.AppendLine("  NOTICE TO AI DEVELOPERS / AGENTS:");
-            sb.AppendLine("  1. DO NOT integrate too much logic or complexity directly into this single file. Keep it modular and split logic into smaller helper classes, extension methods, or separate service files.");
-            sb.AppendLine("  2. If this file exceeds ~1200-1500 lines of code, you MUST refactor and split it into smaller, manageable partial classes or smaller files to ensure maintainability.");
-            sb.AppendLine("  3. Always include this exact notice block at the top of any newly created split files so that subsequent AI agents continue to respect this architectural rule.");
-            sb.AppendLine("-->");
-            sb.AppendLine($"<local:BaseNodeDialog x:Class=\"FlowMy.Views.Overlays.{c.DialogClassName}\"");
+            sb.AppendLine("<!-- =========================================================================================");
+            sb.AppendLine("     AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.");
+            sb.AppendLine("     ========================================================================================= -->");
+            sb.AppendLine($"<local:BaseNodeDialog x:Class=\"FlowMy.Views.NodeDialogs.{c.DialogClassName}\"");
             sb.AppendLine("    xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"");
             sb.AppendLine("    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"");
             sb.AppendLine("    xmlns:controls=\"clr-namespace:FlowMy.Controls\"");
-            sb.AppendLine("    xmlns:local=\"clr-namespace:FlowMy.Views.Overlays\"");
+            sb.AppendLine("    xmlns:local=\"clr-namespace:FlowMy.Views.NodeDialogs\"");
             sb.AppendLine("    xmlns:converters=\"clr-namespace:FlowMy.Converters\"");
             sb.AppendLine($"    Title=\"{c.Title}\"");
             sb.AppendLine("    WindowStyle=\"None\" ResizeMode=\"CanResize\"");
@@ -825,7 +849,7 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("using System.Windows;");
             sb.AppendLine("using System.Windows.Controls;");
             sb.AppendLine();
-            sb.AppendLine("namespace FlowMy.Views.Overlays");
+            sb.AppendLine("namespace FlowMy.Views.NodeDialogs");
             sb.AppendLine("{");
             sb.AppendLine($"    public partial class {c.DialogClassName} : BaseNodeDialog");
             sb.AppendLine("    {");
@@ -1396,11 +1420,11 @@ namespace FlowMy.Services.Utilities
             }
         }
 
-        private static void TryAppendNodeType(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void TryAppendNodeType(NodeGenerationResult result, NodeGeneratorConfig config, string coreRoot)
         {
             try
             {
-                var path = Path.Combine(config.ProjectRoot, "Models", "Nodes", "NodeType.cs");
+                var path = Path.Combine(coreRoot, "Models", "Nodes", "NodeType.cs");
                 if (!File.Exists(path))
                 {
                     result.Errors.Add("Không tìm thấy NodeType.cs để thêm enum value.");
@@ -1490,21 +1514,23 @@ namespace FlowMy.Services.Utilities
                 return result;
             }
 
-            PatchTemplateFactory(result, config);
-            PatchNodeRenderer(result, config);
-            PatchServiceCollection(result, config);
-            PatchNodeIconHelper(result, config);
-            PatchWorkflowEditorXaml(result, config);
-            PatchBaseNodeDialogViewModel(result, config);
+            var (coreRoot, wpfUiRoot) = ResolveProjectRoots(config.ProjectRoot);
+
+            PatchTemplateFactory(result, config, wpfUiRoot);
+            PatchNodeRenderer(result, config, wpfUiRoot);
+            PatchServiceCollection(result, config, wpfUiRoot);
+            PatchNodeIconHelper(result, config, wpfUiRoot);
+            PatchWorkflowEditorXaml(result, config, wpfUiRoot);
+            PatchBaseNodeDialogViewModel(result, config, wpfUiRoot);
 
             return result;
         }
 
         // ── Patch: TemplateFactory.cs ─────────────────────────────────────────
 
-        private static void PatchTemplateFactory(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void PatchTemplateFactory(NodeGenerationResult result, NodeGeneratorConfig config, string wpfUiRoot)
         {
-            var path = Path.Combine(config.ProjectRoot, "Workflow", "TemplateFactory.cs");
+            var path = Path.Combine(wpfUiRoot, "Workflow", "TemplateFactory.cs");
             if (!File.Exists(path)) path = Path.Combine(config.ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
             if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy TemplateFactory.cs."); return; }
 
@@ -1589,9 +1615,9 @@ namespace FlowMy.Services.Utilities
 
         // ── Patch: _NodeRenderer.cs ───────────────────────────────────────────
 
-        private static void PatchNodeRenderer(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void PatchNodeRenderer(NodeGenerationResult result, NodeGeneratorConfig config, string wpfUiRoot)
         {
-            var path = Path.Combine(config.ProjectRoot, "Services", "Rendering", "_NodeRenderer.cs");
+            var path = Path.Combine(wpfUiRoot, "Services", "Rendering", "_NodeRenderer.cs");
             if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy _NodeRenderer.cs."); return; }
 
             try
@@ -1655,9 +1681,10 @@ namespace FlowMy.Services.Utilities
 
         // ── Patch: ServiceCollectionExtensions.cs ────────────────────────────
 
-        private static void PatchServiceCollection(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void PatchServiceCollection(NodeGenerationResult result, NodeGeneratorConfig config, string wpfUiRoot)
         {
-            var path = Path.Combine(config.ProjectRoot, "Services", "ServiceCollectionExtensions.cs");
+            var path = Path.Combine(wpfUiRoot, "Services", "ServiceCollectionExtensions.cs");
+            if (!File.Exists(path)) path = Path.Combine(wpfUiRoot, "Extensions", "ServiceCollectionExtensions.cs");
             if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy ServiceCollectionExtensions.cs."); return; }
 
             try
@@ -1685,9 +1712,9 @@ namespace FlowMy.Services.Utilities
 
         // ── Patch: Helpers/NodeIconHelper.cs ───────────────────────────────
 
-        private static void PatchNodeIconHelper(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void PatchNodeIconHelper(NodeGenerationResult result, NodeGeneratorConfig config, string wpfUiRoot)
         {
-            var path = Path.Combine(config.ProjectRoot, "Helpers", "NodeIconHelper.cs");
+            var path = Path.Combine(wpfUiRoot, "Helpers", "NodeIconHelper.cs");
             if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy Helpers/NodeIconHelper.cs."); return; }
 
             try
@@ -1715,11 +1742,11 @@ namespace FlowMy.Services.Utilities
 
         // ── Patch: WorkflowEditorWindow.xaml ─────────────────────────────────
 
-        private static void PatchWorkflowEditorXaml(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void PatchWorkflowEditorXaml(NodeGenerationResult result, NodeGeneratorConfig config, string wpfUiRoot)
         {
             // Tìm WorkflowEditorWindow.xaml
-            var path = Path.Combine(config.ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
-            if (!File.Exists(path)) path = Path.Combine(config.ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
+            var path = Path.Combine(wpfUiRoot, "Views", "WorkflowEditorWindow.xaml");
+            if (!File.Exists(path)) path = Path.Combine(wpfUiRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
             if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy WorkflowEditorWindow.xaml."); return; }
 
             try
@@ -1857,11 +1884,11 @@ namespace FlowMy.Services.Utilities
             catch (Exception ex) { result.Errors.Add($"Lỗi PatchWorkflowEditorXaml: {ex.Message}"); }
         }
 
-        private static void PatchBaseNodeDialogViewModel(NodeGenerationResult result, NodeGeneratorConfig config)
+        private static void PatchBaseNodeDialogViewModel(NodeGenerationResult result, NodeGeneratorConfig config, string wpfUiRoot)
         {
             if (!config.AddNewNodeType) return;
 
-            var path = Path.Combine(config.ProjectRoot, "ViewModels", "BaseNodeDialogViewModel.cs");
+            var path = Path.Combine(wpfUiRoot, "ViewModels", "BaseNodeDialogViewModel.cs");
             if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy BaseNodeDialogViewModel.cs."); return; }
 
             try
@@ -1974,13 +2001,17 @@ namespace FlowMy.Services.Utilities
             // Strip "Node" suffix from nodeName to get baseName
             var baseName = nodeName.EndsWith("Node") ? nodeName.Substring(0, nodeName.Length - 4) : nodeName;
 
-            var nodeCsPath = Path.Combine(projectRoot, "Models", "Nodes", $"{baseName}Node.cs");
-            var nodeXamlPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{baseName}Control.xaml");
-            var nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{baseName}NodeControl.cs");
-            if (!File.Exists(nodeControlCsPath)) nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{baseName}Control.cs");
-            var templateFactoryPath = Path.Combine(projectRoot, "Workflow", "TemplateFactory.cs");
-            if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(projectRoot, "Services", "Workflow", "TemplateFactory.cs");
-            var workflowEditorPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.xaml");
+            var (coreRoot, wpfUiRoot) = ResolveProjectRoots(projectRoot);
+
+            var nodeCsPath = Path.Combine(coreRoot, "Models", "Nodes", $"{baseName}Node.cs");
+            if (!File.Exists(nodeCsPath)) nodeCsPath = Path.Combine(projectRoot, "Models", "Nodes", $"{baseName}Node.cs");
+
+            var nodeXamlPath = Path.Combine(wpfUiRoot, "Views", "NodeControls", $"{baseName}Control.xaml");
+            var nodeControlCsPath = Path.Combine(wpfUiRoot, "Views", "NodeControls", $"{baseName}NodeControl.cs");
+            if (!File.Exists(nodeControlCsPath)) nodeControlCsPath = Path.Combine(wpfUiRoot, "Views", "NodeControls", $"{baseName}Control.cs");
+            var templateFactoryPath = Path.Combine(wpfUiRoot, "Workflow", "TemplateFactory.cs");
+            if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(wpfUiRoot, "Services", "Workflow", "TemplateFactory.cs");
+            var workflowEditorPath = Path.Combine(wpfUiRoot, "Views", "WorkflowEditorWindow.xaml");
             var utf8NoBom = new UTF8Encoding(false);
 
             // 1. Sửa Node.cs (legacy fallback)
@@ -2188,7 +2219,7 @@ namespace FlowMy.Services.Utilities
             if (!string.IsNullOrWhiteSpace(iconKey))
             {
                 // 4. Sửa icon key trong Helpers/NodeIconHelper.cs
-                var iconHelperPath = Path.Combine(projectRoot, "Helpers", "NodeIconHelper.cs");
+                var iconHelperPath = Path.Combine(wpfUiRoot, "Helpers", "NodeIconHelper.cs");
                 if (File.Exists(iconHelperPath))
                 {
                     try

@@ -171,22 +171,33 @@ namespace FlowMy.ViewModels
 
         private void TryAutoDetectProjectRoot()
         {
-            // Đi ngược từ BaseDirectory (bin\Debug\net9.0-windows\) lên tìm .csproj
+            // Đi ngược từ BaseDirectory lên tìm .sln hoặc root chứa FlowMy.Core và FlowMy.Wpf-UI
             var dir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\', '/');
             for (int i = 0; i < 6; i++)
             {
-                if (System.IO.Directory.GetFiles(dir, "*.csproj").Length > 0)
+                if (System.IO.Directory.GetFiles(dir, "*.sln").Length > 0 ||
+                    (System.IO.Directory.Exists(Path.Combine(dir, "FlowMy.Core")) && System.IO.Directory.Exists(Path.Combine(dir, "FlowMy.Wpf-UI"))))
                 {
                     ProjectRoot = dir;
                     LoadPaletteCategories();
                     LoadExistingNodes();
                     return;
                 }
-                var parent = System.IO.Directory.GetParent(dir)?.FullName;
-                if (parent == null) break;
-                dir = parent;
+                if (System.IO.Directory.GetFiles(dir, "*.csproj").Length > 0)
+                {
+                    var parent = System.IO.Directory.GetParent(dir)?.FullName;
+                    if (parent != null && System.IO.Directory.GetFiles(parent, "*.sln").Length > 0)
+                        ProjectRoot = parent;
+                    else
+                        ProjectRoot = dir;
+                    LoadPaletteCategories();
+                    LoadExistingNodes();
+                    return;
+                }
+                var nextParent = System.IO.Directory.GetParent(dir)?.FullName;
+                if (nextParent == null) break;
+                dir = nextParent;
             }
-            // Fallback: thư mục exe
             ProjectRoot = AppDomain.CurrentDomain.BaseDirectory;
 
             LoadPaletteCategories();
@@ -196,8 +207,10 @@ namespace FlowMy.ViewModels
         private void LoadExistingNodes()
         {
             if (string.IsNullOrWhiteSpace(ProjectRoot)) return;
-            
-            var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
+
+            var (coreRoot, wpfUiRoot) = NodeGeneratorService.ResolveProjectRoots(ProjectRoot);
+            var templateFactoryPath = Path.Combine(wpfUiRoot, "Workflow", "TemplateFactory.cs");
+            if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(wpfUiRoot, "Services", "Workflow", "TemplateFactory.cs");
             if (!File.Exists(templateFactoryPath)) return;
 
             try
@@ -245,8 +258,9 @@ namespace FlowMy.ViewModels
         private void LoadPaletteCategories()
         {
             if (string.IsNullOrWhiteSpace(ProjectRoot)) return;
-            var path = Path.Combine(ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
-            if (!File.Exists(path)) path = Path.Combine(ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
+            var (coreRoot, wpfUiRoot) = NodeGeneratorService.ResolveProjectRoots(ProjectRoot);
+            var path = Path.Combine(wpfUiRoot, "Views", "WorkflowEditorWindow.xaml");
+            if (!File.Exists(path)) path = Path.Combine(wpfUiRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
             if (!File.Exists(path)) return;
 
             try
@@ -291,9 +305,11 @@ namespace FlowMy.ViewModels
                 // Normalize: strip "Node" suffix from value to get the base name
                 var baseName = value.EndsWith("Node") ? value.Substring(0, value.Length - 4) : value;
 
+                var (coreRoot, wpfUiRoot) = NodeGeneratorService.ResolveProjectRoots(ProjectRoot);
+
                 // ── SOURCE 1: TemplateFactory.cs (nguồn chính xác nhất cho generated nodes) ──
-                var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
-                if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
+                var templateFactoryPath = Path.Combine(wpfUiRoot, "Workflow", "TemplateFactory.cs");
+                if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(wpfUiRoot, "Services", "Workflow", "TemplateFactory.cs");
                 if (File.Exists(templateFactoryPath))
                 {
                     var content = File.ReadAllText(templateFactoryPath);
@@ -341,7 +357,8 @@ namespace FlowMy.ViewModels
                 }
 
                 // ── SOURCE 2: [baseName]Node.cs (cho các node viết tay) ──
-                var nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{baseName}Node.cs");
+                var nodeCsPath = Path.Combine(coreRoot, "Models", "Nodes", $"{baseName}Node.cs");
+                if (!File.Exists(nodeCsPath)) nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{baseName}Node.cs");
                 if (File.Exists(nodeCsPath))
                 {
                     var content = File.ReadAllText(nodeCsPath);
@@ -382,7 +399,7 @@ namespace FlowMy.ViewModels
                 // ── SOURCE 5: WorkflowEditorViewModel.cs (icon key từ NodeType switch) ──
                 if (string.IsNullOrWhiteSpace(EditIconKey))
                 {
-                    var vmPath = Path.Combine(ProjectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
+                    var vmPath = Path.Combine(wpfUiRoot, "ViewModels", "WorkflowEditorViewModel.cs");
                     if (File.Exists(vmPath))
                     {
                         var vmContent = File.ReadAllText(vmPath);
@@ -1015,13 +1032,13 @@ namespace FlowMy.ViewModels
             var root = string.IsNullOrWhiteSpace(config.ProjectRoot) ? "[ProjectRoot]" : config.ProjectRoot;
             return
                 $"📁 Files sẽ được tạo:\n\n" +
-                $"  📄 Models/Nodes/{config.NodeClassName}.cs\n" +
-                $"  📄 Views/NodeControls/{config.ControlClassName}.cs\n" +
-                $"  📄 Views/Overlays/{config.DialogClassName}.xaml\n" +
-                $"  📄 Views/Overlays/{config.DialogClassName}.xaml.cs\n" +
-                $"  📄 ViewModels/{config.ViewModelClassName}.cs\n" +
-                $"  📄 Services/Rendering/{config.RendererClassName}.cs\n" +
-                (config.AddNewNodeType ? $"  📝 Models/Nodes/NodeType.cs (thêm {config.EffectiveNodeTypeName})\n" : "") +
+                $"  📄 FlowMy.Core/Models/Nodes/{config.NodeClassName}.cs\n" +
+                $"  📄 FlowMy.Wpf-UI/Views/NodeControls/{config.ControlClassName}.cs\n" +
+                $"  📄 FlowMy.Wpf-UI/Views/NodeDialogs/{config.DialogClassName}.xaml\n" +
+                $"  📄 FlowMy.Wpf-UI/Views/NodeDialogs/{config.DialogClassName}.xaml.cs\n" +
+                $"  📄 FlowMy.Wpf-UI/ViewModels/{config.ViewModelClassName}.cs\n" +
+                $"  📄 FlowMy.Wpf-UI/Services/Rendering/{config.RendererClassName}.cs\n" +
+                (config.AddNewNodeType ? $"  📝 FlowMy.Core/Models/Nodes/NodeType.cs (thêm {config.EffectiveNodeTypeName})\n" : "") +
                 $"\n🔧 Cấu hình:\n" +
                 $"  NodeType  : {(config.AddNewNodeType ? config.EffectiveNodeTypeName : "Generic")}\n" +
                 $"  IconKey   : {config.IconKey}\n" +
@@ -1033,7 +1050,7 @@ namespace FlowMy.ViewModels
                 $"  • Thêm vào TemplateFactory.cs\n" +
                 $"  • Thêm vào _NodeRenderer.cs (field + ctor + map)\n" +
                 $"  • Thêm vào ServiceCollectionExtensions.cs\n" +
-                $"  • Thêm icon mapping vào TemplateNodeHandler.cs\n" +
+                $"  • Thêm icon mapping vào NodeIconHelper.cs\n" +
                 $"  • Thêm palette Border vào WorkflowEditorWindow.xaml";
         }
     }

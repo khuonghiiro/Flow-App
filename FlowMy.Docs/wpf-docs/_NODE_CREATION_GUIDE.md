@@ -40,8 +40,8 @@ Dự án được phân tách thành 2 project riêng biệt theo kiến trúc M
 ```
 FlowMy.Core/Models/Nodes/YourNode.cs                          ← Data model (Class Library)
 FlowMy.Wpf-UI/Views/NodeControls/YourNodeControl.cs           ← UI trên canvas (WPF App)
-FlowMy.Wpf-UI/Views/Overlays/YourNodeDialog.xaml              ← Dialog cấu hình
-FlowMy.Wpf-UI/Views/Overlays/YourNodeDialog.xaml.cs           ← Code-behind
+FlowMy.Wpf-UI/Views/NodeDialogs/YourNodeDialog.xaml           ← Dialog cấu hình
+FlowMy.Wpf-UI/Views/NodeDialogs/YourNodeDialog.xaml.cs        ← Code-behind
 FlowMy.Wpf-UI/ViewModels/YourNodeDialogViewModel.cs           ← ViewModel
 FlowMy.Wpf-UI/Services/Rendering/YourNodeRenderer.cs          ← Render node lên canvas
 FlowMy.Wpf-UI/Services/Workflow/NodeExecutors/YourNodeExecutor.cs ← Logic thực thi (nếu cần)
@@ -64,7 +64,7 @@ FlowMy.Wpf-UI/Services/Workflow/NodeExecutors/YourNodeExecutor.cs ← Logic th�
 |---|------|-------------------|
 | 1 | `YourNode.cs` | `FlowMy.Core/Models/Nodes/` |
 | 2 | `YourNodeControl.cs` | `FlowMy.Wpf-UI/Views/NodeControls/` |
-| 3 | `YourNodeDialog.xaml` + `.xaml.cs` | `FlowMy.Wpf-UI/Views/Overlays/` |
+| 3 | `YourNodeDialog.xaml` + `.xaml.cs` | `FlowMy.Wpf-UI/Views/NodeDialogs/` |
 | 4 | `YourNodeDialogViewModel.cs` | `FlowMy.Wpf-UI/ViewModels/` |
 | 5 | `YourNodeRenderer.cs` | `FlowMy.Wpf-UI/Services/Rendering/` |
 | 6 | `YourNodeExecutor.cs` | `FlowMy.Wpf-UI/Services/Workflow/NodeExecutors/` (nếu cần) |

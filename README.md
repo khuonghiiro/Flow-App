@@ -41,11 +41,17 @@ Flow-My/
 │   ├── Helpers/                  → Win32 and system helpers (WindowHelper, etc.)
 │   └── Utils/                    → Parsing and calculation utilities
 ├── FlowMy.Wpf-UI/                → Presentation & UI Application (.NET 8 WinExe)
-│   ├── Views/                    → Canvas, Node Controls, Dialogs, and Overlays
+│   ├── Views/                    → All Application Views & Dialogs
+│   │   ├── MainWindow.xaml / .cs
+│   │   ├── WorkflowEditorWindow.xaml / .cs (+ WorkflowEditors/)
+│   │   ├── NodeDialogs/          → Configuration Dialogs for Workflow Nodes (BaseNodeDialog, etc.)
+│   │   ├── Dialogs/              → System, Tool & Manager Dialogs (Git, Icon, LayerAi, Preset, etc.)
+│   │   ├── Overlays/             → True Screen Overlays (HUD, Widget, Toast, Capture)
+│   │   └── NodeControls/         → Canvas Node Controls (+ ContentPanels/ for heavy editors)
 │   ├── ViewModels/               → MVVM ViewModels and execution orchestrators
 │   ├── Services/                 → Workflow execution, rendering, and interaction services
 │   ├── Controls/                 → Custom UI controls
-│   └── Themes/                   → Styles, brush palettes, and resource dictionaries
+│   └── Themes/                   → Styles, brush palettes, and resource dictionaries (Control_News/)
 └── FlowMy.Docs/                  → Documentation & Development Guidelines
     ├── AI_CODING_STANDARDS.md    → Coding standards & modularity rules (English for AI Assistants)
     ├── DEV_GUIDELINES_VI.md      → Hướng dẫn phân tách code & quy chuẩn (Tiếng Việt cho Developers)
