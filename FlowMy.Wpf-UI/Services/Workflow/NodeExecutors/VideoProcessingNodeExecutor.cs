@@ -224,7 +224,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                if (!videoNode.ExtractAllFrames && producedFrames.Count > 0)
+                if (!videoNode.ExtractAllFrames && !videoNode.ExtractByFpsEnabled && producedFrames.Count > 0)
                 {
                     if (producedFrames.Count > targetFrameCount)
                     {
@@ -320,7 +320,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     var count = producedFrames.Count;
                     var frameRangeText = count > 0 ? (count == 1 ? "frame #1" : $"frame #1 -> #{count}") : "0 frame";
                     var modeText = videoNode.OutputBase64 ? "Base64" : "File Link";
-                    LogLine?.Invoke(videoNode, $"✅ [TÁCH FRAME] Đã tách thành công {count} frame ({frameRangeText}) [{modeText}]");
+                    var itemType = videoNode.GridCollageEnabled ? "ảnh ghép" : "frame";
+
+                    LogLine?.Invoke(videoNode, $"✅ [TÁCH FRAME] Đã tách thành công {count} {itemType} ({frameRangeText}) [{modeText}]");
                 }
 
                 if (ShouldSkipVideoEncode(videoNode))
@@ -1720,7 +1722,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (!node.ExtractAllFrames && orderedStills.Count > 0)
+            if (!node.ExtractAllFrames && !node.ExtractByFpsEnabled && orderedStills.Count > 0)
             {
                 var targetCount = Math.Max(1, node.ExtractFrameCount);
                 if (orderedStills.Count > targetCount)
@@ -1785,6 +1787,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var extractedFiles = Directory.GetFiles(outputFolder, $"frame_*.{extension}")
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            if (node.GridCollageEnabled && extractedFiles.Count > 0)
+            {
+                var rawCount = extractedFiles.Count;
+                var sourceAspect = sourceWidth > 0 && sourceHeight > 0 ? (double)sourceWidth / sourceHeight : 16.0 / 9.0;
+                onLog($"🧩 [TÁCH FRAME GHÉP] Đang ghép {rawCount} frame vào các ảnh cha ({node.GridCollageWidth}x{node.GridCollageHeight}, {node.GridCollageFrameCount} frame/ảnh)...");
+
+                extractedFiles = await VideoFrameCollageComposer.CreateCompositeGridSheetsAsync(
+                    node,
+                    extractedFiles,
+                    outputFolder,
+                    node.OutputBase64,
+                    sourceAspect,
+                    ct).ConfigureAwait(false);
+
+                onLog($"✅ [TÁCH FRAME GHÉP] Hoàn tất: Đã tạo {extractedFiles.Count} ảnh ghép từ {rawCount} frame gốc.");
+            }
+
             var count = extractedFiles.Count;
             var pathsJson = JsonSerializer.Serialize(extractedFiles);
             var base64Json = node.OutputBase64 && extractedFiles.Count > 0
@@ -1798,8 +1818,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             SetOutput(node, "frame_folder", outputFolder);
             var frameRangeText = count > 0 ? (count == 1 ? "frame #1" : $"frame #1 -> #{count}") : "0 frame";
             var modeText = node.OutputBase64 ? "Base64" : "File Link";
-            onLog($"✅ Đã tách thành công {count} frame ({frameRangeText}) [{modeText}]");
-            onProgress(100, $"Done: {count} frames");
+            var itemType = node.GridCollageEnabled ? "ảnh ghép" : "frame";
+            onLog($"✅ Đã tách thành công {count} {itemType} ({frameRangeText}) [{modeText}]");
+            onProgress(100, $"Done: {count} {itemType}");
         }
 
         public static async Task<string> RunExtractAudioOnlyAsync(
