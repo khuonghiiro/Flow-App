@@ -1,0 +1,156 @@
+<!-- =========================================================================================
+     AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+     Standard Reference: FlowMy.Docs/wpf-docs/THEME_TOKEN_REFERENCE.md
+     ========================================================================================= -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Slider Track & Thumb Fallback Resources -->
+    <SolidColorBrush x:Key="ThemeSliderThumbStrokeBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ThemeSliderDisabledBrush" Color="#6B7280"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  SLIDER REPEAT BUTTON TRACKS (DECREASE / INCREASE)              -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="SliderDecreaseTrackStyle" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Height="4"
+                            Margin="7,0,-14,0"
+                            CornerRadius="2"
+                            Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
+                            VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderIncreaseTrackStyle" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Height="4" Background="Transparent" VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  MODERN ROUND SLIDER THUMB (MATERIAL DESIGN RIPPLE / HALO)      -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="ModernSliderThumbStyle" TargetType="Thumb">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid x:Name="ThumbRoot" Width="28" Height="28" Background="Transparent" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <!-- Material Hover / Active Ripple Halo Ring -->
+                        <Ellipse x:Name="HaloRing"
+                                 Width="0" Height="0"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
+                                 Opacity="0"/>
+
+                        <!-- Circular Main Thumb -->
+                        <Ellipse x:Name="ThumbCircle"
+                                 Width="14" Height="14"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
+                                 Stroke="{DynamicResource ThemeSliderThumbStrokeBrush}"
+                                 StrokeThickness="2">
+                            <Ellipse.Effect>
+                                <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.4"/>
+                            </Ellipse.Effect>
+                        </Ellipse>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="HaloRing" Property="Opacity" Value="0.25"/>
+                            <Setter TargetName="HaloRing" Property="Width" Value="24"/>
+                            <Setter TargetName="HaloRing" Property="Height" Value="24"/>
+                            <Setter TargetName="ThumbCircle" Property="Width" Value="16"/>
+                            <Setter TargetName="ThumbCircle" Property="Height" Value="16"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="HaloRing" Property="Opacity" Value="0.4"/>
+                            <Setter TargetName="HaloRing" Property="Width" Value="28"/>
+                            <Setter TargetName="HaloRing" Property="Height" Value="28"/>
+                            <Setter TargetName="ThumbCircle" Property="Width" Value="18"/>
+                            <Setter TargetName="ThumbCircle" Property="Height" Value="18"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  MODERN SLIDER STYLE                                            -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="ModernSliderStyle" TargetType="Slider">
+        <Setter Property="Stylus.IsPressAndHoldEnabled" Value="False"/>
+        <Setter Property="Background" Value="{DynamicResource ThemeTrackBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ThemeSliderActiveBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid x:Name="TemplateRoot" SnapsToDevicePixels="True" VerticalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="1" Height="28" Background="Transparent" VerticalAlignment="Center" ClipToBounds="True">
+                            <Grid VerticalAlignment="Center">
+                                <!-- Inactive Track -->
+                                <Border x:Name="InactiveTrack"
+                                        Height="4"
+                                        Margin="7,0,7,0"
+                                        CornerRadius="2"
+                                        Background="{TemplateBinding Background}"
+                                        VerticalAlignment="Center"/>
+
+                                <!-- Active Track (Decrease) + Inactive Click Target (Increase) + Thumb -->
+                                <Track x:Name="PART_Track" VerticalAlignment="Center">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource SliderDecreaseTrackStyle}" Command="{x:Static Slider.DecreaseLarge}"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource SliderIncreaseTrackStyle}" Command="{x:Static Slider.IncreaseLarge}"/>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb x:Name="Thumb" Style="{StaticResource ModernSliderThumbStyle}"/>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource ThemeSliderDisabledBrush}"/>
+                <Setter Property="Opacity" Value="0.6"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Default Implicit Slider -->
+    <Style TargetType="Slider" BasedOn="{StaticResource ModernSliderStyle}"/>
+
+</ResourceDictionary>
