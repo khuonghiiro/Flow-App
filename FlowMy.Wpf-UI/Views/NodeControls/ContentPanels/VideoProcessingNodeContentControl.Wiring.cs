@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Controls;
@@ -702,6 +702,8 @@ namespace FlowMy.Views.NodeControls
                 if (int.TryParse(selected?.Tag?.ToString(), out var jobs))
                     _node.ExtractParallelJobs = jobs;
             };
+
+            WireGridCollageEvents();
 
             WatermarkToggle.Checked += (_, _) => { _node.WatermarkEnabled = true; UpdateWatermarkPreviewUi(); };
             WatermarkToggle.Unchecked += (_, _) => { _node.WatermarkEnabled = false; UpdateWatermarkPreviewUi(); };

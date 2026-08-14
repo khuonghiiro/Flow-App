@@ -666,6 +666,211 @@
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
+
+                                        <!-- Grid Collage / Contact Sheet Card -->
+                                        <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10" Padding="12,10">
+                                            <StackPanel>
+                                                <!-- Header with Toggle -->
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,6,0" Fill="{DynamicResource ThemeTextPrimaryBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='grid-2 duotone-light'}"/>
+                                                        <TextBlock Text="Ghép Frame vào 1 ảnh (Grid Collage)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                    </StackPanel>
+                                                    <ToggleButton Grid.Column="1" x:Name="GridCollageToggle" Style="{StaticResource ToggleSwitchStyle}" ToolTip="Bật/Tắt tính năng ghép các frame video thành 1 ảnh canvas"/>
+                                                </Grid>
+
+                                                <!-- 2-Column Container (Shown when Toggle is ON) -->
+                                                <Grid x:Name="GridCollageContainerGrid" Visibility="Collapsed" Margin="0,10,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="1.15*"/>
+                                                        <ColumnDefinition Width="12"/>
+                                                        <ColumnDefinition Width="0.85*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- COLUMN 1: Settings -->
+                                                    <StackPanel Grid.Column="0">
+                                                        <!-- Canvas Dimensions -->
+                                                        <Grid Margin="0,0,0,8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="8"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <Grid Margin="0,0,0,3">
+                                                                    <TextBlock Text="Width (px)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                                    <TextBlock x:Name="GridCollageWidthValueText" Text="1000" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                                </Grid>
+                                                                <Slider x:Name="GridCollageWidthSlider"
+                                                                        Minimum="200"
+                                                                        Maximum="4000"
+                                                                        Value="1000"
+                                                                        TickFrequency="50"
+                                                                        IsSnapToTickEnabled="True"
+                                                                        Style="{StaticResource ModernSliderStyle}"/>
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="2">
+                                                                <Grid Margin="0,0,0,3">
+                                                                    <TextBlock Text="Height (px)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                                    <TextBlock x:Name="GridCollageHeightValueText" Text="1000" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                                </Grid>
+                                                                <Slider x:Name="GridCollageHeightSlider"
+                                                                        Minimum="200"
+                                                                        Maximum="4000"
+                                                                        Value="1000"
+                                                                        TickFrequency="50"
+                                                                        IsSnapToTickEnabled="True"
+                                                                        Style="{StaticResource ModernSliderStyle}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Background Color & Frame Aspect Ratio -->
+                                                        <Grid Margin="0,0,0,8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="8"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Màu nền Canvas" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="26"/>
+                                                                        <ColumnDefinition Width="30"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <ComboBox x:Name="GridCollageColorCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}">
+                                                                        <ComboBoxItem Content="Trắng (#FFF)" Tag="white" IsSelected="True"/>
+                                                                        <ComboBoxItem Content="Đen (#000)" Tag="black"/>
+                                                                        <ComboBoxItem Content="Slate (#1E1E2E)" Tag="#1E1E2E"/>
+                                                                        <ComboBoxItem Content="Xám (#F3F4F6)" Tag="#F3F4F6"/>
+                                                                        <ComboBoxItem Content="Theme Canvas" Tag="ThemeCanvasBackgroundBrush"/>
+                                                                        <ComboBoxItem Content="Tùy chỉnh..." Tag="custom"/>
+                                                                    </ComboBox>
+                                                                    <Border Grid.Column="1"
+                                                                            x:Name="GridCollageColorPreviewBox"
+                                                                            Width="18" Height="18"
+                                                                            Margin="4,0,4,0"
+                                                                            CornerRadius="3"
+                                                                            Background="White"
+                                                                            BorderBrush="{DynamicResource BorderBrush}"
+                                                                            BorderThickness="1"/>
+                                                                    <Button Grid.Column="2"
+                                                                            x:Name="PickGridCollageBgColorButton"
+                                                                            Width="28" Height="28"
+                                                                            Padding="0"
+                                                                            Style="{StaticResource VideoChromeSecondaryButtonStyle}"
+                                                                            ToolTip="Chọn màu nền tự do">
+                                                                        <controls:SvgViewboxEx Width="13" Height="13" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='palette duotone-light'}"/>
+                                                                    </Button>
+                                                                </Grid>
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="2">
+                                                                <TextBlock Text="Tỉ lệ frame con" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                                <ComboBox x:Name="GridCollageAspectCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}" ToolTip="Tỉ lệ khung hình của mỗi frame con">
+                                                                    <ComboBoxItem Content="Tự động (Video)" Tag="auto" IsSelected="True"/>
+                                                                    <ComboBoxItem Content="16:9 (Ngang)" Tag="16:9"/>
+                                                                    <ComboBoxItem Content="9:16 (Dọc Reels)" Tag="9:16"/>
+                                                                    <ComboBoxItem Content="1:1 (Vuông)" Tag="1:1"/>
+                                                                    <ComboBoxItem Content="4:3 (Chuẩn)" Tag="4:3"/>
+                                                                    <ComboBoxItem Content="3:4 (Dọc)" Tag="3:4"/>
+                                                                    <ComboBoxItem Content="2:3 (Dọc)" Tag="2:3"/>
+                                                                    <ComboBoxItem Content="3:2 (Ngang)" Tag="3:2"/>
+                                                                </ComboBox>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Padding & Margin -->
+                                                        <Grid Margin="0,0,0,8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="8"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Padding frame con" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                                <TextBox x:Name="GridCollagePaddingBox"
+                                                                         Height="28"
+                                                                         Text="10"
+                                                                         Style="{StaticResource BaseTextBox}"
+                                                                         ToolTip="Cú pháp: 1 số (vd: 10), 2 số (vd: 10,20) hoặc 4 số (vd: 10,20,10,20)"/>
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="2">
+                                                                <TextBlock Text="Margin frame con" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                                <TextBox x:Name="GridCollageMarginBox"
+                                                                         Height="28"
+                                                                         Text="0"
+                                                                         Style="{StaticResource BaseTextBox}"
+                                                                         ToolTip="Cú pháp: 1 số (vd: 0), 2 số (vd: 5,10) hoặc 4 số (vd: 5,10,5,10)"/>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Child Frame Count Slider -->
+                                                        <StackPanel Margin="0,0,0,0">
+                                                            <Grid Margin="0,0,0,3">
+                                                                <TextBlock Text="Số lượng frame con / 1 ảnh cha" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                                <TextBlock x:Name="GridCollageFrameCountValueText" Text="4 frame" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                            </Grid>
+                                                            <Slider x:Name="GridCollageFrameCountSlider"
+                                                                    Minimum="2"
+                                                                    Maximum="36"
+                                                                    Value="4"
+                                                                    TickFrequency="2"
+                                                                    IsSnapToTickEnabled="True"
+                                                                    Style="{StaticResource ModernSliderStyle}"
+                                                                    ToolTip="Số frame con nhét vào 1 ảnh cha (chọn số chẵn để chia lưới đẹp)"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <!-- COLUMN 2: Live Interactive Preview -->
+                                                    <Border Grid.Column="2"
+                                                            Background="{DynamicResource ThemeSurfaceBackgroundBrush}"
+                                                            BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Padding="8">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="*"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
+                                                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                                                <TextBlock Text="👁️ Xem trước Bố cục" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                                <TextBlock x:Name="GridCollagePreviewBadge" Text="1000×1000" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                                            </Grid>
+                                                            <Border Grid.Row="1"
+                                                                    Background="{DynamicResource ThemeTrackBackgroundBrush}"
+                                                                    BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4"
+                                                                    Padding="4"
+                                                                    Height="150">
+                                                                <Viewbox Stretch="Uniform">
+                                                                    <Canvas x:Name="GridCollagePreviewCanvas"
+                                                                            Width="1000"
+                                                                            Height="1000"
+                                                                            Background="White"
+                                                                            ClipToBounds="True"/>
+                                                                </Viewbox>
+                                                            </Border>
+                                                            <TextBlock Grid.Row="2"
+                                                                       x:Name="GridCollageMetricsText"
+                                                                       Margin="0,6,0,0"
+                                                                       FontSize="10"
+                                                                       FontFamily="Consolas"
+                                                                       Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                                                       TextWrapping="Wrap"
+                                                                       Text="Lưới: 2×2 • 4 frame/ảnh"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
                                         <TextBlock x:Name="FrameIndexPreviewText"
                                                    Margin="0,6,0,0"
                                                    FontSize="10"

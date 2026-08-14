@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Controls;
@@ -339,6 +339,7 @@ namespace FlowMy.Views.NodeControls
                 TwoPassToggle.IsChecked = _node.TwoPassEnabled;
                 AudioCodecCombo.SelectedIndex = _node.AudioCodec switch { "mp3" => 1, "opus" => 2, "copy" => 3, _ => 0 };
                 AudioBitrateCombo.SelectedIndex = _node.AudioBitrate switch { "128k" => 0, "256k" => 2, "320k" => 3, _ => 1 };
+                SyncGridCollageControlsFromModel();
             }
             finally
             {
@@ -348,6 +349,7 @@ namespace FlowMy.Views.NodeControls
             ApplyPreviewQualitySettings();
             ApplyConfigSourceMode();
             UpdateFrameLabelPreviewUi();
+            UpdateGridCollagePreviewUi();
             ApplyPreviewTransformEffects();
         }
 

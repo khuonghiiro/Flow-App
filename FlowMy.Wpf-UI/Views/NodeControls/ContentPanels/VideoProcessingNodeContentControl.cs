@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Controls;
@@ -369,6 +369,15 @@ namespace FlowMy.Views.NodeControls
                 or nameof(VideoProcessingNode.WatermarkPosition) or nameof(VideoProcessingNode.WatermarkOpacity)
                 or nameof(VideoProcessingNode.WatermarkWidthFraction) or nameof(VideoProcessingNode.WatermarkInsetFraction))
                 UpdateWatermarkPreviewUi();
+
+            if (propertyName is nameof(VideoProcessingNode.GridCollageEnabled) or nameof(VideoProcessingNode.GridCollageWidth)
+                or nameof(VideoProcessingNode.GridCollageHeight) or nameof(VideoProcessingNode.GridCollageFrameCount)
+                or nameof(VideoProcessingNode.GridCollageBackgroundColor) or nameof(VideoProcessingNode.GridCollageColorKey)
+                or nameof(VideoProcessingNode.GridCollagePadding) or nameof(VideoProcessingNode.GridCollageMargin)
+                or nameof(VideoProcessingNode.GridCollageAspectMode))
+            {
+                SyncGridCollageControlsFromModel();
+            }
 
             RefreshInfoText();
         }

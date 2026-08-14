@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -515,6 +515,25 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("BurnSubtitleEnabled", out var bseObj) && bseObj != null && bool.TryParse(bseObj.ToString(), out var bse))
                 videoNode.BurnSubtitleEnabled = bse;
 
+            if (properties.TryGetValue("GridCollageEnabled", out var gceObj) && gceObj != null && bool.TryParse(gceObj.ToString(), out var gce))
+                videoNode.GridCollageEnabled = gce;
+            if (properties.TryGetValue("GridCollageWidth", out var gcwObj) && gcwObj != null && int.TryParse(gcwObj.ToString(), out var gcw))
+                videoNode.GridCollageWidth = gcw;
+            if (properties.TryGetValue("GridCollageHeight", out var gchObj) && gchObj != null && int.TryParse(gchObj.ToString(), out var gch))
+                videoNode.GridCollageHeight = gch;
+            if (properties.TryGetValue("GridCollageFrameCount", out var gcfcObj) && gcfcObj != null && int.TryParse(gcfcObj.ToString(), out var gcfc))
+                videoNode.GridCollageFrameCount = gcfc;
+            if (properties.TryGetValue("GridCollageBackgroundColor", out var gcbcObj))
+                videoNode.GridCollageBackgroundColor = gcbcObj?.ToString() ?? "white";
+            if (properties.TryGetValue("GridCollageColorKey", out var gcckObj))
+                videoNode.GridCollageColorKey = gcckObj?.ToString() ?? "white";
+            if (properties.TryGetValue("GridCollagePadding", out var gcpObj))
+                videoNode.GridCollagePadding = gcpObj?.ToString() ?? "10";
+            if (properties.TryGetValue("GridCollageMargin", out var gcmObj))
+                videoNode.GridCollageMargin = gcmObj?.ToString() ?? "0";
+            if (properties.TryGetValue("GridCollageAspectMode", out var gcamObj))
+                videoNode.GridCollageAspectMode = gcamObj?.ToString() ?? "auto";
+
             if (properties.TryGetValue("AudioTracks", out var atObj) && atObj != null)
             {
                 try
@@ -855,11 +874,18 @@ public sealed partial class FileWorkflowPersistenceService
             if (!string.IsNullOrWhiteSpace(videoNode.SubtitlePath))
                 dict["SubtitlePath"] = videoNode.SubtitlePath;
             dict["BurnSubtitleEnabled"] = videoNode.BurnSubtitleEnabled;
+            dict["GridCollageEnabled"] = videoNode.GridCollageEnabled;
+            dict["GridCollageWidth"] = videoNode.GridCollageWidth;
+            dict["GridCollageHeight"] = videoNode.GridCollageHeight;
+            dict["GridCollageFrameCount"] = videoNode.GridCollageFrameCount;
+            dict["GridCollageBackgroundColor"] = videoNode.GridCollageBackgroundColor;
+            dict["GridCollageColorKey"] = videoNode.GridCollageColorKey;
+            dict["GridCollagePadding"] = videoNode.GridCollagePadding;
+            dict["GridCollageMargin"] = videoNode.GridCollageMargin;
+            dict["GridCollageAspectMode"] = videoNode.GridCollageAspectMode;
             if (videoNode.AudioTracks.Count > 0)
                 dict["AudioTracks"] = JsonSerializer.Serialize(videoNode.AudioTracks.ToList());
             if (videoNode.Overlays.Count > 0)
                 dict["Overlays"] = JsonSerializer.Serialize(videoNode.Overlays.ToList());
-
+        }
     }
-
-}

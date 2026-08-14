@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -237,6 +237,15 @@ namespace FlowMy.Models.Nodes
         private string _audioBitrate = "192k";
         private string? _subtitlePath;
         private bool _burnSubtitleEnabled;
+        private bool _gridCollageEnabled;
+        private int _gridCollageWidth = 1000;
+        private int _gridCollageHeight = 1000;
+        private int _gridCollageFrameCount = 4;
+        private string _gridCollageBackgroundColor = "white";
+        private string _gridCollageColorKey = "white";
+        private string _gridCollagePadding = "10";
+        private string _gridCollageMargin = "0";
+        private string _gridCollageAspectMode = "auto";
 
         public VideoProcessingNode()
         {
@@ -1196,6 +1205,92 @@ namespace FlowMy.Models.Nodes
         {
             get => _concatEnabled;
             set { if (_concatEnabled != value) { _concatEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool GridCollageEnabled
+        {
+            get => _gridCollageEnabled;
+            set { if (_gridCollageEnabled != value) { _gridCollageEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public int GridCollageWidth
+        {
+            get => _gridCollageWidth;
+            set
+            {
+                var clamped = Math.Clamp(value, 200, 8000);
+                if (_gridCollageWidth != clamped) { _gridCollageWidth = clamped; OnPropertyChanged(); }
+            }
+        }
+
+        public int GridCollageHeight
+        {
+            get => _gridCollageHeight;
+            set
+            {
+                var clamped = Math.Clamp(value, 200, 8000);
+                if (_gridCollageHeight != clamped) { _gridCollageHeight = clamped; OnPropertyChanged(); }
+            }
+        }
+
+        public int GridCollageFrameCount
+        {
+            get => _gridCollageFrameCount;
+            set
+            {
+                var clamped = Math.Clamp(value, 1, 64);
+                if (_gridCollageFrameCount != clamped) { _gridCollageFrameCount = clamped; OnPropertyChanged(); }
+            }
+        }
+
+        public string GridCollageBackgroundColor
+        {
+            get => _gridCollageBackgroundColor;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "white" : value.Trim();
+                if (_gridCollageBackgroundColor != next) { _gridCollageBackgroundColor = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string GridCollageColorKey
+        {
+            get => _gridCollageColorKey;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "white" : value.Trim();
+                if (_gridCollageColorKey != next) { _gridCollageColorKey = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string GridCollagePadding
+        {
+            get => _gridCollagePadding;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "0" : value.Trim();
+                if (_gridCollagePadding != next) { _gridCollagePadding = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string GridCollageMargin
+        {
+            get => _gridCollageMargin;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "0" : value.Trim();
+                if (_gridCollageMargin != next) { _gridCollageMargin = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string GridCollageAspectMode
+        {
+            get => _gridCollageAspectMode;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "auto" : value.Trim().ToLowerInvariant();
+                if (_gridCollageAspectMode != next) { _gridCollageAspectMode = next; OnPropertyChanged(); }
+            }
         }
 
         public ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }

@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -280,6 +280,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             env.CancellationToken)
                         .ConfigureAwait(false);
                 }
+                }
+
+                if (videoNode.GridCollageEnabled && producedFrames.Count > 0)
+                {
+                    var rawCount = producedFrames.Count;
+                    var collageFolder = Path.GetDirectoryName(framePattern)!;
+                    var sourceAspect = sourceWidth > 0 && sourceHeight > 0 ? (double)sourceWidth / sourceHeight : 16.0 / 9.0;
+
+                    LogLine?.Invoke(videoNode, $"🧩 [TÁCH FRAME GHÉP] Đang ghép {rawCount} frame vào các ảnh cha ({videoNode.GridCollageWidth}x{videoNode.GridCollageHeight}, {videoNode.GridCollageFrameCount} frame/ảnh)...");
+
+                    producedFrames = await VideoFrameCollageComposer.CreateCompositeGridSheetsAsync(
+                        videoNode,
+                        producedFrames,
+                        collageFolder,
+                        videoNode.OutputBase64,
+                        sourceAspect,
+                        env.CancellationToken).ConfigureAwait(false);
+
+                    LogLine?.Invoke(videoNode, $"✅ [TÁCH FRAME GHÉP] Hoàn tất: Đã tạo {producedFrames.Count} ảnh ghép từ {rawCount} frame gốc.");
                 }
 
                 var framePathsJson = JsonSerializer.Serialize(producedFrames);
