@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Controls;
@@ -1272,7 +1272,8 @@ namespace FlowMy.Views.NodeControls
             {
                 // Horizontal/landscape video: Fix width to container width, calculate exact height matching aspect ratio
                 var idealViewportH = cardWidth / aspect;
-                targetViewportH = Math.Clamp(idealViewportH, 140.0, maxViewportH);
+                var clampMin = Math.Min(140.0, maxViewportH);
+                targetViewportH = Math.Clamp(idealViewportH, clampMin, maxViewportH);
             }
 
             if (VideoViewportClipBorder != null)
