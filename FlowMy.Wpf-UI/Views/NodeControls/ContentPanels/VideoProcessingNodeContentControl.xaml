@@ -924,7 +924,7 @@
                                                                 </Grid.ColumnDefinitions>
                                                                 <Slider x:Name="GridCollageFrameCountSlider"
                                                                         Minimum="1"
-                                                                        Maximum="64"
+                                                                        Maximum="128"
                                                                         Value="4"
                                                                         TickFrequency="1"
                                                                         IsSnapToTickEnabled="True"

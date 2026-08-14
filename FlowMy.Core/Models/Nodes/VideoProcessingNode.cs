@@ -1239,7 +1239,7 @@ namespace FlowMy.Models.Nodes
             get => _gridCollageFrameCount;
             set
             {
-                var clamped = Math.Clamp(value, 1, 64);
+                var clamped = Math.Clamp(value, 1, 128);
                 if (_gridCollageFrameCount != clamped) { _gridCollageFrameCount = clamped; OnPropertyChanged(); }
             }
         }

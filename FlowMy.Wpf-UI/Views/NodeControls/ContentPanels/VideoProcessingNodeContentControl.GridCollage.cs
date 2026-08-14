@@ -325,7 +325,7 @@ namespace FlowMy.Views.NodeControls
 
             var canvasW = Math.Clamp(_node.GridCollageWidth, 50, 8000);
             var canvasH = Math.Clamp(_node.GridCollageHeight, 50, 8000);
-            var count = Math.Clamp(_node.GridCollageFrameCount, 1, 64);
+            var count = Math.Clamp(_node.GridCollageFrameCount, 1, 128);
             var margin = VideoFrameCollageComposer.ParseThickness(_node.GridCollageMargin);
             var padding = VideoFrameCollageComposer.ParseThickness(_node.GridCollagePadding);
 

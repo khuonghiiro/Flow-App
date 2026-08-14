@@ -291,7 +291,7 @@ namespace FlowMy.Services.Workflow
             var result = new List<string>();
             if (rawFramePaths.Count == 0) return result;
 
-            var batchSize = Math.Clamp(node.GridCollageFrameCount, 1, 64);
+            var batchSize = Math.Clamp(node.GridCollageFrameCount, 1, 128);
             var canvasW = Math.Clamp(node.GridCollageWidth, 200, 8000);
             var canvasH = Math.Clamp(node.GridCollageHeight, 200, 8000);
             var itemAspect = ResolveItemAspect(node, sourceAspect);

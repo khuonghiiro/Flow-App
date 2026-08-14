@@ -84,13 +84,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="public\library\sciter.dll">
-			<Link>sciter.dll</Link>
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
-	<ItemGroup>
 		<!-- Copy public folder to output directory for default configurations -->
 		<Content Include="public\**\*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -210,6 +203,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Assets\Icons\" />
+	  <Folder Include="public\library\" />
 	</ItemGroup>
 
 	<!-- Đảm bảo Themes/Controls/Borders.xaml & Views/WorkflowEditorWindow.xaml luôn được MarkupCompile → BAML (tránh lỗi runtime Cannot locate resource). -->

@@ -43,6 +43,73 @@ namespace FlowMy.Views.NodeControls
             WireTrimAndOverlayEvents();
             WireExtractionAndWatermarkEvents();
             WireFrameLabelAndExportEvents();
+            WireComboBoxDropDownFix();
+        }
+
+        /// <summary>
+        /// Fix: ComboBox popup bị chặn bởi border.MouseDown handler (node drag).
+        /// Thêm PreviewMouseLeftButtonDown cho từng ComboBox để buộc toggle IsDropDownOpen.
+        /// </summary>
+        private void WireComboBoxDropDownFix()
+        {
+            // Dùng LogicalTreeHelper thay vì VisualTreeHelper
+            // để tìm được cả ComboBox trong các tab Collapsed (chưa render visual tree)
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                foreach (var combo in FindLogicalChildren<ComboBox>(this))
+                {
+                    combo.PreviewMouseLeftButtonDown += ComboBox_ForceDropDown;
+                    combo.DropDownClosed += (s, _) => _lastComboBoxCloseTime = DateTime.Now;
+                }
+            }));
+        }
+
+        /// <summary>
+        /// Timestamp chống re-open popup sau khi chọn item (debounce 200ms).
+        /// </summary>
+        private static DateTime _lastComboBoxCloseTime = DateTime.MinValue;
+
+        private static void ComboBox_ForceDropDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not ComboBox cb) return;
+
+            if (!cb.IsDropDownOpen)
+            {
+                // Chống re-open khi popup vừa đóng do chọn item (< 200ms)
+                if ((DateTime.Now - _lastComboBoxCloseTime).TotalMilliseconds < 200)
+                    return;
+
+                cb.IsDropDownOpen = true;
+                e.Handled = true;
+            }
+            else
+            {
+                // Dropdown đang mở — chỉ đóng nếu click nằm trên header ComboBox
+                var pos = e.GetPosition(cb);
+                if (pos.X >= 0 && pos.Y >= 0 && pos.X <= cb.ActualWidth && pos.Y <= cb.ActualHeight)
+                {
+                    cb.IsDropDownOpen = false;
+                    _lastComboBoxCloseTime = DateTime.Now;
+                    e.Handled = true;
+                }
+                // Click ngoài bounds (trong popup area) → không can thiệp, để item selection hoạt động
+            }
+        }
+
+        /// <summary>
+        /// Duyệt logical tree (tìm được cả element Collapsed, khác với VisualTreeHelper).
+        /// </summary>
+        private static IEnumerable<T> FindLogicalChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) yield break;
+            foreach (object rawChild in LogicalTreeHelper.GetChildren(parent))
+            {
+                if (rawChild is not DependencyObject child) continue;
+                if (child is T typedChild)
+                    yield return typedChild;
+                foreach (var nested in FindLogicalChildren<T>(child))
+                    yield return nested;
+            }
         }
 
         private void WireNavigationAndActions()
