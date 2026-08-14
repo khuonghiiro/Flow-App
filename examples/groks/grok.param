@@ -1,6 +1,0 @@
-# file: grok.param
-outputGuildId: #outputGuildId
-outputParams: #outputParams
-outputImageGuildId: #outputImageGuildId
-outputImageUpload: #outputImageUpload
-statusCreate: #statusCreate

@@ -1,9 +1,8 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34902.65
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowMy", "FlowMy.csproj", "{1CEFC99C-7E3F-4CCA-99A5-6EE1BA24A307}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowMy", "FlowMy.Wpf-UI\FlowMy.csproj", "{1CEFC99C-7E3F-4CCA-99A5-6EE1BA24A307}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowMy.Core", "FlowMy.Core\FlowMy.Core.csproj", "{702A9008-22BD-45DF-8392-87EFB23D651A}"
 EndProject
