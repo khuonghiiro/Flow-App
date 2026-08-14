@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:controls="clr-namespace:FlowMy.Controls"
-        xmlns:enums="clr-namespace:FlowMy.Models.Enums;assembly=FlowMy"
+        xmlns:enums="clr-namespace:FlowMy.Models.Enums;assembly=FlowMy.Core"
         xmlns:conv="clr-namespace:FlowMy.Converters"
         Title="Input Node Dialog"
         WindowStyle="None"

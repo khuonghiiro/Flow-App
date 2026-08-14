@@ -8,7 +8,6 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using FlowMy.Models;
-using FlowMy.Services.Interaction;
 
 namespace FlowMy.Models.Nodes
 {
@@ -1046,7 +1045,7 @@ namespace FlowMy.Models.Nodes
             object? executionServiceObj,
             WebResponseOutput? roConfig = null,
             int statusCode = 200,
-            FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
+            object? host = null)
         {
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
@@ -1317,11 +1316,22 @@ namespace FlowMy.Models.Nodes
             Dictionary<string, string> requestHeaders,
             string? postData,
             string? targetExecutionId = null,
-            FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
+            object? host = null)
         {
             if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
 
-            var execService = host.GetExecutionServiceSafely();
+            var execService = (host as FlowMy.Interfaces.IScopedOutputSync);
+            if (execService == null && host != null)
+            {
+                try
+                {
+                    var prop = host.GetType().GetProperty("ViewModel");
+                    var vm = prop?.GetValue(host);
+                    var execProp = vm?.GetType().GetProperty("ExecutionService");
+                    execService = execProp?.GetValue(vm) as FlowMy.Interfaces.IScopedOutputSync;
+                }
+                catch { }
+            }
 
             foreach (var ro in ResponseOutputs)
             {
@@ -1364,11 +1374,22 @@ namespace FlowMy.Models.Nodes
             string bodyText,
             int statusCode,
             string? targetExecutionId = null,
-            FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
+            object? host = null)
         {
             if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
 
-            var execService = host.GetExecutionServiceSafely();
+            var execService = (host as FlowMy.Interfaces.IScopedOutputSync);
+            if (execService == null && host != null)
+            {
+                try
+                {
+                    var prop = host.GetType().GetProperty("ViewModel");
+                    var vm = prop?.GetValue(host);
+                    var execProp = vm?.GetType().GetProperty("ExecutionService");
+                    execService = execProp?.GetValue(vm) as FlowMy.Interfaces.IScopedOutputSync;
+                }
+                catch { }
+            }
 
             foreach (var ro in ResponseOutputs)
             {
@@ -1425,7 +1446,7 @@ namespace FlowMy.Models.Nodes
             object? executionServiceObj,
             WebResponseOutput? roConfig = null,
             int statusCode = 200,
-            FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
+            object? host = null)
         {
             if (string.IsNullOrWhiteSpace(key)) return;
             var trimmedKey = key.Trim();
@@ -1535,7 +1556,7 @@ namespace FlowMy.Models.Nodes
                     }
                 }
 
-                var execService = executionServiceObj as FlowMy.Services.Workflow.WorkflowExecutionService;
+                var execService = executionServiceObj as FlowMy.Interfaces.IScopedOutputSync;
                 if (execService != null && !string.IsNullOrEmpty(run.ExecutionId))
                 {
                     try
@@ -1855,7 +1876,7 @@ namespace FlowMy.Models.Nodes
             WebNode node,
             WebResponseOutput outputConfig,
             object? executionServiceObj = null,
-            FlowMy.Services.Interaction.IWorkflowEditorHost? host = null)
+            object? host = null)
         {
             if (outputConfig == null || string.IsNullOrWhiteSpace(outputConfig.Key)) return true;
             var trimmedKey = outputConfig.Key.Trim();

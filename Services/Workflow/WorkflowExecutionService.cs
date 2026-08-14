@@ -12,7 +12,7 @@ namespace FlowMy.Services.Workflow
     /// Service xử lý logic thực thi workflow từ Start node đến End node.
     /// Hỗ trợ sequential và parallel execution cho các output ports.
     /// </summary>
-    public class WorkflowExecutionService
+    public class WorkflowExecutionService : FlowMy.Interfaces.IScopedOutputSync
     {
         private readonly GlobalKeyboardHookService _keyboardHook;
         private readonly FlowMy.Services.Interaction.KeyboardInputService _keyboardInput;
@@ -68,7 +68,7 @@ namespace FlowMy.Services.Workflow
         public static event Action<string, string, string, string?>? OnScopedOutputSetGlobal;
         public event Action<string, string, string, string?>? OnScopedOutputSet;
 
-        internal void SetScopedNodeStringOutput(string executionId, string nodeId, string key, string? value)
+        public void SetScopedNodeStringOutput(string executionId, string nodeId, string key, string? value)
         {
             if (string.IsNullOrWhiteSpace(executionId) || string.IsNullOrWhiteSpace(nodeId)) return;
             var k = (key ?? string.Empty).Trim();

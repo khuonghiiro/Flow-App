@@ -11,6 +11,7 @@
 		<ApplicationIcon>Assets/Images/Auto_Click.ico</ApplicationIcon>
 		<AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
 		<ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+		<UseSharedCompilation>true</UseSharedCompilation>
 
 		<!-- Version được đồng bộ cho cả AssemblyVersion và FileVersion -->
 		<AssemblyVersion>1.0.4</AssemblyVersion>
@@ -27,7 +28,7 @@
 
 	<!-- DEBUG Configuration -->
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-		<DebugType>full</DebugType>
+		<DebugType>portable</DebugType>
 		<DebugSymbols>true</DebugSymbols>
 		<Optimize>false</Optimize>
 	</PropertyGroup>
@@ -52,18 +53,22 @@
 		<Compile Remove="ViewModels\Admin\**" />
 		<Compile Remove="Views\Menus\GroupRolePermissions\**" />
 		<Compile Remove="examples\**" />
+		<Compile Remove="FlowMy.Core\**" />
 		<EmbeddedResource Remove="Localization\**" />
 		<EmbeddedResource Remove="ViewModels\Admin\**" />
 		<EmbeddedResource Remove="Views\Menus\GroupRolePermissions\**" />
 		<EmbeddedResource Remove="examples\**" />
+		<EmbeddedResource Remove="FlowMy.Core\**" />
 		<None Remove="Localization\**" />
 		<None Remove="ViewModels\Admin\**" />
 		<None Remove="Views\Menus\GroupRolePermissions\**" />
 		<None Remove="examples\**" />
+		<None Remove="FlowMy.Core\**" />
 		<Page Remove="Localization\**" />
 		<Page Remove="ViewModels\Admin\**" />
 		<Page Remove="Views\Menus\GroupRolePermissions\**" />
 		<Page Remove="examples\**" />
+		<Page Remove="FlowMy.Core\**" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -116,10 +121,6 @@
 		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Connections.Client" Version="9.0.9" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
-		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9">
@@ -148,9 +149,13 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
 		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.7" />
 		<PackageReference Include="VirtualizingWrapPanel" Version="2.3.2" />
-		<PackageReference Include="Tesseract" Version="5.0.0" />
-		<PackageReference Include="Magick.NET-Q8-AnyCPU" Version="*" />
+		<PackageReference Include="Tesseract" Version="5.2.0" />
+		<PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.16.0" />
 		<PackageReference Include="SkiaSharp" Version="2.88.8" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="FlowMy.Core\FlowMy.Core.csproj" />
 	</ItemGroup>
 
 	  <ItemGroup>

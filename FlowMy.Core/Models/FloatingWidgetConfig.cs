@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Forms;
+using System.Windows;
 
 namespace FlowMy.Models
 {
@@ -56,16 +56,12 @@ namespace FlowMy.Models
         {
             try
             {
-                var ps = Screen.PrimaryScreen;
-                if (ps != null)
-                {
-                    var a = ps.WorkingArea;
-                    if (a.Width > 0 && a.Height > 0)
-                        return (a.Width, a.Height);
-                }
+                var w = SystemParameters.WorkArea.Width;
+                var h = SystemParameters.WorkArea.Height;
+                if (w > 0 && h > 0)
+                    return (w, h);
             }
-            catch { /* ignore */ }
-
+            catch { }
             return (1920, 1080);
         }
 

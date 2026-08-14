@@ -11,7 +11,7 @@ into smaller partial class files to maintain readability and ease of maintenance
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:models="clr-namespace:FlowMy.Models.Nodes"
+             xmlns:models="clr-namespace:FlowMy.Models.Nodes;assembly=FlowMy.Core"
              xmlns:controls="clr-namespace:FlowMy.Controls"
              xmlns:local="clr-namespace:FlowMy.Views.NodeControls"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"

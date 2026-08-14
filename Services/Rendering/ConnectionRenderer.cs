@@ -584,19 +584,20 @@ namespace FlowMy.Services.Rendering
 
             // ✅ PERFORMANCE: Path caching - avoid expensive recalculations
             // Initialize cache if needed
-            if (connection.PathCache == null)
+            if (connection.PathCache is not ConnectionPathCache cache)
             {
-                connection.PathCache = new ConnectionPathCache();
+                cache = new ConnectionPathCache();
+                connection.PathCache = cache;
             }
 
             PathGeometry geometry;
             double currentZoom = 1.0; // Placeholder - can enhance later with actual zoom
 
             // Check if we can reuse cached path  
-            if (!connection.PathCache.NeedsUpdate(start, end, currentZoom, lineStyle))
+            if (!cache.NeedsUpdate(start, end, currentZoom, lineStyle))
             {
                 // ✅ Use cached path - saves expensive path generation
-                geometry = connection.PathCache.CachedPath!;
+                geometry = cache.CachedPath!;
             }
             else
             {
@@ -616,7 +617,7 @@ namespace FlowMy.Services.Rendering
                 };
 
                 // ✅ Update cache with new path
-                connection.PathCache.UpdateCache(geometry, start, end, currentZoom, lineStyle);
+                cache.UpdateCache(geometry, start, end, currentZoom, lineStyle);
             }
 
             connection.LineUI.Data = geometry;

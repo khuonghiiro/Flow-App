@@ -157,11 +157,11 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>ID duy nhất của layer.</summary>
-        public string Id { get; internal set; }
+        public string Id { get; set; }
 
         /// <summary>Kích thước layer (có thể khác document — layer ảnh dùng kích thước ảnh gốc).</summary>
-        public int Width { get; internal set; }
-        public int Height { get; internal set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
 
         /// <summary>Vị trí layer trên canvas document (top-left offset).</summary>
         public int OffsetX
@@ -196,7 +196,7 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>Bitmap pixel data (BGRA32, kích thước = Width×Height).</summary>
-        public WriteableBitmap Bitmap { get; internal set; }
+        public WriteableBitmap Bitmap { get; set; }
 
         /// <summary>Tên hiển thị.</summary>
         public string Name

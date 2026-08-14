@@ -58,7 +58,7 @@ namespace FlowMy.Models
         public double WaveAmplitude { get; set; }       // biên độ của wave (px)
         
         // ✅ PERFORMANCE: Path geometry cache để tránh recalculate khi nodes di chuyển nhỏ
-        public FlowMy.Services.Rendering.ConnectionRenderer.ConnectionPathCache? PathCache { get; set; }
+        public object? PathCache { get; set; }
     }
 }
 

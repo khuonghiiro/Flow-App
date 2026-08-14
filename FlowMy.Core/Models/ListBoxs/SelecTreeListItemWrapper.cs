@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using FlowMy.Helpers;
 using System;
 using System.Collections.Generic;
@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 
 namespace FlowMy.Models.ListBoxs
@@ -55,7 +56,7 @@ namespace FlowMy.Models.ListBoxs
 
         public SolidColorBrush TextColor => IsSelected ?
             new SolidColorBrush(Color.FromRgb(59, 130, 246)) :
-             DynamicColorHelper.GetResourceBrush("TextSecondary", Color.FromRgb(211, 211, 211));
+            (Application.Current?.TryFindResource("TextSecondary") as SolidColorBrush ?? new SolidColorBrush(Color.FromRgb(211, 211, 211)));
 
         // Tree path for drawing connection lines
         public List<bool> TreePath

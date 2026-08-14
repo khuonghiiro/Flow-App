@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <!-- Kích hoạt Roslyn VBCSCompiler daemon dùng chung giữa các lần build -->
+    <UseSharedCompilation>true</UseSharedCompilation>
+    <!-- Tối ưu biên dịch tham chiếu: project khác chỉ rebuild khi public API thay đổi -->
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <!-- Tăng tốc build cho Visual Studio / MSBuild -->
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+    <!-- Bỏ qua kiểm tra NuGet audit liên tục mỗi lần build để tiết kiệm 2-3s quét online -->
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+</Project>
