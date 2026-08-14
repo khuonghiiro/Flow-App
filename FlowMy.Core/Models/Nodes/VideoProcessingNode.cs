@@ -245,7 +245,8 @@ namespace FlowMy.Models.Nodes
         private string _gridCollageColorKey = "white";
         private string _gridCollagePadding = "10";
         private string _gridCollageMargin = "0";
-        private string _gridCollageAspectMode = "auto";
+        private string _gridCollageAspectMode = "auto";
+        private bool _extractByFpsEnabled = true;
 
         public VideoProcessingNode()
         {
@@ -1291,6 +1292,12 @@ namespace FlowMy.Models.Nodes
                 var next = string.IsNullOrWhiteSpace(value) ? "auto" : value.Trim().ToLowerInvariant();
                 if (_gridCollageAspectMode != next) { _gridCollageAspectMode = next; OnPropertyChanged(); }
             }
+        }
+
+        public bool ExtractByFpsEnabled
+        {
+            get => _extractByFpsEnabled;
+            set { if (_extractByFpsEnabled != value) { _extractByFpsEnabled = value; OnPropertyChanged(); } }
         }
 
         public ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }

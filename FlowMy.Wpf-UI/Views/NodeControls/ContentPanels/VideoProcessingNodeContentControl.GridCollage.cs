@@ -35,9 +35,32 @@ namespace FlowMy.Views.NodeControls
                     if (_isGridCollageSyncing || _node == null) return;
                     var val = (int)Math.Round(GridCollageWidthSlider.Value);
                     _node.GridCollageWidth = val;
-                    if (GridCollageWidthValueText != null)
-                        GridCollageWidthValueText.Text = val.ToString(CultureInfo.InvariantCulture);
+                    if (GridCollageWidthBox != null && GridCollageWidthBox.Text != val.ToString(CultureInfo.InvariantCulture))
+                    {
+                        _isGridCollageSyncing = true;
+                        GridCollageWidthBox.Text = val.ToString(CultureInfo.InvariantCulture);
+                        _isGridCollageSyncing = false;
+                    }
                     UpdateGridCollagePreviewUi();
+                };
+            }
+
+            if (GridCollageWidthBox != null)
+            {
+                GridCollageWidthBox.TextChanged += (_, _) =>
+                {
+                    if (_isGridCollageSyncing || _node == null) return;
+                    if (int.TryParse(GridCollageWidthBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var w) && w >= 50)
+                    {
+                        _node.GridCollageWidth = w;
+                        if (GridCollageWidthSlider != null && (int)Math.Round(GridCollageWidthSlider.Value) != w)
+                        {
+                            _isGridCollageSyncing = true;
+                            GridCollageWidthSlider.Value = Math.Clamp(w, GridCollageWidthSlider.Minimum, GridCollageWidthSlider.Maximum);
+                            _isGridCollageSyncing = false;
+                        }
+                        UpdateGridCollagePreviewUi();
+                    }
                 };
             }
 
@@ -48,9 +71,32 @@ namespace FlowMy.Views.NodeControls
                     if (_isGridCollageSyncing || _node == null) return;
                     var val = (int)Math.Round(GridCollageHeightSlider.Value);
                     _node.GridCollageHeight = val;
-                    if (GridCollageHeightValueText != null)
-                        GridCollageHeightValueText.Text = val.ToString(CultureInfo.InvariantCulture);
+                    if (GridCollageHeightBox != null && GridCollageHeightBox.Text != val.ToString(CultureInfo.InvariantCulture))
+                    {
+                        _isGridCollageSyncing = true;
+                        GridCollageHeightBox.Text = val.ToString(CultureInfo.InvariantCulture);
+                        _isGridCollageSyncing = false;
+                    }
                     UpdateGridCollagePreviewUi();
+                };
+            }
+
+            if (GridCollageHeightBox != null)
+            {
+                GridCollageHeightBox.TextChanged += (_, _) =>
+                {
+                    if (_isGridCollageSyncing || _node == null) return;
+                    if (int.TryParse(GridCollageHeightBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var h) && h >= 50)
+                    {
+                        _node.GridCollageHeight = h;
+                        if (GridCollageHeightSlider != null && (int)Math.Round(GridCollageHeightSlider.Value) != h)
+                        {
+                            _isGridCollageSyncing = true;
+                            GridCollageHeightSlider.Value = Math.Clamp(h, GridCollageHeightSlider.Minimum, GridCollageHeightSlider.Maximum);
+                            _isGridCollageSyncing = false;
+                        }
+                        UpdateGridCollagePreviewUi();
+                    }
                 };
             }
 
@@ -61,9 +107,32 @@ namespace FlowMy.Views.NodeControls
                     if (_isGridCollageSyncing || _node == null) return;
                     var val = (int)Math.Round(GridCollageFrameCountSlider.Value);
                     _node.GridCollageFrameCount = val;
-                    if (GridCollageFrameCountValueText != null)
-                        GridCollageFrameCountValueText.Text = $"{val} frame";
+                    if (GridCollageFrameCountBox != null && GridCollageFrameCountBox.Text != val.ToString(CultureInfo.InvariantCulture))
+                    {
+                        _isGridCollageSyncing = true;
+                        GridCollageFrameCountBox.Text = val.ToString(CultureInfo.InvariantCulture);
+                        _isGridCollageSyncing = false;
+                    }
                     UpdateGridCollagePreviewUi();
+                };
+            }
+
+            if (GridCollageFrameCountBox != null)
+            {
+                GridCollageFrameCountBox.TextChanged += (_, _) =>
+                {
+                    if (_isGridCollageSyncing || _node == null) return;
+                    if (int.TryParse(GridCollageFrameCountBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var cnt) && cnt >= 1)
+                    {
+                        _node.GridCollageFrameCount = cnt;
+                        if (GridCollageFrameCountSlider != null && (int)Math.Round(GridCollageFrameCountSlider.Value) != cnt)
+                        {
+                            _isGridCollageSyncing = true;
+                            GridCollageFrameCountSlider.Value = Math.Clamp(cnt, GridCollageFrameCountSlider.Minimum, GridCollageFrameCountSlider.Maximum);
+                            _isGridCollageSyncing = false;
+                        }
+                        UpdateGridCollagePreviewUi();
+                    }
                 };
             }
 
@@ -152,18 +221,18 @@ namespace FlowMy.Views.NodeControls
 
                 if (GridCollageWidthSlider != null)
                     GridCollageWidthSlider.Value = _node.GridCollageWidth > 0 ? _node.GridCollageWidth : 1000;
-                if (GridCollageWidthValueText != null)
-                    GridCollageWidthValueText.Text = _node.GridCollageWidth.ToString(CultureInfo.InvariantCulture);
+                if (GridCollageWidthBox != null)
+                    GridCollageWidthBox.Text = _node.GridCollageWidth.ToString(CultureInfo.InvariantCulture);
 
                 if (GridCollageHeightSlider != null)
                     GridCollageHeightSlider.Value = _node.GridCollageHeight > 0 ? _node.GridCollageHeight : 1000;
-                if (GridCollageHeightValueText != null)
-                    GridCollageHeightValueText.Text = _node.GridCollageHeight.ToString(CultureInfo.InvariantCulture);
+                if (GridCollageHeightBox != null)
+                    GridCollageHeightBox.Text = _node.GridCollageHeight.ToString(CultureInfo.InvariantCulture);
 
                 if (GridCollageFrameCountSlider != null)
                     GridCollageFrameCountSlider.Value = _node.GridCollageFrameCount > 0 ? _node.GridCollageFrameCount : 4;
-                if (GridCollageFrameCountValueText != null)
-                    GridCollageFrameCountValueText.Text = $"{_node.GridCollageFrameCount} frame";
+                if (GridCollageFrameCountBox != null)
+                    GridCollageFrameCountBox.Text = _node.GridCollageFrameCount.ToString(CultureInfo.InvariantCulture);
 
                 if (GridCollagePaddingBox != null)
                     GridCollagePaddingBox.Text = string.IsNullOrWhiteSpace(_node.GridCollagePadding) ? "10" : _node.GridCollagePadding;
@@ -254,8 +323,8 @@ namespace FlowMy.Views.NodeControls
         {
             if (GridCollagePreviewCanvas == null || _node == null) return;
 
-            var canvasW = Math.Clamp(_node.GridCollageWidth, 200, 8000);
-            var canvasH = Math.Clamp(_node.GridCollageHeight, 200, 8000);
+            var canvasW = Math.Clamp(_node.GridCollageWidth, 50, 8000);
+            var canvasH = Math.Clamp(_node.GridCollageHeight, 50, 8000);
             var count = Math.Clamp(_node.GridCollageFrameCount, 1, 64);
             var margin = VideoFrameCollageComposer.ParseThickness(_node.GridCollageMargin);
             var padding = VideoFrameCollageComposer.ParseThickness(_node.GridCollagePadding);
@@ -338,10 +407,12 @@ namespace FlowMy.Views.NodeControls
 
             if (GridCollageMetricsText != null)
             {
-                var estTotalFrames = _node.ExtractFrameCount > 0 ? _node.ExtractFrameCount : 4;
+                var duration = Math.Max(0.1, GetNaturalDurationSeconds());
+                var estTotalFrames = _node.ExtractByFpsEnabled
+                    ? Math.Max(1, (int)Math.Round(duration * Math.Max(0.001, _node.ExtractFps)))
+                    : (_node.ExtractFrameCount > 0 ? _node.ExtractFrameCount : 4);
                 if (_node.ExtractAllFrames)
                 {
-                    var duration = Math.Max(0.1, GetNaturalDurationSeconds());
                     var fps = _node.SourceFps > 0 ? _node.SourceFps : 24;
                     estTotalFrames = Math.Max(1, (int)Math.Floor(duration * fps));
                 }

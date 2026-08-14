@@ -359,6 +359,10 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.SourceFps = sf;
             if (properties.TryGetValue("ExtractFps", out var efObj) && efObj != null && double.TryParse(efObj.ToString(), out var ef))
                 videoNode.ExtractFps = ef;
+
+            if (properties.TryGetValue("ExtractByFpsEnabled", out var ebfeObj) && ebfeObj != null && bool.TryParse(ebfeObj.ToString(), out var ebfe))
+
+                videoNode.ExtractByFpsEnabled = ebfe;
             if (properties.TryGetValue("Brightness", out var brObj) && brObj != null && double.TryParse(brObj.ToString(), out var br))
                 videoNode.Brightness = br;
             if (properties.TryGetValue("Contrast", out var ctObj) && ctObj != null && double.TryParse(ctObj.ToString(), out var ct))
@@ -792,29 +796,6 @@ public sealed partial class FileWorkflowPersistenceService
             dict["RotationDegrees"] = videoNode.RotationDegrees;
             dict["FlipH"] = videoNode.FlipH;
             dict["FlipV"] = videoNode.FlipV;
-            dict["SecondsPerFrame"] = videoNode.SecondsPerFrame;
-            dict["ExtractFrameCount"] = videoNode.ExtractFrameCount;
-            dict["PreferGpu"] = videoNode.PreferGpu;
-            if (!string.IsNullOrWhiteSpace(videoNode.PreferredHwAccel))
-                dict["PreferredHwAccel"] = videoNode.PreferredHwAccel;
-            dict["SourceFps"] = videoNode.SourceFps;
-            dict["ExtractFps"] = videoNode.ExtractFps;
-            dict["Brightness"] = videoNode.Brightness;
-            dict["Contrast"] = videoNode.Contrast;
-            dict["Saturation"] = videoNode.Saturation;
-            dict["Hue"] = videoNode.Hue;
-            dict["Gamma"] = videoNode.Gamma;
-            dict["SharpenEnabled"] = videoNode.SharpenEnabled;
-            dict["SharpenStrength"] = videoNode.SharpenStrength;
-            dict["DenoiseEnabled"] = videoNode.DenoiseEnabled;
-            dict["DenoiseStrength"] = videoNode.DenoiseStrength;
-            dict["BlurEnabled"] = videoNode.BlurEnabled;
-            dict["BlurRadius"] = videoNode.BlurRadius;
-            dict["StabilizeEnabled"] = videoNode.StabilizeEnabled;
-            dict["SpeedFactor"] = videoNode.SpeedFactor;
-            dict["RotationDegrees"] = videoNode.RotationDegrees;
-            dict["FlipH"] = videoNode.FlipH;
-            dict["FlipV"] = videoNode.FlipV;
             dict["OutputFormat"] = videoNode.OutputFormat;
             dict["EncoderPreset"] = videoNode.EncoderPreset;
             dict["Crf"] = videoNode.Crf;
@@ -883,6 +864,8 @@ public sealed partial class FileWorkflowPersistenceService
             dict["GridCollagePadding"] = videoNode.GridCollagePadding;
             dict["GridCollageMargin"] = videoNode.GridCollageMargin;
             dict["GridCollageAspectMode"] = videoNode.GridCollageAspectMode;
+
+            dict["ExtractByFpsEnabled"] = videoNode.ExtractByFpsEnabled;
             if (videoNode.AudioTracks.Count > 0)
                 dict["AudioTracks"] = JsonSerializer.Serialize(videoNode.AudioTracks.ToList());
             if (videoNode.Overlays.Count > 0)

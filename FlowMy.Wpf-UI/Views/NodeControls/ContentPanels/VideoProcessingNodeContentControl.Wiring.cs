@@ -371,6 +371,8 @@ namespace FlowMy.Views.NodeControls
                 RebuildPreviewQualityOptions(PreviewMedia.NaturalVideoHeight);
                 ApplyAspectRatioToMedia();
                 RefreshFrameResizeLabel();
+                RefreshInfoText();
+                UpdateGridCollagePreviewUi();
                 await ProbeSourceFpsAndRefreshUiAsync();
             };
             PreviewMedia.MediaEnded += (_, _) =>
@@ -413,14 +415,7 @@ namespace FlowMy.Views.NodeControls
                 _isFrameControlSync = false;
                 UpdateFrameExtractionPreview();
             };
-            FpsSlider.ValueChanged += (_, e) =>
-            {
-                if (_isFrameControlSync) return;
-                var framesPerWindow = Math.Max(1, (int)Math.Round(e.NewValue));
-                _node.ExtractFrameCount = framesPerWindow;
-                FpsValueText.Text = $"{framesPerWindow}";
-                UpdateFrameExtractionPreview();
-            };
+            WireFrameExtractionEvents();
 
             UseDialogVideoConfigCheckBox.Checked += (_, _) =>
             {
@@ -829,5 +824,115 @@ namespace FlowMy.Views.NodeControls
             AudioCodecCombo.SelectionChanged += (_, _) => _node.AudioCodec = (AudioCodecCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "aac";
             AudioBitrateCombo.SelectionChanged += (_, _) => _node.AudioBitrate = (AudioBitrateCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "192k";
         }
+    
+        private void WireFrameExtractionEvents()
+        {
+            if (ExtractByFpsToggle != null)
+            {
+                ExtractByFpsToggle.Checked += (_, _) =>
+                {
+                    if (_isFrameControlSync) return;
+                    _node.ExtractByFpsEnabled = true;
+                    if (ExtractByFpsContainer != null) ExtractByFpsContainer.Visibility = Visibility.Visible;
+                    if (ExtractByCountContainer != null) ExtractByCountContainer.Visibility = Visibility.Collapsed;
+                    UpdateFrameExtractionPreview();
+                    UpdateGridCollagePreviewUi();
+                };
+                ExtractByFpsToggle.Unchecked += (_, _) =>
+                {
+                    if (_isFrameControlSync) return;
+                    _node.ExtractByFpsEnabled = false;
+                    if (ExtractByFpsContainer != null) ExtractByFpsContainer.Visibility = Visibility.Collapsed;
+                    if (ExtractByCountContainer != null) ExtractByCountContainer.Visibility = Visibility.Visible;
+                    UpdateFrameExtractionPreview();
+                    UpdateGridCollagePreviewUi();
+                };
+            }
+
+            if (ExtractFpsRateSlider != null)
+            {
+                ExtractFpsRateSlider.ValueChanged += (_, e) =>
+                {
+                    if (_isFrameControlSync) return;
+                    var rate = Math.Max(1, (int)Math.Round(e.NewValue));
+                    _node.ExtractFps = rate;
+                    if (ExtractFpsRateBox != null && ExtractFpsRateBox.Text != rate.ToString())
+                    {
+                        _isFrameControlSync = true;
+                        ExtractFpsRateBox.Text = rate.ToString();
+                        _isFrameControlSync = false;
+                    }
+                    if (ExtractFpsRateLabel != null)
+                        ExtractFpsRateLabel.Text = $"{rate} frame/s";
+                    UpdateFrameExtractionPreview();
+                    UpdateGridCollagePreviewUi();
+                };
+            }
+
+            if (ExtractFpsRateBox != null)
+            {
+                ExtractFpsRateBox.TextChanged += (_, _) =>
+                {
+                    if (_isFrameControlSync) return;
+                    if (double.TryParse(ExtractFpsRateBox.Text.Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var rate) && rate >= 1)
+                    {
+                        _node.ExtractFps = rate;
+                        if (ExtractFpsRateSlider != null && (int)Math.Round(ExtractFpsRateSlider.Value) != (int)rate)
+                        {
+                            _isFrameControlSync = true;
+                            ExtractFpsRateSlider.Value = Math.Clamp(rate, ExtractFpsRateSlider.Minimum, ExtractFpsRateSlider.Maximum);
+                            _isFrameControlSync = false;
+                        }
+                        if (ExtractFpsRateLabel != null)
+                            ExtractFpsRateLabel.Text = $"{rate:0.#} frame/s";
+                        UpdateFrameExtractionPreview();
+                        UpdateGridCollagePreviewUi();
+                    }
+                };
+            }
+
+            if (FpsSlider != null)
+            {
+                FpsSlider.ValueChanged += (_, e) =>
+                {
+                    if (_isFrameControlSync) return;
+                    var framesPerWindow = Math.Max(1, (int)Math.Round(e.NewValue));
+                    _node.ExtractFrameCount = framesPerWindow;
+                    if (FpsValueBox != null && FpsValueBox.Text != framesPerWindow.ToString())
+                    {
+                        _isFrameControlSync = true;
+                        FpsValueBox.Text = framesPerWindow.ToString();
+                        _isFrameControlSync = false;
+                    }
+                    if (FpsValueText != null)
+                        FpsValueText.Text = $"{framesPerWindow}";
+                    UpdateFrameExtractionPreview();
+                    UpdateGridCollagePreviewUi();
+                };
+            }
+
+            if (FpsValueBox != null)
+            {
+                FpsValueBox.TextChanged += (_, _) =>
+                {
+                    if (_isFrameControlSync) return;
+                    if (int.TryParse(FpsValueBox.Text.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var count) && count >= 1)
+                    {
+                        _node.ExtractFrameCount = count;
+                        if (FpsSlider != null && (int)Math.Round(FpsSlider.Value) != count)
+                        {
+                            _isFrameControlSync = true;
+                            FpsSlider.Value = Math.Clamp(count, FpsSlider.Minimum, FpsSlider.Maximum);
+                            _isFrameControlSync = false;
+                        }
+                        if (FpsValueText != null)
+                            FpsValueText.Text = $"{count}";
+                        UpdateFrameExtractionPreview();
+                        UpdateGridCollagePreviewUi();
+                    }
+                };
+            }
+        }
+
     }
 }

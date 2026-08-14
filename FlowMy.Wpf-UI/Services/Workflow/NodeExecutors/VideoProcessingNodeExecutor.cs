@@ -167,7 +167,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var extractFps = videoNode.ExtractAllFrames
                     ? sourceFpsClamped
-                    : Math.Max(0.001, calculatedExtractFps);
+                    : (videoNode.ExtractByFpsEnabled
+                        ? Math.Max(0.001, videoNode.ExtractFps)
+                        : Math.Max(0.001, calculatedExtractFps));
 
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
@@ -925,7 +927,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (extractFps.HasValue && extractFps.Value > 0)
             {
-                filters.Add($"fps={extractFps.Value:0.###}");
+                var offsetSec = 0.5 / extractFps.Value;
+                filters.Add($"fps=fps={extractFps.Value:0.###}:start_time={offsetSec:0.###}:round=near");
             }
             filters.Add(VideoColorGrading.BuildEqFilter(node));
             var hueF = VideoColorGrading.BuildHueFilter(node.Hue);
@@ -1583,7 +1586,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var calculatedExtractFps = (double)targetFrameCount / effectiveDuration;
             var effectiveExtractFps = node.ExtractAllFrames
                 ? Math.Max(0.001, sourceFps)
-                : Math.Max(0.001, calculatedExtractFps);
+                : (node.ExtractByFpsEnabled
+                    ? Math.Max(0.001, node.ExtractFps)
+                    : Math.Max(0.001, calculatedExtractFps));
 
             string vfArg;
             var useVsync0 = false;

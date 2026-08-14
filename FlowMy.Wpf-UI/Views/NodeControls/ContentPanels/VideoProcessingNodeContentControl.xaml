@@ -571,20 +571,89 @@
                                 <!-- Frame Extraction Control Card -->
                                 <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
                                     <StackPanel>
-                                        <TextBlock Text="Cấu hình Tách Frame" FontSize="12" FontWeight="Bold" Margin="0,0,0,8" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
-                                        <TextBlock Text="Số lượng frame cần lấy" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,4"/>
-                                        <Grid Margin="0,0,0,10">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="54"/></Grid.ColumnDefinitions>
-                                            <Slider x:Name="FpsSlider"
-                                                     Minimum="1"
-                                                     Maximum="300"
-                                                     Value="1"
-                                                     Style="{StaticResource ModernSliderStyle}"
-                                                     ToolTip="Số lượng frame cần lấy ra (x giây x FPS nguồn)."/>
-                                            <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="6,0,0,0">
-                                                <TextBlock x:Name="FpsValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
-                                            </Border>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Cấu hình Tách Frame" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Theo FPS (frame/s)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <ToggleButton x:Name="ExtractByFpsToggle" Style="{StaticResource ToggleSwitchStyle}" IsChecked="True" ToolTip="Bật: Tách theo số frame mỗi giây (FPS) | Tắt: Tách theo tổng số lượng frame"/>
+                                            </StackPanel>
                                         </Grid>
+
+                                        <!-- Mode 1: Theo FPS (1s lấy bao nhiêu frame) - Visible when Toggle is ON -->
+                                        <StackPanel x:Name="ExtractByFpsContainer" Visibility="Visible" Margin="0,0,0,10">
+                                            <Grid Margin="0,0,0,4">
+                                                <TextBlock Text="Số frame lấy trong mỗi giây (FPS)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                <TextBlock x:Name="ExtractFpsRateLabel" Text="1 frame/s" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="54"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="ExtractFpsRateSlider"
+                                                        Minimum="1"
+                                                        Maximum="30"
+                                                        Value="1"
+                                                        TickFrequency="1"
+                                                        IsSnapToTickEnabled="True"
+                                                        Style="{StaticResource ModernSliderStyle}"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip="Kéo để chọn 1 giây muốn lấy bao nhiêu frame."/>
+                                                <TextBox Grid.Column="1"
+                                                         x:Name="ExtractFpsRateBox"
+                                                         Height="26"
+                                                         Margin="6,0,0,0"
+                                                         FontSize="11"
+                                                         FontFamily="Consolas"
+                                                         FontWeight="Bold"
+                                                         TextAlignment="Center"
+                                                         VerticalContentAlignment="Center"
+                                                         Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                                         BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                                         Foreground="{DynamicResource ThemeInputForegroundBrush}"
+                                                         Text="1"
+                                                         ToolTip="Nhập số frame cần lấy trong 1 giây"/>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- Mode 2: Theo Tổng số frame cần lấy - Visible when Toggle is OFF -->
+                                        <StackPanel x:Name="ExtractByCountContainer" Visibility="Collapsed" Margin="0,0,0,10">
+                                            <Grid Margin="0,0,0,4">
+                                                <TextBlock Text="Tổng số lượng frame cần lấy" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                <TextBlock x:Name="FpsValueText" Text="10" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="54"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="FpsSlider"
+                                                        Minimum="1"
+                                                        Maximum="300"
+                                                        Value="10"
+                                                        Style="{StaticResource ModernSliderStyle}"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip="Tổng số lượng frame cần trích xuất trên toàn bộ video."/>
+                                                <TextBox Grid.Column="1"
+                                                         x:Name="FpsValueBox"
+                                                         Height="26"
+                                                         Margin="6,0,0,0"
+                                                         FontSize="11"
+                                                         FontFamily="Consolas"
+                                                         FontWeight="Bold"
+                                                         TextAlignment="Center"
+                                                         VerticalContentAlignment="Center"
+                                                         Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                                         BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                                         Foreground="{DynamicResource ThemeInputForegroundBrush}"
+                                                         Text="10"
+                                                         ToolTip="Nhập tổng số frame cần lấy"/>
+                                            </Grid>
+                                        </StackPanel>
 
                                         <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions>
@@ -693,7 +762,7 @@
 
                                                     <!-- COLUMN 1: Settings -->
                                                     <StackPanel Grid.Column="0">
-                                                        <!-- Canvas Dimensions -->
+                                                        <!-- Canvas Dimensions (Slider + Direct Input) -->
                                                         <Grid Margin="0,0,0,8">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*"/>
@@ -701,30 +770,66 @@
                                                                 <ColumnDefinition Width="*"/>
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel Grid.Column="0">
-                                                                <Grid Margin="0,0,0,3">
-                                                                    <TextBlock Text="Width (px)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
-                                                                    <TextBlock x:Name="GridCollageWidthValueText" Text="1000" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                                <TextBlock Text="Width (px)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="54"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="GridCollageWidthSlider"
+                                                                            Minimum="200"
+                                                                            Maximum="4000"
+                                                                            Value="1000"
+                                                                            TickFrequency="50"
+                                                                            IsSnapToTickEnabled="False"
+                                                                            Style="{StaticResource ModernSliderStyle}"
+                                                                            VerticalAlignment="Center"/>
+                                                                    <TextBox Grid.Column="1"
+                                                                             x:Name="GridCollageWidthBox"
+                                                                             Height="26"
+                                                                             Margin="6,0,0,0"
+                                                                             FontSize="11"
+                                                                             FontFamily="Consolas"
+                                                                             FontWeight="Bold"
+                                                                             TextAlignment="Center"
+                                                                             VerticalContentAlignment="Center"
+                                                                             Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                                                             BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                                                             Foreground="{DynamicResource ThemeInputForegroundBrush}"
+                                                                             Text="1000"
+                                                                             ToolTip="Nhập chiều rộng ảnh canvas (px)"/>
                                                                 </Grid>
-                                                                <Slider x:Name="GridCollageWidthSlider"
-                                                                        Minimum="200"
-                                                                        Maximum="4000"
-                                                                        Value="1000"
-                                                                        TickFrequency="50"
-                                                                        IsSnapToTickEnabled="True"
-                                                                        Style="{StaticResource ModernSliderStyle}"/>
                                                             </StackPanel>
                                                             <StackPanel Grid.Column="2">
-                                                                <Grid Margin="0,0,0,3">
-                                                                    <TextBlock Text="Height (px)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
-                                                                    <TextBlock x:Name="GridCollageHeightValueText" Text="1000" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                                <TextBlock Text="Height (px)" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="54"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="GridCollageHeightSlider"
+                                                                            Minimum="200"
+                                                                            Maximum="4000"
+                                                                            Value="1000"
+                                                                            TickFrequency="50"
+                                                                            IsSnapToTickEnabled="False"
+                                                                            Style="{StaticResource ModernSliderStyle}"
+                                                                            VerticalAlignment="Center"/>
+                                                                    <TextBox Grid.Column="1"
+                                                                             x:Name="GridCollageHeightBox"
+                                                                             Height="26"
+                                                                             Margin="6,0,0,0"
+                                                                             FontSize="11"
+                                                                             FontFamily="Consolas"
+                                                                             FontWeight="Bold"
+                                                                             TextAlignment="Center"
+                                                                             VerticalContentAlignment="Center"
+                                                                             Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                                                             BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                                                             Foreground="{DynamicResource ThemeInputForegroundBrush}"
+                                                                             Text="1000"
+                                                                             ToolTip="Nhập chiều cao ảnh canvas (px)"/>
                                                                 </Grid>
-                                                                <Slider x:Name="GridCollageHeightSlider"
-                                                                        Minimum="200"
-                                                                        Maximum="4000"
-                                                                        Value="1000"
-                                                                        TickFrequency="50"
-                                                                        IsSnapToTickEnabled="True"
-                                                                        Style="{StaticResource ModernSliderStyle}"/>
                                                             </StackPanel>
                                                         </Grid>
 
@@ -809,20 +914,38 @@
                                                             </StackPanel>
                                                         </Grid>
 
-                                                        <!-- Child Frame Count Slider -->
+                                                        <!-- Child Frame Count Slider & Input (Supports both odd & even numbers) -->
                                                         <StackPanel Margin="0,0,0,0">
-                                                            <Grid Margin="0,0,0,3">
-                                                                <TextBlock Text="Số lượng frame con / 1 ảnh cha" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
-                                                                <TextBlock x:Name="GridCollageFrameCountValueText" Text="4 frame" FontSize="11" FontWeight="Bold" FontFamily="Consolas" HorizontalAlignment="Right" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                            <TextBlock Text="Số lượng frame con / 1 ảnh cha" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="54"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Slider x:Name="GridCollageFrameCountSlider"
+                                                                        Minimum="1"
+                                                                        Maximum="64"
+                                                                        Value="4"
+                                                                        TickFrequency="1"
+                                                                        IsSnapToTickEnabled="True"
+                                                                        Style="{StaticResource ModernSliderStyle}"
+                                                                        VerticalAlignment="Center"
+                                                                        ToolTip="Số frame con trong 1 ảnh cha (hỗ trợ cả số chẵn và số lẻ)"/>
+                                                                <TextBox Grid.Column="1"
+                                                                         x:Name="GridCollageFrameCountBox"
+                                                                         Height="26"
+                                                                         Margin="6,0,0,0"
+                                                                         FontSize="11"
+                                                                         FontFamily="Consolas"
+                                                                         FontWeight="Bold"
+                                                                         TextAlignment="Center"
+                                                                         VerticalContentAlignment="Center"
+                                                                         Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                                                         BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                                                         Foreground="{DynamicResource ThemeInputForegroundBrush}"
+                                                                         Text="4"
+                                                                         ToolTip="Nhập số frame con (chẵn hoặc lẻ)"/>
                                                             </Grid>
-                                                            <Slider x:Name="GridCollageFrameCountSlider"
-                                                                    Minimum="2"
-                                                                    Maximum="36"
-                                                                    Value="4"
-                                                                    TickFrequency="2"
-                                                                    IsSnapToTickEnabled="True"
-                                                                    Style="{StaticResource ModernSliderStyle}"
-                                                                    ToolTip="Số frame con nhét vào 1 ảnh cha (chọn số chẵn để chia lưới đẹp)"/>
                                                         </StackPanel>
                                                     </StackPanel>
 

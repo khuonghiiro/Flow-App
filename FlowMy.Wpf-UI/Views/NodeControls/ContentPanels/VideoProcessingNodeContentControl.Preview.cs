@@ -154,7 +154,7 @@ namespace FlowMy.Views.NodeControls
             StatFpsText.Text = _isProbingFps ? "⏳" : $"{_node.SourceFps:0.##}";
             StatResolutionText.Text = PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--";
             StatDurationText.Text = FormatTime(TimeSpan.FromSeconds(GetNaturalDurationSeconds()));
-            CodecInfoText.Text = $"HW: {_node.PreferredHwAccel} | Extract: {_node.ExtractFps:0.##}/s";
+            CodecInfoText.Text = $"HW: {_node.PreferredHwAccel} | Extract: {(_node.ExtractByFpsEnabled ? $"{_node.ExtractFps:0.##}/s" : $"{_node.ExtractFrameCount} frames")}";
             AudioSummaryText.Text = $"Audio tracks: {_node.AudioTracks.Count} | Output: {(_node.OutputBase64 ? "base64" : "file")}";
             FpsValueText.Text = $"{Math.Max(1, _node.ExtractFrameCount)}";
             var secondsInt = (int)Math.Round(_node.SecondsPerFrame);
@@ -184,9 +184,30 @@ namespace FlowMy.Views.NodeControls
                 var windowSec = (int)Math.Round(_node.SecondsPerFrame);
                 windowSec = Math.Clamp(windowSec, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
                 var maxInWindow = Math.Max(1, (int)Math.Round(windowSec * sourceFps));
-                FpsSlider.Maximum = _node.ExtractAllFrames ? totalFrames : maxInWindow;
+                if (ExtractByFpsToggle != null)
+                    ExtractByFpsToggle.IsChecked = _node.ExtractByFpsEnabled;
+                if (ExtractByFpsContainer != null)
+                    ExtractByFpsContainer.Visibility = _node.ExtractByFpsEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (ExtractByCountContainer != null)
+                    ExtractByCountContainer.Visibility = !_node.ExtractByFpsEnabled ? Visibility.Visible : Visibility.Collapsed;
 
+                var maxFps = Math.Max(1, (int)Math.Round(sourceFps));
+                if (ExtractFpsRateSlider != null)
+                {
+                    ExtractFpsRateSlider.Maximum = maxFps;
+                    ExtractFpsRateSlider.Value = Math.Clamp(_node.ExtractFps, 1, maxFps);
+                }
+                if (ExtractFpsRateBox != null)
+                    ExtractFpsRateBox.Text = ((int)Math.Round(_node.ExtractFps)).ToString();
+                if (ExtractFpsRateLabel != null)
+                    ExtractFpsRateLabel.Text = $"{Math.Round(_node.ExtractFps)} frame/s";
+
+                FpsSlider.Maximum = _node.ExtractAllFrames ? totalFrames : maxInWindow;
                 FpsSlider.Value = Math.Clamp(_node.ExtractFrameCount, 1, (int)FpsSlider.Maximum);
+                if (FpsValueBox != null)
+                    FpsValueBox.Text = _node.ExtractFrameCount.ToString();
+                if (FpsValueText != null)
+                    FpsValueText.Text = $"{_node.ExtractFrameCount}";
                 SecondsPerFrameSlider.Value = windowSec;
                 UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
@@ -828,6 +849,7 @@ namespace FlowMy.Views.NodeControls
                         _node.SourceFps = fps;
                     }
                     RefreshInfoText(); // includes UpdateFrameExtractionPreview()
+                    UpdateGridCollagePreviewUi();
                 }, DispatcherPriority.Loaded);
             }
             catch
