@@ -1,3 +1,6 @@
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
 using FlowMy.Services.Interfaces;
 using FlowMy.Views;
 using Microsoft.Extensions.DependencyInjection;

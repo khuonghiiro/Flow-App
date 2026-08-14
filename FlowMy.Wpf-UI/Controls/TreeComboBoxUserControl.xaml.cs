@@ -1,4 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using CommunityToolkit.Mvvm.ComponentModel;
 using System;
 using System.Collections;
 using System.Collections.Generic;

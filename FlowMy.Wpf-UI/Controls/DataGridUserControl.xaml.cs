@@ -1,4 +1,7 @@
-﻿using FlowMy.Converters;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using FlowMy.Converters;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;

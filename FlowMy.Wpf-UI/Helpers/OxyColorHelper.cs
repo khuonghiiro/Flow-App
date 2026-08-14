@@ -1,4 +1,7 @@
-﻿using OxyPlot;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using OxyPlot;
 using System;
 using System.Collections.Generic;
 using System.Linq;

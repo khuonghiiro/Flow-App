@@ -33,14 +33,18 @@
 
 ## 1. Tổng quan kiến trúc
 
+Dự án được phân tách thành 2 project riêng biệt theo kiến trúc Modular:
+- **`FlowMy.Core`** (Class Library): Chứa Models, Interfaces, Win32 Helpers, Enums, Utils.
+- **`FlowMy.Wpf-UI`** (WPF App): Chứa Views, ViewModels, Services, Controls, Themes, Assets.
+
 ```
-Models/Nodes/YourNode.cs                          ← Data model
-Views/NodeControls/YourNodeControl.cs             ← UI trên canvas
-Views/Overlays/YourNodeDialog.xaml                ← Dialog cấu hình
-Views/Overlays/YourNodeDialog.xaml.cs             ← Code-behind
-ViewModels/YourNodeDialogViewModel.cs             ← ViewModel
-Services/Rendering/YourNodeRenderer.cs            ← Render node lên canvas
-Services/Workflow/NodeExecutors/YourNodeExecutor.cs ← Logic thực thi (nếu cần)
+FlowMy.Core/Models/Nodes/YourNode.cs                          ← Data model (Class Library)
+FlowMy.Wpf-UI/Views/NodeControls/YourNodeControl.cs           ← UI trên canvas (WPF App)
+FlowMy.Wpf-UI/Views/Overlays/YourNodeDialog.xaml              ← Dialog cấu hình
+FlowMy.Wpf-UI/Views/Overlays/YourNodeDialog.xaml.cs           ← Code-behind
+FlowMy.Wpf-UI/ViewModels/YourNodeDialogViewModel.cs           ← ViewModel
+FlowMy.Wpf-UI/Services/Rendering/YourNodeRenderer.cs          ← Render node lên canvas
+FlowMy.Wpf-UI/Services/Workflow/NodeExecutors/YourNodeExecutor.cs ← Logic thực thi (nếu cần)
 ```
 
 **Nguyên tắc cốt lõi**: Mọi logic chung đã nằm trong base classes. File của bạn chỉ chứa những gì **đặc thù** của node đó.
@@ -56,14 +60,14 @@ Services/Workflow/NodeExecutors/YourNodeExecutor.cs ← Logic thực thi (nếu 
 
 ## 2. Danh sách file cần tạo
 
-| # | File | Vị trí |
-|---|------|--------|
-| 1 | `YourNode.cs` | `Models/Nodes/` |
-| 2 | `YourNodeControl.cs` | `Views/NodeControls/` |
-| 3 | `YourNodeDialog.xaml` + `.xaml.cs` | `Views/Overlays/` |
-| 4 | `YourNodeDialogViewModel.cs` | `ViewModels/` |
-| 5 | `YourNodeRenderer.cs` | `Services/Rendering/` |
-| 6 | `YourNodeExecutor.cs` | `Services/Workflow/NodeExecutors/` (nếu cần) |
+| # | File | Project / Thư mục |
+|---|------|-------------------|
+| 1 | `YourNode.cs` | `FlowMy.Core/Models/Nodes/` |
+| 2 | `YourNodeControl.cs` | `FlowMy.Wpf-UI/Views/NodeControls/` |
+| 3 | `YourNodeDialog.xaml` + `.xaml.cs` | `FlowMy.Wpf-UI/Views/Overlays/` |
+| 4 | `YourNodeDialogViewModel.cs` | `FlowMy.Wpf-UI/ViewModels/` |
+| 5 | `YourNodeRenderer.cs` | `FlowMy.Wpf-UI/Services/Rendering/` |
+| 6 | `YourNodeExecutor.cs` | `FlowMy.Wpf-UI/Services/Workflow/NodeExecutors/` (nếu cần) |
 
 Ngoài ra cần đăng ký ở 4 chỗ — xem [§11](#11-đăng-ký-node-vào-hệ-thống).
 

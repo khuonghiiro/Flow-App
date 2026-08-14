@@ -1,4 +1,7 @@
-﻿using System;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;

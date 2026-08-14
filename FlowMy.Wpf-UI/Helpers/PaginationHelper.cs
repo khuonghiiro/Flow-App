@@ -1,4 +1,7 @@
-﻿using System;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;

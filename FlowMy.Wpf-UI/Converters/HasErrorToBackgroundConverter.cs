@@ -1,4 +1,7 @@
-﻿using System;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using System;
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;

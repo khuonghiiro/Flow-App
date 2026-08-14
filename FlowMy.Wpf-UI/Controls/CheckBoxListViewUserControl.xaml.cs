@@ -1,4 +1,7 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using CommunityToolkit.Mvvm.Input;
 using System.Collections;
 using System.Windows;
 using System.Windows.Controls;

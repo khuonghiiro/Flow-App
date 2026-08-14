@@ -1,4 +1,7 @@
-﻿using FlowMy.Models;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;

@@ -1,4 +1,7 @@
-﻿using Microsoft.Win32;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 

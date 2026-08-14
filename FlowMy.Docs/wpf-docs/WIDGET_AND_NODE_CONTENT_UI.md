@@ -412,13 +412,13 @@ private void UpdateRunningIndicatorPosition()
 
 **Giải pháp**: Chia 200 thay vì 100 khi lưu, mặc định 0% thay vì 50%.
 
-**File cần sửa**: `Models/FloatingWidgetConfig.cs`
+**File cần sửa**: `FlowMy.Core/Models/FloatingWidgetConfig.cs`
 
 ```csharp
 private double _slideHidePercent = 0.0; // Thay vì 0.5
 ```
 
-**File cần sửa**: `Views/Overlays/FloatingWidgetConfigDialog.xaml.cs`
+**File cần sửa**: `FlowMy.Wpf-UI/Views/Overlays/FloatingWidgetConfigDialog.xaml.cs`
 
 ```csharp
 cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent) / 200.0; // Thay vì / 100.0

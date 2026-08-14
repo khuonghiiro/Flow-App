@@ -20,10 +20,10 @@ Khi nhấn nút **"Chỉ mở widget này (ngầm)"** từ `MainWindow`:
 
 | File | Vai trò |
 |------|---------|
-| `ViewModels/MainViewModel.cs` | `LaunchWidgetHeadless`, `OpenWorkflowEditorInternal`, `PrepareWindowForHeadlessBackground`, `ReopenHeadlessWorkflow` |
-| `Views/WorkflowEditorWindow.xaml.cs` | `ShouldRenderNodeInHeadlessMode`, `ApplyHeadlessCanvasOptimization`, `DisableHeadlessCanvasOptimizationForDebug` |
-| `Services/Workflow/NodeExecutors/ActionCanVasNodeExecutor.cs` | Executor chạy macro trên ActionCanvas (cần `Border` visible + `PointToScreen`) |
-| `Views/Overlays/FloatingWidgetWindow.xaml.cs` | Widget overlay hiện trên desktop |
+| `FlowMy.Wpf-UI/ViewModels/MainViewModel.cs` | `LaunchWidgetHeadless`, `OpenWorkflowEditorInternal`, `PrepareWindowForHeadlessBackground`, `ReopenHeadlessWorkflow` |
+| `FlowMy.Wpf-UI/Views/WorkflowEditorWindow.xaml.cs` | `ShouldRenderNodeInHeadlessMode`, `ApplyHeadlessCanvasOptimization`, `DisableHeadlessCanvasOptimizationForDebug` |
+| `FlowMy.Wpf-UI/Services/Workflow/NodeExecutors/ActionCanVasNodeExecutor.cs` | Executor chạy macro trên ActionCanvas (cần `Border` visible + `PointToScreen`) |
+| `FlowMy.Wpf-UI/Views/Overlays/FloatingWidgetWindow.xaml.cs` | Widget overlay hiện trên desktop |
 
 ---
 

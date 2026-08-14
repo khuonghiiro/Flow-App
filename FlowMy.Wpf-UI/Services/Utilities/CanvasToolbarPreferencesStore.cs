@@ -1,3 +1,6 @@
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
 using System;
 using System.IO;
 using System.Text.Json;

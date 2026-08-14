@@ -1,4 +1,7 @@
-﻿using System.Windows;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using System.Windows;
 
 namespace FlowMy.Helpers
 {

@@ -1,3 +1,6 @@
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
 using FlowMy.ViewModels;
 using FlowMy.Controls;
 using System.Collections.Generic;

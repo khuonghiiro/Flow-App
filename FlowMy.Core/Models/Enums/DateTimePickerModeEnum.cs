@@ -1,4 +1,7 @@
-﻿namespace FlowMy.Models.Enums
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+namespace FlowMy.Models.Enums
 {
     /// <summary>
     /// Enum cho các chế độ picker

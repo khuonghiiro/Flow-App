@@ -1,4 +1,7 @@
-﻿namespace FlowMy.Interfaces
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+namespace FlowMy.Interfaces
 {
     public interface IRowStyleData
     {

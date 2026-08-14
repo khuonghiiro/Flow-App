@@ -1,4 +1,7 @@
-﻿using FlowMy.Routers;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using FlowMy.Routers;
 using FlowMy.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using System;

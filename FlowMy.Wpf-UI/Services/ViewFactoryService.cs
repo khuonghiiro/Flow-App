@@ -1,4 +1,7 @@
-﻿//using FlowMy.Services.Interfaces;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+//using FlowMy.Services.Interfaces;
 //using Microsoft.Extensions.Logging;
 //using System;
 //using System.Collections.Generic;

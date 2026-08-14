@@ -1,3 +1,6 @@
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
 using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;

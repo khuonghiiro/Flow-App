@@ -1,3 +1,6 @@
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
 namespace FlowMy.Models.ImageEditor
 {
     /// <summary>Chế độ blend khi composite nhiều layer.</summary>

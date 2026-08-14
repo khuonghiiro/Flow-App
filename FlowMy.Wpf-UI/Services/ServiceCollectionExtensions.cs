@@ -1,4 +1,7 @@
-﻿using FlowMy.Services.Geometry;
+﻿// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
+using FlowMy.Services.Geometry;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Interfaces;
 using FlowMy.Services.Layout;
