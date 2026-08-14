@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -144,6 +144,21 @@ namespace FlowMy.Views
             }
 
             dialog.ShowDialog();
+        }
+
+        /// <summary>
+        /// Chọn style FluidFlow (dòng chảy mượt mà)
+        /// </summary>
+        private void LineStyle_FluidFlow_Click(object sender, RoutedEventArgs e)
+        {
+            _connectionLineStyle = ConnectionLineStyle.FluidFlow;
+            if (ViewModel != null)
+            {
+                ViewModel.ConnectionLineStyle = ConnectionLineStyle.FluidFlow;
+            }
+            UpdateAllConnectionPaths();
+            RefreshConditionalDiamondLineStyles();
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>

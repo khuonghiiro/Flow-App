@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Services.Geometry;
@@ -10,6 +10,7 @@ using FlowMy.Services.Utilities;
 using FlowMy.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using FlowMy.Services.Workflow;
+using System.Collections.Generic;
 
 namespace FlowMy.Services
 {
@@ -60,6 +61,7 @@ namespace FlowMy.Services
             services.AddSingleton<StraightGeometryGenerator>();
             services.AddSingleton<OrthogonalV2GeometryGenerator>();
             services.AddSingleton<CircuitBoardGeometryGenerator>();
+            services.AddSingleton<FluidFlowGeometryGenerator>();
 
             // Rendering
             services.AddScoped<PortRenderer>();

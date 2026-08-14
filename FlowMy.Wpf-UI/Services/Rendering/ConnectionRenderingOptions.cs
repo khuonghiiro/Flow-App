@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -51,7 +51,9 @@ namespace FlowMy.Services.Rendering
         OrthogonalV2,
 
         /// <summary>Kiểu đường mạch điện PCB – đi theo các góc 45 và 90 độ, né node thông minh bằng A* avoidance.</summary>
-        CircuitBoard
+        CircuitBoard,
+
+        /// <summary>Kiểu dòng chảy mượt mà / Neon Fluid Flow – đường cong hữu cơ uốn lượn tự nhiên, tự thích ứng tangent & loopback mượt mà.</summary>
+        FluidFlow
     }
 }
-

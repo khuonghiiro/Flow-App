@@ -4270,6 +4270,7 @@ Tag="ListOut">
                         </Button.Effect>
                         <Button.ContextMenu>
                             <ContextMenu>
+                                <MenuItem Header="Dòng chảy mượt mà (Fluid Flow)" Click="LineStyle_FluidFlow_Click"/>
                                 <MenuItem Header="Bezier (Cong mượt)" Click="LineStyle_Bezier_Click"/>
                                 <MenuItem Header="Vuông góc (Orthogonal)" Click="LineStyle_Orthogonal_Click"/>
                                 <MenuItem Header="Vuông góc thông minh (Orthogonal V2)" Click="LineStyle_OrthogonalV2_Click"/>

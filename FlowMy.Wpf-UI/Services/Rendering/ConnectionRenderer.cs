@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -102,6 +102,7 @@ namespace FlowMy.Services.Rendering
         private readonly IPathGeometryGenerator _straight;
         private readonly OrthogonalV2GeometryGenerator _orthogonalV2;
         private readonly CircuitBoardGeometryGenerator _circuitBoard;
+        private readonly FluidFlowGeometryGenerator _fluidFlow;
 
         // ✅ Obstacle rect cache – rebuilt once per render pass, shared across connections
         private IReadOnlyList<Rect>? _cachedObstacleRects;
@@ -125,7 +126,8 @@ namespace FlowMy.Services.Rendering
             OrthogonalGeometryGenerator orthogonal,
             StraightGeometryGenerator straight,
             OrthogonalV2GeometryGenerator orthogonalV2,
-            CircuitBoardGeometryGenerator circuitBoard)
+            CircuitBoardGeometryGenerator circuitBoard,
+            FluidFlowGeometryGenerator fluidFlow)
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
             _bezier = bezier ?? throw new ArgumentNullException(nameof(bezier));
@@ -133,6 +135,7 @@ namespace FlowMy.Services.Rendering
             _straight = straight ?? throw new ArgumentNullException(nameof(straight));
             _orthogonalV2 = orthogonalV2 ?? throw new ArgumentNullException(nameof(orthogonalV2));
             _circuitBoard = circuitBoard ?? throw new ArgumentNullException(nameof(circuitBoard));
+            _fluidFlow = fluidFlow ?? throw new ArgumentNullException(nameof(fluidFlow));
         }
 
         /// <summary>
@@ -456,6 +459,7 @@ namespace FlowMy.Services.Rendering
                 ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
                 ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
                 ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
+                ConnectionLineStyle.FluidFlow => _fluidFlow.Generate(start, end, startDirection, endDirection),
                 _ => _bezier.Generate(start, end, startDirection, endDirection),
             };
 
@@ -616,6 +620,7 @@ namespace FlowMy.Services.Rendering
                     ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
                     ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
                     ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startDirection, endDirection, GetObstacleRectsCached(connection)),
+                    ConnectionLineStyle.FluidFlow => _fluidFlow.Generate(start, end, startDirection, endDirection),
                     _ => _bezier.Generate(start, end, startDirection, endDirection),
                 };
 
@@ -1363,6 +1368,7 @@ namespace FlowMy.Services.Rendering
                 ConnectionLineStyle.Windy => _bezier.Generate(start, end, startPortPosition, endPortPosition),
                 ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startPortPosition, endPortPosition),
                 ConnectionLineStyle.CircuitBoard => _circuitBoard.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.FluidFlow => _fluidFlow.Generate(start, end, startPortPosition, endPortPosition),
                 _ => _bezier.Generate(start, end, startPortPosition, endPortPosition),
             };
 

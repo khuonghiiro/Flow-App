@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -116,15 +116,16 @@ namespace FlowMy.ViewModels
         public ObservableCollection<ConnectionLineStyleOption> ConnectionLineStyleOptions { get; } = new()
         {
             new ConnectionLineStyleOption("WorkflowDefault", "Theo cấu hình workflow (nút kiểu đường kết nối)"),
+            new ConnectionLineStyleOption("FluidFlow", "Dòng chảy mượt mà (Fluid Flow)"),
             new ConnectionLineStyleOption("Bezier", "Bezier (Cong mượt)"),
             new ConnectionLineStyleOption("Orthogonal", "Vuông góc (Orthogonal)"),
             new ConnectionLineStyleOption("Straight", "Thẳng (Straight)"),
             new ConnectionLineStyleOption("SmoothOrthogonal", "Vuông góc bo tròn (Smooth-Orthogonal)"),
-            new ConnectionLineStyleOption("Arc", "Cung tròn (Arc)"),
-            new ConnectionLineStyleOption("RadialFanout", "Tỏa quạt (Radial / Fan-out)"),
-            new ConnectionLineStyleOption("Windy", "Gió thổi (Windy)"),
+            // new ConnectionLineStyleOption("Arc", "Cung tròn (Arc)"),
+            // new ConnectionLineStyleOption("RadialFanout", "Tỏa quạt (Radial / Fan-out)"),
+            // new ConnectionLineStyleOption("Windy", "Gió thổi (Windy)"),
             new ConnectionLineStyleOption("OrthogonalV2", "Vuông góc thông minh (Orthogonal V2)"),
-            new ConnectionLineStyleOption("CircuitBoard", "Mạch điện PCB (Circuit Board)")
+            // new ConnectionLineStyleOption("CircuitBoard", "Mạch điện PCB (Circuit Board)")
         };
 
         /// <summary>

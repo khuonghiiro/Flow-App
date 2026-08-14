@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Services.Utilities;
@@ -55,11 +55,13 @@ namespace FlowMy.Views.Overlays
         {
             var styles = new Dictionary<string, string>
             {
-                ["Bezier"] = "Cong mượt",
-                ["Straight"] = "Thẳng",
-                ["Orthogonal"] = "Vuông góc",
-                ["SmoothOrthogonal"] = "Vuông góc bo tròn",
-                ["OrthogonalV2"] = "Vuông góc thông minh",
+                ["FluidFlow"] = "Dòng chảy mượt mà (Fluid Flow)",
+                ["Bezier"] = "Cong mượt (Bezier)",
+                ["Orthogonal"] = "Vuông góc (Orthogonal)",
+                ["SmoothOrthogonal"] = "Vuông góc bo tròn (Smooth-Orthogonal)",
+                ["OrthogonalV2"] = "Vuông góc thông minh (Orthogonal V2)",
+                // ["CircuitBoard"] = "Mạch điện PCB (Circuit Board)",
+                ["Straight"] = "Thẳng (Straight)"
             };
 
             foreach (var item in styles)
