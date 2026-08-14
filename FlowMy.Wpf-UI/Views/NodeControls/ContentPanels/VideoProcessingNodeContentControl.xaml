@@ -403,6 +403,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="4"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="80"/>
@@ -427,13 +429,60 @@
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='stop sharp-regular'}"/>
                                     </Button>
-                                    <Button x:Name="MuteButton" Grid.Column="8" Width="30" Height="30" Padding="0" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
+                                    <!-- Frame Exclude Toggle -->
+                                    <Button x:Name="FrameExcludeToggle" Grid.Column="8" Width="30" Height="30" Padding="0"
+                                                  Style="{StaticResource IconButtonStyle}"
+                                                  ToolTip="Hiện/Ẩn danh sách frame — tích chọn để loại bỏ frame">
+                                        <controls:SvgViewboxEx Width="14" Height="14"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='film-canister duotone-light'}"/>
+                                    </Button>
+                                    <Button x:Name="MuteButton" Grid.Column="10" Width="30" Height="30" Padding="0" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
                                         <controls:SvgViewboxEx Width="14" Height="14"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='volume-high duotone-light'}"/>
                                     </Button>
-                                    <Slider x:Name="VolumeSlider" Grid.Column="9" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="4,0" Style="{StaticResource ModernSliderStyle}"/>
+                                    <Slider x:Name="VolumeSlider" Grid.Column="11" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="4,0" Style="{StaticResource ModernSliderStyle}"/>
                                 </Grid>
+
+                                <!-- Frame Strip Panel (Collapsed by default) -->
+                                <Border x:Name="FrameStripPanel" Visibility="Collapsed"
+                                        Margin="0,6,0,0" Padding="6"
+                                        Background="{DynamicResource ThemeLogContainerBackgroundBrush}"
+                                        BorderBrush="{DynamicResource ThemeCardBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0" Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" VerticalAlignment="Center">
+                                                <Run Text="Frame Exclusion — "/>
+                                                <Run x:Name="ExcludedCountText" Text="0" FontWeight="SemiBold" Foreground="{DynamicResource ThemeAccentBrush}"/>
+                                                <Run Text=" frame bị loại"/>
+                                            </TextBlock>
+                                            <Button x:Name="ClearExcludedFramesButton" Grid.Column="1"
+                                                    Height="22" Padding="8,0" FontSize="10"
+                                                    Style="{StaticResource VideoChromeSecondaryButtonStyle}"
+                                                    Content="Bỏ chọn tất cả" Margin="0,0,4,0"/>
+                                            <Button x:Name="RefreshFrameStripButton" Grid.Column="2"
+                                                    Height="22" Padding="8,0" FontSize="10"
+                                                    Style="{StaticResource VideoChromeSecondaryButtonStyle}"
+                                                    Content="Tải lại"/>
+                                        </Grid>
+                                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto"
+                                                      VerticalScrollBarVisibility="Disabled" MaxHeight="120">
+                                            <WrapPanel x:Name="FrameStripWrapPanel"
+                                                       Orientation="Horizontal" />
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Border>
                     </Grid>

@@ -1274,6 +1274,17 @@ namespace FlowMy.Views.NodeControls
                 ApplyPreviewQualitySettings();
             }
 
+            // Skip excluded frames khi đang play
+            if (_isPlaying && !_isProgressDragging && _node.ExcludedFrameTimestamps.Count > 0)
+            {
+                var curSec = PreviewMedia.Position.TotalSeconds;
+                if (_node.IsFrameExcluded(curSec))
+                {
+                    var frameDur = _node.SourceFps > 0 ? 1.0 / _node.SourceFps : 0.04;
+                    PreviewMedia.Position = TimeSpan.FromSeconds(curSec + frameDur);
+                }
+            }
+
             var duration = TimeSpan.FromSeconds(GetNaturalDurationSeconds());
             var position = PreviewMedia.Position;
             var ratio = duration.TotalSeconds > 0 ? Math.Clamp(position.TotalSeconds / duration.TotalSeconds, 0, 1) : 0;

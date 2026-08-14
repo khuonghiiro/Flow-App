@@ -3,6 +3,7 @@
 // =========================================================================================
 using FlowMy.Models;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -247,6 +248,7 @@ namespace FlowMy.Models.Nodes
         private string _gridCollageMargin = "0";
         private string _gridCollageAspectMode = "auto";
         private bool _extractByFpsEnabled = true;
+        private List<double> _excludedFrameTimestamps = new();
 
         public VideoProcessingNode()
         {
@@ -1336,6 +1338,42 @@ namespace FlowMy.Models.Nodes
             existing.DisplayName = displayName;
             existing.OutputType = type;
             existing.IsMultiple = isMultiple;
+        }
+
+        /// <summary>
+        /// Danh sách timestamp (giây) của các frame bị exclude khỏi playback/extract/export.
+        /// </summary>
+        public List<double> ExcludedFrameTimestamps
+        {
+            get => _excludedFrameTimestamps;
+            set { _excludedFrameTimestamps = value ?? new(); OnPropertyChanged(); }
+        }
+
+        /// <summary>
+        /// Kiểm tra timestamp có bị exclude không (tolerance ±0.5/FPS).
+        /// </summary>
+        public bool IsFrameExcluded(double timestampSec)
+        {
+            if (_excludedFrameTimestamps.Count == 0) return false;
+            var tolerance = SourceFps > 0 ? 0.5 / SourceFps : 0.02;
+            return _excludedFrameTimestamps.Any(t => Math.Abs(t - timestampSec) < tolerance);
+        }
+
+        public void ToggleFrameExclusion(double timestampSec)
+        {
+            var tolerance = SourceFps > 0 ? 0.5 / SourceFps : 0.02;
+            var existing = _excludedFrameTimestamps.FirstOrDefault(t => Math.Abs(t - timestampSec) < tolerance);
+            if (_excludedFrameTimestamps.Any(t => Math.Abs(t - timestampSec) < tolerance))
+                _excludedFrameTimestamps.RemoveAll(t => Math.Abs(t - timestampSec) < tolerance);
+            else
+                _excludedFrameTimestamps.Add(timestampSec);
+            OnPropertyChanged(nameof(ExcludedFrameTimestamps));
+        }
+
+        public void ClearExcludedFrames()
+        {
+            _excludedFrameTimestamps.Clear();
+            OnPropertyChanged(nameof(ExcludedFrameTimestamps));
         }
 
         public void RaisePropertyChanged(string propertyName) => OnPropertyChanged(propertyName);

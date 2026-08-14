@@ -44,6 +44,7 @@ namespace FlowMy.Views.NodeControls
             WireExtractionAndWatermarkEvents();
             WireFrameLabelAndExportEvents();
             WireComboBoxDropDownFix();
+            WireFrameExclusionEvents();
         }
 
         /// <summary>

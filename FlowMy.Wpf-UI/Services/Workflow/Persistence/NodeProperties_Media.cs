@@ -363,6 +363,16 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("ExtractByFpsEnabled", out var ebfeObj) && ebfeObj != null && bool.TryParse(ebfeObj.ToString(), out var ebfe))
 
                 videoNode.ExtractByFpsEnabled = ebfe;
+            if (properties.TryGetValue("ExcludedFrameTimestamps", out var exftObj) && exftObj != null)
+            {
+                try
+                {
+                    var json = exftObj.ToString();
+                    if (!string.IsNullOrWhiteSpace(json))
+                        videoNode.ExcludedFrameTimestamps = JsonSerializer.Deserialize<System.Collections.Generic.List<double>>(json!) ?? new();
+                }
+                catch { /* ignore invalid JSON */ }
+            }
             if (properties.TryGetValue("Brightness", out var brObj) && brObj != null && double.TryParse(brObj.ToString(), out var br))
                 videoNode.Brightness = br;
             if (properties.TryGetValue("Contrast", out var ctObj) && ctObj != null && double.TryParse(ctObj.ToString(), out var ct))
@@ -780,6 +790,8 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["PreferredHwAccel"] = videoNode.PreferredHwAccel;
             dict["SourceFps"] = videoNode.SourceFps;
             dict["ExtractFps"] = videoNode.ExtractFps;
+            if (videoNode.ExcludedFrameTimestamps.Count > 0)
+                dict["ExcludedFrameTimestamps"] = JsonSerializer.Serialize(videoNode.ExcludedFrameTimestamps);
             dict["Brightness"] = videoNode.Brightness;
             dict["Contrast"] = videoNode.Contrast;
             dict["Saturation"] = videoNode.Saturation;

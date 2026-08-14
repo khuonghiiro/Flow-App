@@ -237,6 +237,28 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                 }
 
+                // Loại bỏ các frame bị excluded theo timestamp
+                if (videoNode.ExcludedFrameTimestamps.Count > 0 && producedFrames.Count > 0)
+                {
+                    var frameDuration = extractFps > 0 ? 1.0 / extractFps : 1.0;
+                    var trimStart = videoNode.TrimEnabled ? Math.Max(0, videoNode.TrimStartSec) : 0;
+                    var kept = new List<string>();
+                    for (int fi = 0; fi < producedFrames.Count; fi++)
+                    {
+                        var frameTs = trimStart + fi * frameDuration;
+                        if (videoNode.IsFrameExcluded(frameTs))
+                        {
+                            try { File.Delete(producedFrames[fi]); } catch { }
+                            LogLine?.Invoke(videoNode, $"[EXCLUDE] Loại frame #{fi} tại {frameTs:0.###}s");
+                        }
+                        else
+                        {
+                            kept.Add(producedFrames[fi]);
+                        }
+                    }
+                    producedFrames = kept;
+                }
+
                 if (HasVisibleCanvasTextOverlays(videoNode) && producedFrames.Count > 0)
                 {
                     await ApplyCanvasTextOverlaysToStillFilesAsync(
@@ -926,6 +948,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static string BuildVideoFilterChain(VideoProcessingNode node, double? extractFps, bool includeTextOverlay, int? sourceHeightOverride = null)
         {
             var filters = new List<string>();
+
+            // Loại bỏ excluded frames bằng FFmpeg select filter
+            if (node.ExcludedFrameTimestamps.Count > 0)
+            {
+                var fps = node.SourceFps > 0 ? node.SourceFps : 30;
+                var halfFrame = 0.5 / fps;
+                var betweens = node.ExcludedFrameTimestamps
+                    .Select(t => $"between(t\\,{(t - halfFrame):0.###}\\,{(t + halfFrame):0.###})")
+                    .ToArray();
+                filters.Add($"select='not({string.Join("+", betweens)})',setpts=N/FRAME_RATE/TB");
+            }
 
             if (extractFps.HasValue && extractFps.Value > 0)
             {
