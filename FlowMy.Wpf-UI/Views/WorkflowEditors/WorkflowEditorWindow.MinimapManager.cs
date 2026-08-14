@@ -109,11 +109,17 @@ namespace FlowMy.Views
             };
             dialog.PreferencesChanged += preferences =>
             {
-                ApplyCanvasToolbarPreferences(preferences, saveToDisk: true);
+                ApplyCanvasToolbarPreferences(preferences, saveToDisk: false);
                 if (IsDebugReopenSession)
                     SetDebugCanvasPreferences(preferences);
             };
             dialog.ShowDialog();
+            if (dialog.Result != null)
+            {
+                ApplyCanvasToolbarPreferences(dialog.Result, saveToDisk: true);
+                if (IsDebugReopenSession)
+                    SetDebugCanvasPreferences(dialog.Result);
+            }
         }
 
         /// <summary>
@@ -740,13 +746,16 @@ namespace FlowMy.Views
                 : 0.60;
             if (_nodeSpinnerBlinkPeakOpacity <= _nodeSpinnerBlinkBaseOpacity)
                 _nodeSpinnerBlinkPeakOpacity = System.Math.Min(1.0, _nodeSpinnerBlinkBaseOpacity + 0.02);
-            Settings.Default.EnergyDotGap = _energyDotGap;
-            Settings.Default.EnergyDotThicknessExtra = _energyDotThicknessExtra;
-            Settings.Default.EnergyDotText = _energyDotText;
-            Settings.Default.EnergyDotTextRotate = _energyDotTextRotate;
-            Settings.Default.EnergyRunSpeed = _energyRunSpeed;
-            Settings.Default.EnergyTextSpinSeconds = _energyTextSpinSeconds;
-            try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
+            if (saveToDisk)
+            {
+                Settings.Default.EnergyDotGap = _energyDotGap;
+                Settings.Default.EnergyDotThicknessExtra = _energyDotThicknessExtra;
+                Settings.Default.EnergyDotText = _energyDotText;
+                Settings.Default.EnergyDotTextRotate = _energyDotTextRotate;
+                Settings.Default.EnergyRunSpeed = _energyRunSpeed;
+                Settings.Default.EnergyTextSpinSeconds = _energyTextSpinSeconds;
+                try { Settings.Default.Save(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Settings save error: {ex.Message}"); }
+            }
             RefreshExecutionEnergyVisual();
             if (ViewModel?.Nodes != null)
                 NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);

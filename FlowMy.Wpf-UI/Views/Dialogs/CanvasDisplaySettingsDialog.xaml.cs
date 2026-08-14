@@ -35,8 +35,8 @@ namespace FlowMy.Views.Overlays
             PopulateConnectionLineStyles();
             PopulateCustomColors();
             PopulateGpuQualities();
-            HookRealtimeEvents();
             ApplyInitialSelection(Result);
+            HookRealtimeEvents();
         }
 
         private void FlushPendingPreferences()

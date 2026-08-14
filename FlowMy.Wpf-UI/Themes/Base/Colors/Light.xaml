@@ -210,6 +210,7 @@
     <SolidColorBrush x:Key="LavenderPressedBrush" Color="#442F6FEB"/>
     <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FF1F5FD7"/>
 
+
     <!-- ===== LISTVIEW HEADER ===== -->
     <SolidColorBrush x:Key="ListViewHeaderBrush" Color="#FF2F6FEB"/>
     <SolidColorBrush x:Key="ListViewItemBrush"   Color="#FF111827"/>
@@ -222,17 +223,18 @@
     <SolidColorBrush x:Key="ExecutionTraceGuideBrush" Color="#A08EA0B6"/>
     <Color x:Key="NodeShadowColor">#1C000000</Color>
 
-    <!-- ===== FOCUS &amp; INTERACTION ===== -->
+    <!-- ===== FOCUS & INTERACTION ===== -->
     <SolidColorBrush x:Key="FocusRingBrush"                Color="#382F6FEB"/>
     <SolidColorBrush x:Key="CardHoverBackground"           Color="#FFF1F5F9"/>
     <Color x:Key="ButtonShadowColor">#162F6FEB</Color>
     <SolidColorBrush x:Key="TabIndicatorBrush"             Color="#FF2F6FEB"/>
+    <SolidColorBrush x:Key="ThemeSliderActiveBrush"        Color="#FF2F6FEB"/>
+    <SolidColorBrush x:Key="ThemeTrackBackgroundBrush"     Color="#FFD6DEE9"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FFF1F5F9"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush"  Color="#FFF1F5F9"/>
 
     <!-- Toolbar / editor header — deep navy for contrast on light theme -->
     <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF162033"/>
-
     <!-- ===== COMMON PALETTE OVERRIDES ===== -->
     <SolidColorBrush x:Key="OceanBrush"        Color="#0284C7"/>
     <SolidColorBrush x:Key="OceanHoverBrush"   Color="#0174B0"/>

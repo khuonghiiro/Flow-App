@@ -211,6 +211,8 @@
     <SolidColorBrush x:Key="LavenderPressedBrush" Color="#4860A5FA"/>
     <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FFE8F0FF"/>
 
+    <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FFE8F0FF"/>
+
     <!-- ===== LISTVIEW HEADER ===== -->
     <SolidColorBrush x:Key="ListViewHeaderBrush" Color="#FF0B0F17"/>
     <SolidColorBrush x:Key="ListViewItemBrush"   Color="#FFDDE7F7"/>
@@ -228,12 +230,13 @@
     <SolidColorBrush x:Key="CardHoverBackground"           Color="#FF192232"/>
     <Color x:Key="ButtonShadowColor">#2060A5FA</Color>
     <SolidColorBrush x:Key="TabIndicatorBrush"             Color="#FF60A5FA"/>
+    <SolidColorBrush x:Key="ThemeSliderActiveBrush"        Color="#FF60A5FA"/>
+    <SolidColorBrush x:Key="ThemeTrackBackgroundBrush"     Color="#FF243149"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FF192232"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush"  Color="#FF192232"/>
 
     <!-- Toolbar / editor header — deepest layer -->
     <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF080B11"/>
-
     <!-- ===== COMMON PALETTE OVERRIDES ===== -->
     <SolidColorBrush x:Key="OceanBrush"        Color="#29C5DC"/>
     <SolidColorBrush x:Key="OceanHoverBrush"   Color="#4DD4E8"/>

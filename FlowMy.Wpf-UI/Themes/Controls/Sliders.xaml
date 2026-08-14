@@ -6,6 +6,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Slider Track & Thumb Fallback Resources -->
+    <SolidColorBrush x:Key="ThemeSliderActiveBrush" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="ThemeTrackBackgroundBrush" Color="#FF243149"/>
     <SolidColorBrush x:Key="ThemeSliderThumbStrokeBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="ThemeSliderDisabledBrush" Color="#6B7280"/>
 
@@ -20,7 +22,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RepeatButton">
                     <Border Height="4"
-                            Margin="7,0,-14,0"
+                            Margin="7,0,-8,0"
                             CornerRadius="2"
                             Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"
                             VerticalAlignment="Center"/>
