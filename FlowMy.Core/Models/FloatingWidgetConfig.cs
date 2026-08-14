@@ -51,15 +51,23 @@ namespace FlowMy.Models
     /// </summary>
     public class FloatingWidgetConfig : INotifyPropertyChanged
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+
         /// <summary>Lấy kích thước work area màn hình chính (fallback khi không đọc được).</summary>
         public static (double Width, double Height) GetPrimaryWorkAreaSize()
         {
             try
             {
-                var w = SystemParameters.WorkArea.Width;
-                var h = SystemParameters.WorkArea.Height;
+                int w = GetSystemMetrics(16); // SM_CXFULLSCREEN
+                int h = GetSystemMetrics(17); // SM_CYFULLSCREEN
                 if (w > 0 && h > 0)
                     return (w, h);
+
+                int screenW = GetSystemMetrics(0); // SM_CXSCREEN
+                int screenH = GetSystemMetrics(1); // SM_CYSCREEN
+                if (screenW > 0 && screenH > 0)
+                    return (screenW, screenH);
             }
             catch { }
             return (1920, 1080);

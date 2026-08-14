@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -9,12 +9,14 @@ namespace FlowMy.Helpers
 {
     public static class VersionHelper
     {
+        private static Assembly TargetAssembly => Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+
         /// <summary>
         /// Lấy version từ AssemblyVersion (1.0.3)
         /// </summary>
         public static string GetVersion()
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            var version = TargetAssembly.GetName().Version;
             return version?.ToString(3) ?? "1.0.0";
         }
 
@@ -23,7 +25,7 @@ namespace FlowMy.Helpers
         /// </summary>
         public static string GetFullVersion()
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            var version = TargetAssembly.GetName().Version;
             return version?.ToString() ?? "1.0.0.0";
         }
 
@@ -40,7 +42,7 @@ namespace FlowMy.Helpers
         /// </summary>
         public static AssemblyInfo GetAssemblyInfo()
         {
-            var assembly = Assembly.GetExecutingAssembly();
+            var assembly = TargetAssembly;
 
             return new AssemblyInfo
             {

@@ -225,7 +225,7 @@ namespace FlowMy.Views.NodeControls
                         bodyText,
                         response != null ? (int)response.StatusCode : 200,
                         targetExecutionId,
-                        _host);
+                        _host?.GetExecutionServiceSafely());
 
                     if (_host != null)
                     {
@@ -422,7 +422,7 @@ namespace FlowMy.Views.NodeControls
                     requestHeaders,
                     postDataText,
                     activeExecutionId,
-                    _host);
+                    _host?.GetExecutionServiceSafely());
 
                 // 1. Chặn request nếu khớp BlockingRules
                 if (webNode.ShouldBlockRequest(targetUrl, requestMethod))

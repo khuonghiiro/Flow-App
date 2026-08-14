@@ -25,7 +25,8 @@ namespace FlowMy.Views
     /// </summary>
     public partial class WorkflowEditorWindow : Window
     {
-        public WorkflowEditorViewModel? ViewModel => DataContext as WorkflowEditorViewModel;
+        private WorkflowEditorViewModel? _cachedViewModel;
+        public WorkflowEditorViewModel? ViewModel => _cachedViewModel ?? (Dispatcher.CheckAccess() ? DataContext as WorkflowEditorViewModel : Dispatcher.Invoke(() => DataContext as WorkflowEditorViewModel));
         private readonly IWorkflowEditorHostAccessor _hostAccessor;
         private readonly WorkflowEditorEventService _eventService;
 
@@ -473,7 +474,9 @@ namespace FlowMy.Views
                 LoadingOverlay.Visibility = Visibility.Visible;
             }
 
-            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            _cachedViewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            DataContext = viewModel;
+            DataContextChanged += (s, e) => _cachedViewModel = e.NewValue as WorkflowEditorViewModel;
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
             _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
             _zIndexManager = zIndexManager ?? throw new ArgumentNullException(nameof(zIndexManager));

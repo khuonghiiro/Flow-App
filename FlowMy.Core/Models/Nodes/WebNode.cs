@@ -1310,6 +1310,21 @@ namespace FlowMy.Models.Nodes
             ProcessInterceptedNetworkResponse(url, method, headers, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), postData, bodyText, statusCode);
         }
 
+        private static FlowMy.Interfaces.IScopedOutputSync? ResolveScopedOutputSync(object? host)
+        {
+            if (host == null) return null;
+            if (host is FlowMy.Interfaces.IScopedOutputSync sync) return sync;
+            try
+            {
+                var vmProp = host.GetType().GetProperty("ViewModel");
+                var vm = vmProp?.GetValue(host);
+                if (vm == null) return null;
+                var execProp = vm.GetType().GetProperty("WorkflowExecutionService") ?? vm.GetType().GetProperty("ExecutionService");
+                return execProp?.GetValue(vm) as FlowMy.Interfaces.IScopedOutputSync;
+            }
+            catch { return null; }
+        }
+
         public void ProcessInterceptedNetworkRequest(
             string url,
             string method,
@@ -1320,18 +1335,7 @@ namespace FlowMy.Models.Nodes
         {
             if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
 
-            var execService = (host as FlowMy.Interfaces.IScopedOutputSync);
-            if (execService == null && host != null)
-            {
-                try
-                {
-                    var prop = host.GetType().GetProperty("ViewModel");
-                    var vm = prop?.GetValue(host);
-                    var execProp = vm?.GetType().GetProperty("ExecutionService");
-                    execService = execProp?.GetValue(vm) as FlowMy.Interfaces.IScopedOutputSync;
-                }
-                catch { }
-            }
+            var execService = ResolveScopedOutputSync(host);
 
             foreach (var ro in ResponseOutputs)
             {
@@ -1378,18 +1382,7 @@ namespace FlowMy.Models.Nodes
         {
             if (ResponseOutputs == null || ResponseOutputs.Count == 0 || string.IsNullOrWhiteSpace(url)) return;
 
-            var execService = (host as FlowMy.Interfaces.IScopedOutputSync);
-            if (execService == null && host != null)
-            {
-                try
-                {
-                    var prop = host.GetType().GetProperty("ViewModel");
-                    var vm = prop?.GetValue(host);
-                    var execProp = vm?.GetType().GetProperty("ExecutionService");
-                    execService = execProp?.GetValue(vm) as FlowMy.Interfaces.IScopedOutputSync;
-                }
-                catch { }
-            }
+            var execService = ResolveScopedOutputSync(host);
 
             foreach (var ro in ResponseOutputs)
             {
