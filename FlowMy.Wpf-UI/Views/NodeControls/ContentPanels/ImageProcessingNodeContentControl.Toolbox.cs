@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -131,9 +131,14 @@ namespace FlowMy.Views.NodeControls
                 try
                 {
                     var composite = _node.EditorDoc.Composite();
-                    MainImage.Source = composite;
-                    MainImage.Width = _node.EditorDoc.Width;
-                    MainImage.Height = _node.EditorDoc.Height;
+                    if (!ReferenceEquals(MainImage.Source, composite))
+                    {
+                        MainImage.Source = composite;
+                    }
+                    if (MainImage.Width != _node.EditorDoc.Width)
+                        MainImage.Width = _node.EditorDoc.Width;
+                    if (MainImage.Height != _node.EditorDoc.Height)
+                        MainImage.Height = _node.EditorDoc.Height;
                 }
                 catch (Exception ex)
                 {
@@ -145,16 +150,18 @@ namespace FlowMy.Views.NodeControls
                 }
                 finally
                 {
-                    // Hide active layer drawing overlay seamlessly after composite rendering has completed
-                    ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
-                    ActiveLayerDrawingOverlay.Source = null;
+                    // Chỉ ẩn drawing overlay nếu không còn phiên vẽ pixels
+                    if (!_isDrawingPixels)
+                    {
+                        ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+                        ActiveLayerDrawingOverlay.Source = null;
+                    }
 
-                    // Clean up and dispose cached plates for brush/eraser drawing session
-                    _node.EditorDoc.IsDrawingSessionActive = false;
-                    _node.EditorDoc.CachedBgPlate?.Dispose();
-                    _node.EditorDoc.CachedBgPlate = null;
-                    _node.EditorDoc.CachedFgPlate?.Dispose();
-                    _node.EditorDoc.CachedFgPlate = null;
+                    // Không tự ý xóa CachedBgPlate / CachedFgPlate nếu phiên vẽ hoặc chỉnh màu/hiệu ứng vẫn đang active
+                    if (!_node.EditorDoc.IsDrawingSessionActive && !_isDrawingPixels)
+                    {
+                        _node.EditorDoc.ClearPlates();
+                    }
                 }
 
                 try

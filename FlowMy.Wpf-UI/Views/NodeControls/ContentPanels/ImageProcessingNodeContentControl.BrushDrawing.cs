@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -286,13 +286,19 @@ namespace FlowMy.Views.NodeControls
                     {
                         var dirtyRect = new Int32Rect(rx, ry, rr - rx, rb - ry);
                         var composite = _node.EditorDoc.CompositeRegion(dirtyRect);
-                        MainImage.Source = composite;
+                        if (!ReferenceEquals(MainImage.Source, composite))
+                        {
+                            MainImage.Source = composite;
+                        }
                         return;
                     }
                 }
 
                 var fullComposite = _node.EditorDoc.Composite();
-                MainImage.Source = fullComposite;
+                if (!ReferenceEquals(MainImage.Source, fullComposite))
+                {
+                    MainImage.Source = fullComposite;
+                }
             }
             catch (Exception ex)
             {
@@ -356,14 +362,29 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                target.AddDirtyRect(new Int32Rect(0, 0, w, h));
+                int margin = 4;
+                int rx = Math.Max(0, _prevSegmentMinX + activeLayer.OffsetX - margin);
+                int ry = Math.Max(0, _prevSegmentMinY + activeLayer.OffsetY - margin);
+                int rr = Math.Min(w, _prevSegmentMaxX + activeLayer.OffsetX + margin + 1);
+                int rb = Math.Min(h, _prevSegmentMaxY + activeLayer.OffsetY + margin + 1);
+                if (rr > rx && rb > ry)
+                {
+                    target.AddDirtyRect(new Int32Rect(rx, ry, rr - rx, rb - ry));
+                }
+                else
+                {
+                    target.AddDirtyRect(new Int32Rect(0, 0, w, h));
+                }
             }
             finally
             {
                 target.Unlock();
             }
 
-            MainImage.Source = target;
+            if (!ReferenceEquals(MainImage.Source, target))
+            {
+                MainImage.Source = target;
+            }
         }
 
         /// <summary>Pre-composite all layers except activeLayer into a cached SKBitmap for fast eraser preview.</summary>
@@ -421,6 +442,50 @@ namespace FlowMy.Views.NodeControls
             _eraserBgPlateSK = bgBitmap;
             // Keep a WPF reference for size checking
             _eraserBgPlate = new WriteableBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32, null);
+        }
+
+        private DispatcherTimer? _thumbnailDebounceTimer;
+        private EditorLayer? _thumbnailPendingLayer;
+
+        private void DebouncedInvalidateThumbnail(EditorLayer layer)
+        {
+            _thumbnailPendingLayer = layer;
+            if (_thumbnailDebounceTimer == null)
+            {
+                _thumbnailDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+                _thumbnailDebounceTimer.Tick += (s, e) =>
+                {
+                    _thumbnailDebounceTimer.Stop();
+                    _thumbnailPendingLayer?.InvalidateThumbnail();
+                    _thumbnailPendingLayer = null;
+                };
+            }
+            _thumbnailDebounceTimer.Stop();
+            _thumbnailDebounceTimer.Start();
+        }
+
+        /// <summary>Flush chỉ dirty region sau mỗi nét vẽ/tẩy để đạt hiệu năng 60 FPS trên ảnh siêu lớn (10000x10000 -> 20000x20000).</summary>
+        private void FlushStrokeComposite(EditorLayer activeLayer, Int32Rect dirtyRect)
+        {
+            _compositeTimer?.Stop();
+            _compositeDirty = false;
+
+            if (_node?.EditorDoc == null) return;
+
+            if (_node.EditorDoc.Layers.Count == 1 && activeLayer.Opacity >= 0.99 && activeLayer.BlendMode == BlendMode.Normal)
+            {
+                if (!ReferenceEquals(MainImage.Source, activeLayer.Bitmap))
+                    MainImage.Source = activeLayer.Bitmap;
+                activeLayer.Bitmap.AddDirtyRect(dirtyRect);
+            }
+            else
+            {
+                var composite = _node.EditorDoc.CompositeRegion(dirtyRect);
+                if (!ReferenceEquals(MainImage.Source, composite))
+                    MainImage.Source = composite;
+            }
+
+            DebouncedInvalidateThumbnail(activeLayer);
         }
 
         /// <summary>Dừng timer, flush composite cuối cùng + sync thumbnail + fire event.</summary>
@@ -564,7 +629,10 @@ namespace FlowMy.Views.NodeControls
                 target.Unlock();
             }
 
-            MainImage.Source = target;
+            if (!ReferenceEquals(MainImage.Source, target))
+            {
+                MainImage.Source = target;
+            }
         }
     }
 }

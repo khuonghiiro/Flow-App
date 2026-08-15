@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -369,6 +369,17 @@ namespace FlowMy.Views.NodeControls
                 ImageTabStrip.Children.Remove(tabData.TabBorder);
             _tabs.Remove(tabData);
 
+            // Giải phóng triệt để RAM của tab bị đóng
+            if (!ReferenceEquals(tabData.EditorDoc, _node.EditorDoc))
+            {
+                tabData.EditorDoc?.Dispose();
+            }
+            tabData.EditorDoc = null;
+            tabData.CachedMainImage = null;
+            tabData.TabBorder = null;
+            tabData.CachedSelectionMask = null;
+            tabData.SelectionPoints.Clear();
+
             if (ReferenceEquals(tabData, _activeTabData))
             {
                 _activeTabData = null;
@@ -383,9 +394,14 @@ namespace FlowMy.Views.NodeControls
                     PlaceholderTextBlock.Visibility = Visibility.Visible;
                     PlaceholderTextBlock.Text = "Chưa có ảnh";
                     ImageTitleTextBlock.Text = "Chưa có ảnh";
+                    _node.EditorDoc?.Dispose();
+                    _node.EditorDoc = null;
                 }
             }
             HighlightActiveTab();
+
+            // Yêu cầu thu hồi RAM ngay lập tức
+            GC.Collect(2, GCCollectionMode.Optimized, false);
         }
 
         /// <summary>UpdatePreviewAsync rồi sync tab title + tạo EditorDoc nếu cần.</summary>

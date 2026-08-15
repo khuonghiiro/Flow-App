@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -139,6 +139,12 @@ namespace FlowMy.Views.NodeControls
                     rtStride = rtW * 4;
                     realtimeOriginal = new byte[rtStride * rtH];
                     realtimeLayer.Bitmap.CopyPixels(realtimeOriginal, rtStride, 0);
+
+                    // Build and cache RAM plates for ultra-fast live preview
+                    _node.EditorDoc.BuildMovePlates(realtimeLayer, out var bgPlate, out var fgPlate);
+                    _node.EditorDoc.CachedBgPlate = bgPlate;
+                    _node.EditorDoc.CachedFgPlate = fgPlate;
+                    _node.EditorDoc.IsDrawingSessionActive = true;
                 }
             }
 
@@ -188,14 +194,28 @@ namespace FlowMy.Views.NodeControls
 
             var sliders = new Dictionary<string, Slider>();
 
-            // Debounce helper for real-time preview
+            // Debounce helper for real-time preview (60 FPS ~ 16ms)
+            var previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+            bool previewPending = false;
+            bool previewRunning = false;
             CancellationTokenSource? previewCts = null;
-            async void ApplyRealtimePreview()
+
+            void TriggerRealtimePreview()
             {
                 if (!isRealtime || realtimeOriginal == null || realtimeLayer == null) return;
+                previewPending = true;
+                if (!previewTimer.IsEnabled) previewTimer.Start();
+            }
+
+            previewTimer.Tick += async (_, __) =>
+            {
+                if (!previewPending || previewRunning) return;
+                previewPending = false;
+                previewRunning = true;
                 previewCts?.Cancel();
                 previewCts = new CancellationTokenSource();
                 var token = previewCts.Token;
+
                 var currentParams = new Dictionary<string, double>();
                 foreach (var kv in sliders)
                     currentParams[kv.Key] = kv.Value.Value;
@@ -204,8 +224,24 @@ namespace FlowMy.Views.NodeControls
                 {
                     var preview = await Task.Run(() => ApplySkiaSharpEffect(
                         realtimeOriginal, rtW, rtH, effectName, currentParams, token), token);
-                    if (token.IsCancellationRequested) return;
-                    realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), preview, rtStride, 0);
+                    if (token.IsCancellationRequested || realtimeLayer == null) return;
+
+                    realtimeLayer.Bitmap.Lock();
+                    try
+                    {
+                        unsafe
+                        {
+                            fixed (byte* p = preview)
+                            {
+                                Buffer.MemoryCopy(p, (void*)realtimeLayer.Bitmap.BackBuffer, rtStride * rtH, preview.Length);
+                            }
+                        }
+                        realtimeLayer.Bitmap.AddDirtyRect(new Int32Rect(0, 0, rtW, rtH));
+                    }
+                    finally
+                    {
+                        realtimeLayer.Bitmap.Unlock();
+                    }
                     OnEditorDocumentModified();
                 }
                 catch (OperationCanceledException) { }
@@ -213,7 +249,12 @@ namespace FlowMy.Views.NodeControls
                 {
                     System.Diagnostics.Debug.WriteLine($"Realtime preview error: {ex.Message}");
                 }
-            }
+                finally
+                {
+                    previewRunning = false;
+                    if (previewPending) TriggerRealtimePreview();
+                }
+            };
 
             foreach (var p in paramDefs)
             {
@@ -273,19 +314,11 @@ namespace FlowMy.Views.NodeControls
                 slider.ValueChanged += (_, args) =>
                 {
                     valText.Text = args.NewValue.ToString(capturedP.Step < 1 ? "F2" : "F0");
-                };
-                // Real-time preview: trigger on slider mouse up (release)
-                if (isRealtime)
-                {
-                    slider.PreviewMouseLeftButtonUp += (_, __) => ApplyRealtimePreview();
-                    // Also on keyboard arrow key release for accessibility
-                    slider.PreviewKeyUp += (_, kargs) =>
+                    if (isRealtime)
                     {
-                        if (kargs.Key == Key.Left || kargs.Key == Key.Right ||
-                            kargs.Key == Key.Up || kargs.Key == Key.Down)
-                            ApplyRealtimePreview();
-                    };
-                }
+                        TriggerRealtimePreview();
+                    }
+                };
                 dp.Children.Add(slider);
                 sliders[p.Name] = slider;
 
@@ -317,6 +350,8 @@ namespace FlowMy.Views.NodeControls
             };
             btnApply.Click += (_, __) =>
             {
+                previewTimer.Stop();
+                previewCts?.Cancel();
                 result = new Dictionary<string, double>();
                 foreach (var kv in sliders)
                     result[kv.Key] = kv.Value.Value;
@@ -328,9 +363,9 @@ namespace FlowMy.Views.NodeControls
                 if (isRealtime && realtimeOriginal != null && realtimeLayer != null)
                 {
                     realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), realtimeOriginal, rtStride, 0);
-                    OnEditorDocumentModified();
                 }
 
+                _node?.EditorDoc?.ClearPlates();
                 win.DialogResult = true;
                 win.Close();
             };
@@ -380,12 +415,15 @@ namespace FlowMy.Views.NodeControls
                 System.Windows.Media.Color.FromRgb(0xbb, 0xbb, 0xcc));
             btnCancel.Click += (_, __) =>
             {
+                previewTimer.Stop();
+                previewCts?.Cancel();
                 // Restore original pixels if real-time preview was active
                 if (isRealtime && realtimeOriginal != null && realtimeLayer != null)
                 {
                     realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), realtimeOriginal, rtStride, 0);
                     OnEditorDocumentModified();
                 }
+                _node?.EditorDoc?.ClearPlates();
                 win.DialogResult = false;
                 win.Close();
             };
@@ -397,12 +435,14 @@ namespace FlowMy.Views.NodeControls
             // Also restore on window close via X button
             win.Closing += (_, cargs) =>
             {
+                previewTimer.Stop();
                 previewCts?.Cancel();
                 if (win.DialogResult != true && isRealtime && realtimeOriginal != null && realtimeLayer != null)
                 {
                     realtimeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, rtW, rtH), realtimeOriginal, rtStride, 0);
                     OnEditorDocumentModified();
                 }
+                _node?.EditorDoc?.ClearPlates();
             };
 
             win.Content = stack;

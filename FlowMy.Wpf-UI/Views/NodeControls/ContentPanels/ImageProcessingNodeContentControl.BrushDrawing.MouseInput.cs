@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -386,6 +386,11 @@ namespace FlowMy.Views.NodeControls
 
             if (tool == "Fill")
             {
+                int localX = px - activeLayer.OffsetX;
+                int localY = py - activeLayer.OffsetY;
+                if (localX < 0 || localX >= activeLayer.Width || localY < 0 || localY >= activeLayer.Height)
+                    return;
+
                 int stride = activeLayer.Width * 4;
                 var oldPixels = new byte[stride * activeLayer.Height];
                 activeLayer.Bitmap.CopyPixels(oldPixels, stride, 0);
@@ -393,7 +398,7 @@ namespace FlowMy.Views.NodeControls
                 var tempPixels = new byte[stride * activeLayer.Height];
                 Array.Copy(oldPixels, tempPixels, oldPixels.Length);
 
-                FloodFill(tempPixels, activeLayer.Width, activeLayer.Height, px, py, _node.EditorDoc.ForegroundColor);
+                FloodFill(tempPixels, activeLayer.Width, activeLayer.Height, localX, localY, _node.EditorDoc.ForegroundColor);
 
                 activeLayer.Bitmap.WritePixels(new Int32Rect(0, 0, activeLayer.Width, activeLayer.Height), tempPixels, stride, 0);
                 activeLayer.InvalidateThumbnail();
@@ -420,7 +425,7 @@ namespace FlowMy.Views.NodeControls
                 int pixelSize = stride * overlayH;
 
                 // 1. Initialize session if not already active
-                if (_brushOverlayBitmap == null || _brushOverlayBitmap.PixelWidth != overlayW || _brushOverlayBitmap.PixelHeight != overlayH)
+                if (_brushOverlayBitmap == null || _brushOverlayBitmap.PixelWidth != overlayW || _brushOverlayBitmap.PixelHeight != overlayH || _brushSessionLayer != activeLayer)
                 {
                     CommitBrushDrawingSession();
 
@@ -432,12 +437,23 @@ namespace FlowMy.Views.NodeControls
                     _node.EditorDoc.CachedBgPlate = bgPlate;
                     _node.EditorDoc.CachedFgPlate = fgPlate;
                     _node.EditorDoc.IsDrawingSessionActive = true;
-
-                    _strokeMinX = overlayW - 1;
-                    _strokeMaxX = 0;
-                    _strokeMinY = overlayH - 1;
-                    _strokeMaxY = 0;
                 }
+                else
+                {
+                    // Reuse existing overlay and plates instantly (0ms)
+                    if (_node.EditorDoc.CachedBgPlate == null && _node.EditorDoc.CachedFgPlate == null)
+                    {
+                        _node.EditorDoc.BuildMovePlates(activeLayer, out var bgPlate, out var fgPlate);
+                        _node.EditorDoc.CachedBgPlate = bgPlate;
+                        _node.EditorDoc.CachedFgPlate = fgPlate;
+                    }
+                    _node.EditorDoc.IsDrawingSessionActive = true;
+                }
+
+                _strokeMinX = overlayW - 1;
+                _strokeMaxX = 0;
+                _strokeMinY = overlayH - 1;
+                _strokeMaxY = 0;
 
                 _localSelectionClipPath?.Dispose();
                 _localSelectionClipPath = null;
@@ -564,7 +580,7 @@ namespace FlowMy.Views.NodeControls
                 int pixelSize = stride * overlayH;
 
                 // 1. Initialize session if not already active
-                if (_brushOverlayBitmap == null || _brushOverlayBitmap.PixelWidth != overlayW || _brushOverlayBitmap.PixelHeight != overlayH)
+                if (_brushOverlayBitmap == null || _brushOverlayBitmap.PixelWidth != overlayW || _brushOverlayBitmap.PixelHeight != overlayH || _brushSessionLayer != activeLayer)
                 {
                     CommitBrushDrawingSession();
 
@@ -576,11 +592,27 @@ namespace FlowMy.Views.NodeControls
                     _node.EditorDoc.CachedBgPlate = bgPlate;
                     _node.EditorDoc.CachedFgPlate = fgPlate;
                     _node.EditorDoc.IsDrawingSessionActive = true;
+                }
+                else
+                {
+                    // Reuse existing overlay and plates instantly (0ms)
+                    if (_node.EditorDoc.CachedBgPlate == null && _node.EditorDoc.CachedFgPlate == null)
+                    {
+                        _node.EditorDoc.BuildMovePlates(activeLayer, out var bgPlate, out var fgPlate);
+                        _node.EditorDoc.CachedBgPlate = bgPlate;
+                        _node.EditorDoc.CachedFgPlate = fgPlate;
+                    }
+                    _node.EditorDoc.IsDrawingSessionActive = true;
+                }
 
-                    _strokeMinX = overlayW - 1;
-                    _strokeMaxX = 0;
-                    _strokeMinY = overlayH - 1;
-                    _strokeMaxY = 0;
+                _strokeMinX = overlayW - 1;
+                _strokeMaxX = 0;
+                _strokeMinY = overlayH - 1;
+                _strokeMaxY = 0;
+
+                if (_eraserBgPlateSK == null || _eraserBgPlate == null || _eraserBgPlate.PixelWidth != _node.EditorDoc.Width || _eraserBgPlate.PixelHeight != _node.EditorDoc.Height)
+                {
+                    BuildEraserBackgroundPlate(activeLayer);
                 }
 
                 _localSelectionClipPath?.Dispose();
@@ -1162,13 +1194,31 @@ namespace FlowMy.Views.NodeControls
                     activeLayer.Bitmap.CopyPixels(dirtyRect, newRegionPixels, regionStride, 0);
 
                     // 6. Create region-based undo command
+                    // 6. Create region-based undo command
                     var cmd = new PixelRegionEditCommand(activeLayer, dirtyRect, oldRegionPixels, newRegionPixels);
                     _node.EditorDoc.History.Execute(cmd);
 
-                    _brushOverlayBitmap = null;
-                    _brushSessionLayer = null;
-                    _localSelectionClipPath?.Dispose();
-                    _localSelectionClipPath = null;
+                    // 7. Clear the modified region in overlay bitmap for zero-allocation reuse on next stroke
+                    _brushOverlayBitmap.Lock();
+                    try
+                    {
+                        var overlayInfo = new SkiaSharp.SKImageInfo(overlayW, overlayH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                        using (var surface = SkiaSharp.SKSurface.Create(overlayInfo, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
+                        {
+                            if (surface != null)
+                            {
+                                surface.Canvas.Save();
+                                surface.Canvas.ClipRect(new SkiaSharp.SKRect(dirtyX, dirtyY, dirtyX + dirtyW, dirtyY + dirtyH));
+                                surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                                surface.Canvas.Restore();
+                            }
+                        }
+                        _brushOverlayBitmap.AddDirtyRect(dirtyRect);
+                    }
+                    finally
+                    {
+                        _brushOverlayBitmap.Unlock();
+                    }
 
                     if (_currentStrokePaint != null)
                     {
@@ -1182,13 +1232,7 @@ namespace FlowMy.Views.NodeControls
                     }
                     _currentStrokeInfo = null;
 
-                    if (_cachedBrushTip != null)
-                    {
-                        _cachedBrushTip.Dispose();
-                        _cachedBrushTip = null;
-                    }
-
-                    FlushCompositeAndSync();
+                    FlushStrokeComposite(activeLayer, dirtyRect);
                 }
             }
             else if (tool == "Eraser")
@@ -1237,12 +1281,29 @@ namespace FlowMy.Views.NodeControls
                 // 3. Copy new pixels (WITHOUT lock)
                 activeLayer.Bitmap.CopyPixels(dirtyRect, newRegionPixels, regionStride, 0);
 
-                ClearBrushOverlay();
-                ActiveLayerDrawingOverlay.Source = null;
-                ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
-                _brushOverlayBitmap = null;
-                _localSelectionClipPath?.Dispose();
-                _localSelectionClipPath = null;
+                if (_brushOverlayBitmap != null)
+                {
+                    _brushOverlayBitmap.Lock();
+                    try
+                    {
+                        var overlayInfo = new SkiaSharp.SKImageInfo(layerW, layerH, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+                        using (var surface = SkiaSharp.SKSurface.Create(overlayInfo, _brushOverlayBitmap.BackBuffer, _brushOverlayBitmap.BackBufferStride))
+                        {
+                            if (surface != null)
+                            {
+                                surface.Canvas.Save();
+                                surface.Canvas.ClipRect(new SkiaSharp.SKRect(dirtyX, dirtyY, dirtyX + dirtyW, dirtyY + dirtyH));
+                                surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                                surface.Canvas.Restore();
+                            }
+                        }
+                        _brushOverlayBitmap.AddDirtyRect(dirtyRect);
+                    }
+                    finally
+                    {
+                        _brushOverlayBitmap.Unlock();
+                    }
+                }
 
                 _eraserLockedSurface?.Dispose();
                 _eraserLockedSurface = null;
@@ -1253,20 +1314,7 @@ namespace FlowMy.Views.NodeControls
                 _node.EditorDoc.History.Execute(cmd);
                 _strokePoints.Clear();
 
-                // Dispose cached eraser paint after stroke ends
-                if (_cachedEraserPaint != null)
-                {
-                    _cachedEraserPaint.Dispose();
-                    _cachedEraserPaint = null;
-                    _cachedEraserBlurSigma = -1;
-                }
-
-                // Dispose cached background plate
-                _eraserBgPlateSK?.Dispose();
-                _eraserBgPlateSK = null;
-                _eraserBgPlate = null;
-
-                FlushCompositeAndSync();
+                FlushStrokeComposite(activeLayer, dirtyRect);
             }
         }
 
