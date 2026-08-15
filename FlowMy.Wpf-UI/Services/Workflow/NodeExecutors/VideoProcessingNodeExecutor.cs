@@ -241,12 +241,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (videoNode.ExcludedFrameTimestamps.Count > 0 && producedFrames.Count > 0)
                 {
                     var frameDuration = extractFps > 0 ? 1.0 / extractFps : 1.0;
-                    var offsetSec = extractFps > 0 ? 0.5 / extractFps : 0.0;
                     var trimStart = videoNode.TrimEnabled ? Math.Max(0, videoNode.TrimStartSec) : 0;
                     var kept = new List<string>();
                     for (int fi = 0; fi < producedFrames.Count; fi++)
                     {
-                        var frameTs = Math.Round((trimStart + offsetSec + fi * frameDuration) * 10000.0) / 10000.0;
+                        var frameTs = Math.Round((trimStart + fi * frameDuration) * 10000.0) / 10000.0;
                         if (videoNode.IsFrameExcluded(frameTs))
                         {
                             try { File.Delete(producedFrames[fi]); } catch { }
@@ -950,8 +949,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             var filters = new List<string>();
 
-            // Loại bỏ excluded frames bằng FFmpeg select filter
-            if (node.ExcludedFrameTimestamps.Count > 0)
+            // Loại bỏ excluded frames bằng FFmpeg select filter CHỈ KHI xuất VIDEO (không phải khi tách frame stills)
+            // Khi tách frame stills, việc loại bỏ frame sẽ do C# xóa file chính xác theo timestamp sau khi trích xuất
+            // để tránh làm lệch timeline/PTS của bộ lọc fps.
+            if (!extractFps.HasValue && node.ExcludedFrameTimestamps.Count > 0)
             {
                 var fps = node.SourceFps > 0 ? node.SourceFps : 30;
                 var halfFrame = 0.5 / fps;
@@ -963,8 +964,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (extractFps.HasValue && extractFps.Value > 0)
             {
-                var offsetSec = 0.5 / extractFps.Value;
-                filters.Add($"fps=fps={extractFps.Value:0.###}:start_time={offsetSec:0.###}:round=near");
+                var fpsVal = extractFps.Value.ToString("0.####", CultureInfo.InvariantCulture);
+                filters.Add($"fps=fps={fpsVal}");
             }
             filters.Add(VideoColorGrading.BuildEqFilter(node));
             var hueF = VideoColorGrading.BuildHueFilter(node.Hue);
@@ -1774,12 +1775,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (node.ExcludedFrameTimestamps.Count > 0 && orderedStills.Count > 0)
             {
                 var frameDuration = effectiveExtractFps > 0 ? 1.0 / effectiveExtractFps : 1.0;
-                var offsetSec = effectiveExtractFps > 0 ? 0.5 / effectiveExtractFps : 0.0;
                 var trimStart = node.TrimEnabled ? Math.Max(0, node.TrimStartSec) : 0;
                 var kept = new List<string>();
                 for (int fi = 0; fi < orderedStills.Count; fi++)
                 {
-                    var frameTs = Math.Round((trimStart + offsetSec + fi * frameDuration) * 10000.0) / 10000.0;
+                    var frameTs = Math.Round((trimStart + fi * frameDuration) * 10000.0) / 10000.0;
                     if (node.IsFrameExcluded(frameTs))
                     {
                         try { File.Delete(orderedStills[fi]); } catch { }

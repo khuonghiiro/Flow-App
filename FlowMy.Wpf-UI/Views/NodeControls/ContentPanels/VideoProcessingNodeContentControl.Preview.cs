@@ -838,18 +838,23 @@ namespace FlowMy.Views.NodeControls
 
             try
             {
-                var fps = await ProbeSourceFpsAsync(path, ct);
-                // Clear flag and update SourceFps atomically on the UI thread
+                var (fps, duration) = await ProbeSourceMetadataAsync(path, ct);
+                // Clear flag and update SourceFps & probed duration atomically on the UI thread
                 // to prevent race where RefreshInfoText sees _isProbingFps=false but old SourceFps
                 await Dispatcher.InvokeAsync(() =>
                 {
                     _isProbingFps = false;
+                    if (duration > 0)
+                    {
+                        _probedDurationSeconds = duration;
+                    }
                     if (fps > 0)
                     {
                         _node.SourceFps = fps;
                     }
                     RefreshInfoText(); // includes UpdateFrameExtractionPreview()
                     UpdateGridCollagePreviewUi();
+                    InitTimeSliderRange();
                 }, DispatcherPriority.Loaded);
             }
             catch
@@ -863,11 +868,10 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private static async Task<double> ProbeSourceFpsAsync(string inputPath, CancellationToken ct)
+        private static async Task<(double fps, double duration)> ProbeSourceMetadataAsync(string inputPath, CancellationToken ct)
         {
-            // Keep ffprobe invocation consistent with VideoProcessingNodeExecutor.
             var ffprobeExe = FfmpegPathPreferencesStore.ResolveBinaryPath("ffprobe");
-            if (string.IsNullOrWhiteSpace(ffprobeExe)) return 0;
+            if (string.IsNullOrWhiteSpace(ffprobeExe)) return (0, 0);
 
             var psi = new ProcessStartInfo
             {
@@ -881,36 +885,54 @@ namespace FlowMy.Views.NodeControls
             {
                 "-v", "error",
                 "-select_streams", "v:0",
-                "-show_entries", "stream=r_frame_rate",
-                "-of", "default=nokey=1:noprint_wrappers=1",
+                "-show_entries", "stream=r_frame_rate:format=duration",
+                "-of", "default=nokey=0:noprint_wrappers=1",
                 inputPath
             };
             foreach (var a in args) psi.ArgumentList.Add(a);
 
             using var p = Process.Start(psi);
-            if (p == null) return 0;
+            if (p == null) return (0, 0);
 
             var output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
             await p.WaitForExitAsync(ct).ConfigureAwait(false);
 
-            var value = output.Trim();
-            if (string.IsNullOrWhiteSpace(value)) return 0;
+            double fps = 0;
+            double duration = 0;
 
-            if (value.Contains('/'))
+            foreach (var rawLine in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                var parts = value.Split('/');
-                if (parts.Length == 2 &&
-                    double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) &&
-                    double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) &&
-                    d > 0)
+                var line = rawLine.Trim();
+                if (line.StartsWith("r_frame_rate=", StringComparison.OrdinalIgnoreCase))
                 {
-                    return n / d;
+                    var val = line.Substring("r_frame_rate=".Length).Trim();
+                    if (val.Contains('/'))
+                    {
+                        var parts = val.Split('/');
+                        if (parts.Length == 2 &&
+                            double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) &&
+                            double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) &&
+                            d > 0)
+                        {
+                            fps = n / d;
+                        }
+                    }
+                    else if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f))
+                    {
+                        fps = f;
+                    }
+                }
+                else if (line.StartsWith("duration=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var val = line.Substring("duration=".Length).Trim();
+                    if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dur))
+                    {
+                        duration = dur;
+                    }
                 }
             }
 
-            return double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fps)
-                ? fps
-                : 0;
+            return (fps, duration);
         }
 
         private void TogglePlayPause()
@@ -1573,8 +1595,13 @@ namespace FlowMy.Views.NodeControls
             Canvas.SetLeft(TrimReviewPlayheadThumb, _trimUiPlayX);
         }
 
+        private double _probedDurationSeconds = 0;
+
         private double GetNaturalDurationSeconds()
-            => PreviewMedia.NaturalDuration.HasTimeSpan ? PreviewMedia.NaturalDuration.TimeSpan.TotalSeconds : 0;
+        {
+            if (_probedDurationSeconds > 0) return _probedDurationSeconds;
+            return PreviewMedia.NaturalDuration.HasTimeSpan ? PreviewMedia.NaturalDuration.TimeSpan.TotalSeconds : 0;
+        }
 
     }
 }

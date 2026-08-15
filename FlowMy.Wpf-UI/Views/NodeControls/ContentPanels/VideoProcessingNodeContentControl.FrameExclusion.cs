@@ -272,15 +272,12 @@ namespace FlowMy.Views.NodeControls
             Directory.CreateDirectory(thumbDir);
 
             var outPattern = Path.Combine(thumbDir, "thumb_%04d.jpg");
-            var offsetSec = 0.5 / fps;
             var fpsStr = fps.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
             var ssStr = startSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            var tStr = windowDuration.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            var offsetStr = offsetSec.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
-
+            var tStr = "1.0"; // Trích xuất tối đa 1 giây từ startSec hoặc đến hết video
             var args = $"-hide_banner -loglevel error " +
                        $"-ss {ssStr} -i \"{videoPath}\" -t {tStr} -an -sn " +
-                       $"-vf \"fps=fps={fpsStr}:start_time={offsetStr}:round=near,scale=w={FrameThumbSize}:h={FrameThumbSize}:force_original_aspect_ratio=decrease\" " +
+                       $"-vf \"fps=fps={fpsStr},scale=w={FrameThumbSize}:h={FrameThumbSize}:force_original_aspect_ratio=decrease\" " +
                        $"-threads 2 -q:v 6 -y \"{outPattern}\"";
 
             RunFfmpegProcess(ffmpegExe, args, ct);
@@ -291,13 +288,13 @@ namespace FlowMy.Views.NodeControls
                 .ToList();
 
             var interval = 1.0 / fps;
-            var windowEnd = startSec + windowDuration;
+            var windowEnd = startSec + 1.0;
 
             for (int i = 0; i < files.Count; i++)
             {
                 if (ct.IsCancellationRequested) break;
-                var ts = Math.Round((startSec + offsetSec + i * interval) * 10000.0) / 10000.0;
-                // Bỏ qua nếu lấn sang giây tiếp theo (trừ frame đầu tiên nếu startSec sát biên)
+                var ts = Math.Round((startSec + i * interval) * 10000.0) / 10000.0;
+                // Bỏ qua nếu vượt quá giây hiện tại [startSec, startSec + 1.0)
                 if (ts >= windowEnd - 0.0001 && i > 0) break;
 
                 try
