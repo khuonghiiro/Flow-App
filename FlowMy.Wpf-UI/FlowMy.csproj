@@ -206,14 +206,4 @@
 	  <Folder Include="public\library\" />
 	</ItemGroup>
 
-	<!-- Đảm bảo Themes/Controls/Borders.xaml & Views/WorkflowEditorWindow.xaml luôn được MarkupCompile → BAML (tránh lỗi runtime Cannot locate resource). -->
-	<ItemGroup>
-	  <Page Update="Themes\Controls\Borders.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	  <Page Update="Views\WorkflowEditorWindow.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
-
 </Project>

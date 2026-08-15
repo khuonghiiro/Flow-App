@@ -4,8 +4,8 @@
     <UseSharedCompilation>true</UseSharedCompilation>
     <!-- Tối ưu biên dịch tham chiếu: project khác chỉ rebuild khi public API thay đổi -->
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
-    <!-- Tăng tốc build cho Visual Studio / MSBuild -->
-    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+    <!-- Tắt AccelerateBuildsInVisualStudio vì gây lỗi WPF bỏ qua MarkupCompile BAML (Cannot locate resource) -->
+    <AccelerateBuildsInVisualStudio>false</AccelerateBuildsInVisualStudio>
     <!-- Bỏ qua kiểm tra NuGet audit liên tục mỗi lần build để tiết kiệm 2-3s quét online -->
     <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>

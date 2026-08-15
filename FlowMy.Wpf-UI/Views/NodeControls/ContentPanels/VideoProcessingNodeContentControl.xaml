@@ -813,9 +813,9 @@
                                                                    Foreground="{DynamicResource ThemeTextSecondaryBrush}"
                                                                    Margin="6,0,0,0"/>
                                                     </Grid>
-                                                    <!-- Frame Thumbnails -->
-                                                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto"
-                                                                  VerticalScrollBarVisibility="Auto" MaxHeight="260">
+                                                    <!-- Frame Thumbnails (Grid layout with vertical scroll) -->
+                                                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                                                  VerticalScrollBarVisibility="Auto" MaxHeight="320">
                                                         <StackPanel x:Name="FrameStripContentPanel" Orientation="Vertical">
                                                             <WrapPanel x:Name="FrameStripWrapPanel"
                                                                        Orientation="Horizontal"/>
@@ -831,7 +831,7 @@
                                                             <Grid Margin="0,0,0,3">
                                                                 <TextBlock FontSize="9" FontWeight="SemiBold"
                                                                            Foreground="OrangeRed"
-                                                                           Text="📌 Frame đã chọn loại bỏ (ngoài grid FPS hiện tại)" VerticalAlignment="Center"/>
+                                                                           Text="📌 Frame đã chọn loại bỏ (ngoài phạm vi giây đang xem)" VerticalAlignment="Center"/>
                                                                 <Button x:Name="ClearPinnedExcludedButton"
                                                                         Height="20" Padding="6,0" FontSize="9"
                                                                         HorizontalAlignment="Right"

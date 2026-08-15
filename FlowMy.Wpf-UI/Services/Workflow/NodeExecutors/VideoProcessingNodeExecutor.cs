@@ -241,11 +241,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (videoNode.ExcludedFrameTimestamps.Count > 0 && producedFrames.Count > 0)
                 {
                     var frameDuration = extractFps > 0 ? 1.0 / extractFps : 1.0;
+                    var offsetSec = extractFps > 0 ? 0.5 / extractFps : 0.0;
                     var trimStart = videoNode.TrimEnabled ? Math.Max(0, videoNode.TrimStartSec) : 0;
                     var kept = new List<string>();
                     for (int fi = 0; fi < producedFrames.Count; fi++)
                     {
-                        var frameTs = trimStart + fi * frameDuration;
+                        var frameTs = Math.Round((trimStart + offsetSec + fi * frameDuration) * 10000.0) / 10000.0;
                         if (videoNode.IsFrameExcluded(frameTs))
                         {
                             try { File.Delete(producedFrames[fi]); } catch { }
@@ -1767,6 +1768,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         try { File.Delete(extraFile); } catch { }
                     }
                 }
+            }
+
+            // Loại bỏ các frame bị excluded theo danh sách ExcludedFrameTimestamps
+            if (node.ExcludedFrameTimestamps.Count > 0 && orderedStills.Count > 0)
+            {
+                var frameDuration = effectiveExtractFps > 0 ? 1.0 / effectiveExtractFps : 1.0;
+                var offsetSec = effectiveExtractFps > 0 ? 0.5 / effectiveExtractFps : 0.0;
+                var trimStart = node.TrimEnabled ? Math.Max(0, node.TrimStartSec) : 0;
+                var kept = new List<string>();
+                for (int fi = 0; fi < orderedStills.Count; fi++)
+                {
+                    var frameTs = Math.Round((trimStart + offsetSec + fi * frameDuration) * 10000.0) / 10000.0;
+                    if (node.IsFrameExcluded(frameTs))
+                    {
+                        try { File.Delete(orderedStills[fi]); } catch { }
+                        onLog($"[EXCLUDE] Loại bỏ frame #{fi} ({frameTs:0.###}s)");
+                    }
+                    else
+                    {
+                        kept.Add(orderedStills[fi]);
+                    }
+                }
+                orderedStills = kept;
             }
 
             if (orderedStills.Count > 0)
