@@ -93,6 +93,7 @@ namespace FlowMy.Views.NodeControls
         private bool _isLightTheme;
         private bool _portraitVideoLogLayout;
         private bool _isNodeZoomed;
+        private bool _isVideoPlayerExpanded;
         private int _prevZIndex;
         private double _prevNodeWidth;
         private double _prevNodeHeight;
@@ -517,6 +518,12 @@ namespace FlowMy.Views.NodeControls
         {
             RunOnUiThread(() =>
             {
+                if (_isVideoPlayerExpanded)
+                {
+                    _isVideoPlayerExpanded = false;
+                    UpdateVideoPlayerExpandUi();
+                    UpdatePreviewAspectRatio();
+                }
                 if (PortraitVideoLogTabControl != null && PortraitVideoLogTabControl.Visibility == Visibility.Visible)
                 {
                     PortraitVideoLogTabControl.SelectedIndex = 1;

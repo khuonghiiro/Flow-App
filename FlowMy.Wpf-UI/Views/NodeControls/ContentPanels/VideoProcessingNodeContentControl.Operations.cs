@@ -741,6 +741,7 @@ namespace FlowMy.Views.NodeControls
             SkipForwardButton.Content = CreateTransportIcon("forward sharp-regular");
             PlayPauseButton.Content = CreateTransportIcon("play regular");
             StopButton.Content = CreateTransportIcon("stop sharp-regular");
+            UpdateVideoPlayerExpandUi();
         }
 
         private SvgViewboxEx CreateTransportIcon(string iconKey)
@@ -1037,6 +1038,29 @@ namespace FlowMy.Views.NodeControls
             RefreshLargeNodeUiScale();
         }
 
+        private void ToggleVideoPlayerExpand()
+        {
+            _isVideoPlayerExpanded = !_isVideoPlayerExpanded;
+            UpdateVideoPlayerExpandUi();
+            UpdatePreviewAspectRatio();
+        }
+
+        private void UpdateVideoPlayerExpandUi()
+        {
+            if (ToggleVideoPlayerExpandButton == null) return;
+
+            if (_isVideoPlayerExpanded)
+            {
+                ToggleVideoPlayerExpandButton.ToolTip = "Thu nhỏ khung video (Hiện nhật ký)";
+                ToggleVideoPlayerExpandButton.Content = CreateTransportIcon("compress utility-fill-semibold");
+            }
+            else
+            {
+                ToggleVideoPlayerExpandButton.ToolTip = "Phóng to khung video (Ẩn nhật ký)";
+                ToggleVideoPlayerExpandButton.Content = CreateTransportIcon("expand utility-fill-semibold");
+            }
+        }
+
         private Rect GetWorkflowViewportCanvasRect()
         {
             if (_host == null) return Rect.Empty;
@@ -1262,18 +1286,53 @@ namespace FlowMy.Views.NodeControls
             double maxViewportH = Math.Max(120.0, containerHeight - timelineH - minLogH - 30.0);
 
             double targetViewportH;
-            if (isPortrait)
+            if (_isVideoPlayerExpanded)
             {
-                // Vertical/portrait video: Fix height proportionally (max 320px or 42% container height) so log takes all remaining height
-                var maxPortraitViewportH = Math.Min(320.0, Math.Max(160.0, containerHeight * 0.42));
-                targetViewportH = Math.Clamp(cardWidth / aspect, 160.0, maxPortraitViewportH);
+                if (LogPanelBorder != null)
+                {
+                    LogPanelBorder.Visibility = Visibility.Collapsed;
+                }
+                rowLog.Height = new GridLength(0);
+
+                var availableContainerViewportH = Math.Max(160.0, containerHeight - timelineH - 24.0);
+                var widthConstrainedViewportH = cardWidth / aspect;
+
+                targetViewportH = Math.Min(availableContainerViewportH, widthConstrainedViewportH);
+                targetViewportH = Math.Max(160.0, targetViewportH);
+
+                if (VideoPlayerCardBorder != null)
+                {
+                    VideoPlayerCardBorder.Margin = new Thickness(10, 10, 10, 10);
+                    VideoPlayerCardBorder.CornerRadius = new CornerRadius(10);
+                }
             }
             else
             {
-                // Horizontal/landscape video: Fix width to container width, calculate exact height matching aspect ratio
-                var idealViewportH = cardWidth / aspect;
-                var clampMin = Math.Min(140.0, maxViewportH);
-                targetViewportH = Math.Clamp(idealViewportH, clampMin, maxViewportH);
+                if (LogPanelBorder != null)
+                {
+                    LogPanelBorder.Visibility = Visibility.Visible;
+                }
+                rowLog.Height = new GridLength(1, GridUnitType.Star);
+
+                if (isPortrait)
+                {
+                    // Vertical/portrait video: Fix height proportionally (max 320px or 42% container height) so log takes all remaining height
+                    var maxPortraitViewportH = Math.Min(320.0, Math.Max(160.0, containerHeight * 0.42));
+                    targetViewportH = Math.Clamp(cardWidth / aspect, 160.0, maxPortraitViewportH);
+                }
+                else
+                {
+                    // Horizontal/landscape video: Fix width to container width, calculate exact height matching aspect ratio
+                    var idealViewportH = cardWidth / aspect;
+                    var clampMin = Math.Min(140.0, maxViewportH);
+                    targetViewportH = Math.Clamp(idealViewportH, clampMin, maxViewportH);
+                }
+
+                if (VideoPlayerCardBorder != null)
+                {
+                    VideoPlayerCardBorder.Margin = new Thickness(10, 10, 10, 0);
+                    VideoPlayerCardBorder.CornerRadius = new CornerRadius(0, 0, 10, 10);
+                }
             }
 
             if (VideoViewportClipBorder != null)
@@ -1282,7 +1341,6 @@ namespace FlowMy.Views.NodeControls
             }
 
             rowVideoPlayerCard.Height = GridLength.Auto;
-            rowLog.Height = new GridLength(1, GridUnitType.Star);
         }
 
         private void RefreshOutputsSummaryUi()

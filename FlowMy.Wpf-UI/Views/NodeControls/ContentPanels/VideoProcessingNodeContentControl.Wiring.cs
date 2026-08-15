@@ -175,6 +175,7 @@ namespace FlowMy.Views.NodeControls
                 ApplyLocalTheme();
             };
             ToggleNodeSizeButton.Click += (_, _) => ToggleNodeZoom();
+            ToggleVideoPlayerExpandButton.Click += (_, _) => ToggleVideoPlayerExpand();
             RunProcessingButton.Click += (_, _) =>
             {
                 SwitchToLogView();
