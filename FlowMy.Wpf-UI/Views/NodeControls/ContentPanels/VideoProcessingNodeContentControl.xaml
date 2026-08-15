@@ -1025,7 +1025,7 @@
                                                         </Grid>
 
                                                         <!-- Child Frame Count Slider & Input (Supports both odd & even numbers) -->
-                                                        <StackPanel Margin="0,0,0,0">
+                                                        <StackPanel Margin="0,0,0,8">
                                                             <TextBlock Text="Số lượng frame con / 1 ảnh cha" FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
@@ -1057,6 +1057,24 @@
                                                                          ToolTip="Nhập số frame con (chẵn hoặc lẻ)"/>
                                                             </Grid>
                                                         </StackPanel>
+
+                                                        <!-- Toggle Show Frame Index / AI Label Badge -->
+                                                        <Border Margin="0,0,0,0" Padding="8,6" Background="{DynamicResource ThemeBackgroundMutedBrush}" CornerRadius="4" BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}" BorderThickness="1">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <StackPanel VerticalAlignment="Center">
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <controls:SvgViewboxEx Width="12" Height="12" Margin="0,0,5,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='tag duotone-light'}"/>
+                                                                        <TextBlock Text="Đánh số frame con (#1, #2...)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                                    </StackPanel>
+                                                                    <TextBlock Text="Hiện số thứ tự trên đầu ảnh con để AI đọc tuần tự" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="17,2,0,0"/>
+                                                                </StackPanel>
+                                                                <ToggleButton Grid.Column="1" x:Name="GridCollageShowFrameIndexToggle" Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center" ToolTip="Bật/Tắt vẽ số thứ tự frame trên đầu mỗi ảnh con trong ảnh ghép"/>
+                                                            </Grid>
+                                                        </Border>
                                                     </StackPanel>
 
                                                     <!-- COLUMN 2: Live Interactive Preview -->

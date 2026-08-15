@@ -267,6 +267,51 @@ namespace FlowMy.Services.Workflow
                         }
 
                         dc.DrawImage(frameBmp, targetRect);
+
+                        // Draw frame number label badge on top-left of each child frame for AI and human readability
+                        if (node.GridCollageShowFrameIndex)
+                        {
+                            var frameLabel = $"#{slot.SlotIndex + 1}";
+                            try
+                            {
+                                var fn = Path.GetFileNameWithoutExtension(path);
+                                var match = System.Text.RegularExpressions.Regex.Match(fn, @"\d+");
+                                if (match.Success && int.TryParse(match.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var num))
+                                {
+                                    frameLabel = $"#{num}";
+                                }
+                            }
+                            catch { }
+
+                            var fontSize = Math.Clamp(targetRect.Height * 0.04, 8.0, 24.0);
+                            var typeface = new Typeface(new FontFamily("Segoe UI, Arial, sans-serif"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
+                            var ft = new FormattedText(
+                                frameLabel,
+                                CultureInfo.InvariantCulture,
+                                FlowDirection.LeftToRight,
+                                typeface,
+                                fontSize,
+                                Brushes.White,
+                                96.0);
+
+                            var padX = Math.Max(2.5, fontSize * 0.25);
+                            var padY = Math.Max(1.0, fontSize * 0.12);
+                            var badgeW = ft.Width + padX * 2;
+                            var badgeH = ft.Height + padY * 2;
+                            var badgeX = targetRect.X + 2.0;
+                            var badgeY = targetRect.Y + 2.0;
+                            var badgeRect = new Rect(badgeX, badgeY, badgeW, badgeH);
+
+                            // Compact dark semi-transparent pill background with subtle border
+                            dc.DrawRoundedRectangle(
+                                new SolidColorBrush(Color.FromArgb(220, 15, 23, 42)),
+                                new Pen(new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)), 1.0),
+                                badgeRect,
+                                2.0,
+                                2.0);
+
+                            dc.DrawText(ft, new Point(badgeX + padX, badgeY + padY));
+                        }
                     }
                 }
             }

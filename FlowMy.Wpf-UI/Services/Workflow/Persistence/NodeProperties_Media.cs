@@ -547,6 +547,8 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.GridCollageMargin = gcmObj?.ToString() ?? "0";
             if (properties.TryGetValue("GridCollageAspectMode", out var gcamObj))
                 videoNode.GridCollageAspectMode = gcamObj?.ToString() ?? "auto";
+            if (properties.TryGetValue("GridCollageShowFrameIndex", out var gcsfiObj) && gcsfiObj != null && bool.TryParse(gcsfiObj.ToString(), out var gcsfi))
+                videoNode.GridCollageShowFrameIndex = gcsfi;
 
             if (properties.TryGetValue("AudioTracks", out var atObj) && atObj != null)
             {
@@ -876,6 +878,7 @@ public sealed partial class FileWorkflowPersistenceService
             dict["GridCollagePadding"] = videoNode.GridCollagePadding;
             dict["GridCollageMargin"] = videoNode.GridCollageMargin;
             dict["GridCollageAspectMode"] = videoNode.GridCollageAspectMode;
+            dict["GridCollageShowFrameIndex"] = videoNode.GridCollageShowFrameIndex;
 
             dict["ExtractByFpsEnabled"] = videoNode.ExtractByFpsEnabled;
             if (videoNode.AudioTracks.Count > 0)

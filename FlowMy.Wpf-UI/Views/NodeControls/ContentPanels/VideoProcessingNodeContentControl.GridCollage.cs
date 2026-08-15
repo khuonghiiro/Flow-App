@@ -28,6 +28,22 @@ namespace FlowMy.Views.NodeControls
                 GridCollageToggle.Unchecked += (_, _) => OnGridCollageToggleChanged();
             }
 
+            if (GridCollageShowFrameIndexToggle != null)
+            {
+                GridCollageShowFrameIndexToggle.Checked += (_, _) =>
+                {
+                    if (_isGridCollageSyncing || _node == null) return;
+                    _node.GridCollageShowFrameIndex = true;
+                    UpdateGridCollagePreviewUi();
+                };
+                GridCollageShowFrameIndexToggle.Unchecked += (_, _) =>
+                {
+                    if (_isGridCollageSyncing || _node == null) return;
+                    _node.GridCollageShowFrameIndex = false;
+                    UpdateGridCollagePreviewUi();
+                };
+            }
+
             if (GridCollageWidthSlider != null)
             {
                 GridCollageWidthSlider.ValueChanged += (_, _) =>
@@ -240,6 +256,9 @@ namespace FlowMy.Views.NodeControls
                 if (GridCollageMarginBox != null)
                     GridCollageMarginBox.Text = string.IsNullOrWhiteSpace(_node.GridCollageMargin) ? "0" : _node.GridCollageMargin;
 
+                if (GridCollageShowFrameIndexToggle != null)
+                    GridCollageShowFrameIndexToggle.IsChecked = _node.GridCollageShowFrameIndex;
+
                 SyncGridCollageAspectCombo();
                 SyncGridCollageColorCombo();
                 UpdateGridCollageColorSwatch(_node.GridCollageBackgroundColor);
@@ -383,17 +402,46 @@ namespace FlowMy.Views.NodeControls
 
                 // Badge & Label inside preview slot
                 var innerGrid = new Grid();
-                var tagBlock = new TextBlock
+
+                // Slot index badge on top-left if enabled
+                if (_node.GridCollageShowFrameIndex)
                 {
-                    Text = $"#{i + 1}",
-                    FontSize = Math.Max(9, Math.Min(36, slot.ImageRect.Height * 0.14)),
-                    FontWeight = FontWeights.Bold,
-                    FontFamily = new FontFamily("Consolas, Segoe UI"),
-                    Foreground = Brushes.White,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                innerGrid.Children.Add(tagBlock);
+                    var badgeBorder = new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromArgb(220, 15, 23, 42)),
+                        BorderBrush = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(2),
+                        Padding = new Thickness(3, 0.5, 3, 0.5),
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        VerticalAlignment = VerticalAlignment.Top,
+                        Margin = new Thickness(2, 2, 0, 0)
+                    };
+                    var tagBlock = new TextBlock
+                    {
+                        Text = $"#{i + 1}",
+                        FontSize = Math.Max(7, Math.Min(12, slot.ImageRect.Height * 0.05)),
+                        FontWeight = FontWeights.Bold,
+                        FontFamily = new FontFamily("Consolas, Segoe UI"),
+                        Foreground = Brushes.White
+                    };
+                    badgeBorder.Child = tagBlock;
+                    innerGrid.Children.Add(badgeBorder);
+                }
+                else
+                {
+                    var centerBlock = new TextBlock
+                    {
+                        Text = $"#{i + 1}",
+                        FontSize = Math.Max(9, Math.Min(32, slot.ImageRect.Height * 0.12)),
+                        FontWeight = FontWeights.Bold,
+                        FontFamily = new FontFamily("Consolas, Segoe UI"),
+                        Foreground = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    innerGrid.Children.Add(centerBlock);
+                }
 
                 slotBorder.Child = innerGrid;
 
