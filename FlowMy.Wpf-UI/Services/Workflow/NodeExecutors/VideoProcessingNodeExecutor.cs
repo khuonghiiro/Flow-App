@@ -190,7 +190,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var producedFrames = new List<string>();
                 if (videoNode.ExtractFramesEnabled)
                 {
-                var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
+                var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-an", "-sn", "-i", videoInput }));
                 if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
                 var overlayFrameCleanup = new List<string>();
                 AppendVisualFilterArgs(
@@ -1902,6 +1902,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var args = new List<string>
             {
                 "-y", "-hide_banner", "-loglevel", "error",
+                "-an", "-sn",
                 "-ss", startSec.ToString("0.###", CultureInfo.InvariantCulture),
                 "-to", endSec.ToString("0.###", CultureInfo.InvariantCulture),
                 "-i", node.VideoPath

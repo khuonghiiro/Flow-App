@@ -1355,18 +1355,33 @@ namespace FlowMy.Models.Nodes
         public bool IsFrameExcluded(double timestampSec)
         {
             if (_excludedFrameTimestamps.Count == 0) return false;
-            var tolerance = SourceFps > 0 ? 0.5 / SourceFps : 0.02;
+            var effectiveFps = ExtractFps > 0 ? ExtractFps : (SourceFps > 0 ? SourceFps : 30.0);
+            var tolerance = Math.Min(0.02, 0.4 / effectiveFps);
             return _excludedFrameTimestamps.Any(t => Math.Abs(t - timestampSec) < tolerance);
         }
 
         public void ToggleFrameExclusion(double timestampSec)
         {
-            var tolerance = SourceFps > 0 ? 0.5 / SourceFps : 0.02;
+            var effectiveFps = ExtractFps > 0 ? ExtractFps : (SourceFps > 0 ? SourceFps : 30.0);
+            var tolerance = Math.Min(0.02, 0.4 / effectiveFps);
             var existing = _excludedFrameTimestamps.FirstOrDefault(t => Math.Abs(t - timestampSec) < tolerance);
             if (_excludedFrameTimestamps.Any(t => Math.Abs(t - timestampSec) < tolerance))
                 _excludedFrameTimestamps.RemoveAll(t => Math.Abs(t - timestampSec) < tolerance);
             else
                 _excludedFrameTimestamps.Add(timestampSec);
+            OnPropertyChanged(nameof(ExcludedFrameTimestamps));
+        }
+
+        /// <summary>Explicitly exclude or include a frame.</summary>
+        public void ToggleFrameExclusion(double timestampSec, bool exclude)
+        {
+            var effectiveFps = ExtractFps > 0 ? ExtractFps : (SourceFps > 0 ? SourceFps : 30.0);
+            var tolerance = Math.Min(0.02, 0.4 / effectiveFps);
+            var isCurrentlyExcluded = _excludedFrameTimestamps.Any(t => Math.Abs(t - timestampSec) < tolerance);
+            if (exclude && !isCurrentlyExcluded)
+                _excludedFrameTimestamps.Add(timestampSec);
+            else if (!exclude && isCurrentlyExcluded)
+                _excludedFrameTimestamps.RemoveAll(t => Math.Abs(t - timestampSec) < tolerance);
             OnPropertyChanged(nameof(ExcludedFrameTimestamps));
         }
 

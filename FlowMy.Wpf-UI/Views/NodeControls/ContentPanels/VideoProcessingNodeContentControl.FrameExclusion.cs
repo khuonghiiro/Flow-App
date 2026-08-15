@@ -64,13 +64,34 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            // Chọn tất cả frame đang hiển thị
+            if (FindName("SelectAllVisibleFramesButton") is Button selectAllBtn)
+            {
+                selectAllBtn.Click += (_, _) =>
+                {
+                    SelectAllVisibleFrames();
+                    RefreshFrameStripExclusionVisuals();
+                    UpdateExcludedCountText();
+                };
+            }
+
+            // Bỏ chọn tất cả frame đang hiển thị (chỉ visible, không phải toàn bộ)
             if (FindName("ClearExcludedFramesButton") is Button clearBtn)
             {
                 clearBtn.Click += (_, _) =>
                 {
-                    _node.ClearExcludedFrames();
-                    _excludedThumbCache.Clear();
-                    RefreshFrameStripForCurrentWindow();
+                    ClearVisibleExcludedFrames();
+                    RefreshFrameStripExclusionVisuals();
+                    UpdateExcludedCountText();
+                };
+            }
+
+            // Bỏ chọn tất cả frame ở mục Pinned
+            if (FindName("ClearPinnedExcludedButton") is Button clearPinnedBtn)
+            {
+                clearPinnedBtn.Click += (_, _) =>
+                {
+                    ClearPinnedExcludedFrames();
                     UpdateExcludedCountText();
                 };
             }
@@ -196,7 +217,7 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                BuildFrameGroupUi(wrapPanel, thumbs, centerSecond);
+                BuildFrameGroupUi(wrapPanel, thumbs, centerSecond, windowStart, windowEnd);
                 RefreshFrameStripExclusionVisuals();
                 UpdateExcludedCountText();
                 RenderPinnedExcludedFrames(windowStart, windowEnd, fps, ct);
@@ -256,9 +277,9 @@ namespace FlowMy.Views.NodeControls
             var tStr = windowDuration.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 
             var args = $"-hide_banner -loglevel error " +
-                       $"-ss {ssStr} -t {tStr} -i \"{videoPath}\" " +
-                       $"-vf \"fps={fpsStr},scale={FrameThumbSize}:-1\" " +
-                       $"-q:v 5 -y \"{outPattern}\"";
+                       $"-ss {ssStr} -t {tStr} -i \"{videoPath}\" -an -sn " +
+                       $"-vf \"fps={fpsStr},scale=w={FrameThumbSize}:h={FrameThumbSize}:force_original_aspect_ratio=decrease\" " +
+                       $"-threads 2 -q:v 6 -y \"{outPattern}\"";
 
             RunFfmpegProcess(ffmpegExe, args, ct);
             if (ct.IsCancellationRequested) return results;
@@ -268,10 +289,13 @@ namespace FlowMy.Views.NodeControls
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            var windowEnd = startSec + windowDuration;
             for (int i = 0; i < files.Count; i++)
             {
                 if (ct.IsCancellationRequested) break;
-                var ts = Math.Min(startSec + windowDuration, startSec + i * interval);
+                var ts = startSec + i * interval;
+                // Bỏ qua các frame chạm hoặc vượt mốc windowEnd (tránh lấn sang giây của window tiếp theo)
+                if (ts >= windowEnd - 0.0001) break;
 
                 try
                 {
@@ -300,8 +324,9 @@ namespace FlowMy.Views.NodeControls
             var outFile = Path.Combine(thumbDir, "pinned.jpg");
             var ssStr = timestampSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
             var args = $"-hide_banner -loglevel error -ss {ssStr} " +
-                       $"-i \"{videoPath}\" -vframes 1 " +
-                       $"-vf \"scale={FrameThumbSize}:-1\" -q:v 5 -y \"{outFile}\"";
+                       $"-i \"{videoPath}\" -an -sn -vframes 1 " +
+                       $"-vf \"scale=w={FrameThumbSize}:h={FrameThumbSize}:force_original_aspect_ratio=decrease\" " +
+                       $"-threads 2 -q:v 6 -y \"{outFile}\"";
 
             RunFfmpegProcess(ffmpegExe, args, ct);
             if (ct.IsCancellationRequested || !File.Exists(outFile)) return null;
@@ -331,7 +356,8 @@ namespace FlowMy.Views.NodeControls
 
         /// <summary>Nhóm frame theo giây và hiển thị với header thời gian.</summary>
         private void BuildFrameGroupUi(WrapPanel wrapPanel,
-            List<(BitmapSource image, double timestamp)> thumbs, int centerSecond)
+            List<(BitmapSource image, double timestamp)> thumbs, int centerSecond,
+            double windowStart, double windowEnd)
         {
             var contentPanel = FindName("FrameStripContentPanel") as StackPanel;
             if (contentPanel == null)
@@ -346,8 +372,9 @@ namespace FlowMy.Views.NodeControls
 
             var fps = Math.Max(0.5, _node.ExtractFps);
 
-            // Group theo floor(timestamp) = giây
-            var groups = thumbs.GroupBy(t => (int)Math.Floor(t.timestamp))
+            // Group theo floor(timestamp) = giây, chỉ lấy các giây thuộc window [windowStart, windowEnd)
+            var groups = thumbs.Where(t => t.timestamp >= windowStart && t.timestamp < windowEnd - 0.0001)
+                               .GroupBy(t => (int)Math.Floor(t.timestamp))
                                .OrderBy(g => g.Key);
 
             foreach (var group in groups)
@@ -363,6 +390,12 @@ namespace FlowMy.Views.NodeControls
                     var frameIdx = (int)Math.Round(item.timestamp * fps);
                     var thumb = CreateFrameThumbnailControl(item.image, item.timestamp, frameIdx);
                     groupWrap.Children.Add(thumb);
+
+                    if (_node.IsFrameExcluded(item.timestamp))
+                    {
+                        RemoveCachedExcludedThumb(item.timestamp, fps);
+                        _excludedThumbCache[item.timestamp] = item.image;
+                    }
                 }
                 contentPanel.Children.Add(groupWrap);
             }
@@ -408,11 +441,32 @@ namespace FlowMy.Views.NodeControls
         private Border CreateFrameThumbnailControl(BitmapSource bitmapSource, double timestamp,
             int frameIndex = -1)
         {
+            // Tự động tính kích thước theo tỉ lệ thực tế (ngang / dọc / vuông)
+            double targetWidth = FrameThumbSize;
+            double targetHeight = FrameThumbSize * 0.5625; // fallback 16:9
+
+            if (bitmapSource.PixelWidth > 0 && bitmapSource.PixelHeight > 0)
+            {
+                var aspect = (double)bitmapSource.PixelWidth / bitmapSource.PixelHeight;
+                if (aspect >= 1.0)
+                {
+                    // Video ngang hoặc vuông
+                    targetWidth = FrameThumbSize;
+                    targetHeight = Math.Clamp(FrameThumbSize / aspect, 28, FrameThumbSize);
+                }
+                else
+                {
+                    // Video dọc (portrait)
+                    targetHeight = FrameThumbSize;
+                    targetWidth = Math.Clamp(FrameThumbSize * aspect, 36, FrameThumbSize);
+                }
+            }
+
             var image = new Image
             {
-                Width = FrameThumbSize,
-                Height = FrameThumbSize * 0.5625, // 16:9 aspect
-                Stretch = Stretch.UniformToFill,
+                Width = targetWidth,
+                Height = targetHeight,
+                Stretch = Stretch.Uniform,
                 Source = bitmapSource
             };
 
@@ -429,19 +483,19 @@ namespace FlowMy.Views.NodeControls
             var frameNumLabel = new TextBlock
             {
                 Text = frameIndex >= 0 ? $"#{frameIndex}" : "",
-                FontSize = 8,
+                FontSize = 7.5,
                 FontFamily = new FontFamily("Consolas"),
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 2, 0)
+                Margin = new Thickness(0, 1, 1, 0)
             };
             var frameNumBg = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
                 CornerRadius = new CornerRadius(2),
-                Padding = new Thickness(3, 1, 3, 1),
+                Padding = new Thickness(2, 0.5, 2, 0.5),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 1, 1, 0),
@@ -453,22 +507,22 @@ namespace FlowMy.Views.NodeControls
             var timeLabel = new TextBlock
             {
                 Text = FormatTimeMs(TimeSpan.FromSeconds(timestamp)),
-                FontSize = 7.5,
+                FontSize = 7,
                 FontFamily = new FontFamily("Consolas"),
                 Foreground = Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, 1)
+                Margin = new Thickness(0, 0, 0, 0)
             };
 
             var timeBg = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
                 CornerRadius = new CornerRadius(2),
-                Padding = new Thickness(3, 1, 3, 1),
+                Padding = new Thickness(2, 0.5, 2, 0.5),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, 2),
+                Margin = new Thickness(0, 0, 0, 1),
                 Child = timeLabel
             };
 
@@ -489,8 +543,8 @@ namespace FlowMy.Views.NodeControls
 
             var container = new Border
             {
-                Width = FrameThumbSize + 4,
-                Height = (FrameThumbSize * 0.5625) + 4,
+                Width = targetWidth + 4,
+                Height = targetHeight + 4,
                 Margin = new Thickness(2),
                 BorderBrush = _node.IsFrameExcluded(timestamp)
                     ? Brushes.OrangeRed : (Brush)FindResource("ThemeCardBorderBrush"),
@@ -498,6 +552,7 @@ namespace FlowMy.Views.NodeControls
                 CornerRadius = new CornerRadius(4),
                 ClipToBounds = true,
                 Cursor = Cursors.Hand,
+                Background = new SolidColorBrush(Color.FromArgb(200, 15, 15, 15)),
                 Tag = timestamp,
                 Child = grid
             };
@@ -514,24 +569,27 @@ namespace FlowMy.Views.NodeControls
         {
             checkBox.Checked += (_, _) =>
             {
-                _node.ToggleFrameExclusion(timestamp);
+                var fps = Math.Max(0.5, _node.ExtractFps);
+                _node.ToggleFrameExclusion(timestamp, exclude: true);
                 excludeOverlay.Visibility = Visibility.Visible;
                 container.BorderBrush = Brushes.OrangeRed;
 
-                // Cache thumbnail khi exclude — dùng cho pinned section khi FPS đổi
+                // Cache thumbnail khi exclude — dùng cho pinned section khi FPS / giây đổi
                 if (container.Child is Grid g && g.Children.Count > 0 &&
                     g.Children[0] is Image img && img.Source is BitmapSource bmp)
                 {
+                    RemoveCachedExcludedThumb(timestamp, fps);
                     _excludedThumbCache[timestamp] = bmp;
                 }
                 UpdateExcludedCountText();
             };
             checkBox.Unchecked += (_, _) =>
             {
-                _node.ToggleFrameExclusion(timestamp);
+                var fps = Math.Max(0.5, _node.ExtractFps);
+                _node.ToggleFrameExclusion(timestamp, exclude: false);
                 excludeOverlay.Visibility = Visibility.Collapsed;
                 container.BorderBrush = (Brush)FindResource("ThemeCardBorderBrush");
-                _excludedThumbCache.Remove(timestamp);
+                RemoveCachedExcludedThumb(timestamp, fps);
                 UpdateExcludedCountText();
                 // Nếu bỏ tích pinned frame → refresh pinned section
                 RefreshPinnedAfterUncheck();
@@ -591,13 +649,9 @@ namespace FlowMy.Views.NodeControls
                 if (ts >= windowStart && ts < windowEnd && IsOnFpsGrid(ts, currentFps))
                     continue;
 
-                // Lấy thumbnail từ cache hoặc extract mới
-                BitmapSource? bmp = null;
-                if (_excludedThumbCache.TryGetValue(ts, out var cached))
-                {
-                    bmp = cached;
-                }
-                else if (!string.IsNullOrWhiteSpace(videoPath) && File.Exists(videoPath))
+                // Lấy thumbnail từ cache (bằng tolerance lookup) hoặc extract mới
+                var bmp = GetCachedExcludedThumb(ts, currentFps);
+                if (bmp == null && !string.IsNullOrWhiteSpace(videoPath) && File.Exists(videoPath))
                 {
                     bmp = ExtractSingleFrameThumbnailSafe(videoPath, ts, ct);
                     if (bmp != null) _excludedThumbCache[ts] = bmp;
@@ -617,7 +671,10 @@ namespace FlowMy.Views.NodeControls
             {
                 if (ct.IsCancellationRequested) break;
                 if (bmp != null)
-                    wrap.Children.Add(CreateFrameThumbnailControl(bmp, ts));
+                {
+                    var frameIdx = (int)Math.Round(ts * currentFps);
+                    wrap.Children.Add(CreateFrameThumbnailControl(bmp, ts, frameIdx));
+                }
             }
         }
 
@@ -652,6 +709,122 @@ namespace FlowMy.Views.NodeControls
 
             using var cts = new CancellationTokenSource();
             RenderPinnedExcludedFrames(windowStart, windowEnd, fps, cts.Token);
+        }
+        /// <summary>Chọn (exclude) tất cả frame đang hiển thị.</summary>
+        private void SelectAllVisibleFrames()
+        {
+            var fps = Math.Max(0.5, _node.ExtractFps);
+            foreach (var (border, cb, overlay, bmp, ts) in GetVisibleThumbnailControls())
+            {
+                _node.ToggleFrameExclusion(ts, exclude: true);
+                if (bmp != null)
+                {
+                    RemoveCachedExcludedThumb(ts, fps);
+                    _excludedThumbCache[ts] = bmp;
+                }
+                if (cb != null) cb.IsChecked = true;
+                if (overlay != null) overlay.Visibility = Visibility.Visible;
+                border.BorderBrush = Brushes.OrangeRed;
+            }
+        }
+
+        /// <summary>Bỏ chọn chỉ các frame đang hiển thị (visible).</summary>
+        private void ClearVisibleExcludedFrames()
+        {
+            var fps = Math.Max(0.5, _node.ExtractFps);
+            foreach (var (border, cb, overlay, bmp, ts) in GetVisibleThumbnailControls())
+            {
+                _node.ToggleFrameExclusion(ts, exclude: false);
+                RemoveCachedExcludedThumb(ts, fps);
+                if (cb != null) cb.IsChecked = false;
+                if (overlay != null) overlay.Visibility = Visibility.Collapsed;
+                border.BorderBrush = (Brush)FindResource("ThemeCardBorderBrush");
+            }
+        }
+
+        /// <summary>Bỏ chọn tất cả pinned excluded frames (ngoài window hiện tại).</summary>
+        private void ClearPinnedExcludedFrames()
+        {
+            var fps = Math.Max(0.5, _node.ExtractFps);
+            var duration = GetNaturalDurationSeconds();
+            var windowStart = Math.Max(0, _frameStripCenterSecond - 1);
+            var windowEnd = Math.Min(duration, _frameStripCenterSecond + 2);
+
+            // Tìm các excluded timestamp nằm ngoài window hiện tại hoặc không trên grid
+            var pinnedTimestamps = _node.ExcludedFrameTimestamps
+                .Where(ts => ts < windowStart || ts >= windowEnd || !IsOnFpsGrid(ts, fps))
+                .ToList();
+
+            foreach (var ts in pinnedTimestamps)
+            {
+                _node.ToggleFrameExclusion(ts, exclude: false);
+                RemoveCachedExcludedThumb(ts, fps);
+            }
+
+            // Refresh pinned section
+            RefreshPinnedAfterUncheck();
+        }
+
+        /// <summary>Tìm thumbnail cache theo timestamp có sai số tolerance.</summary>
+        private BitmapSource? GetCachedExcludedThumb(double ts, double fps)
+        {
+            var tolerance = fps > 0 ? 0.5 / fps : 0.02;
+            foreach (var kvp in _excludedThumbCache)
+            {
+                if (Math.Abs(kvp.Key - ts) < tolerance)
+                    return kvp.Value;
+            }
+            return null;
+        }
+
+        /// <summary>Xóa thumbnail cache theo timestamp có sai số tolerance.</summary>
+        private void RemoveCachedExcludedThumb(double ts, double fps)
+        {
+            var tolerance = fps > 0 ? 0.5 / fps : 0.02;
+            var keysToRemove = _excludedThumbCache.Keys.Where(k => Math.Abs(k - ts) < tolerance).ToList();
+            foreach (var k in keysToRemove)
+                _excludedThumbCache.Remove(k);
+        }
+
+        /// <summary>Lấy danh sách các thumbnail control đang hiển thị.</summary>
+        private List<(Border container, CheckBox? cb, Border? overlay, BitmapSource? bmp, double ts)> GetVisibleThumbnailControls()
+        {
+            var containers = new List<Border>();
+
+            if (FindName("FrameStripContentPanel") is StackPanel contentPanel)
+            {
+                foreach (var wp in contentPanel.Children.OfType<WrapPanel>())
+                    containers.AddRange(wp.Children.OfType<Border>());
+            }
+
+            if (containers.Count == 0 && FindName("FrameStripWrapPanel") is WrapPanel wrapPanel)
+            {
+                containers.AddRange(wrapPanel.Children.OfType<Border>());
+            }
+
+            var result = new List<(Border, CheckBox?, Border?, BitmapSource?, double)>();
+            foreach (var border in containers)
+            {
+                if (border.Tag is not double ts) continue;
+
+                CheckBox? cb = null;
+                Border? overlay = null;
+                BitmapSource? bmp = null;
+
+                if (border.Child is Grid g)
+                {
+                    if (g.Children.Count > 0 && g.Children[0] is Image img && img.Source is BitmapSource bs)
+                        bmp = bs;
+                    if (g.Children.Count > 1 && g.Children[1] is Border ov)
+                        overlay = ov;
+                    if (g.Children.Count > 2 && g.Children[2] is CheckBox c)
+                        cb = c;
+                }
+
+                result.Add((border, cb, overlay, bmp, ts));
+            }
+
+            return result;
         }
 
         // ─── Helpers ─────────────────────────────────────────────────────
@@ -702,8 +875,23 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateExcludedCountText()
         {
+            var count = _node.ExcludedFrameTimestamps.Count;
             if (FindName("ExcludedCountText") is TextBlock tb)
-                tb.Text = _node.ExcludedFrameTimestamps.Count.ToString();
+                tb.Text = count.ToString();
+
+            // Cập nhật badge đỏ (-N) bên cạnh EstimatedFrameCountText
+            if (FindName("ExcludedFrameBadge") is TextBlock badge)
+            {
+                if (count > 0)
+                {
+                    badge.Text = $"(-{count})";
+                    badge.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    badge.Visibility = Visibility.Collapsed;
+                }
+            }
         }
 
         private static BitmapImage LoadBitmapImageFromFile(string path)
@@ -712,7 +900,6 @@ namespace FlowMy.Views.NodeControls
             bmp.BeginInit();
             bmp.CacheOption = BitmapCacheOption.OnLoad;
             bmp.UriSource = new Uri(path, UriKind.Absolute);
-            bmp.DecodePixelWidth = FrameThumbSize;
             bmp.EndInit();
             bmp.Freeze();
             return bmp;
