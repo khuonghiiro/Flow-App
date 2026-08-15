@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models.ImageEditor;
@@ -1684,6 +1684,14 @@ namespace FlowMy.Views.NodeControls
             SetSlidersFromState(state);
             UpdateHistogram();
             RedrawCurve();
+
+            if (_doc != null && layer != null)
+            {
+                _doc.BuildMovePlates(layer, out var bgPlate, out var fgPlate);
+                _doc.CachedBgPlate = bgPlate;
+                _doc.CachedFgPlate = fgPlate;
+                _doc.IsDrawingSessionActive = true;
+            }
         }
 
         private void SetSlidersFromState(LayerColorState state)
@@ -1737,6 +1745,7 @@ namespace FlowMy.Views.NodeControls
             _layerColorStates.Clear();
             _colorAdjOriginalPixels = null;
             _colorAdjActiveLayer = null;
+            _doc?.ClearPlates();
             OnDocumentModified();
         }
 
@@ -1763,6 +1772,7 @@ namespace FlowMy.Views.NodeControls
             SetSlidersFromState(freshState);
             UpdateHistogram();
             RedrawCurve();
+            _doc?.ClearPlates();
             OnDocumentModified();
         }
 
@@ -1771,11 +1781,18 @@ namespace FlowMy.Views.NodeControls
             if (!IsActiveLayerEditable()) return;
             if (_colorAdjOriginalPixels == null && _colorAdjActiveLayer != null)
                 BeginEditingLayer(_colorAdjActiveLayer);
+            if (_doc != null && _colorAdjActiveLayer != null && _doc.CachedBgPlate == null && _doc.CachedFgPlate == null)
+            {
+                _doc.BuildMovePlates(_colorAdjActiveLayer, out var bgPlate, out var fgPlate);
+                _doc.CachedBgPlate = bgPlate;
+                _doc.CachedFgPlate = fgPlate;
+                _doc.IsDrawingSessionActive = true;
+            }
             _colorAdjIsDragging = true;
 
             if (_colorAdjDebounceTimer == null)
             {
-                _colorAdjDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+                _colorAdjDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
                 _colorAdjDebounceTimer.Tick += ColorAdjustDebounce_Tick;
             }
             _colorAdjDebounceTimer.Start();
@@ -1787,6 +1804,7 @@ namespace FlowMy.Views.NodeControls
             _colorAdjDebounceTimer?.Stop();
             if (_colorAdjDirty) { _colorAdjDirty = false; ApplyColorAdjustToLayer(); }
             SaveCurrentStateToLayer();
+            _doc?.ClearPlates();
         }
 
         private void ColorAdjustSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1797,7 +1815,21 @@ namespace FlowMy.Views.NodeControls
             if (TxtSaturation != null) TxtSaturation.Text = $"{(int)SliderSaturation.Value}";
             if (TxtHue != null) TxtHue.Text = $"{(int)SliderHue.Value}°";
             _colorAdjDirty = true;
-            if (!_colorAdjIsDragging && _colorAdjOriginalPixels != null) ApplyColorAdjustToLayer();
+            if (_colorAdjOriginalPixels != null)
+            {
+                if (_colorAdjIsDragging)
+                {
+                    if (!_colorAdjIsProcessing)
+                    {
+                        _colorAdjDirty = false;
+                        ApplyColorAdjustToLayer();
+                    }
+                }
+                else
+                {
+                    ApplyColorAdjustToLayer();
+                }
+            }
         }
 
         private void ColorAdjustDebounce_Tick(object? sender, EventArgs e)
@@ -2150,6 +2182,13 @@ namespace FlowMy.Views.NodeControls
         {
             if (!IsActiveLayerEditable() || _colorAdjActiveLayer == null) return;
             if (_colorAdjOriginalPixels == null) BeginEditingLayer(_colorAdjActiveLayer);
+            if (_doc != null && _colorAdjActiveLayer != null && _doc.CachedBgPlate == null && _doc.CachedFgPlate == null)
+            {
+                _doc.BuildMovePlates(_colorAdjActiveLayer, out var bgPlate, out var fgPlate);
+                _doc.CachedBgPlate = bgPlate;
+                _doc.CachedFgPlate = fgPlate;
+                _doc.IsDrawingSessionActive = true;
+            }
 
             Point pos = e.GetPosition(CurvesCanvas);
             int channel = CmbCurveChannel?.SelectedIndex ?? 0;
@@ -2190,7 +2229,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (_curveDebounceTimer == null)
             {
-                _curveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+                _curveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
                 _curveDebounceTimer.Tick += CurveDebounce_Tick;
             }
             _curveDebounceTimer.Start();
@@ -2232,6 +2271,7 @@ namespace FlowMy.Views.NodeControls
             if (_curveDragDirty) { _curveDragDirty = false; ApplyCurveToLayerAsync(); }
             _curveDragIndex = -1;
             CurvesCanvas.ReleaseMouseCapture();
+            _doc?.ClearPlates();
             e.Handled = true;
         }
 

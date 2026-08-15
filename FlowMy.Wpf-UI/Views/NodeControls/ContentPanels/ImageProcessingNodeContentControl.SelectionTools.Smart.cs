@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -84,11 +84,20 @@ namespace FlowMy.Views.NodeControls
 
             int w = activeLayer.Width;
             int h = activeLayer.Height;
+            if (w <= 0 || h <= 0) return;
+
+            int localX = startX - activeLayer.OffsetX;
+            int localY = startY - activeLayer.OffsetY;
+
+            if (localX < 0 || localX >= w || localY < 0 || localY >= h) return;
+
             int stride = w * 4;
             byte[] pixels = new byte[stride * h];
             activeLayer.Bitmap.CopyPixels(pixels, stride, 0);
 
-            int startOffset = (startY * w + startX) * 4;
+            int startOffset = (localY * w + localX) * 4;
+            if (startOffset < 0 || startOffset + 3 >= pixels.Length) return;
+
             byte targetB = pixels[startOffset];
             byte targetG = pixels[startOffset + 1];
             byte targetR = pixels[startOffset + 2];
@@ -96,8 +105,8 @@ namespace FlowMy.Views.NodeControls
 
             bool[,] visited = new bool[w, h];
             Queue<Point> queue = new Queue<Point>();
-            queue.Enqueue(new Point(startX, startY));
-            visited[startX, startY] = true;
+            queue.Enqueue(new Point(localX, localY));
+            visited[localX, localY] = true;
 
             double tolerance = _magicWandTolerance;
 
@@ -118,21 +127,24 @@ namespace FlowMy.Views.NodeControls
                     if (nx >= 0 && nx < w && ny >= 0 && ny < h && !visited[nx, ny])
                     {
                         int offset = (ny * w + nx) * 4;
-                        byte b = pixels[offset];
-                        byte g = pixels[offset + 1];
-                        byte r = pixels[offset + 2];
-                        byte a = pixels[offset + 3];
-
-                        int db = b - targetB;
-                        int dg = g - targetG;
-                        int dr = r - targetR;
-                        int da = a - targetA;
-                        double dist = Math.Sqrt(db * db + dg * dg + dr * dr + da * da);
-
-                        if (dist <= tolerance)
+                        if (offset >= 0 && offset + 3 < pixels.Length)
                         {
-                            visited[nx, ny] = true;
-                            queue.Enqueue(new Point(nx, ny));
+                            byte b = pixels[offset];
+                            byte g = pixels[offset + 1];
+                            byte r = pixels[offset + 2];
+                            byte a = pixels[offset + 3];
+
+                            int db = b - targetB;
+                            int dg = g - targetG;
+                            int dr = r - targetR;
+                            int da = a - targetA;
+                            double dist = Math.Sqrt(db * db + dg * dg + dr * dr + da * da);
+
+                            if (dist <= tolerance)
+                            {
+                                visited[nx, ny] = true;
+                                queue.Enqueue(new Point(nx, ny));
+                            }
                         }
                     }
                 }
@@ -173,11 +185,20 @@ namespace FlowMy.Views.NodeControls
 
             int w = activeLayer.Width;
             int h = activeLayer.Height;
+            if (w <= 0 || h <= 0) return;
+
+            int localX = px - activeLayer.OffsetX;
+            int localY = py - activeLayer.OffsetY;
+
+            if (localX < 0 || localX >= w || localY < 0 || localY >= h) return;
+
             int stride = w * 4;
             _quickSelectionPixels = new byte[stride * h];
             activeLayer.Bitmap.CopyPixels(_quickSelectionPixels, stride, 0);
 
-            int startOffset = (py * w + px) * 4;
+            int startOffset = (localY * w + localX) * 4;
+            if (startOffset < 0 || startOffset + 3 >= _quickSelectionPixels.Length) return;
+
             _quickSelTargetB = _quickSelectionPixels[startOffset];
             _quickSelTargetG = _quickSelectionPixels[startOffset + 1];
             _quickSelTargetR = _quickSelectionPixels[startOffset + 2];
@@ -199,6 +220,12 @@ namespace FlowMy.Views.NodeControls
 
             int w = activeLayer.Width;
             int h = activeLayer.Height;
+            if (w <= 0 || h <= 0) return;
+
+            int localX = px - activeLayer.OffsetX;
+            int localY = py - activeLayer.OffsetY;
+            if (localX < 0 || localX >= w || localY < 0 || localY >= h) return;
+
             double tolerance = _magicWandTolerance;
 
             Queue<Point> queue = new Queue<Point>();
@@ -210,8 +237,8 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (dx * dx + dy * dy <= radius * radius)
                     {
-                        int nx = px + dx;
-                        int ny = py + dy;
+                        int nx = localX + dx;
+                        int ny = localY + dy;
                         if (nx >= 0 && nx < w && ny >= 0 && ny < h)
                         {
                             if (!_quickSelectionVisited[nx, ny])
@@ -241,21 +268,24 @@ namespace FlowMy.Views.NodeControls
                     if (nx >= 0 && nx < w && ny >= 0 && ny < h && !_quickSelectionVisited[nx, ny])
                     {
                         int offset = (ny * w + nx) * 4;
-                        byte b = _quickSelectionPixels[offset];
-                        byte g = _quickSelectionPixels[offset + 1];
-                        byte r = _quickSelectionPixels[offset + 2];
-                        byte a = _quickSelectionPixels[offset + 3];
-
-                        int db = b - _quickSelTargetB;
-                        int dg = g - _quickSelTargetG;
-                        int dr = r - _quickSelTargetR;
-                        int da = a - _quickSelTargetA;
-                        double dist = Math.Sqrt(db * db + dg * dg + dr * dr + da * da);
-
-                        if (dist <= tolerance)
+                        if (offset >= 0 && offset + 3 < _quickSelectionPixels.Length)
                         {
-                            _quickSelectionVisited[nx, ny] = true;
-                            queue.Enqueue(new Point(nx, ny));
+                            byte b = _quickSelectionPixels[offset];
+                            byte g = _quickSelectionPixels[offset + 1];
+                            byte r = _quickSelectionPixels[offset + 2];
+                            byte a = _quickSelectionPixels[offset + 3];
+
+                            int db = b - _quickSelTargetB;
+                            int dg = g - _quickSelTargetG;
+                            int dr = r - _quickSelTargetR;
+                            int da = a - _quickSelTargetA;
+                            double dist = Math.Sqrt(db * db + dg * dg + dr * dr + da * da);
+
+                            if (dist <= tolerance)
+                            {
+                                _quickSelectionVisited[nx, ny] = true;
+                                queue.Enqueue(new Point(nx, ny));
+                            }
                         }
                     }
                 }
@@ -372,6 +402,23 @@ namespace FlowMy.Views.NodeControls
 
             int w = activeLayer.Width;
             int h = activeLayer.Height;
+            if (w <= 0 || h <= 0) return;
+
+            x1 -= activeLayer.OffsetX;
+            x2 -= activeLayer.OffsetX;
+            y1 -= activeLayer.OffsetY;
+            y2 -= activeLayer.OffsetY;
+
+            if (x1 > x2) (x1, x2) = (x2, x1);
+            if (y1 > y2) (y1, y2) = (y2, y1);
+
+            x1 = Math.Clamp(x1, 0, w - 1);
+            x2 = Math.Clamp(x2, 0, w - 1);
+            y1 = Math.Clamp(y1, 0, h - 1);
+            y2 = Math.Clamp(y2, 0, h - 1);
+
+            if (x1 > x2 || y1 > y2) return;
+
             int stride = w * 4;
             byte[] pixels = new byte[stride * h];
             activeLayer.Bitmap.CopyPixels(pixels, stride, 0);
@@ -517,7 +564,9 @@ namespace FlowMy.Views.NodeControls
 
         private (byte R, byte G, byte B, byte A) GetPixelColor(byte[] pixels, int x, int y, int width)
         {
+            if (x < 0 || x >= width || y < 0) return (0, 0, 0, 0);
             int offset = (y * width + x) * 4;
+            if (offset < 0 || offset + 3 >= pixels.Length) return (0, 0, 0, 0);
             return (pixels[offset + 2], pixels[offset + 1], pixels[offset], pixels[offset + 3]);
         }
     }

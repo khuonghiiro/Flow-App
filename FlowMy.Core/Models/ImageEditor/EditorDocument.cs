@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -551,6 +551,18 @@ namespace FlowMy.Models.ImageEditor
         }
 
         /// <summary>
+        /// Dọn dẹp và giải phóng tài nguyên cached RAM plates khi kết thúc phiên vẽ/chỉnh sửa.
+        /// </summary>
+        public void ClearPlates()
+        {
+            IsDrawingSessionActive = false;
+            CachedBgPlate?.Dispose();
+            CachedBgPlate = null;
+            CachedFgPlate?.Dispose();
+            CachedFgPlate = null;
+        }
+
+        /// <summary>
         /// Tạo cached background/foreground plates để di chuyển layer với hiệu năng cao.
         /// </summary>
         public void BuildMovePlates(EditorLayer activeLayer, out SkiaSharp.SKBitmap? bgPlate, out SkiaSharp.SKBitmap? fgPlate)
@@ -558,6 +570,7 @@ namespace FlowMy.Models.ImageEditor
             bgPlate = null;
             fgPlate = null;
             
+            if (activeLayer == null) return;
             int activeIndex = Layers.IndexOf(activeLayer);
             if (activeIndex == -1) return;
 
@@ -583,10 +596,13 @@ namespace FlowMy.Models.ImageEditor
                 bgPlate = new SkiaSharp.SKBitmap(Width, Height);
                 using (var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(Width, Height), bgPlate.GetPixels()))
                 {
-                    surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
-                    foreach (var layer in bgLayers)
+                    if (surface != null)
                     {
-                        RenderLayerToCanvas(surface.Canvas, layer);
+                        surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                        foreach (var layer in bgLayers)
+                        {
+                            RenderLayerToCanvas(surface.Canvas, layer);
+                        }
                     }
                 }
             }
@@ -596,10 +612,13 @@ namespace FlowMy.Models.ImageEditor
                 fgPlate = new SkiaSharp.SKBitmap(Width, Height);
                 using (var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(Width, Height), fgPlate.GetPixels()))
                 {
-                    surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
-                    foreach (var layer in fgLayers)
+                    if (surface != null)
                     {
-                        RenderLayerToCanvas(surface.Canvas, layer);
+                        surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                        foreach (var layer in fgLayers)
+                        {
+                            RenderLayerToCanvas(surface.Canvas, layer);
+                        }
                     }
                 }
             }

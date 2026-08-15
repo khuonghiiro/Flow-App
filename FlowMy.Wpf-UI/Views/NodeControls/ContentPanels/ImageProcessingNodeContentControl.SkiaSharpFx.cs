@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -62,82 +62,79 @@ namespace FlowMy.Views.NodeControls
 
             // Convert BGRA byte[] → SKBitmap
             var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using var srcBitmap = new SKBitmap(info);
+            using var bitmap = new SKBitmap();
             unsafe
             {
                 fixed (byte* ptr = srcPixels)
                 {
-                    srcBitmap.InstallPixels(info, (IntPtr)ptr, info.RowBytes);
+                    bitmap.InstallPixels(info, (IntPtr)ptr, info.RowBytes);
+
+                    token.ThrowIfCancellationRequested();
+
+                    // Dispatch effect
+                    SKBitmap result = effectName switch
+                    {
+                        "GaussianBlur" => SkiaBlur(bitmap, P("Sigma", 1.5)),
+                        "Blur" => SkiaBlur(bitmap, P("Sigma", 2)),
+                        "Sharpen" => SkiaSharpen(bitmap, P("Sigma", 1)),
+                        "UnsharpMask" => SkiaUnsharpMask(bitmap, P("Sigma", 1), P("Amount", 1)),
+                        "Grayscale" => SkiaColorMatrixFilter(bitmap, GrayscaleMatrix),
+                        "BrightnessUp" => SkiaBrightness(bitmap, P("Brightness", 15) / 100.0),
+                        "BrightnessDown" => SkiaBrightness(bitmap, -P("Brightness", 15) / 100.0),
+                        "GammaCorrect" => SkiaGammaCorrect(bitmap, P("Gamma", 1.5)),
+                        "SaturationUp" => SkiaSaturation(bitmap, P("Saturation", 140) / 100.0),
+                        "SaturationDown" => SkiaSaturation(bitmap, P("Saturation", 60) / 100.0),
+                        "ContrastUp" => SkiaContrast(bitmap, 0.15),
+                        "ContrastDown" => SkiaContrast(bitmap, -P("Contrast", 15) / 100.0),
+                        "Negate" => SkiaColorMatrixFilter(bitmap, NegateMatrix),
+                        "SepiaTone" => SkiaColorMatrixFilter(bitmap, SepiaMatrix(P("Threshold", 80) / 100.0)),
+                        "Posterize" => SkiaPosterize(bitmap, PI("Levels", 4)),
+                        "Threshold" => SkiaThreshold(bitmap, P("Percent", 50) / 100.0),
+                        "Pixelate" => SkiaPixelate(bitmap, PI("BlockSize", 8)),
+                        // New SkiaSharp-only effects
+                        "SkiaDropShadow" => SkiaDropShadow(bitmap, P("OffsetX", 5), P("OffsetY", 5), P("SigmaX", 4), P("SigmaY", 4), PI("ShadowAlpha", 128)),
+                        "SkiaColorMatrix" => SkiaCustomColorMatrix(bitmap,
+                            (float)P("R_R", 1), (float)P("R_G", 0), (float)P("R_B", 0), (float)P("R_A", 0), (float)P("R_Bias", 0),
+                            (float)P("G_R", 0), (float)P("G_G", 1), (float)P("G_B", 0), (float)P("G_A", 0), (float)P("G_Bias", 0),
+                            (float)P("B_R", 0), (float)P("B_G", 0), (float)P("B_B", 1), (float)P("B_A", 0), (float)P("B_Bias", 0),
+                            (float)P("A_R", 0), (float)P("A_G", 0), (float)P("A_B", 0), (float)P("A_A", 1), (float)P("A_Bias", 0)),
+                        "SkiaHueRotate" => SkiaHueRotate(bitmap, P("Degrees", 90)),
+                        "SkiaDilate" => SkiaMorphology(bitmap, PI("RadiusX", 2), PI("RadiusY", 2), isDilate: true),
+                        "SkiaErode" => SkiaMorphology(bitmap, PI("RadiusX", 2), PI("RadiusY", 2), isDilate: false),
+                        "SkiaLighting" => SkiaDistantLighting(bitmap, P("Azimuth", 225), P("Elevation", 45), P("SpecularExponent", 8), P("SpecularConstant", 0.7)),
+                        "SkiaBlendMode" => SkiaBlendModeEffect(bitmap, PI("BlendModeIndex", 0), PI("OverlayR", 128), PI("OverlayG", 128), PI("OverlayB", 128), PI("OverlayA", 100)),
+                        _ => bitmap.Copy() // fallback: return copy
+                    };
+
+                    token.ThrowIfCancellationRequested();
+
+                    // Convert result back to BGRA byte[]
+                    byte[] output;
+                    int rw = result.Width, rh = result.Height;
+                    if (rw == w && rh == h)
+                    {
+                        output = new byte[w * 4 * h];
+                        result.GetPixelSpan().CopyTo(output);
+                    }
+                    else
+                    {
+                        // Size changed — fit into original layer size
+                        output = new byte[w * 4 * h];
+                        int copyW = Math.Min(w, rw);
+                        int copyH = Math.Min(h, rh);
+                        var srcSpan = result.GetPixelSpan();
+                        for (int y = 0; y < copyH; y++)
+                        {
+                            srcSpan.Slice(y * rw * 4, copyW * 4).CopyTo(output.AsSpan(y * w * 4, copyW * 4));
+                        }
+                    }
+
+                    if (!ReferenceEquals(result, bitmap))
+                        result.Dispose();
+
+                    return output;
                 }
             }
-            // We need a copy since InstallPixels doesn't own the memory
-            using var bitmap = srcBitmap.Copy();
-
-            token.ThrowIfCancellationRequested();
-
-            // Dispatch effect
-            SKBitmap result = effectName switch
-            {
-                "GaussianBlur" => SkiaBlur(bitmap, P("Sigma", 1.5)),
-                "Blur" => SkiaBlur(bitmap, P("Sigma", 2)),
-                "Sharpen" => SkiaSharpen(bitmap, P("Sigma", 1)),
-                "UnsharpMask" => SkiaUnsharpMask(bitmap, P("Sigma", 1), P("Amount", 1)),
-                "Grayscale" => SkiaColorMatrixFilter(bitmap, GrayscaleMatrix),
-                "BrightnessUp" => SkiaBrightness(bitmap, P("Brightness", 15) / 100.0),
-                "BrightnessDown" => SkiaBrightness(bitmap, -P("Brightness", 15) / 100.0),
-                "GammaCorrect" => SkiaGammaCorrect(bitmap, P("Gamma", 1.5)),
-                "SaturationUp" => SkiaSaturation(bitmap, P("Saturation", 140) / 100.0),
-                "SaturationDown" => SkiaSaturation(bitmap, P("Saturation", 60) / 100.0),
-                "ContrastUp" => SkiaContrast(bitmap, 0.15),
-                "ContrastDown" => SkiaContrast(bitmap, -P("Contrast", 15) / 100.0),
-                "Negate" => SkiaColorMatrixFilter(bitmap, NegateMatrix),
-                "SepiaTone" => SkiaColorMatrixFilter(bitmap, SepiaMatrix(P("Threshold", 80) / 100.0)),
-                "Posterize" => SkiaPosterize(bitmap, PI("Levels", 4)),
-                "Threshold" => SkiaThreshold(bitmap, P("Percent", 50) / 100.0),
-                "Pixelate" => SkiaPixelate(bitmap, PI("BlockSize", 8)),
-                // New SkiaSharp-only effects
-                "SkiaDropShadow" => SkiaDropShadow(bitmap, P("OffsetX", 5), P("OffsetY", 5), P("SigmaX", 4), P("SigmaY", 4), PI("ShadowAlpha", 128)),
-                "SkiaColorMatrix" => SkiaCustomColorMatrix(bitmap,
-                    (float)P("R_R", 1), (float)P("R_G", 0), (float)P("R_B", 0), (float)P("R_A", 0), (float)P("R_Bias", 0),
-                    (float)P("G_R", 0), (float)P("G_G", 1), (float)P("G_B", 0), (float)P("G_A", 0), (float)P("G_Bias", 0),
-                    (float)P("B_R", 0), (float)P("B_G", 0), (float)P("B_B", 1), (float)P("B_A", 0), (float)P("B_Bias", 0),
-                    (float)P("A_R", 0), (float)P("A_G", 0), (float)P("A_B", 0), (float)P("A_A", 1), (float)P("A_Bias", 0)),
-                "SkiaHueRotate" => SkiaHueRotate(bitmap, P("Degrees", 90)),
-                "SkiaDilate" => SkiaMorphology(bitmap, PI("RadiusX", 2), PI("RadiusY", 2), isDilate: true),
-                "SkiaErode" => SkiaMorphology(bitmap, PI("RadiusX", 2), PI("RadiusY", 2), isDilate: false),
-                "SkiaLighting" => SkiaDistantLighting(bitmap, P("Azimuth", 225), P("Elevation", 45), P("SpecularExponent", 8), P("SpecularConstant", 0.7)),
-                "SkiaBlendMode" => SkiaBlendModeEffect(bitmap, PI("BlendModeIndex", 0), PI("OverlayR", 128), PI("OverlayG", 128), PI("OverlayB", 128), PI("OverlayA", 100)),
-                _ => bitmap.Copy() // fallback: return unchanged copy
-            };
-
-            token.ThrowIfCancellationRequested();
-
-            // Convert result back to BGRA byte[]
-            byte[] output;
-            int rw = result.Width, rh = result.Height;
-            if (rw == w && rh == h)
-            {
-                output = new byte[w * 4 * h];
-                var resultInfo = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-                result.GetPixelSpan().CopyTo(output);
-            }
-            else
-            {
-                // Size changed — fit into original layer size
-                output = new byte[w * 4 * h];
-                int copyW = Math.Min(w, rw);
-                int copyH = Math.Min(h, rh);
-                var srcSpan = result.GetPixelSpan();
-                for (int y = 0; y < copyH; y++)
-                {
-                    srcSpan.Slice(y * rw * 4, copyW * 4).CopyTo(output.AsSpan(y * w * 4, copyW * 4));
-                }
-            }
-
-            if (!ReferenceEquals(result, bitmap))
-                result.Dispose();
-
-            return output;
         }
 
         // ═══════════════════════════════════════════════════════

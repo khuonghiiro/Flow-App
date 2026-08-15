@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -233,8 +233,13 @@ namespace FlowMy.Views.NodeControls
 
         private void FloodFill(byte[] pixels, int width, int height, int startX, int startY, Color fillColor)
         {
+            if (pixels == null || width <= 0 || height <= 0) return;
+            if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
+
             int stride = width * 4;
             int offset = startY * stride + startX * 4;
+            if (offset < 0 || offset + 3 >= pixels.Length) return;
+
             byte targetB = pixels[offset];
             byte targetG = pixels[offset + 1];
             byte targetR = pixels[offset + 2];
