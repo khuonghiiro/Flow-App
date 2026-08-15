@@ -1821,13 +1821,39 @@ namespace FlowMy.Views.NodeControls
         {
             try
             {
-                if (PreviewMedia != null)
+                if (_isDspAudioPreviewActive && _audioDspPlayer != null)
                 {
-                    var isMuted = !_node.SourceAudioEnabled || _node.SourceAudioVolumePercent <= 0;
+                    if (PreviewMedia != null)
+                    {
+                        PreviewMedia.IsMuted = true;
+                        PreviewMedia.Volume = 0;
+                    }
+                    var masterVol = Math.Clamp(_node.PreviewVolume, 0.0, 1.0);
+                    var sourceVolFactor = Math.Clamp(_node.SourceAudioVolumePercent / 100.0, 0.0, 3.0);
+                    _audioDspPlayer.Volume = Math.Clamp(masterVol * sourceVolFactor, 0.0, 1.0);
+                    if (_node.AudioSpeedFactor >= 0.1 && _node.AudioSpeedFactor <= 4.0)
+                    {
+                        _audioDspPlayer.SpeedRatio = _node.AudioSpeedFactor;
+                    }
+                }
+                else if (PreviewMedia != null)
+                {
+                    var isMuted = !_node.SourceAudioEnabled || _node.SourceAudioVolumePercent <= 0 || _isMuted || _node.PreviewVolume <= 0;
                     PreviewMedia.IsMuted = isMuted;
                     if (!isMuted)
                     {
-                        PreviewMedia.Volume = Math.Clamp(_node.SourceAudioVolumePercent / 100.0, 0.0, 1.0);
+                        var masterVol = Math.Clamp(_node.PreviewVolume, 0.0, 1.0);
+                        var sourceVolFactor = Math.Clamp(_node.SourceAudioVolumePercent / 100.0, 0.0, 3.0);
+                        PreviewMedia.Volume = Math.Clamp(masterVol * sourceVolFactor, 0.0, 1.0);
+                    }
+                    else
+                    {
+                        PreviewMedia.Volume = 0;
+                    }
+
+                    if (PreviewMedia.SpeedRatio != _node.AudioSpeedFactor && _node.AudioSpeedFactor >= 0.1 && _node.AudioSpeedFactor <= 4.0)
+                    {
+                        PreviewMedia.SpeedRatio = _node.AudioSpeedFactor;
                     }
                 }
             }
@@ -1838,10 +1864,24 @@ namespace FlowMy.Views.NodeControls
         {
             _node.SourceAudioEnabled = true;
             _node.SourceAudioVolumePercent = 100.0;
+            _node.AudioSpeedFactor = 1.0;
+            _node.AudioTrimEnabled = false;
+            _node.AudioTrimStartSec = 0.0;
+            _node.AudioTrimEndSec = 0.0;
+            _node.AudioEqPreset = "neutral";
+            _node.AudioBassGain = 0.0;
+            _node.AudioTrebleGain = 0.0;
             _node.AudioFadeInSec = 0.0;
             _node.AudioFadeOutSec = 0.0;
             _node.AudioNormalizeEnabled = false;
+            _node.AudioTargetLufs = -14.0;
             _node.AudioDenoiseEnabled = false;
+            _node.AudioHighpassFilter = false;
+            _node.AudioLowpassFilter = false;
+            _node.AudioExportFormat = "mp3";
+            _node.AudioExportBitrate = "320k";
+            _node.AudioExportSampleRate = "48000";
+            _node.AudioExportChannels = "stereo";
             _node.AudioTracks.Clear();
 
             SyncControlValuesFromModel();

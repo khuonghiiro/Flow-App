@@ -211,16 +211,7 @@ namespace FlowMy.Views.NodeControls
                 SecondsPerFrameSlider.Value = windowSec;
                 UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
-                SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
-                SourceAudioVolumeSlider.Value = Math.Clamp(_node.SourceAudioVolumePercent, 0, 300);
-                SourceAudioVolumeLabel.Text = $"{_node.SourceAudioVolumePercent:0}%";
-                SourceAudioVolumeGrid.IsEnabled = _node.SourceAudioEnabled;
-                AudioFadeInSlider.Value = _node.AudioFadeInSec;
-                AudioFadeInLabel.Text = $"{_node.AudioFadeInSec:0.#}s";
-                AudioFadeOutSlider.Value = _node.AudioFadeOutSec;
-                AudioFadeOutLabel.Text = $"{_node.AudioFadeOutSec:0.#}s";
-                AudioNormalizeCheckBox.IsChecked = _node.AudioNormalizeEnabled;
-                AudioDenoiseCheckBox.IsChecked = _node.AudioDenoiseEnabled;
+                SyncAudioTabFromModel();
                 UpdatePreviewAudioVolume();
                 VolumeSlider.Value = _node.PreviewVolume;
                 _node.PreviewQualityMode = "high";
@@ -941,11 +932,18 @@ namespace FlowMy.Views.NodeControls
             if (_isPlaying)
             {
                 PreviewMedia.Pause();
+                _audioDspPlayer?.Pause();
                 _isPlaying = false;
                 LiveDot.Visibility = Visibility.Collapsed;
             }
             else
             {
+                if (_isDspAudioPreviewActive && _audioDspPlayer != null)
+                {
+                    PreviewMedia.IsMuted = true;
+                    _audioDspPlayer.Position = PreviewMedia.Position;
+                    _audioDspPlayer.Play();
+                }
                 PreviewMedia.Play();
                 _isPlaying = true;
                 LiveDot.Visibility = Visibility.Visible;
@@ -957,6 +955,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (PreviewMedia.Source == null) return;
             PreviewMedia.Stop();
+            _audioDspPlayer?.Stop();
             PreviewMedia.Position = TimeSpan.Zero;
             _isPlaying = false;
             LiveDot.Visibility = Visibility.Collapsed;
@@ -971,6 +970,10 @@ namespace FlowMy.Views.NodeControls
             if (target < TimeSpan.Zero) target = TimeSpan.Zero;
             if (target > duration) target = duration;
             PreviewMedia.Position = target;
+            if (_isDspAudioPreviewActive && _audioDspPlayer != null)
+            {
+                _audioDspPlayer.Position = target;
+            }
             UpdatePlaybackUi();
         }
 
@@ -990,6 +993,10 @@ namespace FlowMy.Views.NodeControls
             _lastSeekTargetSeconds = targetSec;
             _isSeekLatencyPending = true;
             PreviewMedia.Position = TimeSpan.FromSeconds(targetSec);
+            if (_isDspAudioPreviewActive && _audioDspPlayer != null)
+            {
+                _audioDspPlayer.Position = TimeSpan.FromSeconds(targetSec);
+            }
         }
 
         private void UpdateProgressVisualByRatio(double ratio)
@@ -1304,6 +1311,18 @@ namespace FlowMy.Views.NodeControls
                 {
                     var frameDur = _node.SourceFps > 0 ? 1.0 / _node.SourceFps : 0.04;
                     PreviewMedia.Position = TimeSpan.FromSeconds(curSec + frameDur);
+                }
+            }
+
+            // Stop if previewing trimmed audio segment
+            if (_isPlaying && _isAudioTrimPreviewing && _node.AudioTrimEndSec > _node.AudioTrimStartSec)
+            {
+                if (PreviewMedia.Position.TotalSeconds >= _node.AudioTrimEndSec)
+                {
+                    PreviewMedia.Pause();
+                    _isPlaying = false;
+                    _isAudioTrimPreviewing = false;
+                    if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
                 }
             }
 

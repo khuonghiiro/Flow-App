@@ -450,8 +450,36 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.AudioFadeOutSec = afo;
             if (properties.TryGetValue("AudioNormalizeEnabled", out var aneObj) && aneObj != null && bool.TryParse(aneObj.ToString(), out var ane))
                 videoNode.AudioNormalizeEnabled = ane;
+            if (properties.TryGetValue("AudioTargetLufs", out var atlObj) && atlObj != null && double.TryParse(atlObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var atl))
+                videoNode.AudioTargetLufs = atl;
             if (properties.TryGetValue("AudioDenoiseEnabled", out var adeObj) && adeObj != null && bool.TryParse(adeObj.ToString(), out var ade))
                 videoNode.AudioDenoiseEnabled = ade;
+            if (properties.TryGetValue("AudioSpeedFactor", out var asfObj) && asfObj != null && double.TryParse(asfObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var asf))
+                videoNode.AudioSpeedFactor = asf;
+            if (properties.TryGetValue("AudioEqPreset", out var aepObj))
+                videoNode.AudioEqPreset = aepObj?.ToString() ?? "neutral";
+            if (properties.TryGetValue("AudioBassGain", out var abgObj) && abgObj != null && double.TryParse(abgObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var abg))
+                videoNode.AudioBassGain = abg;
+            if (properties.TryGetValue("AudioTrebleGain", out var atgObj) && atgObj != null && double.TryParse(atgObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var atg))
+                videoNode.AudioTrebleGain = atg;
+            if (properties.TryGetValue("AudioHighpassFilter", out var ahfObj) && ahfObj != null && bool.TryParse(ahfObj.ToString(), out var ahf))
+                videoNode.AudioHighpassFilter = ahf;
+            if (properties.TryGetValue("AudioLowpassFilter", out var alfObj) && alfObj != null && bool.TryParse(alfObj.ToString(), out var alf))
+                videoNode.AudioLowpassFilter = alf;
+            if (properties.TryGetValue("AudioTrimEnabled", out var ateObj) && ateObj != null && bool.TryParse(ateObj.ToString(), out var ate))
+                videoNode.AudioTrimEnabled = ate;
+            if (properties.TryGetValue("AudioTrimStartSec", out var atssObj) && atssObj != null && double.TryParse(atssObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var atss))
+                videoNode.AudioTrimStartSec = atss;
+            if (properties.TryGetValue("AudioTrimEndSec", out var atseObj) && atseObj != null && double.TryParse(atseObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var atse))
+                videoNode.AudioTrimEndSec = atse;
+            if (properties.TryGetValue("AudioExportFormat", out var aefObj))
+                videoNode.AudioExportFormat = aefObj?.ToString() ?? "mp3";
+            if (properties.TryGetValue("AudioExportBitrate", out var aebObj))
+                videoNode.AudioExportBitrate = aebObj?.ToString() ?? "320k";
+            if (properties.TryGetValue("AudioExportSampleRate", out var aesrObj))
+                videoNode.AudioExportSampleRate = aesrObj?.ToString() ?? "48000";
+            if (properties.TryGetValue("AudioExportChannels", out var aecObj))
+                videoNode.AudioExportChannels = aecObj?.ToString() ?? "stereo";
             if (properties.TryGetValue("PreviewVolume", out var pvObj) && pvObj != null && double.TryParse(pvObj.ToString(), out var pv))
                 videoNode.PreviewVolume = pv;
             if (properties.TryGetValue("PreviewQualityMode", out var pqmObj))
@@ -827,7 +855,21 @@ public sealed partial class FileWorkflowPersistenceService
             dict["AudioFadeInSec"] = videoNode.AudioFadeInSec;
             dict["AudioFadeOutSec"] = videoNode.AudioFadeOutSec;
             dict["AudioNormalizeEnabled"] = videoNode.AudioNormalizeEnabled;
+            dict["AudioTargetLufs"] = videoNode.AudioTargetLufs;
             dict["AudioDenoiseEnabled"] = videoNode.AudioDenoiseEnabled;
+            dict["AudioSpeedFactor"] = videoNode.AudioSpeedFactor;
+            dict["AudioEqPreset"] = videoNode.AudioEqPreset;
+            dict["AudioBassGain"] = videoNode.AudioBassGain;
+            dict["AudioTrebleGain"] = videoNode.AudioTrebleGain;
+            dict["AudioHighpassFilter"] = videoNode.AudioHighpassFilter;
+            dict["AudioLowpassFilter"] = videoNode.AudioLowpassFilter;
+            dict["AudioTrimEnabled"] = videoNode.AudioTrimEnabled;
+            dict["AudioTrimStartSec"] = videoNode.AudioTrimStartSec;
+            dict["AudioTrimEndSec"] = videoNode.AudioTrimEndSec;
+            dict["AudioExportFormat"] = videoNode.AudioExportFormat;
+            dict["AudioExportBitrate"] = videoNode.AudioExportBitrate;
+            dict["AudioExportSampleRate"] = videoNode.AudioExportSampleRate;
+            dict["AudioExportChannels"] = videoNode.AudioExportChannels;
             dict["PreviewVolume"] = videoNode.PreviewVolume;
             dict["PreviewQualityMode"] = videoNode.PreviewQualityMode;
             dict["PreviewVisualStrengthMode"] = videoNode.PreviewVisualStrengthMode;

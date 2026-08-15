@@ -37,6 +37,10 @@ namespace FlowMy.Models.Nodes
 
     public sealed class VideoAudioTrackConfig : INotifyPropertyChanged
     {
+        private string _trackName = "Track";
+        private bool _isMuted;
+        private double _fadeInSec;
+        private double _fadeOutSec;
         private string? _sourceNodeId;
         private string? _sourceOutputKey;
         private double _volumePercent = 100;
@@ -45,6 +49,30 @@ namespace FlowMy.Models.Nodes
         private double _trimEndSec;
         private AudioSyncMode _shorterMode = AudioSyncMode.Loop;
         private AudioSyncMode _longerMode = AudioSyncMode.Trim;
+
+        public string TrackName
+        {
+            get => _trackName;
+            set { if (_trackName != value) { _trackName = value ?? "Track"; OnPropertyChanged(); } }
+        }
+
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set { if (_isMuted != value) { _isMuted = value; OnPropertyChanged(); } }
+        }
+
+        public double FadeInSec
+        {
+            get => _fadeInSec;
+            set { if (Math.Abs(_fadeInSec - value) > 0.01) { _fadeInSec = Math.Clamp(value, 0, 10); OnPropertyChanged(); } }
+        }
+
+        public double FadeOutSec
+        {
+            get => _fadeOutSec;
+            set { if (Math.Abs(_fadeOutSec - value) > 0.01) { _fadeOutSec = Math.Clamp(value, 0, 10); OnPropertyChanged(); } }
+        }
 
         public string? SourceNodeId
         {
@@ -250,6 +278,20 @@ namespace FlowMy.Models.Nodes
         private bool _gridCollageShowFrameIndex;
         private bool _extractByFpsEnabled = true;
         private List<double> _excludedFrameTimestamps = new();
+        private double _audioSpeedFactor = 1.0;
+        private string _audioEqPreset = "neutral";
+        private double _audioBassGain;
+        private double _audioTrebleGain;
+        private bool _audioHighpassFilter;
+        private bool _audioLowpassFilter;
+        private double _audioTargetLufs = -14.0;
+        private bool _audioTrimEnabled;
+        private double _audioTrimStartSec;
+        private double _audioTrimEndSec;
+        private string _audioExportFormat = "mp3";
+        private string _audioExportBitrate = "320k";
+        private string _audioExportSampleRate = "48000";
+        private string _audioExportChannels = "stereo";
 
         public VideoProcessingNode()
         {
@@ -752,6 +794,90 @@ namespace FlowMy.Models.Nodes
         {
             get => _audioDenoiseEnabled;
             set { if (_audioDenoiseEnabled != value) { _audioDenoiseEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double AudioSpeedFactor
+        {
+            get => _audioSpeedFactor;
+            set { if (Math.Abs(_audioSpeedFactor - value) > 0.01) { _audioSpeedFactor = Math.Clamp(value, 0.25, 4.0); OnPropertyChanged(); } }
+        }
+
+        public string AudioEqPreset
+        {
+            get => _audioEqPreset;
+            set { if (_audioEqPreset != value) { _audioEqPreset = value ?? "neutral"; OnPropertyChanged(); } }
+        }
+
+        public double AudioBassGain
+        {
+            get => _audioBassGain;
+            set { if (Math.Abs(_audioBassGain - value) > 0.01) { _audioBassGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioTrebleGain
+        {
+            get => _audioTrebleGain;
+            set { if (Math.Abs(_audioTrebleGain - value) > 0.01) { _audioTrebleGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
+        }
+
+        public bool AudioHighpassFilter
+        {
+            get => _audioHighpassFilter;
+            set { if (_audioHighpassFilter != value) { _audioHighpassFilter = value; OnPropertyChanged(); } }
+        }
+
+        public bool AudioLowpassFilter
+        {
+            get => _audioLowpassFilter;
+            set { if (_audioLowpassFilter != value) { _audioLowpassFilter = value; OnPropertyChanged(); } }
+        }
+
+        public double AudioTargetLufs
+        {
+            get => _audioTargetLufs;
+            set { if (Math.Abs(_audioTargetLufs - value) > 0.01) { _audioTargetLufs = Math.Clamp(value, -30.0, -6.0); OnPropertyChanged(); } }
+        }
+
+        public bool AudioTrimEnabled
+        {
+            get => _audioTrimEnabled;
+            set { if (_audioTrimEnabled != value) { _audioTrimEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double AudioTrimStartSec
+        {
+            get => _audioTrimStartSec;
+            set { if (Math.Abs(_audioTrimStartSec - value) > 0.001) { _audioTrimStartSec = Math.Max(0, value); OnPropertyChanged(); } }
+        }
+
+        public double AudioTrimEndSec
+        {
+            get => _audioTrimEndSec;
+            set { if (Math.Abs(_audioTrimEndSec - value) > 0.001) { _audioTrimEndSec = Math.Max(0, value); OnPropertyChanged(); } }
+        }
+
+        public string AudioExportFormat
+        {
+            get => _audioExportFormat;
+            set { if (_audioExportFormat != value) { _audioExportFormat = value ?? "mp3"; OnPropertyChanged(); } }
+        }
+
+        public string AudioExportBitrate
+        {
+            get => _audioExportBitrate;
+            set { if (_audioExportBitrate != value) { _audioExportBitrate = value ?? "320k"; OnPropertyChanged(); } }
+        }
+
+        public string AudioExportSampleRate
+        {
+            get => _audioExportSampleRate;
+            set { if (_audioExportSampleRate != value) { _audioExportSampleRate = value ?? "48000"; OnPropertyChanged(); } }
+        }
+
+        public string AudioExportChannels
+        {
+            get => _audioExportChannels;
+            set { if (_audioExportChannels != value) { _audioExportChannels = value ?? "stereo"; OnPropertyChanged(); } }
         }
 
         public double PreviewVolume

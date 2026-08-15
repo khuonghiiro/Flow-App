@@ -19,6 +19,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using FlowMy.Helpers;
 using FlowMy.Services.Workflow;
+using FlowMy.Services.Workflow.Audio;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -615,10 +616,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 Directory.CreateDirectory(outputFolder);
-                var extension = ResolveAudioOutputExtension(node.AudioCodec);
+                var extension = VideoAudioFilterGraphBuilder.ResolveAudioFileExtension(node.AudioExportFormat);
                 var outputPath = Path.Combine(outputFolder, $"audio_extracted_{DateTime.Now:yyyyMMddHHmmss}{extension}");
                 var duration = await ProbeDurationSecondsAsync(sourceVideoInput, ct).ConfigureAwait(false);
-                var codec = ResolveAudioCodecArg(node.AudioCodec);
+                var (codec, extraArgs) = VideoAudioFilterGraphBuilder.ResolveAudioExportArgs(
+                    node.AudioExportFormat, node.AudioExportBitrate, node.AudioExportSampleRate, node.AudioExportChannels);
+
                 var args = new List<string>
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
@@ -627,22 +630,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     "-vn"
                 };
 
-                if (string.Equals(codec, "copy", StringComparison.OrdinalIgnoreCase))
-                {
-                    args.AddRange(new[] { "-c:a", "copy" });
-                }
-                else
-                {
-                    args.AddRange(new[] { "-c:a", codec, "-b:a", node.AudioBitrate });
-                }
-
                 var afFilter = BuildSourceAudioFilterGraph(node, duration);
                 if (!string.IsNullOrWhiteSpace(afFilter))
                 {
                     args.AddRange(new[] { "-af", afFilter });
                 }
 
+                args.AddRange(new[] { "-c:a", codec });
+                args.AddRange(extraArgs);
                 args.Add(outputPath);
+
                 await RunFfmpegWithProgressAsync(
                     args,
                     duration,
@@ -661,34 +658,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static string BuildSourceAudioFilterGraph(VideoProcessingNode node, double duration)
         {
-            var filters = new List<string>();
-
-            if (Math.Abs(node.SourceAudioVolumePercent - 100.0) > 0.1)
-            {
-                var vol = (node.SourceAudioVolumePercent / 100.0).ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"volume={vol}");
-            }
-            if (node.AudioFadeInSec > 0.05)
-            {
-                var d = node.AudioFadeInSec.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"afade=t=in:ss=0:d={d}");
-            }
-            if (node.AudioFadeOutSec > 0.05 && duration > node.AudioFadeOutSec)
-            {
-                var st = (duration - node.AudioFadeOutSec).ToString("0.###", CultureInfo.InvariantCulture);
-                var d = node.AudioFadeOutSec.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"afade=t=out:st={st}:d={d}");
-            }
-            if (node.AudioDenoiseEnabled)
-            {
-                filters.Add("highpass=f=200,lowpass=f=3000");
-            }
-            if (node.AudioNormalizeEnabled)
-            {
-                filters.Add("loudnorm=I=-16:TP=-1.5:LRA=11");
-            }
-
-            return filters.Count > 0 ? string.Join(",", filters) : string.Empty;
+            return VideoAudioFilterGraphBuilder.BuildSourceAudioFilterGraph(node, duration, applyTrim: node.AudioTrimEnabled);
         }
 
         private static string ResolveAudioOutputExtension(string? codec)
@@ -793,10 +763,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             for (var i = 0; i < preparedAudio.Count; i++)
             {
                 var inputIndex = i + 1;
-                var volume = Math.Max(0, preparedAudio[i].cfg.VolumePercent) / 100d;
-                var delayMs = (int)Math.Max(0, Math.Round(preparedAudio[i].cfg.StartAtSec * 1000));
-                var delayFilter = delayMs > 0 ? $"adelay={delayMs}|{delayMs}," : string.Empty;
-                filterChains.Add($"[{inputIndex}:a]{delayFilter}volume={volume:0.###}[a{i}]");
+                var trackCfg = preparedAudio[i].cfg;
+                var volume = trackCfg.IsMuted ? 0.0 : Math.Max(0, trackCfg.VolumePercent) / 100d;
+                var delayMs = (int)Math.Max(0, Math.Round(trackCfg.StartAtSec * 1000));
+                
+                var trackFilters = new List<string>();
+                if (delayMs > 0) trackFilters.Add($"adelay={delayMs}|{delayMs}");
+                if (trackCfg.FadeInSec > 0.05)
+                    trackFilters.Add($"afade=t=in:ss=0:d={trackCfg.FadeInSec.ToString("0.###", CultureInfo.InvariantCulture)}");
+                if (trackCfg.FadeOutSec > 0.05 && videoDuration > trackCfg.FadeOutSec)
+                {
+                    var st = (videoDuration - trackCfg.FadeOutSec).ToString("0.###", CultureInfo.InvariantCulture);
+                    trackFilters.Add($"afade=t=out:st={st}:d={trackCfg.FadeOutSec.ToString("0.###", CultureInfo.InvariantCulture)}");
+                }
+                trackFilters.Add($"volume={volume.ToString("0.###", CultureInfo.InvariantCulture)}");
+
+                filterChains.Add($"[{inputIndex}:a]{string.Join(",", trackFilters)}[a{i}]");
                 mixInputs.Add($"[a{i}]");
             }
             filterChains.Add($"{string.Join(string.Empty, mixInputs)}amix=inputs={preparedAudio.Count}:dropout_transition=0:normalize=0[aout]");
@@ -2039,7 +2021,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var fps) ? fps : 0;
         }
 
-        private static async Task<double> ProbeDurationSecondsAsync(string inputPath, CancellationToken ct)
+        public static async Task<double> ProbeDurationSecondsAsync(string inputPath, CancellationToken ct)
         {
             var args = new[]
             {
@@ -2052,7 +2034,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return double.TryParse(output.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) ? seconds : 0;
         }
 
-        private static async Task<bool> ProbeHasAudioStreamAsync(string inputPath, CancellationToken ct)
+        public static async Task<bool> ProbeHasAudioStreamAsync(string inputPath, CancellationToken ct)
         {
             var args = new[]
             {

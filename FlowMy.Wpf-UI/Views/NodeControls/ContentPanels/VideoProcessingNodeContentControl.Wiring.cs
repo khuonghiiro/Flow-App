@@ -223,15 +223,6 @@ namespace FlowMy.Views.NodeControls
                 AppendLog("📷 [TÁCH FRAME] Đang trích xuất frame (Đường dẫn file)...");
                 RunProcessingFlow(singleNodeOnly: true);
             };
-            ExtractAudioTabButton.Click += (_, _) =>
-            {
-                SwitchToLogView();
-                _node.ExtractAudioEnabled = true;
-                _node.ExportVideoEnabled = false;
-                _node.ExtractFramesEnabled = false;
-                AppendLog("🎵 [TRÍCH XUẤT AUDIO] Đang trích xuất file audio từ video...");
-                RunProcessingFlow(singleNodeOnly: true);
-            };
             RunFlowAudioTabButton.Click += (_, _) =>
             {
                 SwitchToLogView();
@@ -356,9 +347,24 @@ namespace FlowMy.Views.NodeControls
                 {
                     var range = new TextRange(LogRichTextBox.Document.ContentStart, LogRichTextBox.Document.ContentEnd);
                     if (!string.IsNullOrWhiteSpace(range.Text))
-                        Clipboard.SetText(range.Text);
+                        SafeCopyToClipboard(range.Text);
                 }
             };
+
+            if (OpenStudioButton != null)
+            {
+                OpenStudioButton.Click += (_, _) =>
+                {
+                    var owner = Window.GetWindow(this) ?? Application.Current?.MainWindow;
+                    var dlg = new FlowMy.Views.NodeDialogs.VideoProcessingStudioDialog(_node, _host, owner, _isLightTheme);
+                    if (dlg.ShowDialog() == true)
+                    {
+                        SyncAllTabsFromModel();
+                        TriggerDspRegenIfActive();
+                        AppendLog($"✓ Đã đồng bộ toàn bộ thiết lập từ Studio về Node (Preset={_node.AudioEqPreset}, Bass={_node.AudioBassGain}dB, Treble={_node.AudioTrebleGain}dB, Speed={_node.AudioSpeedFactor}x).");
+                    }
+                };
+            }
 
             OpenGlobalEnvironmentPathsButton.Click += (_, _) =>
             {
@@ -459,9 +465,9 @@ namespace FlowMy.Views.NodeControls
             VolumeSlider.ValueChanged += (_, e) =>
             {
                 _node.PreviewVolume = e.NewValue;
-                PreviewMedia.Volume = e.NewValue;
                 _isMuted = e.NewValue <= 0;
                 if (!_isMuted) _lastVolume = e.NewValue;
+                UpdatePreviewAudioVolume();
                 UpdateVolumeIcon();
             };
             MuteButton.Click += (_, _) =>
@@ -513,62 +519,7 @@ namespace FlowMy.Views.NodeControls
                 _node.PreviewVisualStrengthMode = GetSelectedPreviewVisualStrengthTag();
                 ApplyPreviewColorTransform();
             };
-            SourceAudioToggle.Checked += (_, _) =>
-            {
-                if (_suppressControlSync) return;
-                _node.SourceAudioEnabled = true;
-                SourceAudioVolumeGrid.IsEnabled = true;
-                UpdatePreviewAudioVolume();
-            };
-            SourceAudioToggle.Unchecked += (_, _) =>
-            {
-                if (_suppressControlSync) return;
-                _node.SourceAudioEnabled = false;
-                SourceAudioVolumeGrid.IsEnabled = false;
-                UpdatePreviewAudioVolume();
-            };
-            SourceAudioVolumeSlider.ValueChanged += (_, e) =>
-            {
-                if (_suppressControlSync) return;
-                var vol = Math.Round(e.NewValue);
-                _node.SourceAudioVolumePercent = vol;
-                SourceAudioVolumeLabel.Text = $"{vol:0}%";
-                UpdatePreviewAudioVolume();
-            };
-            AudioFadeInSlider.ValueChanged += (_, e) =>
-            {
-                if (_suppressControlSync) return;
-                var val = Math.Round(e.NewValue * 2) / 2.0;
-                _node.AudioFadeInSec = val;
-                AudioFadeInLabel.Text = $"{val:0.#}s";
-            };
-            AudioFadeOutSlider.ValueChanged += (_, e) =>
-            {
-                if (_suppressControlSync) return;
-                var val = Math.Round(e.NewValue * 2) / 2.0;
-                _node.AudioFadeOutSec = val;
-                AudioFadeOutLabel.Text = $"{val:0.#}s";
-            };
-            AudioNormalizeCheckBox.Checked += (_, _) =>
-            {
-                if (_suppressControlSync) return;
-                _node.AudioNormalizeEnabled = true;
-            };
-            AudioNormalizeCheckBox.Unchecked += (_, _) =>
-            {
-                if (_suppressControlSync) return;
-                _node.AudioNormalizeEnabled = false;
-            };
-            AudioDenoiseCheckBox.Checked += (_, _) =>
-            {
-                if (_suppressControlSync) return;
-                _node.AudioDenoiseEnabled = true;
-            };
-            AudioDenoiseCheckBox.Unchecked += (_, _) =>
-            {
-                if (_suppressControlSync) return;
-                _node.AudioDenoiseEnabled = false;
-            };
+            WireAudioTabEvents();
         }
 
         private void WireGradingAndTransformEvents()
@@ -683,10 +634,10 @@ namespace FlowMy.Views.NodeControls
                 if (LogRichTextBox.Document != null)
                 {
                     var range = new TextRange(LogRichTextBox.Document.ContentStart, LogRichTextBox.Document.ContentEnd);
-                    Clipboard.SetText(range.Text);
+                    if (!string.IsNullOrWhiteSpace(range.Text))
+                        SafeCopyToClipboard(range.Text);
                 }
             };
-            AddAudioTrackButton.Click += (_, _) => _node.AudioTracks.Add(new VideoAudioTrackConfig());
             AddTextOverlayItemButton.Click += (_, _) => AddOverlayItem("text");
             AddImageOverlayItemButton.Click += (_, _) => AddOverlayItem("image");
             RemoveSelectedOverlayItemButton.Click += (_, _) => RemoveSelectedOverlayItem();
@@ -892,6 +843,27 @@ namespace FlowMy.Views.NodeControls
             TwoPassToggle.Unchecked += (_, _) => _node.TwoPassEnabled = false;
             AudioCodecCombo.SelectionChanged += (_, _) => _node.AudioCodec = (AudioCodecCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "aac";
             AudioBitrateCombo.SelectionChanged += (_, _) => _node.AudioBitrate = (AudioBitrateCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "192k";
+        }
+
+        private static void SafeCopyToClipboard(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            for (int i = 0; i < 5; i++)
+            {
+                try
+                {
+                    Clipboard.SetDataObject(text, true);
+                    return;
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    System.Threading.Thread.Sleep(25);
+                }
+                catch
+                {
+                    return;
+                }
+            }
         }
     
         private void WireFrameExtractionEvents()
