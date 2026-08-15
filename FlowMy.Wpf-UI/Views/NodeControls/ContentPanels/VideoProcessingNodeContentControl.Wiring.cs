@@ -934,6 +934,7 @@ namespace FlowMy.Views.NodeControls
                         ExtractFpsRateLabel.Text = $"{rate} frame/s";
                     UpdateFrameExtractionPreview();
                     UpdateGridCollagePreviewUi();
+                    OnExtractFpsChangedWhileFrameStripVisible();
                 };
             }
 
@@ -955,6 +956,7 @@ namespace FlowMy.Views.NodeControls
                             ExtractFpsRateLabel.Text = $"{rate:0.#} frame/s";
                         UpdateFrameExtractionPreview();
                         UpdateGridCollagePreviewUi();
+                        OnExtractFpsChangedWhileFrameStripVisible();
                     }
                 };
             }

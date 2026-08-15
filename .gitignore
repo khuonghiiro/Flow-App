@@ -10,17 +10,17 @@
 # Build results
 
 .git*
-[Dd]ebug/
-[Rr]elease/
-x64/
-[Bb]in/
-[Oo]bj/
-temp/
-Setup/
+*/[Dd]ebug/
+*/[Rr]elease/
+*/x64/
+*/[Bb]in/
+*/[Oo]bj/
+*/temp/
+*/Setup/
 .vscode/
 bin*
-Assets/Icon*
-Ffmpeg/
+*/Assets/Icon*
+*/Ffmpeg/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
