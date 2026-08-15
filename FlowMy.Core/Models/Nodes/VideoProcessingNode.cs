@@ -281,9 +281,20 @@ namespace FlowMy.Models.Nodes
         private double _audioSpeedFactor = 1.0;
         private string _audioEqPreset = "neutral";
         private double _audioBassGain;
+        private double _audioMidGain;
         private double _audioTrebleGain;
         private bool _audioHighpassFilter;
+        private double _audioHighpassCutoffHz = 80.0;
         private bool _audioLowpassFilter;
+        private double _audioLowpassCutoffHz = 12000.0;
+        private double _audioStereoWidthPercent = 100.0;
+        private double _audioWarmthPercent;
+        private double _audioReverbPercent;
+        private double _audioVocalBalance;
+        private double _audioPitchSemitones;
+        private double _audioCompressorPercent;
+        private double _audioDeEsserPercent;
+        private double _audioNoiseGatePercent;
         private double _audioTargetLufs = -14.0;
         private bool _audioTrimEnabled;
         private double _audioTrimStartSec;
@@ -814,6 +825,12 @@ namespace FlowMy.Models.Nodes
             set { if (Math.Abs(_audioBassGain - value) > 0.01) { _audioBassGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
         }
 
+        public double AudioMidGain
+        {
+            get => _audioMidGain;
+            set { if (Math.Abs(_audioMidGain - value) > 0.01) { _audioMidGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
+        }
+
         public double AudioTrebleGain
         {
             get => _audioTrebleGain;
@@ -826,10 +843,70 @@ namespace FlowMy.Models.Nodes
             set { if (_audioHighpassFilter != value) { _audioHighpassFilter = value; OnPropertyChanged(); } }
         }
 
+        public double AudioHighpassCutoffHz
+        {
+            get => _audioHighpassCutoffHz;
+            set { if (Math.Abs(_audioHighpassCutoffHz - value) > 0.1) { _audioHighpassCutoffHz = Math.Clamp(value, 20.0, 500.0); OnPropertyChanged(); } }
+        }
+
         public bool AudioLowpassFilter
         {
             get => _audioLowpassFilter;
             set { if (_audioLowpassFilter != value) { _audioLowpassFilter = value; OnPropertyChanged(); } }
+        }
+
+        public double AudioLowpassCutoffHz
+        {
+            get => _audioLowpassCutoffHz;
+            set { if (Math.Abs(_audioLowpassCutoffHz - value) > 1.0) { _audioLowpassCutoffHz = Math.Clamp(value, 2000.0, 20000.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioStereoWidthPercent
+        {
+            get => _audioStereoWidthPercent;
+            set { if (Math.Abs(_audioStereoWidthPercent - value) > 0.1) { _audioStereoWidthPercent = Math.Clamp(value, 0.0, 200.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioWarmthPercent
+        {
+            get => _audioWarmthPercent;
+            set { if (Math.Abs(_audioWarmthPercent - value) > 0.1) { _audioWarmthPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioReverbPercent
+        {
+            get => _audioReverbPercent;
+            set { if (Math.Abs(_audioReverbPercent - value) > 0.1) { _audioReverbPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioVocalBalance
+        {
+            get => _audioVocalBalance;
+            set { if (Math.Abs(_audioVocalBalance - value) > 0.1) { _audioVocalBalance = Math.Clamp(value, -100.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioPitchSemitones
+        {
+            get => _audioPitchSemitones;
+            set { if (Math.Abs(_audioPitchSemitones - value) > 0.1) { _audioPitchSemitones = Math.Clamp(value, -12.0, 12.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioCompressorPercent
+        {
+            get => _audioCompressorPercent;
+            set { if (Math.Abs(_audioCompressorPercent - value) > 0.1) { _audioCompressorPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioDeEsserPercent
+        {
+            get => _audioDeEsserPercent;
+            set { if (Math.Abs(_audioDeEsserPercent - value) > 0.1) { _audioDeEsserPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioNoiseGatePercent
+        {
+            get => _audioNoiseGatePercent;
+            set { if (Math.Abs(_audioNoiseGatePercent - value) > 0.1) { _audioNoiseGatePercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
         }
 
         public double AudioTargetLufs

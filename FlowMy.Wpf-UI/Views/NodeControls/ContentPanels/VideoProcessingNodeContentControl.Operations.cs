@@ -1821,20 +1821,14 @@ namespace FlowMy.Views.NodeControls
         {
             try
             {
-                if (_isDspAudioPreviewActive && _audioDspPlayer != null)
+                if (_realTimeAudioEngine != null && _realTimeAudioEngine.IsLoaded)
                 {
                     if (PreviewMedia != null)
                     {
                         PreviewMedia.IsMuted = true;
                         PreviewMedia.Volume = 0;
                     }
-                    var masterVol = Math.Clamp(_node.PreviewVolume, 0.0, 1.0);
-                    var sourceVolFactor = Math.Clamp(_node.SourceAudioVolumePercent / 100.0, 0.0, 3.0);
-                    _audioDspPlayer.Volume = Math.Clamp(masterVol * sourceVolFactor, 0.0, 1.0);
-                    if (_node.AudioSpeedFactor >= 0.1 && _node.AudioSpeedFactor <= 4.0)
-                    {
-                        _audioDspPlayer.SpeedRatio = _node.AudioSpeedFactor;
-                    }
+                    _realTimeAudioEngine.ApplyParameters(_node, _node.PreviewVolume, _isDspAudioPreviewActive);
                 }
                 else if (PreviewMedia != null)
                 {
@@ -1860,39 +1854,79 @@ namespace FlowMy.Views.NodeControls
             catch { /* best effort */ }
         }
 
+        public void ClampAndSyncTrimRangesToVideoDuration(double totalDuration)
+        {
+            if (totalDuration <= 0.05) return;
+
+            // 1. Clamp Audio Trim to natural video duration
+            if (_node.AudioTrimEndSec > totalDuration || _node.AudioTrimEndSec <= 0 || _node.AudioTrimStartSec >= totalDuration)
+            {
+                _node.AudioTrimStartSec = Math.Clamp(_node.AudioTrimStartSec, 0, Math.Max(0, totalDuration - 0.1));
+                if (_node.AudioTrimEndSec > totalDuration || _node.AudioTrimEndSec <= _node.AudioTrimStartSec)
+                {
+                    _node.AudioTrimEndSec = totalDuration;
+                }
+            }
+
+            // 2. Clamp Video Trim to natural video duration
+            if (_node.TrimEndSec > totalDuration || _node.TrimEndSec <= 0 || _node.TrimStartSec >= totalDuration)
+            {
+                _node.TrimStartSec = Math.Clamp(_node.TrimStartSec, 0, Math.Max(0, totalDuration - 0.1));
+                if (_node.TrimEndSec > totalDuration || _node.TrimEndSec <= _node.TrimStartSec)
+                {
+                    _node.TrimEndSec = totalDuration;
+                }
+            }
+        }
+
         public void ResetAudioTabToDefaults()
         {
+            var totalDur = GetNaturalDurationSeconds();
             _node.SourceAudioEnabled = true;
             _node.SourceAudioVolumePercent = 100.0;
             _node.AudioSpeedFactor = 1.0;
             _node.AudioTrimEnabled = false;
             _node.AudioTrimStartSec = 0.0;
-            _node.AudioTrimEndSec = 0.0;
+            _node.AudioTrimEndSec = totalDur > 0 ? totalDur : 0.0;
             _node.AudioEqPreset = "neutral";
             _node.AudioBassGain = 0.0;
+            _node.AudioMidGain = 0.0;
             _node.AudioTrebleGain = 0.0;
+            _node.AudioStereoWidthPercent = 100.0;
+            _node.AudioWarmthPercent = 0.0;
+            _node.AudioReverbPercent = 0.0;
+            _node.AudioVocalBalance = 0.0;
+            _node.AudioPitchSemitones = 0.0;
+            _node.AudioCompressorPercent = 0.0;
+            _node.AudioDeEsserPercent = 0.0;
+            _node.AudioNoiseGatePercent = 0.0;
             _node.AudioFadeInSec = 0.0;
             _node.AudioFadeOutSec = 0.0;
             _node.AudioNormalizeEnabled = false;
             _node.AudioTargetLufs = -14.0;
             _node.AudioDenoiseEnabled = false;
             _node.AudioHighpassFilter = false;
+            _node.AudioHighpassCutoffHz = 80.0;
             _node.AudioLowpassFilter = false;
+            _node.AudioLowpassCutoffHz = 12000.0;
             _node.AudioExportFormat = "mp3";
             _node.AudioExportBitrate = "320k";
             _node.AudioExportSampleRate = "48000";
             _node.AudioExportChannels = "stereo";
             _node.AudioTracks.Clear();
 
+            SyncAudioTabFromModel();
             SyncControlValuesFromModel();
-            AppendLog("🔄 Đã đặt lại cài đặt âm thanh về mặc định.");
+            OnDspFilterParameterChanged();
+            AppendLog("🔄 Đã đặt lại toàn bộ cài đặt âm thanh về mặc định.");
         }
 
         public void ResetTrimConcatTabToDefaults()
         {
+            var totalDur = GetNaturalDurationSeconds();
             _node.TrimEnabled = false;
             _node.TrimStartSec = 0;
-            _node.TrimEndSec = 0;
+            _node.TrimEndSec = totalDur > 0 ? totalDur : 0;
             _node.ConcatEnabled = false;
             _node.ConcatVideos.Clear();
 

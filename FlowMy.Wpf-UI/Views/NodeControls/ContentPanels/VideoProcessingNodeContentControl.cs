@@ -87,6 +87,7 @@ namespace FlowMy.Views.NodeControls
         private bool _subscriptionsAttached;
         private bool _isProgressDragging;
         private bool _isPlaying;
+        private bool _isVideoLooping;
         private bool _isMuted;
         private bool _suppressControlSync;
         private double _frameResizeScale = 1.0;
@@ -409,6 +410,8 @@ namespace FlowMy.Views.NodeControls
             _timelineTimer.Stop();
             _beforeAfterFlickerTimer.Stop();
             PreviewMedia.Stop();
+            _realTimeAudioEngine?.Dispose();
+            _realTimeAudioEngine = null;
             _subscriptionsAttached = false;
         }
 

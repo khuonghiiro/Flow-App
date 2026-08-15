@@ -49,6 +49,11 @@ namespace FlowMy.Views.NodeControls
                 if (dlg.ShowDialog() == true)
                 {
                     StopComparePreviewMode();
+                    _node.AudioTrimStartSec = 0;
+                    _node.AudioTrimEndSec = 0;
+                    _node.TrimStartSec = 0;
+                    _node.TrimEndSec = 0;
+                    _node.ExcludedFrameTimestamps.Clear();
                     _node.VideoPath = dlg.FileName;
                     _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
                 }
@@ -371,6 +376,9 @@ namespace FlowMy.Views.NodeControls
             if (string.IsNullOrWhiteSpace(path))
             {
                 PreviewMedia.Stop();
+                _realTimeAudioEngine?.Stop();
+                _realTimeAudioEngine?.Dispose();
+                _realTimeAudioEngine = null;
                 PreviewMedia.Source = null;
                 PreviewMedia.Visibility = Visibility.Collapsed;
                 PreviewPlaceholder.Visibility = Visibility.Visible;
@@ -386,6 +394,9 @@ namespace FlowMy.Views.NodeControls
             try
             {
                 PreviewMedia.Stop();
+                _realTimeAudioEngine?.Stop();
+                _realTimeAudioEngine?.Dispose();
+                _realTimeAudioEngine = null;
                 PreviewMedia.Source = null;
                 _timelineTimer.Stop();
                 _isPlaying = false;
@@ -399,11 +410,18 @@ namespace FlowMy.Views.NodeControls
                 LiveDot.Visibility = Visibility.Collapsed;
                 AspectAuto.IsChecked = true;
                 SetAspectRatio(0, 0, true);
+                if (_isDspAudioPreviewActive)
+                {
+                    EnsureRealTimeAudioEngineLoaded();
+                }
             }
             catch (Exception ex)
             {
                 AppendLog($"Preview error: {ex.Message}");
                 PreviewMedia.Stop();
+                _realTimeAudioEngine?.Stop();
+                _realTimeAudioEngine?.Dispose();
+                _realTimeAudioEngine = null;
                 PreviewMedia.Source = null;
                 PreviewMedia.Visibility = Visibility.Collapsed;
                 PreviewPlaceholder.Visibility = Visibility.Visible;
@@ -932,17 +950,30 @@ namespace FlowMy.Views.NodeControls
             if (_isPlaying)
             {
                 PreviewMedia.Pause();
-                _audioDspPlayer?.Pause();
+                _realTimeAudioEngine?.Pause();
                 _isPlaying = false;
                 LiveDot.Visibility = Visibility.Collapsed;
             }
             else
             {
-                if (_isDspAudioPreviewActive && _audioDspPlayer != null)
+                var dur = GetNaturalDurationSeconds();
+                if (dur > 0 && PreviewMedia.Position.TotalSeconds >= (dur - 0.25))
+                {
+                    PreviewMedia.Position = TimeSpan.Zero;
+                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
+                }
+
+                EnsureRealTimeAudioEngineLoaded();
+                if (_realTimeAudioEngine != null && _realTimeAudioEngine.IsLoaded)
                 {
                     PreviewMedia.IsMuted = true;
-                    _audioDspPlayer.Position = PreviewMedia.Position;
-                    _audioDspPlayer.Play();
+                    _realTimeAudioEngine.Seek(PreviewMedia.Position);
+                    _realTimeAudioEngine.ApplyParameters(_node, _node.PreviewVolume, _isDspAudioPreviewActive);
+                    _realTimeAudioEngine.Play();
+                }
+                else
+                {
+                    UpdatePreviewAudioVolume();
                 }
                 PreviewMedia.Play();
                 _isPlaying = true;
@@ -955,7 +986,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (PreviewMedia.Source == null) return;
             PreviewMedia.Stop();
-            _audioDspPlayer?.Stop();
+            _realTimeAudioEngine?.Stop();
             PreviewMedia.Position = TimeSpan.Zero;
             _isPlaying = false;
             LiveDot.Visibility = Visibility.Collapsed;
@@ -970,10 +1001,7 @@ namespace FlowMy.Views.NodeControls
             if (target < TimeSpan.Zero) target = TimeSpan.Zero;
             if (target > duration) target = duration;
             PreviewMedia.Position = target;
-            if (_isDspAudioPreviewActive && _audioDspPlayer != null)
-            {
-                _audioDspPlayer.Position = target;
-            }
+            _realTimeAudioEngine?.Seek(target);
             UpdatePlaybackUi();
         }
 
@@ -993,10 +1021,7 @@ namespace FlowMy.Views.NodeControls
             _lastSeekTargetSeconds = targetSec;
             _isSeekLatencyPending = true;
             PreviewMedia.Position = TimeSpan.FromSeconds(targetSec);
-            if (_isDspAudioPreviewActive && _audioDspPlayer != null)
-            {
-                _audioDspPlayer.Position = TimeSpan.FromSeconds(targetSec);
-            }
+            _realTimeAudioEngine?.Seek(TimeSpan.FromSeconds(targetSec));
         }
 
         private void UpdateProgressVisualByRatio(double ratio)
@@ -1314,20 +1339,49 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
-            // Stop if previewing trimmed audio segment
+            // Stop if previewing trimmed audio segment (with grace period to avoid seek race conditions)
             if (_isPlaying && _isAudioTrimPreviewing && _node.AudioTrimEndSec > _node.AudioTrimStartSec)
             {
-                if (PreviewMedia.Position.TotalSeconds >= _node.AudioTrimEndSec)
+                var curPos = PreviewMedia.Position.TotalSeconds;
+                var elapsedMs = (DateTime.UtcNow - _audioTrimPreviewStartTime).TotalMilliseconds;
+                if (elapsedMs > 250 && curPos >= (_node.AudioTrimEndSec - 0.05) && curPos > (_node.AudioTrimStartSec + 0.05))
                 {
                     PreviewMedia.Pause();
+                    _realTimeAudioEngine?.Pause();
                     _isPlaying = false;
                     _isAudioTrimPreviewing = false;
+                    var startPos = TimeSpan.FromSeconds(Math.Max(0, _node.AudioTrimStartSec));
+                    PreviewMedia.Position = startPos;
+                    _realTimeAudioEngine?.Seek(startPos);
                     if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
+                    UpdatePlaybackUi();
                 }
             }
 
+            // Check if video reached end during continuous playback
             var duration = TimeSpan.FromSeconds(GetNaturalDurationSeconds());
             var position = PreviewMedia.Position;
+            if (_isPlaying && duration.TotalSeconds > 0.4 && position.TotalSeconds >= (duration.TotalSeconds - 0.12))
+            {
+                if (_isVideoLooping)
+                {
+                    PreviewMedia.Position = TimeSpan.Zero;
+                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
+                    _realTimeAudioEngine?.Play();
+                    position = TimeSpan.Zero;
+                }
+                else
+                {
+                    PreviewMedia.Stop();
+                    PreviewMedia.Position = TimeSpan.Zero;
+                    _isPlaying = false;
+                    _realTimeAudioEngine?.Stop();
+                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
+                    if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
+                    position = TimeSpan.Zero;
+                }
+            }
+
             var ratio = duration.TotalSeconds > 0 ? Math.Clamp(position.TotalSeconds / duration.TotalSeconds, 0, 1) : 0;
             if (_isProgressDragging && _pendingSeekRatio >= 0)
             {

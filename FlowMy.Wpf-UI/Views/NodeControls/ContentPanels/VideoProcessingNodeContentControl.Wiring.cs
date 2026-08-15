@@ -438,8 +438,21 @@ namespace FlowMy.Views.NodeControls
                     PreviewMedia.Position = TimeSpan.Zero;
                 }
                 _isPlaying = false;
-                LiveDot.Visibility = Visibility.Collapsed;
+                _isAudioTrimPreviewing = false;
+                if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
+
+                var naturalDuration = GetNaturalDurationSeconds();
+                if (naturalDuration > 0.05)
+                {
+                    ClampAndSyncTrimRangesToVideoDuration(naturalDuration);
+                    EnsureRealTimeAudioEngineLoaded();
+                    _realTimeAudioEngine?.LoadMedia(_node.VideoPath, naturalDuration);
+                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
+                }
+
                 _timelineTimer.Start();
+                SyncAudioTabFromModel();
+                SyncControlValuesFromModel();
                 UpdatePlaybackUi();
                 ApplyPreviewColorTransform();
                 EmitAutoFitSizeSuggestion();
@@ -452,11 +465,36 @@ namespace FlowMy.Views.NodeControls
             };
             PreviewMedia.MediaEnded += (_, _) =>
             {
-                _isPlaying = false;
-                LiveDot.Visibility = Visibility.Collapsed;
-                PreviewMedia.Position = TimeSpan.Zero;
+                if (_isVideoLooping)
+                {
+                    PreviewMedia.Position = TimeSpan.Zero;
+                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
+                    PreviewMedia.Play();
+                    _realTimeAudioEngine?.Play();
+                    _isPlaying = true;
+                    if (LiveDot != null) LiveDot.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    PreviewMedia.Stop();
+                    PreviewMedia.Position = TimeSpan.Zero;
+                    _isPlaying = false;
+                    if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
+                    _realTimeAudioEngine?.Stop();
+                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
+                }
                 UpdatePlaybackUi();
             };
+
+            if (VideoLoopToggle != null)
+            {
+                VideoLoopToggle.Click += (_, _) =>
+                {
+                    _isVideoLooping = !_isVideoLooping;
+                    UpdateVideoLoopButtonUi();
+                };
+                UpdateVideoLoopButtonUi();
+            }
 
             PlayPauseButton.Click += (_, _) => TogglePlayPause();
             StopButton.Click += (_, _) => StopPlayback();
@@ -977,5 +1015,16 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private void UpdateVideoLoopButtonUi()
+        {
+            if (VideoLoopToggle == null) return;
+            if (VideoLoopIcon != null)
+            {
+                VideoLoopIcon.Fill = _isVideoLooping
+                    ? (System.Windows.Media.Brush)FindResource("ThemeAccentBrush")
+                    : (System.Windows.Media.Brush)FindResource("ThemeTextPrimaryBrush");
+            }
+            VideoLoopToggle.ToolTip = _isVideoLooping ? "Lặp lại video: ĐANG BẬT" : "Lặp lại video: ĐANG TẮT";
+        }
     }
 }

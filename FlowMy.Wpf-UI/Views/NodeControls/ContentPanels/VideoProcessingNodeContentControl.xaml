@@ -460,6 +460,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="4"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="70"/>
@@ -496,14 +498,22 @@
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='film-canister regular'}"/>
                                     </Button>
-                                    <Button x:Name="MuteButton" Grid.Column="10" Width="30" Height="30" Padding="0" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
+                                    <!-- Video Loop Toggle -->
+                                    <Button x:Name="VideoLoopToggle" Grid.Column="10" Width="30" Height="30" Padding="0"
+                                                  Style="{StaticResource IconButtonStyle}"
+                                                  ToolTip="Lặp lại video khi hết thời lượng (Bật/Tắt lặp)">
+                                        <controls:SvgViewboxEx x:Name="VideoLoopIcon" Width="14" Height="14"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='repeat regular'}"/>
+                                    </Button>
+                                    <Button x:Name="MuteButton" Grid.Column="12" Width="30" Height="30" Padding="0" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
                                         <controls:SvgViewboxEx Width="14" Height="14"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='volume-high duotone-light'}"/>
                                     </Button>
-                                    <Slider x:Name="VolumeSlider" Grid.Column="11" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="2,0" Style="{StaticResource ModernSliderStyle}"/>
+                                    <Slider x:Name="VolumeSlider" Grid.Column="13" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="2,0" Style="{StaticResource ModernSliderStyle}"/>
                                     <!-- Player Speed Dropdown (Synchronized with AudioSpeedSlider) -->
-                                    <ComboBox x:Name="PlayerSpeedCombo" Grid.Column="13" Height="26" Width="65" FontSize="10.5" Style="{StaticResource DarkComboBoxStyle}" VerticalAlignment="Center" ToolTip="Tốc độ phát Video &amp; Audio">
+                                    <ComboBox x:Name="PlayerSpeedCombo" Grid.Column="15" Height="26" Width="65" FontSize="10.5" Style="{StaticResource DarkComboBoxStyle}" VerticalAlignment="Center" ToolTip="Tốc độ phát Video &amp; Audio">
                                         <ComboBoxItem Content="0.5x" Tag="0.5"/>
                                         <ComboBoxItem Content="0.75x" Tag="0.75"/>
                                         <ComboBoxItem Content="1.0x" Tag="1.0" IsSelected="True"/>
@@ -1799,41 +1809,229 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Card 2: Cân bằng Âm sắc & Hiệu ứng (EQ, Tone & Effects) -->
+                                <!-- Card 2: Cân bằng Âm sắc & EQ (Equalizer & Frequency Cutoffs) -->
                                 <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="12,10">
                                     <StackPanel>
-                                        <TextBlock Text="Cân bằng Âm sắc &amp; Hiệu ứng (EQ &amp; Enhancement)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" Margin="0,0,0,8"/>
+                                        <Grid Margin="0,0,0,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <controls:SvgViewboxEx Width="13" Height="13" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='sliders duotone-light'}"/>
+                                                <TextBlock Text="Cân bằng Âm sắc (3-Band EQ &amp; Cutoffs)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
                                         
                                         <!-- Presets WrapPanel -->
-                                        <TextBlock Text="Preset âm thanh:" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,4"/>
                                         <WrapPanel Margin="0,0,0,8">
-                                            <Button x:Name="PresetAudioNeutralButton" Content="Mặc định" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                            <Button x:Name="PresetAudioNeutralButton" Content="⚡ Mặc định" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
                                             <Button x:Name="PresetAudioVocalButton" Content="🎙️ Rõ tiếng nói" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
                                             <Button x:Name="PresetAudioBassButton" Content="🔊 Tăng Bass" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
                                             <Button x:Name="PresetAudioTrebleButton" Content="✨ Tăng Treble" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                            <Button x:Name="PresetAudioPodcastButton" Content="🎧 Podcast Studio" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                            <Button x:Name="PresetAudioPodcastButton" Content="🎧 Podcast" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
                                         </WrapPanel>
 
-                                        <!-- Bass & Treble Gain Sliders -->
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <!-- 3-Band Parametric Equalizer: Bass, Mid, Treble -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Bass Gain (Âm trầm)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Bass (100Hz)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
                                                 <Grid>
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
                                                     <Slider x:Name="AudioBassGainSlider" Minimum="-15" Maximum="15" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
-                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="4,0,0,0">
-                                                        <TextBlock x:Name="AudioBassGainLabel" FontSize="10" FontFamily="Consolas" HorizontalAlignment="Center" Text="0dB"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioBassGainLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0dB"/>
                                                     </Border>
                                                 </Grid>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Treble Gain (Âm cao)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Mid / Vocal (1.5k)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioMidGainSlider" Minimum="-15" Maximum="15" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioMidGainLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0dB"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Text="Treble (5kHz)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioTrebleGainSlider" Minimum="-15" Maximum="15" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioTrebleGainLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0dB"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Dynamic Frequency Cutoffs: Highpass & Lowpass Cutoff Sliders -->
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="10"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <CheckBox x:Name="AudioHighpassCheckBox" Content="Lọc ù gió (High-Pass)" FontSize="9.5" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Bật bộ lọc cắt tần số thấp"/>
+                                                </StackPanel>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
-                                                    <Slider x:Name="AudioTrebleGainSlider" Minimum="-15" Maximum="15" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
+                                                    <Slider x:Name="AudioHighpassCutoffSlider" Minimum="20" Maximum="400" Value="80" TickFrequency="10" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
                                                     <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="4,0,0,0">
-                                                        <TextBlock x:Name="AudioTrebleGainLabel" FontSize="10" FontFamily="Consolas" HorizontalAlignment="Center" Text="0dB"/>
+                                                        <TextBlock x:Name="AudioHighpassCutoffLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="80Hz"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <CheckBox x:Name="AudioLowpassCheckBox" Content="Lọc chói (Low-Pass)" FontSize="9.5" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Bật bộ lọc cắt tần số cao"/>
+                                                </StackPanel>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioLowpassCutoffSlider" Minimum="2000" Maximum="20000" Value="12000" TickFrequency="500" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="4,0,0,0">
+                                                        <TextBlock x:Name="AudioLowpassCutoffLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="12.0kHz"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 3: Giọng Nói, Pitch & Không Gian (Vocal, Pitch & Space FX) -->
+                                <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="12,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <controls:SvgViewboxEx Width="13" Height="13" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='microphone duotone-light'}"/>
+                                                <TextBlock Text="Giọng Nói &amp; Không Gian Studio (Vocal &amp; Space FX)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Pitch Shifting & Vocal Balance -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="10"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="🎵 Cao độ / Tone giọng (Pitch Shift)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="54"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioPitchSlider" Minimum="-12" Maximum="12" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Dịch chuyển cao độ giọng nói (-12st giọng trầm ↔ +12st giọng cao) không làm đổi tốc độ"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioPitchLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="0 st"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="🎙️ Tách Giọng nói / Nhạc nền" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="70"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioVocalBalanceSlider" Minimum="-100" Maximum="100" Value="0" TickFrequency="10" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Kéo trái: Khử lời lấy nhạc nền (Karaoke) | Kéo phải: Tách riêng giọng nói"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioVocalBalanceLabel" FontSize="8.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="Gốc (0%)"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Studio Enhancements: Stereo Width, Analog Warmth, Studio Reverb -->
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Độ rộng Stereo" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioStereoWidthSlider" Minimum="0" Maximum="200" Value="100" TickFrequency="10" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="0% = Mono, 100% = Chuẩn, 200% = Siêu rộng"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioStereoWidthLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="100%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Độ ấm Analog" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioWarmthSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Độ ấm bão hòa âm thanh analog (Tube Saturation)"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioWarmthLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Text="Vang (Reverb)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioReverbSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Hiệu ứng không gian phòng thu (Studio Room Ambience)"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioReverbLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 4: Động Học, Tạp Âm & Âm Lượng (Dynamics, Denoise & Loudness) -->
+                                <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="12,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <controls:SvgViewboxEx Width="13" Height="13" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='waveform-path duotone-light'}"/>
+                                                <TextBlock Text="Động Học, Khử Tạp Âm &amp; Chuẩn Hóa (Dynamics &amp; Noise Control)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Voice Compressor, De-Esser, Noise Gate in a 3-column row -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Nén giọng (Compressor)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioCompressorSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Làm dày giọng nói, cân bằng câu nói to/nhỏ đều tiếng"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioCompressorLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Khử âm xì (De-Esser)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioDeEsserSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Khử âm xì xào, chói tai của các âm 's', 'x', 'ch'"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioDeEsserLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Text="Cổng ồn (Noise Gate)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioNoiseGateSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Tự động ngắt tiếng thở, tiếng quạt nền khi ngừng nói"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="2,0,0,0">
+                                                        <TextBlock x:Name="AudioNoiseGateLabel" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
                                                     </Border>
                                                 </Grid>
                                             </StackPanel>
@@ -1847,50 +2045,46 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Fade In (Giây)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Fade In (Giây)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
                                                     <Slider x:Name="AudioFadeInSlider" Minimum="0" Maximum="10" Value="0" TickFrequency="0.5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
                                                     <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="4,0,0,0">
-                                                        <TextBlock x:Name="AudioFadeInLabel" FontSize="10" FontFamily="Consolas" HorizontalAlignment="Center" Text="0s"/>
+                                                        <TextBlock x:Name="AudioFadeInLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0s"/>
                                                     </Border>
                                                 </Grid>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Fade Out (Giây)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Fade Out (Giây)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
                                                     <Slider x:Name="AudioFadeOutSlider" Minimum="0" Maximum="10" Value="0" TickFrequency="0.5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center"/>
                                                     <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="4,0,0,0">
-                                                        <TextBlock x:Name="AudioFadeOutLabel" FontSize="10" FontFamily="Consolas" HorizontalAlignment="Center" Text="0s"/>
+                                                        <TextBlock x:Name="AudioFadeOutLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0s"/>
                                                     </Border>
                                                 </Grid>
                                             </StackPanel>
                                         </Grid>
 
-                                        <!-- Loudness Normalize & LUFS Standard -->
-                                        <Grid Margin="0,4,0,6">
+                                        <!-- Loudness Normalize, LUFS & Denoise -->
+                                        <Grid Margin="0,2,0,8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="140"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <CheckBox x:Name="AudioNormalizeCheckBox" Content="Chuẩn hóa âm lượng (EBU R128 Loudnorm)" FontSize="11" Style="{StaticResource ReadableCheckBoxStyle}" VerticalAlignment="Center" ToolTip="Chuẩn hóa âm lượng video đạt mức tiêu chuẩn phát sóng (chống tiếng quá to hoặc quá nhỏ)"/>
-                                            <ComboBox x:Name="AudioTargetLufsCombo" Grid.Column="1" Height="26" FontSize="10.5" Style="{StaticResource DarkComboBoxStyle}" VerticalAlignment="Center" ToolTip="Mức âm lượng LUFS mục tiêu">
-                                                <ComboBoxItem Content="-14 LUFS (Reels/YT)" Tag="-14" IsSelected="True"/>
+                                            <CheckBox x:Name="AudioNormalizeCheckBox" Content="Chuẩn hóa âm lượng (Loudnorm)" FontSize="10" Style="{StaticResource ReadableCheckBoxStyle}" VerticalAlignment="Center" ToolTip="Chuẩn hóa âm lượng video đạt mức tiêu chuẩn phát sóng"/>
+                                            <ComboBox x:Name="AudioTargetLufsCombo" Grid.Column="1" Height="26" FontSize="10" Style="{StaticResource DarkComboBoxStyle}" VerticalAlignment="Center" ToolTip="Mức âm lượng LUFS mục tiêu">
+                                                <ComboBoxItem Content="-14 LUFS (YT/Reels)" Tag="-14" IsSelected="True"/>
                                                 <ComboBoxItem Content="-16 LUFS (Podcast)" Tag="-16"/>
                                                 <ComboBoxItem Content="-23 LUFS (TV/Broad)" Tag="-23"/>
                                             </ComboBox>
+                                            <CheckBox x:Name="AudioDenoiseCheckBox" Grid.Column="3" Content="Khử nhiễu nền" FontSize="10" Style="{StaticResource ReadableCheckBoxStyle}" VerticalAlignment="Center" ToolTip="Tự động loại bỏ tiếng ồn nền, tiếng xè xè trong video"/>
                                         </Grid>
 
-                                        <!-- Filters: Denoise, Highpass, Lowpass -->
-                                        <WrapPanel Margin="0,2,0,8">
-                                            <CheckBox x:Name="AudioDenoiseCheckBox" Content="Khử nhiễu nền (Denoise)" FontSize="11" Margin="0,0,14,4" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Tự động loại bỏ tiếng ồn nền, tiếng xè xè hoặc tạp âm dải tần xấu trong video"/>
-                                            <CheckBox x:Name="AudioHighpassCheckBox" Content="Lọc ù gió (High-pass 80Hz)" FontSize="11" Margin="0,0,14,4" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Loại bỏ dải tần số cực thấp dưới 80Hz (tiếng quạt, tiếng gió thổi, rung mic)"/>
-                                            <CheckBox x:Name="AudioLowpassCheckBox" Content="Lọc chói (Low-pass 12kHz)" FontSize="11" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Loại bỏ dải tần số cực cao trên 12kHz (tiếng xè rít chói tai)"/>
-                                        </WrapPanel>
-
                                         <!-- Audio DSP Real-Time Live Preview Bar -->
-                                        <Border Margin="0,4,0,0" Padding="10,8" Background="{DynamicResource ThemeBackgroundMutedBrush}" CornerRadius="8" BorderBrush="{DynamicResource ThemeAccentBrush}" BorderThickness="1">
+                                        <Border Margin="0,2,0,0" Padding="10,8" Background="{DynamicResource ThemeBackgroundMutedBrush}" CornerRadius="8" BorderBrush="{DynamicResource ThemeAccentBrush}" BorderThickness="1">
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto"/>
@@ -1898,8 +2092,8 @@
                                                 </Grid.RowDefinitions>
                                                 <Grid Margin="0,0,0,6">
                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='headphones duotone-light'}"/>
-                                                        <TextBlock Text="Nghe thử Bộ lọc Âm thanh (DSP Live Preview)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                        <controls:SvgViewboxEx Width="13" Height="13" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='headphones duotone-light'}"/>
+                                                        <TextBlock Text="Nghe thử Bộ lọc Âm thanh (Live DSP Preview)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                     <TextBlock x:Name="AudioDspStatusText" Text="🔊 Đang nghe audio gốc" FontSize="9.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                                 </Grid>
@@ -1908,8 +2102,6 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="6"/>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="6"/>
-                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <ToggleButton x:Name="ToggleDspAudioPreviewButton" Grid.Column="0" Height="28" Style="{StaticResource ToggleSwitchStyle}" ToolTip="Bật để video phát kèm bộ lọc EQ/Khử nhiễu/Loudnorm trong thời gian thực">
                                                         <TextBlock Text="🎧 Nghe thử DSP" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"/>
@@ -1918,12 +2110,6 @@
                                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                             <controls:SvgViewboxEx Width="12" Height="12" Margin="0,0,4,0" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt duotone-light'}"/>
                                                             <TextBlock Text="⚡ Nghe nhanh 15s" FontSize="10.5" FontWeight="SemiBold"/>
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Visibility="Collapsed" x:Name="LaunchFfplayAudioButton" Grid.Column="4" Height="28" Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Mở phát trực tiếp toàn bộ Filter Audio/Video qua cửa sổ FFplay chuyên dụng (GPU Hardware Accelerated)">
-                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                            <controls:SvgViewboxEx Width="12" Height="12" Margin="0,0,4,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play-circle duotone-light'}"/>
-                                                            <TextBlock Text="🎬 FFplay" FontSize="10.5" FontWeight="SemiBold"/>
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
