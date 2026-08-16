@@ -14,6 +14,9 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class VideoProcessingNodeContentControl
     {
+        private SubtitleItem? _cachedActiveSubtitle;
+        private string? _cachedActiveSubtitleText;
+
         public void InitializeSubtitleUiEvents()
         {
             if (_node == null) return;
@@ -36,37 +39,73 @@ namespace FlowMy.Views.NodeControls
             ShiftSubtitlesMinus1sButton.Click += (s, e) => ShiftSubtitlesTimeOffset(-1.0);
             ShiftSubtitlesPlus1sButton.Click += (s, e) => ShiftSubtitlesTimeOffset(1.0);
 
-            // Style Preset Buttons
+            // Style Presets
             SubPresetTikTokButton.Click += (s, e) => ApplySubtitlePreset("TikTokViral");
             SubPresetNetflixButton.Click += (s, e) => ApplySubtitlePreset("Netflix");
             SubPresetMinimalButton.Click += (s, e) => ApplySubtitlePreset("MinimalClean");
             SubPresetGamingButton.Click += (s, e) => ApplySubtitlePreset("GamingRgb");
             SubPresetNewsButton.Click += (s, e) => ApplySubtitlePreset("NewsBanner");
 
+            // Color Pickers
+            PickSubTextColorButton.Click += (s, e) => PickColorForSubtitleText();
+            PickSubOutlineColorButton.Click += (s, e) => PickColorForSubtitleOutline();
+
+            // Slider Wire-ups
+            SubOffsetXSlider.ValueChanged += (s, e) =>
+            {
+                SubOffsetXLabel.Text = $"{(int)SubOffsetXSlider.Value} px";
+                OnSubtitleStyleChanged();
+            };
+            SubOffsetYSlider.ValueChanged += (s, e) =>
+            {
+                SubOffsetYLabel.Text = $"{(int)SubOffsetYSlider.Value} px";
+                OnSubtitleStyleChanged();
+            };
+            SubBottomMarginSlider.ValueChanged += (s, e) =>
+            {
+                SubBottomMarginLabel.Text = $"{(int)SubBottomMarginSlider.Value} px";
+                OnSubtitleStyleChanged();
+            };
+
             // Style Inputs Wire-up
-            SubtitleEnabledToggle.Checked += (s, e) => SyncSubtitleStyleToNode();
-            SubtitleEnabledToggle.Unchecked += (s, e) => SyncSubtitleStyleToNode();
-            SubFontFamilyCombo.SelectionChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubFontSizeBox.TextChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubBoldToggle.Checked += (s, e) => SyncSubtitleStyleToNode();
-            SubBoldToggle.Unchecked += (s, e) => SyncSubtitleStyleToNode();
-            SubItalicToggle.Checked += (s, e) => SyncSubtitleStyleToNode();
-            SubItalicToggle.Unchecked += (s, e) => SyncSubtitleStyleToNode();
-            SubTextColorBox.TextChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubOutlineColorBox.TextChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubOutlineThicknessBox.TextChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubAlignmentCombo.SelectionChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubBackgroundBoxCombo.SelectionChanged += (s, e) => SyncSubtitleStyleToNode();
-            SubBurnInCombo.SelectionChanged += (s, e) => SyncSubtitleStyleToNode();
+            SubtitleEnabledToggle.Checked += (s, e) => OnSubtitleStyleChanged();
+            SubtitleEnabledToggle.Unchecked += (s, e) => OnSubtitleStyleChanged();
+            SubFontFamilyCombo.SelectionChanged += (s, e) => OnSubtitleStyleChanged();
+            SubFontSizeBox.TextChanged += (s, e) => OnSubtitleStyleChanged();
+            SubBoldToggle.Checked += (s, e) => OnSubtitleStyleChanged();
+            SubBoldToggle.Unchecked += (s, e) => OnSubtitleStyleChanged();
+            SubItalicToggle.Checked += (s, e) => OnSubtitleStyleChanged();
+            SubItalicToggle.Unchecked += (s, e) => OnSubtitleStyleChanged();
+            SubTextColorBox.TextChanged += (s, e) => { UpdateColorPreviewBoxes(); OnSubtitleStyleChanged(); };
+            SubOutlineColorBox.TextChanged += (s, e) => { UpdateColorPreviewBoxes(); OnSubtitleStyleChanged(); };
+            SubOutlineThicknessBox.TextChanged += (s, e) => OnSubtitleStyleChanged();
+            SubAlignmentCombo.SelectionChanged += (s, e) => OnSubtitleStyleChanged();
+            SubBackgroundBoxCombo.SelectionChanged += (s, e) => OnSubtitleStyleChanged();
+            SubBurnInCombo.SelectionChanged += (s, e) => OnSubtitleStyleChanged();
+
+            // Auto-Wrap / Auto-Split Wire-up
+            SubAutoWrapToggle.Checked += (s, e) => OnSubtitleStyleChanged();
+            SubAutoWrapToggle.Unchecked += (s, e) => OnSubtitleStyleChanged();
+            SubMaxCharsBox.TextChanged += (s, e) => OnSubtitleStyleChanged();
+            AutoFitSubtitlesButton.Click += (s, e) => AutoSplitLongSubtitlesByVideoWidth();
 
             ApplySubtitlesToVideoPreviewButton.Click += (s, e) =>
             {
-                SyncSubtitleStyleToNode();
-                UpdateLiveSubtitleOverlay(_currentPlayheadSec);
-                AppendLog("✅ Đã áp dụng cập nhật phụ đề lên Video Preview.");
+                OnSubtitleStyleChanged();
+                AppendLog("✅ Đã áp dụng cập nhật cấu hình phụ đề lên Preview.");
             };
 
             ResetSubtitleSettingsButton.Click += (s, e) => ResetSubtitleSettings();
+            UpdateColorPreviewBoxes();
+            ApplySubtitleStylesToLiveOverlay();
+        }
+
+        private void OnSubtitleStyleChanged()
+        {
+            SyncSubtitleStyleToNode();
+            ApplySubtitleStylesToLiveOverlay();
+            _cachedActiveSubtitle = null;
+            UpdateLiveSubtitleOverlay(_currentPlayheadSec);
         }
 
         private void UpdateSubtitleBadge()
@@ -77,21 +116,38 @@ namespace FlowMy.Views.NodeControls
 
         public void UpdateLiveSubtitleOverlay(double currentSec)
         {
-            if (_node == null || _node.SubtitleStyle == null || !_node.SubtitleStyle.Enabled)
+            if (_node?.SubtitleStyle == null || !_node.SubtitleStyle.Enabled)
             {
-                SubtitleLiveOverlayBorder.Visibility = Visibility.Collapsed;
+                if (SubtitleLiveOverlayBorder.Visibility != Visibility.Collapsed)
+                    SubtitleLiveOverlayBorder.Visibility = Visibility.Collapsed;
+                _cachedActiveSubtitle = null;
                 return;
             }
 
             var activeSub = _node.Subtitles.FirstOrDefault(s => currentSec >= s.StartTimeSec && currentSec <= s.EndTimeSec);
             if (activeSub == null || string.IsNullOrWhiteSpace(activeSub.Text))
             {
-                SubtitleLiveOverlayBorder.Visibility = Visibility.Collapsed;
+                if (SubtitleLiveOverlayBorder.Visibility != Visibility.Collapsed)
+                    SubtitleLiveOverlayBorder.Visibility = Visibility.Collapsed;
+                _cachedActiveSubtitle = null;
                 return;
             }
 
-            // Apply Typography
+            if (activeSub == _cachedActiveSubtitle && activeSub.Text == _cachedActiveSubtitleText)
+                return;
+
+            _cachedActiveSubtitle = activeSub;
+            _cachedActiveSubtitleText = activeSub.Text;
             SubtitleLiveTextBlock.Text = activeSub.Text;
+            if (SubtitleLiveOverlayBorder.Visibility != Visibility.Visible)
+                SubtitleLiveOverlayBorder.Visibility = Visibility.Visible;
+        }
+
+        public void ApplySubtitleStylesToLiveOverlay()
+        {
+            if (SubtitleLiveTextBlock == null || SubtitleLiveOverlayBorder == null) return;
+
+            // Font & Sizing
             try
             {
                 var fontName = (SubFontFamilyCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI";
@@ -99,27 +155,51 @@ namespace FlowMy.Views.NodeControls
             }
             catch { SubtitleLiveTextBlock.FontFamily = new FontFamily("Segoe UI"); }
 
-            if (double.TryParse(SubFontSizeBox.Text, out var fSize) && fSize >= 8)
-                SubtitleLiveTextBlock.FontSize = Math.Clamp(fSize * 0.7, 10, 36);
+            double baseFontSize = double.TryParse(SubFontSizeBox.Text, out var fs) ? fs : 24;
+            double containerH = SubtitleLiveOverlayContainer?.ActualHeight ?? 0;
+            if (containerH <= 0) containerH = VideoAreaGrid?.ActualHeight ?? 720;
+            double natH = PreviewMedia?.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 1080;
+            double scale = Math.Clamp(containerH / Math.Max(1.0, natH), 0.2, 3.0);
+            SubtitleLiveTextBlock.FontSize = Math.Clamp(baseFontSize * scale * 1.5, 10, 48);
 
             SubtitleLiveTextBlock.FontWeight = SubBoldToggle.IsChecked == true ? FontWeights.Bold : FontWeights.Normal;
             SubtitleLiveTextBlock.FontStyle = SubItalicToggle.IsChecked == true ? FontStyles.Italic : FontStyles.Normal;
 
+            // Colors
             try
             {
                 var colorHex = SubTextColorBox.Text?.Trim();
-                if (!string.IsNullOrEmpty(colorHex) && (colorHex.StartsWith("#") || colorHex.Length == 6))
+                if (!string.IsNullOrEmpty(colorHex))
                     SubtitleLiveTextBlock.Foreground = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex)!;
             }
             catch { SubtitleLiveTextBlock.Foreground = Brushes.White; }
 
-            // Alignment & Background
+            // Wrapping & MaxWidth inside video container
+            bool isWrap = SubAutoWrapToggle.IsChecked == true;
+            SubtitleLiveTextBlock.TextWrapping = isWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
+            double containerW = SubtitleLiveOverlayContainer?.ActualWidth ?? 0;
+            if (containerW <= 0) containerW = VideoAreaGrid?.ActualWidth ?? 1280;
+            SubtitleLiveOverlayBorder.MaxWidth = Math.Max(60, containerW * 0.88);
+
+            // Alignment & Free Position Offsets
             var alignTag = (SubAlignmentCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "BottomCenter";
-            SubtitleLiveOverlayBorder.VerticalAlignment = alignTag.StartsWith("Top") ? VerticalAlignment.Top :
-                (alignTag.StartsWith("Center") ? VerticalAlignment.Center : VerticalAlignment.Bottom);
             SubtitleLiveOverlayBorder.HorizontalAlignment = alignTag.EndsWith("Left") ? HorizontalAlignment.Left :
                 (alignTag.EndsWith("Right") ? HorizontalAlignment.Right : HorizontalAlignment.Center);
+            SubtitleLiveOverlayBorder.VerticalAlignment = alignTag.StartsWith("Top") ? VerticalAlignment.Top :
+                (alignTag.StartsWith("Center") ? VerticalAlignment.Center : VerticalAlignment.Bottom);
 
+            double offsetX = SubOffsetXSlider?.Value ?? 0;
+            double offsetY = SubOffsetYSlider?.Value ?? 0;
+            double bMargin = SubBottomMarginSlider?.Value ?? 30;
+
+            if (alignTag.StartsWith("Top"))
+                SubtitleLiveOverlayBorder.Margin = new Thickness(offsetX, Math.Max(0, bMargin + offsetY), -offsetX, 0);
+            else if (alignTag.StartsWith("Center"))
+                SubtitleLiveOverlayBorder.Margin = new Thickness(offsetX, offsetY, -offsetX, -offsetY);
+            else
+                SubtitleLiveOverlayBorder.Margin = new Thickness(offsetX, 0, -offsetX, Math.Max(0, bMargin - offsetY));
+
+            // Background Box
             var boxTag = (SubBackgroundBoxCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "None";
             SubtitleLiveOverlayBorder.Background = boxTag switch
             {
@@ -128,8 +208,68 @@ namespace FlowMy.Views.NodeControls
                 "YellowBox" => new SolidColorBrush(Color.FromArgb(200, 255, 215, 0)),
                 _ => new SolidColorBrush(Color.FromArgb(120, 0, 0, 0))
             };
+        }
 
-            SubtitleLiveOverlayBorder.Visibility = Visibility.Visible;
+        private void UpdateColorPreviewBoxes()
+        {
+            try
+            {
+                var txtHex = SubTextColorBox.Text?.Trim();
+                if (!string.IsNullOrWhiteSpace(txtHex) && SubTextColorPreview != null)
+                    SubTextColorPreview.Background = (SolidColorBrush)new BrushConverter().ConvertFromString(txtHex)!;
+            }
+            catch { }
+
+            try
+            {
+                var outHex = SubOutlineColorBox.Text?.Trim();
+                if (!string.IsNullOrWhiteSpace(outHex) && SubOutlineColorPreview != null)
+                    SubOutlineColorPreview.Background = (SolidColorBrush)new BrushConverter().ConvertFromString(outHex)!;
+            }
+            catch { }
+        }
+
+        private void PickColorForSubtitleText()
+        {
+            var chosen = ShowColorPickerDialog(SubTextColorBox.Text);
+            if (!string.IsNullOrWhiteSpace(chosen))
+            {
+                SubTextColorBox.Text = chosen;
+                UpdateColorPreviewBoxes();
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void PickColorForSubtitleOutline()
+        {
+            var chosen = ShowColorPickerDialog(SubOutlineColorBox.Text);
+            if (!string.IsNullOrWhiteSpace(chosen))
+            {
+                SubOutlineColorBox.Text = chosen;
+                UpdateColorPreviewBoxes();
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private static string? ShowColorPickerDialog(string currentHex)
+        {
+            try
+            {
+                using var dialog = new System.Windows.Forms.ColorDialog { FullOpen = true };
+                if (!string.IsNullOrWhiteSpace(currentHex))
+                {
+                    try
+                    {
+                        var c = (Color)ColorConverter.ConvertFromString(currentHex);
+                        dialog.Color = System.Drawing.Color.FromArgb(c.R, c.G, c.B);
+                    }
+                    catch { }
+                }
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    return $"#{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}";
+            }
+            catch { }
+            return null;
         }
 
         private void SyncSubtitleStyleToNode()
@@ -146,6 +286,106 @@ namespace FlowMy.Views.NodeControls
             if (double.TryParse(SubOutlineThicknessBox.Text, out var ot)) style.OutlineThickness = ot;
             style.Alignment = (SubAlignmentCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "BottomCenter";
             style.HardcodeBurnIn = (SubBurnInCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() != "Soft";
+            style.AutoWrapLongText = SubAutoWrapToggle.IsChecked == true;
+            style.MaxCharsPerLine = int.TryParse(SubMaxCharsBox.Text, out var mc) ? mc : 36;
+            style.PositionOffsetX = SubOffsetXSlider?.Value ?? 0;
+            style.PositionOffsetY = SubOffsetYSlider?.Value ?? 0;
+            style.BottomMarginPx = SubBottomMarginSlider?.Value ?? 30;
+        }
+
+        private void AutoSplitLongSubtitlesByVideoWidth()
+        {
+            if (_node == null) return;
+            double natW = PreviewMedia?.NaturalVideoWidth > 0 ? PreviewMedia.NaturalVideoWidth : 1920;
+            double baseFontSize = double.TryParse(SubFontSizeBox.Text, out var fs) ? fs : 24;
+
+            int calculatedCharsPerLine = Math.Clamp((int)(natW / Math.Max(12.0, baseFontSize * 1.5)), 16, 64);
+            SubMaxCharsBox.Text = calculatedCharsPerLine.ToString();
+
+            bool isWrap = SubAutoWrapToggle.IsChecked == true;
+            if (isWrap)
+            {
+                AppendLog($"📏 [SUBTITLE FIT] Chế độ Tự động xuống dòng: Chiều ngang video {natW:F0}px phù hợp tối đa ~{calculatedCharsPerLine} ký tự/dòng.");
+                OnSubtitleStyleChanged();
+                return;
+            }
+
+            if (_node.Subtitles.Count == 0)
+            {
+                AppendLog("⚠ Không có câu phụ đề nào trong danh sách để phân tách.");
+                return;
+            }
+
+            var newList = SplitSubtitlesList(_node.Subtitles, calculatedCharsPerLine);
+            _node.Subtitles.Clear();
+            foreach (var item in newList.OrderBy(s => s.StartTimeSec))
+                _node.Subtitles.Add(item);
+
+            UpdateSubtitleBadge();
+            OnSubtitleStyleChanged();
+            AppendLog($"⚡ [SUBTITLE SPLIT] Đã phân tách xong thành các câu phụ đề theo từng giây (tối đa {calculatedCharsPerLine} ký tự/câu).");
+        }
+
+        private static List<SubtitleItem> SplitSubtitlesList(IEnumerable<SubtitleItem> originalList, int maxChars)
+        {
+            var newList = new List<SubtitleItem>();
+            foreach (var sub in originalList)
+            {
+                var trimmed = sub.Text?.Trim() ?? string.Empty;
+                if (trimmed.Length <= maxChars)
+                {
+                    newList.Add(sub);
+                    continue;
+                }
+
+                var words = trimmed.Split(new[] { ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                if (words.Length <= 1)
+                {
+                    newList.Add(sub);
+                    continue;
+                }
+
+                var chunks = new List<string>();
+                var currentChunk = new StringBuilder();
+                foreach (var w in words)
+                {
+                    if (currentChunk.Length > 0 && (currentChunk.Length + 1 + w.Length) > maxChars)
+                    {
+                        chunks.Add(currentChunk.ToString());
+                        currentChunk.Clear();
+                    }
+                    if (currentChunk.Length > 0) currentChunk.Append(' ');
+                    currentChunk.Append(w);
+                }
+                if (currentChunk.Length > 0) chunks.Add(currentChunk.ToString());
+
+                if (chunks.Count <= 1)
+                {
+                    newList.Add(sub);
+                    continue;
+                }
+
+                double totalDuration = Math.Max(0.5, sub.EndTimeSec - sub.StartTimeSec);
+                int totalChars = chunks.Sum(c => c.Length);
+                double curStart = sub.StartTimeSec;
+
+                for (int i = 0; i < chunks.Count; i++)
+                {
+                    var chunkText = chunks[i];
+                    double chunkDuration = totalChars > 0 ? (totalDuration * chunkText.Length / totalChars) : (totalDuration / chunks.Count);
+                    chunkDuration = Math.Max(0.3, chunkDuration);
+                    double curEnd = (i == chunks.Count - 1) ? sub.EndTimeSec : (curStart + chunkDuration);
+
+                    newList.Add(new SubtitleItem
+                    {
+                        StartTimeSec = curStart,
+                        EndTimeSec = curEnd,
+                        Text = chunkText
+                    });
+                    curStart = curEnd;
+                }
+            }
+            return newList;
         }
 
         private void ApplySubtitlePreset(string preset)
@@ -153,13 +393,13 @@ namespace FlowMy.Views.NodeControls
             switch (preset)
             {
                 case "TikTokViral":
-                    SubTextColorBox.Text = "#FFFF00"; // Viral Yellow
+                    SubTextColorBox.Text = "#FFFF00";
                     SubOutlineColorBox.Text = "#000000";
                     SubOutlineThicknessBox.Text = "3";
                     SubFontSizeBox.Text = "32";
                     SubBoldToggle.IsChecked = true;
-                    SubAlignmentCombo.SelectedIndex = 0; // BottomCenter
-                    SubBackgroundBoxCombo.SelectedIndex = 0; // None
+                    SubAlignmentCombo.SelectedIndex = 0;
+                    SubBackgroundBoxCombo.SelectedIndex = 0;
                     break;
                 case "Netflix":
                     SubTextColorBox.Text = "#FFFFFF";
@@ -168,7 +408,7 @@ namespace FlowMy.Views.NodeControls
                     SubFontSizeBox.Text = "24";
                     SubBoldToggle.IsChecked = false;
                     SubAlignmentCombo.SelectedIndex = 0;
-                    SubBackgroundBoxCombo.SelectedIndex = 1; // BlackTrans
+                    SubBackgroundBoxCombo.SelectedIndex = 1;
                     break;
                 case "MinimalClean":
                     SubTextColorBox.Text = "#F0F0F0";
@@ -179,47 +419,41 @@ namespace FlowMy.Views.NodeControls
                     SubBackgroundBoxCombo.SelectedIndex = 0;
                     break;
                 case "GamingRgb":
-                    SubTextColorBox.Text = "#00FFCC";
+                    SubTextColorBox.Text = "#00FFFF";
                     SubOutlineColorBox.Text = "#FF007F";
                     SubOutlineThicknessBox.Text = "3";
                     SubFontSizeBox.Text = "28";
                     SubBoldToggle.IsChecked = true;
+                    SubBackgroundBoxCombo.SelectedIndex = 0;
                     break;
                 case "NewsBanner":
                     SubTextColorBox.Text = "#FFFFFF";
                     SubOutlineColorBox.Text = "#000000";
-                    SubOutlineThicknessBox.Text = "0";
-                    SubFontSizeBox.Text = "20";
+                    SubOutlineThicknessBox.Text = "1";
+                    SubFontSizeBox.Text = "22";
                     SubBoldToggle.IsChecked = true;
-                    SubBackgroundBoxCombo.SelectedIndex = 2; // BlackSolid
+                    SubAlignmentCombo.SelectedIndex = 0;
+                    SubBackgroundBoxCombo.SelectedIndex = 2;
                     break;
             }
-            SyncSubtitleStyleToNode();
-            UpdateLiveSubtitleOverlay(_currentPlayheadSec);
-            AppendLog($"🎨 Đã áp dụng preset phụ đề: {preset}");
+            UpdateColorPreviewBoxes();
+            OnSubtitleStyleChanged();
         }
 
         private void AddSubtitleAtCurrentPlayhead()
         {
             if (_node == null) return;
             var start = Math.Max(0, _currentPlayheadSec);
-            var end = start + 2.5;
-            var sub = new SubtitleItem
+            var newSub = new SubtitleItem
             {
                 StartTimeSec = start,
-                EndTimeSec = end,
-                Text = "Dòng phụ đề mới"
+                EndTimeSec = start + 2.5,
+                Text = "Nội dung phụ đề mới..."
             };
-            _node.Subtitles.Add(sub);
-            AppendLog($"➕ Đã thêm câu phụ đề tại {sub.FormattedStartTime}");
-        }
-
-        private void ClearAllSubtitles()
-        {
-            if (_node == null) return;
-            _node.Subtitles.Clear();
-            UpdateLiveSubtitleOverlay(_currentPlayheadSec);
-            AppendLog("🗑 Đã xóa sạch toàn bộ danh sách phụ đề.");
+            _node.Subtitles.Add(newSub);
+            UpdateSubtitleBadge();
+            AppendLog($"➕ Đã thêm câu phụ đề tại {newSub.FormattedStartTime}");
+            OnSubtitleStyleChanged();
         }
 
         private void ShiftSubtitlesTimeOffset(double offsetSec)
@@ -230,16 +464,25 @@ namespace FlowMy.Views.NodeControls
                 sub.StartTimeSec = Math.Max(0, sub.StartTimeSec + offsetSec);
                 sub.EndTimeSec = Math.Max(sub.StartTimeSec + 0.1, sub.EndTimeSec + offsetSec);
             }
+            _cachedActiveSubtitle = null;
             UpdateLiveSubtitleOverlay(_currentPlayheadSec);
-            AppendLog($"⏱ Đã dịch chuyển toàn bộ phụ đề {(offsetSec >= 0 ? "+" : "")}{offsetSec:F2}s");
+            AppendLog($"⏱ Đã dịch chuyển độ lệch thời gian: {(offsetSec > 0 ? "+" : "")}{offsetSec:F2}s");
+        }
+
+        private void ClearAllSubtitles()
+        {
+            if (_node == null) return;
+            _node.Subtitles.Clear();
+            UpdateSubtitleBadge();
+            _cachedActiveSubtitle = null;
+            UpdateLiveSubtitleOverlay(_currentPlayheadSec);
+            AppendLog("🗑 Đã xóa tất cả các câu phụ đề.");
         }
 
         private void SeekToSubtitle_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is SubtitleItem sub)
-            {
                 SeekVideoPlayerTo(sub.StartTimeSec);
-            }
         }
 
         private void RemoveSubtitle_Click(object sender, RoutedEventArgs e)
@@ -247,6 +490,9 @@ namespace FlowMy.Views.NodeControls
             if (_node != null && sender is Button btn && btn.Tag is SubtitleItem sub)
             {
                 _node.Subtitles.Remove(sub);
+                UpdateSubtitleBadge();
+                _cachedActiveSubtitle = null;
+                UpdateLiveSubtitleOverlay(_currentPlayheadSec);
             }
         }
 
@@ -255,26 +501,33 @@ namespace FlowMy.Views.NodeControls
             var dialog = new OpenFileDialog
             {
                 Title = "Chọn file phụ đề",
-                Filter = "Subtitle Files (*.srt;*.vtt;*.ass;*.ssa;*.txt)|*.srt;*.vtt;*.ass;*.ssa;*.txt|All Files (*.*)|*.*"
+                Filter = "Subtitle Files (*.srt;*.vtt;*.ass;*.ssa)|*.srt;*.vtt;*.ass;*.ssa|All Files (*.*)|*.*"
             };
 
             if (dialog.ShowDialog() == true)
             {
                 try
                 {
-                    var lines = File.ReadAllLines(dialog.FileName, Encoding.UTF8);
+                    var lines = File.ReadAllLines(dialog.FileName);
                     var ext = Path.GetExtension(dialog.FileName).ToLowerInvariant();
-                    var parsed = ext is ".vtt" ? ParseVtt(lines) : (ext is ".ass" or ".ssa" ? ParseAss(lines) : ParseSrt(lines));
+                    List<SubtitleItem> parsed = ext switch
+                    {
+                        ".ass" or ".ssa" => ParseAss(lines),
+                        ".vtt" => ParseVtt(lines),
+                        _ => ParseSrt(lines)
+                    };
 
                     if (parsed.Count > 0)
                     {
-                        _node.Subtitles.Clear();
-                        foreach (var item in parsed) _node.Subtitles.Add(item);
+                        _node?.Subtitles.Clear();
+                        foreach (var item in parsed) _node?.Subtitles.Add(item);
+                        UpdateSubtitleBadge();
                         AppendLog($"📥 Đã nhập thành công {parsed.Count} câu phụ đề từ {Path.GetFileName(dialog.FileName)}");
+                        OnSubtitleStyleChanged();
                     }
                     else
                     {
-                        AppendLog($"⚠ Không tìm thấy phân đoạn phụ đề hợp lệ trong file {Path.GetFileName(dialog.FileName)}");
+                        AppendLog("⚠ Không đọc được câu phụ đề nào từ file đã chọn.");
                     }
                 }
                 catch (Exception ex)
@@ -288,36 +541,29 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node == null || _node.Subtitles.Count == 0)
             {
-                AppendLog("⚠ Chưa có phụ đề nào để xuất.");
+                AppendLog("⚠ Chưa có câu phụ đề nào để xuất file.");
                 return;
             }
 
-            var sfd = new SaveFileDialog
+            var ext = isAss ? "ass" : "srt";
+            var dialog = new SaveFileDialog
             {
-                Title = isAss ? "Xuất file phụ đề ASS" : "Xuất file phụ đề SRT",
+                Title = $"Lưu file phụ đề .{ext.ToUpperInvariant()}",
                 Filter = isAss ? "Advanced SubStation Alpha (*.ass)|*.ass" : "SubRip Subtitle (*.srt)|*.srt",
-                FileName = Path.GetFileNameWithoutExtension(_node.VideoPath ?? "subtitles") + (isAss ? ".ass" : ".srt")
+                FileName = $"subtitles_{DateTime.Now:yyyyMMdd_HHmmss}.{ext}"
             };
 
-            if (sfd.ShowDialog() == true)
+            if (dialog.ShowDialog() == true)
             {
                 try
                 {
-                    if (isAss)
-                    {
-                        var content = BuildAssFileContent(_node.Subtitles, _node.SubtitleStyle);
-                        File.WriteAllText(sfd.FileName, content, Encoding.UTF8);
-                    }
-                    else
-                    {
-                        var content = BuildSrtFileContent(_node.Subtitles);
-                        File.WriteAllText(sfd.FileName, content, Encoding.UTF8);
-                    }
-                    AppendLog($"💾 Đã xuất phụ đề thành công: {sfd.FileName}");
+                    var content = isAss ? BuildAssFileContent(_node.Subtitles, _node.SubtitleStyle) : BuildSrtFileContent(_node.Subtitles);
+                    File.WriteAllText(dialog.FileName, content, Encoding.UTF8);
+                    AppendLog($"💾 Đã xuất file phụ đề thành công: {Path.GetFileName(dialog.FileName)}");
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"❌ Lỗi khi xuất file phụ đề: {ex.Message}");
+                    AppendLog($"❌ Lỗi xuất file phụ đề: {ex.Message}");
                 }
             }
         }
@@ -335,7 +581,6 @@ namespace FlowMy.Views.NodeControls
             var duration = natDur > 0 ? natDur : 30.0;
             _node.Subtitles.Clear();
 
-            // Generate smart initial segments
             double cur = 0.5;
             int idx = 1;
             while (cur < duration - 1.0)
@@ -352,12 +597,13 @@ namespace FlowMy.Views.NodeControls
             }
 
             UpdateSubtitleBadge();
-            UpdateLiveSubtitleOverlay(_currentPlayheadSec);
-            AppendLog($"✨ Đã tự động sinh {_node.Subtitles.Count} phân đoạn phụ đề theo mốc thời gian video.");
+            OnSubtitleStyleChanged();
+            AppendLog($"✨ Đã tạo tự động {_node.Subtitles.Count} phân đoạn phụ đề AI.");
         }
 
         private void ResetSubtitleSettings()
         {
+            SubtitleEnabledToggle.IsChecked = true;
             SubFontFamilyCombo.SelectedIndex = 0;
             SubFontSizeBox.Text = "24";
             SubBoldToggle.IsChecked = true;
@@ -368,70 +614,82 @@ namespace FlowMy.Views.NodeControls
             SubAlignmentCombo.SelectedIndex = 0;
             SubBackgroundBoxCombo.SelectedIndex = 0;
             SubBurnInCombo.SelectedIndex = 0;
-            SyncSubtitleStyleToNode();
-            AppendLog("🔄 Đã đặt lại cấu hình phụ đề về mặc định.");
+            SubAutoWrapToggle.IsChecked = true;
+            SubMaxCharsBox.Text = "36";
+            SubOffsetXSlider.Value = 0;
+            SubOffsetYSlider.Value = 0;
+            SubBottomMarginSlider.Value = 30;
+            UpdateColorPreviewBoxes();
+            OnSubtitleStyleChanged();
+            AppendLog("🔄 Đã đặt lại toàn bộ cài đặt phụ đề về mặc định.");
         }
 
         private static List<SubtitleItem> ParseSrt(string[] lines)
         {
             var result = new List<SubtitleItem>();
-            var timeRegex = new Regex(@"(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})");
+            var timeRegex = new Regex(@"(\d{2}:\d{2}:\d{2}[,\.]\d{2,3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{2,3})");
 
-            SubtitleItem? current = null;
+            SubtitleItem? currentItem = null;
             var textBuilder = new StringBuilder();
 
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed))
+                {
+                    if (currentItem != null)
+                    {
+                        currentItem.Text = textBuilder.ToString().Trim();
+                        if (!string.IsNullOrWhiteSpace(currentItem.Text)) result.Add(currentItem);
+                        currentItem = null;
+                        textBuilder.Clear();
+                    }
+                    continue;
+                }
+
                 var match = timeRegex.Match(trimmed);
                 if (match.Success)
                 {
-                    if (current != null)
+                    if (currentItem != null)
                     {
-                        current.Text = textBuilder.ToString().Trim();
-                        result.Add(current);
+                        currentItem.Text = textBuilder.ToString().Trim();
+                        if (!string.IsNullOrWhiteSpace(currentItem.Text)) result.Add(currentItem);
                         textBuilder.Clear();
                     }
 
-                    var sH = int.Parse(match.Groups[1].Value);
-                    var sM = int.Parse(match.Groups[2].Value);
-                    var sS = int.Parse(match.Groups[3].Value);
-                    var sMs = int.Parse(match.Groups[4].Value);
-
-                    var eH = int.Parse(match.Groups[5].Value);
-                    var eM = int.Parse(match.Groups[6].Value);
-                    var eS = int.Parse(match.Groups[7].Value);
-                    var eMs = int.Parse(match.Groups[8].Value);
-
-                    current = new SubtitleItem
+                    if (TryParseTime(match.Groups[1].Value, out var st) && TryParseTime(match.Groups[2].Value, out var et))
                     {
-                        StartTimeSec = sH * 3600 + sM * 60 + sS + sMs / 1000.0,
-                        EndTimeSec = eH * 3600 + eM * 60 + eS + eMs / 1000.0
-                    };
-                }
-                else if (current != null && !int.TryParse(trimmed, out _))
-                {
-                    if (!string.IsNullOrEmpty(trimmed))
-                    {
-                        if (textBuilder.Length > 0) textBuilder.AppendLine();
-                        textBuilder.Append(trimmed);
+                        currentItem = new SubtitleItem
+                        {
+                            StartTimeSec = st.TotalSeconds,
+                            EndTimeSec = et.TotalSeconds
+                        };
                     }
+                }
+                else if (currentItem != null)
+                {
+                    if (int.TryParse(trimmed, out _) && textBuilder.Length == 0) continue;
+                    if (textBuilder.Length > 0) textBuilder.AppendLine();
+                    textBuilder.Append(trimmed);
                 }
             }
 
-            if (current != null)
+            if (currentItem != null)
             {
-                current.Text = textBuilder.ToString().Trim();
-                result.Add(current);
+                currentItem.Text = textBuilder.ToString().Trim();
+                if (!string.IsNullOrWhiteSpace(currentItem.Text)) result.Add(currentItem);
             }
 
             return result;
         }
 
-        private static List<SubtitleItem> ParseVtt(string[] lines)
+        private static bool TryParseTime(string raw, out TimeSpan ts)
         {
-            return ParseSrt(lines); // VTT timestamp structure matches SRT regex
+            raw = raw.Replace(',', '.');
+            return TimeSpan.TryParse(raw, out ts);
         }
+
+        private static List<SubtitleItem> ParseVtt(string[] lines) => ParseSrt(lines);
 
         private static List<SubtitleItem> ParseAss(string[] lines)
         {
@@ -475,19 +733,41 @@ namespace FlowMy.Views.NodeControls
             return sb.ToString();
         }
 
-        private static string BuildAssFileContent(IEnumerable<SubtitleItem> subtitles, SubtitleStyleConfig? style)
+        private string BuildAssFileContent(IEnumerable<SubtitleItem> subtitles, SubtitleStyleConfig? style)
         {
             var sb = new StringBuilder();
             var font = style?.FontFamily ?? "Segoe UI";
             var size = (int)(style?.FontSize ?? 24);
+            int playResX = (int)(PreviewMedia?.NaturalVideoWidth > 0 ? PreviewMedia.NaturalVideoWidth : 1920);
+            int playResY = (int)(PreviewMedia?.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 1080);
+            int marginL = Math.Max(10, (int)(playResX * 0.05));
+            int marginR = Math.Max(10, (int)(playResX * 0.05));
+            int marginV = Math.Max(10, (int)(playResY * 0.06));
+            int wrapStyle = (style?.AutoWrapLongText ?? true) ? 0 : 2;
+
             sb.AppendLine("[Script Info]");
             sb.AppendLine("ScriptType: v4.00+");
-            sb.AppendLine("PlayResX: 1920");
-            sb.AppendLine("PlayResY: 1080");
+            sb.AppendLine($"PlayResX: {playResX}");
+            sb.AppendLine($"PlayResY: {playResY}");
+            sb.AppendLine($"WrapStyle: {wrapStyle}");
             sb.AppendLine();
             sb.AppendLine("[V4+ Styles]");
             sb.AppendLine("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding");
-            sb.AppendLine($"Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,1,2,20,20,40,1");
+
+            var boldVal = (style?.IsBold ?? true) ? -1 : 0;
+            var italicVal = (style?.IsItalic ?? false) ? -1 : 0;
+            var outlineThick = (int)(style?.OutlineThickness ?? 2);
+            var shadowDist = (int)(style?.ShadowDistance ?? 1);
+            var alignVal = (style?.Alignment ?? "BottomCenter") switch
+            {
+                "TopCenter" => 8,
+                "Center" => 5,
+                "BottomLeft" => 1,
+                "BottomRight" => 3,
+                _ => 2
+            };
+
+            sb.AppendLine($"Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,{boldVal},{italicVal},0,0,100,100,0,0,1,{outlineThick},{shadowDist},{alignVal},{marginL},{marginR},{marginV},1");
             sb.AppendLine();
             sb.AppendLine("[Events]");
             sb.AppendLine("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text");

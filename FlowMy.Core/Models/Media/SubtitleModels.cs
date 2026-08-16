@@ -113,6 +113,10 @@ namespace FlowMy.Core.Models.Media
         private double _sideMarginPx = 20;
         private string _animationEffect = "None"; // None, Fade, Pop, Karaoke
         private string _presetTheme = "Default"; // Default, TikTokViral, Netflix, MinimalClean, GamingRgb, NewsBanner
+        private bool _autoWrapLongText = true;
+        private int _maxCharsPerLine = 36;
+        private double _positionOffsetX;
+        private double _positionOffsetY;
 
         public bool Enabled { get => _enabled; set => SetField(ref _enabled, value); }
         public bool HardcodeBurnIn { get => _hardcodeBurnIn; set => SetField(ref _hardcodeBurnIn, value); }
@@ -133,8 +137,12 @@ namespace FlowMy.Core.Models.Media
         public string Alignment { get => _alignment; set => SetField(ref _alignment, value); }
         public double BottomMarginPx { get => _bottomMarginPx; set => SetField(ref _bottomMarginPx, value); }
         public double SideMarginPx { get => _sideMarginPx; set => SetField(ref _sideMarginPx, value); }
+        public double PositionOffsetX { get => _positionOffsetX; set => SetField(ref _positionOffsetX, value); }
+        public double PositionOffsetY { get => _positionOffsetY; set => SetField(ref _positionOffsetY, value); }
         public string AnimationEffect { get => _animationEffect; set => SetField(ref _animationEffect, value); }
         public string PresetTheme { get => _presetTheme; set => SetField(ref _presetTheme, value); }
+        public bool AutoWrapLongText { get => _autoWrapLongText; set => SetField(ref _autoWrapLongText, value); }
+        public int MaxCharsPerLine { get => _maxCharsPerLine; set => SetField(ref _maxCharsPerLine, value); }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

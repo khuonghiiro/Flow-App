@@ -632,13 +632,24 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateOverlayCanvasBounds()
         {
-            if (OverlayCanvasControl == null || VideoAreaGrid == null || PreviewMedia.Source == null) return;
+            if (VideoAreaGrid == null || PreviewMedia.Source == null) return;
             var rect = GetDisplayedVideoRect();
-            OverlayCanvasControl.HorizontalAlignment = HorizontalAlignment.Left;
-            OverlayCanvasControl.VerticalAlignment = VerticalAlignment.Top;
-            OverlayCanvasControl.Margin = new Thickness(rect.X, rect.Y, 0, 0);
-            OverlayCanvasControl.Width = Math.Max(1, rect.Width);
-            OverlayCanvasControl.Height = Math.Max(1, rect.Height);
+            if (OverlayCanvasControl != null)
+            {
+                OverlayCanvasControl.HorizontalAlignment = HorizontalAlignment.Left;
+                OverlayCanvasControl.VerticalAlignment = VerticalAlignment.Top;
+                OverlayCanvasControl.Margin = new Thickness(rect.X, rect.Y, 0, 0);
+                OverlayCanvasControl.Width = Math.Max(1, rect.Width);
+                OverlayCanvasControl.Height = Math.Max(1, rect.Height);
+            }
+            if (SubtitleLiveOverlayContainer != null)
+            {
+                SubtitleLiveOverlayContainer.HorizontalAlignment = HorizontalAlignment.Left;
+                SubtitleLiveOverlayContainer.VerticalAlignment = VerticalAlignment.Top;
+                SubtitleLiveOverlayContainer.Margin = new Thickness(rect.X, rect.Y, 0, 0);
+                SubtitleLiveOverlayContainer.Width = Math.Max(1, rect.Width);
+                SubtitleLiveOverlayContainer.Height = Math.Max(1, rect.Height);
+            }
         }
 
         private void SyncVideoViewportClip()

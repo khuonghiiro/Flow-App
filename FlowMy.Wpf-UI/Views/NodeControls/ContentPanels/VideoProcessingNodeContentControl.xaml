@@ -218,26 +218,31 @@
                                                          HorizontalAlignment="Stretch"
                                                          VerticalAlignment="Stretch"/>
 
-                                <!-- Real-Time Subtitle Live Preview Overlay -->
-                                <Border x:Name="SubtitleLiveOverlayBorder"
-                                        Panel.ZIndex="4"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Bottom"
-                                        Margin="20,0,20,35"
-                                        Padding="10,4"
-                                        CornerRadius="4"
-                                        Background="#A0000000"
-                                        Visibility="Collapsed"
-                                        IsHitTestVisible="False">
-                                    <TextBlock x:Name="SubtitleLiveTextBlock"
-                                               Text=""
-                                               FontSize="16"
-                                               FontWeight="Bold"
-                                               FontFamily="Segoe UI"
-                                               Foreground="#FFFFFF"
-                                               TextAlignment="Center"
-                                               TextWrapping="Wrap"/>
-                                </Border>
+                                <!-- Real-Time Subtitle Live Preview Overlay (perfectly bound to displayed video frame) -->
+                                <Grid x:Name="SubtitleLiveOverlayContainer"
+                                      Panel.ZIndex="4"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Top"
+                                      IsHitTestVisible="False">
+                                    <Border x:Name="SubtitleLiveOverlayBorder"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,0,30"
+                                            Padding="10,4"
+                                            CornerRadius="4"
+                                            Background="#A0000000"
+                                            Visibility="Collapsed"
+                                            IsHitTestVisible="False">
+                                        <TextBlock x:Name="SubtitleLiveTextBlock"
+                                                   Text=""
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   FontFamily="Segoe UI"
+                                                   Foreground="#FFFFFF"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"/>
+                                    </Border>
+                                </Grid>
 
                                 <!-- Quick Color Grade Floating Box -->
                                 <Border x:Name="QuickGradingPanel"
@@ -2628,19 +2633,19 @@
 
                                         <!-- Quick Toolbar -->
                                         <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <Button x:Name="ImportSubtitleButton" Height="26" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,6,6" ToolTip="Nhập file phụ đề .srt, .vtt, .ass">
+                                            <Button x:Name="ImportSubtitleButton" Height="26" Width="140" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,6,6" ToolTip="Nhập file phụ đề .srt, .vtt, .ass">
                                                 <StackPanel Orientation="Horizontal">
                                                     <controls:SvgViewboxEx Width="12" Height="12" Margin="0,0,4,0" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-import duotone-light'}"/>
                                                     <TextBlock Text="Nhập SRT / VTT / ASS" FontSize="10" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Button x:Name="ExportSubtitleSrtButton" Height="26" Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,6,6" ToolTip="Xuất file phụ đề ra định dạng .srt">
+                                            <Button x:Name="ExportSubtitleSrtButton" Height="26" Width="80" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,6,6" ToolTip="Xuất file phụ đề ra định dạng .srt">
                                                 <TextBlock Text="Xuất .SRT" FontSize="10" FontWeight="SemiBold"/>
                                             </Button>
-                                            <Button x:Name="ExportSubtitleAssButton" Height="26" Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,6,6" ToolTip="Xuất file phụ đề đầy đủ hiệu ứng style .ass">
+                                            <Button x:Name="ExportSubtitleAssButton" Height="26" Width="80" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,6,6" ToolTip="Xuất file phụ đề đầy đủ hiệu ứng style .ass">
                                                 <TextBlock Text="Xuất .ASS" FontSize="10" FontWeight="SemiBold"/>
                                             </Button>
-                                            <Button x:Name="AutoGenerateSubtitleButton" Height="26" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" Margin="0,0,6,6" ToolTip="Tự động nhận diện giọng nói &amp; tạo câu phụ đề (Auto-Caption AI)">
+                                            <Button x:Name="AutoGenerateSubtitleButton" Height="26" Width="145" Padding="0" Style="{StaticResource VideoChromePrimaryButtonStyle}" Margin="0,0,6,6" ToolTip="Tự động nhận diện giọng nói &amp; tạo câu phụ đề (Auto-Caption AI)">
                                                 <StackPanel Orientation="Horizontal">
                                                     <controls:SvgViewboxEx Width="12" Height="12" Margin="0,0,4,0" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='wand-magic-sparkles duotone-light'}"/>
                                                     <TextBlock Text="✨ Tự động nhận diện AI" FontSize="10" FontWeight="Bold"/>
@@ -2780,18 +2785,36 @@
                                                 <ColumnDefinition Width="8"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="8"/>
-                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
                                                 <TextBlock Text="Màu chữ chính" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
-                                                <TextBox x:Name="SubTextColorBox" Height="24" FontSize="10" FontFamily="Consolas" Text="#FFFFFF" Padding="4,2" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="SubTextColorBox" Height="24" FontSize="10" FontFamily="Consolas" Text="#FFFFFF" Padding="4,2" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
+                                                    <Border x:Name="SubTextColorPreview" Grid.Column="1" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" BorderBrush="{DynamicResource ThemeInputBorderBrush}" BorderThickness="1" Background="#FFFFFF" VerticalAlignment="Center"/>
+                                                    <Button x:Name="PickSubTextColorButton" Grid.Column="2" Content="🎨" Width="22" Height="22" Padding="0" Margin="3,0,0,0" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Mở bảng chọn màu chữ"/>
+                                                </Grid>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="Viền chữ (Outline)" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
-                                                <TextBox x:Name="SubOutlineColorBox" Height="24" FontSize="10" FontFamily="Consolas" Text="#000000" Padding="4,2" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="SubOutlineColorBox" Height="24" FontSize="10" FontFamily="Consolas" Text="#000000" Padding="4,2" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
+                                                    <Border x:Name="SubOutlineColorPreview" Grid.Column="1" Width="20" Height="20" CornerRadius="4" Margin="4,0,0,0" BorderBrush="{DynamicResource ThemeInputBorderBrush}" BorderThickness="1" Background="#000000" VerticalAlignment="Center"/>
+                                                    <Button x:Name="PickSubOutlineColorButton" Grid.Column="2" Content="🎨" Width="22" Height="22" Padding="0" Margin="3,0,0,0" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Mở bảng chọn màu viền"/>
+                                                </Grid>
                                             </StackPanel>
                                             <StackPanel Grid.Column="4">
-                                                <TextBlock Text="Độ dày viền (px)" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Độ dày viền" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
                                                 <TextBox x:Name="SubOutlineThicknessBox" Height="24" FontSize="10" FontFamily="Consolas" Text="2" TextAlignment="Center" Padding="4,2" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
                                             </StackPanel>
                                         </Grid>
@@ -2806,7 +2829,7 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Vị trí hiển thị" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Vị trí neo (Anchor)" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
                                                 <ComboBox x:Name="SubAlignmentCombo" Height="24" FontSize="9.5" Style="{StaticResource DarkComboBoxStyle}">
                                                     <ComboBoxItem Content="Dưới cùng (Bottom-Center)" Tag="BottomCenter" IsSelected="True"/>
                                                     <ComboBoxItem Content="Chính giữa (Center)" Tag="Center"/>
@@ -2832,6 +2855,84 @@
                                                 </ComboBox>
                                             </StackPanel>
                                         </Grid>
+
+                                        <!-- Free Position Offsets & Custom Margins -->
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="Dịch ngang (Offset X)" FontSize="8.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                    <TextBlock x:Name="SubOffsetXLabel" Text="0 px" FontSize="8.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccentBrush}" HorizontalAlignment="Right"/>
+                                                </Grid>
+                                                <Slider x:Name="SubOffsetXSlider" Minimum="-150" Maximum="150" Value="0" Style="{StaticResource ModernSliderStyle}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="Dịch dọc (Offset Y)" FontSize="8.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                    <TextBlock x:Name="SubOffsetYLabel" Text="0 px" FontSize="8.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccentBrush}" HorizontalAlignment="Right"/>
+                                                </Grid>
+                                                <Slider x:Name="SubOffsetYSlider" Minimum="-150" Maximum="150" Value="0" Style="{StaticResource ModernSliderStyle}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4">
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="Khoảng cách đáy" FontSize="8.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                    <TextBlock x:Name="SubBottomMarginLabel" Text="30 px" FontSize="8.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccentBrush}" HorizontalAlignment="Right"/>
+                                                </Grid>
+                                                <Slider x:Name="SubBottomMarginSlider" Minimum="0" Maximum="150" Value="30" Style="{StaticResource ModernSliderStyle}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Video Width Fit & Long Text Handling Card -->
+                                <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="12,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <controls:SvgViewboxEx Width="13" Height="13" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-split duotone-light'}"/>
+                                                <TextBlock Text="Căn Chỉnh Chiều Ngang Video &amp; Xử Lý Text Dài" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Auto-Wrap vs Split into Consecutive Seconds Toggle -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                <TextBlock Text="Tự động xuống dòng khi câu dài hơn chiều ngang video" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                                <TextBlock Text="BẬT: Tự ngắt dòng trong 1 câu  |  TẮT: Tách sang câu phụ đề giây tiếp theo" FontSize="8.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <ToggleButton x:Name="SubAutoWrapToggle" Grid.Column="1" Style="{StaticResource ToggleSwitchStyle}" IsChecked="True" ToolTip="Bật: Tự động xuống dòng | Tắt: Tách thành nhiều câu phụ đề theo từng giây tiếp theo"/>
+                                        </Grid>
+
+                                        <!-- Max Characters per line and Auto-Fit action -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Độ dài tối đa 1 dòng (ký tự):" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBox x:Name="SubMaxCharsBox" Height="24" FontSize="10" FontFamily="Consolas" Text="36" Padding="4,2" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" ToolTip="Số ký tự tối đa vừa với khung hình video"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                                                <Button x:Name="AutoFitSubtitlesButton" Height="24" Width="180" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Tự động tính toán chiều ngang video và phân tách các câu dài theo giây kế tiếp">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <controls:SvgViewboxEx Width="11" Height="11" Margin="0,0,4,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt duotone-light'}"/>
+                                                        <TextBlock Text="⚡ Tự động tính theo Width Video" FontSize="9.5" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -2841,9 +2942,9 @@
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,8,0,0" Padding="10,8">
                             <Grid>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                                    <Button x:Name="ApplySubtitlesToVideoPreviewButton" Content="👁️ Áp dụng Preview" Height="30" Padding="12,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Áp dụng phụ đề lên video preview ngay lập tức"/>
+                                    <Button x:Name="ApplySubtitlesToVideoPreviewButton" Content="👁️ Áp dụng Preview" Height="30" Width="140" Padding="0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Áp dụng phụ đề lên video preview ngay lập tức"/>
                                 </StackPanel>
-                                <Button x:Name="ResetSubtitleSettingsButton" Content="Đặt lại mặc định" Height="30" Padding="12,0" HorizontalAlignment="Right" Style="{StaticResource VideoChromeResetButtonStyle}"/>
+                                <Button x:Name="ResetSubtitleSettingsButton" Content="Đặt lại mặc định" Height="30" Width="120" Padding="0" HorizontalAlignment="Right" Style="{StaticResource VideoChromeResetButtonStyle}"/>
                             </Grid>
                         </Border>
                     </Grid>
