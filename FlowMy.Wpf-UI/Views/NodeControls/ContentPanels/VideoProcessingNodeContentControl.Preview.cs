@@ -54,6 +54,8 @@ namespace FlowMy.Views.NodeControls
                     _node.TrimStartSec = 0;
                     _node.TrimEndSec = 0;
                     _node.ExcludedFrameTimestamps.Clear();
+                    _realTimeAudioEngine?.ClearRamBuffers();
+                    UpdateDubbingRamUsage();
                     _node.VideoPath = dlg.FileName;
                     _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
                 }
@@ -1024,6 +1026,19 @@ namespace FlowMy.Views.NodeControls
             _realTimeAudioEngine?.Seek(TimeSpan.FromSeconds(targetSec));
         }
 
+        public void SeekVideoPlayerTo(double seconds)
+        {
+            if (PreviewMedia.Source == null) return;
+            var duration = GetNaturalDurationSeconds();
+            var targetSec = Math.Clamp(seconds, 0, duration > 0 ? duration : double.MaxValue);
+            _lastSeekRequestAtUtc = DateTime.UtcNow;
+            _lastSeekTargetSeconds = targetSec;
+            _isSeekLatencyPending = true;
+            PreviewMedia.Position = TimeSpan.FromSeconds(targetSec);
+            _realTimeAudioEngine?.Seek(TimeSpan.FromSeconds(targetSec));
+            UpdatePlaybackUi();
+        }
+
         private void UpdateProgressVisualByRatio(double ratio)
         {
             var barWidth = ProgressBarHitArea.ActualWidth;
@@ -1394,6 +1409,8 @@ namespace FlowMy.Views.NodeControls
             Canvas.SetLeft(ProgressThumb, Math.Clamp(availableWidth * ratio, 0, availableWidth));
             TimeCurrentText.Text = FormatTime(position);
             TimeTotalText.Text = FormatTime(duration);
+            _currentPlayheadSec = position.TotalSeconds;
+            UpdateLiveSubtitleOverlay(_currentPlayheadSec);
             if (PreviewMedia.Source != null && _node.SourceFps > 0)
             {
                 var currentSec = PreviewMedia.Position.TotalSeconds;

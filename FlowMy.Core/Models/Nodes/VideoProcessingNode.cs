@@ -2,6 +2,7 @@
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
+using FlowMy.Core.Models.Media;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -325,6 +326,11 @@ namespace FlowMy.Models.Nodes
         private string _audioExportSampleRate = "48000";
         private string _audioExportChannels = "stereo";
 
+        public ObservableCollection<SubtitleItem> Subtitles { get; set; }
+        public SubtitleStyleConfig SubtitleStyle { get; set; }
+        public ObservableCollection<DubbingClipItem> DubbingClips { get; set; }
+        public AutoDuckingConfig AutoDucking { get; set; }
+
         public VideoProcessingNode()
         {
             Type = NodeType.VideoProcessing;
@@ -333,6 +339,10 @@ namespace FlowMy.Models.Nodes
             AudioTracks = new ObservableCollection<VideoAudioTrackConfig>();
             ConcatVideos = new ObservableCollection<VideoConcatItemConfig>();
             Overlays = new ObservableCollection<OverlayItem>();
+            Subtitles = new ObservableCollection<SubtitleItem>();
+            SubtitleStyle = new SubtitleStyleConfig();
+            DubbingClips = new ObservableCollection<DubbingClipItem>();
+            AutoDucking = new AutoDuckingConfig();
             EnsureStandardDynamicOutputs();
         }
 

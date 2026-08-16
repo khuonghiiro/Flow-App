@@ -19,6 +19,7 @@ namespace FlowMy.Services.Workflow.Audio
         private WaveStream? _reader;
         private IWavePlayer? _outputDevice;
         private RealTimeAudioDspPipeline? _dspPipeline;
+        private readonly DubbingAudioMixer _dubbingMixer = new();
         private readonly object _lock = new();
         private bool _isDisposed;
         private string? _currentFilePath;
@@ -29,6 +30,7 @@ namespace FlowMy.Services.Workflow.Audio
         public bool IsLoaded => _reader != null && _outputDevice != null;
         public PlaybackState PlaybackState => _outputDevice?.PlaybackState ?? PlaybackState.Stopped;
         public string? CurrentFilePath => _currentFilePath;
+        public DubbingAudioMixer DubbingMixer => _dubbingMixer;
 
         public bool IsLooping
         {
@@ -113,6 +115,7 @@ namespace FlowMy.Services.Workflow.Audio
 
                     var sampleProvider = _reader.ToSampleProvider();
                     _dspPipeline = new RealTimeAudioDspPipeline(sampleProvider, totalDurationSec);
+                    _dspPipeline.DubbingMixer = _dubbingMixer;
                     _outputDevice = InitReliableOutputDevice(_dspPipeline);
                     return _outputDevice != null;
                 }
@@ -288,6 +291,16 @@ namespace FlowMy.Services.Workflow.Audio
                 node.AudioWaveShaperEnabled, node.AudioWaveShaperCurve, (float)node.AudioWaveShaperDrivePercent,
                 (float)node.AudioTransientPunchPercent, (float)node.AudioSubHarmonicsPercent, (float)node.AudioHarmonicExciterPercent,
                 node.AudioPhaseInvertLeft, node.AudioPhaseInvertRight);
+
+            if (node.DubbingClips != null)
+            {
+                _dubbingMixer.UpdateConfig(node.DubbingClips, node.AutoDucking);
+            }
+        }
+
+        public void ClearRamBuffers()
+        {
+            _dubbingMixer.ClearCache();
         }
 
         public void GetLatestWaveformData(float[] destinationBuffer, out float rmsL, out float rmsR, out float peak)
@@ -312,6 +325,7 @@ namespace FlowMy.Services.Workflow.Audio
             _reader = null;
             _dspPipeline = null;
             _currentFilePath = null;
+            _dubbingMixer.ClearCache();
         }
 
         public void Dispose()

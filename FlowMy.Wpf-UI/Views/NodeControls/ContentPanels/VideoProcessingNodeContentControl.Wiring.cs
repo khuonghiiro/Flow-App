@@ -45,6 +45,8 @@ namespace FlowMy.Views.NodeControls
             WireFrameLabelAndExportEvents();
             WireComboBoxDropDownFix();
             WireFrameExclusionEvents();
+            InitializeSubtitleUiEvents();
+            InitializeDubbingUiEvents();
         }
 
         /// <summary>
@@ -257,7 +259,7 @@ namespace FlowMy.Views.NodeControls
             {
                 _node.TrimStartSec = PreviewMedia.Position.TotalSeconds;
                 _node.TrimEnabled = true;
-                TabNavList.SelectedIndex = 4;
+                TabNavList.SelectedIndex = 6;
                 TrimToggle.IsChecked = true;
                 RefreshInfoText();
                 AppendLog($"✂ Trim start đặt tại: {FormatTime(PreviewMedia.Position)}");

@@ -389,7 +389,7 @@ namespace FlowMy.Views.NodeControls
             _showAfterPreview = false;
             _isFlickerMode = false;
             _beforeAfterFlickerTimer.Stop();
-            TabNavList.SelectedIndex = 6;
+            TabNavList.SelectedIndex = 8;
             AppendLog($"🎞 Bắt đầu áp dụng {visibleCount} overlay item lên video...");
             RunProcessingFlow();
         }

@@ -26,6 +26,8 @@ namespace FlowMy.Services.Workflow.Audio
         private readonly int _channels;
         private readonly int _sampleRate;
 
+        public DubbingAudioMixer? DubbingMixer { get; set; }
+
         // Current parameters
         private volatile float _volume = 1.0f;
         private volatile float _bassGainDb;
@@ -610,6 +612,20 @@ namespace FlowMy.Services.Workflow.Audio
                 for (var n = 0; n < samplesRead; n++)
                 {
                     buffer[offset + n] = ApplyStudioLimiter(buffer[offset + n], _normalizeEnabled);
+                }
+            }
+
+            // Real-time RAM Dubbing Audio Mixing & Auto-Ducking
+            if (DubbingMixer != null && channels > 0 && sampleRate > 0)
+            {
+                var currentSec = _currentSampleIndex / (double)(channels * sampleRate);
+                var duckingGain = DubbingMixer.ProcessDubbingAndDucking(buffer, offset, samplesRead, currentSec, sampleRate);
+                if (duckingGain < 0.999f)
+                {
+                    for (var n = 0; n < samplesRead; n++)
+                    {
+                        buffer[offset + n] *= duckingGain;
+                    }
                 }
             }
 

@@ -89,6 +89,7 @@ namespace FlowMy.Views.NodeControls
         private bool _isPlaying;
         private bool _isVideoLooping;
         private bool _isMuted;
+        private double _currentPlayheadSec;
         private bool _suppressControlSync;
         private double _frameResizeScale = 1.0;
         private bool _isLightTheme;
@@ -216,7 +217,8 @@ namespace FlowMy.Views.NodeControls
             var allTabs = new FrameworkElement[]
             {
                 GeneralTabContent, GradingTabContent, FiltersTabContent,
-                AudioTabContent, TrimConcatTabContent, OutputsTabContent, SettingsTabContent
+                AudioTabContent, SubtitleTabContent, DubbingTabContent,
+                TrimConcatTabContent, OutputsTabContent, SettingsTabContent
             };
             foreach (var t in allTabs) if (t != null) t.Visibility = Visibility.Collapsed;
 
@@ -227,9 +229,11 @@ namespace FlowMy.Views.NodeControls
                 1 => GradingTabContent,
                 2 => FiltersTabContent,
                 3 => AudioTabContent,
-                4 => TrimConcatTabContent,
-                5 => OutputsTabContent,
-                6 => SettingsTabContent,
+                4 => SubtitleTabContent,
+                5 => DubbingTabContent,
+                6 => TrimConcatTabContent,
+                7 => OutputsTabContent,
+                8 => SettingsTabContent,
                 _ => GeneralTabContent
             });
             targetTab.Visibility = Visibility.Visible;

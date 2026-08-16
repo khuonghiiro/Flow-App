@@ -389,5 +389,15 @@ namespace FlowMy.Services.Workflow.Audio
                 _ => ".mp3"
             };
         }
+
+        public static string BuildSubtitleFilter(string subtitleFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(subtitleFilePath) || !File.Exists(subtitleFilePath))
+                return string.Empty;
+
+            var escaped = subtitleFilePath.Replace("\\", "/").Replace(":", "\\:").Replace("'", "\\'");
+            var ext = Path.GetExtension(subtitleFilePath).ToLowerInvariant();
+            return ext is ".ass" or ".ssa" ? $"ass='{escaped}'" : $"subtitles='{escaped}'";
+        }
     }
 }

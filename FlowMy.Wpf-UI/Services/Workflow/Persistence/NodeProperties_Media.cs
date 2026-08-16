@@ -3,6 +3,7 @@
 // =========================================================================================
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Core.Models.Media;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -682,6 +683,78 @@ public sealed partial class FileWorkflowPersistenceService
                 catch { }
             }
 
+            if (properties.TryGetValue("Subtitles", out var subtitlesObj) && subtitlesObj != null)
+            {
+                try
+                {
+                    string? subJson = subtitlesObj is string s ? s : subtitlesObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(subJson))
+                    {
+                        var subs = JsonSerializer.Deserialize<List<SubtitleItem>>(subJson);
+                        if (subs != null)
+                        {
+                            videoNode.Subtitles.Clear();
+                            foreach (var item in subs) videoNode.Subtitles.Add(item);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (properties.TryGetValue("SubtitleStyle", out var subStyleObj) && subStyleObj != null)
+            {
+                try
+                {
+                    string? styleJson = subStyleObj is string s ? s : subStyleObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(styleJson))
+                    {
+                        var style = JsonSerializer.Deserialize<SubtitleStyleConfig>(styleJson);
+                        if (style != null) videoNode.SubtitleStyle = style;
+                    }
+                }
+                catch { }
+            }
+
+            if (properties.TryGetValue("DubbingClips", out var dubObj) && dubObj != null)
+            {
+                try
+                {
+                    string? dubJson = dubObj is string s ? s : dubObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(dubJson))
+                    {
+                        var clips = JsonSerializer.Deserialize<List<DubbingClipItem>>(dubJson);
+                        if (clips != null)
+                        {
+                            videoNode.DubbingClips.Clear();
+                            foreach (var c in clips) videoNode.DubbingClips.Add(c);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (properties.TryGetValue("AutoDucking", out var duckObj) && duckObj != null)
+            {
+                try
+                {
+                    string? duckJson = duckObj is string s ? s : duckObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(duckJson))
+                    {
+                        var duck = JsonSerializer.Deserialize<AutoDuckingConfig>(duckJson);
+                        if (duck != null) videoNode.AutoDucking = duck;
+                    }
+                }
+                catch { }
+            }
+
             videoNode.EnsureStandardDynamicOutputs();
 
     }
@@ -1023,5 +1096,13 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["AudioTracks"] = JsonSerializer.Serialize(videoNode.AudioTracks.ToList());
             if (videoNode.Overlays.Count > 0)
                 dict["Overlays"] = JsonSerializer.Serialize(videoNode.Overlays.ToList());
+            if (videoNode.Subtitles.Count > 0)
+                dict["Subtitles"] = JsonSerializer.Serialize(videoNode.Subtitles.ToList());
+            if (videoNode.SubtitleStyle != null)
+                dict["SubtitleStyle"] = JsonSerializer.Serialize(videoNode.SubtitleStyle);
+            if (videoNode.DubbingClips.Count > 0)
+                dict["DubbingClips"] = JsonSerializer.Serialize(videoNode.DubbingClips.ToList());
+            if (videoNode.AutoDucking != null)
+                dict["AutoDucking"] = JsonSerializer.Serialize(videoNode.AutoDucking);
         }
     }
