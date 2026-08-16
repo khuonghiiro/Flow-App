@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -16,8 +16,34 @@ namespace FlowMy.Models.ImageEditor
     /// Một layer trong editor. Mỗi layer chứa một WriteableBitmap (BGRA32)
     /// cùng kích thước với document, cùng các thuộc tính hiển thị (opacity, blend, visibility).
     /// </summary>
-    public sealed class EditorLayer : INotifyPropertyChanged
+    public sealed class EditorLayer : INotifyPropertyChanged, IDisposable
     {
+        public void Dispose()
+        {
+            _cachedOriginalSKBitmap?.Dispose();
+            _cachedOriginalSKBitmap = null;
+            _cachedThumbnail = null;
+            _thumbnailCache = null;
+            _contentGeometry = null;
+            _imageContentBounds = Rect.Empty;
+            ContentBounds = Rect.Empty;
+            TempSelectionGeometry = null;
+            TempSelectionPath?.Dispose();
+            TempSelectionPath = null;
+            foreach (var child in ChildLayers)
+            {
+                child.Dispose();
+            }
+            ChildLayers.Clear();
+            foreach (var sec in LayerAiSecondaryImages)
+            {
+                sec.Bitmap = null;
+                sec.PngBytes = null;
+                sec.SavedChildImages.Clear();
+            }
+            LayerAiSecondaryImages.Clear();
+        }
+
         private string _name;
         private double _opacity = 1.0;
         private bool _isVisible = true;

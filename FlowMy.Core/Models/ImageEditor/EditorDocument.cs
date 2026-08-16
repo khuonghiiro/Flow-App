@@ -30,7 +30,7 @@ namespace FlowMy.Models.ImageEditor
     /// Document chính của editor — chứa layer stack, history, và compositing logic.
     /// Mỗi ImageProcessingNode có tối đa 1 EditorDocument (tạo khi vào Manual mode).
     /// </summary>
-    public sealed class EditorDocument : INotifyPropertyChanged
+    public sealed class EditorDocument : INotifyPropertyChanged, IDisposable
     {
         private EditorLayer? _activeLayer;
         private Color _foregroundColor = Colors.Black;
@@ -560,6 +560,23 @@ namespace FlowMy.Models.ImageEditor
             CachedBgPlate = null;
             CachedFgPlate?.Dispose();
             CachedFgPlate = null;
+        }
+
+        public void Dispose()
+        {
+            ClearPlates();
+            _cachedCpuRenderTarget = null;
+            _cachedRenderTarget = null;
+            _cachedCpuResultPixels = null;
+            _cachedCpuLayerPixels = null;
+
+            foreach (var layer in Layers)
+            {
+                layer.Dispose();
+            }
+            Layers.Clear();
+            ActiveLayer = null;
+            History.Clear();
         }
 
         /// <summary>

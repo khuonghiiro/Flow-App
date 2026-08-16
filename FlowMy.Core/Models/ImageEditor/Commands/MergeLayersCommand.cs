@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -127,6 +127,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             {
                 l.IsSelected = (l == _targetLayer);
             }
+            _doc.ClearPlates();
         }
 
         public void Undo()
@@ -153,6 +154,7 @@ namespace FlowMy.Models.ImageEditor.Commands
             {
                 l.IsSelected = _selectedLayers.Contains(l);
             }
+            _doc.ClearPlates();
         }
     }
 }

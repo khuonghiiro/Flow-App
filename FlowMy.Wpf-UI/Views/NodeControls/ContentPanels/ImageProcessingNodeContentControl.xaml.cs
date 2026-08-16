@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 // ========================================================================================
@@ -109,7 +109,7 @@ namespace FlowMy.Views.NodeControls
             InitializeComponent();
             EditorPanel.SetNodeAndHost(_node, _host);
             this.Loaded += (s, e) => { InitializeFxDots(); InitializeBrushPresetListBoxItems(); };
-            this.Unloaded += (s, e) => { CommitPendingMoveTranslation(); CommitBrushDrawingSession(); };
+            this.Unloaded += (s, e) => { CleanupAndReleaseRam(); };
             MainImage.SizeChanged += (s, e) =>
             {
                 if (CropOverlayCanvas != null && CropOverlayCanvas.Visibility == Visibility.Visible)
@@ -748,11 +748,90 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        /// <summary>
+        /// Giải phóng toàn bộ bộ nhớ RAM (SkiaSharp unmanaged bitmaps, overlay bitmaps, plates, tabs, editor docs)
+        /// và gọi Garbage Collector khi đóng/gỡ bỏ node xử lý ảnh.
+        /// </summary>
+        public void CleanupAndReleaseRam()
+        {
+            try
+            {
+                CommitPendingMoveTranslation();
+                CommitBrushDrawingSession();
+                CommitTransformSession();
+                CommitActiveText();
+                CommitKeyMoveSession();
+
+                // 1. Giải phóng bộ đệm RAM của Brush & Eraser
+                _brushOverlayBitmap = null;
+                if (ActiveLayerDrawingOverlay != null)
+                {
+                    ActiveLayerDrawingOverlay.Source = null;
+                    ActiveLayerDrawingOverlay.Visibility = Visibility.Collapsed;
+                }
+
+                _eraserBgPlateSK?.Dispose();
+                _eraserBgPlateSK = null;
+                _eraserBgPlate = null;
+
+                _moveBgPlateSK?.Dispose();
+                _moveBgPlateSK = null;
+                _moveFgPlateSK?.Dispose();
+                _moveFgPlateSK = null;
+                _moveActiveLayerSK?.Dispose();
+                _moveActiveLayerSK = null;
+
+                _cachedBrushTip?.Dispose();
+                _cachedBrushTip = null;
+                _currentStrokePaint?.Dispose();
+                _currentStrokePaint = null;
+                _currentStrokePath?.Dispose();
+                _currentStrokePath = null;
+                _localSelectionClipPath?.Dispose();
+                _localSelectionClipPath = null;
+
+                // 2. Giải phóng tất cả các tabs trong RAM
+                foreach (var tab in _tabs)
+                {
+                    if (!ReferenceEquals(tab.EditorDoc, _node?.EditorDoc))
+                    {
+                        tab.EditorDoc?.Dispose();
+                    }
+                    tab.EditorDoc = null;
+                    tab.CachedMainImage = null;
+                    tab.TabBorder = null;
+                    tab.CachedSelectionMask = null;
+                    tab.SelectionPoints.Clear();
+                }
+                _tabs.Clear();
+                _activeTabData = null;
+
+                // 3. Giải phóng EditorDoc của node
+                if (_node?.EditorDoc != null)
+                {
+                    _node.EditorDoc.Dispose();
+                    _node.EditorDoc = null;
+                }
+
+                // 4. Detach UI image sources
+                if (MainImage != null) MainImage.Source = null;
+                if (TransformPreviewImage != null) TransformPreviewImage.Source = null;
+                EditorPanel.SetDocument(null);
+
+                // 5. Thu hồi RAM ngay lập tức
+                GC.Collect(2, GCCollectionMode.Optimized, false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessingNodeContentControl] CleanupAndReleaseRam error: {ex.Message}");
+            }
+        }
+
         private void ImageProcessingNodeContentControl_Unloaded(object sender, RoutedEventArgs e)
         {
             try
             {
-                CommitKeyMoveSession();
+                CleanupAndReleaseRam();
 
                 _ipColumnWidthStoryboard?.Stop();
                 _ipColumnWidthStoryboard = null;
