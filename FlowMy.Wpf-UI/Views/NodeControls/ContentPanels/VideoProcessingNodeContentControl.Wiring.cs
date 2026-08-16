@@ -446,8 +446,6 @@ namespace FlowMy.Views.NodeControls
                 {
                     ClampAndSyncTrimRangesToVideoDuration(naturalDuration);
                     EnsureRealTimeAudioEngineLoaded();
-                    _realTimeAudioEngine?.LoadMedia(_node.VideoPath, naturalDuration);
-                    _realTimeAudioEngine?.Seek(TimeSpan.Zero);
                 }
 
                 _timelineTimer.Start();

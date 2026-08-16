@@ -281,8 +281,11 @@ namespace FlowMy.Models.Nodes
         private double _audioSpeedFactor = 1.0;
         private string _audioEqPreset = "neutral";
         private double _audioBassGain;
+        private double _audioLowMidGain;
         private double _audioMidGain;
+        private double _audioHighMidGain;
         private double _audioTrebleGain;
+        private double _audioToneClarity;
         private bool _audioHighpassFilter;
         private double _audioHighpassCutoffHz = 80.0;
         private bool _audioLowpassFilter;
@@ -292,6 +295,16 @@ namespace FlowMy.Models.Nodes
         private double _audioReverbPercent;
         private double _audioVocalBalance;
         private double _audioPitchSemitones;
+        private bool _audioEchoEnabled;
+        private double _audioEchoDelayMs = 250.0;
+        private double _audioEchoFeedbackPercent = 40.0;
+        private double _audioEchoMixPercent = 30.0;
+        private bool _audio8DEnabled;
+        private double _audio8DSpeedHz = 0.125;
+        private bool _audioRobotVoiceEnabled;
+        private bool _audioRadioVoiceEnabled;
+        private bool _audioChorusEnabled;
+        private double _audioChorusMixPercent = 40.0;
         private double _audioCompressorPercent;
         private double _audioDeEsserPercent;
         private double _audioNoiseGatePercent;
@@ -831,10 +844,28 @@ namespace FlowMy.Models.Nodes
             set { if (Math.Abs(_audioMidGain - value) > 0.01) { _audioMidGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
         }
 
+        public double AudioLowMidGain
+        {
+            get => _audioLowMidGain;
+            set { if (Math.Abs(_audioLowMidGain - value) > 0.01) { _audioLowMidGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioHighMidGain
+        {
+            get => _audioHighMidGain;
+            set { if (Math.Abs(_audioHighMidGain - value) > 0.01) { _audioHighMidGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
+        }
+
         public double AudioTrebleGain
         {
             get => _audioTrebleGain;
             set { if (Math.Abs(_audioTrebleGain - value) > 0.01) { _audioTrebleGain = Math.Clamp(value, -20.0, 20.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioToneClarity
+        {
+            get => _audioToneClarity;
+            set { if (Math.Abs(_audioToneClarity - value) > 0.1) { _audioToneClarity = Math.Clamp(value, -100.0, 100.0); OnPropertyChanged(); } }
         }
 
         public bool AudioHighpassFilter
@@ -889,6 +920,66 @@ namespace FlowMy.Models.Nodes
         {
             get => _audioPitchSemitones;
             set { if (Math.Abs(_audioPitchSemitones - value) > 0.1) { _audioPitchSemitones = Math.Clamp(value, -12.0, 12.0); OnPropertyChanged(); } }
+        }
+
+        public bool AudioEchoEnabled
+        {
+            get => _audioEchoEnabled;
+            set { if (_audioEchoEnabled != value) { _audioEchoEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double AudioEchoDelayMs
+        {
+            get => _audioEchoDelayMs;
+            set { if (Math.Abs(_audioEchoDelayMs - value) > 1.0) { _audioEchoDelayMs = Math.Clamp(value, 50.0, 1000.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioEchoFeedbackPercent
+        {
+            get => _audioEchoFeedbackPercent;
+            set { if (Math.Abs(_audioEchoFeedbackPercent - value) > 0.1) { _audioEchoFeedbackPercent = Math.Clamp(value, 0.0, 90.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioEchoMixPercent
+        {
+            get => _audioEchoMixPercent;
+            set { if (Math.Abs(_audioEchoMixPercent - value) > 0.1) { _audioEchoMixPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public bool Audio8DEnabled
+        {
+            get => _audio8DEnabled;
+            set { if (_audio8DEnabled != value) { _audio8DEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double Audio8DSpeedHz
+        {
+            get => _audio8DSpeedHz;
+            set { if (Math.Abs(_audio8DSpeedHz - value) > 0.001) { _audio8DSpeedHz = Math.Clamp(value, 0.05, 0.5); OnPropertyChanged(); } }
+        }
+
+        public bool AudioRobotVoiceEnabled
+        {
+            get => _audioRobotVoiceEnabled;
+            set { if (_audioRobotVoiceEnabled != value) { _audioRobotVoiceEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool AudioRadioVoiceEnabled
+        {
+            get => _audioRadioVoiceEnabled;
+            set { if (_audioRadioVoiceEnabled != value) { _audioRadioVoiceEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool AudioChorusEnabled
+        {
+            get => _audioChorusEnabled;
+            set { if (_audioChorusEnabled != value) { _audioChorusEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double AudioChorusMixPercent
+        {
+            get => _audioChorusMixPercent;
+            set { if (Math.Abs(_audioChorusMixPercent - value) > 0.1) { _audioChorusMixPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
         }
 
         public double AudioCompressorPercent

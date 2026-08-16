@@ -41,12 +41,53 @@ namespace FlowMy.Services.Workflow.Audio
                     filters.Add(atempo);
             }
 
-            // 4. Equalizer & Tone (Bass, Mid, Treble & Vocal boost)
-            var eq = BuildEqualizerChain(node.AudioEqPreset, node.AudioBassGain, node.AudioMidGain, node.AudioTrebleGain);
+            // 4. Voice Pitch Shifter (Voice Gender Changer: Male ↔ Female with Formant Compensation)
+            if (Math.Abs(node.AudioPitchSemitones) > 0.1)
+            {
+                var pitchRatio = Math.Pow(2.0, node.AudioPitchSemitones / 12.0);
+                var rate = (48000.0 * pitchRatio).ToString("0.###", CultureInfo.InvariantCulture);
+                var tempoChain = BuildAtempoChain(1.0 / pitchRatio);
+                filters.Add($"asetrate={rate},aresample=48000,{tempoChain}");
+
+                if (node.AudioPitchSemitones > 1.0)
+                {
+                    var femalePres = Math.Min(6.0, node.AudioPitchSemitones * 1.1).ToString("0.#", CultureInfo.InvariantCulture);
+                    var chestCut = (-Math.Min(6.0, node.AudioPitchSemitones * 1.0)).ToString("0.#", CultureInfo.InvariantCulture);
+                    var air = Math.Min(4.0, node.AudioPitchSemitones * 0.7).ToString("0.#", CultureInfo.InvariantCulture);
+                    filters.Add($"equalizer=f=160:t=q:w=1.2:g={chestCut},equalizer=f=2600:t=q:w=1.2:g={femalePres},treble=g={air}:f=7500:w=0.8");
+                }
+                else if (node.AudioPitchSemitones < -1.0)
+                {
+                    var maleChest = Math.Min(6.0, -node.AudioPitchSemitones * 1.1).ToString("0.#", CultureInfo.InvariantCulture);
+                    var trebleCut = (-Math.Min(4.0, -node.AudioPitchSemitones * 0.7)).ToString("0.#", CultureInfo.InvariantCulture);
+                    filters.Add($"equalizer=f=140:t=q:w=1.2:g={maleChest},treble=g={trebleCut}:f=4800:w=0.75");
+                }
+            }
+
+            // 5. Voice Tone Clarity (Trầm ấm ↔ Trong trẻo)
+            if (node.AudioToneClarity < -2.0)
+            {
+                var bassBoost = (-node.AudioToneClarity / 100.0 * 6.0).ToString("0.#", CultureInfo.InvariantCulture);
+                var trebleSoft = (node.AudioToneClarity / 100.0 * 3.5).ToString("0.#", CultureInfo.InvariantCulture);
+                filters.Add($"bass=g={bassBoost}:f=180:w=0.8");
+                filters.Add($"treble=g={trebleSoft}:f=6000:w=0.7");
+            }
+            else if (node.AudioToneClarity > 2.0)
+            {
+                var pres = (node.AudioToneClarity / 100.0 * 5.0).ToString("0.#", CultureInfo.InvariantCulture);
+                var air = (node.AudioToneClarity / 100.0 * 4.0).ToString("0.#", CultureInfo.InvariantCulture);
+                var mudCut = (-node.AudioToneClarity / 100.0 * 2.5).ToString("0.#", CultureInfo.InvariantCulture);
+                filters.Add($"equalizer=f=2400:t=q:w=1.2:g={pres}");
+                filters.Add($"treble=g={air}:f=6500:w=0.7");
+                filters.Add($"equalizer=f=220:t=q:w=1.0:g={mudCut}");
+            }
+
+            // 6. 5-Band Equalizer & Tone (Bass, Low-Mid, Mid, High-Mid, Treble)
+            var eq = BuildEqualizerChain(node.AudioEqPreset, node.AudioBassGain, node.AudioLowMidGain, node.AudioMidGain, node.AudioHighMidGain, node.AudioTrebleGain);
             if (!string.IsNullOrWhiteSpace(eq))
                 filters.Add(eq);
 
-            // 5. Dynamic High-pass & Low-pass Cutoff Filters
+            // 7. Dynamic High-pass & Low-pass Cutoff Filters
             if (node.AudioHighpassFilter)
             {
                 var hp = Math.Clamp(node.AudioHighpassCutoffHz, 20.0, 500.0).ToString("0.#", CultureInfo.InvariantCulture);
@@ -58,14 +99,63 @@ namespace FlowMy.Services.Workflow.Audio
                 filters.Add($"lowpass=f={lp}");
             }
 
-            // 5b. Stereo Width Field Expansion
+            // 8. Creative FX: Robot Voice
+            if (node.AudioRobotVoiceEnabled)
+            {
+                filters.Add("tremolo=f=50:d=0.9,equalizer=f=1200:t=q:w=2:g=5");
+            }
+
+            // 9. Creative FX: Radio / Telephone / Megaphone Voice
+            if (node.AudioRadioVoiceEnabled)
+            {
+                filters.Add("highpass=f=350,lowpass=f=3400,equalizer=f=1200:t=q:w=2:g=5,acrusher=bits=8:mix=0.4");
+            }
+
+            // 10. Spatial & Modulation FX: Chorus / Vocal Doubler
+            if (node.AudioChorusEnabled)
+            {
+                var mix = (Math.Clamp(node.AudioChorusMixPercent / 100.0, 0.1, 1.0) * 0.9).ToString("0.##", CultureInfo.InvariantCulture);
+                filters.Add($"chorus=0.7:{mix}:55:0.4:0.25:2");
+            }
+
+            // 11. Spatial FX: 8D Binaural Panning
+            if (node.Audio8DEnabled)
+            {
+                var speed = Math.Clamp(node.Audio8DSpeedHz, 0.05, 0.5).ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"apulsator=hz={speed}:amount=1.0");
+            }
+
+            // 12. Spatial FX: Echo / Delay
+            if (node.AudioEchoEnabled)
+            {
+                var outGain = (Math.Clamp(node.AudioEchoMixPercent / 100.0, 0.1, 1.0) * 0.85).ToString("0.##", CultureInfo.InvariantCulture);
+                var delay = Math.Clamp(node.AudioEchoDelayMs, 50, 1000).ToString("0", CultureInfo.InvariantCulture);
+                var decay = (Math.Clamp(node.AudioEchoFeedbackPercent / 100.0, 0.1, 0.9)).ToString("0.##", CultureInfo.InvariantCulture);
+                filters.Add($"aecho=0.8:{outGain}:{delay}:{decay}");
+            }
+
+            // 13. Studio Reverb
+            if (node.AudioReverbPercent > 2.0)
+            {
+                var revMix = (node.AudioReverbPercent / 100.0 * 0.65).ToString("0.##", CultureInfo.InvariantCulture);
+                filters.Add($"aecho=0.8:{revMix}:40:0.35");
+            }
+
+            // 14. Analog Warmth
+            if (node.AudioWarmthPercent > 2.0)
+            {
+                var warmGain = (node.AudioWarmthPercent / 100.0 * 3.5).ToString("0.#", CultureInfo.InvariantCulture);
+                filters.Add($"equalizer=f=250:t=q:w=1.2:g={warmGain}");
+            }
+
+            // 15. Stereo Width Field Expansion
             if (Math.Abs(node.AudioStereoWidthPercent - 100.0) > 1.0)
             {
                 var m = (node.AudioStereoWidthPercent / 100.0).ToString("0.##", CultureInfo.InvariantCulture);
                 filters.Add($"extrastereo=m={m}");
             }
 
-            // 5c. Vocal Separation / Karaoke (Center channel suppression or vocal isolation)
+            // 16. Vocal Separation / Karaoke (Center channel suppression or vocal isolation)
             if (node.AudioVocalBalance < -5.0)
             {
                 var k = Math.Clamp((-node.AudioVocalBalance / 100.0) * 0.85, 0.2, 0.95).ToString("0.##", CultureInfo.InvariantCulture);
@@ -77,32 +167,32 @@ namespace FlowMy.Services.Workflow.Audio
                 filters.Add($"stereotools=mlev={v}:slev=0.3");
             }
 
-            // 5d. Voice Dynamic Compressor (Làm dày giọng, cân bằng to nhỏ)
+            // 17. Voice Dynamic Compressor (Làm dày giọng, cân bằng to nhỏ)
             if (node.AudioCompressorPercent > 2.0)
             {
                 var ratio = (1.5 + (node.AudioCompressorPercent / 100.0) * 4.5).ToString("0.#", CultureInfo.InvariantCulture);
                 filters.Add($"acompressor=threshold=-15dB:ratio={ratio}:attack=15:release=120:makeup=1.4");
             }
 
-            // 5e. De-Esser (Khử âm xì chói s/x)
+            // 18. De-Esser (Khử âm xì chói s/x)
             if (node.AudioDeEsserPercent > 2.0)
             {
                 var deInt = (node.AudioDeEsserPercent / 100.0).ToString("0.##", CultureInfo.InvariantCulture);
                 filters.Add($"adeesser=i={deInt}");
             }
 
-            // 5f. Noise Gate (Ngắt tiếng thở, tiếng ồn khi im lặng)
+            // 19. Noise Gate (Ngắt tiếng thở, tiếng ồn khi im lặng)
             if (node.AudioNoiseGatePercent > 2.0)
             {
                 var thresh = (0.005 + (node.AudioNoiseGatePercent / 100.0) * 0.045).ToString("0.####", CultureInfo.InvariantCulture);
                 filters.Add($"agate=threshold={thresh}:range=0.03:attack=10:release=150");
             }
 
-            // 6. Noise Reduction (Denoise)
+            // 20. Noise Reduction (Denoise)
             if (node.AudioDenoiseEnabled)
                 filters.Add("afftdn=nf=-25");
 
-            // 7. Fade In & Fade Out
+            // 21. Fade In & Fade Out
             if (node.AudioFadeInSec > 0.05)
             {
                 var d = node.AudioFadeInSec.ToString("0.###", CultureInfo.InvariantCulture);
@@ -115,7 +205,7 @@ namespace FlowMy.Services.Workflow.Audio
                 filters.Add($"afade=t=out:st={st}:d={d}");
             }
 
-            // 8. EBU R128 Loudness Normalization (applied at the very end of chain)
+            // 22. EBU R128 Loudness Normalization (applied at the very end of chain)
             if (node.AudioNormalizeEnabled)
             {
                 var lufs = node.AudioTargetLufs < -30 ? -14.0 : (node.AudioTargetLufs > -6 ? -14.0 : node.AudioTargetLufs);
@@ -126,7 +216,7 @@ namespace FlowMy.Services.Workflow.Audio
             return string.Join(",", filters);
         }
 
-        public static string BuildEqualizerChain(string? preset, double bassGain, double midGain, double trebleGain)
+        public static string BuildEqualizerChain(string? preset, double bassGain, double lowMidGain, double midGain, double highMidGain, double trebleGain)
         {
             var p = (preset ?? "neutral").Trim().ToLowerInvariant();
             var parts = new List<string>();
@@ -162,21 +252,34 @@ namespace FlowMy.Services.Workflow.Audio
             if (Math.Abs(bassGain) > 0.1 && p != "bass" && p != "bass_boost")
             {
                 var bg = bassGain.ToString("0.#", CultureInfo.InvariantCulture);
-                parts.Add($"bass=g={bg}:f=180:w=0.7");
+                parts.Add($"bass=g={bg}:f=100:w=0.7");
+            }
+            if (Math.Abs(lowMidGain) > 0.1)
+            {
+                var lmg = lowMidGain.ToString("0.#", CultureInfo.InvariantCulture);
+                parts.Add($"equalizer=f=350:t=q:w=0.8:g={lmg}");
             }
             if (Math.Abs(midGain) > 0.1)
             {
                 var mg = midGain.ToString("0.#", CultureInfo.InvariantCulture);
                 parts.Add($"equalizer=f=1200:t=q:w=0.65:g={mg}");
             }
+            if (Math.Abs(highMidGain) > 0.1)
+            {
+                var hmg = highMidGain.ToString("0.#", CultureInfo.InvariantCulture);
+                parts.Add($"equalizer=f=3500:t=q:w=0.8:g={hmg}");
+            }
             if (Math.Abs(trebleGain) > 0.1 && p != "treble" && p != "treble_boost")
             {
                 var tg = trebleGain.ToString("0.#", CultureInfo.InvariantCulture);
-                parts.Add($"treble=g={tg}:f=4500:w=0.7");
+                parts.Add($"treble=g={tg}:f=8000:w=0.7");
             }
 
             return string.Join(",", parts);
         }
+
+        public static string BuildEqualizerChain(string? preset, double bassGain, double midGain, double trebleGain)
+            => BuildEqualizerChain(preset, bassGain, 0, midGain, 0, trebleGain);
 
         public static string BuildEqualizerChain(string? preset, double bassGain, double trebleGain)
             => BuildEqualizerChain(preset, bassGain, 0, trebleGain);

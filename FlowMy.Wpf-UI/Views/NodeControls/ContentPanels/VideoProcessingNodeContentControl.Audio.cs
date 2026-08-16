@@ -49,20 +49,51 @@ namespace FlowMy.Views.NodeControls
         {
             Dispatcher.InvokeAsync(() =>
             {
+                // EQ presets
                 if (PresetAudioNeutralButton != null) PresetAudioNeutralButton.IsEnabled = enabled;
                 if (PresetAudioVocalButton != null) PresetAudioVocalButton.IsEnabled = enabled;
                 if (PresetAudioBassButton != null) PresetAudioBassButton.IsEnabled = enabled;
                 if (PresetAudioTrebleButton != null) PresetAudioTrebleButton.IsEnabled = enabled;
                 if (PresetAudioPodcastButton != null) PresetAudioPodcastButton.IsEnabled = enabled;
 
+                // Voice gender presets
+                if (PresetVoiceMaleDeepButton != null) PresetVoiceMaleDeepButton.IsEnabled = enabled;
+                if (PresetVoiceMaleButton != null) PresetVoiceMaleButton.IsEnabled = enabled;
+                if (PresetVoiceNaturalButton != null) PresetVoiceNaturalButton.IsEnabled = enabled;
+                if (PresetVoiceFemaleButton != null) PresetVoiceFemaleButton.IsEnabled = enabled;
+                if (PresetVoiceAnimeButton != null) PresetVoiceAnimeButton.IsEnabled = enabled;
+                if (PresetVoiceChipmunkButton != null) PresetVoiceChipmunkButton.IsEnabled = enabled;
+                if (PresetVoiceMonsterButton != null) PresetVoiceMonsterButton.IsEnabled = enabled;
+
+                // Tone clarity presets
+                if (PresetToneDeepButton != null) PresetToneDeepButton.IsEnabled = enabled;
+                if (PresetToneWarmButton != null) PresetToneWarmButton.IsEnabled = enabled;
+                if (PresetToneNaturalButton != null) PresetToneNaturalButton.IsEnabled = enabled;
+                if (PresetToneBrightButton != null) PresetToneBrightButton.IsEnabled = enabled;
+                if (PresetToneCrispButton != null) PresetToneCrispButton.IsEnabled = enabled;
+
+                // Reverb presets
+                if (PresetReverbRoomButton != null) PresetReverbRoomButton.IsEnabled = enabled;
+                if (PresetReverbStageButton != null) PresetReverbStageButton.IsEnabled = enabled;
+                if (PresetReverbHallButton != null) PresetReverbHallButton.IsEnabled = enabled;
+                if (PresetReverbCaveButton != null) PresetReverbCaveButton.IsEnabled = enabled;
+
+                // Sliders
+                if (AudioPitchSlider != null) AudioPitchSlider.IsEnabled = enabled;
+                if (AudioToneClaritySlider != null) AudioToneClaritySlider.IsEnabled = enabled;
                 if (AudioBassGainSlider != null) AudioBassGainSlider.IsEnabled = enabled;
+                if (AudioLowMidGainSlider != null) AudioLowMidGainSlider.IsEnabled = enabled;
                 if (AudioMidGainSlider != null) AudioMidGainSlider.IsEnabled = enabled;
+                if (AudioHighMidGainSlider != null) AudioHighMidGainSlider.IsEnabled = enabled;
                 if (AudioTrebleGainSlider != null) AudioTrebleGainSlider.IsEnabled = enabled;
                 if (AudioStereoWidthSlider != null) AudioStereoWidthSlider.IsEnabled = enabled;
                 if (AudioWarmthSlider != null) AudioWarmthSlider.IsEnabled = enabled;
                 if (AudioReverbSlider != null) AudioReverbSlider.IsEnabled = enabled;
-                if (AudioPitchSlider != null) AudioPitchSlider.IsEnabled = enabled;
                 if (AudioVocalBalanceSlider != null) AudioVocalBalanceSlider.IsEnabled = enabled;
+                if (AudioEchoDelaySlider != null) AudioEchoDelaySlider.IsEnabled = enabled;
+                if (AudioEchoFeedbackSlider != null) AudioEchoFeedbackSlider.IsEnabled = enabled;
+                if (AudioEchoMixSlider != null) AudioEchoMixSlider.IsEnabled = enabled;
+                if (Audio8DSpeedSlider != null) Audio8DSpeedSlider.IsEnabled = enabled;
                 if (AudioCompressorSlider != null) AudioCompressorSlider.IsEnabled = enabled;
                 if (AudioDeEsserSlider != null) AudioDeEsserSlider.IsEnabled = enabled;
                 if (AudioNoiseGateSlider != null) AudioNoiseGateSlider.IsEnabled = enabled;
@@ -71,6 +102,12 @@ namespace FlowMy.Views.NodeControls
                 if (AudioFadeInSlider != null) AudioFadeInSlider.IsEnabled = enabled;
                 if (AudioFadeOutSlider != null) AudioFadeOutSlider.IsEnabled = enabled;
 
+                // Toggles & CheckBoxes
+                if (AudioEchoToggle != null) AudioEchoToggle.IsEnabled = enabled;
+                if (Audio8DToggle != null) Audio8DToggle.IsEnabled = enabled;
+                if (AudioRobotVoiceCheckBox != null) AudioRobotVoiceCheckBox.IsEnabled = enabled;
+                if (AudioRadioVoiceCheckBox != null) AudioRadioVoiceCheckBox.IsEnabled = enabled;
+                if (AudioChorusCheckBox != null) AudioChorusCheckBox.IsEnabled = enabled;
                 if (AudioNormalizeCheckBox != null) AudioNormalizeCheckBox.IsEnabled = enabled;
                 if (AudioDenoiseCheckBox != null) AudioDenoiseCheckBox.IsEnabled = enabled;
                 if (AudioHighpassCheckBox != null) AudioHighpassCheckBox.IsEnabled = enabled;
@@ -318,238 +355,10 @@ namespace FlowMy.Views.NodeControls
             if (PresetAudioTrebleButton != null) PresetAudioTrebleButton.Click += (_, _) => ApplyAudioEqPreset("treble");
             if (PresetAudioPodcastButton != null) PresetAudioPodcastButton.Click += (_, _) => ApplyAudioEqPreset("podcast");
 
-            // 5. 3-Band Parametric Equalizer: Bass, Mid, Treble Sliders
-            if (AudioBassGainSlider != null)
-            {
-                AudioBassGainSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioBassGain = e.NewValue;
-                    if (AudioBassGainLabel != null)
-                        AudioBassGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioMidGainSlider != null)
-            {
-                AudioMidGainSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioMidGain = e.NewValue;
-                    if (AudioMidGainLabel != null)
-                        AudioMidGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioTrebleGainSlider != null)
-            {
-                AudioTrebleGainSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioTrebleGain = e.NewValue;
-                    if (AudioTrebleGainLabel != null)
-                        AudioTrebleGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 5b. Studio FX Sliders: Stereo Width, Warmth, Reverb
-            if (AudioStereoWidthSlider != null)
-            {
-                AudioStereoWidthSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioStereoWidthPercent = e.NewValue;
-                    if (AudioStereoWidthLabel != null)
-                        AudioStereoWidthLabel.Text = $"{e.NewValue:0}%";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioWarmthSlider != null)
-            {
-                AudioWarmthSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioWarmthPercent = e.NewValue;
-                    if (AudioWarmthLabel != null)
-                        AudioWarmthLabel.Text = $"{e.NewValue:0}%";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioReverbSlider != null)
-            {
-                AudioReverbSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioReverbPercent = e.NewValue;
-                    if (AudioReverbLabel != null)
-                        AudioReverbLabel.Text = $"{e.NewValue:0}%";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 5b2. Pitch Shift Slider (-12st to +12st)
-            if (AudioPitchSlider != null)
-            {
-                AudioPitchSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioPitchSemitones = e.NewValue;
-                    if (AudioPitchLabel != null)
-                        AudioPitchLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0} st";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 5b3. Vocal vs Background Music Balance Slider
-            if (AudioVocalBalanceSlider != null)
-            {
-                AudioVocalBalanceSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioVocalBalance = e.NewValue;
-                    if (AudioVocalBalanceLabel != null)
-                    {
-                        if (e.NewValue < -1)
-                            AudioVocalBalanceLabel.Text = $"Nhạc {e.NewValue:0}%";
-                        else if (e.NewValue > 1)
-                            AudioVocalBalanceLabel.Text = $"Lời +{e.NewValue:0}%";
-                        else
-                            AudioVocalBalanceLabel.Text = "Gốc (0%)";
-                    }
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 5b4. Dynamics Sliders: Compressor, De-Esser, Noise Gate
-            if (AudioCompressorSlider != null)
-            {
-                AudioCompressorSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioCompressorPercent = e.NewValue;
-                    if (AudioCompressorLabel != null)
-                        AudioCompressorLabel.Text = $"{e.NewValue:0}%";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioDeEsserSlider != null)
-            {
-                AudioDeEsserSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioDeEsserPercent = e.NewValue;
-                    if (AudioDeEsserLabel != null)
-                        AudioDeEsserLabel.Text = $"{e.NewValue:0}%";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioNoiseGateSlider != null)
-            {
-                AudioNoiseGateSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioNoiseGatePercent = e.NewValue;
-                    if (AudioNoiseGateLabel != null)
-                        AudioNoiseGateLabel.Text = $"{e.NewValue:0}%";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 5c. Dynamic Frequency Cutoff Sliders
-            if (AudioHighpassCutoffSlider != null)
-            {
-                AudioHighpassCutoffSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioHighpassCutoffHz = e.NewValue;
-                    if (AudioHighpassCutoffLabel != null)
-                        AudioHighpassCutoffLabel.Text = $"{e.NewValue:0}Hz";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioLowpassCutoffSlider != null)
-            {
-                AudioLowpassCutoffSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioLowpassCutoffHz = e.NewValue;
-                    if (AudioLowpassCutoffLabel != null)
-                        AudioLowpassCutoffLabel.Text = e.NewValue >= 1000 ? $"{e.NewValue / 1000.0:0.#}kHz" : $"{e.NewValue:0}Hz";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 6. Fade In & Fade Out (Instant Real-time DSP update)
-            if (AudioFadeInSlider != null)
-            {
-                AudioFadeInSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioFadeInSec = e.NewValue;
-                    if (AudioFadeInLabel != null)
-                        AudioFadeInLabel.Text = $"{e.NewValue:0.#}s";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            if (AudioFadeOutSlider != null)
-            {
-                AudioFadeOutSlider.ValueChanged += (_, e) =>
-                {
-                    if (_suppressControlSync) return;
-                    _node.AudioFadeOutSec = e.NewValue;
-                    if (AudioFadeOutLabel != null)
-                        AudioFadeOutLabel.Text = $"{e.NewValue:0.#}s";
-                    OnDspFilterParameterChanged();
-                };
-            }
-
-            // 7. Normalization & Filters
-            if (AudioNormalizeCheckBox != null)
-            {
-                AudioNormalizeCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioNormalizeEnabled = true; OnDspFilterParameterChanged(); } };
-                AudioNormalizeCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioNormalizeEnabled = false; OnDspFilterParameterChanged(); } };
-            }
-
-            if (AudioTargetLufsCombo != null)
-            {
-                AudioTargetLufsCombo.SelectionChanged += (_, _) =>
-                {
-                    if (_suppressControlSync) return;
-                    if (AudioTargetLufsCombo.SelectedItem is ComboBoxItem item &&
-                        double.TryParse(item.Tag?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var lufs))
-                    {
-                        _node.AudioTargetLufs = lufs;
-                        OnDspFilterParameterChanged();
-                    }
-                };
-            }
-
-            if (AudioDenoiseCheckBox != null)
-            {
-                AudioDenoiseCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioDenoiseEnabled = true; OnDspFilterParameterChanged(); } };
-                AudioDenoiseCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioDenoiseEnabled = false; OnDspFilterParameterChanged(); } };
-            }
-
-            if (AudioHighpassCheckBox != null)
-            {
-                AudioHighpassCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioHighpassFilter = true; OnDspFilterParameterChanged(); } };
-                AudioHighpassCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioHighpassFilter = false; OnDspFilterParameterChanged(); } };
-            }
-
-            if (AudioLowpassCheckBox != null)
-            {
-                AudioLowpassCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioLowpassFilter = true; OnDspFilterParameterChanged(); } };
-                AudioLowpassCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioLowpassFilter = false; OnDspFilterParameterChanged(); } };
-            }
+            WireVoiceAndToneEvents();
+            WireEqualizer5BandEvents();
+            WireCreativeAudioFxEvents();
+            WireDynamicsAndCutoffEvents();
 
             // 8. DSP Live Preview Controls (NAudio Real-time Engine)
             if (ToggleDspAudioPreviewButton != null)
@@ -660,6 +469,344 @@ namespace FlowMy.Views.NodeControls
             if (AddAudioTrackButton != null) AddAudioTrackButton.Click += (_, _) => _node.AudioTracks.Add(new VideoAudioTrackConfig());
             if (ExtractFullAudioButton != null) ExtractFullAudioButton.Click += (_, _) => TriggerExtractAudio(trimmedOnly: false);
             if (ExtractTrimmedAudioButton != null) ExtractTrimmedAudioButton.Click += (_, _) => TriggerExtractAudio(trimmedOnly: true);
+        }
+
+        private void WireVoiceAndToneEvents()
+        {
+            if (AudioPitchSlider != null)
+            {
+                AudioPitchSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioPitchSemitones = e.NewValue;
+                    if (AudioPitchLabel != null)
+                        AudioPitchLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0} st";
+                    if (AudioPitchStatusLabel != null)
+                        AudioPitchStatusLabel.Text = FormatPitchStatus(e.NewValue);
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (PresetVoiceMaleDeepButton != null) PresetVoiceMaleDeepButton.Click += (_, _) => ApplyVoiceGenderPreset(-6, "Nam Trầm (-6st)");
+            if (PresetVoiceMaleButton != null) PresetVoiceMaleButton.Click += (_, _) => ApplyVoiceGenderPreset(-3, "Nam Chuẩn (-3st)");
+            if (PresetVoiceNaturalButton != null) PresetVoiceNaturalButton.Click += (_, _) => ApplyVoiceGenderPreset(0, "Tự Nhiên (0st)");
+            if (PresetVoiceFemaleButton != null) PresetVoiceFemaleButton.Click += (_, _) => ApplyVoiceGenderPreset(4, "Nữ Chuẩn (+4st)");
+            if (PresetVoiceAnimeButton != null) PresetVoiceAnimeButton.Click += (_, _) => ApplyVoiceGenderPreset(8, "Nữ Cao / Anime (+8st)");
+            if (PresetVoiceChipmunkButton != null) PresetVoiceChipmunkButton.Click += (_, _) => ApplyVoiceGenderPreset(12, "Sóc Chuột (+12st)");
+            if (PresetVoiceMonsterButton != null) PresetVoiceMonsterButton.Click += (_, _) => ApplyVoiceGenderPreset(-12, "Quái Vật (-12st)");
+
+            if (AudioToneClaritySlider != null)
+            {
+                AudioToneClaritySlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioToneClarity = e.NewValue;
+                    if (AudioToneClarityLabel != null)
+                        AudioToneClarityLabel.Text = $"{e.NewValue:0}%";
+                    if (AudioToneClarityStatusLabel != null)
+                        AudioToneClarityStatusLabel.Text = FormatToneClarityStatus(e.NewValue);
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (PresetToneDeepButton != null) PresetToneDeepButton.Click += (_, _) => ApplyTonePreset(-80, "Rất Trầm (-80%)");
+            if (PresetToneWarmButton != null) PresetToneWarmButton.Click += (_, _) => ApplyTonePreset(-40, "Trầm Ấm (-40%)");
+            if (PresetToneNaturalButton != null) PresetToneNaturalButton.Click += (_, _) => ApplyTonePreset(0, "Tự Nhiên (0%)");
+            if (PresetToneBrightButton != null) PresetToneBrightButton.Click += (_, _) => ApplyTonePreset(50, "Trong Trẻo (+50%)");
+            if (PresetToneCrispButton != null) PresetToneCrispButton.Click += (_, _) => ApplyTonePreset(80, "Trong Vắt (+80%)");
+        }
+
+        private void WireEqualizer5BandEvents()
+        {
+            if (AudioBassGainSlider != null)
+            {
+                AudioBassGainSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioBassGain = e.NewValue;
+                    if (AudioBassGainLabel != null)
+                        AudioBassGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioLowMidGainSlider != null)
+            {
+                AudioLowMidGainSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioLowMidGain = e.NewValue;
+                    if (AudioLowMidGainLabel != null)
+                        AudioLowMidGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioMidGainSlider != null)
+            {
+                AudioMidGainSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioMidGain = e.NewValue;
+                    if (AudioMidGainLabel != null)
+                        AudioMidGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioHighMidGainSlider != null)
+            {
+                AudioHighMidGainSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioHighMidGain = e.NewValue;
+                    if (AudioHighMidGainLabel != null)
+                        AudioHighMidGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioTrebleGainSlider != null)
+            {
+                AudioTrebleGainSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioTrebleGain = e.NewValue;
+                    if (AudioTrebleGainLabel != null)
+                        AudioTrebleGainLabel.Text = $"{(e.NewValue >= 0 ? "+" : "")}{e.NewValue:0.#}dB";
+                    OnDspFilterParameterChanged();
+                };
+            }
+        }
+
+        private void WireCreativeAudioFxEvents()
+        {
+            if (AudioEchoToggle != null)
+            {
+                AudioEchoToggle.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioEchoEnabled = true; OnDspFilterParameterChanged(); } };
+                AudioEchoToggle.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioEchoEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioEchoDelaySlider != null)
+            {
+                AudioEchoDelaySlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioEchoDelayMs = e.NewValue;
+                    if (AudioEchoDelayLabel != null) AudioEchoDelayLabel.Text = $"{e.NewValue:0}ms";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioEchoFeedbackSlider != null)
+            {
+                AudioEchoFeedbackSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioEchoFeedbackPercent = e.NewValue;
+                    if (AudioEchoFeedbackLabel != null) AudioEchoFeedbackLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioEchoMixSlider != null)
+            {
+                AudioEchoMixSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioEchoMixPercent = e.NewValue;
+                    if (AudioEchoMixLabel != null) AudioEchoMixLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (Audio8DToggle != null)
+            {
+                Audio8DToggle.Checked += (_, _) => { if (!_suppressControlSync) { _node.Audio8DEnabled = true; OnDspFilterParameterChanged(); } };
+                Audio8DToggle.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.Audio8DEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+            if (Audio8DSpeedSlider != null)
+            {
+                Audio8DSpeedSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.Audio8DSpeedHz = e.NewValue;
+                    if (Audio8DSpeedLabel != null) Audio8DSpeedLabel.Text = $"{e.NewValue:0.###} Hz";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioRobotVoiceCheckBox != null)
+            {
+                AudioRobotVoiceCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioRobotVoiceEnabled = true; OnDspFilterParameterChanged(); } };
+                AudioRobotVoiceCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioRobotVoiceEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioRadioVoiceCheckBox != null)
+            {
+                AudioRadioVoiceCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioRadioVoiceEnabled = true; OnDspFilterParameterChanged(); } };
+                AudioRadioVoiceCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioRadioVoiceEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioChorusCheckBox != null)
+            {
+                AudioChorusCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioChorusEnabled = true; OnDspFilterParameterChanged(); } };
+                AudioChorusCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioChorusEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+
+            if (AudioStereoWidthSlider != null)
+            {
+                AudioStereoWidthSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioStereoWidthPercent = e.NewValue;
+                    if (AudioStereoWidthLabel != null) AudioStereoWidthLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioWarmthSlider != null)
+            {
+                AudioWarmthSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioWarmthPercent = e.NewValue;
+                    if (AudioWarmthLabel != null) AudioWarmthLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioReverbSlider != null)
+            {
+                AudioReverbSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioReverbPercent = e.NewValue;
+                    if (AudioReverbLabel != null) AudioReverbLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (PresetReverbRoomButton != null) PresetReverbRoomButton.Click += (_, _) => ApplyReverbPreset(15, "Phòng nhỏ (15%)");
+            if (PresetReverbStageButton != null) PresetReverbStageButton.Click += (_, _) => ApplyReverbPreset(35, "Sân khấu (35%)");
+            if (PresetReverbHallButton != null) PresetReverbHallButton.Click += (_, _) => ApplyReverbPreset(60, "Nhà hát (60%)");
+            if (PresetReverbCaveButton != null) PresetReverbCaveButton.Click += (_, _) => ApplyReverbPreset(85, "Hang động (85%)");
+
+            if (AudioVocalBalanceSlider != null)
+            {
+                AudioVocalBalanceSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioVocalBalance = e.NewValue;
+                    if (AudioVocalBalanceLabel != null)
+                    {
+                        if (e.NewValue < -1) AudioVocalBalanceLabel.Text = $"Nhạc {e.NewValue:0}%";
+                        else if (e.NewValue > 1) AudioVocalBalanceLabel.Text = $"Lời +{e.NewValue:0}%";
+                        else AudioVocalBalanceLabel.Text = "Gốc (0%)";
+                    }
+                    OnDspFilterParameterChanged();
+                };
+            }
+        }
+
+        private void WireDynamicsAndCutoffEvents()
+        {
+            if (AudioCompressorSlider != null)
+            {
+                AudioCompressorSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioCompressorPercent = e.NewValue;
+                    if (AudioCompressorLabel != null) AudioCompressorLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioDeEsserSlider != null)
+            {
+                AudioDeEsserSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioDeEsserPercent = e.NewValue;
+                    if (AudioDeEsserLabel != null) AudioDeEsserLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioNoiseGateSlider != null)
+            {
+                AudioNoiseGateSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioNoiseGatePercent = e.NewValue;
+                    if (AudioNoiseGateLabel != null) AudioNoiseGateLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioHighpassCutoffSlider != null)
+            {
+                AudioHighpassCutoffSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioHighpassCutoffHz = e.NewValue;
+                    if (AudioHighpassCutoffLabel != null) AudioHighpassCutoffLabel.Text = $"{e.NewValue:0}Hz";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioLowpassCutoffSlider != null)
+            {
+                AudioLowpassCutoffSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioLowpassCutoffHz = e.NewValue;
+                    if (AudioLowpassCutoffLabel != null)
+                        AudioLowpassCutoffLabel.Text = e.NewValue >= 1000 ? $"{e.NewValue / 1000.0:0.#}kHz" : $"{e.NewValue:0}Hz";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioFadeInSlider != null)
+            {
+                AudioFadeInSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioFadeInSec = e.NewValue;
+                    if (AudioFadeInLabel != null) AudioFadeInLabel.Text = $"{e.NewValue:0.#}s";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioFadeOutSlider != null)
+            {
+                AudioFadeOutSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioFadeOutSec = e.NewValue;
+                    if (AudioFadeOutLabel != null) AudioFadeOutLabel.Text = $"{e.NewValue:0.#}s";
+                    OnDspFilterParameterChanged();
+                };
+            }
+            if (AudioNormalizeCheckBox != null)
+            {
+                AudioNormalizeCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioNormalizeEnabled = true; OnDspFilterParameterChanged(); } };
+                AudioNormalizeCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioNormalizeEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioTargetLufsCombo != null)
+            {
+                AudioTargetLufsCombo.SelectionChanged += (_, _) =>
+                {
+                    if (_suppressControlSync) return;
+                    if (AudioTargetLufsCombo.SelectedItem is ComboBoxItem item &&
+                        double.TryParse(item.Tag?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var lufs))
+                    {
+                        _node.AudioTargetLufs = lufs;
+                        OnDspFilterParameterChanged();
+                    }
+                };
+            }
+            if (AudioDenoiseCheckBox != null)
+            {
+                AudioDenoiseCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioDenoiseEnabled = true; OnDspFilterParameterChanged(); } };
+                AudioDenoiseCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioDenoiseEnabled = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioHighpassCheckBox != null)
+            {
+                AudioHighpassCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioHighpassFilter = true; OnDspFilterParameterChanged(); } };
+                AudioHighpassCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioHighpassFilter = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioLowpassCheckBox != null)
+            {
+                AudioLowpassCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioLowpassFilter = true; OnDspFilterParameterChanged(); } };
+                AudioLowpassCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioLowpassFilter = false; OnDspFilterParameterChanged(); } };
+            }
         }
 
         public void LaunchFfplayPreview(bool audioOnly = false)
@@ -781,16 +928,21 @@ namespace FlowMy.Views.NodeControls
             ApplyLivePlaybackSpeed(speed);
         }
 
-        public void EnsureRealTimeAudioEngineLoaded()
+        public async Task EnsureRealTimeAudioEngineLoadedAsync()
         {
             if (string.IsNullOrWhiteSpace(_node.VideoPath) || !File.Exists(_node.VideoPath)) return;
             _realTimeAudioEngine ??= new RealTimeVideoAudioEngine();
             if (_realTimeAudioEngine.CurrentFilePath != _node.VideoPath)
             {
                 var dur = GetNaturalDurationSeconds();
-                _realTimeAudioEngine.LoadMedia(_node.VideoPath, dur);
+                await _realTimeAudioEngine.LoadMediaAsync(_node.VideoPath, dur);
             }
-            _realTimeAudioEngine.ApplyParameters(_node, _node.PreviewVolume, _isDspAudioPreviewActive);
+            _realTimeAudioEngine?.ApplyParameters(_node, _node.PreviewVolume, _isDspAudioPreviewActive);
+        }
+
+        public void EnsureRealTimeAudioEngineLoaded()
+        {
+            _ = EnsureRealTimeAudioEngineLoadedAsync();
         }
 
         private void OnDspFilterParameterChanged()
@@ -865,13 +1017,21 @@ namespace FlowMy.Views.NodeControls
         private string GetActiveFilterSummary()
         {
             var parts = new List<string>();
+            if (Math.Abs(_node.AudioPitchSemitones) > 0.1) parts.Add($"Pitch {(_node.AudioPitchSemitones > 0 ? "+" : "")}{_node.AudioPitchSemitones:0}st");
+            if (Math.Abs(_node.AudioToneClarity) > 1.0) parts.Add($"Tone {(_node.AudioToneClarity > 0 ? "+" : "")}{_node.AudioToneClarity:0}%");
             if (_node.AudioBassGain != 0) parts.Add($"Bass {(_node.AudioBassGain > 0 ? "+" : "")}{_node.AudioBassGain:0.#}dB");
+            if (_node.AudioLowMidGain != 0) parts.Add($"L-Mid {(_node.AudioLowMidGain > 0 ? "+" : "")}{_node.AudioLowMidGain:0.#}dB");
             if (_node.AudioMidGain != 0) parts.Add($"Mid {(_node.AudioMidGain > 0 ? "+" : "")}{_node.AudioMidGain:0.#}dB");
+            if (_node.AudioHighMidGain != 0) parts.Add($"H-Mid {(_node.AudioHighMidGain > 0 ? "+" : "")}{_node.AudioHighMidGain:0.#}dB");
             if (_node.AudioTrebleGain != 0) parts.Add($"Treble {(_node.AudioTrebleGain > 0 ? "+" : "")}{_node.AudioTrebleGain:0.#}dB");
+            if (_node.AudioEchoEnabled) parts.Add($"Echo {_node.AudioEchoDelayMs:0}ms");
+            if (_node.Audio8DEnabled) parts.Add($"8D {_node.Audio8DSpeedHz:0.###}Hz");
+            if (_node.AudioRobotVoiceEnabled) parts.Add("Robot");
+            if (_node.AudioRadioVoiceEnabled) parts.Add("Radio");
+            if (_node.AudioChorusEnabled) parts.Add("Chorus");
             if (Math.Abs(_node.AudioStereoWidthPercent - 100.0) > 1.0) parts.Add($"Stereo {_node.AudioStereoWidthPercent:0}%");
             if (_node.AudioWarmthPercent > 0) parts.Add($"Warmth {_node.AudioWarmthPercent:0}%");
             if (_node.AudioReverbPercent > 0) parts.Add($"Reverb {_node.AudioReverbPercent:0}%");
-            if (_node.AudioPitchSemitones != 0) parts.Add($"Pitch {(_node.AudioPitchSemitones > 0 ? "+" : "")}{_node.AudioPitchSemitones:0}st");
             if (_node.AudioVocalBalance < -1) parts.Add($"Karaoke {_node.AudioVocalBalance:0}%");
             if (_node.AudioVocalBalance > 1) parts.Add($"Vocal +{_node.AudioVocalBalance:0}%");
             if (_node.AudioCompressorPercent > 0) parts.Add($"Comp {_node.AudioCompressorPercent:0}%");
@@ -983,21 +1143,68 @@ namespace FlowMy.Views.NodeControls
                 if (AudioTrimEndSecLabel != null) AudioTrimEndSecLabel.Text = $"{_node.AudioTrimEndSec:0.##}s";
                 UpdateAudioTrimDurationLabel();
 
+                if (AudioPitchSlider != null)
+                {
+                    AudioPitchSlider.Value = _node.AudioPitchSemitones;
+                    if (AudioPitchLabel != null) AudioPitchLabel.Text = $"{(_node.AudioPitchSemitones >= 0 ? "+" : "")}{_node.AudioPitchSemitones:0} st";
+                    if (AudioPitchStatusLabel != null) AudioPitchStatusLabel.Text = FormatPitchStatus(_node.AudioPitchSemitones);
+                }
+                if (AudioToneClaritySlider != null)
+                {
+                    AudioToneClaritySlider.Value = _node.AudioToneClarity;
+                    if (AudioToneClarityLabel != null) AudioToneClarityLabel.Text = $"{_node.AudioToneClarity:0}%";
+                    if (AudioToneClarityStatusLabel != null) AudioToneClarityStatusLabel.Text = FormatToneClarityStatus(_node.AudioToneClarity);
+                }
                 if (AudioBassGainSlider != null)
                 {
                     AudioBassGainSlider.Value = _node.AudioBassGain;
                     if (AudioBassGainLabel != null) AudioBassGainLabel.Text = $"{(_node.AudioBassGain >= 0 ? "+" : "")}{_node.AudioBassGain:0.#}dB";
+                }
+                if (AudioLowMidGainSlider != null)
+                {
+                    AudioLowMidGainSlider.Value = _node.AudioLowMidGain;
+                    if (AudioLowMidGainLabel != null) AudioLowMidGainLabel.Text = $"{(_node.AudioLowMidGain >= 0 ? "+" : "")}{_node.AudioLowMidGain:0.#}dB";
                 }
                 if (AudioMidGainSlider != null)
                 {
                     AudioMidGainSlider.Value = _node.AudioMidGain;
                     if (AudioMidGainLabel != null) AudioMidGainLabel.Text = $"{(_node.AudioMidGain >= 0 ? "+" : "")}{_node.AudioMidGain:0.#}dB";
                 }
+                if (AudioHighMidGainSlider != null)
+                {
+                    AudioHighMidGainSlider.Value = _node.AudioHighMidGain;
+                    if (AudioHighMidGainLabel != null) AudioHighMidGainLabel.Text = $"{(_node.AudioHighMidGain >= 0 ? "+" : "")}{_node.AudioHighMidGain:0.#}dB";
+                }
                 if (AudioTrebleGainSlider != null)
                 {
                     AudioTrebleGainSlider.Value = _node.AudioTrebleGain;
                     if (AudioTrebleGainLabel != null) AudioTrebleGainLabel.Text = $"{(_node.AudioTrebleGain >= 0 ? "+" : "")}{_node.AudioTrebleGain:0.#}dB";
                 }
+                if (AudioEchoToggle != null) AudioEchoToggle.IsChecked = _node.AudioEchoEnabled;
+                if (AudioEchoDelaySlider != null)
+                {
+                    AudioEchoDelaySlider.Value = _node.AudioEchoDelayMs;
+                    if (AudioEchoDelayLabel != null) AudioEchoDelayLabel.Text = $"{_node.AudioEchoDelayMs:0}ms";
+                }
+                if (AudioEchoFeedbackSlider != null)
+                {
+                    AudioEchoFeedbackSlider.Value = _node.AudioEchoFeedbackPercent;
+                    if (AudioEchoFeedbackLabel != null) AudioEchoFeedbackLabel.Text = $"{_node.AudioEchoFeedbackPercent:0}%";
+                }
+                if (AudioEchoMixSlider != null)
+                {
+                    AudioEchoMixSlider.Value = _node.AudioEchoMixPercent;
+                    if (AudioEchoMixLabel != null) AudioEchoMixLabel.Text = $"{_node.AudioEchoMixPercent:0}%";
+                }
+                if (Audio8DToggle != null) Audio8DToggle.IsChecked = _node.Audio8DEnabled;
+                if (Audio8DSpeedSlider != null)
+                {
+                    Audio8DSpeedSlider.Value = _node.Audio8DSpeedHz;
+                    if (Audio8DSpeedLabel != null) Audio8DSpeedLabel.Text = $"{_node.Audio8DSpeedHz:0.###} Hz";
+                }
+                if (AudioRobotVoiceCheckBox != null) AudioRobotVoiceCheckBox.IsChecked = _node.AudioRobotVoiceEnabled;
+                if (AudioRadioVoiceCheckBox != null) AudioRadioVoiceCheckBox.IsChecked = _node.AudioRadioVoiceEnabled;
+                if (AudioChorusCheckBox != null) AudioChorusCheckBox.IsChecked = _node.AudioChorusEnabled;
                 if (AudioStereoWidthSlider != null)
                 {
                     AudioStereoWidthSlider.Value = _node.AudioStereoWidthPercent;
@@ -1012,11 +1219,6 @@ namespace FlowMy.Views.NodeControls
                 {
                     AudioReverbSlider.Value = _node.AudioReverbPercent;
                     if (AudioReverbLabel != null) AudioReverbLabel.Text = $"{_node.AudioReverbPercent:0}%";
-                }
-                if (AudioPitchSlider != null)
-                {
-                    AudioPitchSlider.Value = _node.AudioPitchSemitones;
-                    if (AudioPitchLabel != null) AudioPitchLabel.Text = $"{(_node.AudioPitchSemitones >= 0 ? "+" : "")}{_node.AudioPitchSemitones:0} st";
                 }
                 if (AudioVocalBalanceSlider != null)
                 {
@@ -1121,6 +1323,50 @@ namespace FlowMy.Views.NodeControls
             UpdatePlaybackUi();
         }
 
+        private static string FormatPitchStatus(double semitones)
+        {
+            if (semitones <= -10) return $"👹 Quái vật ({semitones:0} st)";
+            if (semitones <= -5) return $"👨 Nam trầm ({semitones:0} st)";
+            if (semitones < 0) return $"👨‍💼 Nam chuẩn ({semitones:0} st)";
+            if (Math.Abs(semitones) < 0.1) return "🧑 Tự nhiên (0 st)";
+            if (semitones <= 5) return $"👩 Nữ chuẩn (+{semitones:0} st)";
+            if (semitones <= 9) return $"👧 Nữ cao / Anime (+{semitones:0} st)";
+            return $"🐿️ Sóc chuột (+{semitones:0} st)";
+        }
+
+        private static string FormatToneClarityStatus(double tone)
+        {
+            if (tone <= -60) return $"📻 Rất Trầm ({tone:0}%)";
+            if (tone < -5) return $"☕ Trầm Ấm ({tone:0}%)";
+            if (Math.Abs(tone) <= 5) return "⚖️ Tự Nhiên (0%)";
+            if (tone <= 60) return $"✨ Trong Trẻo (+{tone:0}%)";
+            return $"🎙️ Trong Vắt (+{tone:0}%)";
+        }
+
+        private void ApplyVoiceGenderPreset(double semitones, string title)
+        {
+            _node.AudioPitchSemitones = semitones;
+            SyncAudioTabFromModel();
+            AppendLog($"🎙️ [ĐỔI GIỌNG] Đã áp dụng preset: {title}.");
+            TriggerDspRegenIfActive();
+        }
+
+        private void ApplyTonePreset(double toneClarity, string title)
+        {
+            _node.AudioToneClarity = toneClarity;
+            SyncAudioTabFromModel();
+            AppendLog($"✨ [ÂM SẮC] Đã áp dụng preset: {title}.");
+            TriggerDspRegenIfActive();
+        }
+
+        private void ApplyReverbPreset(double reverbPercent, string title)
+        {
+            _node.AudioReverbPercent = reverbPercent;
+            SyncAudioTabFromModel();
+            AppendLog($"🏛️ [VANG REVERB] Đã áp dụng preset: {title}.");
+            TriggerDspRegenIfActive();
+        }
+
         private void ApplyAudioEqPreset(string preset)
         {
             _node.AudioEqPreset = preset;
@@ -1128,13 +1374,21 @@ namespace FlowMy.Views.NodeControls
             {
                 case "neutral":
                     _node.AudioBassGain = 0;
+                    _node.AudioLowMidGain = 0;
                     _node.AudioMidGain = 0;
+                    _node.AudioHighMidGain = 0;
                     _node.AudioTrebleGain = 0;
+                    _node.AudioToneClarity = 0;
                     _node.AudioStereoWidthPercent = 100;
                     _node.AudioWarmthPercent = 0;
                     _node.AudioReverbPercent = 0;
                     _node.AudioPitchSemitones = 0;
                     _node.AudioVocalBalance = 0;
+                    _node.AudioEchoEnabled = false;
+                    _node.Audio8DEnabled = false;
+                    _node.AudioRobotVoiceEnabled = false;
+                    _node.AudioRadioVoiceEnabled = false;
+                    _node.AudioChorusEnabled = false;
                     _node.AudioCompressorPercent = 0;
                     _node.AudioDeEsserPercent = 0;
                     _node.AudioNoiseGatePercent = 0;
@@ -1145,11 +1399,13 @@ namespace FlowMy.Views.NodeControls
                     break;
                 case "vocal":
                     _node.AudioBassGain = -2;
+                    _node.AudioLowMidGain = -1;
                     _node.AudioMidGain = 3;
+                    _node.AudioHighMidGain = 3.5;
                     _node.AudioTrebleGain = 4;
+                    _node.AudioToneClarity = 40;
                     _node.AudioStereoWidthPercent = 105;
                     _node.AudioWarmthPercent = 10;
-                    _node.AudioPitchSemitones = 0;
                     _node.AudioVocalBalance = 25;
                     _node.AudioCompressorPercent = 35;
                     _node.AudioDeEsserPercent = 30;
@@ -1161,8 +1417,11 @@ namespace FlowMy.Views.NodeControls
                     break;
                 case "bass":
                     _node.AudioBassGain = 7;
+                    _node.AudioLowMidGain = 3;
                     _node.AudioMidGain = 0;
+                    _node.AudioHighMidGain = 0;
                     _node.AudioTrebleGain = 1;
+                    _node.AudioToneClarity = -30;
                     _node.AudioStereoWidthPercent = 120;
                     _node.AudioWarmthPercent = 20;
                     _node.AudioCompressorPercent = 20;
@@ -1171,8 +1430,11 @@ namespace FlowMy.Views.NodeControls
                     break;
                 case "treble":
                     _node.AudioBassGain = -1;
+                    _node.AudioLowMidGain = -2;
                     _node.AudioMidGain = 1;
+                    _node.AudioHighMidGain = 4;
                     _node.AudioTrebleGain = 6;
+                    _node.AudioToneClarity = 60;
                     _node.AudioStereoWidthPercent = 115;
                     _node.AudioDeEsserPercent = 25;
                     _node.AudioHighpassFilter = false;
@@ -1180,12 +1442,14 @@ namespace FlowMy.Views.NodeControls
                     break;
                 case "podcast":
                     _node.AudioBassGain = -2;
+                    _node.AudioLowMidGain = 1;
                     _node.AudioMidGain = 2.5;
+                    _node.AudioHighMidGain = 3;
                     _node.AudioTrebleGain = 3;
+                    _node.AudioToneClarity = 30;
                     _node.AudioStereoWidthPercent = 100;
                     _node.AudioWarmthPercent = 15;
                     _node.AudioReverbPercent = 5;
-                    _node.AudioPitchSemitones = 0;
                     _node.AudioVocalBalance = 20;
                     _node.AudioCompressorPercent = 45;
                     _node.AudioDeEsserPercent = 35;

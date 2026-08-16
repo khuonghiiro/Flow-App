@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using FlowMy.Models.Nodes;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -9,12 +11,12 @@ namespace FlowMy.Services.Workflow.Audio
 {
     /// <summary>
     /// High-performance, zero-latency real-time video audio playback engine powered by NAudio.
-    /// Directly decodes audio streams from video containers into memory and applies live DSP filters
-    /// with instantaneous slider responsiveness (< 50ms latency).
+    /// Directly decodes audio streams from video containers into memory on background threads
+    /// and applies live DSP filters with instantaneous slider responsiveness (< 20ms latency).
     /// </summary>
     public class RealTimeVideoAudioEngine : IDisposable
     {
-        private MediaFoundationReader? _reader;
+        private WaveStream? _reader;
         private IWavePlayer? _outputDevice;
         private RealTimeAudioDspPipeline? _dspPipeline;
         private readonly object _lock = new();
@@ -22,6 +24,7 @@ namespace FlowMy.Services.Workflow.Audio
         private string? _currentFilePath;
         private double _totalDurationSec;
         private bool _isLooping = true;
+        private int _loadingVersion;
 
         public bool IsLoaded => _reader != null && _outputDevice != null;
         public PlaybackState PlaybackState => _outputDevice?.PlaybackState ?? PlaybackState.Stopped;
@@ -45,43 +48,94 @@ namespace FlowMy.Services.Workflow.Audio
             }
         }
 
+        public async Task<bool> LoadMediaAsync(string videoFilePath, double totalDurationSec)
+        {
+            if (string.IsNullOrWhiteSpace(videoFilePath) || !File.Exists(videoFilePath))
+                return false;
+
+            var version = Interlocked.Increment(ref _loadingVersion);
+
+            try
+            {
+                // Run media stream initialization on MTA thread pool to avoid STA COM deadlocks with WPF MediaElement
+                var loadResult = await Task.Run(() =>
+                {
+                    try
+                    {
+                        var settings = new MediaFoundationReader.MediaFoundationReaderSettings
+                        {
+                            RequestFloatOutput = true
+                        };
+
+                        WaveStream reader;
+                        var ext = Path.GetExtension(videoFilePath).ToLowerInvariant();
+                        if (ext is ".mp3" or ".wav" or ".aac" or ".m4a" or ".flac")
+                        {
+                            reader = new AudioFileReader(videoFilePath);
+                        }
+                        else
+                        {
+                            reader = new MediaFoundationReader(videoFilePath, settings);
+                        }
+
+                        if (reader.WaveFormat == null || reader.WaveFormat.SampleRate <= 0 || reader.WaveFormat.Channels <= 0)
+                        {
+                            reader.Dispose();
+                            return null;
+                        }
+
+                        return reader;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[RealTimeVideoAudioEngine] MediaFoundation decode error: {ex.Message}");
+                        return null;
+                    }
+                }).ConfigureAwait(false);
+
+                if (loadResult == null)
+                    return false;
+
+                lock (_lock)
+                {
+                    // Check if another load superseded this one
+                    if (version != _loadingVersion || _isDisposed)
+                    {
+                        loadResult.Dispose();
+                        return false;
+                    }
+
+                    DisposeInternal();
+
+                    _currentFilePath = videoFilePath;
+                    _totalDurationSec = totalDurationSec;
+                    _reader = loadResult;
+
+                    var sampleProvider = _reader.ToSampleProvider();
+                    _dspPipeline = new RealTimeAudioDspPipeline(sampleProvider, totalDurationSec);
+                    _outputDevice = InitReliableOutputDevice(_dspPipeline);
+                    return _outputDevice != null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RealTimeVideoAudioEngine] LoadMediaAsync failed: {ex.Message}");
+                return false;
+            }
+        }
+
         public bool LoadMedia(string videoFilePath, double totalDurationSec)
         {
             if (string.IsNullOrWhiteSpace(videoFilePath) || !File.Exists(videoFilePath))
                 return false;
 
-            lock (_lock)
+            try
             {
-                try
-                {
-                    DisposeInternal();
-
-                    _currentFilePath = videoFilePath;
-                    _totalDurationSec = totalDurationSec;
-
-                    // 1. Decode audio track directly from video container via MediaFoundation
-                    _reader = new MediaFoundationReader(videoFilePath);
-                    if (_reader.WaveFormat == null || _reader.WaveFormat.SampleRate <= 0 || _reader.WaveFormat.Channels <= 0)
-                    {
-                        DisposeInternal();
-                        return false;
-                    }
-
-                    var sampleProvider = _reader.ToSampleProvider();
-
-                    // 2. Wrap into real-time multi-channel DSP pipeline
-                    _dspPipeline = new RealTimeAudioDspPipeline(sampleProvider, totalDurationSec);
-
-                    // 3. Initialize resilient low-latency output device (WaveOutEvent / DirectSoundOut / WasapiOut)
-                    _outputDevice = InitReliableOutputDevice(_dspPipeline);
-                    return _outputDevice != null;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[RealTimeVideoAudioEngine] LoadMedia failed: {ex.Message}");
-                    DisposeInternal();
-                    return false;
-                }
+                return LoadMediaAsync(videoFilePath, totalDurationSec).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -218,12 +272,19 @@ namespace FlowMy.Services.Workflow.Audio
                 : 0f;
 
             _dspPipeline.IsBypassed = !isDspActive;
-            _dspPipeline.SetVolume(effectiveVol);
-            _dspPipeline.SetEq3Band((float)node.AudioBassGain, (float)node.AudioMidGain, (float)node.AudioTrebleGain, node.AudioEqPreset);
-            _dspPipeline.SetFilters(node.AudioHighpassFilter, (float)node.AudioHighpassCutoffHz, node.AudioLowpassFilter, (float)node.AudioLowpassCutoffHz, node.AudioNormalizeEnabled);
-            _dspPipeline.SetStereoAndWarmth((float)node.AudioStereoWidthPercent, (float)node.AudioWarmthPercent, (float)node.AudioReverbPercent, (float)node.AudioVocalBalance, (float)node.AudioPitchSemitones);
-            _dspPipeline.SetDynamics((float)node.AudioCompressorPercent, (float)node.AudioDeEsserPercent, (float)node.AudioNoiseGatePercent);
-            _dspPipeline.SetFade((float)node.AudioFadeInSec, (float)node.AudioFadeOutSec, (float)_totalDurationSec);
+            _dspPipeline.ApplyAllParameters(
+                effectiveVol,
+                (float)node.AudioBassGain, (float)node.AudioLowMidGain, (float)node.AudioMidGain, (float)node.AudioHighMidGain, (float)node.AudioTrebleGain,
+                (float)node.AudioToneClarity, node.AudioEqPreset,
+                node.AudioHighpassFilter, (float)node.AudioHighpassCutoffHz,
+                node.AudioLowpassFilter, (float)node.AudioLowpassCutoffHz,
+                node.AudioNormalizeEnabled,
+                (float)node.AudioStereoWidthPercent, (float)node.AudioWarmthPercent, (float)node.AudioReverbPercent, (float)node.AudioVocalBalance, (float)node.AudioPitchSemitones,
+                node.AudioEchoEnabled, (float)node.AudioEchoDelayMs, (float)node.AudioEchoFeedbackPercent, (float)node.AudioEchoMixPercent,
+                node.AudioRobotVoiceEnabled, node.AudioRadioVoiceEnabled, node.AudioChorusEnabled, (float)node.AudioChorusMixPercent,
+                node.Audio8DEnabled, (float)node.Audio8DSpeedHz,
+                (float)node.AudioCompressorPercent, (float)node.AudioDeEsserPercent, (float)node.AudioNoiseGatePercent,
+                (float)node.AudioFadeInSec, (float)node.AudioFadeOutSec, (float)_totalDurationSec);
         }
 
         private void DisposeInternal()
