@@ -309,6 +309,14 @@ namespace FlowMy.Models.Nodes
         private double _audioDeEsserPercent;
         private double _audioNoiseGatePercent;
         private double _audioTargetLufs = -14.0;
+        private bool _audioWaveShaperEnabled;
+        private string _audioWaveShaperCurve = "clean";
+        private double _audioWaveShaperDrivePercent;
+        private double _audioTransientPunchPercent;
+        private double _audioSubHarmonicsPercent;
+        private double _audioHarmonicExciterPercent;
+        private bool _audioPhaseInvertLeft;
+        private bool _audioPhaseInvertRight;
         private bool _audioTrimEnabled;
         private double _audioTrimStartSec;
         private double _audioTrimEndSec;
@@ -1004,6 +1012,54 @@ namespace FlowMy.Models.Nodes
         {
             get => _audioTargetLufs;
             set { if (Math.Abs(_audioTargetLufs - value) > 0.01) { _audioTargetLufs = Math.Clamp(value, -30.0, -6.0); OnPropertyChanged(); } }
+        }
+
+        public bool AudioWaveShaperEnabled
+        {
+            get => _audioWaveShaperEnabled;
+            set { if (_audioWaveShaperEnabled != value) { _audioWaveShaperEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public string AudioWaveShaperCurve
+        {
+            get => _audioWaveShaperCurve;
+            set { if (_audioWaveShaperCurve != value) { _audioWaveShaperCurve = value ?? "clean"; OnPropertyChanged(); } }
+        }
+
+        public double AudioWaveShaperDrivePercent
+        {
+            get => _audioWaveShaperDrivePercent;
+            set { if (Math.Abs(_audioWaveShaperDrivePercent - value) > 0.1) { _audioWaveShaperDrivePercent = Math.Clamp(value, 0.0, 200.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioTransientPunchPercent
+        {
+            get => _audioTransientPunchPercent;
+            set { if (Math.Abs(_audioTransientPunchPercent - value) > 0.1) { _audioTransientPunchPercent = Math.Clamp(value, -100.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioSubHarmonicsPercent
+        {
+            get => _audioSubHarmonicsPercent;
+            set { if (Math.Abs(_audioSubHarmonicsPercent - value) > 0.1) { _audioSubHarmonicsPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public double AudioHarmonicExciterPercent
+        {
+            get => _audioHarmonicExciterPercent;
+            set { if (Math.Abs(_audioHarmonicExciterPercent - value) > 0.1) { _audioHarmonicExciterPercent = Math.Clamp(value, 0.0, 100.0); OnPropertyChanged(); } }
+        }
+
+        public bool AudioPhaseInvertLeft
+        {
+            get => _audioPhaseInvertLeft;
+            set { if (_audioPhaseInvertLeft != value) { _audioPhaseInvertLeft = value; OnPropertyChanged(); } }
+        }
+
+        public bool AudioPhaseInvertRight
+        {
+            get => _audioPhaseInvertRight;
+            set { if (_audioPhaseInvertRight != value) { _audioPhaseInvertRight = value; OnPropertyChanged(); } }
         }
 
         public bool AudioTrimEnabled

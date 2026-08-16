@@ -7,6 +7,10 @@ namespace FlowMy.Services.Workflow.Audio
     /// <summary>
     /// Professional real-time multi-channel DSP audio processing pipeline implementing NAudio ISampleProvider.
     /// Provides zero-latency real-time adjustments for:
+    /// - Live Waveform Oscilloscope & Spectral Visualizer Buffer
+    /// - Waveform Shaper (Pure, Tape, Soft Saturation, Hard Clipping, Wave Folding)
+    /// - Transient Attack Punch, Sub-Harmonic Wave Generator, Harmonic Exciter
+    /// - Stereo Waveform Polarity & Phase Inversion (L / R)
     /// - Voice Pitch Shifting / Voice Gender Changer (Male ↔ Female, Chipmunk, Monster) with Formant Reshaping
     /// - Voice Tone Clarity (Deep/Warm ↔ Bright/Crisp)
     /// - 5-Band Parametric Equalizer (Bass 100Hz, Low-Mid 350Hz, Mid 1.2kHz, High-Mid 3.5kHz, Treble 8kHz)
@@ -65,6 +69,16 @@ namespace FlowMy.Services.Workflow.Audio
         private volatile float _totalDurationSec;
         private volatile bool _isBypassed;
 
+        // Waveform Shaper & Spectral Parameters
+        private volatile bool _waveShaperEnabled;
+        private volatile string _waveShaperCurve = "clean";
+        private volatile float _waveShaperDrive = 1.0f;
+        private volatile float _transientPunch;
+        private volatile float _subHarmonics;
+        private volatile float _harmonicExciter;
+        private volatile bool _phaseInvertL;
+        private volatile bool _phaseInvertR;
+
         // Active Filter Sets (atomically swapped)
         private BiQuadFilter[]? _bassFilters;
         private BiQuadFilter[]? _lowMidFilters;
@@ -80,6 +94,8 @@ namespace FlowMy.Services.Workflow.Audio
         private BiQuadFilter[]? _lowpassFilters;
         private BiQuadFilter[]? _radioBandpassHp;
         private BiQuadFilter[]? _radioBandpassLp;
+        private BiQuadFilter[]? _subHarmonicLp;
+        private BiQuadFilter[]? _exciterHp;
 
         // Schroeder Studio Reverb Buffers (Comb filters + Allpass diffusers)
         private readonly float[] _comb1L = new float[1116];
@@ -112,9 +128,11 @@ namespace FlowMy.Services.Workflow.Audio
         private int _chorusIndexL, _chorusIndexR;
         private float _chorusLfoPhase;
 
-        // Dynamics envelopes
+        // Dynamics & Transient Envelopes
         private float _compEnvelope;
         private float _gateGain = 1.0f;
+        private float _transientEnvL;
+        private float _transientEnvR;
 
         // Pitch Shift buffers & phase-aligned grain overlap
         private const int PitchGrainSize = 2048;
@@ -127,6 +145,14 @@ namespace FlowMy.Services.Workflow.Audio
         // 8D & Robot phase oscillators
         private float _eightDPhase;
         private float _robotLfoPhase;
+
+        // Live Waveform Visualizer Buffer (Circular buffer for UI display)
+        private const int VisualizerBufSize = 512;
+        private readonly float[] _visBuf = new float[VisualizerBufSize];
+        private int _visWriteIndex;
+        private float _liveRmsL;
+        private float _liveRmsR;
+        private float _livePeak;
 
         // Position tracking for Fade In / Out
         private long _currentSampleIndex;
@@ -167,7 +193,10 @@ namespace FlowMy.Services.Workflow.Audio
             bool robotVoice, bool radioVoice, bool chorus, float chorusMixPercent,
             bool eightD, float eightDSpeedHz,
             float compressorPercent, float deEsserPercent, float noiseGatePercent,
-            float fadeInSec, float fadeOutSec, float totalDurationSec)
+            float fadeInSec, float fadeOutSec, float totalDurationSec,
+            bool waveShaperEnabled = false, string? waveShaperCurve = null, float waveShaperDrivePercent = 0f,
+            float transientPunchPercent = 0f, float subHarmonicsPercent = 0f, float harmonicExciterPercent = 0f,
+            bool phaseInvertL = false, bool phaseInvertR = false)
         {
             _volume = Math.Clamp(volume, 0f, 5f);
             _bassGainDb = Math.Clamp(bassGainDb, -24f, 24f);
@@ -210,21 +239,14 @@ namespace FlowMy.Services.Workflow.Audio
             _fadeOutSec = Math.Max(0f, fadeOutSec);
             if (totalDurationSec > 0) _totalDurationSec = totalDurationSec;
 
-            lock (_lock)
-            {
-                RebuildFiltersInternal();
-            }
-        }
-
-        public void SetEq5Band(float bassGainDb, float lowMidGainDb, float midGainDb, float highMidGainDb, float trebleGainDb, float toneClarity, string? preset = null)
-        {
-            _bassGainDb = Math.Clamp(bassGainDb, -24f, 24f);
-            _lowMidGainDb = Math.Clamp(lowMidGainDb, -24f, 24f);
-            _midGainDb = Math.Clamp(midGainDb, -24f, 24f);
-            _highMidGainDb = Math.Clamp(highMidGainDb, -24f, 24f);
-            _trebleGainDb = Math.Clamp(trebleGainDb, -24f, 24f);
-            _toneClarity = Math.Clamp(toneClarity, -100f, 100f);
-            if (preset != null) _preset = preset.Trim().ToLowerInvariant();
+            _waveShaperEnabled = waveShaperEnabled;
+            if (waveShaperCurve != null) _waveShaperCurve = waveShaperCurve.Trim().ToLowerInvariant();
+            _waveShaperDrive = 1.0f + Math.Clamp(waveShaperDrivePercent / 100.0f, 0f, 2.0f) * 2.0f;
+            _transientPunch = Math.Clamp(transientPunchPercent / 100.0f, -1.0f, 1.0f);
+            _subHarmonics = Math.Clamp(subHarmonicsPercent / 100.0f, 0f, 1.0f);
+            _harmonicExciter = Math.Clamp(harmonicExciterPercent / 100.0f, 0f, 1.0f);
+            _phaseInvertL = phaseInvertL;
+            _phaseInvertR = phaseInvertR;
 
             lock (_lock)
             {
@@ -232,73 +254,26 @@ namespace FlowMy.Services.Workflow.Audio
             }
         }
 
-        public void SetFilters(bool highpass, float highpassCutoffHz, bool lowpass, float lowpassCutoffHz, bool normalize)
+        public void GetLatestWaveformData(float[] destinationBuffer, out float rmsL, out float rmsR, out float peak)
         {
-            _highpassEnabled = highpass;
-            _highpassCutoffHz = Math.Clamp(highpassCutoffHz, 20f, 500f);
-            _lowpassEnabled = lowpass;
-            _lowpassCutoffHz = Math.Clamp(lowpassCutoffHz, 2000f, 20000f);
-            _normalizeEnabled = normalize;
-
-            lock (_lock)
+            if (destinationBuffer == null)
             {
-                RebuildFiltersInternal();
+                rmsL = 0; rmsR = 0; peak = 0;
+                return;
             }
-        }
 
-        public void SetStereoAndWarmth(float stereoWidthPercent, float warmthPercent, float reverbPercent, float vocalBalance = 0f, float pitchSemitones = 0f)
-        {
-            _stereoWidthFactor = Math.Clamp(stereoWidthPercent / 100.0f, 0f, 2.5f);
-            _warmthFactor = Math.Clamp(warmthPercent / 100.0f, 0f, 1.0f);
-            _reverbMix = Math.Clamp(reverbPercent / 100.0f, 0f, 1.0f);
-            _vocalBalance = Math.Clamp(vocalBalance, -100f, 100f);
-            var pitchChanged = Math.Abs(_pitchSemitones - pitchSemitones) > 0.1f;
-            _pitchSemitones = Math.Clamp(pitchSemitones, -12f, 12f);
-
-            if (pitchChanged)
+            lock (_visBuf)
             {
-                lock (_lock)
+                var len = Math.Min(destinationBuffer.Length, VisualizerBufSize);
+                var start = (_visWriteIndex - len + VisualizerBufSize) % VisualizerBufSize;
+                for (var i = 0; i < len; i++)
                 {
-                    RebuildFiltersInternal();
+                    destinationBuffer[i] = _visBuf[(start + i) % VisualizerBufSize];
                 }
+                rmsL = _liveRmsL;
+                rmsR = _liveRmsR;
+                peak = _livePeak;
             }
-        }
-
-        public void SetEcho(bool enabled, float delayMs, float feedbackPercent, float mixPercent)
-        {
-            _echoEnabled = enabled;
-            _echoDelayMs = Math.Clamp(delayMs, 50f, 1000f);
-            _echoFeedbackPercent = Math.Clamp(feedbackPercent, 0f, 90f);
-            _echoMixPercent = Math.Clamp(mixPercent, 0f, 100f);
-        }
-
-        public void SetCreativeEffects(bool robotVoice, bool radioVoice, bool chorus, float chorusMixPercent, bool eightD, float eightDSpeedHz)
-        {
-            _robotVoiceEnabled = robotVoice;
-            _radioVoiceEnabled = radioVoice;
-            _chorusEnabled = chorus;
-            _chorusMixPercent = Math.Clamp(chorusMixPercent, 0f, 100f);
-            _eightDEnabled = eightD;
-            _eightDSpeedHz = Math.Clamp(eightDSpeedHz, 0.05f, 0.5f);
-
-            lock (_lock)
-            {
-                RebuildFiltersInternal();
-            }
-        }
-
-        public void SetDynamics(float compressorPercent, float deEsserPercent, float noiseGatePercent)
-        {
-            _compressorPercent = Math.Clamp(compressorPercent, 0f, 100f);
-            _deEsserPercent = Math.Clamp(deEsserPercent, 0f, 100f);
-            _noiseGatePercent = Math.Clamp(noiseGatePercent, 0f, 100f);
-        }
-
-        public void SetFade(float fadeInSec, float fadeOutSec, float totalDurationSec)
-        {
-            _fadeInSec = Math.Max(0f, fadeInSec);
-            _fadeOutSec = Math.Max(0f, fadeOutSec);
-            if (totalDurationSec > 0) _totalDurationSec = totalDurationSec;
         }
 
         public void ResetPosition(double seconds = 0)
@@ -334,6 +309,8 @@ namespace FlowMy.Services.Workflow.Audio
             _pitchPhase1 = 0;
             _compEnvelope = 0f;
             _gateGain = 1.0f;
+            _transientEnvL = 0f;
+            _transientEnvR = 0f;
         }
 
         private void RebuildFiltersInternal()
@@ -354,6 +331,8 @@ namespace FlowMy.Services.Workflow.Audio
             var newLp = _lowpassEnabled ? new BiQuadFilter[_channels] : null;
             var newRadHp = _radioVoiceEnabled ? new BiQuadFilter[_channels] : null;
             var newRadLp = _radioVoiceEnabled ? new BiQuadFilter[_channels] : null;
+            var newSubHp = new BiQuadFilter[_channels];
+            var newExcHp = new BiQuadFilter[_channels];
 
             for (var ch = 0; ch < _channels; ch++)
             {
@@ -382,6 +361,10 @@ namespace FlowMy.Services.Workflow.Audio
                 // 5. Radio Bandpass (350Hz - 3400Hz)
                 if (newRadHp != null) newRadHp[ch] = BiQuadFilter.HighPassFilter(_sampleRate, 350f, 0.7071f);
                 if (newRadLp != null) newRadLp[ch] = BiQuadFilter.LowPassFilter(_sampleRate, 3400f, 0.7071f);
+
+                // 6. Sub-harmonic lowpass & Harmonic exciter highpass
+                newSubHp[ch] = BiQuadFilter.LowPassFilter(_sampleRate, 90f, 0.7071f);
+                newExcHp[ch] = BiQuadFilter.HighPassFilter(_sampleRate, 4500f, 0.7071f);
             }
 
             _bassFilters = newBass;
@@ -398,6 +381,8 @@ namespace FlowMy.Services.Workflow.Audio
             _lowpassFilters = newLp;
             _radioBandpassHp = newRadHp;
             _radioBandpassLp = newRadLp;
+            _subHarmonicLp = newSubHp;
+            _exciterHp = newExcHp;
         }
 
         private void BuildToneClarityFilters(int ch, BiQuadFilter[] newTc1, BiQuadFilter[] newTc2)
@@ -422,7 +407,6 @@ namespace FlowMy.Services.Workflow.Audio
         {
             if (_pitchSemitones > 1.0f)
             {
-                // Male -> Female: Cut chest mud (160Hz) & boost female vowel brilliance (2.6kHz) and air (7.5kHz)
                 var femalePres = Math.Min(6.0f, _pitchSemitones * 1.1f);
                 var chestCut = -Math.Min(6.0f, _pitchSemitones * 1.0f);
                 var air = Math.Min(4.0f, _pitchSemitones * 0.7f);
@@ -432,7 +416,6 @@ namespace FlowMy.Services.Workflow.Audio
             }
             else if (_pitchSemitones < -1.0f)
             {
-                // Female -> Male / Monster: Boost chest warmth (140Hz) & soften upper brilliance
                 var maleChest = Math.Min(6.0f, -_pitchSemitones * 1.1f);
                 var trebleCut = -Math.Min(4.0f, -_pitchSemitones * 0.7f);
                 f1[ch] = BiQuadFilter.LowShelf(_sampleRate, 140f, 0.85f, maleChest);
@@ -464,6 +447,8 @@ namespace FlowMy.Services.Workflow.Audio
             var lp = _lowpassFilters;
             var radHp = _radioBandpassHp;
             var radLp = _radioBandpassLp;
+            var subHp = _subHarmonicLp;
+            var excHp = _exciterHp;
 
             var pitchSt = _pitchSemitones;
             var isPitchActive = !isBypassed && Math.Abs(pitchSt) > 0.1f;
@@ -480,6 +465,18 @@ namespace FlowMy.Services.Workflow.Audio
             var radioActive = !isBypassed && _radioVoiceEnabled;
             var reverbActive = !isBypassed && _reverbMix > 0.01f;
             var reverbMix = _reverbMix;
+
+            var waveShaperActive = !isBypassed && _waveShaperEnabled;
+            var waveCurve = _waveShaperCurve;
+            var waveDrive = _waveShaperDrive;
+            var punch = _transientPunch;
+            var subAmt = _subHarmonics;
+            var excAmt = _harmonicExciter;
+            var invL = _phaseInvertL;
+            var invR = _phaseInvertR;
+
+            float sumSqL = 0f, sumSqR = 0f, maxPeak = 0f;
+            var countL = 0; var countR = 0;
 
             for (var n = 0; n < samplesRead; n++)
             {
@@ -513,22 +510,47 @@ namespace FlowMy.Services.Workflow.Audio
                         sample = ProcessSmoothPitchShift(sample, ch, channels, pitchRatio);
                     }
 
-                    // 5. Chorus / Vocal Doubler
+                    // 5. Waveform Shaper & Harmonic Saturation
+                    if (waveShaperActive)
+                    {
+                        sample = ApplyWaveShaper(sample, waveCurve, waveDrive);
+                    }
+
+                    // 6. Transient Attack Punch
+                    if (Math.Abs(punch) > 0.01f)
+                    {
+                        sample = ProcessTransientPunch(sample, ch, punch);
+                    }
+
+                    // 7. Sub-Harmonics & Harmonic Exciter
+                    if (subAmt > 0.01f && subHp?[ch] != null)
+                    {
+                        var sub = subHp[ch].Transform((float)Math.Sin(sample * Math.PI));
+                        sample += sub * (subAmt * 0.45f);
+                    }
+                    if (excAmt > 0.01f && excHp?[ch] != null)
+                    {
+                        var high = excHp[ch].Transform(sample);
+                        var exc = (float)Math.Tanh(high * 2.0f);
+                        sample += exc * (excAmt * 0.40f);
+                    }
+
+                    // 8. Chorus / Vocal Doubler
                     if (chorusActive)
                     {
                         sample = ProcessChorus(sample, ch, chorusMix);
                     }
 
-                    // 6. Echo / Delay
+                    // 9. Echo / Delay
                     if (echoActive && echoDelay > 0)
                     {
                         sample = ProcessEcho(sample, ch, echoDelay, echoFb, echoMix);
                     }
 
-                    // 7. Dynamics (De-Esser, Compressor, Noise Gate)
+                    // 10. Dynamics (De-Esser, Compressor, Noise Gate)
                     sample = ProcessDynamics(sample);
 
-                    // 8. Analog Tube Warmth
+                    // 11. Analog Tube Warmth
                     if (_warmthFactor > 0.01f)
                     {
                         var drive = 1.0f + _warmthFactor * 1.5f;
@@ -536,10 +558,16 @@ namespace FlowMy.Services.Workflow.Audio
                         sample = sample * (1f - _warmthFactor * 0.5f) + sat * (_warmthFactor * 0.5f);
                     }
 
-                    // 9. Lush Schroeder Studio Reverb
+                    // 12. Lush Schroeder Studio Reverb
                     if (reverbActive)
                     {
                         sample = ProcessSchroederReverb(sample, ch, reverbMix);
+                    }
+
+                    // 13. Phase Invert
+                    if ((ch == 0 && invL) || (ch == 1 && invR))
+                    {
+                        sample = -sample;
                     }
                 }
 
@@ -560,7 +588,17 @@ namespace FlowMy.Services.Workflow.Audio
                     sample *= CalculateFadeMultiplier(currentSec, _fadeInSec, _fadeOutSec, _totalDurationSec);
                 }
 
-                buffer[offset + n] = Math.Clamp(sample, -2.0f, 2.0f);
+                var clamped = Math.Clamp(sample, -2.0f, 2.0f);
+                buffer[offset + n] = clamped;
+
+                // Live Visualizer ring buffer capture
+                _visBuf[_visWriteIndex] = clamped;
+                _visWriteIndex = (_visWriteIndex + 1) % VisualizerBufSize;
+
+                var absSample = Math.Abs(clamped);
+                if (absSample > maxPeak) maxPeak = absSample;
+                if (ch == 0) { sumSqL += clamped * clamped; countL++; }
+                else { sumSqR += clamped * clamped; countR++; }
             }
 
             // Post-processing multi-channel matrices
@@ -575,8 +613,44 @@ namespace FlowMy.Services.Workflow.Audio
                 }
             }
 
+            _livePeak = maxPeak;
+            _liveRmsL = countL > 0 ? (float)Math.Sqrt(sumSqL / countL) : 0f;
+            _liveRmsR = countR > 0 ? (float)Math.Sqrt(sumSqR / countR) : _liveRmsL;
+
             _currentSampleIndex += samplesRead;
             return samplesRead;
+        }
+
+        private static float ApplyWaveShaper(float sample, string curve, float drive)
+        {
+            var driven = sample * drive;
+            return curve switch
+            {
+                "tape" => (float)Math.Tanh(driven) * (1.0f / (float)Math.Sqrt(Math.Max(1.0f, drive * 0.7f))),
+                "soft" => driven switch
+                {
+                    > 1.5f => 1.0f,
+                    < -1.5f => -1.0f,
+                    _ => (driven - (driven * driven * driven) / 4.5f) * 0.85f
+                },
+                "hard" => Math.Clamp(driven * 0.85f, -0.92f, 0.92f),
+                "fold" => (float)Math.Sin(driven * Math.PI * 0.5f) * 0.90f,
+                _ => driven * (1.0f / drive)
+            };
+        }
+
+        private float ProcessTransientPunch(float sample, int ch, float punch)
+        {
+            ref var env = ref (ch == 0 ? ref _transientEnvL : ref _transientEnvR);
+            var abs = Math.Abs(sample);
+            env = abs > env ? env * 0.80f + abs * 0.20f : env * 0.98f + abs * 0.02f;
+            var delta = abs - env;
+            if (delta > 0)
+            {
+                var mult = 1.0f + delta * punch * 2.5f;
+                return sample * Math.Clamp(mult, 0.2f, 2.5f);
+            }
+            return sample;
         }
 
         private static float ApplyEqualizerAndCutoffs(
@@ -737,13 +811,11 @@ namespace FlowMy.Services.Workflow.Audio
 
                 combOut = (_combDamp1L + _combDamp2L + _combDamp3L + _combDamp4L) * 0.25f;
 
-                // Allpass 1
                 var apBuf1 = _allpass1L[_apIdx1L];
                 var apOut1 = -combOut + apBuf1;
                 _allpass1L[_apIdx1L] = combOut + apBuf1 * 0.5f;
                 _apIdx1L = (_apIdx1L + 1) % _allpass1L.Length;
 
-                // Allpass 2
                 var apBuf2 = _allpass2L[_apIdx2L];
                 var apOut2 = -apOut1 + apBuf2;
                 _allpass2L[_apIdx2L] = apOut1 + apBuf2 * 0.5f;
@@ -770,13 +842,11 @@ namespace FlowMy.Services.Workflow.Audio
 
                 combOut = (_combDamp1R + _combDamp2R + _combDamp3R + _combDamp4R) * 0.25f;
 
-                // Allpass 1
                 var apBuf1 = _allpass1R[_apIdx1R];
                 var apOut1 = -combOut + apBuf1;
                 _allpass1R[_apIdx1R] = combOut + apBuf1 * 0.5f;
                 _apIdx1R = (_apIdx1R + 1) % _allpass1R.Length;
 
-                // Allpass 2
                 var apBuf2 = _allpass2R[_apIdx2R];
                 var apOut2 = -apOut1 + apBuf2;
                 _allpass2R[_apIdx2R] = apOut1 + apBuf2 * 0.5f;

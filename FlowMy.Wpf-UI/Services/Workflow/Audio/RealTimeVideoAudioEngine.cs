@@ -284,7 +284,22 @@ namespace FlowMy.Services.Workflow.Audio
                 node.AudioRobotVoiceEnabled, node.AudioRadioVoiceEnabled, node.AudioChorusEnabled, (float)node.AudioChorusMixPercent,
                 node.Audio8DEnabled, (float)node.Audio8DSpeedHz,
                 (float)node.AudioCompressorPercent, (float)node.AudioDeEsserPercent, (float)node.AudioNoiseGatePercent,
-                (float)node.AudioFadeInSec, (float)node.AudioFadeOutSec, (float)_totalDurationSec);
+                (float)node.AudioFadeInSec, (float)node.AudioFadeOutSec, (float)_totalDurationSec,
+                node.AudioWaveShaperEnabled, node.AudioWaveShaperCurve, (float)node.AudioWaveShaperDrivePercent,
+                (float)node.AudioTransientPunchPercent, (float)node.AudioSubHarmonicsPercent, (float)node.AudioHarmonicExciterPercent,
+                node.AudioPhaseInvertLeft, node.AudioPhaseInvertRight);
+        }
+
+        public void GetLatestWaveformData(float[] destinationBuffer, out float rmsL, out float rmsR, out float peak)
+        {
+            if (_dspPipeline != null)
+            {
+                _dspPipeline.GetLatestWaveformData(destinationBuffer, out rmsL, out rmsR, out peak);
+            }
+            else
+            {
+                rmsL = 0; rmsR = 0; peak = 0;
+            }
         }
 
         private void DisposeInternal()

@@ -514,6 +514,22 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.AudioDeEsserPercent = adp;
             if (properties.TryGetValue("AudioNoiseGatePercent", out var angObj) && angObj != null && double.TryParse(angObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ang))
                 videoNode.AudioNoiseGatePercent = ang;
+            if (properties.TryGetValue("AudioWaveShaperEnabled", out var awseObj) && awseObj != null && bool.TryParse(awseObj.ToString(), out var awse))
+                videoNode.AudioWaveShaperEnabled = awse;
+            if (properties.TryGetValue("AudioWaveShaperCurve", out var awscObj))
+                videoNode.AudioWaveShaperCurve = awscObj?.ToString() ?? "clean";
+            if (properties.TryGetValue("AudioWaveShaperDrivePercent", out var awsdObj) && awsdObj != null && double.TryParse(awsdObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var awsd))
+                videoNode.AudioWaveShaperDrivePercent = awsd;
+            if (properties.TryGetValue("AudioTransientPunchPercent", out var atpObj) && atpObj != null && double.TryParse(atpObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var atp))
+                videoNode.AudioTransientPunchPercent = atp;
+            if (properties.TryGetValue("AudioSubHarmonicsPercent", out var ashObj) && ashObj != null && double.TryParse(ashObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ash))
+                videoNode.AudioSubHarmonicsPercent = ash;
+            if (properties.TryGetValue("AudioHarmonicExciterPercent", out var aheObj) && aheObj != null && double.TryParse(aheObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ahe))
+                videoNode.AudioHarmonicExciterPercent = ahe;
+            if (properties.TryGetValue("AudioPhaseInvertLeft", out var apilObj) && apilObj != null && bool.TryParse(apilObj.ToString(), out var apil))
+                videoNode.AudioPhaseInvertLeft = apil;
+            if (properties.TryGetValue("AudioPhaseInvertRight", out var apirObj) && apirObj != null && bool.TryParse(apirObj.ToString(), out var apir))
+                videoNode.AudioPhaseInvertRight = apir;
             if (properties.TryGetValue("AudioTrimEnabled", out var ateObj) && ateObj != null && bool.TryParse(ateObj.ToString(), out var ate))
                 videoNode.AudioTrimEnabled = ate;
             if (properties.TryGetValue("AudioTrimStartSec", out var atssObj) && atssObj != null && double.TryParse(atssObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var atss))
@@ -935,6 +951,14 @@ public sealed partial class FileWorkflowPersistenceService
             dict["AudioCompressorPercent"] = videoNode.AudioCompressorPercent;
             dict["AudioDeEsserPercent"] = videoNode.AudioDeEsserPercent;
             dict["AudioNoiseGatePercent"] = videoNode.AudioNoiseGatePercent;
+            dict["AudioWaveShaperEnabled"] = videoNode.AudioWaveShaperEnabled;
+            dict["AudioWaveShaperCurve"] = videoNode.AudioWaveShaperCurve;
+            dict["AudioWaveShaperDrivePercent"] = videoNode.AudioWaveShaperDrivePercent;
+            dict["AudioTransientPunchPercent"] = videoNode.AudioTransientPunchPercent;
+            dict["AudioSubHarmonicsPercent"] = videoNode.AudioSubHarmonicsPercent;
+            dict["AudioHarmonicExciterPercent"] = videoNode.AudioHarmonicExciterPercent;
+            dict["AudioPhaseInvertLeft"] = videoNode.AudioPhaseInvertLeft;
+            dict["AudioPhaseInvertRight"] = videoNode.AudioPhaseInvertRight;
             dict["AudioTrimEnabled"] = videoNode.AudioTrimEnabled;
             dict["AudioTrimStartSec"] = videoNode.AudioTrimStartSec;
             dict["AudioTrimEndSec"] = videoNode.AudioTrimEndSec;

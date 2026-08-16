@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
@@ -25,6 +26,9 @@ namespace FlowMy.Views.NodeControls
         private DateTime _audioTrimPreviewStartTime;
         private RealTimeVideoAudioEngine? _realTimeAudioEngine;
         private bool _isDspAudioPreviewActive = true;
+        private DispatcherTimer? _waveVisTimer;
+        private readonly float[] _waveVisBuffer = new float[256];
+        private System.Windows.Shapes.Polyline? _wavePolyline;
 
         public void ShowVideoProcessing(string message)
         {
@@ -113,6 +117,20 @@ namespace FlowMy.Views.NodeControls
                 if (AudioHighpassCheckBox != null) AudioHighpassCheckBox.IsEnabled = enabled;
                 if (AudioLowpassCheckBox != null) AudioLowpassCheckBox.IsEnabled = enabled;
                 if (AudioTargetLufsCombo != null) AudioTargetLufsCombo.IsEnabled = enabled;
+
+                // Wave Shaper & Visualizer
+                if (PresetWaveCleanButton != null) PresetWaveCleanButton.IsEnabled = enabled;
+                if (PresetWaveTapeButton != null) PresetWaveTapeButton.IsEnabled = enabled;
+                if (PresetWaveSoftButton != null) PresetWaveSoftButton.IsEnabled = enabled;
+                if (PresetWaveHardButton != null) PresetWaveHardButton.IsEnabled = enabled;
+                if (PresetWaveFoldButton != null) PresetWaveFoldButton.IsEnabled = enabled;
+                if (AudioWaveShaperToggle != null) AudioWaveShaperToggle.IsEnabled = enabled;
+                if (AudioWaveShaperDriveSlider != null) AudioWaveShaperDriveSlider.IsEnabled = enabled;
+                if (AudioTransientPunchSlider != null) AudioTransientPunchSlider.IsEnabled = enabled;
+                if (AudioSubHarmonicsSlider != null) AudioSubHarmonicsSlider.IsEnabled = enabled;
+                if (AudioHarmonicExciterSlider != null) AudioHarmonicExciterSlider.IsEnabled = enabled;
+                if (AudioPhaseInvertLToggle != null) AudioPhaseInvertLToggle.IsEnabled = enabled;
+                if (AudioPhaseInvertRToggle != null) AudioPhaseInvertRToggle.IsEnabled = enabled;
 
                 if (QuickPreviewDsp15sButton != null) QuickPreviewDsp15sButton.IsEnabled = enabled;
                 if (ToggleDspAudioPreviewButton != null) ToggleDspAudioPreviewButton.IsEnabled = enabled;
@@ -359,6 +377,8 @@ namespace FlowMy.Views.NodeControls
             WireEqualizer5BandEvents();
             WireCreativeAudioFxEvents();
             WireDynamicsAndCutoffEvents();
+            WireWaveformShaperEvents();
+            InitWaveformVisualizerTimer();
 
             // 8. DSP Live Preview Controls (NAudio Real-time Engine)
             if (ToggleDspAudioPreviewButton != null)
@@ -807,6 +827,184 @@ namespace FlowMy.Views.NodeControls
                 AudioLowpassCheckBox.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioLowpassFilter = true; OnDspFilterParameterChanged(); } };
                 AudioLowpassCheckBox.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioLowpassFilter = false; OnDspFilterParameterChanged(); } };
             }
+        }
+
+        private void WireWaveformShaperEvents()
+        {
+            if (AudioWaveShaperToggle != null)
+            {
+                AudioWaveShaperToggle.Checked += (_, _) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioWaveShaperEnabled = true;
+                    if (AudioWaveShaperContainer != null) AudioWaveShaperContainer.Visibility = Visibility.Visible;
+                    InitWaveformVisualizerTimer();
+                    OnDspFilterParameterChanged();
+                };
+                AudioWaveShaperToggle.Unchecked += (_, _) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioWaveShaperEnabled = false;
+                    if (AudioWaveShaperContainer != null) AudioWaveShaperContainer.Visibility = Visibility.Collapsed;
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (PresetWaveCleanButton != null) PresetWaveCleanButton.Click += (_, _) => ApplyWaveformProfile("clean", 0, "Sin Gốc (Clean)");
+            if (PresetWaveTapeButton != null) PresetWaveTapeButton.Click += (_, _) => ApplyWaveformProfile("tape", 40, "Bão hòa Băng (Tape)");
+            if (PresetWaveSoftButton != null) PresetWaveSoftButton.Click += (_, _) => ApplyWaveformProfile("soft", 60, "Uốn Sóng Mềm (Soft)");
+            if (PresetWaveHardButton != null) PresetWaveHardButton.Click += (_, _) => ApplyWaveformProfile("hard", 80, "Cắt Gọt Sóng (Hard)");
+            if (PresetWaveFoldButton != null) PresetWaveFoldButton.Click += (_, _) => ApplyWaveformProfile("fold", 90, "Đa Hài (Wave Fold)");
+
+            if (AudioWaveShaperDriveSlider != null)
+            {
+                AudioWaveShaperDriveSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioWaveShaperDrivePercent = e.NewValue;
+                    if (AudioWaveShaperDriveLabel != null) AudioWaveShaperDriveLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioTransientPunchSlider != null)
+            {
+                AudioTransientPunchSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioTransientPunchPercent = e.NewValue;
+                    if (AudioTransientPunchLabel != null) AudioTransientPunchLabel.Text = $"{e.NewValue:0}%";
+                    if (AudioTransientPunchStatusLabel != null)
+                    {
+                        if (e.NewValue < -5) AudioTransientPunchStatusLabel.Text = $"Mềm mại ({e.NewValue:0}%)";
+                        else if (e.NewValue > 5) AudioTransientPunchStatusLabel.Text = $"Đanh chắc (+{e.NewValue:0}%)";
+                        else AudioTransientPunchStatusLabel.Text = "Cân bằng (0%)";
+                    }
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioSubHarmonicsSlider != null)
+            {
+                AudioSubHarmonicsSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioSubHarmonicsPercent = e.NewValue;
+                    if (AudioSubHarmonicsLabel != null) AudioSubHarmonicsLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioHarmonicExciterSlider != null)
+            {
+                AudioHarmonicExciterSlider.ValueChanged += (_, e) =>
+                {
+                    if (_suppressControlSync) return;
+                    _node.AudioHarmonicExciterPercent = e.NewValue;
+                    if (AudioHarmonicExciterLabel != null) AudioHarmonicExciterLabel.Text = $"{e.NewValue:0}%";
+                    OnDspFilterParameterChanged();
+                };
+            }
+
+            if (AudioPhaseInvertLToggle != null)
+            {
+                AudioPhaseInvertLToggle.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioPhaseInvertLeft = true; OnDspFilterParameterChanged(); } };
+                AudioPhaseInvertLToggle.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioPhaseInvertLeft = false; OnDspFilterParameterChanged(); } };
+            }
+            if (AudioPhaseInvertRToggle != null)
+            {
+                AudioPhaseInvertRToggle.Checked += (_, _) => { if (!_suppressControlSync) { _node.AudioPhaseInvertRight = true; OnDspFilterParameterChanged(); } };
+                AudioPhaseInvertRToggle.Unchecked += (_, _) => { if (!_suppressControlSync) { _node.AudioPhaseInvertRight = false; OnDspFilterParameterChanged(); } };
+            }
+        }
+
+        private void ApplyWaveformProfile(string curve, double drive, string title)
+        {
+            _node.AudioWaveShaperCurve = curve;
+            _node.AudioWaveShaperDrivePercent = drive;
+            SyncAudioTabFromModel();
+            AppendLog($"🌊 [SÓNG ÂM] Đã áp dụng mẫu định hình sóng: {title}.");
+            TriggerDspRegenIfActive();
+        }
+
+        private void InitWaveformVisualizerTimer()
+        {
+            if (_waveVisTimer != null) return;
+            _waveVisTimer = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(33) // ~30 FPS
+            };
+            _waveVisTimer.Tick += WaveVisTimer_Tick;
+            _waveVisTimer.Start();
+        }
+
+        private void WaveVisTimer_Tick(object? sender, EventArgs e)
+        {
+            if (AudioWaveShaperToggle?.IsChecked != true || AudioWaveformCanvas == null)
+                return;
+
+            RenderWaveformFrame();
+        }
+
+        private void RenderWaveformFrame()
+        {
+            if (AudioWaveformCanvas == null) return;
+
+            var canvasW = AudioWaveformCanvas.ActualWidth > 10 ? AudioWaveformCanvas.ActualWidth : 300;
+            var canvasH = AudioWaveformCanvas.ActualHeight > 10 ? AudioWaveformCanvas.ActualHeight : 100;
+            var midY = canvasH * 0.5;
+
+            var rmsL = 0f;
+            var rmsR = 0f;
+            var peak = 0f;
+
+            if (_realTimeAudioEngine != null && _isPlaying)
+            {
+                _realTimeAudioEngine.GetLatestWaveformData(_waveVisBuffer, out rmsL, out rmsR, out peak);
+            }
+            else
+            {
+                // Idle resting wave
+                Array.Clear(_waveVisBuffer, 0, _waveVisBuffer.Length);
+            }
+
+            // Draw polyline
+            if (_wavePolyline == null || !AudioWaveformCanvas.Children.Contains(_wavePolyline))
+            {
+                _wavePolyline = new System.Windows.Shapes.Polyline
+                {
+                    Stroke = new SolidColorBrush(Color.FromRgb(0x38, 0xBD, 0xF8)),
+                    StrokeThickness = 1.5
+                };
+                AudioWaveformCanvas.Children.Clear();
+                AudioWaveformCanvas.Children.Add(_wavePolyline);
+            }
+
+            var points = new PointCollection(_waveVisBuffer.Length);
+            var stepX = canvasW / Math.Max(1, _waveVisBuffer.Length - 1);
+            var ampScale = (canvasH * 0.45);
+
+            for (var i = 0; i < _waveVisBuffer.Length; i++)
+            {
+                var s = _waveVisBuffer[i];
+                var x = i * stepX;
+                var y = midY - (s * ampScale);
+                points.Add(new Point(x, Math.Clamp(y, 2, canvasH - 2)));
+            }
+
+            _wavePolyline.Points = points;
+
+            // Update VU meters
+            if (AudioVuMeterBarL != null)
+                AudioVuMeterBarL.Height = Math.Clamp(rmsL * canvasH * 1.5, 0, canvasH);
+            if (AudioVuMeterBarR != null)
+                AudioVuMeterBarR.Height = Math.Clamp(rmsR * canvasH * 1.5, 0, canvasH);
+
+            // Update stats
+            if (AudioWaveformRmsLabel != null)
+                AudioWaveformRmsLabel.Text = rmsL > 0.001f ? $"{(20.0 * Math.Log10(rmsL)):0.#} dB" : "-inf dB";
+            if (AudioWaveformPeakLabel != null)
+                AudioWaveformPeakLabel.Text = peak > 0.001f ? $"{(20.0 * Math.Log10(peak)):0.#} dB" : "-inf dB";
         }
 
         public void LaunchFfplayPreview(bool audioOnly = false)
@@ -1273,6 +1471,54 @@ namespace FlowMy.Views.NodeControls
                 if (AudioDenoiseCheckBox != null) AudioDenoiseCheckBox.IsChecked = _node.AudioDenoiseEnabled;
                 if (AudioHighpassCheckBox != null) AudioHighpassCheckBox.IsChecked = _node.AudioHighpassFilter;
                 if (AudioLowpassCheckBox != null) AudioLowpassCheckBox.IsChecked = _node.AudioLowpassFilter;
+
+                // Wave Shaper & Visualizer Sync
+                if (AudioWaveShaperToggle != null)
+                {
+                    AudioWaveShaperToggle.IsChecked = _node.AudioWaveShaperEnabled;
+                    if (AudioWaveShaperContainer != null)
+                        AudioWaveShaperContainer.Visibility = _node.AudioWaveShaperEnabled ? Visibility.Visible : Visibility.Collapsed;
+                }
+                if (AudioWaveShaperDriveSlider != null)
+                {
+                    AudioWaveShaperDriveSlider.Value = _node.AudioWaveShaperDrivePercent;
+                    if (AudioWaveShaperDriveLabel != null) AudioWaveShaperDriveLabel.Text = $"{_node.AudioWaveShaperDrivePercent:0}%";
+                }
+                if (AudioWaveShaperCurveStatusLabel != null)
+                {
+                    AudioWaveShaperCurveStatusLabel.Text = _node.AudioWaveShaperCurve switch
+                    {
+                        "tape" => "Bão hòa Băng (Tape)",
+                        "soft" => "Uốn Sóng Mềm (Soft)",
+                        "hard" => "Cắt Gọt Sóng (Hard)",
+                        "fold" => "Đa Hài (Wave Fold)",
+                        _ => "Sin Gốc (Clean)"
+                    };
+                }
+                if (AudioTransientPunchSlider != null)
+                {
+                    AudioTransientPunchSlider.Value = _node.AudioTransientPunchPercent;
+                    if (AudioTransientPunchLabel != null) AudioTransientPunchLabel.Text = $"{_node.AudioTransientPunchPercent:0}%";
+                    if (AudioTransientPunchStatusLabel != null)
+                    {
+                        if (_node.AudioTransientPunchPercent < -5) AudioTransientPunchStatusLabel.Text = $"Mềm mại ({_node.AudioTransientPunchPercent:0}%)";
+                        else if (_node.AudioTransientPunchPercent > 5) AudioTransientPunchStatusLabel.Text = $"Đanh chắc (+{_node.AudioTransientPunchPercent:0}%)";
+                        else AudioTransientPunchStatusLabel.Text = "Cân bằng (0%)";
+                    }
+                }
+                if (AudioSubHarmonicsSlider != null)
+                {
+                    AudioSubHarmonicsSlider.Value = _node.AudioSubHarmonicsPercent;
+                    if (AudioSubHarmonicsLabel != null) AudioSubHarmonicsLabel.Text = $"{_node.AudioSubHarmonicsPercent:0}%";
+                }
+                if (AudioHarmonicExciterSlider != null)
+                {
+                    AudioHarmonicExciterSlider.Value = _node.AudioHarmonicExciterPercent;
+                    if (AudioHarmonicExciterLabel != null) AudioHarmonicExciterLabel.Text = $"{_node.AudioHarmonicExciterPercent:0}%";
+                }
+                if (AudioPhaseInvertLToggle != null) AudioPhaseInvertLToggle.IsChecked = _node.AudioPhaseInvertLeft;
+                if (AudioPhaseInvertRToggle != null) AudioPhaseInvertRToggle.IsChecked = _node.AudioPhaseInvertRight;
+
                 if (ToggleDspAudioPreviewButton != null) ToggleDspAudioPreviewButton.IsChecked = _isDspAudioPreviewActive;
                 UpdateDspStatusText();
 

@@ -1809,6 +1809,199 @@
                                     </StackPanel>
                                 </Border>
 
+                                <!-- Card 1.5: Bản Đồ Sóng Âm & Bộ Can Thiệp Âm Tần (Waveform Map & Spectral Shaper) -->
+                                <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="12,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <controls:SvgViewboxEx Width="13" Height="13" Margin="0,0,6,0" Fill="{DynamicResource ThemeAccentBrush}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='activity duotone-light'}"/>
+                                                <TextBlock Text="Bản đồ Sóng âm &amp; Bộ Can thiệp Âm tần (Wave Shaper)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            </StackPanel>
+                                            <ToggleButton x:Name="AudioWaveShaperToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}" ToolTip="Bật/tắt giao diện bản đồ sóng âm và bộ định hình sóng"/>
+                                        </Grid>
+
+                                        <StackPanel x:Name="AudioWaveShaperContainer" Visibility="Collapsed" Margin="0,4,0,0">
+                                            <!-- A. Live Waveform Visualizer & Oscilloscope Screen -->
+                                            <Border Margin="0,2,0,8" Background="#0C1017" CornerRadius="8" BorderBrush="#2D3748" BorderThickness="1" Padding="10,8">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="100"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- Header stats badge -->
+                                                    <Grid Grid.Row="0" Margin="0,0,0,4">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Background="#1E293B" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                                <TextBlock Text="LIVE OSCILLOSCOPE" FontSize="9" FontWeight="Bold" Foreground="#38BDF8"/>
+                                                            </Border>
+                                                            <TextBlock x:Name="AudioWaveformSampleRateLabel" Text="48kHz • Stereo" FontSize="9" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <TextBlock Text="RMS: " FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                            <TextBlock x:Name="AudioWaveformRmsLabel" Text="-inf dB" FontSize="9" FontFamily="Consolas" FontWeight="SemiBold" Foreground="#4ADE80" Margin="0,0,8,0"/>
+                                                            <TextBlock Text="PEAK: " FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                            <TextBlock x:Name="AudioWaveformPeakLabel" Text="-inf dB" FontSize="9" FontFamily="Consolas" FontWeight="SemiBold" Foreground="#F59E0B"/>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <!-- Visualizer Canvas + Meter Grid -->
+                                                    <Grid Grid.Row="1">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="6"/>
+                                                            <ColumnDefinition Width="14"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Background grid lines -->
+                                                        <Border Grid.Column="0" Background="#06090E" CornerRadius="4" ClipToBounds="True">
+                                                            <Grid>
+                                                                <!-- Center zero line -->
+                                                                <Rectangle Height="1" Fill="#1E293B" VerticalAlignment="Center"/>
+                                                                <!-- Upper guide line -->
+                                                                <Rectangle Height="1" Fill="#0F172A" VerticalAlignment="Top" Margin="0,25,0,0"/>
+                                                                <!-- Lower guide line -->
+                                                                <Rectangle Height="1" Fill="#0F172A" VerticalAlignment="Bottom" Margin="0,0,0,25"/>
+
+                                                                <!-- Live Waveform Canvas -->
+                                                                <Canvas x:Name="AudioWaveformCanvas" ClipToBounds="True"/>
+                                                            </Grid>
+                                                        </Border>
+
+                                                        <!-- Stereo VU Meter Bars (L/R) -->
+                                                        <Grid Grid.Column="2">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="2"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Grid.Column="0" Background="#111827" CornerRadius="2" ClipToBounds="True">
+                                                                <Rectangle x:Name="AudioVuMeterBarL" Height="0" VerticalAlignment="Bottom">
+                                                                    <Rectangle.Fill>
+                                                                        <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                                                                            <GradientStop Color="#22C55E" Offset="0.0"/>
+                                                                            <GradientStop Color="#EAB308" Offset="0.75"/>
+                                                                            <GradientStop Color="#EF4444" Offset="1.0"/>
+                                                                        </LinearGradientBrush>
+                                                                    </Rectangle.Fill>
+                                                                </Rectangle>
+                                                            </Border>
+                                                            <Border Grid.Column="2" Background="#111827" CornerRadius="2" ClipToBounds="True">
+                                                                <Rectangle x:Name="AudioVuMeterBarR" Height="0" VerticalAlignment="Bottom">
+                                                                    <Rectangle.Fill>
+                                                                        <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                                                                            <GradientStop Color="#22C55E" Offset="0.0"/>
+                                                                            <GradientStop Color="#EAB308" Offset="0.75"/>
+                                                                            <GradientStop Color="#EF4444" Offset="1.0"/>
+                                                                        </LinearGradientBrush>
+                                                                    </Rectangle.Fill>
+                                                                </Rectangle>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Grid>
+
+                                                    <!-- Frequency Axis labels -->
+                                                    <Grid Grid.Row="2" Margin="0,4,20,0">
+                                                        <TextBlock Text="20Hz" FontSize="8.5" FontFamily="Consolas" Foreground="#64748B" HorizontalAlignment="Left"/>
+                                                        <TextBlock Text="250Hz" FontSize="8.5" FontFamily="Consolas" Foreground="#64748B" HorizontalAlignment="Left" Margin="60,0,0,0"/>
+                                                        <TextBlock Text="1kHz" FontSize="8.5" FontFamily="Consolas" Foreground="#64748B" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="5kHz" FontSize="8.5" FontFamily="Consolas" Foreground="#64748B" HorizontalAlignment="Right" Margin="0,0,60,0"/>
+                                                        <TextBlock Text="20kHz" FontSize="8.5" FontFamily="Consolas" Foreground="#64748B" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                </Grid>
+                                            </Border>
+
+                                            <!-- B. Waveform Presets WrapPanel -->
+                                            <TextBlock Text="Mẫu định hình sóng (Waveform Profiles)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,4"/>
+                                            <WrapPanel Margin="0,0,0,8">
+                                                <Button x:Name="PresetWaveCleanButton" Content="🟢 Sin Gốc (Clean)" Style="{StaticResource PresetChipStyle}" Margin="0,0,5,5" ToolTip="Dạng sóng âm gốc mượt mà"/>
+                                                <Button x:Name="PresetWaveTapeButton" Content="📻 Bão hòa Băng (Tape)" Style="{StaticResource PresetChipStyle}" Margin="0,0,5,5" ToolTip="Bão hòa sóng âm ấm áp kiểu analog tape"/>
+                                                <Button x:Name="PresetWaveSoftButton" Content="⚡ Uốn Sóng Mềm (Soft)" Style="{StaticResource PresetChipStyle}" Margin="0,0,5,5" ToolTip="Uốn nắn dạng sóng mềm mại, dẻo dai"/>
+                                                <Button x:Name="PresetWaveHardButton" Content="🔥 Cắt gọt Sóng (Hard)" Style="{StaticResource PresetChipStyle}" Margin="0,0,5,5" ToolTip="Cắt đỉnh sóng tạo độ đanh, punchy và sắc sảo"/>
+                                                <Button x:Name="PresetWaveFoldButton" Content="🌊 Đa hài (Wave Fold)" Style="{StaticResource PresetChipStyle}" Margin="0,0,5,5" ToolTip="Uốn gập đỉnh sóng tạo dải hài âm điện tử độc đáo"/>
+                                            </WrapPanel>
+
+                                            <!-- C. Sliders Section -->
+                                            <!-- 1. Wave Shaper Drive Slider -->
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="Cường độ uốn sóng (Wave Shaper Drive: 0% - 200%)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                    <TextBlock x:Name="AudioWaveShaperCurveStatusLabel" HorizontalAlignment="Right" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource ThemeAccentBrush}" Text="Sin Gốc (Clean)"/>
+                                                </Grid>
+                                                <Grid Grid.Row="1">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioWaveShaperDriveSlider" Minimum="0" Maximum="200" Value="0" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Tăng cường độ uốn nắn và bão hòa dạng sóng âm"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="6,0,0,0">
+                                                        <TextBlock x:Name="AudioWaveShaperDriveLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Grid>
+
+                                            <!-- 2. Transient Punch Slider -->
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="Độ nảy xung kích đỉnh sóng (Transient Attack Punch)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                    <TextBlock x:Name="AudioTransientPunchStatusLabel" HorizontalAlignment="Right" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextPrimaryBrush}" Text="Cân bằng (0%)"/>
+                                                </Grid>
+                                                <Grid Grid.Row="1">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                                    <Slider x:Name="AudioTransientPunchSlider" Minimum="-100" Maximum="100" Value="0" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Kéo trái = làm mềm mượt đỉnh sóng | Kéo phải = làm đanh chắc, bật nảy xung âm"/>
+                                                    <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}" Margin="6,0,0,0">
+                                                        <TextBlock x:Name="AudioTransientPunchLabel" FontSize="9.5" FontFamily="Consolas" HorizontalAlignment="Center" Text="0%"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Grid>
+
+                                            <!-- 3. Sub-Harmonics & Harmonic Exciter -->
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Sub-Harmonics -->
+                                                <StackPanel Grid.Column="0">
+                                                    <Grid Margin="0,0,0,2">
+                                                        <TextBlock Text="Sóng hài trầm (Sub)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                        <TextBlock x:Name="AudioSubHarmonicsLabel" HorizontalAlignment="Right" FontSize="9.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccentBrush}" Text="0%"/>
+                                                    </Grid>
+                                                    <Slider x:Name="AudioSubHarmonicsSlider" Minimum="0" Maximum="100" Value="0" Style="{StaticResource ModernSliderStyle}" ToolTip="Tổng hợp thêm sóng hài bậc thấp (Sub-bass) làm dày đáy âm thanh"/>
+                                                </StackPanel>
+
+                                                <!-- Harmonic Exciter -->
+                                                <StackPanel Grid.Column="2">
+                                                    <Grid Margin="0,0,0,2">
+                                                        <TextBlock Text="Kích sóng cao (Exciter)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                        <TextBlock x:Name="AudioHarmonicExciterLabel" HorizontalAlignment="Right" FontSize="9.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccentBrush}" Text="0%"/>
+                                                    </Grid>
+                                                    <Slider x:Name="AudioHarmonicExciterSlider" Minimum="0" Maximum="100" Value="0" Style="{StaticResource ModernSliderStyle}" ToolTip="Tạo gai sóng hài cao lấp lánh, sáng rõ và tơi xốp"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- 4. Phase Polarity Inversion (Đảo pha sóng âm L / R) -->
+                                            <Border Margin="0,2,0,0" Padding="8,6" Background="{DynamicResource ThemeInnerCardBackgroundBrush}" CornerRadius="6" BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}" BorderThickness="1">
+                                                <Grid>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="Đảo pha sóng (Phase Invert):" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <ToggleButton x:Name="AudioPhaseInvertLToggle" Content="Ø Kênh Trái (L)" Style="{StaticResource PresetChipToggleStyle}" Margin="0,0,6,0" ToolTip="Đảo ngược cực tính pha 180° kênh Trái"/>
+                                                        <ToggleButton x:Name="AudioPhaseInvertRToggle" Content="Ø Kênh Phải (R)" Style="{StaticResource PresetChipToggleStyle}" ToolTip="Đảo ngược cực tính pha 180° kênh Phải"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- Card 2: Biến Đổi Giọng Nói: Nam ↔ Nữ (Voice Gender Shifter & Pitch) -->
                                 <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="12,10">
                                     <StackPanel>

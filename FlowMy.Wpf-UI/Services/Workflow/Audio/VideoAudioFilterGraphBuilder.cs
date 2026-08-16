@@ -188,6 +188,45 @@ namespace FlowMy.Services.Workflow.Audio
                 filters.Add($"agate=threshold={thresh}:range=0.03:attack=10:release=150");
             }
 
+            // 19. Waveform Shaper, Transient & Spectral Harmonics
+            if (node.AudioWaveShaperEnabled)
+            {
+                if (node.AudioWaveShaperDrivePercent > 5.0)
+                {
+                    var drive = (1.0 + (node.AudioWaveShaperDrivePercent / 100.0) * 2.0).ToString("0.##", CultureInfo.InvariantCulture);
+                    filters.Add(node.AudioWaveShaperCurve switch
+                    {
+                        "tape" => $"asoftclip=type=atan:param={drive}",
+                        "soft" => $"asoftclip=type=cubic:param={drive}",
+                        "hard" => $"asoftclip=type=hard:param={drive}",
+                        "fold" => $"asoftclip=type=sin:param={drive}",
+                        _ => $"volume={drive}"
+                    });
+                }
+                if (node.AudioSubHarmonicsPercent > 5.0)
+                {
+                    var sub = (node.AudioSubHarmonicsPercent / 100.0 * 6.0).ToString("0.#", CultureInfo.InvariantCulture);
+                    filters.Add($"bass=g={sub}:f=80:w=0.8");
+                }
+                if (node.AudioHarmonicExciterPercent > 5.0)
+                {
+                    var exc = (node.AudioHarmonicExciterPercent / 100.0 * 5.0).ToString("0.#", CultureInfo.InvariantCulture);
+                    filters.Add($"treble=g={exc}:f=7500:w=0.7");
+                }
+                if (node.AudioPhaseInvertLeft && !node.AudioPhaseInvertRight)
+                {
+                    filters.Add("stereotools=phasel=1");
+                }
+                else if (!node.AudioPhaseInvertLeft && node.AudioPhaseInvertRight)
+                {
+                    filters.Add("stereotools=phaser=1");
+                }
+                else if (node.AudioPhaseInvertLeft && node.AudioPhaseInvertRight)
+                {
+                    filters.Add("stereotools=phasel=1:phaser=1");
+                }
+            }
+
             // 20. Noise Reduction (Denoise)
             if (node.AudioDenoiseEnabled)
                 filters.Add("afftdn=nf=-25");
