@@ -1,0 +1,13 @@
+{
+  "name": "flowmy-ai-speech-studio-frontend",
+  "version": "1.0.0",
+  "description": "Modern Web UI for FlowMy AI Speech-to-Subtitle Server",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.1.4"
+  }
+}

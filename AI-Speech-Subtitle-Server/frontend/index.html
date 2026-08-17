@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlowMy AI Speech-to-Subtitle Studio &amp; REST API Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo-group">
+        <div class="logo-icon">🎙️</div>
+        <div class="logo-text">
+          <h1>AI Speech-to-Subtitle Studio</h1>
+          <p>Tách mốc thời gian phụ đề &amp; Dịch thuật đa ngôn ngữ (4 Engine AI)</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <div class="badge-pill">
+          <div class="dot-live"></div>
+          <span>Server Sẵn Sàng (Port 8765)</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hardware Advisor Banner -->
+    <div class="advisor-banner">
+      <div class="advisor-left">
+        <div class="advisor-icon">💡</div>
+        <div>
+          <div class="advisor-title">Tư Vấn Tối Ưu Cấu Hình Máy Tính &amp; Số Luồng Song Song</div>
+          <div class="advisor-desc" id="advisorDesc">Đang phân tích cấu hình phần cứng GPU, VRAM và CPU của máy...</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+        <div class="badge-pill" id="concurrencyBadge" style="background:rgba(59,130,246,0.15); border-color:#3b82f6; color:#60a5fa;">
+          ⚡ Khuyến nghị: Đang tính toán...
+        </div>
+        <div class="hardware-chips">
+          <div class="chip">GPU: <strong id="gpuName">--</strong></div>
+          <div class="chip">VRAM: <strong id="vramSize">--</strong></div>
+          <div class="chip">CPU: <strong id="cpuThreads">--</strong></div>
+          <div class="chip">RAM: <strong id="ramSize">--</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 AI Project Selection Cards -->
+    <div class="section-title">
+      <span>⚡ Chọn Dự Án AI Phù Hợp Với Cấu Hình Máy</span>
+    </div>
+    <div class="engine-grid">
+      <!-- Engine 1: Faster-Whisper + NLLB -->
+      <div class="engine-card active" data-engine="faster-whisper">
+        <div class="card-top">
+          <div class="engine-tag tag-recommended">Khuyên dùng nhất</div>
+          <div style="font-size:18px;">⚡</div>
+        </div>
+        <div class="card-title">1. Faster-Whisper + NLLB</div>
+        <div class="card-desc">Cân bằng hoàn hảo giữa tốc độ và độ chính xác mốc thời gian. Dịch sang tiếng Việt tự nhiên qua Meta NLLB-200.</div>
+        <div class="card-meta">
+          <span>Yêu cầu: GPU 4-8GB VRAM</span>
+          <span>• Tốc độ: 4x</span>
+        </div>
+      </div>
+
+      <!-- Engine 2: WhisperX Alignment -->
+      <div class="engine-card" data-engine="whisperx">
+        <div class="card-top">
+          <div class="engine-tag tag-precise">Chính xác từng từ</div>
+          <div style="font-size:18px;">🎯</div>
+        </div>
+        <div class="card-title">2. WhisperX Alignment</div>
+        <div class="card-desc">Độ chính xác mốc thời gian cao nhất thế giới (Forced Alignment), căn chỉnh chuẩn xác đến từng từ cho video dài.</div>
+        <div class="card-meta">
+          <span>Yêu cầu: GPU &gt;= 8GB VRAM</span>
+          <span>• Độ chuẩn: Cao nhất</span>
+        </div>
+      </div>
+
+      <!-- Engine 3: SenseVoice Ultra-Fast -->
+      <div class="engine-card" data-engine="sensevoice">
+        <div class="card-top">
+          <div class="engine-tag tag-fast">Siêu tốc độ / CPU</div>
+          <div style="font-size:18px;">🚀</div>
+        </div>
+        <div class="card-title">3. SenseVoice Ultra-Fast</div>
+        <div class="card-desc">Mô hình siêu nhẹ của Alibaba. Tốc độ nhận diện nhanh gấp 10x Whisper, chạy mượt mà ngay cả trên máy không có GPU rời.</div>
+        <div class="card-meta">
+          <span>Yêu cầu: Thuần CPU / Máy yếu</span>
+          <span>• Tốc độ: 10x</span>
+        </div>
+      </div>
+
+      <!-- Engine 4: Meta SeamlessM4T v2 -->
+      <div class="engine-card" data-engine="seamless-m4t">
+        <div class="card-top">
+          <div class="engine-tag tag-pro">All-in-One Pro</div>
+          <div style="font-size:18px;">🌐</div>
+        </div>
+        <div class="card-title">4. Meta SeamlessM4T v2</div>
+        <div class="card-desc">Model dịch trực tiếp giọng nói sang văn bản đa ngôn ngữ All-in-One của Meta AI không cần qua 2 bước trung gian.</div>
+        <div class="card-meta">
+          <span>Yêu cầu: GPU &gt;= 12GB VRAM</span>
+          <span>• Đa ngôn ngữ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Studio Grid -->
+    <div class="studio-grid">
+      <!-- Left Column: Audio Input & Settings -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2><span>🎛️</span> Cấu Hình Chuyển Đổi &amp; Tệp Audio</h2>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="targetLangSelect">Ngôn ngữ dịch phụ đề</label>
+            <select class="form-select" id="targetLangSelect" onchange="updateApiSnippet()">
+              <option value="vi" selected>🇻🇳 Tiếng Việt (Vietnamese)</option>
+              <option value="en">🇺🇸 Tiếng Anh (English)</option>
+              <option value="zh">🇨🇳 Tiếng Trung (Chinese)</option>
+              <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
+              <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
+              <option value="fr">🇫🇷 Tiếng Pháp (French)</option>
+              <option value="de">🇩🇪 Tiếng Đức (German)</option>
+              <option value="es">🇪🇸 Tiếng TBN (Spanish)</option>
+              <option value="ru">🇷🇺 Tiếng Nga (Russian)</option>
+              <option value="th">🇹🇭 Tiếng Thái (Thai)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="modelSizeSelect">Kích thước Model AI</label>
+            <select class="form-select" id="modelSizeSelect" onchange="updateApiSnippet()">
+              <option value="tiny">Tiny (39M params - Nhanh nhất)</option>
+              <option value="base">Base (74M params - Nhẹ)</option>
+              <option value="small" selected>Small (244M params - Cân bằng)</option>
+              <option value="medium">Medium (769M params - Chuẩn cao)</option>
+              <option value="large-v3">Large-v3 (1.5B params - Tốt nhất)</option>
+              <option value="large-v3-turbo">Large-v3 Turbo (Tối ưu)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="deviceSelect">Thiết bị xử lý (Device)</label>
+            <select class="form-select" id="deviceSelect">
+              <option value="auto" selected>⚡ Tự động (Ưu tiên CUDA GPU)</option>
+              <option value="cuda">🟢 NVIDIA CUDA (GPU)</option>
+              <option value="cpu">🔵 CPU Mode (Đa nhân)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="computeTypeSelect">Định dạng số (Compute Type)</label>
+            <select class="form-select" id="computeTypeSelect">
+              <option value="default" selected>Mặc định theo phần cứng</option>
+              <option value="float16">float16 (Tối ưu GPU)</option>
+              <option value="int8_float16">int8_float16 (Tiết kiệm VRAM)</option>
+              <option value="int8">int8 (Tối ưu CPU)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dropzone -->
+        <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none;">
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-icon">📁</div>
+          <div class="dropzone-text" id="dropzoneText">Kéo thả file Audio vào đây hoặc Click để chọn</div>
+          <div class="dropzone-sub" id="dropzoneSub">Hỗ trợ: MP3, WAV, M4A, AAC, FLAC, MP4, MKV...</div>
+        </div>
+
+        <!-- Audio Player Box -->
+        <div class="audio-player-box" id="audioPlayerBox">
+          <audio id="audioPlayer" controls></audio>
+        </div>
+
+        <!-- Action Button -->
+        <button class="btn btn-primary" id="btnProcess">
+          <span>🚀</span> Bắt Đầu Chuyển Đổi &amp; Dịch Phụ Đề
+        </button>
+      </div>
+
+      <!-- Right Column: Subtitle Timeline Preview -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2><span>📝</span> Bảng Mốc Thời Gian Phụ Đề (Timeline)</h2>
+          <span style="font-size:11px; color:#60a5fa; font-weight:600;" id="timelineStats">0 câu</span>
+        </div>
+
+        <div class="timeline-container" id="timelineContainer">
+          <div class="empty-timeline">
+            Chọn file audio bên trái và nhấn <strong>Bắt đầu chuyển đổi</strong> để tạo phụ đề.
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn btn-secondary btn-sm" id="btnExportSrt">💾 Xuất File .SRT</button>
+          <button class="btn btn-secondary btn-sm" id="btnExportAss">💾 Xuất File .ASS</button>
+          <button class="btn btn-secondary btn-sm" id="btnExportJson">💾 Xuất File .JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Grid: Model Cache & FlowMy API Integration -->
+    <div class="bottom-grid">
+      <!-- Model Cache Manager -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2><span>📂</span> Quản Lý Bộ Nhớ Model AI</h2>
+          <span style="font-size:11px; color:#f59e0b; font-weight:600;" id="totalModelSize">0 MB</span>
+        </div>
+        <div style="font-size:11px; color:#94a3b8; margin-bottom:10px;">
+          Thư mục lưu trữ: <code id="modelsDirText" style="color:#60a5fa; background:#0f172a; padding:2px 6px; border-radius:4px;">models/</code>
+        </div>
+        <div id="installedModelsList" style="max-height:180px; overflow-y:auto; margin-bottom:10px;">
+          <!-- Loaded dynamically -->
+        </div>
+        <div style="font-size:10.5px; color:#64748b;">
+          💡 Model sẽ tự động tải về khi gọi lần đầu. Bạn có thể bấm <strong>🗑 Xóa</strong> để giải phóng ổ cứng bất cứ khi nào.
+        </div>
+      </div>
+
+      <!-- FlowMy HttpRequestNode Integration -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2><span>🔗</span> Tích Hợp API Cho FlowMy (HttpRequestNode)</h2>
+          <button class="btn btn-secondary btn-sm" id="btnCopyApi">📋 Copy JSON</button>
+        </div>
+        <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">
+          Endpoint: <strong style="color:#38bdf8;">POST http://127.0.0.1:8765/api/transcribe</strong>
+        </div>
+        <div class="code-block" id="apiJsonSnippet">{
+  "audio_path": "{{linkAudio}}",
+  "chunkIndex": {{chunkIndex}},
+  "target_lang": "vi",
+  "engine": "faster-whisper",
+  "model_size": "small"
+}</div>
+        <div style="font-size:10.5px; color:#64748b;">
+          Dán nội dung JSON trên vào ô Body của node <strong>HttpRequestNode</strong> trong FlowMy để tự động chạy phụ đề!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/app.js"></script>
+</body>
+</html>

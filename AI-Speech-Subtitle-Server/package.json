@@ -1,0 +1,23 @@
+{
+  "name": "ai-speech-subtitle-server",
+  "version": "1.0.0",
+  "description": "Standalone AI Speech-to-Subtitle & Translation Server supporting 4 AI Engines (Faster-Whisper, WhisperX, SenseVoice, SeamlessM4T) with Web UI & REST API for FlowMy.",
+  "private": true,
+  "scripts": {
+    "install:all": "install_env.bat",
+    "start:server": "start_server_only.bat",
+    "start:ui": "start_app_with_ui.bat"
+  },
+  "keywords": [
+    "speech-to-text",
+    "subtitles",
+    "faster-whisper",
+    "whisperx",
+    "sensevoice",
+    "seamlessm4t",
+    "translation",
+    "flowmy"
+  ],
+  "author": "FlowMy Community",
+  "license": "MIT"
+}
