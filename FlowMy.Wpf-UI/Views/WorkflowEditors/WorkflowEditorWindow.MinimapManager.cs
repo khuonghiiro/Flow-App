@@ -725,25 +725,25 @@ namespace FlowMy.Views
 
             _nodeSpinnerArcMode = preferences.NodeSpinnerArcMode;
             _nodeSpinnerMultiColor = preferences.NodeSpinnerMultiColor;
-            _nodeSpinnerSize = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 26.0;
+            _nodeSpinnerSize = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 24.0;
             _nodeSpinnerScaleWithNode = preferences.NodeSpinnerScaleWithNode;
-            _nodeSpinnerSizeRatio = preferences.NodeSpinnerSizeRatio > 0 ? preferences.NodeSpinnerSizeRatio : 0.32;
+            _nodeSpinnerSizeRatio = preferences.NodeSpinnerSizeRatio > 0 ? preferences.NodeSpinnerSizeRatio : 0.28;
             _nodeSpinnerShape = string.IsNullOrWhiteSpace(preferences.NodeSpinnerShape) ? "Circle" : preferences.NodeSpinnerShape;
             _nodeSpinnerPosition = string.IsNullOrWhiteSpace(preferences.NodeSpinnerPosition) ? "TopRight" : preferences.NodeSpinnerPosition;
-            _nodeSpinnerStrokeThickness = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 3.2;
-            _nodeSpinnerSpinSeconds = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.1;
+            _nodeSpinnerStrokeThickness = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 2.8;
+            _nodeSpinnerSpinSeconds = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.0;
             _nodeSpinnerBlinkBackground = preferences.NodeSpinnerBlinkBackground;
             _nodeSpinnerBlinkBackgroundColorKey = string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkBackgroundColorKey) ? "WarningBrush" : preferences.NodeSpinnerBlinkBackgroundColorKey;
             _nodeSpinnerBlinkMode = string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkMode) ? "Soft" : preferences.NodeSpinnerBlinkMode;
             _nodeSpinnerBlinkIntensity = preferences.NodeSpinnerBlinkIntensity > 0
                 ? System.Math.Max(0.10, System.Math.Min(1.0, preferences.NodeSpinnerBlinkIntensity))
-                : 0.65;
+                : 0.50;
             _nodeSpinnerBlinkBaseOpacity = preferences.NodeSpinnerBlinkBaseOpacity >= 0
                 ? System.Math.Max(0.0, System.Math.Min(1.0, preferences.NodeSpinnerBlinkBaseOpacity))
-                : 0.16;
+                : 0.10;
             _nodeSpinnerBlinkPeakOpacity = preferences.NodeSpinnerBlinkPeakOpacity > 0
                 ? System.Math.Max(0.0, System.Math.Min(1.0, preferences.NodeSpinnerBlinkPeakOpacity))
-                : 0.60;
+                : 0.50;
             if (_nodeSpinnerBlinkPeakOpacity <= _nodeSpinnerBlinkBaseOpacity)
                 _nodeSpinnerBlinkPeakOpacity = System.Math.Min(1.0, _nodeSpinnerBlinkBaseOpacity + 0.02);
             if (saveToDisk)

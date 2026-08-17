@@ -139,25 +139,25 @@ namespace FlowMy.Views.Overlays
             AdvancedFlowStyleCheckBox.IsChecked = preferences.AdvancedFlowStyleEnabled;
             // Trigger the visibility change after loading preferences
             AdvancedFlowStyleCheckBox_Changed(null, null);
-            MeteorTailLengthSlider.Value = preferences.MeteorTailLength > 0 ? preferences.MeteorTailLength : 15.0;
-            MeteorTailBlurSlider.Value = preferences.MeteorTailBlur > 0 ? preferences.MeteorTailBlur : 10.0;
-            MeteorTailOpacitySlider.Value = preferences.MeteorTailOpacity > 0 ? preferences.MeteorTailOpacity : 1.5;
-            MeteorTailThicknessSlider.Value = preferences.MeteorTailThickness > 0 ? preferences.MeteorTailThickness : 4.0;
+            MeteorTailLengthSlider.Value = preferences.MeteorTailLength > 0 ? preferences.MeteorTailLength : 12.0;
+            MeteorTailBlurSlider.Value = preferences.MeteorTailBlur > 0 ? preferences.MeteorTailBlur : 8.0;
+            MeteorTailOpacitySlider.Value = preferences.MeteorTailOpacity > 0 ? preferences.MeteorTailOpacity : 0.8;
+            MeteorTailThicknessSlider.Value = preferences.MeteorTailThickness > 0 ? preferences.MeteorTailThickness : 2.5;
             NodeSpinnerArcModeCheckBox.IsChecked = preferences.NodeSpinnerArcMode;
             NodeSpinnerMultiColorCheckBox.IsChecked = preferences.NodeSpinnerMultiColor;
-            NodeSpinnerSizeSlider.Value = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 26.0;
+            NodeSpinnerSizeSlider.Value = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 24.0;
             NodeSpinnerScaleWithNodeCheckBox.IsChecked = preferences.NodeSpinnerScaleWithNode;
-            NodeSpinnerSizeRatioSlider.Value = preferences.NodeSpinnerSizeRatio > 0 ? preferences.NodeSpinnerSizeRatio : 0.32;
+            NodeSpinnerSizeRatioSlider.Value = preferences.NodeSpinnerSizeRatio > 0 ? preferences.NodeSpinnerSizeRatio : 0.28;
             SelectByTag(NodeSpinnerShapeComboBox, preferences.NodeSpinnerShape);
             SelectByTag(NodeSpinnerPositionComboBox, preferences.NodeSpinnerPosition);
-            NodeSpinnerStrokeThicknessSlider.Value = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 3.2;
-            NodeSpinnerSpinSecondsSlider.Value = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.1;
+            NodeSpinnerStrokeThicknessSlider.Value = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 2.8;
+            NodeSpinnerSpinSecondsSlider.Value = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.0;
             NodeSpinnerBlinkBackgroundCheckBox.IsChecked = preferences.NodeSpinnerBlinkBackground;
             SelectByTag(NodeSpinnerBlinkBackgroundColorComboBox, string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkBackgroundColorKey) ? "WarningBrush" : preferences.NodeSpinnerBlinkBackgroundColorKey);
             SelectByTag(NodeSpinnerBlinkModeComboBox, string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkMode) ? "Soft" : preferences.NodeSpinnerBlinkMode);
-            NodeSpinnerBlinkIntensitySlider.Value = preferences.NodeSpinnerBlinkIntensity > 0 ? preferences.NodeSpinnerBlinkIntensity : 0.65;
-            NodeSpinnerBlinkBaseOpacitySlider.Value = preferences.NodeSpinnerBlinkBaseOpacity >= 0 ? preferences.NodeSpinnerBlinkBaseOpacity : 0.16;
-            NodeSpinnerBlinkPeakOpacitySlider.Value = preferences.NodeSpinnerBlinkPeakOpacity > 0 ? preferences.NodeSpinnerBlinkPeakOpacity : 0.60;
+            NodeSpinnerBlinkIntensitySlider.Value = preferences.NodeSpinnerBlinkIntensity > 0 ? preferences.NodeSpinnerBlinkIntensity : 0.50;
+            NodeSpinnerBlinkBaseOpacitySlider.Value = preferences.NodeSpinnerBlinkBaseOpacity >= 0 ? preferences.NodeSpinnerBlinkBaseOpacity : 0.10;
+            NodeSpinnerBlinkPeakOpacitySlider.Value = preferences.NodeSpinnerBlinkPeakOpacity > 0 ? preferences.NodeSpinnerBlinkPeakOpacity : 0.50;
             SetRadioSelection(GetDebounceFastRadio(), GetDebounceBalancedRadio(), GetDebounceSmoothRadio(), NormalizeDebounceTag(preferences.ApplyDebounceMs));
             ApplyDebounceIntervalFromSelection();
             UpdateSliderTexts();
@@ -290,8 +290,8 @@ namespace FlowMy.Views.Overlays
             var thickness = EnergyDotThicknessSlider.Value;
             var speed = EnergyRunSpeedSlider.Value;
             var spin = EnergySpinSpeedSlider.Value;
-            var blinkBase = NodeSpinnerBlinkBaseOpacitySlider.Value >= 0 ? NodeSpinnerBlinkBaseOpacitySlider.Value : 0.16;
-            var blinkPeak = NodeSpinnerBlinkPeakOpacitySlider.Value > 0 ? NodeSpinnerBlinkPeakOpacitySlider.Value : 0.60;
+            var blinkBase = NodeSpinnerBlinkBaseOpacitySlider.Value >= 0 ? NodeSpinnerBlinkBaseOpacitySlider.Value : 0.10;
+            var blinkPeak = NodeSpinnerBlinkPeakOpacitySlider.Value > 0 ? NodeSpinnerBlinkPeakOpacitySlider.Value : 0.50;
             if (blinkPeak <= blinkBase)
                 blinkPeak = System.Math.Min(1.0, blinkBase + 0.02);
 
@@ -312,11 +312,11 @@ namespace FlowMy.Views.Overlays
                 BulkTitleColorKey = SelectedTag(BulkTitleColorKeyComboBox),
                 EnergyColorMode = SelectedRadioTag(EnergyColorModeFollowLineRadio, EnergyColorModeCustomRadio),
                 CustomEnergyColorKey = SelectedTag(EnergyCustomColorKeyComboBox),
-                EnergyDotGap = gap > 0 ? gap : 8.0,
+                EnergyDotGap = gap > 0 ? gap : 5.5,
                 EnergyDotThicknessExtra = thickness,
                 EnergyDotText = EnergyDotTextTextBox.Text ?? string.Empty,
                 EnergyDotTextRotate = EnergyDotRotateCheckBox.IsChecked == true,
-                EnergyRunSpeed = speed > 0 ? speed : 1.0,
+                EnergyRunSpeed = speed > 0 ? speed : 1.3,
                 EnergyTextSpinSeconds = spin > 0 ? spin : 0.7,
                 EnergyMeteorMode = EnergyMeteorModeCheckBox.IsChecked == true,
                 AdvancedFlowStyleEnabled = AdvancedFlowStyleCheckBox.IsChecked == true,
@@ -326,17 +326,17 @@ namespace FlowMy.Views.Overlays
                 MeteorTailThickness = MeteorTailThicknessSlider.Value,
                 NodeSpinnerArcMode = NodeSpinnerArcModeCheckBox.IsChecked == true,
                 NodeSpinnerMultiColor = NodeSpinnerMultiColorCheckBox.IsChecked == true,
-                NodeSpinnerSize = NodeSpinnerSizeSlider.Value > 8 ? NodeSpinnerSizeSlider.Value : 26.0,
+                NodeSpinnerSize = NodeSpinnerSizeSlider.Value > 8 ? NodeSpinnerSizeSlider.Value : 24.0,
                 NodeSpinnerScaleWithNode = NodeSpinnerScaleWithNodeCheckBox.IsChecked == true,
-                NodeSpinnerSizeRatio = NodeSpinnerSizeRatioSlider.Value > 0 ? NodeSpinnerSizeRatioSlider.Value : 0.32,
+                NodeSpinnerSizeRatio = NodeSpinnerSizeRatioSlider.Value > 0 ? NodeSpinnerSizeRatioSlider.Value : 0.28,
                 NodeSpinnerShape = SelectedTag(NodeSpinnerShapeComboBox),
                 NodeSpinnerPosition = SelectedTag(NodeSpinnerPositionComboBox),
-                NodeSpinnerStrokeThickness = NodeSpinnerStrokeThicknessSlider.Value > 0 ? NodeSpinnerStrokeThicknessSlider.Value : 3.2,
-                NodeSpinnerSpinSeconds = NodeSpinnerSpinSecondsSlider.Value > 0 ? NodeSpinnerSpinSecondsSlider.Value : 1.1,
+                NodeSpinnerStrokeThickness = NodeSpinnerStrokeThicknessSlider.Value > 0 ? NodeSpinnerStrokeThicknessSlider.Value : 2.8,
+                NodeSpinnerSpinSeconds = NodeSpinnerSpinSecondsSlider.Value > 0 ? NodeSpinnerSpinSecondsSlider.Value : 1.0,
                 NodeSpinnerBlinkBackground = NodeSpinnerBlinkBackgroundCheckBox.IsChecked == true,
                 NodeSpinnerBlinkBackgroundColorKey = SelectedTag(NodeSpinnerBlinkBackgroundColorComboBox),
                 NodeSpinnerBlinkMode = SelectedTag(NodeSpinnerBlinkModeComboBox),
-                NodeSpinnerBlinkIntensity = NodeSpinnerBlinkIntensitySlider.Value > 0 ? NodeSpinnerBlinkIntensitySlider.Value : 0.65,
+                NodeSpinnerBlinkIntensity = NodeSpinnerBlinkIntensitySlider.Value > 0 ? NodeSpinnerBlinkIntensitySlider.Value : 0.50,
                 NodeSpinnerBlinkBaseOpacity = blinkBase,
                 NodeSpinnerBlinkPeakOpacity = blinkPeak,
                 ApplyDebounceMs = SelectedDebounceMs(),
@@ -575,28 +575,28 @@ namespace FlowMy.Views.Overlays
             switch (presetTag)
             {
                 case "Light":
-                    MeteorTailLengthSlider.Value = 10.0;
-                    MeteorTailBlurSlider.Value = 5.0;
-                    MeteorTailOpacitySlider.Value = 0.8;
-                    MeteorTailThicknessSlider.Value = 2.0;
+                    MeteorTailLengthSlider.Value = 8.0;
+                    MeteorTailBlurSlider.Value = 4.0;
+                    MeteorTailOpacitySlider.Value = 0.5;
+                    MeteorTailThicknessSlider.Value = 1.5;
                     break;
                 case "Strong":
-                    MeteorTailLengthSlider.Value = 20.0;
-                    MeteorTailBlurSlider.Value = 15.0;
-                    MeteorTailOpacitySlider.Value = 2.0;
-                    MeteorTailThicknessSlider.Value = 6.0;
+                    MeteorTailLengthSlider.Value = 16.0;
+                    MeteorTailBlurSlider.Value = 12.0;
+                    MeteorTailOpacitySlider.Value = 1.1;
+                    MeteorTailThicknessSlider.Value = 3.5;
                     break;
                 case "VeryStrong":
-                    MeteorTailLengthSlider.Value = 28.0;
-                    MeteorTailBlurSlider.Value = 22.0;
-                    MeteorTailOpacitySlider.Value = 2.8;
-                    MeteorTailThicknessSlider.Value = 9.0;
+                    MeteorTailLengthSlider.Value = 20.0;
+                    MeteorTailBlurSlider.Value = 15.0;
+                    MeteorTailOpacitySlider.Value = 1.4;
+                    MeteorTailThicknessSlider.Value = 4.5;
                     break;
                 default:
-                    MeteorTailLengthSlider.Value = 15.0;
-                    MeteorTailBlurSlider.Value = 10.0;
-                    MeteorTailOpacitySlider.Value = 1.5;
-                    MeteorTailThicknessSlider.Value = 4.0;
+                    MeteorTailLengthSlider.Value = 12.0;
+                    MeteorTailBlurSlider.Value = 8.0;
+                    MeteorTailOpacitySlider.Value = 0.8;
+                    MeteorTailThicknessSlider.Value = 2.5;
                     break;
             }
             _isApplying = false;
@@ -615,27 +615,27 @@ namespace FlowMy.Views.Overlays
             {
                 case "Light":
                     SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
-                    NodeSpinnerBlinkIntensitySlider.Value = 0.35;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.10;
-                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.38;
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.30;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.06;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.35;
                     break;
                 case "Strong":
-                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Hard");
-                    NodeSpinnerBlinkIntensitySlider.Value = 0.95;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.28;
-                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.92;
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.70;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.14;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.65;
                     break;
                 case "VeryStrong":
                     SelectByTag(NodeSpinnerBlinkModeComboBox, "Hard");
-                    NodeSpinnerBlinkIntensitySlider.Value = 1.00;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.34;
-                    NodeSpinnerBlinkPeakOpacitySlider.Value = 1.00;
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.85;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.18;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.75;
                     break;
                 default:
                     SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
-                    NodeSpinnerBlinkIntensitySlider.Value = 0.65;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.16;
-                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.60;
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.50;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.10;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.50;
                     break;
             }
             _isApplying = false;
@@ -752,8 +752,8 @@ namespace FlowMy.Views.Overlays
                     GpuEnabledCheckBox.IsChecked = true;
                     CacheNodeCheckBox.IsChecked = true;
                     UiAnimationsEnabledCheckBox.IsChecked = false;
-                    EnergyDotGapSlider.Value = 12;
-                    EnergyDotThicknessSlider.Value = 1.2;
+                    EnergyDotGapSlider.Value = 8.0;
+                    EnergyDotThicknessSlider.Value = 0.6;
                     EnergyRunSpeedSlider.Value = 1.0;
                     EnergySpinSpeedSlider.Value = 1.0;
                     EnergyMeteorModeCheckBox.IsChecked = false;
@@ -761,7 +761,7 @@ namespace FlowMy.Views.Overlays
                     NodeSpinnerArcModeCheckBox.IsChecked = true;
                     NodeSpinnerMultiColorCheckBox.IsChecked = false;
                     NodeSpinnerBlinkBackgroundCheckBox.IsChecked = false;
-                    NodeSpinnerSpinSecondsSlider.Value = 1.6;
+                    NodeSpinnerSpinSecondsSlider.Value = 1.4;
                     break;
                 case "Normal":
                     // Máy trung bình: animation cơ bản, cân bằng.
@@ -772,9 +772,9 @@ namespace FlowMy.Views.Overlays
                     GpuEnabledCheckBox.IsChecked = true;
                     CacheNodeCheckBox.IsChecked = false;
                     UiAnimationsEnabledCheckBox.IsChecked = true;
-                    EnergyDotGapSlider.Value = 8;
+                    EnergyDotGapSlider.Value = 6.0;
                     EnergyDotThicknessSlider.Value = 0.8;
-                    EnergyRunSpeedSlider.Value = 1.4;
+                    EnergyRunSpeedSlider.Value = 1.2;
                     EnergySpinSpeedSlider.Value = 0.8;
                     EnergyMeteorModeCheckBox.IsChecked = false;
                     EnergyDotRotateCheckBox.IsChecked = false;
@@ -782,10 +782,10 @@ namespace FlowMy.Views.Overlays
                     NodeSpinnerMultiColorCheckBox.IsChecked = false;
                     NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
                     SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
-                    NodeSpinnerBlinkIntensitySlider.Value = 0.45;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.12;
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.40;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.08;
                     NodeSpinnerBlinkPeakOpacitySlider.Value = 0.45;
-                    NodeSpinnerSpinSecondsSlider.Value = 1.1;
+                    NodeSpinnerSpinSecondsSlider.Value = 1.0;
                     break;
                 case "High":
                     // Máy mạnh: bật đầy đủ hiệu ứng chất lượng cao.
@@ -796,9 +796,9 @@ namespace FlowMy.Views.Overlays
                     GpuEnabledCheckBox.IsChecked = true;
                     CacheNodeCheckBox.IsChecked = false;
                     UiAnimationsEnabledCheckBox.IsChecked = true;
-                    EnergyDotGapSlider.Value = 6;
-                    EnergyDotThicknessSlider.Value = 1.6;
-                    EnergyRunSpeedSlider.Value = 2.0;
+                    EnergyDotGapSlider.Value = 5.0;
+                    EnergyDotThicknessSlider.Value = 1.2;
+                    EnergyRunSpeedSlider.Value = 1.5;
                     EnergySpinSpeedSlider.Value = 0.6;
                     EnergyMeteorModeCheckBox.IsChecked = true;
                     EnergyDotRotateCheckBox.IsChecked = false;
@@ -806,10 +806,10 @@ namespace FlowMy.Views.Overlays
                     NodeSpinnerMultiColorCheckBox.IsChecked = false;
                     NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
                     SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
-                    NodeSpinnerBlinkIntensitySlider.Value = 0.65;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.16;
-                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.60;
-                    NodeSpinnerSpinSecondsSlider.Value = 1.0;
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.55;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.12;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.55;
+                    NodeSpinnerSpinSecondsSlider.Value = 0.9;
                     break;
                 case "Debug":
                     // Debug: GPU off, không cache, hiển thị mọi node.
@@ -820,16 +820,16 @@ namespace FlowMy.Views.Overlays
                     GpuEnabledCheckBox.IsChecked = false;
                     CacheNodeCheckBox.IsChecked = false;
                     UiAnimationsEnabledCheckBox.IsChecked = false;
-                    EnergyDotGapSlider.Value = 14;
-                    EnergyDotThicknessSlider.Value = 0.4;
-                    EnergyRunSpeedSlider.Value = 0.8;
+                    EnergyDotGapSlider.Value = 8.0;
+                    EnergyDotThicknessSlider.Value = 0.5;
+                    EnergyRunSpeedSlider.Value = 1.0;
                     EnergySpinSpeedSlider.Value = 1.2;
                     EnergyMeteorModeCheckBox.IsChecked = false;
                     EnergyDotRotateCheckBox.IsChecked = false;
                     NodeSpinnerArcModeCheckBox.IsChecked = true;
                     NodeSpinnerMultiColorCheckBox.IsChecked = false;
                     NodeSpinnerBlinkBackgroundCheckBox.IsChecked = false;
-                    NodeSpinnerSpinSecondsSlider.Value = 2.0;
+                    NodeSpinnerSpinSecondsSlider.Value = 1.5;
                     break;
                 case "Ultra":
                     // Ultra: full effect, full culling range.
@@ -840,19 +840,19 @@ namespace FlowMy.Views.Overlays
                     GpuEnabledCheckBox.IsChecked = true;
                     CacheNodeCheckBox.IsChecked = false;
                     UiAnimationsEnabledCheckBox.IsChecked = true;
-                    EnergyDotGapSlider.Value = 5;
-                    EnergyDotThicknessSlider.Value = 2.2;
-                    EnergyRunSpeedSlider.Value = 2.6;
+                    EnergyDotGapSlider.Value = 4.5;
+                    EnergyDotThicknessSlider.Value = 1.5;
+                    EnergyRunSpeedSlider.Value = 1.8;
                     EnergySpinSpeedSlider.Value = 0.4;
                     EnergyMeteorModeCheckBox.IsChecked = true;
                     EnergyDotRotateCheckBox.IsChecked = true;
                     NodeSpinnerArcModeCheckBox.IsChecked = false;
                     NodeSpinnerMultiColorCheckBox.IsChecked = true;
                     NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
-                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Hard");
-                    NodeSpinnerBlinkIntensitySlider.Value = 0.95;
-                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.28;
-                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.92;
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.65;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.15;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.65;
                     NodeSpinnerSpinSecondsSlider.Value = 0.8;
                     break;
             }

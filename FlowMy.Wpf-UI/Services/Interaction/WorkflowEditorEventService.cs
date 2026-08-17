@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -1059,6 +1059,7 @@ namespace FlowMy.Services.Interaction
             var vm = ViewModel;
             if (vm == null) return;
 
+            _connectionRenderer.UpdateAllConnectionColors(vm.Connections);
             _connectionRenderer.UpdateAllConnectionAnimations(vm.Connections);
 
             // Sync animation state for internal conditional diamond lines.

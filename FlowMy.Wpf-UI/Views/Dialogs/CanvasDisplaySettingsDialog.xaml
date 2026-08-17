@@ -291,9 +291,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Khoảng cách chấm (Gap)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="EnergyDotGapSlider" Minimum="2" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="EnergyDotGapSlider" Minimum="2" Maximum="14" TickFrequency="0.5" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="EnergyDotGapValueText" Text="8.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="EnergyDotGapValueText" Text="5.5" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -305,9 +305,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Độ dày thêm (Thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="EnergyDotThicknessSlider" Minimum="0" Maximum="8" TickFrequency="0.2" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="EnergyDotThicknessSlider" Minimum="0" Maximum="3.0" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="EnergyDotThicknessValueText" Text="0.8" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="EnergyDotThicknessValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -319,9 +319,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Tốc độ chạy (Run speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="EnergyRunSpeedSlider" Minimum="0.2" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="EnergyRunSpeedSlider" Minimum="0.4" Maximum="3.5" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="EnergyRunSpeedValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="EnergyRunSpeedValueText" Text="1.3" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -354,7 +354,7 @@
                                     <ColumnDefinition Width="48"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Giây/vòng xoay (Spin sec)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="8" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <Slider Grid.Column="1" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="6" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
                                     <TextBlock x:Name="EnergySpinSpeedValueText" Text="0.7" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                 </Border>
@@ -372,9 +372,9 @@
                                     <ColumnDefinition Width="48"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Độ sáng glow" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" x:Name="MeteorTailLengthSlider" Minimum="5" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <Slider Grid.Column="1" x:Name="MeteorTailLengthSlider" Minimum="5" Maximum="25" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                    <TextBlock x:Name="MeteorTailLengthValueText" Text="15" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="MeteorTailLengthValueText" Text="12" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                 </Border>
                             </Grid>
 
@@ -385,9 +385,9 @@
                                     <ColumnDefinition Width="48"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Bán kính glow" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" x:Name="MeteorTailBlurSlider" Minimum="3" Maximum="25" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <Slider Grid.Column="1" x:Name="MeteorTailBlurSlider" Minimum="2" Maximum="16" TickFrequency="1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                    <TextBlock x:Name="MeteorTailBlurValueText" Text="10" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="MeteorTailBlurValueText" Text="8" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                 </Border>
                             </Grid>
 
@@ -398,9 +398,9 @@
                                     <ColumnDefinition Width="48"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Tốc độ nhấp nháy" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" x:Name="MeteorTailOpacitySlider" Minimum="0.5" Maximum="3.0" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <Slider Grid.Column="1" x:Name="MeteorTailOpacitySlider" Minimum="0.2" Maximum="1.5" TickFrequency="0.1" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                    <TextBlock x:Name="MeteorTailOpacityValueText" Text="1.5" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="MeteorTailOpacityValueText" Text="0.8" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                 </Border>
                             </Grid>
 
@@ -411,9 +411,9 @@
                                     <ColumnDefinition Width="48"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Độ dày glow" Foreground="{DynamicResource TextBrush}" Opacity="0.85" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" x:Name="MeteorTailThicknessSlider" Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <Slider Grid.Column="1" x:Name="MeteorTailThicknessSlider" Minimum="1" Maximum="5" TickFrequency="0.5" IsSnapToTickEnabled="False" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                    <TextBlock x:Name="MeteorTailThicknessValueText" Text="4" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="MeteorTailThicknessValueText" Text="2.5" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                 </Border>
                             </Grid>
 
@@ -481,9 +481,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Kích thước (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="NodeSpinnerSizeSlider" Minimum="10" Maximum="220" TickFrequency="1" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="NodeSpinnerSizeSlider" Minimum="14" Maximum="56" TickFrequency="1" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerSizeValueText" Text="26.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerSizeValueText" Text="24.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -495,9 +495,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Độ dày nét" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="NodeSpinnerStrokeThicknessSlider" Minimum="1" Maximum="12" TickFrequency="0.2" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="NodeSpinnerStrokeThicknessSlider" Minimum="1.5" Maximum="5.0" TickFrequency="0.1" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerStrokeThicknessValueText" Text="3.2" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerStrokeThicknessValueText" Text="2.8" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -509,9 +509,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Tốc độ xoay (giây/vòng)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="NodeSpinnerSpinSecondsSlider" Minimum="0.2" Maximum="6" TickFrequency="0.1" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="NodeSpinnerSpinSecondsSlider" Minimum="0.4" Maximum="3.0" TickFrequency="0.1" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerSpinSecondsValueText" Text="1.1" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerSpinSecondsValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -523,9 +523,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Tỉ lệ kích thước" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="NodeSpinnerSizeRatioSlider" Minimum="0.12" Maximum="1.8" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="NodeSpinnerSizeRatioSlider" Minimum="0.15" Maximum="0.60" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerSizeRatioValueText" Text="0.32" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerSizeRatioValueText" Text="0.28" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
                             </StackPanel>
@@ -584,7 +584,7 @@
                                     <TextBlock Grid.Column="0" Text="Cường độ nháy" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" x:Name="NodeSpinnerBlinkIntensitySlider" Minimum="0.10" Maximum="1.00" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerBlinkIntensityValueText" Text="0.65" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerBlinkIntensityValueText" Text="0.50" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -596,9 +596,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Opacity nền cơ sở" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="NodeSpinnerBlinkBaseOpacitySlider" Minimum="0.00" Maximum="1.00" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="NodeSpinnerBlinkBaseOpacitySlider" Minimum="0.00" Maximum="0.40" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerBlinkBaseOpacityValueText" Text="0.16" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerBlinkBaseOpacityValueText" Text="0.10" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
 
@@ -610,9 +610,9 @@
                                         <ColumnDefinition Width="48"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Độ sáng đỉnh (Peak)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" FontSize="12" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" x:Name="NodeSpinnerBlinkPeakOpacitySlider" Minimum="0.02" Maximum="1.00" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider Grid.Column="1" x:Name="NodeSpinnerBlinkPeakOpacitySlider" Minimum="0.10" Maximum="0.80" TickFrequency="0.01" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <Border Grid.Column="2" Background="{DynamicResource SurfaceColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="6" Padding="4,2" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="44">
-                                        <TextBlock x:Name="NodeSpinnerBlinkPeakOpacityValueText" Text="0.60" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="NodeSpinnerBlinkPeakOpacityValueText" Text="0.50" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
                                     </Border>
                                 </Grid>
                             </StackPanel>

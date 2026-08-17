@@ -445,7 +445,7 @@ namespace FlowMy.Services.Rendering
             var path = new ShapesPath
             {
                 Stroke = new SolidColorBrush(lineColor),
-                StrokeThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 2.0 : 2.5,
+                StrokeThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0,
                 Fill = null,
                 StrokeLineJoin = PenLineJoin.Round,
                 StrokeStartLineCap = PenLineCap.Round,
@@ -1030,7 +1030,7 @@ namespace FlowMy.Services.Rendering
             if (connection.LineUI == null) return;
 
             var lineStyle = GetLineStyleForConnection(connection);
-            var baseThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 2.0 : 2.5;
+            var baseThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0;
 
             // Base line luôn theo color mode hiện tại
             var lineColor = GetConnectionColor(connection);
@@ -1047,7 +1047,7 @@ namespace FlowMy.Services.Rendering
                 tag.ArrowHead.Effect = null;
             }
 
-            // Khi chạy: đổi sang line "chấm tròn chạy" (dotted running)
+            // Khi chạy: đổi sang line "chấm tròn chạy" (dotted running) nếu đang ở chế độ Animated
             if (connection.IsExecutionActive)
             {
                 var energyColor = GetEnergyColor(connection);
@@ -1056,8 +1056,18 @@ namespace FlowMy.Services.Rendering
 
                 // Override stroke theo màu năng lượng
                 connection.LineUI.Stroke = new SolidColorBrush(energyColor);
-                connection.LineUI.StrokeThickness = baseThickness + EnergyDotThicknessExtra;
-                connection.LineUI.StrokeDashCap = EnergyMeteorMode ? PenLineCap.Flat : PenLineCap.Round;
+
+                if (AnimationDisplayMode == ConnectionAnimationDisplayMode.Animated)
+                {
+                    connection.LineUI.StrokeThickness = baseThickness + EnergyDotThicknessExtra;
+                    connection.LineUI.StrokeDashCap = EnergyMeteorMode ? PenLineCap.Flat : PenLineCap.Round;
+                }
+                else
+                {
+                    // Khi Tắt Animation (Off) hoặc Nét đứt (Dashed): giữ đúng độ dày chuẩn baseThickness, không phóng to nét line
+                    connection.LineUI.StrokeThickness = baseThickness;
+                    connection.LineUI.StrokeDashCap = PenLineCap.Flat;
+                }
                 connection.LineUI.Effect = null; // bỏ đổ bóng line khi đang chạy
 
                 if (connection.LineUI.Tag is ConnectionTag tag2 && tag2.ArrowHead != null)
@@ -1144,19 +1154,14 @@ namespace FlowMy.Services.Rendering
 
                 if (conn.IsExecutionActive)
                 {
-                    // Glow Pulse mode: DISABLED - tab "Energy nâng cao" is hidden
-                    // Future: re-enable if needed by setting tab Visibility to Visible
-                    /*
-                    if (EnergyMeteorMode && AnimationDisplayMode != ConnectionAnimationDisplayMode.Off)
-                    {
-                        // Glow Pulse logic disabled
-                    }
-                    */
+                    var lineStyle = GetLineStyleForConnection(conn);
+                    var baseThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0;
 
                     if (AnimationDisplayMode == ConnectionAnimationDisplayMode.Dashed)
                     {
                         conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, null);
                         conn.LineUI.BeginAnimation(UIElement.OpacityProperty, null);
+                        conn.LineUI.StrokeThickness = baseThickness;
                         conn.LineUI.StrokeDashCap = PenLineCap.Flat;
                         conn.LineUI.StrokeDashArray = new DoubleCollection { 6, 4 };
                         conn.LineUI.StrokeDashOffset = 0;
@@ -1170,6 +1175,7 @@ namespace FlowMy.Services.Rendering
                     if (AnimationDisplayMode == ConnectionAnimationDisplayMode.Off)
                     {
                         conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, null);
+                        conn.LineUI.StrokeThickness = baseThickness;
                         conn.LineUI.StrokeDashArray = null;
                         conn.LineUI.StrokeDashOffset = 0;
                         conn.LineUI.StrokeDashCap = PenLineCap.Flat;
@@ -1185,6 +1191,7 @@ namespace FlowMy.Services.Rendering
                     if (conn.IsExecutionPinned)
                     {
                         conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, null);
+                        conn.LineUI.StrokeThickness = baseThickness;
                         conn.LineUI.StrokeDashArray = null;
                         conn.LineUI.StrokeDashOffset = 0;
                         conn.LineUI.StrokeDashCap = PenLineCap.Round;
@@ -1217,6 +1224,7 @@ namespace FlowMy.Services.Rendering
                     if (!string.IsNullOrWhiteSpace(EnergyDotText))
                     {
                         conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, null);
+                        conn.LineUI.StrokeThickness = baseThickness;
                         conn.LineUI.StrokeDashArray = null;
                         conn.LineUI.StrokeDashOffset = 0;
                         conn.LineUI.Opacity = 0.25;
@@ -1239,6 +1247,7 @@ namespace FlowMy.Services.Rendering
                         double pattern = dot + gap;
 
                         conn.LineUI.Opacity = 1.0;
+                        conn.LineUI.StrokeThickness = baseThickness + EnergyDotThicknessExtra;
                         conn.LineUI.StrokeDashCap = PenLineCap.Round;
                         conn.LineUI.StrokeDashArray = new DoubleCollection { dot, gap };
                         conn.LineUI.StrokeDashOffset = 0;
@@ -1267,8 +1276,11 @@ namespace FlowMy.Services.Rendering
 
                 else if (AnimationDisplayMode == ConnectionAnimationDisplayMode.Dashed)
                 {
+                    var lineStyle = GetLineStyleForConnection(conn);
+                    var baseThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0;
+                    conn.LineUI.StrokeThickness = baseThickness;
                     conn.LineUI.StrokeDashCap = PenLineCap.Flat;
-                    conn.LineUI.StrokeDashArray = new DoubleCollection { 8, 5 };
+                    conn.LineUI.StrokeDashArray = new DoubleCollection { 7, 4 };
                     conn.LineUI.StrokeDashOffset = 0;
                     conn.LineUI.Opacity = 1.0;
                     RemoveEnergyBall(conn);
@@ -1277,6 +1289,9 @@ namespace FlowMy.Services.Rendering
                 else if (IsAnimationEnabled && shouldAnimate)
                 {
                     // ✅ Only animate if within budget
+                    var lineStyle = GetLineStyleForConnection(conn);
+                    var baseThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0;
+                    conn.LineUI.StrokeThickness = baseThickness;
                     double dashLength = 8;
                     double gapLength = 6;
                     double patternLength = dashLength + gapLength;
@@ -1304,6 +1319,9 @@ namespace FlowMy.Services.Rendering
                 else
                 {
                     // No animation (either disabled or throttled)
+                    var lineStyle = GetLineStyleForConnection(conn);
+                    var baseThickness = lineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0;
+                    conn.LineUI.StrokeThickness = baseThickness;
                     conn.LineUI.StrokeDashArray = null;
                     conn.LineUI.StrokeDashOffset = 0;
                     conn.LineUI.StrokeDashCap = PenLineCap.Flat;
@@ -1354,7 +1372,7 @@ namespace FlowMy.Services.Rendering
             var path = new ShapesPath
             {
                 Stroke = new SolidColorBrush(color),
-                StrokeThickness = LineStyle == ConnectionLineStyle.Orthogonal ? 2.0 : 2.5,
+                StrokeThickness = LineStyle == ConnectionLineStyle.Orthogonal ? 1.8 : 2.0,
                 Fill = null,
                 StrokeLineJoin = PenLineJoin.Round,
                 StrokeStartLineCap = PenLineCap.Round,

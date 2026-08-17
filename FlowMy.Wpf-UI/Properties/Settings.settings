@@ -12,10 +12,10 @@
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="EnergyDotGap" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">8</Value>
+      <Value Profile="(Default)">5.5</Value>
     </Setting>
     <Setting Name="EnergyDotThicknessExtra" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">0.8</Value>
+      <Value Profile="(Default)">1.0</Value>
     </Setting>
     <Setting Name="EnergyDotText" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -24,7 +24,7 @@
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="EnergyRunSpeed" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">1</Value>
+      <Value Profile="(Default)">1.3</Value>
     </Setting>
     <Setting Name="EnergyTextSpinSeconds" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0.7</Value>

@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -75,18 +75,18 @@ namespace FlowMy.Views
         private ConnectionEnergyColorMode _connectionEnergyColorMode = ConnectionEnergyColorMode.FollowLineColor;
         private Color _customEnergyColor = Color.FromRgb(255, 215, 0); // Gold
         private string _customEnergyColorKey = "Gold";
-        private double _energyDotGap = Settings.Default.EnergyDotGap <= 0 ? 8.0 : Settings.Default.EnergyDotGap;
-        private double _energyDotThicknessExtra = Settings.Default.EnergyDotThicknessExtra == 0 ? 0.8 : Settings.Default.EnergyDotThicknessExtra;
+        private double _energyDotGap = Settings.Default.EnergyDotGap <= 0 ? 5.5 : Settings.Default.EnergyDotGap;
+        private double _energyDotThicknessExtra = Settings.Default.EnergyDotThicknessExtra == 0 ? 1.0 : Settings.Default.EnergyDotThicknessExtra;
         private string _energyDotText = Settings.Default.EnergyDotText ?? string.Empty; // nếu set text => thay line animation bằng text chạy
         private bool _energyDotTextRotate = Settings.Default.EnergyDotTextRotate;
-        private double _energyRunSpeed = Settings.Default.EnergyRunSpeed <= 0 ? 1.0 : Settings.Default.EnergyRunSpeed; // multiplier
+        private double _energyRunSpeed = Settings.Default.EnergyRunSpeed <= 0 ? 1.3 : Settings.Default.EnergyRunSpeed; // multiplier
         private double _energyTextSpinSeconds = Settings.Default.EnergyTextSpinSeconds <= 0 ? 0.7 : Settings.Default.EnergyTextSpinSeconds; // seconds / vòng 360
         private bool _energyMeteorMode;
         private bool _advancedFlowStyleEnabled;
-        private double _meteorTailLength = 15.0;
-        private double _meteorTailBlur = 10.0;
-        private double _meteorTailOpacity = 1.5;
-        private double _meteorTailThickness = 4.0;
+        private double _meteorTailLength = 12.0;
+        private double _meteorTailBlur = 8.0;
+        private double _meteorTailOpacity = 0.8;
+        private double _meteorTailThickness = 2.5;
         private string _nodeAppearanceMode = "Solid";
         private bool _isApplyingEnergyMenuState = false;
         private bool _headlessCanvasOptimizationEnabled;
