@@ -650,6 +650,7 @@ namespace FlowMy.Views.NodeControls
                 SubtitleLiveOverlayContainer.Width = Math.Max(1, rect.Width);
                 SubtitleLiveOverlayContainer.Height = Math.Max(1, rect.Height);
             }
+            ApplySubtitleStylesToLiveOverlay();
         }
 
         private void SyncVideoViewportClip()

@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Threading;
@@ -34,6 +35,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             var videoNode = (VideoProcessingNode)node;
             var sw = Stopwatch.StartNew();
+            var globalSubtitleCleanup = new List<string>();
 
             try
             {
@@ -175,7 +177,39 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
 
-                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
+                string? effectiveSubtitlePath = null;
+
+                var hasSubtitles = videoNode.SubtitleStyle != null && videoNode.SubtitleStyle.Enabled && videoNode.Subtitles.Count > 0;
+                if (hasSubtitles)
+                {
+                    var srcW = sourceWidth > 0 ? sourceWidth : 1920;
+                    var srcH = sourceHeight > 0 ? sourceHeight : 1080;
+                    if (videoNode.RotationDegrees == 90 || videoNode.RotationDegrees == 270)
+                    {
+                        var tmp = srcW;
+                        srcW = srcH;
+                        srcH = tmp;
+                    }
+
+                    var assContent = FlowMy.Core.Models.Media.SubtitleAssBuilder.BuildAssFileContent(
+                        videoNode.Subtitles,
+                        videoNode.SubtitleStyle,
+                        srcW,
+                        srcH);
+
+                    var tempAss = Path.Combine(tempRoot, $"sub_{Guid.NewGuid():N}.ass");
+                    await File.WriteAllTextAsync(tempAss, assContent, Encoding.UTF8, env.CancellationToken).ConfigureAwait(false);
+                    globalSubtitleCleanup.Add(tempAss);
+                    effectiveSubtitlePath = tempAss;
+                    LogLine?.Invoke(videoNode, $"🔤 [PHỤ ĐỀ] Đã tạo file phụ đề ASS và gắn vào video ({videoNode.Subtitles.Count} câu, font: {videoNode.SubtitleStyle?.FontFamily ?? "Segoe UI"}, {videoNode.SubtitleStyle?.FontSize ?? 24}px)");
+                }
+                else if (videoNode.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(videoNode.SubtitlePath) && File.Exists(videoNode.SubtitlePath))
+                {
+                    effectiveSubtitlePath = videoNode.SubtitlePath;
+                    LogLine?.Invoke(videoNode, $"🔤 [PHỤ ĐỀ] Gắn file phụ đề: {videoNode.SubtitlePath}");
+                }
+
+                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight, effectiveSubtitlePath);
                 LogLine?.Invoke(videoNode, $"[DBG] FilterGraph: {frameFilter}");
                 LogLine?.Invoke(videoNode, $"[DBG] WatermarkExpr: {(videoNode.WatermarkEnabled ? VideoWatermarkGeometry.BuildOverlayPositionExpression(videoNode.WatermarkPosition, videoNode.WatermarkInsetFraction) : "disabled")}");
                 var frameExt = videoNode.FrameOutputFormat switch
@@ -356,7 +390,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 else
                 {
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
-                var mainFilter = BuildVideoFilterChain(videoNode, extractFps: null, includeTextOverlay: true, sourceHeight);
+                var mainFilter = BuildVideoFilterChain(videoNode, extractFps: null, includeTextOverlay: true, sourceHeight, effectiveSubtitlePath);
                 var mainArgs = BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
@@ -499,6 +533,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
+                TryDeleteOverlayRasterFiles(globalSubtitleCleanup);
                 sw.Stop();
                 env.OnNodeCompleted?.Invoke(node, sw.Elapsed);
             }
@@ -927,7 +962,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return string.Join(",", parts.Select(p => $"atempo={p.ToString("0.######", CultureInfo.InvariantCulture)}"));
         }
 
-        private static string BuildVideoFilterChain(VideoProcessingNode node, double? extractFps, bool includeTextOverlay, int? sourceHeightOverride = null)
+        private static string BuildVideoFilterChain(
+            VideoProcessingNode node,
+            double? extractFps,
+            bool includeTextOverlay,
+            int? sourceHeightOverride = null,
+            string? subtitlePathOverride = null)
         {
             var filters = new List<string>();
 
@@ -991,9 +1031,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
-            if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
+
+            var subToBurn = !string.IsNullOrWhiteSpace(subtitlePathOverride)
+                ? subtitlePathOverride
+                : ((node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath)) ? node.SubtitlePath : null);
+
+            if (!string.IsNullOrWhiteSpace(subToBurn) && File.Exists(subToBurn))
             {
-                var subPath = node.SubtitlePath!.Replace("\\", "/").Replace(":", "\\:");
+                var subPath = EscapeFfmpegFilterPath(subToBurn);
                 filters.Add($"subtitles='{subPath}'");
             }
             return string.Join(",", filters);
@@ -1146,7 +1191,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return (string.Join(";", filterChains), imageInputs, $"[{currentLabel}]");
         }
 
-        private static string BuildVideoFilterChainWithoutFps(VideoProcessingNode node, bool includeTextOverlay = false, double? sourceFpsOverride = null, int? sourceHeightOverride = null)
+        private static string BuildVideoFilterChainWithoutFps(
+            VideoProcessingNode node,
+            bool includeTextOverlay = false,
+            double? sourceFpsOverride = null,
+            int? sourceHeightOverride = null,
+            string? subtitlePathOverride = null)
         {
             var filters = new List<string>();
 
@@ -1181,9 +1231,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
-            if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
+
+            var subToBurn = !string.IsNullOrWhiteSpace(subtitlePathOverride)
+                ? subtitlePathOverride
+                : ((node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath)) ? node.SubtitlePath : null);
+
+            if (!string.IsNullOrWhiteSpace(subToBurn) && File.Exists(subToBurn))
             {
-                var subPath = node.SubtitlePath!.Replace("\\", "/").Replace(":", "\\:");
+                var subPath = EscapeFfmpegFilterPath(subToBurn);
                 filters.Add($"subtitles='{subPath}'");
             }
 
@@ -1965,7 +2020,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static string EscapeFfmpegFilterPath(string path)
         {
             if (string.IsNullOrEmpty(path)) return string.Empty;
-            return path.Replace("\\", "/").Replace(":", "\\:");
+            return path.Replace("\\", "/").Replace(":", "\\:").Replace("'", "'\\''");
         }
 
         private static async Task StabilizeVideoAsync(string inputPath, string outputPath, CancellationToken ct)

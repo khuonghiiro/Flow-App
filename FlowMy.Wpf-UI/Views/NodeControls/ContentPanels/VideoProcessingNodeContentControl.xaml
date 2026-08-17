@@ -565,6 +565,7 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
@@ -586,9 +587,170 @@
                                 <Border x:Name="ProgressFill" HorizontalAlignment="Left" Background="{DynamicResource ThemeAccentBrush}" Width="0"/>
                             </Grid>
                         </Border>
-                        <ScrollViewer Grid.Row="1" x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+
+                        <!-- Quick Action Bar on Successful Export -->
+                        <Border x:Name="LogSuccessActionBar" Grid.Row="1" Visibility="Collapsed" Background="#2016A34A" BorderBrush="#4422C55E" BorderThickness="0,0,0,1" Padding="10,6">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🎉 ĐÃ XUẤT XONG:" FontSize="11" FontWeight="Bold" Foreground="#4ADE80" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button x:Name="LogOpenFolderButton" Content="📁 Mở Thư Mục" Height="24" Padding="10,0" FontSize="11" FontWeight="Bold" Margin="0,0,6,0" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#15803D"/>
+                                                <Setter Property="BorderBrush" Value="#22C55E"/>
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#16A34A"/>
+                                                                    <Setter TargetName="bd" Property="BorderBrush" Value="#4ADE80"/>
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#14532D"/>
+                                                                    <Setter TargetName="bd" Property="BorderBrush" Value="#22C55E"/>
+                                                                    <Setter Property="Foreground" Value="#E2E8F0"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button x:Name="LogOpenFileButton" Content="🎬 Mở Video" Height="24" Padding="10,0" FontSize="11" FontWeight="Bold" Margin="0,0,6,0" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#2563EB"/>
+                                                <Setter Property="BorderBrush" Value="#3B82F6"/>
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#3B82F6"/>
+                                                                    <Setter TargetName="bd" Property="BorderBrush" Value="#60A5FA"/>
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#1D4ED8"/>
+                                                                    <Setter TargetName="bd" Property="BorderBrush" Value="#3B82F6"/>
+                                                                    <Setter Property="Foreground" Value="#E2E8F0"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button x:Name="LogOpenAudioButton" Content="🎵 Mở Audio" Height="24" Padding="10,0" FontSize="11" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,6,0" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#7C3AED"/>
+                                                <Setter Property="BorderBrush" Value="#8B5CF6"/>
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#8B5CF6"/>
+                                                                    <Setter TargetName="bd" Property="BorderBrush" Value="#A78BFA"/>
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#5B21B6"/>
+                                                                    <Setter Property="Foreground" Value="#E2E8F0"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button x:Name="LogOpenFramesButton" Content="🖼 Mở Frames" Height="24" Padding="10,0" FontSize="11" FontWeight="Bold" Visibility="Collapsed" Margin="0,0,6,0" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#D97706"/>
+                                                <Setter Property="BorderBrush" Value="#F59E0B"/>
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#F59E0B"/>
+                                                                    <Setter TargetName="bd" Property="BorderBrush" Value="#FCD34D"/>
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#92400E"/>
+                                                                    <Setter Property="Foreground" Value="#E2E8F0"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
+                                <Button x:Name="LogDismissActionBannerButton" Content="✕" HorizontalAlignment="Right" VerticalAlignment="Center" Width="20" Height="20" Padding="0" FontSize="10" FontWeight="Bold" Cursor="Hand">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#334155"/>
+                                            <Setter Property="Foreground" Value="#94A3B8"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="10">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="bd" Property="Background" Value="#475569"/>
+                                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsPressed" Value="True">
+                                                                <Setter TargetName="bd" Property="Background" Value="#1E293B"/>
+                                                                <Setter Property="Foreground" Value="#CBD5E1"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="2" x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
                             <RichTextBox x:Name="LogRichTextBox"
                                          IsReadOnly="True"
+                                         IsDocumentEnabled="True"
                                          Focusable="True"
                                          Background="Transparent"
                                          BorderThickness="0"
@@ -598,7 +760,7 @@
                                          CaretBrush="{DynamicResource ThemeTextPrimaryBrush}"
                                          Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                         </ScrollViewer>
-                        <Grid Grid.Row="2" Margin="12,6,12,8">
+                        <Grid Grid.Row="3" Margin="12,6,12,8">
                             <TextBlock x:Name="ElapsedTimeText" FontSize="10.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="Elapsed: --"/>
                             <TextBlock x:Name="EstimatedTimeText" HorizontalAlignment="Right" FontSize="10.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Text="ETA: --"/>
                         </Grid>

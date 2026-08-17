@@ -162,6 +162,10 @@ namespace FlowMy.Views.NodeControls
                 UpdateOverlayCanvasBounds();
                 UpdateWatermarkPreviewUi();
             };
+            if (SubtitleLiveOverlayContainer != null)
+            {
+                SubtitleLiveOverlayContainer.SizeChanged += (_, _) => ApplySubtitleStylesToLiveOverlay();
+            }
 
             OpenVideoButtonHeader.Click += (_, _) => SelectVideo();
             //OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
@@ -178,9 +182,97 @@ namespace FlowMy.Views.NodeControls
             };
             ToggleNodeSizeButton.Click += (_, _) => ToggleNodeZoom();
             ToggleVideoPlayerExpandButton.Click += (_, _) => ToggleVideoPlayerExpand();
+
+            if (LogOpenFolderButton != null)
+            {
+                LogOpenFolderButton.Click += (_, _) =>
+                {
+                    try
+                    {
+                        var folder = _lastExportedFolderPath;
+                        if (string.IsNullOrWhiteSpace(folder) && !string.IsNullOrWhiteSpace(_lastExportedVideoPath))
+                            folder = Path.GetDirectoryName(_lastExportedVideoPath);
+                        if (string.IsNullOrWhiteSpace(folder))
+                            folder = GetCurrentVideoOutputFolder();
+                        if (Directory.Exists(folder))
+                            Process.Start("explorer.exe", $"\"{folder}\"");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"❌ [LỖI] Không thể mở thư mục: {ex.Message}");
+                    }
+                };
+            }
+
+            if (LogOpenFileButton != null)
+            {
+                LogOpenFileButton.Click += (_, _) =>
+                {
+                    try
+                    {
+                        var file = _lastExportedVideoPath;
+                        if (!string.IsNullOrWhiteSpace(file) && File.Exists(file))
+                            Process.Start(new ProcessStartInfo { FileName = file, UseShellExecute = true });
+                        else
+                            AppendLog("⚠ [CẢNH BÁO] File video chưa tồn tại hoặc chưa xuất xong.");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"❌ [LỖI] Không thể mở file video: {ex.Message}");
+                    }
+                };
+            }
+
+            if (LogOpenAudioButton != null)
+            {
+                LogOpenAudioButton.Click += (_, _) =>
+                {
+                    try
+                    {
+                        var file = _lastExportedAudioPath;
+                        if (!string.IsNullOrWhiteSpace(file) && File.Exists(file))
+                            Process.Start(new ProcessStartInfo { FileName = file, UseShellExecute = true });
+                        else if (!string.IsNullOrWhiteSpace(file) && Directory.Exists(file))
+                            Process.Start("explorer.exe", $"\"{file}\"");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"❌ [LỖI] Không thể mở audio: {ex.Message}");
+                    }
+                };
+            }
+
+            if (LogOpenFramesButton != null)
+            {
+                LogOpenFramesButton.Click += (_, _) =>
+                {
+                    try
+                    {
+                        var folder = _lastExportedFramesFolder;
+                        if (string.IsNullOrWhiteSpace(folder)) folder = GetDefaultFrameOutputFolder();
+                        if (Directory.Exists(folder))
+                            Process.Start("explorer.exe", $"\"{folder}\"");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"❌ [LỖI] Không thể mở thư mục frame: {ex.Message}");
+                    }
+                };
+            }
+
+            if (LogDismissActionBannerButton != null)
+            {
+                LogDismissActionBannerButton.Click += (_, _) =>
+                {
+                    if (LogSuccessActionBar != null)
+                        LogSuccessActionBar.Visibility = Visibility.Collapsed;
+                };
+            }
+
             RunProcessingButton.Click += (_, _) =>
             {
                 SwitchToLogView();
+                SyncSubtitleStyleToNode();
                 RunProcessingFlow(singleNodeOnly: false);
             };
             SaveEditedVideoButton.Click += (_, _) =>
@@ -189,6 +281,7 @@ namespace FlowMy.Views.NodeControls
                 _node.ExportVideoEnabled = true;
                 _node.ExtractFramesEnabled = false;
                 _node.ExtractAudioEnabled = false;
+                SyncSubtitleStyleToNode();
                 AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
                 RunProcessingFlow(singleNodeOnly: true);
             };
@@ -198,6 +291,7 @@ namespace FlowMy.Views.NodeControls
                 _node.ExportVideoEnabled = true;
                 _node.ExtractFramesEnabled = false;
                 _node.ExtractAudioEnabled = false;
+                SyncSubtitleStyleToNode();
                 AppendLog($"💾 [LƯU VIDEO] Đang xử lý và xuất video vào thư mục: {GetCurrentVideoOutputFolder()}");
                 RunProcessingFlow(singleNodeOnly: true);
             };

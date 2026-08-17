@@ -1409,13 +1409,13 @@ namespace FlowMy.Views.NodeControls
 
             var okVideo = !string.IsNullOrWhiteSpace(_node.VideoPath);
             var okOutput = !string.IsNullOrWhiteSpace(_node.OutputPathOverride);
-            var okSubtitle = !_node.BurnSubtitleEnabled || !string.IsNullOrWhiteSpace(_node.SubtitlePath);
+            var okSubtitle = !_node.BurnSubtitleEnabled || _node.Subtitles.Count > 0 || !string.IsNullOrWhiteSpace(_node.SubtitlePath);
             var okWatermark = !_node.WatermarkEnabled || !string.IsNullOrWhiteSpace(_node.WatermarkImagePath);
             var okTextOverlay = !_node.TextOverlayEnabled || !string.IsNullOrWhiteSpace(_node.OverlayText);
 
             SetConfigCheck(ConfigCheckVideoText, okVideo, "Đã chọn video nguồn", "Thiếu video nguồn");
             SetConfigCheck(ConfigCheckOutputText, okOutput, "Đã đặt đường dẫn video đầu ra", "Chưa đặt đường dẫn video đầu ra");
-            SetConfigCheck(ConfigCheckSubtitleText, okSubtitle, "Subtitle hợp lệ", "Đã bật burn subtitle nhưng chưa chọn file subtitle");
+            SetConfigCheck(ConfigCheckSubtitleText, okSubtitle, "Phụ đề hợp lệ", "Đã bật phụ đề nhưng chưa có câu phụ đề hoặc file");
             SetConfigCheck(ConfigCheckWatermarkText, okWatermark, "Watermark hợp lệ", "Đã bật watermark nhưng chưa chọn ảnh");
             SetConfigCheck(ConfigCheckTextOverlayText, okTextOverlay, "Text overlay hợp lệ", "Đã bật chèn chữ nhưng nội dung chữ đang trống");
 

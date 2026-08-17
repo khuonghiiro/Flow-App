@@ -286,6 +286,7 @@ namespace FlowMy.Views.NodeControls
 
         private void SyncRuntimeConfigFromUi()
         {
+            SyncSubtitleStyleToNode();
             _node.AudioOutputFolderPath = (AudioOutputFolderText.Text ?? string.Empty).Trim();
 
             if (_node.UseDialogVideoConfig)
@@ -435,6 +436,11 @@ namespace FlowMy.Views.NodeControls
             AppendLog(line);
         }
 
+        private string? _lastExportedVideoPath;
+        private string? _lastExportedFolderPath;
+        private string? _lastExportedAudioPath;
+        private string? _lastExportedFramesFolder;
+
         private void AppendLog(string line)
         {
             if (string.IsNullOrWhiteSpace(line)) return;
@@ -442,12 +448,46 @@ namespace FlowMy.Views.NodeControls
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 var brush = GetLogLineBrush(line, out var isBold);
-                var p = new Paragraph(new Run(line))
+                var p = new Paragraph
                 {
                     Foreground = brush,
                     Margin = new Thickness(0, 1, 0, 1),
                     FontWeight = isBold ? FontWeights.Bold : FontWeights.Normal
                 };
+
+                p.Inlines.Add(new Run(line));
+
+                // Detect paths for interactive buttons & quick action bar
+                var detectedPath = ExtractPathFromLogLine(line, out var isFile, out var isFolder);
+                if (!string.IsNullOrWhiteSpace(detectedPath))
+                {
+                    if (isFile)
+                    {
+                        var ext = Path.GetExtension(detectedPath).ToLowerInvariant();
+                        if (ext is ".mp4" or ".mkv" or ".avi" or ".mov" or ".webm" or ".flv")
+                        {
+                            _lastExportedVideoPath = detectedPath;
+                            _lastExportedFolderPath = Path.GetDirectoryName(detectedPath);
+                        }
+                        else if (ext is ".mp3" or ".wav" or ".aac" or ".m4a" or ".flac")
+                        {
+                            _lastExportedAudioPath = detectedPath;
+                        }
+                    }
+                    else if (isFolder)
+                    {
+                        if (line.Contains("video") || line.Contains("Lưu video"))
+                            _lastExportedFolderPath = detectedPath;
+                        else if (line.Contains("audio") || line.Contains("Trích xuất audio"))
+                            _lastExportedAudioPath = detectedPath;
+                        else if (line.Contains("frame") || line.Contains("Tách frame"))
+                            _lastExportedFramesFolder = detectedPath;
+                        else
+                            _lastExportedFolderPath = detectedPath;
+                    }
+
+                    ShowLogSuccessBanner();
+                }
 
                 if (LogRichTextBox.Document == null)
                     LogRichTextBox.Document = new FlowDocument();
@@ -456,6 +496,61 @@ namespace FlowMy.Views.NodeControls
                 LogScrollViewer.ScrollToEnd();
                 LogLineReceived?.Invoke(line);
             }));
+        }
+
+        private static string? ExtractPathFromLogLine(string line, out bool isFile, out bool isFolder)
+        {
+            isFile = false;
+            isFolder = false;
+
+            int idx = line.IndexOf(":\\", StringComparison.Ordinal);
+            if (idx <= 0) return null;
+
+            int start = idx - 1;
+            while (start > 0 && char.IsLetter(line[start]) && (char.IsWhiteSpace(line[start - 1]) || line[start - 1] == ':'))
+                break;
+
+            var sub = line.Substring(start).Trim();
+            sub = sub.TrimEnd('.', ',', ';', ')', ']');
+
+            if (File.Exists(sub))
+            {
+                isFile = true;
+                return sub;
+            }
+            if (Directory.Exists(sub))
+            {
+                isFolder = true;
+                return sub;
+            }
+
+            var ext = Path.GetExtension(sub).ToLowerInvariant();
+            if (ext is ".mp4" or ".mkv" or ".avi" or ".mov" or ".webm" or ".mp3" or ".wav" or ".aac" or ".png" or ".jpg" or ".ass")
+            {
+                isFile = true;
+                return sub;
+            }
+            if (sub.Contains('\\') || sub.Contains('/'))
+            {
+                isFolder = true;
+                return sub;
+            }
+
+            return null;
+        }
+
+        private void ShowLogSuccessBanner()
+        {
+            if (LogSuccessActionBar == null) return;
+            LogSuccessActionBar.Visibility = Visibility.Visible;
+            if (LogOpenFileButton != null)
+                LogOpenFileButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedVideoPath) && File.Exists(_lastExportedVideoPath)) ? Visibility.Visible : Visibility.Collapsed;
+            if (LogOpenFolderButton != null)
+                LogOpenFolderButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedFolderPath) && Directory.Exists(_lastExportedFolderPath)) ? Visibility.Visible : Visibility.Collapsed;
+            if (LogOpenAudioButton != null)
+                LogOpenAudioButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedAudioPath) && (File.Exists(_lastExportedAudioPath) || Directory.Exists(_lastExportedAudioPath))) ? Visibility.Visible : Visibility.Collapsed;
+            if (LogOpenFramesButton != null)
+                LogOpenFramesButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedFramesFolder) && Directory.Exists(_lastExportedFramesFolder)) ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private Brush GetLogLineBrush(string line, out bool isBold)

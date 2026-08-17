@@ -1,3 +1,6 @@
+// =========================================================================================
+// AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
+// =========================================================================================
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -147,7 +150,45 @@ namespace FlowMy.Views.NodeControls
         {
             if (SubtitleLiveTextBlock == null || SubtitleLiveOverlayBorder == null) return;
 
-            // Font & Sizing
+            // Video source resolution
+            double vidW = (PreviewMedia != null && PreviewMedia.NaturalVideoWidth > 0) ? PreviewMedia.NaturalVideoWidth : 1920;
+            double vidH = (PreviewMedia != null && PreviewMedia.NaturalVideoHeight > 0) ? PreviewMedia.NaturalVideoHeight : 1080;
+            if (vidW <= 0) vidW = 1920;
+            if (vidH <= 0) vidH = 1080;
+            double minDim = Math.Min(vidW, vidH);
+
+            // Container and video frame sizing (robust NaN & 0 protection)
+            double containerW = 0;
+            double containerH = 0;
+            if (SubtitleLiveOverlayContainer != null && !double.IsNaN(SubtitleLiveOverlayContainer.ActualWidth) && SubtitleLiveOverlayContainer.ActualWidth > 0)
+                containerW = SubtitleLiveOverlayContainer.ActualWidth;
+            else if (SubtitleLiveOverlayContainer != null && !double.IsNaN(SubtitleLiveOverlayContainer.Width) && SubtitleLiveOverlayContainer.Width > 0)
+                containerW = SubtitleLiveOverlayContainer.Width;
+
+            if (SubtitleLiveOverlayContainer != null && !double.IsNaN(SubtitleLiveOverlayContainer.ActualHeight) && SubtitleLiveOverlayContainer.ActualHeight > 0)
+                containerH = SubtitleLiveOverlayContainer.ActualHeight;
+            else if (SubtitleLiveOverlayContainer != null && !double.IsNaN(SubtitleLiveOverlayContainer.Height) && SubtitleLiveOverlayContainer.Height > 0)
+                containerH = SubtitleLiveOverlayContainer.Height;
+
+            if (containerW <= 0 || containerH <= 0)
+            {
+                var rect = GetDisplayedVideoRect();
+                if (rect.Width > 0) containerW = rect.Width;
+                if (rect.Height > 0) containerH = rect.Height;
+            }
+
+            if (containerW <= 0 || double.IsNaN(containerW) || double.IsInfinity(containerW)) containerW = 640;
+            if (containerH <= 0 || double.IsNaN(containerH) || double.IsInfinity(containerH)) containerH = 360;
+
+            // Scale ratio between on-screen preview pixels and actual video pixels
+            double scale = containerW / vidW;
+            if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0)
+                scale = containerH / vidH;
+            if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0)
+                scale = 0.35;
+            scale = Math.Clamp(scale, 0.05, 5.0);
+
+            // Font & Sizing (calibrated with 0.75 DIP-to-Point factor for 100% exact match with ASS)
             try
             {
                 var fontName = (SubFontFamilyCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI";
@@ -155,58 +196,106 @@ namespace FlowMy.Views.NodeControls
             }
             catch { SubtitleLiveTextBlock.FontFamily = new FontFamily("Segoe UI"); }
 
-            double baseFontSize = double.TryParse(SubFontSizeBox.Text, out var fs) ? fs : 24;
-            double containerH = SubtitleLiveOverlayContainer?.ActualHeight ?? 0;
-            if (containerH <= 0) containerH = VideoAreaGrid?.ActualHeight ?? 720;
-            double natH = PreviewMedia?.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 1080;
-            double scale = Math.Clamp(containerH / Math.Max(1.0, natH), 0.2, 3.0);
-            SubtitleLiveTextBlock.FontSize = Math.Clamp(baseFontSize * scale * 1.5, 10, 48);
+            double userFontSize = 24;
+            if (SubFontSizeBox != null && double.TryParse(SubFontSizeBox.Text, out var fs) && !double.IsNaN(fs) && fs > 0)
+                userFontSize = fs;
 
+            // 0.75 conversion factor maps 54pt in ASS libass to 40.5 DIPs in WPF preview
+            double videoFontSize = Math.Max(12.0, (userFontSize * 2.25) * (minDim / 1080.0));
+            double targetFontSize = (videoFontSize * 0.75) * scale;
+            if (double.IsNaN(targetFontSize) || double.IsInfinity(targetFontSize) || targetFontSize < 3.0)
+                targetFontSize = 8.0;
+
+            SubtitleLiveTextBlock.FontSize = targetFontSize;
             SubtitleLiveTextBlock.FontWeight = SubBoldToggle.IsChecked == true ? FontWeights.Bold : FontWeights.Normal;
             SubtitleLiveTextBlock.FontStyle = SubItalicToggle.IsChecked == true ? FontStyles.Italic : FontStyles.Normal;
 
-            // Colors
+            // Text Colors
             try
             {
                 var colorHex = SubTextColorBox.Text?.Trim();
                 if (!string.IsNullOrEmpty(colorHex))
                     SubtitleLiveTextBlock.Foreground = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex)!;
+                else
+                    SubtitleLiveTextBlock.Foreground = Brushes.White;
             }
             catch { SubtitleLiveTextBlock.Foreground = Brushes.White; }
 
-            // Wrapping & MaxWidth inside video container
-            bool isWrap = SubAutoWrapToggle.IsChecked == true;
-            SubtitleLiveTextBlock.TextWrapping = isWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
-            double containerW = SubtitleLiveOverlayContainer?.ActualWidth ?? 0;
-            if (containerW <= 0) containerW = VideoAreaGrid?.ActualWidth ?? 1280;
-            SubtitleLiveOverlayBorder.MaxWidth = Math.Max(60, containerW * 0.88);
+            // Outline & Shadow via DropShadowEffect
+            double outlineThick = 2.0;
+            if (SubOutlineThicknessBox != null && double.TryParse(SubOutlineThicknessBox.Text, out var ot) && !double.IsNaN(ot) && ot >= 0)
+                outlineThick = ot;
 
-            // Alignment & Free Position Offsets
+            var outlineHex = SubOutlineColorBox.Text?.Trim() ?? "#000000";
+            Color outlineColor = Colors.Black;
+            try { outlineColor = (Color)ColorConverter.ConvertFromString(outlineHex); } catch { }
+
+            double blurRadius = Math.Max(0.5, ((outlineThick * 2.0 * 0.75) * (minDim / 1080.0)) * scale * 2.0);
+            if (double.IsNaN(blurRadius) || double.IsInfinity(blurRadius) || blurRadius < 0.5)
+                blurRadius = 1.0;
+
+            SubtitleLiveTextBlock.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = blurRadius,
+                ShadowDepth = 0,
+                Color = outlineColor,
+                Opacity = 0.95
+            };
+
+            // Alignment, Margins & Position Offsets (scaled proportionally)
             var alignTag = (SubAlignmentCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "BottomCenter";
             SubtitleLiveOverlayBorder.HorizontalAlignment = alignTag.EndsWith("Left") ? HorizontalAlignment.Left :
                 (alignTag.EndsWith("Right") ? HorizontalAlignment.Right : HorizontalAlignment.Center);
             SubtitleLiveOverlayBorder.VerticalAlignment = alignTag.StartsWith("Top") ? VerticalAlignment.Top :
                 (alignTag.StartsWith("Center") ? VerticalAlignment.Center : VerticalAlignment.Bottom);
 
-            double offsetX = SubOffsetXSlider?.Value ?? 0;
-            double offsetY = SubOffsetYSlider?.Value ?? 0;
-            double bMargin = SubBottomMarginSlider?.Value ?? 30;
+            double rawOffsetX = SubOffsetXSlider?.Value ?? 0;
+            if (double.IsNaN(rawOffsetX) || double.IsInfinity(rawOffsetX)) rawOffsetX = 0;
+
+            double rawOffsetY = SubOffsetYSlider?.Value ?? 0;
+            if (double.IsNaN(rawOffsetY) || double.IsInfinity(rawOffsetY)) rawOffsetY = 0;
+
+            double rawBMargin = SubBottomMarginSlider?.Value ?? 40;
+            if (double.IsNaN(rawBMargin) || double.IsInfinity(rawBMargin)) rawBMargin = 40;
+
+            double offsetX = (((rawOffsetX * 1.5) * (minDim / 1080.0))) * scale;
+            double offsetY = (((rawOffsetY * 1.5) * (minDim / 1080.0))) * scale;
+            double bMargin = (((rawBMargin * 1.5) * (minDim / 1080.0))) * scale;
+            double sMargin = (Math.Max(30.0, vidW * 0.05) * (minDim / 1080.0)) * scale;
 
             if (alignTag.StartsWith("Top"))
-                SubtitleLiveOverlayBorder.Margin = new Thickness(offsetX, Math.Max(0, bMargin + offsetY), -offsetX, 0);
+                SubtitleLiveOverlayBorder.Margin = new Thickness(sMargin + offsetX, Math.Max(0, bMargin + offsetY), sMargin - offsetX, 0);
             else if (alignTag.StartsWith("Center"))
-                SubtitleLiveOverlayBorder.Margin = new Thickness(offsetX, offsetY, -offsetX, -offsetY);
+                SubtitleLiveOverlayBorder.Margin = new Thickness(sMargin + offsetX, offsetY, sMargin - offsetX, -offsetY);
             else
-                SubtitleLiveOverlayBorder.Margin = new Thickness(offsetX, 0, -offsetX, Math.Max(0, bMargin - offsetY));
+                SubtitleLiveOverlayBorder.Margin = new Thickness(sMargin + offsetX, 0, sMargin - offsetX, Math.Max(0, bMargin - offsetY));
+
+            // Wrapping & MaxWidth inside video container
+            bool isWrap = SubAutoWrapToggle.IsChecked == true;
+            SubtitleLiveTextBlock.TextWrapping = isWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
+
+            double maxWidth = containerW - 2 * sMargin;
+            if (double.IsNaN(maxWidth) || double.IsInfinity(maxWidth) || maxWidth < 40) maxWidth = 40;
+            SubtitleLiveOverlayBorder.MaxWidth = maxWidth;
+
+            // Box padding exactly matching ASS BorderStyle 3 box padding
+            double assBoxPadH = Math.Max(6, videoFontSize * 0.38) * 0.75;
+            double assBoxPadV = Math.Max(4, videoFontSize * 0.22) * 0.75;
+            double padH = Math.Max(2, assBoxPadH * scale);
+            double padV = Math.Max(1, assBoxPadV * scale);
+            SubtitleLiveOverlayBorder.Padding = new Thickness(padH, padV, padH, padV);
+
+            double cornerR = Math.Max(1, 4.5 * (minDim / 1080.0) * scale);
+            SubtitleLiveOverlayBorder.CornerRadius = new CornerRadius(cornerR);
 
             // Background Box
             var boxTag = (SubBackgroundBoxCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "None";
             SubtitleLiveOverlayBorder.Background = boxTag switch
             {
-                "BlackTrans" => new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                "BlackTrans" => new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
                 "BlackSolid" => Brushes.Black,
-                "YellowBox" => new SolidColorBrush(Color.FromArgb(200, 255, 215, 0)),
-                _ => new SolidColorBrush(Color.FromArgb(120, 0, 0, 0))
+                "YellowBox" => new SolidColorBrush(Color.FromArgb(220, 255, 215, 0)),
+                _ => Brushes.Transparent
             };
         }
 
@@ -277,6 +366,7 @@ namespace FlowMy.Views.NodeControls
             if (_node == null) return;
             var style = _node.SubtitleStyle ??= new SubtitleStyleConfig();
             style.Enabled = SubtitleEnabledToggle.IsChecked == true;
+            _node.BurnSubtitleEnabled = style.Enabled;
             style.FontFamily = (SubFontFamilyCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI";
             if (double.TryParse(SubFontSizeBox.Text, out var fs)) style.FontSize = fs;
             style.IsBold = SubBoldToggle.IsChecked == true;
@@ -286,11 +376,22 @@ namespace FlowMy.Views.NodeControls
             if (double.TryParse(SubOutlineThicknessBox.Text, out var ot)) style.OutlineThickness = ot;
             style.Alignment = (SubAlignmentCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "BottomCenter";
             style.HardcodeBurnIn = (SubBurnInCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() != "Soft";
+
+            var boxTag = (SubBackgroundBoxCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "None";
+            style.BackgroundBoxEnabled = boxTag != "None";
+            style.BackgroundBoxColor = boxTag switch
+            {
+                "BlackTrans" => "#A0000000",
+                "BlackSolid" => "#FF000000",
+                "YellowBox" => "#D0FFD700",
+                _ => "#00000000"
+            };
+
             style.AutoWrapLongText = SubAutoWrapToggle.IsChecked == true;
             style.MaxCharsPerLine = int.TryParse(SubMaxCharsBox.Text, out var mc) ? mc : 36;
             style.PositionOffsetX = SubOffsetXSlider?.Value ?? 0;
             style.PositionOffsetY = SubOffsetYSlider?.Value ?? 0;
-            style.BottomMarginPx = SubBottomMarginSlider?.Value ?? 30;
+            style.BottomMarginPx = SubBottomMarginSlider?.Value ?? 40;
         }
 
         private void AutoSplitLongSubtitlesByVideoWidth()
@@ -735,53 +836,9 @@ namespace FlowMy.Views.NodeControls
 
         private string BuildAssFileContent(IEnumerable<SubtitleItem> subtitles, SubtitleStyleConfig? style)
         {
-            var sb = new StringBuilder();
-            var font = style?.FontFamily ?? "Segoe UI";
-            var size = (int)(style?.FontSize ?? 24);
             int playResX = (int)(PreviewMedia?.NaturalVideoWidth > 0 ? PreviewMedia.NaturalVideoWidth : 1920);
             int playResY = (int)(PreviewMedia?.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 1080);
-            int marginL = Math.Max(10, (int)(playResX * 0.05));
-            int marginR = Math.Max(10, (int)(playResX * 0.05));
-            int marginV = Math.Max(10, (int)(playResY * 0.06));
-            int wrapStyle = (style?.AutoWrapLongText ?? true) ? 0 : 2;
-
-            sb.AppendLine("[Script Info]");
-            sb.AppendLine("ScriptType: v4.00+");
-            sb.AppendLine($"PlayResX: {playResX}");
-            sb.AppendLine($"PlayResY: {playResY}");
-            sb.AppendLine($"WrapStyle: {wrapStyle}");
-            sb.AppendLine();
-            sb.AppendLine("[V4+ Styles]");
-            sb.AppendLine("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding");
-
-            var boldVal = (style?.IsBold ?? true) ? -1 : 0;
-            var italicVal = (style?.IsItalic ?? false) ? -1 : 0;
-            var outlineThick = (int)(style?.OutlineThickness ?? 2);
-            var shadowDist = (int)(style?.ShadowDistance ?? 1);
-            var alignVal = (style?.Alignment ?? "BottomCenter") switch
-            {
-                "TopCenter" => 8,
-                "Center" => 5,
-                "BottomLeft" => 1,
-                "BottomRight" => 3,
-                _ => 2
-            };
-
-            sb.AppendLine($"Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,{boldVal},{italicVal},0,0,100,100,0,0,1,{outlineThick},{shadowDist},{alignVal},{marginL},{marginR},{marginV},1");
-            sb.AppendLine();
-            sb.AppendLine("[Events]");
-            sb.AppendLine("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text");
-
-            foreach (var sub in subtitles)
-            {
-                var st = TimeSpan.FromSeconds(sub.StartTimeSec);
-                var et = TimeSpan.FromSeconds(sub.EndTimeSec);
-                var stStr = $"{(int)st.TotalHours:0}:{st.Minutes:00}:{st.Seconds:00}.{st.Milliseconds / 10:00}";
-                var etStr = $"{(int)et.TotalHours:0}:{et.Minutes:00}:{et.Seconds:00}.{et.Milliseconds / 10:00}";
-                var txt = sub.Text.Replace(Environment.NewLine, @"\N");
-                sb.AppendLine($"Dialogue: 0,{stStr},{etStr},Default,,0,0,0,,{txt}");
-            }
-            return sb.ToString();
+            return SubtitleAssBuilder.BuildAssFileContent(subtitles, style, playResX, playResY);
         }
     }
 }
