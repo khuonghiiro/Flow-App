@@ -3,12 +3,16 @@
 // =========================================================================================
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using FlowMy.Core.Models.Media;
@@ -20,19 +24,32 @@ namespace FlowMy.Views.NodeControls
     {
         private SubtitleItem? _cachedActiveSubtitle;
         private string? _cachedActiveSubtitleText;
+        private bool _isBatchUpdatingSubtitles;
+
+        public ObservableCollection<SubtitleLanguageTag> SubtitleLanguageTags { get; } = new();
 
         public void InitializeSubtitleUiEvents()
         {
             if (_node == null) return;
 
             SubtitleItemsControl.ItemsSource = _node.Subtitles;
-            _node.Subtitles.CollectionChanged += (s, e) => UpdateSubtitleBadge();
+            if (SubtitleLanguageTagsControl != null)
+                SubtitleLanguageTagsControl.ItemsSource = SubtitleLanguageTags;
+
+            _node.Subtitles.CollectionChanged += (s, e) =>
+            {
+                if (_isBatchUpdatingSubtitles) return;
+                UpdateSubtitleBadge();
+                RefreshAvailableLanguageTags(isInitialLoad: false);
+            };
             UpdateSubtitleBadge();
 
             // Toolbar Events
             ImportSubtitleButton.Click += (s, e) => ImportSubtitleFile();
-            ExportSubtitleSrtButton.Click += (s, e) => ExportSubtitleFile(false);
-            ExportSubtitleAssButton.Click += (s, e) => ExportSubtitleFile(true);
+            if (ExportSubtitleJsonButton != null)
+                ExportSubtitleJsonButton.Click += (s, e) => ExportSubtitleFile("json");
+            ExportSubtitleSrtButton.Click += (s, e) => ExportSubtitleFile("srt");
+            ExportSubtitleAssButton.Click += (s, e) => ExportSubtitleFile("ass");
             AutoGenerateSubtitleButton.Click += (s, e) => AutoGenerateSubtitlesFromAi();
             AddSubtitleAtPlayheadButton.Click += (s, e) => AddSubtitleAtCurrentPlayhead();
             ClearAllSubtitlesButton.Click += (s, e) => ClearAllSubtitles();
@@ -101,7 +118,162 @@ namespace FlowMy.Views.NodeControls
 
             ResetSubtitleSettingsButton.Click += (s, e) => ResetSubtitleSettings();
             UpdateColorPreviewBoxes();
+            RefreshAvailableLanguageTags(isInitialLoad: true);
             ApplySubtitleStylesToLiveOverlay();
+        }
+
+        public void RefreshAvailableLanguageTags(bool isInitialLoad = false)
+        {
+            if (_node == null) return;
+
+            var currentActiveCodes = SubtitleLanguageTags.Where(t => t.IsActive).Select(t => t.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var discoveredLanguages = new Dictionary<string, (string code, string name, string tag, bool isOriginal, string tagBg, string tagFg, string tagBorder, int count)>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var sub in _node.Subtitles)
+            {
+                foreach (var line in sub.Lines)
+                {
+                    var code = string.IsNullOrWhiteSpace(line.LanguageCode) ? (line.IsOriginal ? "orig" : "vi") : line.LanguageCode;
+                    if (!discoveredLanguages.ContainsKey(code))
+                    {
+                        var info = SubtitleLanguageHelper.GetLanguageInfo(code, line.IsOriginal);
+                        discoveredLanguages[code] = (code, info.name, info.tag, line.IsOriginal, info.tagBg, info.tagFg, info.tagBorder, 1);
+                    }
+                    else
+                    {
+                        var exist = discoveredLanguages[code];
+                        discoveredLanguages[code] = (exist.code, exist.name, exist.tag, exist.isOriginal || line.IsOriginal, exist.tagBg, exist.tagFg, exist.tagBorder, exist.count + 1);
+                    }
+                }
+            }
+
+            if (discoveredLanguages.Count == 0 && _node.Subtitles.Count > 0)
+            {
+                var info = SubtitleLanguageHelper.GetLanguageInfo("vi", false);
+                discoveredLanguages["vi"] = ("vi", info.name, info.tag, false, info.tagBg, info.tagFg, info.tagBorder, _node.Subtitles.Count);
+            }
+
+            var newTagList = new List<SubtitleLanguageTag>();
+            bool hasAnyActive = false;
+
+            foreach (var kvp in discoveredLanguages.Values.OrderByDescending(v => v.isOriginal).ThenBy(v => v.name))
+            {
+                bool active;
+                if (isInitialLoad || currentActiveCodes.Count == 0)
+                {
+                    // Mặc định CHỈ active tag bản gốc
+                    active = kvp.isOriginal;
+                }
+                else
+                {
+                    active = currentActiveCodes.Contains(kvp.code);
+                }
+
+                if (active) hasAnyActive = true;
+
+                newTagList.Add(new SubtitleLanguageTag
+                {
+                    Code = kvp.code,
+                    Name = kvp.name,
+                    Tag = kvp.tag,
+                    IsOriginal = kvp.isOriginal,
+                    IsActive = active,
+                    LineCount = kvp.count,
+                    TagBackgroundHex = kvp.tagBg,
+                    TagForegroundHex = kvp.tagFg,
+                    TagBorderHex = kvp.tagBorder
+                });
+            }
+
+            // Nếu không có tag nào là bản gốc và chưa có tag nào active -> active tag đầu tiên
+            if (!hasAnyActive && newTagList.Count > 0)
+            {
+                newTagList[0].IsActive = true;
+            }
+
+            SubtitleLanguageTags.Clear();
+            foreach (var tag in newTagList)
+            {
+                SubtitleLanguageTags.Add(tag);
+            }
+
+            SyncLanguageTagsToSubtitleLines();
+        }
+
+        private void SyncLanguageTagsToSubtitleLines()
+        {
+            if (_node == null) return;
+            var activeCodes = SubtitleLanguageTags.Where(t => t.IsActive).Select(t => t.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var sub in _node.Subtitles)
+            {
+                foreach (var line in sub.Lines)
+                {
+                    var code = string.IsNullOrWhiteSpace(line.LanguageCode) ? (line.IsOriginal ? "orig" : "vi") : line.LanguageCode;
+                    line.IsActive = activeCodes.Contains(code);
+                }
+            }
+        }
+
+        private void LanguageTagToggle_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            if (sender is FrameworkElement fe && fe.DataContext is SubtitleLanguageTag tag)
+            {
+                tag.IsActive = !tag.IsActive;
+                SyncLanguageTagsToSubtitleLines();
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void ShowOnlyOriginalLanguage_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            foreach (var t in SubtitleLanguageTags)
+            {
+                t.IsActive = t.IsOriginal;
+            }
+            if (!SubtitleLanguageTags.Any(t => t.IsActive) && SubtitleLanguageTags.Count > 0)
+                SubtitleLanguageTags[0].IsActive = true;
+
+            SyncLanguageTagsToSubtitleLines();
+            OnSubtitleStyleChanged();
+        }
+
+        private void ShowOnlyTranslatedLanguage_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            foreach (var t in SubtitleLanguageTags)
+            {
+                t.IsActive = !t.IsOriginal;
+            }
+            if (!SubtitleLanguageTags.Any(t => t.IsActive) && SubtitleLanguageTags.Count > 0)
+                SubtitleLanguageTags[0].IsActive = true;
+
+            SyncLanguageTagsToSubtitleLines();
+            OnSubtitleStyleChanged();
+        }
+
+        private void ShowAllLanguages_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            foreach (var t in SubtitleLanguageTags)
+            {
+                t.IsActive = true;
+            }
+            SyncLanguageTagsToSubtitleLines();
+            OnSubtitleStyleChanged();
+        }
+
+        private void LineTag_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            if (sender is FrameworkElement fe && fe.DataContext is SubtitleLineItem line)
+            {
+                line.IsActive = !line.IsActive;
+                OnSubtitleStyleChanged();
+            }
         }
 
         private void OnSubtitleStyleChanged()
@@ -129,7 +301,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             var activeSub = _node.Subtitles.FirstOrDefault(s => currentSec >= s.StartTimeSec && currentSec <= s.EndTimeSec);
-            if (activeSub == null || string.IsNullOrWhiteSpace(activeSub.Text))
+            if (activeSub == null)
             {
                 if (SubtitleLiveOverlayBorder.Visibility != Visibility.Collapsed)
                     SubtitleLiveOverlayBorder.Visibility = Visibility.Collapsed;
@@ -137,12 +309,51 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (activeSub == _cachedActiveSubtitle && activeSub.Text == _cachedActiveSubtitleText)
+            var activeLines = activeSub.Lines.Where(l => l.IsActive && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+            if (activeLines.Count == 0)
+            {
+                if (SubtitleLiveOverlayBorder.Visibility != Visibility.Collapsed)
+                    SubtitleLiveOverlayBorder.Visibility = Visibility.Collapsed;
+                _cachedActiveSubtitle = null;
+                return;
+            }
+
+            var joinedText = string.Join(" | ", activeLines.Select(l => l.Text));
+            if (activeSub == _cachedActiveSubtitle && joinedText == _cachedActiveSubtitleText)
                 return;
 
             _cachedActiveSubtitle = activeSub;
-            _cachedActiveSubtitleText = activeSub.Text;
-            SubtitleLiveTextBlock.Text = activeSub.Text;
+            _cachedActiveSubtitleText = joinedText;
+
+            SubtitleLiveTextBlock.Inlines.Clear();
+
+            for (int i = 0; i < activeLines.Count; i++)
+            {
+                var line = activeLines[i];
+                if (i > 0)
+                    SubtitleLiveTextBlock.Inlines.Add(new LineBreak());
+
+                if (line.IsOriginal)
+                {
+                    var origRun = new Run(line.Text)
+                    {
+                        FontSize = Math.Max(6.0, SubtitleLiveTextBlock.FontSize * 0.85),
+                        Foreground = SubtitleLanguageHelper.GetFrozenBrush("#FCD34D", "#FCD34D")
+                    };
+                    SubtitleLiveTextBlock.Inlines.Add(origRun);
+                }
+                else
+                {
+                    var transRun = new Run(line.Text)
+                    {
+                        FontSize = SubtitleLiveTextBlock.FontSize,
+                        FontWeight = SubtitleLiveTextBlock.FontWeight,
+                        Foreground = SubtitleLiveTextBlock.Foreground
+                    };
+                    SubtitleLiveTextBlock.Inlines.Add(transRun);
+                }
+            }
+
             if (SubtitleLiveOverlayBorder.Visibility != Visibility.Visible)
                 SubtitleLiveOverlayBorder.Visibility = Visibility.Visible;
         }
@@ -151,14 +362,12 @@ namespace FlowMy.Views.NodeControls
         {
             if (SubtitleLiveTextBlock == null || SubtitleLiveOverlayBorder == null) return;
 
-            // Video source resolution
             double vidW = (PreviewMedia != null && PreviewMedia.NaturalVideoWidth > 0) ? PreviewMedia.NaturalVideoWidth : 1920;
             double vidH = (PreviewMedia != null && PreviewMedia.NaturalVideoHeight > 0) ? PreviewMedia.NaturalVideoHeight : 1080;
             if (vidW <= 0) vidW = 1920;
             if (vidH <= 0) vidH = 1080;
             double minDim = Math.Min(vidW, vidH);
 
-            // Container and video frame sizing (robust NaN & 0 protection)
             double containerW = 0;
             double containerH = 0;
             if (SubtitleLiveOverlayContainer != null && !double.IsNaN(SubtitleLiveOverlayContainer.ActualWidth) && SubtitleLiveOverlayContainer.ActualWidth > 0)
@@ -181,7 +390,6 @@ namespace FlowMy.Views.NodeControls
             if (containerW <= 0 || double.IsNaN(containerW) || double.IsInfinity(containerW)) containerW = 640;
             if (containerH <= 0 || double.IsNaN(containerH) || double.IsInfinity(containerH)) containerH = 360;
 
-            // Scale ratio between on-screen preview pixels and actual video pixels
             double scale = containerW / vidW;
             if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0)
                 scale = containerH / vidH;
@@ -189,7 +397,6 @@ namespace FlowMy.Views.NodeControls
                 scale = 0.35;
             scale = Math.Clamp(scale, 0.05, 5.0);
 
-            // Font & Sizing (calibrated with 0.75 DIP-to-Point factor for 100% exact match with ASS)
             try
             {
                 var fontName = (SubFontFamilyCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI";
@@ -201,7 +408,6 @@ namespace FlowMy.Views.NodeControls
             if (SubFontSizeBox != null && double.TryParse(SubFontSizeBox.Text, out var fs) && !double.IsNaN(fs) && fs > 0)
                 userFontSize = fs;
 
-            // 0.75 conversion factor maps 54pt in ASS libass to 40.5 DIPs in WPF preview
             double videoFontSize = Math.Max(12.0, (userFontSize * 2.25) * (minDim / 1080.0));
             double targetFontSize = (videoFontSize * 0.75) * scale;
             if (double.IsNaN(targetFontSize) || double.IsInfinity(targetFontSize) || targetFontSize < 3.0)
@@ -211,7 +417,6 @@ namespace FlowMy.Views.NodeControls
             SubtitleLiveTextBlock.FontWeight = SubBoldToggle.IsChecked == true ? FontWeights.Bold : FontWeights.Normal;
             SubtitleLiveTextBlock.FontStyle = SubItalicToggle.IsChecked == true ? FontStyles.Italic : FontStyles.Normal;
 
-            // Text Colors
             try
             {
                 var colorHex = SubTextColorBox.Text?.Trim();
@@ -222,7 +427,6 @@ namespace FlowMy.Views.NodeControls
             }
             catch { SubtitleLiveTextBlock.Foreground = Brushes.White; }
 
-            // Outline & Shadow via DropShadowEffect
             double outlineThick = 2.0;
             if (SubOutlineThicknessBox != null && double.TryParse(SubOutlineThicknessBox.Text, out var ot) && !double.IsNaN(ot) && ot >= 0)
                 outlineThick = ot;
@@ -243,7 +447,6 @@ namespace FlowMy.Views.NodeControls
                 Opacity = 0.95
             };
 
-            // Alignment, Margins & Position Offsets (scaled proportionally)
             var alignTag = (SubAlignmentCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "BottomCenter";
             SubtitleLiveOverlayBorder.HorizontalAlignment = alignTag.EndsWith("Left") ? HorizontalAlignment.Left :
                 (alignTag.EndsWith("Right") ? HorizontalAlignment.Right : HorizontalAlignment.Center);
@@ -271,7 +474,6 @@ namespace FlowMy.Views.NodeControls
             else
                 SubtitleLiveOverlayBorder.Margin = new Thickness(sMargin + offsetX, 0, sMargin - offsetX, Math.Max(0, bMargin - offsetY));
 
-            // Wrapping & MaxWidth inside video container
             bool isWrap = SubAutoWrapToggle.IsChecked == true;
             SubtitleLiveTextBlock.TextWrapping = isWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
 
@@ -279,7 +481,6 @@ namespace FlowMy.Views.NodeControls
             if (double.IsNaN(maxWidth) || double.IsInfinity(maxWidth) || maxWidth < 40) maxWidth = 40;
             SubtitleLiveOverlayBorder.MaxWidth = maxWidth;
 
-            // Box padding exactly matching ASS BorderStyle 3 box padding
             double assBoxPadH = Math.Max(6, videoFontSize * 0.38) * 0.75;
             double assBoxPadV = Math.Max(4, videoFontSize * 0.22) * 0.75;
             double padH = Math.Max(2, assBoxPadH * scale);
@@ -289,7 +490,6 @@ namespace FlowMy.Views.NodeControls
             double cornerR = Math.Max(1, 4.5 * (minDim / 1080.0) * scale);
             SubtitleLiveOverlayBorder.CornerRadius = new CornerRadius(cornerR);
 
-            // Background Box
             var boxTag = (SubBackgroundBoxCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "None";
             SubtitleLiveOverlayBorder.Background = boxTag switch
             {
@@ -419,11 +619,22 @@ namespace FlowMy.Views.NodeControls
             }
 
             var newList = SplitSubtitlesList(_node.Subtitles, calculatedCharsPerLine);
-            _node.Subtitles.Clear();
-            foreach (var item in newList.OrderBy(s => s.StartTimeSec))
-                _node.Subtitles.Add(item);
+            SubtitleItemsControl.ItemsSource = null;
+            _isBatchUpdatingSubtitles = true;
+            try
+            {
+                _node.Subtitles.Clear();
+                foreach (var item in newList.OrderBy(s => s.StartTimeSec))
+                    _node.Subtitles.Add(item);
 
-            UpdateSubtitleBadge();
+                UpdateSubtitleBadge();
+                RefreshAvailableLanguageTags(isInitialLoad: false);
+            }
+            finally
+            {
+                _isBatchUpdatingSubtitles = false;
+                SubtitleItemsControl.ItemsSource = _node.Subtitles;
+            }
             OnSubtitleStyleChanged();
             AppendLog($"⚡ [SUBTITLE SPLIT] Đã phân tách xong thành các câu phụ đề theo từng giây (tối đa {calculatedCharsPerLine} ký tự/câu).");
         }
@@ -478,12 +689,16 @@ namespace FlowMy.Views.NodeControls
                     chunkDuration = Math.Max(0.3, chunkDuration);
                     double curEnd = (i == chunks.Count - 1) ? sub.EndTimeSec : (curStart + chunkDuration);
 
-                    newList.Add(new SubtitleItem
+                    var newItem = new SubtitleItem
                     {
                         StartTimeSec = curStart,
                         EndTimeSec = curEnd,
-                        Text = chunkText
-                    });
+                        Text = chunkText,
+                        OriginalText = sub.OriginalText,
+                        SourceLanguage = sub.SourceLanguage
+                    };
+                    newItem.EnsureLinesFromText();
+                    newList.Add(newItem);
                     curStart = curEnd;
                 }
             }
@@ -552,8 +767,10 @@ namespace FlowMy.Views.NodeControls
                 EndTimeSec = start + 2.5,
                 Text = "Nội dung phụ đề mới..."
             };
+            newSub.EnsureLinesFromText();
             _node.Subtitles.Add(newSub);
             UpdateSubtitleBadge();
+            RefreshAvailableLanguageTags(isInitialLoad: false);
             AppendLog($"➕ Đã thêm câu phụ đề tại {newSub.FormattedStartTime}");
             OnSubtitleStyleChanged();
         }
@@ -575,6 +792,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node == null) return;
             _node.Subtitles.Clear();
+            SubtitleLanguageTags.Clear();
             UpdateSubtitleBadge();
             _cachedActiveSubtitle = null;
             UpdateLiveSubtitleOverlay(_currentPlayheadSec);
@@ -591,6 +809,56 @@ namespace FlowMy.Views.NodeControls
                         s.IsSelected = (s == sub);
                 }
                 SeekVideoPlayerTo(sub.StartTimeSec);
+            }
+        }
+
+        private void AddSubtitleLine_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                var lineCount = sub.Lines.Count;
+                string defaultLang = lineCount switch
+                {
+                    0 => "zh",
+                    1 => "vi",
+                    2 => "en",
+                    3 => "ja",
+                    _ => "other"
+                };
+                var info = SubtitleLanguageHelper.GetLanguageInfo(defaultLang, isOriginal: lineCount == 0);
+                sub.Lines.Add(new SubtitleLineItem
+                {
+                    LanguageCode = defaultLang,
+                    LanguageName = info.name,
+                    Tag = info.tag,
+                    Text = string.Empty,
+                    IsOriginal = lineCount == 0,
+                    IsActive = true,
+                    TagBackgroundHex = info.tagBg,
+                    TagForegroundHex = info.tagFg,
+                    TagBorderHex = info.tagBorder,
+                    TextColorHex = info.textColor
+                });
+                sub.HookLinesEvents();
+                RefreshAvailableLanguageTags(isInitialLoad: false);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void RemoveSubtitleLine_Click(object sender, RoutedEventArgs e)
+        {
+            if (_node != null && sender is FrameworkElement fe && fe.Tag is SubtitleLineItem line)
+            {
+                foreach (var sub in _node.Subtitles)
+                {
+                    if (sub.Lines.Contains(line) && sub.Lines.Count > 1)
+                    {
+                        sub.Lines.Remove(line);
+                        RefreshAvailableLanguageTags(isInitialLoad: false);
+                        OnSubtitleStyleChanged();
+                        break;
+                    }
+                }
             }
         }
 
@@ -706,38 +974,100 @@ namespace FlowMy.Views.NodeControls
             {
                 _node.Subtitles.Remove(sub);
                 UpdateSubtitleBadge();
+                RefreshAvailableLanguageTags(isInitialLoad: false);
                 _cachedActiveSubtitle = null;
                 UpdateLiveSubtitleOverlay(_currentPlayheadSec);
             }
         }
 
-        private void ImportSubtitleFile()
+        private void ShowSubtitleLoading(string title, string subText = "")
+        {
+            if (SubtitleLoadingTitleText != null) SubtitleLoadingTitleText.Text = title;
+            if (SubtitleLoadingSubText != null) SubtitleLoadingSubText.Text = subText;
+            if (SubtitleLoadingOverlay != null)
+            {
+                SubtitleLoadingOverlay.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void UpdateSubtitleLoading(string title, string subText = "")
+        {
+            if (SubtitleLoadingTitleText != null) SubtitleLoadingTitleText.Text = title;
+            if (SubtitleLoadingSubText != null) SubtitleLoadingSubText.Text = subText;
+        }
+
+        private void HideSubtitleLoading()
+        {
+            if (SubtitleLoadingOverlay != null)
+            {
+                SubtitleLoadingOverlay.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private async void ImportSubtitleFile()
         {
             var dialog = new OpenFileDialog
             {
                 Title = "Chọn file phụ đề",
-                Filter = "Subtitle Files (*.srt;*.vtt;*.ass;*.ssa)|*.srt;*.vtt;*.ass;*.ssa|All Files (*.*)|*.*"
+                Filter = "Tất cả định dạng phụ đề (*.json;*.srt;*.vtt;*.ass;*.ssa)|*.json;*.srt;*.vtt;*.ass;*.ssa|JSON WhisperX Subtitle (*.json)|*.json|SubRip Subtitle (*.srt)|*.srt|Advanced SubStation Alpha (*.ass;*.ssa)|*.ass;*.ssa|WebVTT (*.vtt)|*.vtt|All Files (*.*)|*.*"
             };
 
             if (dialog.ShowDialog() == true)
             {
+                var filePath = dialog.FileName;
+                var fileName = Path.GetFileName(filePath);
                 try
                 {
-                    var lines = File.ReadAllLines(dialog.FileName);
-                    var ext = Path.GetExtension(dialog.FileName).ToLowerInvariant();
-                    List<SubtitleItem> parsed = ext switch
-                    {
-                        ".ass" or ".ssa" => ParseAss(lines),
-                        ".vtt" => ParseVtt(lines),
-                        _ => ParseSrt(lines)
-                    };
+                    ShowSubtitleLoading("Đang nhập phụ đề...", $"Đang đọc và phân tích file {fileName}...");
+                    await Task.Delay(40); // Cho phép UI render animation loading trước khi thực thi
 
-                    if (parsed.Count > 0)
+                    var ext = Path.GetExtension(filePath).ToLowerInvariant();
+                    List<SubtitleItem> parsed;
+
+                    if (ext == ".json")
                     {
-                        _node?.Subtitles.Clear();
-                        foreach (var item in parsed) _node?.Subtitles.Add(item);
-                        UpdateSubtitleBadge();
-                        AppendLog($"📥 Đã nhập thành công {parsed.Count} câu phụ đề từ {Path.GetFileName(dialog.FileName)}");
+                        var rawJson = await File.ReadAllTextAsync(filePath, Encoding.UTF8);
+                        parsed = await Task.Run(() => ParseJson(rawJson));
+                    }
+                    else
+                    {
+                        var lines = await File.ReadAllLinesAsync(filePath, Encoding.UTF8);
+                        parsed = await Task.Run(() => ext switch
+                        {
+                            ".ass" or ".ssa" => ParseAss(lines),
+                            ".vtt" => ParseVtt(lines),
+                            _ => ParseSrt(lines)
+                        });
+                    }
+
+                    if (parsed != null && parsed.Count > 0)
+                    {
+                        UpdateSubtitleLoading("Đang nạp vào danh sách...", $"Đang tải {parsed.Count} câu phụ đề vào timeline...");
+                        await Task.Delay(20);
+
+                        if (_node != null)
+                        {
+                            SubtitleItemsControl.ItemsSource = null;
+                            _isBatchUpdatingSubtitles = true;
+                            try
+                            {
+                                _node.Subtitles.Clear();
+                                foreach (var item in parsed)
+                                {
+                                    _node.Subtitles.Add(item);
+                                }
+
+                                UpdateSubtitleBadge();
+                                RefreshAvailableLanguageTags(isInitialLoad: true);
+                            }
+                            finally
+                            {
+                                _isBatchUpdatingSubtitles = false;
+                                SubtitleItemsControl.ItemsSource = _node.Subtitles;
+                            }
+                        }
+
+                        AppendLog($"📥 Đã nhập thành công {parsed.Count} câu phụ đề từ {fileName} (Mặc định: Bật phụ đề bản gốc)");
                         OnSubtitleStyleChanged();
                     }
                     else
@@ -749,10 +1079,14 @@ namespace FlowMy.Views.NodeControls
                 {
                     AppendLog($"❌ Lỗi đọc file phụ đề: {ex.Message}");
                 }
+                finally
+                {
+                    HideSubtitleLoading();
+                }
             }
         }
 
-        private void ExportSubtitleFile(bool isAss)
+        private void ExportSubtitleFile(string format)
         {
             if (_node == null || _node.Subtitles.Count == 0)
             {
@@ -760,11 +1094,18 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            var ext = isAss ? "ass" : "srt";
+            var fmt = (format ?? "srt").Trim().ToLowerInvariant();
+            var (ext, filter, title) = fmt switch
+            {
+                "json" => ("json", "JSON Subtitle (*.json)|*.json", "Lưu file phụ đề đa ngôn ngữ .JSON"),
+                "ass" => ("ass", "Advanced SubStation Alpha (*.ass)|*.ass", "Lưu file phụ đề .ASS"),
+                _ => ("srt", "SubRip Subtitle (*.srt)|*.srt", "Lưu file phụ đề .SRT")
+            };
+
             var dialog = new SaveFileDialog
             {
-                Title = $"Lưu file phụ đề .{ext.ToUpperInvariant()}",
-                Filter = isAss ? "Advanced SubStation Alpha (*.ass)|*.ass" : "SubRip Subtitle (*.srt)|*.srt",
+                Title = title,
+                Filter = filter,
                 FileName = $"subtitles_{DateTime.Now:yyyyMMdd_HHmmss}.{ext}"
             };
 
@@ -772,7 +1113,12 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    var content = isAss ? BuildAssFileContent(_node.Subtitles, _node.SubtitleStyle) : BuildSrtFileContent(_node.Subtitles);
+                    string content = fmt switch
+                    {
+                        "json" => BuildJsonFileContent(_node.Subtitles),
+                        "ass" => BuildAssFileContent(_node.Subtitles, _node.SubtitleStyle),
+                        _ => BuildSrtFileContent(_node.Subtitles)
+                    };
                     File.WriteAllText(dialog.FileName, content, Encoding.UTF8);
                     AppendLog($"💾 Đã xuất file phụ đề thành công: {Path.GetFileName(dialog.FileName)}");
                 }
@@ -782,7 +1128,6 @@ namespace FlowMy.Views.NodeControls
                 }
             }
         }
-
 
         private void ResetSubtitleSettings()
         {
@@ -803,17 +1148,112 @@ namespace FlowMy.Views.NodeControls
             SubOffsetYSlider.Value = 0;
             SubBottomMarginSlider.Value = 30;
             UpdateColorPreviewBoxes();
+            ShowOnlyOriginalLanguage_Click(this, new RoutedEventArgs());
             OnSubtitleStyleChanged();
             AppendLog("🔄 Đã đặt lại toàn bộ cài đặt phụ đề về mặc định.");
         }
 
-        private static List<SubtitleItem> ParseSrt(string[] lines)
+        public static List<SubtitleItem> ParseJson(string rawJson)
         {
             var result = new List<SubtitleItem>();
-            var timeRegex = new Regex(@"(\d{2}:\d{2}:\d{2}[,\.]\d{2,3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{2,3})");
+            if (string.IsNullOrWhiteSpace(rawJson)) return result;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(rawJson);
+                var root = doc.RootElement;
+
+                string sourceLang = "zh";
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    if (root.TryGetProperty("source_language", out var slProp) && slProp.ValueKind == JsonValueKind.String)
+                        sourceLang = slProp.GetString() ?? "zh";
+                }
+
+                JsonElement arrayElem = default;
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    arrayElem = root;
+                }
+                else if (root.ValueKind == JsonValueKind.Object)
+                {
+                    if (root.TryGetProperty("subtitles", out var subsProp) && subsProp.ValueKind == JsonValueKind.Array)
+                        arrayElem = subsProp;
+                    else if (root.TryGetProperty("segments", out var segsProp) && segsProp.ValueKind == JsonValueKind.Array)
+                        arrayElem = segsProp;
+                    else if (root.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                        arrayElem = dataProp;
+                }
+
+                if (arrayElem.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in arrayElem.EnumerateArray())
+                    {
+                        if (item.ValueKind != JsonValueKind.Object) continue;
+
+                        double startSec = 0;
+                        double endSec = 2.0;
+
+                        if (item.TryGetProperty("start", out var stProp))
+                        {
+                            if (stProp.ValueKind == JsonValueKind.Number) startSec = stProp.GetDouble();
+                            else if (stProp.ValueKind == JsonValueKind.String && double.TryParse(stProp.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var s)) startSec = s;
+                        }
+                        else if (item.TryGetProperty("start_time", out var stStrProp) && stStrProp.ValueKind == JsonValueKind.String)
+                        {
+                            SubtitleItem.TryParseHms(stStrProp.GetString(), out startSec);
+                        }
+
+                        if (item.TryGetProperty("end", out var etProp))
+                        {
+                            if (etProp.ValueKind == JsonValueKind.Number) endSec = etProp.GetDouble();
+                            else if (etProp.ValueKind == JsonValueKind.String && double.TryParse(etProp.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var e)) endSec = e;
+                        }
+                        else if (item.TryGetProperty("end_time", out var etStrProp) && etStrProp.ValueKind == JsonValueKind.String)
+                        {
+                            SubtitleItem.TryParseHms(etStrProp.GetString(), out endSec);
+                        }
+
+                        var text = item.TryGetProperty("text", out var tProp) && tProp.ValueKind == JsonValueKind.String ? tProp.GetString() : string.Empty;
+                        var origText = item.TryGetProperty("original_text", out var otProp) && otProp.ValueKind == JsonValueKind.String ? otProp.GetString() : string.Empty;
+
+                        var translations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        if (item.TryGetProperty("translations", out var transProp) && transProp.ValueKind == JsonValueKind.Object)
+                        {
+                            foreach (var prop in transProp.EnumerateObject())
+                            {
+                                if (prop.Value.ValueKind == JsonValueKind.String)
+                                    translations[prop.Name] = prop.Value.GetString() ?? string.Empty;
+                            }
+                        }
+
+                        var subItem = new SubtitleItem
+                        {
+                            StartTimeSec = startSec,
+                            EndTimeSec = Math.Max(startSec + 0.1, endSec),
+                            SourceLanguage = sourceLang,
+                            OriginalText = origText ?? string.Empty,
+                            Text = text ?? string.Empty,
+                            Translations = translations
+                        };
+
+                        subItem.EnsureLinesFromText();
+                        result.Add(subItem);
+                    }
+                }
+            }
+            catch { }
+
+            return result;
+        }
+
+        public static List<SubtitleItem> ParseSrt(string[] lines)
+        {
+            var result = new List<SubtitleItem>();
+            var timeRegex = new Regex(@"(\d{1,2}:\d{2}:\d{2}[,\.]\d{2,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{2,3})");
 
             SubtitleItem? currentItem = null;
-            var textBuilder = new StringBuilder();
+            var textLines = new List<string>();
 
             foreach (var line in lines)
             {
@@ -822,10 +1262,11 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (currentItem != null)
                     {
-                        currentItem.Text = textBuilder.ToString().Trim();
-                        if (!string.IsNullOrWhiteSpace(currentItem.Text)) result.Add(currentItem);
+                        CommitSrtLines(currentItem, textLines);
+                        if (!string.IsNullOrWhiteSpace(currentItem.Text) || !string.IsNullOrWhiteSpace(currentItem.OriginalText))
+                            result.Add(currentItem);
                         currentItem = null;
-                        textBuilder.Clear();
+                        textLines.Clear();
                     }
                     continue;
                 }
@@ -835,9 +1276,10 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (currentItem != null)
                     {
-                        currentItem.Text = textBuilder.ToString().Trim();
-                        if (!string.IsNullOrWhiteSpace(currentItem.Text)) result.Add(currentItem);
-                        textBuilder.Clear();
+                        CommitSrtLines(currentItem, textLines);
+                        if (!string.IsNullOrWhiteSpace(currentItem.Text) || !string.IsNullOrWhiteSpace(currentItem.OriginalText))
+                            result.Add(currentItem);
+                        textLines.Clear();
                     }
 
                     if (TryParseTime(match.Groups[1].Value, out var st) && TryParseTime(match.Groups[2].Value, out var et))
@@ -851,19 +1293,33 @@ namespace FlowMy.Views.NodeControls
                 }
                 else if (currentItem != null)
                 {
-                    if (int.TryParse(trimmed, out _) && textBuilder.Length == 0) continue;
-                    if (textBuilder.Length > 0) textBuilder.AppendLine();
-                    textBuilder.Append(trimmed);
+                    if (int.TryParse(trimmed, out _) && textLines.Count == 0) continue;
+                    textLines.Add(trimmed);
                 }
             }
 
             if (currentItem != null)
             {
-                currentItem.Text = textBuilder.ToString().Trim();
-                if (!string.IsNullOrWhiteSpace(currentItem.Text)) result.Add(currentItem);
+                CommitSrtLines(currentItem, textLines);
+                if (!string.IsNullOrWhiteSpace(currentItem.Text) || !string.IsNullOrWhiteSpace(currentItem.OriginalText))
+                    result.Add(currentItem);
             }
 
             return result;
+        }
+
+        private static void CommitSrtLines(SubtitleItem item, List<string> textLines)
+        {
+            if (textLines.Count >= 2)
+            {
+                item.OriginalText = textLines[0];
+                item.Text = textLines[1];
+            }
+            else if (textLines.Count == 1)
+            {
+                item.Text = textLines[0];
+            }
+            item.EnsureLinesFromText();
         }
 
         private static bool TryParseTime(string raw, out TimeSpan ts)
@@ -872,12 +1328,12 @@ namespace FlowMy.Views.NodeControls
             return TimeSpan.TryParse(raw, out ts);
         }
 
-        private static List<SubtitleItem> ParseVtt(string[] lines) => ParseSrt(lines);
+        public static List<SubtitleItem> ParseVtt(string[] lines) => ParseSrt(lines);
 
-        private static List<SubtitleItem> ParseAss(string[] lines)
+        public static List<SubtitleItem> ParseAss(string[] lines)
         {
-            var result = new List<SubtitleItem>();
-            var timeRegex = new Regex(@"Dialogue:\s*\d+,\s*(\d+:\d{2}:\d{2}\.\d{2}),\s*(\d+:\d{2}:\d{2}\.\d{2}),[^,]+,[^,]+,[^,]+,[^,]+,[^,]+,[^,]+,(.*)");
+            var rawItems = new List<(double st, double et, string style, string text)>();
+            var timeRegex = new Regex(@"Dialogue:\s*\d+,\s*(\d+:\d{2}:\d{2}\.\d{2}),\s*(\d+:\d{2}:\d{2}\.\d{2}),([^,]*),[^,]+,[^,]+,[^,]+,[^,]+,[^,]+,(.*)");
 
             foreach (var line in lines)
             {
@@ -886,20 +1342,149 @@ namespace FlowMy.Views.NodeControls
                 {
                     if (TimeSpan.TryParse(match.Groups[1].Value, out var st) && TimeSpan.TryParse(match.Groups[2].Value, out var et))
                     {
-                        var text = Regex.Replace(match.Groups[3].Value, @"\{[^}]*\}", "").Replace(@"\N", Environment.NewLine).Trim();
-                        result.Add(new SubtitleItem
+                        var style = match.Groups[3].Value.Trim();
+                        var text = Regex.Replace(match.Groups[4].Value, @"\{[^}]*\}", "").Replace(@"\N", Environment.NewLine).Trim();
+                        if (!string.IsNullOrWhiteSpace(text))
                         {
-                            StartTimeSec = st.TotalSeconds,
-                            EndTimeSec = et.TotalSeconds,
-                            Text = text
-                        });
+                            rawItems.Add((st.TotalSeconds, et.TotalSeconds, style, text));
+                        }
                     }
                 }
             }
+
+            var result = new List<SubtitleItem>();
+            var used = new bool[rawItems.Count];
+
+            for (int i = 0; i < rawItems.Count; i++)
+            {
+                if (used[i]) continue;
+
+                var current = rawItems[i];
+                used[i] = true;
+
+                int matchedIdx = -1;
+                for (int j = i + 1; j < rawItems.Count; j++)
+                {
+                    if (used[j]) continue;
+                    if (Math.Abs(rawItems[j].st - current.st) < 0.25 && Math.Abs(rawItems[j].et - current.et) < 0.35)
+                    {
+                        matchedIdx = j;
+                        break;
+                    }
+                }
+
+                if (matchedIdx >= 0)
+                {
+                    used[matchedIdx] = true;
+                    var other = rawItems[matchedIdx];
+
+                    string orig = current.text;
+                    string trans = other.text;
+
+                    if (current.style.Equals("Translated", StringComparison.OrdinalIgnoreCase) ||
+                        other.style.Equals("Default", StringComparison.OrdinalIgnoreCase))
+                    {
+                        trans = current.text;
+                        orig = other.text;
+                    }
+
+                    var sub = new SubtitleItem
+                    {
+                        StartTimeSec = Math.Min(current.st, other.st),
+                        EndTimeSec = Math.Max(current.et, other.et),
+                        OriginalText = orig,
+                        Text = trans
+                    };
+                    sub.EnsureLinesFromText();
+                    result.Add(sub);
+                }
+                else
+                {
+                    var sub = new SubtitleItem
+                    {
+                        StartTimeSec = current.st,
+                        EndTimeSec = current.et,
+                        Text = current.text
+                    };
+                    sub.EnsureLinesFromText();
+                    result.Add(sub);
+                }
+            }
+
             return result;
         }
 
-        private static string BuildSrtFileContent(IEnumerable<SubtitleItem> subtitles)
+        public static string BuildJsonFileContent(IEnumerable<SubtitleItem> subtitles)
+        {
+            var list = subtitles.ToList();
+            var firstWithLang = list.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.SourceLanguage));
+            var sourceLang = firstWithLang?.SourceLanguage ?? "zh";
+            var sourceLangInfo = SubtitleLanguageHelper.GetLanguageInfo(sourceLang, isOriginal: true);
+
+            var subObjs = new List<object>();
+            int id = 1;
+            double maxEnd = 0;
+
+            foreach (var sub in list)
+            {
+                var st = TimeSpan.FromSeconds(sub.StartTimeSec);
+                var et = TimeSpan.FromSeconds(sub.EndTimeSec);
+                if (sub.EndTimeSec > maxEnd) maxEnd = sub.EndTimeSec;
+
+                string orig = !string.IsNullOrWhiteSpace(sub.OriginalText) ? sub.OriginalText : (sub.Lines.Count >= 2 ? sub.Lines[0].Text : (sub.Lines.Count == 1 && sub.Lines[0].IsOriginal ? sub.Lines[0].Text : string.Empty));
+                string trans = !string.IsNullOrWhiteSpace(sub.Text) ? sub.Text : (sub.Lines.Count >= 2 ? sub.Lines[1].Text : (sub.Lines.Count == 1 ? sub.Lines[0].Text : string.Empty));
+
+                var translationsMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (sub.Translations != null && sub.Translations.Count > 0)
+                {
+                    foreach (var kvp in sub.Translations)
+                        translationsMap[kvp.Key] = kvp.Value;
+                }
+                else
+                {
+                    foreach (var l in sub.Lines)
+                    {
+                        if (!string.IsNullOrWhiteSpace(l.LanguageCode) && !string.IsNullOrWhiteSpace(l.Text))
+                            translationsMap[l.LanguageCode] = l.Text;
+                    }
+                }
+
+                if (!translationsMap.ContainsKey(sourceLang) && !string.IsNullOrWhiteSpace(orig))
+                    translationsMap[sourceLang] = orig;
+                if (!translationsMap.ContainsKey("vi") && !string.IsNullOrWhiteSpace(trans))
+                    translationsMap["vi"] = trans;
+
+                subObjs.Add(new
+                {
+                    id = id,
+                    start = Math.Round(sub.StartTimeSec, 3),
+                    end = Math.Round(sub.EndTimeSec, 3),
+                    duration = Math.Round(sub.DurationSec, 3),
+                    start_time = $"{(int)st.TotalHours:00}:{st.Minutes:00}:{st.Seconds:00},{st.Milliseconds:000}",
+                    end_time = $"{(int)et.TotalHours:00}:{et.Minutes:00}:{et.Seconds:00},{et.Milliseconds:000}",
+                    text = trans,
+                    original_text = orig,
+                    translations = translationsMap
+                });
+                id++;
+            }
+
+            var payload = new
+            {
+                version = "1.0",
+                engine = "whisperx",
+                source_language = sourceLang,
+                source_language_name = sourceLangInfo.name,
+                total_segments = list.Count,
+                total_duration_seconds = Math.Round(maxEnd, 2),
+                created_at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                subtitles = subObjs
+            };
+
+            return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+        }
+
+        public static string BuildSrtFileContent(IEnumerable<SubtitleItem> subtitles)
         {
             var sb = new StringBuilder();
             int idx = 1;
@@ -907,9 +1492,17 @@ namespace FlowMy.Views.NodeControls
             {
                 var st = TimeSpan.FromSeconds(sub.StartTimeSec);
                 var et = TimeSpan.FromSeconds(sub.EndTimeSec);
+
+                var activeLines = sub.Lines.Where(l => l.IsActive && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+                if (activeLines.Count == 0) continue;
+
                 sb.AppendLine(idx.ToString());
                 sb.AppendLine($"{(int)st.TotalHours:00}:{st.Minutes:00}:{st.Seconds:00},{st.Milliseconds:000} --> {(int)et.TotalHours:00}:{et.Minutes:00}:{et.Seconds:00},{et.Milliseconds:000}");
-                sb.AppendLine(sub.Text);
+
+                foreach (var line in activeLines)
+                {
+                    sb.AppendLine(line.Text);
+                }
                 sb.AppendLine();
                 idx++;
             }

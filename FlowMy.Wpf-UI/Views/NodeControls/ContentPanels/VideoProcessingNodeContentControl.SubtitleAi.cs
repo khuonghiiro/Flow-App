@@ -354,17 +354,21 @@ namespace FlowMy.Views.NodeControls
 
                 if (parsedSubs.Count > 0)
                 {
-                    foreach (var sub in parsedSubs)
+                    SubtitleItemsControl.ItemsSource = null;
+                    try
                     {
-                        _node.Subtitles.Add(sub);
+                        var sorted = parsedSubs.OrderBy(s => s.StartTimeSec).ToList();
+                        _node.Subtitles.Clear();
+                        foreach (var item in sorted) _node.Subtitles.Add(item);
+
+                        UpdateSubtitleBadge();
+                        RefreshAvailableLanguageTags(isInitialLoad: true);
+                    }
+                    finally
+                    {
+                        SubtitleItemsControl.ItemsSource = _node.Subtitles;
                     }
 
-                    // Sắp xếp lại danh sách phụ đề theo mốc thời gian tăng dần
-                    var sorted = _node.Subtitles.OrderBy(s => s.StartTimeSec).ToList();
-                    _node.Subtitles.Clear();
-                    foreach (var item in sorted) _node.Subtitles.Add(item);
-
-                    UpdateSubtitleBadge();
                     OnSubtitleStyleChanged();
                     AppendLog($"✅ [AI CAPTION] Đã gán thành công {parsedSubs.Count} câu phụ đề vào timeline.");
 
@@ -468,13 +472,40 @@ namespace FlowMy.Views.NodeControls
             {
                 if (item.ValueKind == JsonValueKind.Object)
                 {
-                    var text = FindMatchingStringProperty(item, textKeys);
-                    if (!string.IsNullOrWhiteSpace(text))
+                    var text = FindMatchingStringProperty(item, textKeys) ??
+                               FindMatchingStringProperty(item, "text,content,translated_text,trans");
+                    var origText = FindMatchingStringProperty(item, "original_text,orig_text,source_text,src_text,raw_text,origin");
+                    var sourceLang = FindMatchingStringProperty(item, "source_language,source_lang,src_lang,lang") ?? "zh";
+
+                    var translations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    if (item.TryGetProperty("translations", out var transProp) && transProp.ValueKind == JsonValueKind.Object)
                     {
-                        var st = FindMatchingDoubleProperty(item, startKeys) ?? 0.0;
-                        var ed = FindMatchingDoubleProperty(item, endKeys) ?? (st + 3.0);
+                        foreach (var prop in transProp.EnumerateObject())
+                        {
+                            if (prop.Value.ValueKind == JsonValueKind.String)
+                                translations[prop.Name] = prop.Value.GetString() ?? string.Empty;
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(text) || !string.IsNullOrWhiteSpace(origText) || translations.Count > 0)
+                    {
+                        var st = FindMatchingDoubleProperty(item, startKeys) ??
+                                 FindMatchingDoubleProperty(item, "start,start_sec,start_time,st") ?? 0.0;
+                        var ed = FindMatchingDoubleProperty(item, endKeys) ??
+                                 FindMatchingDoubleProperty(item, "end,end_sec,end_time,ed") ?? (st + 2.5);
                         var offset = inheritedChunk?.StartSec ?? 0.0;
-                        results.Add(new SubtitleItem { StartTimeSec = offset + st, EndTimeSec = offset + ed, Text = text });
+
+                        var subItem = new SubtitleItem
+                        {
+                            StartTimeSec = offset + st,
+                            EndTimeSec = offset + ed,
+                            SourceLanguage = sourceLang,
+                            OriginalText = origText ?? string.Empty,
+                            Text = text ?? string.Empty,
+                            Translations = translations
+                        };
+                        subItem.EnsureLinesFromText();
+                        results.Add(subItem);
                     }
                 }
             }

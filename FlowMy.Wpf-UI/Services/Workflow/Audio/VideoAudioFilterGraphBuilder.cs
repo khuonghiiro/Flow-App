@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -181,7 +181,7 @@ namespace FlowMy.Services.Workflow.Audio
             if (node.AudioDeEsserPercent > 2.0)
             {
                 var deInt = (node.AudioDeEsserPercent / 100.0).ToString("0.##", CultureInfo.InvariantCulture);
-                filters.Add($"adeesser=i={deInt}");
+                filters.Add($"deesser=i={deInt}");
             }
 
             // 19. Noise Gate (Ngắt tiếng thở, tiếng ồn khi im lặng)
