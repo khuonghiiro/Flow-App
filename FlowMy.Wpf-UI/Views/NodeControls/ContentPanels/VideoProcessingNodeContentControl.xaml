@@ -2830,7 +2830,7 @@
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="Danh sách Phân đoạn Phụ đề" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                                 <Border Background="{DynamicResource ThemeBadgeBackgroundBrush}" CornerRadius="8" Padding="6,1" Margin="8,0,0,0">
-                                                    <TextBlock x:Name="SubtitleCountBadge" Text="0 câu" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource ThemeAccentBrush}"/>
+                                                    <TextBlock x:Name="SubtitleCountBadge" Text="0 câu" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource ThemeWarmAccentBrush}"/>
                                                 </Border>
                                             </StackPanel>
 
@@ -2845,38 +2845,85 @@
                                         </Grid>
 
                                         <!-- Scrollable List of Subtitles -->
-                                        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                             <ItemsControl x:Name="SubtitleItemsControl">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,4" Padding="8,6" Background="{DynamicResource ThemeBackgroundMutedBrush}" BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}" BorderThickness="1">
+                                                        <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,5" Padding="8,6" Background="{DynamicResource ThemeBackgroundMutedBrush}" BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="SubtitleCard_MouseLeftButtonDown">
                                                             <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                    <ColumnDefinition Width="*"/>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                </Grid.ColumnDefinitions>
-                                                                
-                                                                <!-- Time Inputs -->
-                                                                <StackPanel Grid.Column="0" Orientation="Vertical" Width="95" Margin="0,0,6,0">
-                                                                    <Grid Margin="0,0,0,2">
-                                                                        <TextBlock Text="Bắt đầu:" FontSize="8" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
-                                                                        <TextBox Height="20" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Right" Width="55" Padding="2,0" Text="{Binding StartTimeSec, Mode=TwoWay, StringFormat='{}{0:F2}'}" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
-                                                                    </Grid>
-                                                                    <Grid>
-                                                                        <TextBlock Text="Kết thúc:" FontSize="8" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
-                                                                        <TextBox Height="20" FontSize="9" FontFamily="Consolas" HorizontalAlignment="Right" Width="55" Padding="2,0" Text="{Binding EndTimeSec, Mode=TwoWay, StringFormat='{}{0:F2}'}" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
-                                                                    </Grid>
-                                                                </StackPanel>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                </Grid.RowDefinitions>
 
-                                                                <!-- Text Content -->
-                                                                <TextBox Grid.Column="1" Height="42" FontSize="11" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="4,2" Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
+                                                                <!-- Header Line: Badge showing hh:mm:ss.f ➔ hh:mm:ss.f (Duration) + Quick Shift Stepper buttons -->
+                                                                <Grid Grid.Row="0" Margin="0,0,0,5">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
 
-                                                                <!-- Action Buttons -->
-                                                                <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center" Margin="6,0,0,0">
-                                                                    <Button Content="▶ Đến" Width="40" Height="19" Padding="0" FontSize="8.5" Style="{StaticResource VideoChromePrimaryButtonStyle}" Margin="0,0,0,3" Tag="{Binding}" Click="SeekToSubtitle_Click" ToolTip="Nhảy tới mốc thời gian câu này"/>
-                                                                    <Button Content="✕ Xóa" Width="40" Height="19" Padding="0" FontSize="8.5" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="RemoveSubtitle_Click" ToolTip="Xóa câu này"/>
-                                                                </StackPanel>
+                                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                        <Border Background="{DynamicResource ThemeBackgroundCardBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="0,0,6,0">
+                                                                               <TextBlock Text="{Binding FormattedTimeRange}" FontSize="9.5" FontWeight="SemiBold" FontFamily="Consolas" Foreground="{DynamicResource ThemeWarmAccentBrush}"/>
+                                                                        </Border>
+                                                                        <!-- Quick Segment Nudge: Shift whole segment -0.5s / +0.5s -->
+                                                                        <Button Content="◀ -0.5s" Height="18" Width="40" Padding="0" FontSize="8" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="0,0,2,0" Tag="{Binding}" Click="ShiftSubSegmentMinus_Click" ToolTip="Lùi cả đoạn này 0.5s"/>
+                                                                        <Button Content="+0.5s ▶" Height="18" Width="40" Padding="0" FontSize="8" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="ShiftSubSegmentPlus_Click" ToolTip="Tiến cả đoạn này 0.5s"/>
+                                                                    </StackPanel>
+
+                                                                    <!-- Top Right: Play snippet & Delete -->
+                                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                        <Button Content="▶ Phát" Width="44" Height="18" Padding="0" FontSize="8.5" Style="{StaticResource VideoChromePrimaryButtonStyle}" Margin="0,0,3,0" Tag="{Binding}" Click="PlaySubtitleSegment_Click" ToolTip="Phát thử đoạn video khớp phụ đề này"/>
+                                                                        <Button Content="✕" Width="20" Height="18" Padding="0" FontSize="9" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="RemoveSubtitle_Click" ToolTip="Xóa câu này"/>
+                                                                    </StackPanel>
+                                                                </Grid>
+
+                                                                <!-- Row 1: Time Controls & Text Content -->
+                                                                <Grid Grid.Row="1">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <!-- Time Steppers Panel -->
+                                                                    <StackPanel Grid.Column="0" Orientation="Vertical" Width="170" Margin="0,0,8,0">
+                                                                        <!-- Start Time Stepper -->
+                                                                        <Grid Margin="0,0,0,3">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Grid.Column="0" Text="Bắt đầu:" FontSize="8.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" Width="40"/>
+                                                                            <Button Grid.Column="1" Content="-" Width="16" Height="19" Padding="0" FontSize="9" FontWeight="Bold" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="SubStartMinus_Click" ToolTip="Giảm 0.5s"/>
+                                                                            <TextBox Grid.Column="2" Height="19" FontSize="9.5" FontFamily="Consolas" TextAlignment="Center" VerticalContentAlignment="Center" Padding="0,0" Margin="2,0" Text="{Binding StartTimeHms, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" ToolTip="Nhập định dạng hh:mm:ss.f hoặc số giây"/>
+                                                                            <Button Grid.Column="3" Content="+" Width="16" Height="19" Padding="0" FontSize="9" FontWeight="Bold" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="SubStartPlus_Click" ToolTip="Tăng 0.5s"/>
+                                                                            <Button Grid.Column="4" Content="📍" Width="18" Height="19" Padding="0" FontSize="8.5" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="2,0,0,0" Tag="{Binding}" Click="SetSubStartToPlayhead_Click" ToolTip="Ghim giây hiện tại của video vào mốc bắt đầu"/>
+                                                                        </Grid>
+
+                                                                        <!-- End Time Stepper -->
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Grid.Column="0" Text="Kết thúc:" FontSize="8.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" Width="40"/>
+                                                                            <Button Grid.Column="1" Content="-" Width="16" Height="19" Padding="0" FontSize="9" FontWeight="Bold" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="SubEndMinus_Click" ToolTip="Giảm 0.5s"/>
+                                                                            <TextBox Grid.Column="2" Height="19" FontSize="9.5" FontFamily="Consolas" TextAlignment="Center" VerticalContentAlignment="Center" Padding="0,0" Margin="2,0" Text="{Binding EndTimeHms, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" ToolTip="Nhập định dạng hh:mm:ss.f hoặc số giây"/>
+                                                                            <Button Grid.Column="3" Content="+" Width="16" Height="19" Padding="0" FontSize="9" FontWeight="Bold" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="SubEndPlus_Click" ToolTip="Tăng 0.5s"/>
+                                                                            <Button Grid.Column="4" Content="📍" Width="18" Height="19" Padding="0" FontSize="8.5" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="2,0,0,0" Tag="{Binding}" Click="SetSubEndToPlayhead_Click" ToolTip="Ghim giây hiện tại của video vào mốc kết thúc"/>
+                                                                        </Grid>
+                                                                    </StackPanel>
+
+                                                                    <!-- Text Content -->
+                                                                    <TextBox Grid.Column="1" Height="42" FontSize="11" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="5,3" Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/>
+                                                                </Grid>
                                                             </Grid>
                                                         </Border>
                                                     </DataTemplate>
@@ -2934,8 +2981,8 @@
                                             <StackPanel Grid.Column="4" VerticalAlignment="Center">
                                                 <TextBlock Text="Kiểu dáng" FontSize="9" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,2"/>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <ToggleButton x:Name="SubBoldToggle" Content="B" Width="26" Height="24" Style="{StaticResource PresetChipToggleStyle}" IsChecked="True" FontWeight="Bold" Margin="0,0,4,0" ToolTip="In đậm"/>
-                                                    <ToggleButton x:Name="SubItalicToggle" Content="I" Width="26" Height="24" Style="{StaticResource PresetChipToggleStyle}" FontStyle="Italic" ToolTip="In nghiêng"/>
+                                                    <ToggleButton x:Name="SubBoldToggle" Padding="0" Content="B" Width="26" Height="24" Style="{StaticResource PresetChipToggleStyle}" IsChecked="True" FontWeight="Bold" Margin="0,0,4,0" ToolTip="In đậm"/>
+                                                    <ToggleButton x:Name="SubItalicToggle" Padding="0" Content="I" Width="26" Height="24" Style="{StaticResource PresetChipToggleStyle}" FontStyle="Italic" ToolTip="In nghiêng"/>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>

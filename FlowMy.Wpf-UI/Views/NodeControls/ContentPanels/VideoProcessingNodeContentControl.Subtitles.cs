@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using FlowMy.Core.Models.Media;
 using Microsoft.Win32;
@@ -578,6 +579,119 @@ namespace FlowMy.Views.NodeControls
             _cachedActiveSubtitle = null;
             UpdateLiveSubtitleOverlay(_currentPlayheadSec);
             AppendLog("🗑 Đã xóa tất cả các câu phụ đề.");
+        }
+
+        private void SubtitleCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is SubtitleItem sub)
+            {
+                if (_node != null)
+                {
+                    foreach (var s in _node.Subtitles)
+                        s.IsSelected = (s == sub);
+                }
+                SeekVideoPlayerTo(sub.StartTimeSec);
+            }
+        }
+
+        private void SubStartMinus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                sub.StartTimeSec = Math.Max(0, sub.StartTimeSec - 0.5);
+                SeekVideoPlayerTo(sub.StartTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void SubStartPlus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                sub.StartTimeSec = Math.Min(sub.EndTimeSec - 0.1, sub.StartTimeSec + 0.5);
+                SeekVideoPlayerTo(sub.StartTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void SetSubStartToPlayhead_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                sub.StartTimeSec = Math.Max(0, _currentPlayheadSec);
+                if (sub.EndTimeSec <= sub.StartTimeSec)
+                    sub.EndTimeSec = sub.StartTimeSec + 2.0;
+                SeekVideoPlayerTo(sub.StartTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void SubEndMinus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                sub.EndTimeSec = Math.Max(sub.StartTimeSec + 0.1, sub.EndTimeSec - 0.5);
+                SeekVideoPlayerTo(sub.EndTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void SubEndPlus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                sub.EndTimeSec = sub.EndTimeSec + 0.5;
+                SeekVideoPlayerTo(sub.EndTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void SetSubEndToPlayhead_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                sub.EndTimeSec = Math.Max(sub.StartTimeSec + 0.1, _currentPlayheadSec);
+                SeekVideoPlayerTo(sub.EndTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void ShiftSubSegmentMinus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                double dur = sub.DurationSec;
+                sub.StartTimeSec = Math.Max(0, sub.StartTimeSec - 0.5);
+                sub.EndTimeSec = sub.StartTimeSec + dur;
+                SeekVideoPlayerTo(sub.StartTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void ShiftSubSegmentPlus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                double dur = sub.DurationSec;
+                sub.StartTimeSec = sub.StartTimeSec + 0.5;
+                sub.EndTimeSec = sub.StartTimeSec + dur;
+                SeekVideoPlayerTo(sub.StartTimeSec);
+                OnSubtitleStyleChanged();
+            }
+        }
+
+        private void PlaySubtitleSegment_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is SubtitleItem sub)
+            {
+                if (_node != null)
+                {
+                    foreach (var s in _node.Subtitles)
+                        s.IsSelected = (s == sub);
+                }
+                SeekVideoPlayerTo(sub.StartTimeSec);
+                if (!_isPlaying) TogglePlayPause();
+            }
         }
 
         private void SeekToSubtitle_Click(object sender, RoutedEventArgs e)

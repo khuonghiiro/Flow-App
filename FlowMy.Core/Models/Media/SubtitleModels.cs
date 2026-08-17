@@ -29,6 +29,8 @@ namespace FlowMy.Core.Models.Media
                 if (SetField(ref _startTimeSec, Math.Max(0, value)))
                 {
                     OnPropertyChanged(nameof(FormattedStartTime));
+                    OnPropertyChanged(nameof(StartTimeHms));
+                    OnPropertyChanged(nameof(FormattedTimeRange));
                     OnPropertyChanged(nameof(DurationSec));
                 }
             }
@@ -42,6 +44,8 @@ namespace FlowMy.Core.Models.Media
                 if (SetField(ref _endTimeSec, Math.Max(0, value)))
                 {
                     OnPropertyChanged(nameof(FormattedEndTime));
+                    OnPropertyChanged(nameof(EndTimeHms));
+                    OnPropertyChanged(nameof(FormattedTimeRange));
                     OnPropertyChanged(nameof(DurationSec));
                 }
             }
@@ -61,13 +65,86 @@ namespace FlowMy.Core.Models.Media
             set => SetField(ref _isSelected, value);
         }
 
-        public string FormattedStartTime => FormatSeconds(_startTimeSec);
-        public string FormattedEndTime => FormatSeconds(_endTimeSec);
+        public string FormattedStartTime => FormatHms(_startTimeSec);
+        public string FormattedEndTime => FormatHms(_endTimeSec);
 
-        private static string FormatSeconds(double sec)
+        public string StartTimeHms
         {
-            var ts = TimeSpan.FromSeconds(Math.Max(0, sec));
-            return $"{(int)ts.TotalMinutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}";
+            get => FormatHms(_startTimeSec);
+            set
+            {
+                if (TryParseHms(value, out var sec) && Math.Abs(sec - _startTimeSec) > 0.001)
+                {
+                    StartTimeSec = sec;
+                }
+            }
+        }
+
+        public string EndTimeHms
+        {
+            get => FormatHms(_endTimeSec);
+            set
+            {
+                if (TryParseHms(value, out var sec) && Math.Abs(sec - _endTimeSec) > 0.001)
+                {
+                    EndTimeSec = sec;
+                }
+            }
+        }
+
+        public string FormattedTimeRange => $"{FormatHms(_startTimeSec)} ➔ {FormatHms(_endTimeSec)} ({DurationSec:0.0}s)";
+
+        public static string FormatHms(double sec)
+        {
+            if (double.IsNaN(sec) || double.IsInfinity(sec) || sec < 0) sec = 0;
+            var ts = TimeSpan.FromSeconds(sec);
+            int hours = (int)ts.TotalHours;
+            int mins = ts.Minutes;
+            int secs = ts.Seconds;
+            int tenths = (ts.Milliseconds / 100);
+            return $"{hours:00}:{mins:00}:{secs:00}.{tenths:0}";
+        }
+
+        public static bool TryParseHms(string? input, out double seconds)
+        {
+            seconds = 0;
+            if (string.IsNullOrWhiteSpace(input)) return false;
+            input = input.Trim().Replace(',', '.');
+
+            // Plain seconds like "12.5" or "12"
+            if (double.TryParse(input, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var plainSec))
+            {
+                seconds = Math.Max(0, plainSec);
+                return true;
+            }
+
+            // Formats like "00:01:23.5" or "01:23.5" or "01:23"
+            var parts = input.Split(':');
+            try
+            {
+                if (parts.Length == 3)
+                {
+                    if (double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var h) &&
+                        double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var m) &&
+                        double.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s))
+                    {
+                        seconds = Math.Max(0, h * 3600 + m * 60 + s);
+                        return true;
+                    }
+                }
+                else if (parts.Length == 2)
+                {
+                    if (double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var m) &&
+                        double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s))
+                    {
+                        seconds = Math.Max(0, m * 60 + s);
+                        return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
         }
 
         public SubtitleItem Clone()
