@@ -159,6 +159,8 @@
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource ThemeVideoChromePrimaryFgBrush}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">

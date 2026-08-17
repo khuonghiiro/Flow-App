@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -441,17 +441,6 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         var panel = node.ExecutionResultsItemsPanel;
         bool isExpanded = node.ExecutionResultsToggleUI.IsChecked == true;
 
-        if (!isExpanded)
-        {
-            panel.Children.Clear();
-            panel.Visibility = Visibility.Collapsed;
-            node.ExecutionResultsToggleUI.Visibility = Visibility.Visible;
-            NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, keysToProcess.Count, false);
-            if (node.ExecutionStatusContainerUI != null)
-                node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
-            return;
-        }
-
         var results = new List<(string Key, string RawValue, bool IsArray, List<string> ArrayItems)>();
 
         foreach (var key in keysToProcess)
@@ -494,12 +483,16 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 node.ExecutionResultsToggleUI.Visibility = Visibility.Collapsed;
                 NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, 0, false);
             }
+            if (node.ExecutionStatusContainerUI != null)
+                node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
             return;
         }
 
         node.ExecutionResultsToggleUI.Visibility = Visibility.Visible;
         NodeChrome.UpdateExecutionResultsToggleText(node.ExecutionResultsToggleUI, results.Count, isExpanded);
         panel.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+        if (node.ExecutionStatusContainerUI != null)
+            node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
 
         if (!isExpanded)
         {

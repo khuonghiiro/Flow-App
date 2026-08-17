@@ -40,6 +40,31 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             try
             {
                 videoNode.EnsureStandardDynamicOutputs();
+
+                // Nếu là lần chạy nhận diện AI (đã được VideoProcessingNodeContentControl chuẩn bị xong audio chunks và executionId)
+                if (!string.IsNullOrWhiteSpace(videoNode.LastExecutionId) &&
+                    string.Equals(videoNode.LastExecutionId, env.ExecutionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    var chunksJson = videoNode.DynamicOutputs?.FirstOrDefault(o => o.Key == "audio_chunks_json")?.UserValueOverride ?? string.Empty;
+                    var chunks = videoNode.DynamicOutputs?.FirstOrDefault(o => o.Key == "audio_chunks")?.UserValueOverride ?? string.Empty;
+                    var count = videoNode.DynamicOutputs?.FirstOrDefault(o => o.Key == "audio_chunk_count")?.UserValueOverride ?? "0";
+                    var baseAudio = videoNode.DynamicOutputs?.FirstOrDefault(o => o.Key == "base_audio_path")?.UserValueOverride ?? string.Empty;
+
+                    env.Service.SetScopedNodeStringOutput(env.ExecutionId, videoNode.Id, "audio_chunks_json", chunksJson);
+                    env.Service.SetScopedNodeStringOutput(env.ExecutionId, videoNode.Id, "audio_chunks", chunks);
+                    env.Service.SetScopedNodeStringOutput(env.ExecutionId, videoNode.Id, "audio_chunk_count", count);
+                    if (!string.IsNullOrWhiteSpace(baseAudio))
+                    {
+                        env.Service.SetScopedNodeStringOutput(env.ExecutionId, videoNode.Id, "base_audio_path", baseAudio);
+                    }
+                    env.Service.SetScopedNodeStringOutput(env.ExecutionId, videoNode.Id, "executionId", env.ExecutionId);
+
+                    sw.Stop();
+                    env.OnNodeCompleted?.Invoke(node, sw.Elapsed);
+                    await env.TraverseOutputsAsync(node).ConfigureAwait(false);
+                    return;
+                }
+
                 ClearStandardOutputs(videoNode);
 
                 var videoInput = ResolveFromMapping(env, videoNode.VideoSourceNodeId, videoNode.VideoSourceOutputKey);

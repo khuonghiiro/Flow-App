@@ -1,15 +1,12 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
-using Microsoft.Win32;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Navigation;
 
 namespace FlowMy.Views.Overlays
 {
@@ -48,6 +45,12 @@ namespace FlowMy.Views.Overlays
 
         private void VideoOutputFolderNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
             => RefreshVideoOutputFolderKeyOptions();
+
+        private void ReturnSubtitleNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+            => _viewModel.RefreshReturnSubtitleKeyOptions();
+
+        private void ReturnDubbingNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+            => _viewModel.RefreshReturnDubbingKeyOptions();
 
         private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {

@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Helpers;
@@ -97,6 +97,7 @@ namespace FlowMy.Views.NodeControls
 
             var handleOverlay = new Grid();
             var contentControl = new VideoProcessingNodeContentControl(node, host);
+            contentControl.SetHandleOverlay(handleOverlay);
 
             AddResizeHandle(handleOverlay, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
             AddResizeHandle(handleOverlay, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
@@ -308,9 +309,9 @@ namespace FlowMy.Views.NodeControls
         {
             var handle = new Ellipse
             {
-                Width = 32,
-                Height = 32,
-                Fill = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                Width = 14,
+                Height = 14,
+                Fill = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
                 Stroke = new SolidColorBrush(Colors.White),
                 StrokeThickness = 1,
                 HorizontalAlignment = hAlign,
@@ -329,6 +330,35 @@ namespace FlowMy.Views.NodeControls
             };
             GpuOptimizationHelper.ApplyToShape(handle);
             grid.Children.Add(handle);
+        }
+
+        internal static void UpdateInteractionVisualScale(Grid? handleOverlay, WorkflowNode? node, double rawScale)
+        {
+            var visualScale = Math.Max(1.0, Math.Min(1.4, rawScale));
+
+            if (handleOverlay != null)
+            {
+                foreach (var child in handleOverlay.Children)
+                {
+                    if (child is Ellipse handle && handle.Tag is ResizeDirection)
+                    {
+                        handle.RenderTransformOrigin = new Point(0.5, 0.5);
+                        handle.RenderTransform = new ScaleTransform(visualScale, visualScale);
+                    }
+                }
+            }
+
+            if (node?.Ports != null)
+            {
+                foreach (var p in node.Ports)
+                {
+                    if (p?.PortUI is FrameworkElement portUi)
+                    {
+                        portUi.RenderTransformOrigin = new Point(0.5, 0.5);
+                        portUi.RenderTransform = new ScaleTransform(visualScale, visualScale);
+                    }
+                }
+            }
         }
     }
 }

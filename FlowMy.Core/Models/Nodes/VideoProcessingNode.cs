@@ -160,7 +160,7 @@ namespace FlowMy.Models.Nodes
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public sealed class VideoProcessingNode : WorkflowNode
+    public sealed partial class VideoProcessingNode : WorkflowNode
     {
         private double _width = 1360;
         private double _height = 768;
@@ -1683,7 +1683,18 @@ namespace FlowMy.Models.Nodes
             AddOrUpdateOutput("video_path", "Video File Path", WorkflowDataType.String, false);
             AddOrUpdateOutput("audio_output", "Extracted Audio Path", WorkflowDataType.String, false);
             AddOrUpdateOutput("linkAudio", "Extracted Audio Path (linkAudio)", WorkflowDataType.String, false);
+            AddOrUpdateOutput("base_audio_path", "Base Audio Path (Edited/Filtered)", WorkflowDataType.String, false);
             AddOrUpdateOutput("output_manifest", "Output Manifest JSON", WorkflowDataType.String, false);
+            AddOrUpdateOutput("audio_chunks", "Audio Chunks (Paths / Base64)", WorkflowDataType.ArrayString, true);
+            AddOrUpdateOutput("audio_chunks_json", "Audio Chunks Manifest JSON", WorkflowDataType.String, false);
+            AddOrUpdateOutput("audio_chunk_count", "Audio Chunk Count", WorkflowDataType.Number, false);
+            AddOrUpdateOutput("dubbing_audio_output", "Dubbed Audio Output Path", WorkflowDataType.String, false);
+
+            DynamicOutputs.RemoveAll(o =>
+                string.Equals(o.Key, "current_chunk_audio", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(o.Key, "current_chunk_base64", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(o.Key, "current_chunk_start", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(o.Key, "current_chunk_end", StringComparison.OrdinalIgnoreCase));
         }
 
         private void AddOrUpdateOutput(string key, string displayName, WorkflowDataType type, bool isMultiple)

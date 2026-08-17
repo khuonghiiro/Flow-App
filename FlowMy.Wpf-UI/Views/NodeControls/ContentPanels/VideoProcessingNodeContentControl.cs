@@ -135,9 +135,16 @@ namespace FlowMy.Views.NodeControls
         private bool _isTrimReviewDragging;
         private bool _isFrameControlSync;
         private int _trimFramePreviewRequestId;
+        private Grid? _handleOverlay;
 
         public event Action<double, double>? SuggestedNodeSizeReady;
         public event Action<string>? LogLineReceived;
+
+        public void SetHandleOverlay(Grid handleOverlay)
+        {
+            _handleOverlay = handleOverlay;
+            RefreshLargeNodeUiScale();
+        }
 
         public VideoProcessingNodeContentControl(VideoProcessingNode node, IWorkflowEditorHost? host = null)
         {
@@ -455,8 +462,6 @@ namespace FlowMy.Views.NodeControls
                     FontWeight = isBold ? FontWeights.Bold : FontWeights.Normal
                 };
 
-                p.Inlines.Add(new Run(line));
-
                 // Detect paths for interactive buttons & quick action bar
                 var detectedPath = ExtractPathFromLogLine(line, out var isFile, out var isFolder);
                 if (!string.IsNullOrWhiteSpace(detectedPath))
@@ -472,13 +477,18 @@ namespace FlowMy.Views.NodeControls
                         else if (ext is ".mp3" or ".wav" or ".aac" or ".m4a" or ".flac")
                         {
                             _lastExportedAudioPath = detectedPath;
+                            _lastExportedFolderPath = Path.GetDirectoryName(detectedPath);
+                        }
+                        else if (ext is ".png" or ".jpg" or ".jpeg" or ".bmp")
+                        {
+                            _lastExportedFramesFolder = Path.GetDirectoryName(detectedPath);
                         }
                     }
                     else if (isFolder)
                     {
                         if (line.Contains("video") || line.Contains("Lưu video"))
                             _lastExportedFolderPath = detectedPath;
-                        else if (line.Contains("audio") || line.Contains("Trích xuất audio"))
+                        else if (line.Contains("audio") || line.Contains("Trích xuất audio") || line.Contains("chunk"))
                             _lastExportedAudioPath = detectedPath;
                         else if (line.Contains("frame") || line.Contains("Tách frame"))
                             _lastExportedFramesFolder = detectedPath;
@@ -486,7 +496,149 @@ namespace FlowMy.Views.NodeControls
                             _lastExportedFolderPath = detectedPath;
                     }
 
+                    var targetFolder = isFolder ? detectedPath : Path.GetDirectoryName(detectedPath);
+
+                    int pathIdx = line.IndexOf(detectedPath, StringComparison.Ordinal);
+                    if (pathIdx >= 0)
+                    {
+                        var beforeText = line.Substring(0, pathIdx);
+                        var afterText = line.Substring(pathIdx + detectedPath.Length);
+
+                        if (!string.IsNullOrEmpty(beforeText))
+                            p.Inlines.Add(new Run(beforeText));
+
+                        // 1. Path text highlighted with distinct color (Cyan for File, Amber for Folder)
+                        var pathNormalColor = isFile ? Color.FromRgb(0x38, 0xBD, 0xF8) : Color.FromRgb(0xFB, 0xBF, 0x24);
+                        var pathHoverColor = isFile ? Color.FromRgb(0x7D, 0xD3, 0xFC) : Color.FromRgb(0xFE, 0xF0, 0x8A);
+
+                        var pathRun = new Run(detectedPath);
+                        var pathLink = new Hyperlink(pathRun)
+                        {
+                            Foreground = new SolidColorBrush(pathNormalColor),
+                            Cursor = Cursors.Hand,
+                            TextDecorations = null,
+                            FontWeight = FontWeights.Bold
+                        };
+                        pathLink.MouseEnter += (_, _) =>
+                        {
+                            pathLink.TextDecorations = TextDecorations.Underline;
+                            pathLink.Foreground = new SolidColorBrush(pathHoverColor);
+                        };
+                        pathLink.MouseLeave += (_, _) =>
+                        {
+                            pathLink.TextDecorations = null;
+                            pathLink.Foreground = new SolidColorBrush(pathNormalColor);
+                        };
+                        pathLink.Click += (_, _) =>
+                        {
+                            try
+                            {
+                                if (isFile && File.Exists(detectedPath))
+                                {
+                                    Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{detectedPath}\"") { UseShellExecute = true });
+                                }
+                                else if (Directory.Exists(targetFolder))
+                                {
+                                    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{targetFolder}\"") { UseShellExecute = true });
+                                }
+                            }
+                            catch { }
+                        };
+                        p.Inlines.Add(pathLink);
+
+                        if (!string.IsNullOrEmpty(afterText))
+                            p.Inlines.Add(new Run(afterText));
+                    }
+                    else
+                    {
+                        p.Inlines.Add(new Run(line));
+                    }
+
+                    // 2. Action buttons with distinct color styling
+                    if (isFile && !string.IsNullOrWhiteSpace(detectedPath))
+                    {
+                        var ext = Path.GetExtension(detectedPath).ToLowerInvariant();
+                        var fileActionLabel = ext switch
+                        {
+                            ".mp4" or ".mkv" or ".avi" or ".mov" or ".webm" or ".flv" => "  🎬 [Mở video]",
+                            ".mp3" or ".wav" or ".aac" or ".m4a" or ".flac" or ".ogg" => "  🎵 [Mở audio]",
+                            ".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif" or ".webp" => "  🖼 [Mở ảnh]",
+                            _ => "  📄 [Mở file]"
+                        };
+
+                        var fileLink = new Hyperlink(new Run(fileActionLabel))
+                        {
+                            Foreground = new SolidColorBrush(Color.FromRgb(0x60, 0xA5, 0xFA)), // Soft Sky Blue #60A5FA
+                            Cursor = Cursors.Hand,
+                            TextDecorations = null,
+                            FontWeight = FontWeights.Bold
+                        };
+                        fileLink.MouseEnter += (_, _) =>
+                        {
+                            fileLink.TextDecorations = TextDecorations.Underline;
+                            fileLink.Foreground = new SolidColorBrush(Color.FromRgb(0x93, 0xC5, 0xFD)); // Electric Light Blue #93C5FD
+                        };
+                        fileLink.MouseLeave += (_, _) =>
+                        {
+                            fileLink.TextDecorations = null;
+                            fileLink.Foreground = new SolidColorBrush(Color.FromRgb(0x60, 0xA5, 0xFA));
+                        };
+                        fileLink.Click += (_, _) =>
+                        {
+                            try
+                            {
+                                if (File.Exists(detectedPath))
+                                {
+                                    Process.Start(new ProcessStartInfo { FileName = detectedPath, UseShellExecute = true });
+                                }
+                            }
+                            catch { }
+                        };
+                        p.Inlines.Add(fileLink);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(targetFolder))
+                    {
+                        var folderLink = new Hyperlink(new Run("  📂 [Mở thư mục]"))
+                        {
+                            Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)), // Warm Amber Gold #F59E0B
+                            Cursor = Cursors.Hand,
+                            TextDecorations = null,
+                            FontWeight = FontWeights.Bold
+                        };
+                        folderLink.MouseEnter += (_, _) =>
+                        {
+                            folderLink.TextDecorations = TextDecorations.Underline;
+                            folderLink.Foreground = new SolidColorBrush(Color.FromRgb(0xFB, 0xBF, 0x24)); // Glowing Gold #FBBF24
+                        };
+                        folderLink.MouseLeave += (_, _) =>
+                        {
+                            folderLink.TextDecorations = null;
+                            folderLink.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+                        };
+                        folderLink.Click += (_, _) =>
+                        {
+                            try
+                            {
+                                if (isFile && File.Exists(detectedPath))
+                                {
+                                    Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{detectedPath}\"") { UseShellExecute = true });
+                                }
+                                else if (Directory.Exists(targetFolder))
+                                {
+                                    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{targetFolder}\"") { UseShellExecute = true });
+                                }
+                            }
+                            catch { }
+                        };
+                        p.Inlines.Add(folderLink);
+                    }
+
                     ShowLogSuccessBanner();
+                }
+                else
+                {
+                    p.Inlines.Add(new Run(line));
                 }
 
                 if (LogRichTextBox.Document == null)
@@ -507,11 +659,13 @@ namespace FlowMy.Views.NodeControls
             if (idx <= 0) return null;
 
             int start = idx - 1;
-            while (start > 0 && char.IsLetter(line[start]) && (char.IsWhiteSpace(line[start - 1]) || line[start - 1] == ':'))
-                break;
+            if (start < 0 || !char.IsLetter(line[start])) return null;
 
             var sub = line.Substring(start).Trim();
-            sub = sub.TrimEnd('.', ',', ';', ')', ']');
+            int parenIdx = sub.IndexOf(" (", StringComparison.Ordinal);
+            if (parenIdx > 0) sub = sub.Substring(0, parenIdx).Trim();
+
+            sub = sub.Trim('\"', '\'', '`', '<', '>').TrimEnd('.', ',', ';', ')', ']');
 
             if (File.Exists(sub))
             {
@@ -542,15 +696,7 @@ namespace FlowMy.Views.NodeControls
         private void ShowLogSuccessBanner()
         {
             if (LogSuccessActionBar == null) return;
-            LogSuccessActionBar.Visibility = Visibility.Visible;
-            if (LogOpenFileButton != null)
-                LogOpenFileButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedVideoPath) && File.Exists(_lastExportedVideoPath)) ? Visibility.Visible : Visibility.Collapsed;
-            if (LogOpenFolderButton != null)
-                LogOpenFolderButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedFolderPath) && Directory.Exists(_lastExportedFolderPath)) ? Visibility.Visible : Visibility.Collapsed;
-            if (LogOpenAudioButton != null)
-                LogOpenAudioButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedAudioPath) && (File.Exists(_lastExportedAudioPath) || Directory.Exists(_lastExportedAudioPath))) ? Visibility.Visible : Visibility.Collapsed;
-            if (LogOpenFramesButton != null)
-                LogOpenFramesButton.Visibility = (!string.IsNullOrWhiteSpace(_lastExportedFramesFolder) && Directory.Exists(_lastExportedFramesFolder)) ? Visibility.Visible : Visibility.Collapsed;
+            LogSuccessActionBar.Visibility = Visibility.Collapsed;
         }
 
         private Brush GetLogLineBrush(string line, out bool isBold)

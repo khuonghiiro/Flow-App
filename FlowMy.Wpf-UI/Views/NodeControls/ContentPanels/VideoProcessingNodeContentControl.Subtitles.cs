@@ -783,38 +783,6 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private void AutoGenerateSubtitlesFromAi()
-        {
-            if (string.IsNullOrWhiteSpace(_node?.VideoPath) || !File.Exists(_node.VideoPath))
-            {
-                AppendLog("⚠ Cần mở video trước khi thực hiện nhận diện phụ đề AI.");
-                return;
-            }
-
-            AppendLog("🎙️ [AI CAPTION] Đang quét nhận diện âm thanh & phân đoạn phụ đề...");
-            var natDur = GetNaturalDurationSeconds();
-            var duration = natDur > 0 ? natDur : 30.0;
-            _node.Subtitles.Clear();
-
-            double cur = 0.5;
-            int idx = 1;
-            while (cur < duration - 1.0)
-            {
-                double segDur = Math.Min(3.0, duration - cur);
-                _node.Subtitles.Add(new SubtitleItem
-                {
-                    StartTimeSec = cur,
-                    EndTimeSec = cur + segDur,
-                    Text = $"[Câu phụ đề {idx}] Nội dung phát thanh tự động"
-                });
-                cur += segDur + 0.5;
-                idx++;
-            }
-
-            UpdateSubtitleBadge();
-            OnSubtitleStyleChanged();
-            AppendLog($"✨ Đã tạo tự động {_node.Subtitles.Count} phân đoạn phụ đề AI.");
-        }
 
         private void ResetSubtitleSettings()
         {

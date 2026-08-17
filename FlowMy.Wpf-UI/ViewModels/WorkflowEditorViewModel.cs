@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -2392,6 +2392,182 @@ namespace FlowMy.ViewModels
             catch (Exception)
             {
                 // Lỗi đã hiển thị trên node, không cần MessageBox nữa
+            }
+            finally
+            {
+                List<WorkflowNode> orphanFromNode;
+                lock (pendingNodesLockFromNode)
+                {
+                    orphanFromNode = pendingNodesFromNode.ToList();
+                    pendingNodesFromNode.Clear();
+                }
+
+                try { sessionCts.Cancel(); } catch { }
+
+                ReleaseRunningNodeVisualBatch(orphanFromNode);
+
+                lock (_manualRunCtsLock)
+                    _manualRunCtsBySession.Remove(sessionId);
+
+                Application.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+                {
+                    ManualRunSessions.Remove(sessionRow);
+                    HasManualRunSessions = ManualRunSessions.Count > 0;
+                }), DispatcherPriority.Background);
+
+                var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
+                NotifyManualRunsInFlightChanged();
+                FinalizeManualRunUiState(remaining, operationCancelled);
+            }
+        }
+
+        /// <summary>
+        /// Chạy workflow cho các node downstream nối phía sau một node nguồn (không chạy lại chính node nguồn).
+        /// Dùng cho các kịch bản như VideoProcessingNode đã hoàn tất tách audio AI và cần kích hoạt các node phía sau xử lý.
+        /// </summary>
+        public async Task RunWorkflowDownstreamFromNodeAsync(WorkflowNode sourceNode, string? presetExecutionId = null)
+        {
+            if (sourceNode == null) return;
+
+            var validation = _workflowExecutionService.ValidateWorkflow(Nodes, Connections);
+            if (!validation.IsValid)
+            {
+                MessageBox.Show(
+                    string.Join("\n", validation.Errors),
+                    "Workflow không hợp lệ",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (CefSharpEnvironmentManager.RequiresCefSharp(Nodes))
+            {
+                await CefSharpEnvironmentManager.EnsureInitializedAsync();
+            }
+
+            var sessionId = Guid.NewGuid().ToString("N");
+            var sessionRow = new ManualWorkflowRunSessionViewModel(sessionId, this);
+            ManualRunSessions.Insert(0, sessionRow);
+            HasManualRunSessions = true;
+
+            using var sessionCts = new CancellationTokenSource();
+            lock (_manualRunCtsLock)
+                _manualRunCtsBySession[sessionId] = sessionCts;
+
+            var n = Interlocked.Increment(ref _manualExecutionRunsInFlight);
+            NotifyManualRunsInFlightChanged();
+            if (n == 1)
+            {
+                ActiveExecutionConnection = null;
+                _executionVisualizer.ResetVisualization(Nodes);
+            }
+
+            IsExecuting = true;
+            var operationCancelled = false;
+            var pendingNodesLockFromNode = new object();
+            var pendingNodesFromNode = new HashSet<WorkflowNode>();
+
+            try
+            {
+                var sessionTokenFromNode = sessionCts.Token;
+                void NotifyEnteringNode(WorkflowConnection? incoming)
+                {
+                    QueueActiveExecutionConnectionUpdate(incoming, sessionTokenFromNode);
+                }
+
+                void OnNodeStarted(WorkflowNode node, WorkflowConnection? incoming)
+                {
+                    if (sessionTokenFromNode.IsCancellationRequested) return;
+                    lock (pendingNodesLockFromNode)
+                        pendingNodesFromNode.Add(node);
+                    NotifyEnteringNode(incoming);
+                    TraceNodeStarted(node, incoming, sessionId);
+                    _executionVisualizer.OnNodeStarted(node, sessionId);
+                    RegisterRunningNodeVisual(node);
+                }
+
+                void OnNodeCompleted(WorkflowNode node, TimeSpan elapsed)
+                {
+                    lock (pendingNodesLockFromNode)
+                        pendingNodesFromNode.Remove(node);
+                    if (sessionTokenFromNode.IsCancellationRequested) return;
+                    TraceNodeCompleted(node, elapsed);
+                    _executionVisualizer.OnNodeCompleted(node, elapsed, sessionId);
+
+                    FlowMy.Services.Workflow.NodeExecutors.DataFetcherNodeExecutor.NotifyNodeCompleted(node);
+
+                    ReleaseRunningNodeVisual(node);
+                }
+
+                void OnNodeFailed(WorkflowNode node, string errorMessage)
+                {
+                    TraceNodeFailed(node, errorMessage);
+                    _executionVisualizer.OnNodeFailed(node, errorMessage);
+                }
+
+                var runId = !string.IsNullOrWhiteSpace(presetExecutionId) ? presetExecutionId : Guid.NewGuid().ToString("N");
+                var outgoingConns = Connections.Where(c => c.FromNode == sourceNode).ToList();
+
+                await Task.Run(
+                    async () =>
+                    {
+                        try
+                        {
+                            if (outgoingConns.Count > 0)
+                            {
+                                var tasks = new List<Task>();
+                                foreach (var conn in outgoingConns)
+                                {
+                                    if (sessionTokenFromNode.IsCancellationRequested) break;
+                                    tasks.Add(_workflowExecutionService.ExecuteNodeAsync(
+                                        conn.ToNode,
+                                        Connections,
+                                        sessionCts.Token,
+                                        onEnteringNode: NotifyEnteringNode,
+                                        onNodeStarted: OnNodeStarted,
+                                        onNodeCompleted: OnNodeCompleted,
+                                        onNodeFailed: OnNodeFailed,
+                                        incomingConnection: conn,
+                                        reachableToEnd: null,
+                                        executionId: runId));
+                                }
+                                await Task.WhenAll(tasks).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                var otherStartNodes = _workflowExecutionService.FindStartNodes(Nodes)
+                                    .Where(sn => sn != sourceNode).ToList();
+
+                                foreach (var start in otherStartNodes)
+                                {
+                                    if (sessionTokenFromNode.IsCancellationRequested) break;
+                                    await _workflowExecutionService.ExecuteNodeAsync(
+                                        start,
+                                        Connections,
+                                        sessionCts.Token,
+                                        onEnteringNode: NotifyEnteringNode,
+                                        onNodeStarted: OnNodeStarted,
+                                        onNodeCompleted: OnNodeCompleted,
+                                        onNodeFailed: OnNodeFailed,
+                                        incomingConnection: null,
+                                        reachableToEnd: null,
+                                        executionId: runId).ConfigureAwait(false);
+                                }
+                            }
+
+                            TraceRunRootSetStatus(runId, "completed");
+                        }
+                        finally
+                        {
+                        }
+                    });
+            }
+            catch (OperationCanceledException)
+            {
+                operationCancelled = true;
+            }
+            catch (Exception)
+            {
             }
             finally
             {

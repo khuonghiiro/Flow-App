@@ -1128,10 +1128,15 @@ namespace FlowMy.Views.NodeControls
                 // Dùng Max(scaleW, scaleH) để khi kéo node to hơn 1366x768 thì UI scale tăng mượt mà tương ứng
                 double scaleDimension = Math.Max(scaleW, scaleH);
 
-                // Sub-linear curved scale cho canvas drag
-                double scaleVal = Math.Clamp(Math.Pow(scaleDimension, 0.65), 0.6, 3.0);
+                // Sub-linear curved scale cho canvas drag (giới hạn scale hợp lý từ 0.75x đến 1.5x)
+                double scaleVal = Math.Clamp(Math.Pow(scaleDimension, 0.55), 0.75, 1.5);
 
                 RootContentGrid.LayoutTransform = Math.Abs(scaleVal - 1.0) < 0.01 ? Transform.Identity : new ScaleTransform(scaleVal, scaleVal);
+
+                if (_handleOverlay != null && _node != null)
+                {
+                    VideoProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, scaleVal);
+                }
             }
         }
 

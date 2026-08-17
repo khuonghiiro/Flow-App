@@ -371,16 +371,19 @@ namespace FlowMy.Services.Rendering
                 !double.IsNaN(port.PositionPoint.X) &&
                 !double.IsNaN(port.PositionPoint.Y) &&
                 !double.IsInfinity(port.PositionPoint.X) &&
-                !double.IsInfinity(port.PositionPoint.Y))
+                !double.IsInfinity(port.PositionPoint.Y) &&
+                (port.PositionPoint.X != 0 || port.PositionPoint.Y != 0))
             {
                 return port.PositionPoint;
             }
 
-            // Fallback an toàn dựa trên tọa độ node (không phụ thuộc PositionPoint của port)
-            // Mặc định node rộng ~150, cao ~80 => đặt port input bên trái, output bên phải, giữa chiều cao.
+            double w = GetAccurateNodeWidth(node);
+            double h = GetAccurateNodeHeight(node);
+
+            // Fallback an toàn dựa trên tọa độ node
             return isInput
-                ? new Point(node.X, node.Y + 40)
-                : new Point(node.X + 150, node.Y + 40);
+                ? new Point(node.X, node.Y + (h / 2.0))
+                : new Point(node.X + w, node.Y + (h / 2.0));
         }
 
         public void RenderConnection(
@@ -2130,6 +2133,15 @@ namespace FlowMy.Services.Rendering
         {
             if (connection.DeleteButton != null && _canvas.Children.Contains(connection.DeleteButton))
             {
+                connection.DeleteButton.Visibility = ShouldShowDeleteButton(connection) ? Visibility.Visible : Visibility.Collapsed;
+                UpdateDeleteButtonPosition(connection);
+                return;
+            }
+
+            if (connection.DeleteButton != null && !_canvas.Children.Contains(connection.DeleteButton))
+            {
+                _canvas.Children.Add(connection.DeleteButton);
+                connection.DeleteButton.Visibility = ShouldShowDeleteButton(connection) ? Visibility.Visible : Visibility.Collapsed;
                 UpdateDeleteButtonPosition(connection);
                 return;
             }
@@ -2180,23 +2192,7 @@ namespace FlowMy.Services.Rendering
                 button.Width = 32;
                 button.Height = 32;
 
-                Point start, end;
-                if (connection.FromPort != null && connection.ToPort != null)
-                {
-                    start = connection.FromPort.PositionPoint;
-                    end = connection.ToPort.PositionPoint;
-                }
-                else
-                {
-                    start = connection.IsFromInput ? connection.FromNode.InputPortPosition : connection.FromNode.OutputPortPosition;
-                    end = connection.IsFromInput ? connection.ToNode.OutputPortPosition : connection.ToNode.InputPortPosition;
-                }
-
-                int baseZ = GetZBaseForConnection(connection, start, end);
-                bool aboveBody = baseZ == ConnectionBaseAboveLoopBody;
-                int z = baseZ + 4;
-                if (aboveBody) z = Math.Max(z, DeleteButtonZIndexMin);
-                Panel.SetZIndex(button, z);
+                Panel.SetZIndex(button, DeleteButtonZIndexMin + 4);
 
                 var scaleTransform = new ScaleTransform(1.0, 1.0);
                 button.RenderTransform = scaleTransform;
@@ -2214,23 +2210,7 @@ namespace FlowMy.Services.Rendering
                 button.Width = 28;
                 button.Height = 28;
 
-                Point start, end;
-                if (connection.FromPort != null && connection.ToPort != null)
-                {
-                    start = connection.FromPort.PositionPoint;
-                    end = connection.ToPort.PositionPoint;
-                }
-                else
-                {
-                    start = connection.IsFromInput ? connection.FromNode.InputPortPosition : connection.FromNode.OutputPortPosition;
-                    end = connection.IsFromInput ? connection.ToNode.OutputPortPosition : connection.ToNode.InputPortPosition;
-                }
-
-                int baseZ = GetZBaseForConnection(connection, start, end);
-                bool aboveBody = baseZ == ConnectionBaseAboveLoopBody;
-                int z = baseZ + 3;
-                if (aboveBody) z = Math.Max(z, DeleteButtonZIndexMin);
-                Panel.SetZIndex(button, z);
+                Panel.SetZIndex(button, DeleteButtonZIndexMin);
 
                 if (button.RenderTransform is ScaleTransform transform)
                 {
@@ -2251,24 +2231,7 @@ namespace FlowMy.Services.Rendering
                 requestDeleteConnection(connection);
             };
 
-            // Default delete button z-index
-            Point startZ, endZ;
-            if (connection.FromPort != null && connection.ToPort != null)
-            {
-                startZ = connection.FromPort.PositionPoint;
-                endZ = connection.ToPort.PositionPoint;
-            }
-            else
-            {
-                startZ = connection.IsFromInput ? connection.FromNode.InputPortPosition : connection.FromNode.OutputPortPosition;
-                endZ = connection.IsFromInput ? connection.ToNode.OutputPortPosition : connection.ToNode.InputPortPosition;
-            }
-
-            int baseZDefault = GetZBaseForConnection(connection, startZ, endZ);
-            bool aboveBodyDefault = baseZDefault == ConnectionBaseAboveLoopBody;
-            int zDefault = baseZDefault + 3;
-            if (aboveBodyDefault) zDefault = Math.Max(zDefault, DeleteButtonZIndexMin);
-            Panel.SetZIndex(button, zDefault);
+            Panel.SetZIndex(button, DeleteButtonZIndexMin);
             connection.DeleteButton = button;
             _canvas.Children.Add(button);
             UpdateDeleteButtonPosition(connection);
@@ -2295,11 +2258,7 @@ namespace FlowMy.Services.Rendering
 
             if (connection.DeleteButton != null)
             {
-                // Default z (hover sẽ +4)
-                int z = baseZ + 3;
-                if (baseZ == ConnectionBaseAboveLoopBody)
-                    z = Math.Max(z, DeleteButtonZIndexMin);
-                Panel.SetZIndex(connection.DeleteButton, z);
+                Panel.SetZIndex(connection.DeleteButton, DeleteButtonZIndexMin);
             }
         }
 
@@ -2378,6 +2337,11 @@ namespace FlowMy.Services.Rendering
         {
             if (connection.DeleteButton == null || connection.LineUI == null) return;
 
+            if (!_canvas.Children.Contains(connection.DeleteButton))
+            {
+                _canvas.Children.Add(connection.DeleteButton);
+            }
+
             // Đồng bộ lại visibility nếu cần (quan trọng khi re-render)
             connection.DeleteButton.Visibility = ShouldShowDeleteButton(connection) ? Visibility.Visible : Visibility.Collapsed;
 
@@ -2385,27 +2349,7 @@ namespace FlowMy.Services.Rendering
             Canvas.SetLeft(connection.DeleteButton, midpoint.X - 14); // 28/2 = 14
             Canvas.SetTop(connection.DeleteButton, midpoint.Y - 14);
 
-            // Important: re-apply ZIndex because port positions can move after initial render.
-            // Use start/end/mid conservative check so delete buttons on body segments remain clickable.
-            Point start, end;
-            if (connection.FromPort != null && connection.ToPort != null)
-            {
-                start = connection.FromPort.PositionPoint;
-                end = connection.ToPort.PositionPoint;
-            }
-            else
-            {
-                start = connection.IsFromInput ? connection.FromNode.InputPortPosition : connection.FromNode.OutputPortPosition;
-                end = connection.IsFromInput ? connection.ToNode.OutputPortPosition : connection.ToNode.InputPortPosition;
-            }
-
-            int baseZ = GetZBaseForConnection(connection, start, end);
-            bool aboveBody = baseZ == ConnectionBaseAboveLoopBody;
-            if (connection.IsExecutionActive) baseZ += 80;
-
-            int z = baseZ + 3;
-            if (aboveBody) z = Math.Max(z, DeleteButtonZIndexMin);
-            Panel.SetZIndex(connection.DeleteButton, z);
+            Panel.SetZIndex(connection.DeleteButton, DeleteButtonZIndexMin);
         }
 
         private Point GetConnectionMidpoint(WorkflowConnection connection)
@@ -2413,8 +2357,8 @@ namespace FlowMy.Services.Rendering
             Point start, end;
             if (connection.FromPort != null && connection.ToPort != null)
             {
-                start = connection.FromPort.PositionPoint;
-                end = connection.ToPort.PositionPoint;
+                start = GetValidPortPosition(connection.FromPort, connection.FromNode, connection.FromPort.IsInput);
+                end = GetValidPortPosition(connection.ToPort, connection.ToNode, connection.ToPort.IsInput);
             }
             else
             {
@@ -2429,7 +2373,8 @@ namespace FlowMy.Services.Rendering
             // Luôn lấy trung điểm theo chiều dài thực của path để nút X luôn nằm giữa line.
             if (connection.LineUI?.Data is PathGeometry pathGeometry)
             {
-                return GetPointAtFractionLength(pathGeometry, 0.5);
+                var pt = GetPointAtFractionLength(pathGeometry, 0.5);
+                if (pt.X != 0 || pt.Y != 0) return pt;
             }
 
             // Fallback: điểm giữa đơn giản (cho Straight line hoặc khi chưa có LineUI)

@@ -755,6 +755,75 @@ public sealed partial class FileWorkflowPersistenceService
                 catch { }
             }
 
+            // Subtitle AI & Dubbing Workflow Properties
+            if (properties.TryGetValue("SubtitleSplitMode", out var ssmObj))
+                videoNode.SubtitleSplitMode = ssmObj?.ToString() ?? "Duration";
+            if (properties.TryGetValue("SubtitleChunkDurationSec", out var scdObj) && scdObj != null && double.TryParse(scdObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var scd))
+                videoNode.SubtitleChunkDurationSec = scd;
+            if (properties.TryGetValue("SubtitleChunkCount", out var sccObj) && sccObj != null && int.TryParse(sccObj.ToString(), out var scc))
+                videoNode.SubtitleChunkCount = scc;
+            if (properties.TryGetValue("SubtitleEnableSmartSilenceSplit", out var sessObj) && sessObj != null && bool.TryParse(sessObj.ToString(), out var sess))
+                videoNode.SubtitleEnableSmartSilenceSplit = sess;
+            if (properties.TryGetValue("SubtitleSilenceThresholdDb", out var sstObj) && sstObj != null && double.TryParse(sstObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sst))
+                videoNode.SubtitleSilenceThresholdDb = sst;
+            if (properties.TryGetValue("SubtitleMinSilenceSec", out var smsObj) && smsObj != null && double.TryParse(smsObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sms))
+                videoNode.SubtitleMinSilenceSec = sms;
+            if (properties.TryGetValue("SubtitleMaxSearchWindowSec", out var smswObj) && smswObj != null && double.TryParse(smswObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var smsw))
+                videoNode.SubtitleMaxSearchWindowSec = smsw;
+            if (properties.TryGetValue("SubtitleUseEditedAudio", out var sueaObj) && sueaObj != null && bool.TryParse(sueaObj.ToString(), out var suea))
+                videoNode.SubtitleUseEditedAudio = suea;
+            if (properties.TryGetValue("SubtitleAudioExportFormat", out var saefObj))
+                videoNode.SubtitleAudioExportFormat = saefObj?.ToString() ?? "mp3";
+            if (properties.TryGetValue("SubtitleAudioExportBitrate", out var saebObj))
+                videoNode.SubtitleAudioExportBitrate = saebObj?.ToString() ?? "128k";
+            if (properties.TryGetValue("SubtitleOutputBase64", out var sob64Obj) && sob64Obj != null && bool.TryParse(sob64Obj.ToString(), out var sob64))
+                videoNode.SubtitleOutputBase64 = sob64;
+
+            if (properties.TryGetValue("ReturnSubtitleNodeId", out var rsnObj))
+                videoNode.ReturnSubtitleNodeId = rsnObj?.ToString();
+            if (properties.TryGetValue("ReturnSubtitleOutputKey", out var rskObj))
+                videoNode.ReturnSubtitleOutputKey = rskObj?.ToString();
+            if (properties.TryGetValue("ReturnSubtitleCodeIdKeys", out var rsckObj))
+                videoNode.ReturnSubtitleCodeIdKeys = rsckObj?.ToString() ?? "chunkId, codeId, chunkIndex, segmentId, id";
+            if (properties.TryGetValue("ReturnSubtitleTextKeys", out var rstkObj))
+                videoNode.ReturnSubtitleTextKeys = rstkObj?.ToString() ?? "text, subtitle, subtitles, transcript, result, content";
+            if (properties.TryGetValue("ReturnSubtitleStartKeys", out var rsskObj))
+                videoNode.ReturnSubtitleStartKeys = rsskObj?.ToString() ?? "start, start_time, startTime, from, begin";
+            if (properties.TryGetValue("ReturnSubtitleEndKeys", out var rsekObj))
+                videoNode.ReturnSubtitleEndKeys = rsekObj?.ToString() ?? "end, end_time, endTime, to";
+            if (properties.TryGetValue("ReturnSubtitleListKeys", out var rslkObj))
+                videoNode.ReturnSubtitleListKeys = rslkObj?.ToString() ?? "segments, items, lines, subtitles, chunks, words, data";
+
+            if (properties.TryGetValue("DubbingSplitMode", out var dsmObj))
+                videoNode.DubbingSplitMode = dsmObj?.ToString() ?? "SubtitleSegments";
+            if (properties.TryGetValue("DubbingTargetVoice", out var dtvObj))
+                videoNode.DubbingTargetVoice = dtvObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("DubbingTargetLanguage", out var dtlObj))
+                videoNode.DubbingTargetLanguage = dtlObj?.ToString() ?? "vi";
+            if (properties.TryGetValue("DubbingSpeechRate", out var dsrObj) && dsrObj != null && double.TryParse(dsrObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dsr))
+                videoNode.DubbingSpeechRate = dsr;
+            if (properties.TryGetValue("DubbingPitch", out var dpObj) && dpObj != null && double.TryParse(dpObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dp))
+                videoNode.DubbingPitch = dp;
+            if (properties.TryGetValue("DubbingAutoDuckOriginalAudio", out var dadObj) && dadObj != null && bool.TryParse(dadObj.ToString(), out var dad))
+                videoNode.DubbingAutoDuckOriginalAudio = dad;
+            if (properties.TryGetValue("DubbingOriginalAudioVolumePercent", out var doavObj) && doavObj != null && double.TryParse(doavObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var doav))
+                videoNode.DubbingOriginalAudioVolumePercent = doav;
+
+            if (properties.TryGetValue("ReturnDubbingNodeId", out var rdnObj))
+                videoNode.ReturnDubbingNodeId = rdnObj?.ToString();
+            if (properties.TryGetValue("ReturnDubbingOutputKey", out var rdkObj))
+                videoNode.ReturnDubbingOutputKey = rdkObj?.ToString();
+            if (properties.TryGetValue("ReturnDubbingCodeIdKeys", out var rdckObj))
+                videoNode.ReturnDubbingCodeIdKeys = rdckObj?.ToString() ?? "chunkId, codeId, chunkIndex, segmentId, id";
+            if (properties.TryGetValue("ReturnDubbingAudioLinkKeys", out var rdlkObj))
+                videoNode.ReturnDubbingAudioLinkKeys = rdlkObj?.ToString() ?? "audioUrl, linkAudio, audioPath, url, path, src, link";
+            if (properties.TryGetValue("ReturnDubbingAudioBase64Keys", out var rdb64kObj))
+                videoNode.ReturnDubbingAudioBase64Keys = rdb64kObj?.ToString() ?? "audioBase64, base64, audioData, data";
+            if (properties.TryGetValue("ReturnDubbingStartKeys", out var rdskObj))
+                videoNode.ReturnDubbingStartKeys = rdskObj?.ToString() ?? "start, start_time, startTime, from";
+            if (properties.TryGetValue("ReturnDubbingEndKeys", out var rdekObj))
+                videoNode.ReturnDubbingEndKeys = rdekObj?.ToString() ?? "duration, end, end_time, endTime, to";
+
             videoNode.EnsureStandardDynamicOutputs();
 
     }
@@ -1092,6 +1161,48 @@ public sealed partial class FileWorkflowPersistenceService
             dict["GridCollageShowFrameIndex"] = videoNode.GridCollageShowFrameIndex;
 
             dict["ExtractByFpsEnabled"] = videoNode.ExtractByFpsEnabled;
+
+            // Subtitle AI & Dubbing Workflow Properties
+            dict["SubtitleSplitMode"] = videoNode.SubtitleSplitMode;
+            dict["SubtitleChunkDurationSec"] = videoNode.SubtitleChunkDurationSec;
+            dict["SubtitleChunkCount"] = videoNode.SubtitleChunkCount;
+            dict["SubtitleEnableSmartSilenceSplit"] = videoNode.SubtitleEnableSmartSilenceSplit;
+            dict["SubtitleSilenceThresholdDb"] = videoNode.SubtitleSilenceThresholdDb;
+            dict["SubtitleMinSilenceSec"] = videoNode.SubtitleMinSilenceSec;
+            dict["SubtitleMaxSearchWindowSec"] = videoNode.SubtitleMaxSearchWindowSec;
+            dict["SubtitleUseEditedAudio"] = videoNode.SubtitleUseEditedAudio;
+            dict["SubtitleAudioExportFormat"] = videoNode.SubtitleAudioExportFormat;
+            dict["SubtitleAudioExportBitrate"] = videoNode.SubtitleAudioExportBitrate;
+            dict["SubtitleOutputBase64"] = videoNode.SubtitleOutputBase64;
+
+            if (!string.IsNullOrWhiteSpace(videoNode.ReturnSubtitleNodeId))
+                dict["ReturnSubtitleNodeId"] = videoNode.ReturnSubtitleNodeId;
+            if (!string.IsNullOrWhiteSpace(videoNode.ReturnSubtitleOutputKey))
+                dict["ReturnSubtitleOutputKey"] = videoNode.ReturnSubtitleOutputKey;
+            dict["ReturnSubtitleCodeIdKeys"] = videoNode.ReturnSubtitleCodeIdKeys;
+            dict["ReturnSubtitleTextKeys"] = videoNode.ReturnSubtitleTextKeys;
+            dict["ReturnSubtitleStartKeys"] = videoNode.ReturnSubtitleStartKeys;
+            dict["ReturnSubtitleEndKeys"] = videoNode.ReturnSubtitleEndKeys;
+            dict["ReturnSubtitleListKeys"] = videoNode.ReturnSubtitleListKeys;
+
+            dict["DubbingSplitMode"] = videoNode.DubbingSplitMode;
+            dict["DubbingTargetVoice"] = videoNode.DubbingTargetVoice;
+            dict["DubbingTargetLanguage"] = videoNode.DubbingTargetLanguage;
+            dict["DubbingSpeechRate"] = videoNode.DubbingSpeechRate;
+            dict["DubbingPitch"] = videoNode.DubbingPitch;
+            dict["DubbingAutoDuckOriginalAudio"] = videoNode.DubbingAutoDuckOriginalAudio;
+            dict["DubbingOriginalAudioVolumePercent"] = videoNode.DubbingOriginalAudioVolumePercent;
+
+            if (!string.IsNullOrWhiteSpace(videoNode.ReturnDubbingNodeId))
+                dict["ReturnDubbingNodeId"] = videoNode.ReturnDubbingNodeId;
+            if (!string.IsNullOrWhiteSpace(videoNode.ReturnDubbingOutputKey))
+                dict["ReturnDubbingOutputKey"] = videoNode.ReturnDubbingOutputKey;
+            dict["ReturnDubbingCodeIdKeys"] = videoNode.ReturnDubbingCodeIdKeys;
+            dict["ReturnDubbingAudioLinkKeys"] = videoNode.ReturnDubbingAudioLinkKeys;
+            dict["ReturnDubbingAudioBase64Keys"] = videoNode.ReturnDubbingAudioBase64Keys;
+            dict["ReturnDubbingStartKeys"] = videoNode.ReturnDubbingStartKeys;
+            dict["ReturnDubbingEndKeys"] = videoNode.ReturnDubbingEndKeys;
+
             if (videoNode.AudioTracks.Count > 0)
                 dict["AudioTracks"] = JsonSerializer.Serialize(videoNode.AudioTracks.ToList());
             if (videoNode.Overlays.Count > 0)

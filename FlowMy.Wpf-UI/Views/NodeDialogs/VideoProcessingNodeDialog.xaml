@@ -10,9 +10,9 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="520"
-        MinWidth="420"
-        MinHeight="420">
+        Width="580"
+        MinWidth="480"
+        MinHeight="460">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -58,6 +58,9 @@
             </Border>
 
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <!-- TAB 1: LOGIC                                                    -->
+                <!-- ═══════════════════════════════════════════════════════════════ -->
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
@@ -65,241 +68,578 @@
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="🎨 Cấu hình hiển thị" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
-
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                            <TextBlock Text="Hiển thị tiêu đề" 
-                                                       Foreground="{DynamicResource TextMuted}" 
-                                                       FontSize="10" Margin="0,0,0,4"/>
-                                            <ComboBox Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                                      SelectedValuePath="Value"
-                                                      DisplayMemberPath="DisplayName"
-                                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                            <TextBlock Text="Màu tiêu đề" 
-                                                       Foreground="{DynamicResource TextMuted}" 
-                                                       FontSize="10" Margin="0,0,0,4"/>
-                                            <ComboBox Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      ItemsSource="{Binding TitleColorOptions}"
-                                                      SelectedValuePath="Key"
-                                                      DisplayMemberPath="DisplayName"
-                                                      SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                <TextBlock Text="Hiển thị tiêu đề" 
+                                                           Foreground="{DynamicResource TextMuted}" 
+                                                           FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding TitleDisplayModeOptions}"
+                                                          SelectedValuePath="Value"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                                <TextBlock Text="Màu tiêu đề" 
+                                                           Foreground="{DynamicResource TextMuted}" 
+                                                           FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding TitleColorOptions}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
 
                             <!-- 🎬 Video Source -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="🎬 Video Source" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🎬 Video Source" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                                 ItemsSource="{Binding AvailableNodeOptions}"
+                                                                                 SelectedValuePath="NodeId"
+                                                                                 DisplayMemberPath="Title"
+                                                                                 SelectedValue="{Binding VideoSourceNodeId, Mode=TwoWay}"
+                                                                                 SelectionChanged="VideoSourceNodeComboBox_SelectionChanged"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="VideoSourceKeyComboBox"
+                                                          Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="Key"
+                                                          SelectedValue="{Binding VideoSourceOutputKey, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
 
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <controls:NodeSearchComboBoxUserControl Height="32"
-                                                                             ItemsSource="{Binding AvailableNodeOptions}"
-                                                                             SelectedValuePath="NodeId"
-                                                                             DisplayMemberPath="Title"
-                                                                             SelectedValue="{Binding VideoSourceNodeId, Mode=TwoWay}"
-                                                                             SelectionChanged="VideoSourceNodeComboBox_SelectionChanged"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <ComboBox x:Name="VideoSourceKeyComboBox"
-                                                      Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      SelectedValuePath="Key"
-                                                      DisplayMemberPath="Key"
-                                                      SelectedValue="{Binding VideoSourceOutputKey, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <CheckBox Content="Output Base64"
-                                              Foreground="{DynamicResource TextBrush}"
-                                              FontSize="11"
-                                              IsChecked="{Binding OutputBase64, Mode=TwoWay}"/>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                        <CheckBox Content="Output Base64"
+                                                  Foreground="{DynamicResource TextBrush}"
+                                                  FontSize="11"
+                                                  IsChecked="{Binding OutputBase64, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
 
                             <!-- 📁 Output Folder -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="📁 Output Folder" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel x:Name="OutputFolderPanel" Margin="0,8,0,0">
-
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <controls:NodeSearchComboBoxUserControl Height="32"
-                                                                             ItemsSource="{Binding AvailableNodeOptions}"
-                                                                             SelectedValuePath="NodeId"
-                                                                             DisplayMemberPath="Title"
-                                                                             SelectedValue="{Binding OutputFolderSourceNodeId, Mode=TwoWay}"
-                                                                             SelectionChanged="OutputFolderNodeComboBox_SelectionChanged"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <ComboBox x:Name="OutputFolderKeyComboBox"
-                                                      Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      SelectedValuePath="Key"
-                                                      DisplayMemberPath="Key"
-                                                      SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="📁 Output Folder" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel x:Name="OutputFolderPanel" Margin="0,8,0,0">
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                                 ItemsSource="{Binding AvailableNodeOptions}"
+                                                                                 SelectedValuePath="NodeId"
+                                                                                 DisplayMemberPath="Title"
+                                                                                 SelectedValue="{Binding OutputFolderSourceNodeId, Mode=TwoWay}"
+                                                                                 SelectionChanged="OutputFolderNodeComboBox_SelectionChanged"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="OutputFolderKeyComboBox"
+                                                          Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="Key"
+                                                          SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
 
                             <!-- 🎥 Video Folder (node link) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="🎥 Video Folder (node link)" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
-
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <controls:NodeSearchComboBoxUserControl Height="32"
-                                                                             ItemsSource="{Binding AvailableNodeOptions}"
-                                                                             SelectedValuePath="NodeId"
-                                                                             DisplayMemberPath="Title"
-                                                                             SelectedValue="{Binding VideoOutputFolderSourceNodeId, Mode=TwoWay}"
-                                                                             SelectionChanged="VideoOutputFolderNodeComboBox_SelectionChanged"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <ComboBox x:Name="VideoOutputFolderKeyComboBox"
-                                                      Height="32"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      SelectedValuePath="Key"
-                                                      DisplayMemberPath="Key"
-                                                      SelectedValue="{Binding VideoOutputFolderSourceOutputKey, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🎥 Video Folder (node link)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                                 ItemsSource="{Binding AvailableNodeOptions}"
+                                                                                 SelectedValuePath="NodeId"
+                                                                                 DisplayMemberPath="Title"
+                                                                                 SelectedValue="{Binding VideoOutputFolderSourceNodeId, Mode=TwoWay}"
+                                                                                 SelectionChanged="VideoOutputFolderNodeComboBox_SelectionChanged"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="VideoOutputFolderKeyComboBox"
+                                                          Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="Key"
+                                                          SelectedValue="{Binding VideoOutputFolderSourceOutputKey, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
 
                             <!-- 📂 Frame Output Folder (local) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="📂 Frame Output Folder (local)" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
-
-                                    <TextBox Height="32"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             VerticalContentAlignment="Center"
-                                             Text="{Binding FrameOutputFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="📂 Frame Output Folder (local)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBox Height="32"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center"
+                                                 Text="{Binding FrameOutputFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
 
                             <!-- 🎬 Default Output Video Path -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="🎬 Default Output Video Path" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
-
-                                    <TextBox Height="32"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             VerticalContentAlignment="Center"
-                                             Text="{Binding DefaultOutputVideoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🎬 Default Output Video Path" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBox Height="32"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center"
+                                                 Text="{Binding DefaultOutputVideoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
 
                             <!-- 📊 Outputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Expander IsExpanded="True" BorderThickness="0">
-                            <Expander.Header>
-                                <TextBlock Text="📊 Outputs" 
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12" FontWeight="SemiBold" />
-                            </Expander.Header>
-                            <StackPanel Margin="0,8,0,0">
-
-                                    <StackPanel x:Name="OutputsPanel"/>
-                                
-                            </StackPanel>
-                        </Expander>
-                    </Border>
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="📊 Outputs" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <StackPanel x:Name="OutputsPanel"/>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
 
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <!-- TAB 2: PHỤ ĐỀ (SUBTITLE AI / STT WORKFLOW)                     -->
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <TabItem Header="Phụ đề" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- ✂️ Cấu hình chia đoạn Audio -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="✂️ Cấu hình chia đoạn Audio (Song song AI)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="Tự động chia tách file audio của video thành các phân đoạn nhỏ để chạy song song qua các node AI nhận diện giọng nói (STT / Whisper)."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                        <!-- Chế độ chia đoạn -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Cách thức chia đoạn" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding SplitModeOptions}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding SubtitleSplitMode, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Thời lượng mỗi đoạn (giây)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Height="32"
+                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                         VerticalContentAlignment="Center"
+                                                         Text="{Binding SubtitleChunkDurationSec, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Thời lượng mục tiêu của mỗi đoạn audio (vd: 60s cho mỗi chunk)"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Nhịp giọng nghỉ (Smart Voice Silence / VAD) -->
+                                        <Border Background="{DynamicResource ThemeBackgroundCardBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,4,0,8">
+                                            <StackPanel>
+                                                <CheckBox Content="🎙️ Tự động ngắt theo nhịp giọng nghỉ (Smart Silence / VAD)"
+                                                          Foreground="{DynamicResource TextBrush}"
+                                                          FontWeight="SemiBold"
+                                                          FontSize="11"
+                                                          IsChecked="{Binding SubtitleEnableSmartSilenceSplit, Mode=TwoWay}"
+                                                          ToolTip="Quét tìm khoảng lặng của giọng nói gần mốc chia để cắt, tránh ngắt giữa câu nói"/>
+
+                                                <TextBlock Text="Ví dụ: Ở mốc 60s nếu giọng nghỉ ở giây 58 thì sẽ cắt ngay tại giây 58 để câu nói tiếp theo được giữ trọn vẹn ở phân đoạn kế tiếp."
+                                                           Foreground="{DynamicResource TextMuted}" FontSize="9.5" TextWrapping="Wrap" Margin="20,4,0,6"/>
+
+                                                <Grid Margin="20,2,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="6"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="6"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Ngưỡng êm (dB)" Foreground="{DynamicResource TextMuted}" FontSize="9.5" Margin="0,0,0,2"/>
+                                                        <TextBox Height="28" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding SubtitleSilenceThresholdDb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ngưỡng âm lượng được xem là im lặng (vd: -30dB)"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Nghỉ tối thiểu (s)" Foreground="{DynamicResource TextMuted}" FontSize="9.5" Margin="0,0,0,2"/>
+                                                        <TextBox Height="28" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding SubtitleMinSilenceSec, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Thời gian im lặng tối thiểu (vd: 0.3s)"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="4">
+                                                        <TextBlock Text="Cửa sổ tìm (s)" Foreground="{DynamicResource TextMuted}" FontSize="9.5" Margin="0,0,0,2"/>
+                                                        <TextBox Height="28" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding SubtitleMaxSearchWindowSec, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Khoảng quét tìm nhịp nghỉ quanh mốc chia (vd: 8.0s)"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Nguồn Audio & Định dạng xuất -->
+                                        <CheckBox Content="🎵 Sử dụng âm thanh đã tinh chỉnh (EQ, lọc âm, volume, hiệu ứng...) làm nguồn tách"
+                                                  Foreground="{DynamicResource TextBrush}"
+                                                  FontSize="11"
+                                                  IsChecked="{Binding SubtitleUseEditedAudio, Mode=TwoWay}"
+                                                  Margin="0,4,0,8"
+                                                  ToolTip="Lấy audio đã qua xử lý ở tab Audio làm nguồn cắt thay vì audio gốc thô"/>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Định dạng chunk audio" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding AudioFormatOptions}"
+                                                          SelectedItem="{Binding SubtitleAudioExportFormat, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Bitrate" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding AudioBitrateOptions}"
+                                                          SelectedItem="{Binding SubtitleAudioExportBitrate, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <CheckBox Content="Xuất dữ liệu Base64 kèm theo file path"
+                                                  Foreground="{DynamicResource TextBrush}"
+                                                  FontSize="11"
+                                                  IsChecked="{Binding SubtitleOutputBase64, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
+
+                            <!-- 🔗 Node nhận lại Phụ đề AI (Luồng song song) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🔗 Node nhận lại Phụ đề AI (Luồng song song)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="Chọn node &amp; key trả về JSON chứa dữ liệu phụ đề để tự động nhận diện và gán đúng vị trí timeline video theo executionId."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl x:Name="ReturnSubtitleNodeComboBox"
+                                                           Height="32"
+                                                           ItemsSource="{Binding ReturnSubtitleNodeOptions}"
+                                                           SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                           SelectedValue="{Binding ReturnSubtitleNodeId, Mode=TwoWay}"
+                                                           SelectionChanged="ReturnSubtitleNodeComboBox_SelectionChanged"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="ReturnSubtitleKeyComboBox"
+                                                           Height="32"
+                                                           Style="{DynamicResource BaseComboBox}"
+                                                           IsSynchronizedWithCurrentItem="False"
+                                                           SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                           SelectedValue="{Binding ReturnSubtitleOutputKey, Mode=TwoWay}"
+                                                           ItemsSource="{Binding ReturnSubtitleKeyOptions, Mode=OneWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Cấu hình tên trường JSON -->
+                                        <TextBlock Text="Tên trường Code ID / Chunk ID trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,4"/>
+                                        <TextBox Text="{Binding ReturnSubtitleCodeIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Cách nhau bởi dấu phẩy, ví dụ: chunkId, codeId, chunkIndex, id"/>
+
+                                        <TextBlock Text="Tên trường Nội dung / Phụ đề trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding ReturnSubtitleTextKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Ví dụ: text, subtitle, subtitles, transcript, result, content"/>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Trường Bắt đầu (start time)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding ReturnSubtitleStartKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: start, start_time, startTime, from"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Trường Kết thúc (end time)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding ReturnSubtitleEndKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: end, end_time, endTime, to"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="Tên trường Danh sách phân đoạn (Array items)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding ReturnSubtitleListKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: segments, items, lines, subtitles, chunks, words, data"/>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <!-- TAB 3: LỒNG TIẾNG (DUBBING / TTS WORKFLOW)                      -->
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <TabItem Header="Lồng tiếng" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- 🎙️ Cấu hình Lồng tiếng -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🎙️ Cấu hình Lồng tiếng &amp; Thuyết minh (TTS AI)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="Cấu hình chia phân đoạn thuyết minh/lồng tiếng và điều phối chạy song song qua các node AI Text-To-Speech (TTS)."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                        <TextBlock Text="Chế độ phân đoạn lồng tiếng" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding DubbingSplitModeOptions}"
+                                                  SelectedValuePath="Key"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding DubbingSplitMode, Mode=TwoWay}"
+                                                  Margin="0,0,0,8"/>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Giọng đọc mục tiêu (Voice)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Height="32" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding DubbingTargetVoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Mã hoặc tên giọng đọc TTS (vd: vi-VN-HoaiMyNeural, alloy, onyx...)"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Ngôn ngữ mục tiêu" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Height="32" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding DubbingTargetLanguage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Mã ngôn ngữ (vd: vi, en, ja, ko, zh...)"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Tốc độ đọc (Speech Rate)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Height="32" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding DubbingSpeechRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Hệ số tốc độ (1.0 = bình thường)"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Cao độ giọng (Pitch)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Height="32" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding DubbingPitch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Độ cao bổng trầm (semitones)"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Auto Ducking -->
+                                        <CheckBox Content="🔇 Tự động giảm âm lượng âm thanh gốc khi có tiếng lồng tiếng (Auto-Ducking)"
+                                                  Foreground="{DynamicResource TextBrush}"
+                                                  FontSize="11"
+                                                  IsChecked="{Binding DubbingAutoDuckOriginalAudio, Mode=TwoWay}"
+                                                  Margin="0,4,0,4"/>
+
+                                        <Grid Margin="20,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="100"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Âm lượng âm thanh gốc còn lại (%):" Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="2" Height="28" Style="{DynamicResource BaseTextBoxV2}" Text="{Binding DubbingOriginalAudioVolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Mức âm lượng nền khi đang phát thuyết minh (vd: 20%)"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
+
+                            <!-- 🔗 Node nhận lại Audio Lồng tiếng (Luồng song song) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Expander IsExpanded="True" BorderThickness="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="🔗 Node nhận lại Audio Lồng tiếng (Luồng song song)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" />
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="Chọn node &amp; key trả về JSON chứa file/link audio lồng tiếng để tự động khớp vào video theo mốc thời gian."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl x:Name="ReturnDubbingNodeComboBox"
+                                                           Height="32"
+                                                           ItemsSource="{Binding ReturnDubbingNodeOptions}"
+                                                           SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                           SelectedValue="{Binding ReturnDubbingNodeId, Mode=TwoWay}"
+                                                           SelectionChanged="ReturnDubbingNodeComboBox_SelectionChanged"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="ReturnDubbingKeyComboBox"
+                                                           Height="32"
+                                                           Style="{DynamicResource BaseComboBox}"
+                                                           IsSynchronizedWithCurrentItem="False"
+                                                           SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                           SelectedValue="{Binding ReturnDubbingOutputKey, Mode=TwoWay}"
+                                                           ItemsSource="{Binding ReturnDubbingKeyOptions, Mode=OneWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Cấu hình tên trường JSON -->
+                                        <TextBlock Text="Tên trường Code ID / Chunk ID trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,4"/>
+                                        <TextBox Text="{Binding ReturnDubbingCodeIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Ví dụ: chunkId, codeId, chunkIndex, segmentId, id"/>
+
+                                        <TextBlock Text="Tên trường Link/Path Audio trả về trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding ReturnDubbingAudioLinkKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Ví dụ: audioUrl, linkAudio, audioPath, url, path, src, link"/>
+
+                                        <TextBlock Text="Tên trường Base64 Audio trả về trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding ReturnDubbingAudioBase64Keys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Ví dụ: audioBase64, base64, audioData, data"/>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Trường Bắt đầu (start time)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding ReturnDubbingStartKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: start, start_time, startTime, from"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Trường Thời lượng / Kết thúc" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding ReturnDubbingEndKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: duration, end, end_time, endTime, to"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <!-- TAB 4: CẤU HÌNH                                                 -->
+                <!-- ═══════════════════════════════════════════════════════════════ -->
                 <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
