@@ -1,6 +1,6 @@
 @echo off
-chcp 65001 >nul
-title [FlowMy Studio] AI Speech-to-Subtitle & Translation Studio
+setlocal enabledelayedexpansion
+title [FlowMy Studio] AI Speech-to-Subtitle and Translation Studio
 color 0B
 
 cd /d "%~dp0"
@@ -16,9 +16,9 @@ if not exist ".venv\Scripts\activate.bat" (
 call .venv\Scripts\activate.bat
 
 echo ===============================================================================
-echo     🎙️  KHOI DONG AI SPEECH-TO-SUBTITLE STUDIO (WEB UI & REST API)
-echo     🌐 Giao dien Web Studio: http://127.0.0.1:8765
-echo     📡 REST API Endpoint:    http://127.0.0.1:8765/api/transcribe
+echo     [*] KHOI DONG AI SPEECH-TO-SUBTITLE STUDIO (WEB UI ^& REST API)
+echo     [*] Giao dien Web Studio: http://127.0.0.1:8765
+echo     [*] REST API Endpoint:    http://127.0.0.1:8765/api/transcribe
 echo ===============================================================================
 echo.
 echo Dang mo trinh duyet...

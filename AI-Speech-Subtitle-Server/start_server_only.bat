@@ -1,5 +1,5 @@
 @echo off
-chcp 65001 >nul
+setlocal enabledelayedexpansion
 title [FlowMy API] AI Speech-to-Subtitle REST Server (Port 8765)
 color 0A
 
@@ -16,9 +16,9 @@ if not exist ".venv\Scripts\activate.bat" (
 call .venv\Scripts\activate.bat
 
 echo ===============================================================================
-echo     🚀 KHOI DONG AI SPEECH-TO-SUBTITLE SERVER (HEADLESS API MODE)
-echo     📡 REST API Endpoint: http://127.0.0.1:8765/api/transcribe
-echo     📖 API Docs:          http://127.0.0.1:8765/docs
+echo     [*] KHOI DONG AI SPEECH-TO-SUBTITLE SERVER (HEADLESS API MODE)
+echo     [*] REST API Endpoint: http://127.0.0.1:8765/api/transcribe
+echo     [*] API Docs:          http://127.0.0.1:8765/docs
 echo ===============================================================================
 echo.
 
