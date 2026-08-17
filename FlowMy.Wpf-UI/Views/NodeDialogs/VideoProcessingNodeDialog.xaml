@@ -479,6 +479,95 @@
                                     </StackPanel>
                                 </Expander>
                             </Border>
+
+                            <!-- 💡 Hướng dẫn cấu trúc JSON & Mẫu Prompt Phụ đề AI -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="#2563EB"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Expander IsExpanded="False" BorderThickness="0">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="💡 Hướng dẫn cấu trúc JSON &amp; Mẫu Prompt chuẩn" 
+                                                       Foreground="#60A5FA"
+                                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <Border Background="#1E3A8A" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
+                                                <TextBlock Text="Click để xem" FontSize="9.5" FontWeight="Bold" Foreground="#93C5FD"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,10,0,0">
+                                        <!-- Hướng dẫn dạng 1: Theo từng Chunk -->
+                                        <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <TextBlock Text="1. Dạng trả về theo từng Chunk (Khuyên dùng khi chạy Loop Node):" 
+                                                           Foreground="#4ADE80" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBlock Text="Khi cắt audio thành nhiều đoạn, AI trả về mốc thời gian tương đối (từ 0s) trong chunk đó, hệ thống sẽ tự động cộng dồn với thời gian bắt đầu của Chunk vào timeline video:" 
+                                                           Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10.5"
+                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">{
+  "chunkIndex": 0,
+  "segments": [
+    {
+      "start": 1.25,
+      "end": 4.50,
+      "text": "Xin chào các bạn đã quay trở lại..."
+    },
+    {
+      "start": 5.10,
+      "end": 8.60,
+      "text": "Hôm nay chúng ta tìm hiểu về phụ đề AI..."
+    }
+  ]
+}</TextBox>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Hướng dẫn dạng 2: Danh sách mốc tuyệt đối -->
+                                        <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <TextBlock Text="2. Dạng mảng danh sách phụ đề tuyệt đối (Mảng Array):" 
+                                                           Foreground="#38BDF8" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBlock Text="Nếu node AI trả về trực tiếp danh sách các câu phụ đề theo toàn bộ timeline video:" 
+                                                           Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10.5"
+                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">[
+  {
+    "start": 0.50,
+    "end": 3.80,
+    "text": "Câu phụ đề đầu tiên trong video"
+  },
+  {
+    "start": 4.10,
+    "end": 7.20,
+    "text": "Câu phụ đề tiếp theo"
+  }
+]</TextBox>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Mẫu Prompt cho LLM -->
+                                        <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10">
+                                            <StackPanel>
+                                                <TextBlock Text="3. Mẫu System Prompt gợi ý cho AI / OpenAI / Gemini / Whisper:" 
+                                                           Foreground="#FBBF24" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#FDE047" FontFamily="Consolas" FontSize="10.5"
+                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">Hãy nghe audio và trích xuất phụ đề kèm mốc thời gian chính xác (giây).
+Chỉ trả về duy nhất một chuỗi JSON hợp lệ theo định dạng sau:
+{
+  "chunkIndex": {{chunkIndex}},
+  "segments": [
+    {
+      "start": 0.00,
+      "end": 3.50,
+      "text": "Nội dung câu nói"
+    }
+  ]
+}</TextBox>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Expander>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
