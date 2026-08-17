@@ -73,7 +73,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (string.IsNullOrWhiteSpace(videoInput))
                     throw new InvalidOperationException("VideoProcessingNode: thiếu input video.");
                 var videoSubfolderName = BuildOutputSubfolderNameFromVideoPath(videoInput);
-                var (codecArgs, extension) = BuildOutputArgs(videoNode);
+                var (codecArgs, extension) = await BuildOutputArgsAsync(videoNode, env.CancellationToken).ConfigureAwait(false);
 
                 var downloadsRoot = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -250,33 +250,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var producedFrames = new List<string>();
                 if (videoNode.ExtractFramesEnabled)
                 {
-                var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-an", "-sn", "-i", videoInput }));
-                if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
-                var overlayFrameCleanup = new List<string>();
-                AppendVisualFilterArgs(
-                    frameArgs,
-                    videoNode,
-                    frameFilter,
-                    frameLabels: null,
-                    overlayFrameCleanup,
-                    deferCanvasTextOverlayToWpfRaster: HasVisibleCanvasTextOverlays(videoNode),
-                    overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
-                    overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
-                    overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1));
-                frameArgs.Add(framePattern);
-                try
-                {
-                    await RunFfmpegWithProgressAsync(
-                        WithHwaccel(frameArgs, hwaccel),
-                        totalDuration,
-                        (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
-                        line => LogLine?.Invoke(videoNode, line),
-                        env.CancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    TryDeleteOverlayRasterFiles(overlayFrameCleanup);
-                }
+                    var (trimInputArgs, _) = BuildTrimArgs(videoNode);
+                    var frameArgs = new List<string> { "-y", "-hide_banner", "-loglevel", "error" };
+                    frameArgs.AddRange(trimInputArgs);
+                    frameArgs.AddRange(new[] { "-an", "-sn", "-i", videoInput });
+                    if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
+                    var overlayFrameCleanup = new List<string>();
+                    AppendVisualFilterArgs(
+                        frameArgs,
+                        videoNode,
+                        frameFilter,
+                        frameLabels: null,
+                        overlayFrameCleanup,
+                        deferCanvasTextOverlayToWpfRaster: HasVisibleCanvasTextOverlays(videoNode),
+                        overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
+                        overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
+                        overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1));
+                    frameArgs.Add(framePattern);
+                    try
+                    {
+                        await RunFfmpegWithProgressAsync(
+                            WithHwaccel(frameArgs, hwaccel),
+                            effectiveDurationTrim,
+                            (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                            line => LogLine?.Invoke(videoNode, line),
+                            env.CancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        TryDeleteOverlayRasterFiles(overlayFrameCleanup);
+                    }
 
                 producedFrames = Directory.GetFiles(
                         Path.GetDirectoryName(framePattern)!,
@@ -414,79 +417,85 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 else
                 {
-                var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
-                var mainFilter = BuildVideoFilterChain(videoNode, extractFps: null, includeTextOverlay: true, sourceHeight, effectiveSubtitlePath);
-                var mainArgs = BuildTrimAwareArgs(videoNode, new[]
-                {
-                    "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", videoInput,
-                    "-sn",
-                    "-an",
-                }).ToList();
-
-                string? lblEncDir = null;
-                var overlayEncodeCleanup = new List<string>();
-                try
-                {
-                    FrameLabelSequenceFfmpegInput? labelFf = null;
-                    if (videoNode.FrameLabelEnabled && !videoNode.ExportVideoEnabled)
+                    var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
+                    var mainFilter = BuildVideoFilterChain(videoNode, extractFps: null, includeTextOverlay: true, sourceHeight, effectiveSubtitlePath);
+                    var (trimInputArgs, trimOutputArgs) = BuildTrimArgs(videoNode);
+                    var mainArgs = new List<string>
                     {
-                        lblEncDir = videoNode.FrameLabelDebugSamplesEnabled
-                            ? CreateFrameLabelDebugFolder("enc_seq", Path.GetDirectoryName(framePattern))
-                            : Path.Combine(tempRoot, $"enc_lbl_{Guid.NewGuid():N}");
-                        var videoEncodeFps = sourceFpsClamped;
-                        var nLbl = (int)Math.Ceiling(effectiveDurationTrim * videoEncodeFps) + 64;
-                        var srcFpsForSeq = videoNode.SourceFps > 0 ? videoNode.SourceFps : 30;
-                        await RunWpfCompositorAsync(
-                            () => FrameLabelRasterComposer.WriteLabelSequencePngs(
-                                videoNode,
-                                lblEncDir,
-                                nLbl,
-                                effectiveStart,
-                                videoEncodeFps,
-                                srcFpsForSeq,
-                                sourceWidth > 0 ? sourceWidth : 1920,
-                                sourceHeight > 0 ? sourceHeight : 1080,
-                                Math.Max(sourceHeight, 1)),
-                            env.CancellationToken).ConfigureAwait(false);
-
-                        if (videoNode.FrameLabelDebugSamplesEnabled)
-                            LogLine?.Invoke(videoNode, $"[DBG] FrameLabel sequence (encode): {lblEncDir}");
-
-                        labelFf = new FrameLabelSequenceFfmpegInput(
-                            Path.Combine(lblEncDir, "label_%06d.png").Replace('\\', '/'),
-                            videoEncodeFps);
-                    }
-
-                    AppendVisualFilterArgs(
-                        mainArgs,
-                        videoNode,
-                        mainFilter,
-                        labelFf,
-                        overlayEncodeCleanup,
-                        deferCanvasTextOverlayToWpfRaster: false,
-                        overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
-                        overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
-                        overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1),
-                        isVideoExport: true);
-                    mainArgs.AddRange(new[] { "-r", sourceFpsClamped.ToString("0.###", CultureInfo.InvariantCulture) });
-                    mainArgs.AddRange(codecArgs);
-                    mainArgs.Add(outputBasePath);
-
-                    if (videoNode.TwoPassEnabled && (videoNode.OutputFormat == "mp4_h264" || videoNode.OutputFormat == "mp4_h265"))
+                        "-y", "-hide_banner", "-loglevel", "error"
+                    };
+                    mainArgs.AddRange(trimInputArgs);
+                    mainArgs.AddRange(new[]
                     {
-                        await RunTwoPassEncodeAsync(videoNode, mainArgs, outputBasePath, hwaccel, totalDuration, env.CancellationToken).ConfigureAwait(false);
-                    }
-                    else
+                        "-i", videoInput,
+                        "-sn",
+                        "-an",
+                    });
+
+                    string? lblEncDir = null;
+                    var overlayEncodeCleanup = new List<string>();
+                    try
                     {
-                        await RunFfmpegWithProgressAsync(
-                            WithHwaccel(mainArgs, hwaccel),
-                            totalDuration,
-                            (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
-                            line => LogLine?.Invoke(videoNode, line),
-                            env.CancellationToken).ConfigureAwait(false);
+                        FrameLabelSequenceFfmpegInput? labelFf = null;
+                        if (videoNode.FrameLabelEnabled && !videoNode.ExportVideoEnabled)
+                        {
+                            lblEncDir = videoNode.FrameLabelDebugSamplesEnabled
+                                ? CreateFrameLabelDebugFolder("enc_seq", Path.GetDirectoryName(framePattern))
+                                : Path.Combine(tempRoot, $"enc_lbl_{Guid.NewGuid():N}");
+                            var videoEncodeFps = sourceFpsClamped;
+                            var nLbl = (int)Math.Ceiling(effectiveDurationTrim * videoEncodeFps) + 64;
+                            var srcFpsForSeq = videoNode.SourceFps > 0 ? videoNode.SourceFps : 30;
+                            await RunWpfCompositorAsync(
+                                () => FrameLabelRasterComposer.WriteLabelSequencePngs(
+                                    videoNode,
+                                    lblEncDir,
+                                    nLbl,
+                                    effectiveStart,
+                                    videoEncodeFps,
+                                    srcFpsForSeq,
+                                    sourceWidth > 0 ? sourceWidth : 1920,
+                                    sourceHeight > 0 ? sourceHeight : 1080,
+                                    Math.Max(sourceHeight, 1)),
+                                env.CancellationToken).ConfigureAwait(false);
+
+                            if (videoNode.FrameLabelDebugSamplesEnabled)
+                                LogLine?.Invoke(videoNode, $"[DBG] FrameLabel sequence (encode): {lblEncDir}");
+
+                            labelFf = new FrameLabelSequenceFfmpegInput(
+                                Path.Combine(lblEncDir, "label_%06d.png").Replace('\\', '/'),
+                                videoEncodeFps);
+                        }
+
+                        AppendVisualFilterArgs(
+                            mainArgs,
+                            videoNode,
+                            mainFilter,
+                            labelFf,
+                            overlayEncodeCleanup,
+                            deferCanvasTextOverlayToWpfRaster: false,
+                            overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
+                            overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
+                            overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1),
+                            isVideoExport: true);
+                        mainArgs.AddRange(new[] { "-r", sourceFpsClamped.ToString("0.###", CultureInfo.InvariantCulture) });
+                        mainArgs.AddRange(codecArgs);
+                        mainArgs.AddRange(trimOutputArgs);
+                        mainArgs.Add(outputBasePath);
+
+                        if (videoNode.TwoPassEnabled && (videoNode.OutputFormat == "mp4_h264" || videoNode.OutputFormat == "mp4_h265"))
+                        {
+                            await RunTwoPassEncodeAsync(videoNode, mainArgs, outputBasePath, hwaccel, effectiveDurationTrim, env.CancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await RunFfmpegWithProgressAsync(
+                                WithHwaccel(mainArgs, hwaccel),
+                                effectiveDurationTrim,
+                                (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                                line => LogLine?.Invoke(videoNode, line),
+                                env.CancellationToken).ConfigureAwait(false);
+                        }
                     }
-                }
                 finally
                 {
                     TryDeleteOverlayRasterFiles(overlayEncodeCleanup);
@@ -740,7 +749,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
             Directory.CreateDirectory(tempRoot);
 
-            var (_, extension) = BuildOutputArgs(node);
+            var (_, extension) = await BuildOutputArgsAsync(node, env.CancellationToken).ConfigureAwait(false);
             var outputVideo = ResolveVideoOutputPath(node, outputDestination, extension);
             var outputDir = Path.GetDirectoryName(outputVideo);
             if (!string.IsNullOrWhiteSpace(outputDir))
@@ -755,15 +764,43 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var extractArgs = new List<string>
                 {
-                    "-y", "-hide_banner", "-loglevel", "error",
+                    "-y", "-hide_banner", "-loglevel", "error"
+                };
+
+                double effStart = 0;
+                double effEnd = duration;
+                if (node.AudioTrimEnabled && node.AudioTrimEndSec > node.AudioTrimStartSec)
+                {
+                    effStart = Math.Max(0, node.AudioTrimStartSec);
+                    effEnd = Math.Min(duration, node.AudioTrimEndSec);
+                }
+                else if (node.TrimEnabled && node.TrimEndSec > node.TrimStartSec)
+                {
+                    effStart = Math.Max(0, node.TrimStartSec);
+                    effEnd = Math.Min(duration, node.TrimEndSec);
+                }
+
+                if (effStart > 0 || effEnd < duration)
+                {
+                    var effDur = Math.Max(0.01, effEnd - effStart);
+                    extractArgs.AddRange(new[]
+                    {
+                        "-ss", effStart.ToString("0.###", CultureInfo.InvariantCulture),
+                        "-t", effDur.ToString("0.###", CultureInfo.InvariantCulture)
+                    });
+                }
+
+                extractArgs.AddRange(new[]
+                {
                     "-i", sourceVideoInput,
                     "-map", "0:a:0",
                     "-vn"
-                };
+                });
+
                 if (!string.IsNullOrWhiteSpace(afFilter))
                     extractArgs.AddRange(new[] { "-af", afFilter });
 
-                extractArgs.AddRange(new[] { "-c:a", "pcm_s16le", sourceAudioPath });
+                extractArgs.AddRange(new[] { "-c:a", "pcm_s16le", "-avoid_negative_ts", "make_zero", sourceAudioPath });
                 await RunFfmpegAsync(extractArgs, env.CancellationToken).ConfigureAwait(false);
 
                 if (File.Exists(sourceAudioPath))
@@ -800,6 +837,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     "-y", "-hide_banner", "-loglevel", "error",
                     "-i", baseVideoPath,
                     "-c:v", "copy",
+                    "-movflags", "+faststart",
+                    "-avoid_negative_ts", "make_zero",
                     outputVideo
                 }, env.CancellationToken).ConfigureAwait(false);
                 return outputVideo;
@@ -848,8 +887,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "-filter_complex", string.Join(";", filterChains),
                 "-map", "0:v:0",
                 "-map", "[aout]",
+                "-c:v", "copy",
                 "-c:a", ResolveAudioCodecArg(node.AudioCodec),
                 "-b:a", node.AudioBitrate,
+                "-movflags", "+faststart",
+                "-avoid_negative_ts", "make_zero",
                 outputVideo
             });
 
@@ -1479,30 +1521,142 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts", $"{f}.ttf");
         }
 
-        private static IEnumerable<string> BuildTrimAwareArgs(VideoProcessingNode node, IEnumerable<string> remainingArgs)
+        private static (List<string> inputArgs, List<string> outputArgs) BuildTrimArgs(VideoProcessingNode node)
         {
-            var trimArgs = new List<string>();
+            var inputArgs = new List<string>();
+            var outputArgs = new List<string>();
             if (node.TrimEnabled && node.TrimEndSec > node.TrimStartSec)
             {
-                trimArgs.AddRange(new[]
+                var dur = node.TrimEndSec - node.TrimStartSec;
+                inputArgs.AddRange(new[]
                 {
                     "-ss", node.TrimStartSec.ToString("0.###", CultureInfo.InvariantCulture),
-                    "-to", node.TrimEndSec.ToString("0.###", CultureInfo.InvariantCulture)
+                    "-t", dur.ToString("0.###", CultureInfo.InvariantCulture)
                 });
+                outputArgs.AddRange(new[] { "-avoid_negative_ts", "make_zero" });
             }
-            return trimArgs.Concat(remainingArgs);
+            return (inputArgs, outputArgs);
         }
 
-        private static (string[] codecArgs, string extension) BuildOutputArgs(VideoProcessingNode node)
+        private static string? _cachedH264Encoder;
+        private static string? _cachedHevcEncoder;
+
+        public static async Task<string> ResolveH264EncoderAsync(bool preferGpu, CancellationToken ct)
         {
-            return (node.OutputFormat ?? "mp4_h264") switch
+            if (!preferGpu) return "libx264";
+            if (_cachedH264Encoder != null) return _cachedH264Encoder;
+
+            foreach (var enc in new[] { "h264_nvenc", "h264_qsv", "h264_amf" })
             {
-                "mp4_h264" => (new[] { "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString() }, ".mp4"),
-                "mp4_h265" => (new[] { "-c:v", "libx265", "-pix_fmt", "yuv420p", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString(), "-tag:v", "hvc1" }, ".mp4"),
-                "webm_vp9" => (new[] { "-c:v", "libvpx-vp9", "-crf", ((int)node.Crf).ToString(), "-b:v", "0" }, ".webm"),
-                "mov_prores" => (new[] { "-c:v", "prores_ks", "-profile:v", "3" }, ".mov"),
+                var ok = await RunProcessExitCodeAsync(ResolveBinary("ffmpeg"), new[]
+                {
+                    "-hide_banner", "-loglevel", "error",
+                    "-f", "lavfi", "-i", "nullsrc=s=64x64:d=0.1",
+                    "-c:v", enc,
+                    "-f", "null", "-"
+                }, ct).ConfigureAwait(false);
+                if (ok == 0)
+                {
+                    _cachedH264Encoder = enc;
+                    return enc;
+                }
+            }
+
+            _cachedH264Encoder = "libx264";
+            return "libx264";
+        }
+
+        private static async Task<string> ResolveHevcEncoderAsync(bool preferGpu, CancellationToken ct)
+        {
+            if (!preferGpu) return "libx265";
+            if (_cachedHevcEncoder != null) return _cachedHevcEncoder;
+
+            foreach (var enc in new[] { "hevc_nvenc", "hevc_qsv", "hevc_amf" })
+            {
+                var ok = await RunProcessExitCodeAsync(ResolveBinary("ffmpeg"), new[]
+                {
+                    "-hide_banner", "-loglevel", "error",
+                    "-f", "lavfi", "-i", "nullsrc=s=64x64:d=0.1",
+                    "-c:v", enc,
+                    "-f", "null", "-"
+                }, ct).ConfigureAwait(false);
+                if (ok == 0)
+                {
+                    _cachedHevcEncoder = enc;
+                    return enc;
+                }
+            }
+
+            _cachedHevcEncoder = "libx265";
+            return "libx265";
+        }
+
+        private static async Task<(string[] codecArgs, string extension)> BuildOutputArgsAsync(VideoProcessingNode node, CancellationToken ct)
+        {
+            var format = node.OutputFormat ?? "mp4_h264";
+            var crfInt = ((int)node.Crf).ToString();
+            var preset = node.EncoderPreset ?? "veryfast";
+
+            if (format == "mp4_h264")
+            {
+                var encoder = await ResolveH264EncoderAsync(node.PreferGpu, ct).ConfigureAwait(false);
+                if (encoder == "h264_nvenc")
+                {
+                    var nvPreset = preset switch
+                    {
+                        "ultrafast" => "p1",
+                        "veryfast" => "p2",
+                        "fast" => "p3",
+                        "medium" => "p4",
+                        "slow" => "p6",
+                        _ => "p4"
+                    };
+                    return (new[] { "-c:v", "h264_nvenc", "-preset", nvPreset, "-cq", crfInt, "-pix_fmt", "yuv420p", "-movflags", "+faststart" }, ".mp4");
+                }
+                if (encoder == "h264_qsv")
+                {
+                    return (new[] { "-c:v", "h264_qsv", "-global_quality", crfInt, "-movflags", "+faststart" }, ".mp4");
+                }
+                if (encoder == "h264_amf")
+                {
+                    return (new[] { "-c:v", "h264_amf", "-rc", "cqp", "-qp_i", crfInt, "-qp_p", crfInt, "-pix_fmt", "yuv420p", "-movflags", "+faststart" }, ".mp4");
+                }
+                return (new[] { "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", preset, "-crf", crfInt, "-movflags", "+faststart" }, ".mp4");
+            }
+
+            if (format == "mp4_h265")
+            {
+                var encoder = await ResolveHevcEncoderAsync(node.PreferGpu, ct).ConfigureAwait(false);
+                if (encoder == "hevc_nvenc")
+                {
+                    var nvPreset = preset switch
+                    {
+                        "ultrafast" => "p1",
+                        "veryfast" => "p2",
+                        "fast" => "p3",
+                        "medium" => "p4",
+                        "slow" => "p6",
+                        _ => "p4"
+                    };
+                    return (new[] { "-c:v", "hevc_nvenc", "-preset", nvPreset, "-cq", crfInt, "-pix_fmt", "yuv420p", "-tag:v", "hvc1", "-movflags", "+faststart" }, ".mp4");
+                }
+                if (encoder == "hevc_qsv")
+                {
+                    return (new[] { "-c:v", "hevc_qsv", "-global_quality", crfInt, "-tag:v", "hvc1", "-movflags", "+faststart" }, ".mp4");
+                }
+                if (encoder == "hevc_amf")
+                {
+                    return (new[] { "-c:v", "hevc_amf", "-rc", "cqp", "-qp_i", crfInt, "-qp_p", crfInt, "-tag:v", "hvc1", "-pix_fmt", "yuv420p", "-movflags", "+faststart" }, ".mp4");
+                }
+                return (new[] { "-c:v", "libx265", "-pix_fmt", "yuv420p", "-preset", preset, "-crf", crfInt, "-tag:v", "hvc1", "-movflags", "+faststart" }, ".mp4");
+            }
+
+            return format switch
+            {
+                "webm_vp9" => (new[] { "-c:v", "libvpx-vp9", "-crf", crfInt, "-b:v", "0" }, ".webm"),
+                "mov_prores" => (new[] { "-c:v", "prores_ks", "-profile:v", "3", "-movflags", "+faststart" }, ".mov"),
                 "gif" => (new[] { "-loop", "0" }, ".gif"),
-                _ => (new[] { "-c:v", "copy" }, ".mp4")
+                _ => (new[] { "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart" }, ".mp4")
             };
         }
 
@@ -1541,8 +1695,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await RunFfmpegAsync(new[]
             {
                 "-y", "-hide_banner", "-loglevel", "error",
-                "-i", videoPath,
                 "-ss", positionSec,
+                "-i", videoPath,
                 "-frames:v", "1",
                 "-q:v", "2",
                 outputPath
@@ -1561,9 +1715,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var args = new List<string>
             {
                 "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", positionSec,
                 "-i", node.VideoPath
             };
-            args.AddRange(new[] { "-ss", positionSec });
             var overlayRasterCleanup = new List<string>();
             AppendVisualFilterArgs(
                 args,

@@ -134,7 +134,10 @@ namespace FlowMy.Views.NodeControls
         private bool _aspectAuto = true;
         private bool _isTrimReviewDragging;
         private bool _isFrameControlSync;
-        private int _trimFramePreviewRequestId;
+        private bool _isVideoTrimPreviewing;
+        private DateTime _videoTrimPreviewStartTime;
+        private int _trimStartFrameRequestId;
+        private int _trimEndFrameRequestId;
         private Grid? _handleOverlay;
 
         public event Action<double, double>? SuggestedNodeSizeReady;

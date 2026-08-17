@@ -208,7 +208,7 @@ namespace FlowMy.Models.Nodes
         private bool _flipV;
 
         private string _outputFormat = "mp4_h264";
-        private string _encoderPreset = "medium";
+        private string _encoderPreset = "veryfast";
         private double _crf = 23;
         private double _resolutionScale = 1;
         private double _frameResizeScale = 1.0;

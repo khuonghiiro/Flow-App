@@ -169,6 +169,11 @@ namespace FlowMy.Views.NodeControls
             SecondsPerFrameValueText.Text = $"{secondsInt}s";
             TrimStartText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimStartSec));
             TrimEndText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimEndSec));
+            var trimDurationSec = Math.Max(0, _node.TrimEndSec - _node.TrimStartSec);
+            if (TrimDurationText != null)
+            {
+                TrimDurationText.Text = $"{FormatTime(TimeSpan.FromSeconds(trimDurationSec))} ({trimDurationSec:0.#}s)";
+            }
             var duration = GetNaturalDurationSeconds();
             _ = duration;
             UpdateFrameExtractionPreview();
@@ -298,10 +303,14 @@ namespace FlowMy.Views.NodeControls
                 TrimToggle.IsChecked = _node.TrimEnabled;
                 ConcatToggle.IsChecked = _node.ConcatEnabled;
                 ConcatVideosList.ItemsSource = _node.ConcatVideos;
-                TrimReviewCheckBox.IsChecked = false;
-                TrimReviewHitArea.Visibility = Visibility.Collapsed;
-                ProgressBarHitArea.IsEnabled = true;
-                ProgressBarHitArea.Opacity = 1.0;
+                TrimReviewCheckBox.IsChecked = _node.TrimEnabled;
+                TrimReviewHitArea.Visibility = _node.TrimEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = _node.TrimEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (_node.TrimEnabled)
+                {
+                    _ = LoadTrimFramePreviewAsync(isStart: true);
+                    _ = LoadTrimFramePreviewAsync(isStart: false);
+                }
                 _fixedResolutionHeight = _node.FixedResolutionHeight;
                 WatermarkToggle.IsChecked = _node.WatermarkEnabled;
                 WatermarkPathText.Text = _node.WatermarkImagePath ?? string.Empty;
@@ -958,6 +967,50 @@ namespace FlowMy.Views.NodeControls
             return (fps, duration);
         }
 
+        public void ToggleVideoTrimSegmentPlayback()
+        {
+            if (PreviewMedia.Source == null) return;
+            if (_isPlaying && _isVideoTrimPreviewing)
+            {
+                PreviewMedia.Pause();
+                _realTimeAudioEngine?.Pause();
+                _isPlaying = false;
+                _isVideoTrimPreviewing = false;
+                if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
+                UpdatePlaybackUi();
+                return;
+            }
+
+            var duration = GetNaturalDurationSeconds();
+            var startSec = Math.Max(0, _node.TrimStartSec);
+            var endSec = _node.TrimEndSec > startSec ? Math.Min(duration, _node.TrimEndSec) : duration;
+            if (endSec <= startSec) return;
+
+            _isVideoTrimPreviewing = true;
+            _videoTrimPreviewStartTime = DateTime.UtcNow;
+            var startPos = TimeSpan.FromSeconds(startSec);
+            PreviewMedia.Position = startPos;
+            _realTimeAudioEngine?.Seek(startPos);
+
+            EnsureRealTimeAudioEngineLoaded();
+            if (_realTimeAudioEngine != null && _realTimeAudioEngine.IsLoaded)
+            {
+                PreviewMedia.IsMuted = true;
+                _realTimeAudioEngine.Seek(startPos);
+                _realTimeAudioEngine.ApplyParameters(_node, _node.PreviewVolume, _isDspAudioPreviewActive);
+                _realTimeAudioEngine.Play();
+            }
+            else
+            {
+                UpdatePreviewAudioVolume();
+            }
+
+            PreviewMedia.Play();
+            _isPlaying = true;
+            if (LiveDot != null) LiveDot.Visibility = Visibility.Visible;
+            UpdatePlaybackUi();
+        }
+
         private void TogglePlayPause()
         {
             if (PreviewMedia.Source == null) return;
@@ -1385,6 +1438,25 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            // Stop if previewing trimmed video segment (starts from TrimStartSec and stops at TrimEndSec)
+            if (_isPlaying && _isVideoTrimPreviewing && _node.TrimEndSec > _node.TrimStartSec)
+            {
+                var curPos = PreviewMedia.Position.TotalSeconds;
+                var elapsedMs = (DateTime.UtcNow - _videoTrimPreviewStartTime).TotalMilliseconds;
+                if (elapsedMs > 200 && curPos >= (_node.TrimEndSec - 0.05) && curPos > (_node.TrimStartSec + 0.05))
+                {
+                    PreviewMedia.Pause();
+                    _realTimeAudioEngine?.Pause();
+                    _isPlaying = false;
+                    _isVideoTrimPreviewing = false;
+                    var endPos = TimeSpan.FromSeconds(_node.TrimEndSec);
+                    PreviewMedia.Position = endPos;
+                    _realTimeAudioEngine?.Seek(endPos);
+                    if (LiveDot != null) LiveDot.Visibility = Visibility.Collapsed;
+                    UpdatePlaybackUi();
+                }
+            }
+
             // Check if video reached end during continuous playback
             var duration = TimeSpan.FromSeconds(GetNaturalDurationSeconds());
             var position = PreviewMedia.Position;
@@ -1474,7 +1546,7 @@ namespace FlowMy.Views.NodeControls
             _isTrimReviewDragging = true;
             _trimReviewDragMode = ResolveTrimReviewDragMode(e);
             TrimReviewHitArea.CaptureMouse();
-            HandleTrimReviewDrag(e, commitPreviewSeek: false);
+            HandleTrimReviewDrag(e, commitPreviewSeek: true);
             e.Handled = true;
         }
 
@@ -1498,7 +1570,7 @@ namespace FlowMy.Views.NodeControls
             if (TrimReviewHitArea.IsMouseCaptured) TrimReviewHitArea.ReleaseMouseCapture();
             e.Handled = true;
 
-            // Load preview frames only after releasing mouse.
+            // Load preview frames immediately on release.
             if (draggedMode == TimelineDragMode.TrimStart)
             {
                 _ = LoadTrimFramePreviewAsync(isStart: true);
@@ -1509,7 +1581,6 @@ namespace FlowMy.Views.NodeControls
             }
             else
             {
-                // In scrub mode, load both frames.
                 _ = LoadTrimFramePreviewAsync(isStart: true);
                 _ = LoadTrimFramePreviewAsync(isStart: false);
             }
@@ -1535,12 +1606,11 @@ namespace FlowMy.Views.NodeControls
             if (TrimReviewRangeFill != null) TrimReviewRangeFill.Opacity = 1.0;
         }
 
-        private async System.Threading.Tasks.Task LoadTrimFramePreviewAsync(bool isStart)
+        public async System.Threading.Tasks.Task LoadTrimFramePreviewAsync(bool isStart)
         {
-            var requestId = ++_trimFramePreviewRequestId;
+            var requestId = isStart ? ++_trimStartFrameRequestId : ++_trimEndFrameRequestId;
 
-            if (string.IsNullOrWhiteSpace(_node.VideoPath)) return;
-            if (PreviewMedia.Source == null) return;
+            if (string.IsNullOrWhiteSpace(_node.VideoPath) || !System.IO.File.Exists(_node.VideoPath)) return;
 
             var duration = GetNaturalDurationSeconds();
             if (duration <= 0) duration = 1;
@@ -1550,40 +1620,69 @@ namespace FlowMy.Views.NodeControls
                 : Math.Clamp((_node.TrimEndSec > 0 ? _node.TrimEndSec : duration), 0, duration);
 
             var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
-                $"FlowMy_trim_{(isStart ? "start" : "end")}_{Guid.NewGuid():N}.png");
+                $"FlowMy_trim_{(isStart ? "start" : "end")}_{Guid.NewGuid():N}.jpg");
 
             try
             {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (isStart)
+                    {
+                        if (TrimStartFrameHintText != null && TrimStartFrameImage?.Source == null)
+                        {
+                            TrimStartFrameHintText.Text = "⏳ Đang load...";
+                            TrimStartFrameHintText.Visibility = Visibility.Visible;
+                        }
+                    }
+                    else
+                    {
+                        if (TrimEndFrameHintText != null && TrimEndFrameImage?.Source == null)
+                        {
+                            TrimEndFrameHintText.Text = "⏳ Đang load...";
+                            TrimEndFrameHintText.Visibility = Visibility.Visible;
+                        }
+                    }
+                });
+
                 await VideoProcessingNodeExecutor.RunSnapshotAsync(
                     _node.VideoPath,
                     t.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
                     tmp,
                     System.Threading.CancellationToken.None).ConfigureAwait(false);
 
-                if (requestId != _trimFramePreviewRequestId) return;
-
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.UriSource = new System.Uri(tmp, System.UriKind.Absolute);
-                bmp.EndInit();
-                bmp.Freeze();
-
-                await Dispatcher.BeginInvoke(new Action(() =>
+                if (isStart ? (requestId != _trimStartFrameRequestId) : (requestId != _trimEndFrameRequestId))
                 {
-                    if (isStart)
+                    try { if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp); } catch { }
+                    return;
+                }
+
+                if (System.IO.File.Exists(tmp))
+                {
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.UriSource = new System.Uri(tmp, System.UriKind.Absolute);
+                    bmp.EndInit();
+                    bmp.Freeze();
+
+                    try { System.IO.File.Delete(tmp); } catch { }
+
+                    await Dispatcher.InvokeAsync(() =>
                     {
-                        TrimStartFrameImage.Source = bmp;
-                        TrimStartFrameImage.Visibility = Visibility.Visible;
-                        TrimStartFrameHintText.Visibility = Visibility.Collapsed;
-                    }
-                    else
-                    {
-                        TrimEndFrameImage.Source = bmp;
-                        TrimEndFrameImage.Visibility = Visibility.Visible;
-                        TrimEndFrameHintText.Visibility = Visibility.Collapsed;
-                    }
-                }));
+                        if (isStart)
+                        {
+                            TrimStartFrameImage.Source = bmp;
+                            TrimStartFrameImage.Visibility = Visibility.Visible;
+                            TrimStartFrameHintText.Visibility = Visibility.Collapsed;
+                        }
+                        else
+                        {
+                            TrimEndFrameImage.Source = bmp;
+                            TrimEndFrameImage.Visibility = Visibility.Visible;
+                            TrimEndFrameHintText.Visibility = Visibility.Collapsed;
+                        }
+                    });
+                }
             }
             catch
             {
@@ -1602,10 +1701,17 @@ namespace FlowMy.Views.NodeControls
             var startX = Math.Clamp(_node.TrimStartSec / duration, 0, 1) * availableWidth + 7;
             var endSec = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
             var endX = Math.Clamp(endSec / duration, 0, 1) * availableWidth + 7;
-            const double handleHitRange = 14;
+            const double handleHitRange = 24;
 
-            if (Math.Abs(pos.X - startX) <= handleHitRange) return TimelineDragMode.TrimStart;
-            if (Math.Abs(pos.X - endX) <= handleHitRange) return TimelineDragMode.TrimEnd;
+            var distStart = Math.Abs(pos.X - startX);
+            var distEnd = Math.Abs(pos.X - endX);
+
+            if (distStart <= handleHitRange && distStart <= distEnd) return TimelineDragMode.TrimStart;
+            if (distEnd <= handleHitRange) return TimelineDragMode.TrimEnd;
+
+            if (pos.X < startX) return TimelineDragMode.TrimStart;
+            if (pos.X > endX) return TimelineDragMode.TrimEnd;
+
             return TimelineDragMode.Scrub;
         }
 

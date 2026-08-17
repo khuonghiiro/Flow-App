@@ -3630,6 +3630,25 @@
                                                 <TextBlock x:Name="TrimEndText" HorizontalAlignment="Center" FontFamily="Consolas" FontWeight="SemiBold" Text="00:00"/>
                                             </Border>
                                         </Grid>
+                                        <!-- Trim Duration & Play Preview Row -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Style="{StaticResource ValueBadgeStyle}" Background="#1F6366F1" BorderBrush="#4F6366F1" Padding="8,4" Margin="0,0,8,0">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="⏱️ Thời lượng cắt: " FontSize="11" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                    <TextBlock x:Name="TrimDurationText" Text="00:00 (0s)" FontSize="11" FontWeight="Bold" Foreground="#818CF8" FontFamily="Consolas"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Button x:Name="PlayTrimPreviewButton" Grid.Column="1" Height="28" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Phát thử đoạn video cắt từ mốc Start và tự động dừng ở mốc End">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="#FFFFFF" Margin="0,0,5,0" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-light'}"/>
+                                                    <TextBlock Text="Phát đoạn cắt" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
                                         <CheckBox x:Name="TrimReviewCheckBox"
                                                   Content="Trim Review (dùng slider cắt để xem trước)"
                                                   Style="{StaticResource ReadableCheckBoxStyle}"
@@ -3750,7 +3769,7 @@
                         <Border Grid.Row="1" Style="{StaticResource InnerCardStyle}" Margin="0,8,0,0" Padding="10,8">
                             <StackPanel Orientation="Horizontal">
                                 <Button x:Name="LoadTrimConcatPreviewButton" Content="🎬 Load Video Cắt/Ghép lên Preview" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Xử lý nhanh video Cắt/Ghép và tải lên Player xem trước thay thế video hiện tại"/>
-                                <Button x:Name="SaveTrimConcatTabButton" Content="💾 Lưu Video" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Xuất file video theo các cài đặt"/>
+                                <Button x:Name="SaveTrimConcatTabButton" Content="💾 Lưu Video cắt" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Xuất file video theo các cài đặt"/>
                                 <Button x:Name="ResetTrimConcatTabButton" Content="Đặt lại cài đặt" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeResetButtonStyle}"/>
                             </StackPanel>
                         </Border>
@@ -3896,9 +3915,9 @@
                                                 <TextBlock Text="Tốc độ nén (Preset)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,3"/>
                                                 <ComboBox x:Name="EncoderPresetCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}" ToolTip="ultrafast: Nhanh nhất nhưng file to -> slow: Nén nhỏ nhất nhưng tốn CPU">
                                                     <ComboBoxItem Content="ultrafast"/>
-                                                    <ComboBoxItem Content="veryfast"/>
+                                                    <ComboBoxItem Content="veryfast" IsSelected="True"/>
                                                     <ComboBoxItem Content="fast"/>
-                                                    <ComboBoxItem Content="medium" IsSelected="True"/>
+                                                    <ComboBoxItem Content="medium"/>
                                                     <ComboBoxItem Content="slow"/>
                                                 </ComboBox>
                                             </StackPanel>

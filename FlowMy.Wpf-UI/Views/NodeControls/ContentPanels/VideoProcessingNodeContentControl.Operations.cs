@@ -2021,15 +2021,35 @@ namespace FlowMy.Views.NodeControls
                 if (_node.TrimEnabled && _node.TrimEndSec > _node.TrimStartSec && !string.IsNullOrWhiteSpace(videoInput) && File.Exists(videoInput))
                 {
                     var trimOutPath = Path.Combine(tempRoot, $"trim_preview_{Guid.NewGuid():N}.mp4");
-                    await VideoProcessingNodeExecutor.RunFfmpegAsync(new[]
+                    var trimDur = _node.TrimEndSec - _node.TrimStartSec;
+                    var enc = _node.PreferGpu
+                        ? await VideoProcessingNodeExecutor.ResolveH264EncoderAsync(true, CancellationToken.None).ConfigureAwait(false)
+                        : "libx264";
+                    var vCodecArgs = enc switch
+                    {
+                        "h264_nvenc" => new[] { "-c:v", "h264_nvenc", "-preset", "p1", "-cq", "22", "-pix_fmt", "yuv420p" },
+                        "h264_qsv" => new[] { "-c:v", "h264_qsv", "-global_quality", "22" },
+                        "h264_amf" => new[] { "-c:v", "h264_amf", "-rc", "cqp", "-qp_i", "22", "-qp_p", "22", "-pix_fmt", "yuv420p" },
+                        _ => new[] { "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22", "-pix_fmt", "yuv420p" }
+                    };
+
+                    var trimArgs = new List<string>
                     {
                         "-y", "-hide_banner", "-loglevel", "error",
                         "-ss", _node.TrimStartSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
-                        "-to", _node.TrimEndSec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+                        "-t", trimDur.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
                         "-i", videoInput,
-                        "-c", "copy",
+                    };
+                    trimArgs.AddRange(vCodecArgs);
+                    trimArgs.AddRange(new[]
+                    {
+                        "-c:a", "aac", "-b:a", "128k",
+                        "-avoid_negative_ts", "make_zero",
+                        "-movflags", "+faststart",
                         trimOutPath
-                    }, CancellationToken.None).ConfigureAwait(false);
+                    });
+
+                    await VideoProcessingNodeExecutor.RunFfmpegAsync(trimArgs, CancellationToken.None).ConfigureAwait(false);
 
                     if (File.Exists(trimOutPath))
                         videoInput = trimOutPath;

@@ -725,17 +725,22 @@ namespace FlowMy.Views.NodeControls
                         _node.TrimEndSec = duration > 0 ? duration : Math.Max(_node.TrimStartSec + 1, 1);
                     }
                 }
-                TrimReviewHitArea.Visibility = TrimReviewCheckBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-                if (TrimReviewFramesPanel != null)
-                    TrimReviewFramesPanel.Visibility = TrimReviewCheckBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+                TrimReviewHitArea.Visibility = Visibility.Visible;
+                if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Visible;
+                if (TrimReviewCheckBox != null) TrimReviewCheckBox.IsChecked = true;
+                _trimUiInitialized = false;
                 UpdatePlaybackUi();
                 RefreshInfoText();
+                UpdateTrimReviewUi();
+                _ = LoadTrimFramePreviewAsync(isStart: true);
+                _ = LoadTrimFramePreviewAsync(isStart: false);
             };
             TrimToggle.Unchecked += (_, _) =>
             {
                 _node.TrimEnabled = false;
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
                 if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Collapsed;
+                if (TrimReviewCheckBox != null) TrimReviewCheckBox.IsChecked = false;
                 UpdatePlaybackUi();
                 RefreshInfoText();
             };
@@ -747,18 +752,20 @@ namespace FlowMy.Views.NodeControls
                     if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Visible;
                 }
                 _trimUiInitialized = false;
-                ProgressBarHitArea.IsEnabled = false;
-                ProgressBarHitArea.Opacity = 0.45;
                 UpdateTrimReviewUi();
+                _ = LoadTrimFramePreviewAsync(isStart: true);
+                _ = LoadTrimFramePreviewAsync(isStart: false);
             };
             TrimReviewCheckBox.Unchecked += (_, _) =>
             {
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
                 if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Collapsed;
                 _trimUiInitialized = false;
-                ProgressBarHitArea.IsEnabled = true;
-                ProgressBarHitArea.Opacity = 1.0;
             };
+            if (PlayTrimPreviewButton != null)
+            {
+                PlayTrimPreviewButton.Click += (_, _) => ToggleVideoTrimSegmentPlayback();
+            }
             BrowseOutputButton.Click += (_, _) => BrowseOutputPath();
             ClearLogButton.Click += (_, _) => LogRichTextBox.Document?.Blocks?.Clear();
             CopyLogButton.Click += (_, _) =>

@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using FlowMy.Models;
@@ -95,19 +95,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var sb = new StringBuilder();
             sb.Append("-y ");
 
-            // Trim Start
+            // Trim Start & End
             if (node.TrimEnabled && !string.IsNullOrWhiteSpace(node.TrimStartTime))
             {
-                sb.Append($"-ss {node.TrimStartTime.Trim()} ");
+                var startSec = ParseTimeStringToSeconds(node.TrimStartTime);
+                var endSec = !string.IsNullOrWhiteSpace(node.TrimEndTime) ? ParseTimeStringToSeconds(node.TrimEndTime) : 0;
+                if (endSec > startSec)
+                {
+                    var duration = endSec - startSec;
+                    sb.Append($"-ss {node.TrimStartTime.Trim()} -t {duration.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} ");
+                }
+                else
+                {
+                    sb.Append($"-ss {node.TrimStartTime.Trim()} ");
+                }
             }
 
             sb.Append($"-i \"{inputVideoPath}\" ");
-
-            // Trim End
-            if (node.TrimEnabled && !string.IsNullOrWhiteSpace(node.TrimEndTime))
-            {
-                sb.Append($"-to {node.TrimEndTime.Trim()} ");
-            }
 
             // --- Video Filters (-vf) ---
             var vFilters = new List<string>();
@@ -245,7 +249,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             else
             {
                 primaryOutputPath = Path.Combine(outputDir, $"output_video.{format}");
-                sb.Append($"\"{primaryOutputPath}\"");
+                sb.Append($"-c:v libx264 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 192k -avoid_negative_ts make_zero \"{primaryOutputPath}\"");
             }
 
             return sb.ToString();
@@ -294,9 +298,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             process.Start();
             process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
             return await tcs.Task;
+        }
+
+        private static double ParseTimeStringToSeconds(string timeStr)
+        {
+            if (string.IsNullOrWhiteSpace(timeStr)) return 0;
+            var trimmed = timeStr.Trim();
+            if (double.TryParse(trimmed, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var secs))
+                return secs;
+            if (TimeSpan.TryParse(trimmed, out var ts))
+                return ts.TotalSeconds;
+            return 0;
         }
     }
 }
