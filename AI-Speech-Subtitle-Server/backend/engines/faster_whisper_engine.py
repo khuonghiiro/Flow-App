@@ -39,29 +39,49 @@ class FasterWhisperEngine(BaseSpeechEngine):
         if self.download_root:
             from pathlib import Path
             root_p = Path(self.download_root)
-            candidates = [
-                root_p / "faster-whisper" / f"models--Systran--faster-whisper-{self.model_size}",
-                root_p / "whisperx" / f"models--Systran--faster-whisper-{self.model_size}",
-                root_p / f"models--Systran--faster-whisper-{self.model_size}",
-                root_p / "faster-whisper" / self.model_size,
-                root_p / "whisperx" / self.model_size,
-                root_p / self.model_size
+            size_key = self.model_size.lower().replace("_", "-")
+            search_dirs = [
+                root_p / "faster-whisper",
+                root_p / "whisperx",
+                root_p,
+                Path.home() / ".cache" / "huggingface" / "hub"
             ]
-            for cand in candidates:
-                if cand.exists() and cand.is_dir():
-                    snapshots_dir = cand / "snapshots"
-                    if snapshots_dir.exists():
-                        snaps = [s for s in snapshots_dir.iterdir() if s.is_dir()]
-                        if snaps:
-                            model_to_load = str(snaps[0].resolve())
-                            download_dir = None
-                            is_local = True
-                            break
-                    model_to_load = str(cand.resolve())
-                    download_dir = None
-                    is_local = True
+            for s_dir in search_dirs:
+                if not s_dir.exists():
+                    continue
+                for item in s_dir.iterdir():
+                    if not item.is_dir():
+                        continue
+                    name_lower = item.name.lower()
+                    if "whisper" not in name_lower and item.name != self.model_size:
+                        continue
+                    if size_key == "large-v3":
+                        if "large-v3-turbo" in name_lower:
+                            continue
+                        if "large-v3" not in name_lower and "large" not in name_lower:
+                            continue
+                    elif size_key not in name_lower:
+                        continue
+
+                    snaps_dir = item / "snapshots"
+                    if snaps_dir.exists():
+                        for snap in snaps_dir.iterdir():
+                            if snap.is_dir() and ((snap / "model.bin").exists() or (snap / "config.json").exists()):
+                                model_to_load = str(snap.resolve())
+                                download_dir = None
+                                is_local = True
+                                break
+                    if is_local:
+                        break
+
+                    if (item / "model.bin").exists() or (item / "config.json").exists():
+                        model_to_load = str(item.resolve())
+                        download_dir = None
+                        is_local = True
+                        break
+                if is_local:
                     break
-            
+
             if not is_local and download_dir:
                 download_dir = os.path.join(self.download_root, "faster-whisper")
 
@@ -141,7 +161,7 @@ class FasterWhisperEngine(BaseSpeechEngine):
             import torch
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            print(f"[FasterWhisperEngine] [OK] Đã giải phóng model '{self.model_size}' khỏi VRAM/RAM")
+            print(f"[FasterWhisperEngine] [OK] Da giai phong model '{self.model_size}' khoi VRAM/RAM")
 
     def transcribe(
         self,

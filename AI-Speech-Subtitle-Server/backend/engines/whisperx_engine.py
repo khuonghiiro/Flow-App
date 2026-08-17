@@ -1,4 +1,7 @@
 import os
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 from typing import Dict, Any, List
 from .base_engine import BaseSpeechEngine
 from .nllb_translator import get_global_translator
@@ -65,29 +68,47 @@ class WhisperXEngine(BaseSpeechEngine):
         if self.download_root:
             from pathlib import Path
             root_p = Path(self.download_root)
-            candidates = [
-                root_p / "whisperx" / f"models--Systran--faster-whisper-{self.model_size}",
-                root_p / "faster-whisper" / f"models--Systran--faster-whisper-{self.model_size}",
-                root_p / f"models--Systran--faster-whisper-{self.model_size}",
-                root_p / "whisperx" / f"models--mobiuslabsgmbh--faster-whisper-{self.model_size}",
-                root_p / "faster-whisper" / f"models--mobiuslabsgmbh--faster-whisper-{self.model_size}",
-                root_p / "whisperx" / self.model_size,
-                root_p / "faster-whisper" / self.model_size,
-                root_p / self.model_size
+            size_key = self.model_size.lower().replace("_", "-")
+            search_dirs = [
+                root_p / "whisperx",
+                root_p / "faster-whisper",
+                root_p,
+                Path.home() / ".cache" / "huggingface" / "hub"
             ]
-            for cand in candidates:
-                if cand.exists() and cand.is_dir():
-                    snapshots_dir = cand / "snapshots"
-                    if snapshots_dir.exists():
-                        snaps = [s for s in snapshots_dir.iterdir() if s.is_dir()]
-                        if snaps:
-                            model_to_load = str(snaps[0].resolve())
-                            download_dir = None
-                            is_local = True
-                            break
-                    model_to_load = str(cand.resolve())
-                    download_dir = None
-                    is_local = True
+            for s_dir in search_dirs:
+                if not s_dir.exists():
+                    continue
+                for item in s_dir.iterdir():
+                    if not item.is_dir():
+                        continue
+                    name_lower = item.name.lower()
+                    if "whisper" not in name_lower and item.name != self.model_size:
+                        continue
+                    if size_key == "large-v3":
+                        if "large-v3-turbo" in name_lower:
+                            continue
+                        if "large-v3" not in name_lower and "large" not in name_lower:
+                            continue
+                    elif size_key not in name_lower:
+                        continue
+
+                    snaps_dir = item / "snapshots"
+                    if snaps_dir.exists():
+                        for snap in snaps_dir.iterdir():
+                            if snap.is_dir() and ((snap / "model.bin").exists() or (snap / "config.json").exists()):
+                                model_to_load = str(snap.resolve())
+                                download_dir = None
+                                is_local = True
+                                break
+                    if is_local:
+                        break
+
+                    if (item / "model.bin").exists() or (item / "config.json").exists():
+                        model_to_load = str(item.resolve())
+                        download_dir = None
+                        is_local = True
+                        break
+                if is_local:
                     break
 
             if not is_local and download_dir:
@@ -101,21 +122,22 @@ class WhisperXEngine(BaseSpeechEngine):
         except (ImportError, ModuleNotFoundError):
             whisperx_available = self._try_install_whisperx(progress_callback)
 
-        # 2. Nếu whisperx có sẵn, nạp bằng whisperx.load_model
+        # 2. Nếu whisperx có sẵn, nạp bằng whisperx.load_model sử dụng đường dẫn cục bộ
+        target_model_param = model_to_load if is_local else self.model_size
         if whisperx_available:
             try:
                 import whisperx
                 if progress_callback:
                     progress_callback(40, "loading", f"Đang nạp WhisperX model '{self.model_size}'...", "Nạp VRAM")
-                print(f"[WhisperXEngine] Nap WhisperX model '{self.model_size}' tren {actual_device}...")
+                print(f"[WhisperXEngine] Nap WhisperX model '{self.model_size}' tren {actual_device} (Local: {is_local})...")
                 self.model = whisperx.load_model(
-                    self.model_size,
+                    target_model_param,
                     device=actual_device,
                     compute_type=actual_compute,
                     download_root=download_dir
                 )
                 self.is_fallback = False
-                print("[WhisperXEngine] [OK] Nap WhisperX thanh cong!")
+                print(f"[WhisperXEngine] [OK] Nap WhisperX '{self.model_size}' thanh cong!")
                 if progress_callback:
                     progress_callback(100, "ready", f"Nạp thành công WhisperX ({self.model_size})!", "Hoàn tất (100%)")
                 return
@@ -147,7 +169,7 @@ class WhisperXEngine(BaseSpeechEngine):
             import torch
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            print(f"[WhisperXEngine] [OK] Đã giải phóng model '{self.model_size}' khỏi VRAM/RAM")
+            print(f"[WhisperXEngine] [OK] Da giai phong model '{self.model_size}' khoi VRAM/RAM")
 
     def transcribe(
         self,
@@ -166,43 +188,10 @@ class WhisperXEngine(BaseSpeechEngine):
         detected_lang = "en"
         raw_segments = []
 
+        fw_model = getattr(self.model, "model", self.model)
         try:
-            import whisperx
-            audio = whisperx.load_audio(audio_path)
-            result = self.model.transcribe(audio, batch_size=16)
-            detected_lang = result.get("language", "en")
-
-            # Align whisper output
-            try:
-                device = self.device if self.device != "auto" else "cuda"
-                model_a, metadata = whisperx.load_align_model(language_code=detected_lang, device=device)
-                aligned_result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
-                segments_source = aligned_result.get("segments", result["segments"])
-            except Exception:
-                segments_source = result.get("segments", [])
-
-            for seg in segments_source:
-                s_start = round(seg.get("start", 0.0), 2)
-                s_end = round(seg.get("end", 0.0), 2)
-                if s_end <= s_start:
-                    s_end = round(s_start + 0.5, 2)
-                txt = seg.get("text", "").strip()
-                if not txt:
-                    continue
-                raw_segments.append({
-                    "id": len(raw_segments) + 1,
-                    "start": s_start,
-                    "end": s_end,
-                    "duration": round(s_end - s_start, 2),
-                    "text": txt,
-                    "original_text": txt,
-                    "translations": {
-                        detected_lang: txt
-                    }
-                })
-        except Exception:
-            # Fallback faster-whisper với VAD và word timestamps chính xác
-            segments, info = self.model.transcribe(
+            # 1. Trích xuất phụ đề với word_timestamps chính xác & VAD trên GPU CUDA
+            segments, info = fw_model.transcribe(
                 audio_path,
                 beam_size=5,
                 word_timestamps=True,
@@ -210,35 +199,77 @@ class WhisperXEngine(BaseSpeechEngine):
                 vad_parameters=dict(min_silence_duration_ms=400, speech_pad_ms=150)
             )
             detected_lang = info.language or "en"
-            for seg in segments:
-                s_start = round(seg.start, 2)
-                s_end = round(seg.end, 2)
+            seg_list = list(segments)
 
-                if hasattr(seg, "words") and seg.words:
-                    last_w = seg.words[-1]
-                    if last_w and getattr(last_w, "end", None):
-                        p_end = round(last_w.end + 0.15, 2)
-                        if p_end < s_end:
-                            s_end = p_end
+            # 2. Thử Forced Alignment nếu whisperx có sẵn
+            aligned_segments = None
+            try:
+                import whisperx
+                device = self.device if self.device != "auto" else "cuda"
+                audio = whisperx.load_audio(audio_path)
+                dict_segments = [
+                    {"start": s.start, "end": s.end, "text": s.text}
+                    for s in seg_list
+                ]
+                model_a, metadata = whisperx.load_align_model(language_code=detected_lang, device=device)
+                aligned_result = whisperx.align(dict_segments, model_a, metadata, audio, device, return_char_alignments=False)
+                aligned_segments = aligned_result.get("segments")
+            except Exception:
+                aligned_segments = None
 
-                if s_end <= s_start:
-                    s_end = round(s_start + 0.5, 2)
+            if aligned_segments:
+                for seg in aligned_segments:
+                    s_start = round(seg.get("start", 0.0), 2)
+                    s_end = round(seg.get("end", 0.0), 2)
+                    if s_end <= s_start:
+                        s_end = round(s_start + 0.5, 2)
+                    txt = seg.get("text", "").strip()
+                    if not txt:
+                        continue
+                    raw_segments.append({
+                        "id": len(raw_segments) + 1,
+                        "start": s_start,
+                        "end": s_end,
+                        "duration": round(s_end - s_start, 2),
+                        "text": txt,
+                        "original_text": txt,
+                        "translations": {
+                            detected_lang: txt
+                        }
+                    })
+            else:
+                for seg in seg_list:
+                    s_start = round(seg.start, 2)
+                    s_end = round(seg.end, 2)
 
-                txt = seg.text.strip()
-                if not txt:
-                    continue
+                    if hasattr(seg, "words") and seg.words:
+                        last_w = seg.words[-1]
+                        if last_w and getattr(last_w, "end", None):
+                            p_end = round(last_w.end + 0.15, 2)
+                            if p_end < s_end:
+                                s_end = p_end
 
-                raw_segments.append({
-                    "id": len(raw_segments) + 1,
-                    "start": s_start,
-                    "end": s_end,
-                    "duration": round(s_end - s_start, 2),
-                    "text": txt,
-                    "original_text": txt,
-                    "translations": {
-                        detected_lang: txt
-                    }
-                })
+                    if s_end <= s_start:
+                        s_end = round(s_start + 0.5, 2)
+
+                    txt = seg.text.strip()
+                    if not txt:
+                        continue
+
+                    raw_segments.append({
+                        "id": len(raw_segments) + 1,
+                        "start": s_start,
+                        "end": s_end,
+                        "duration": round(s_end - s_start, 2),
+                        "text": txt,
+                        "original_text": txt,
+                        "translations": {
+                            detected_lang: txt
+                        }
+                    })
+        except Exception as e:
+            print(f"[WhisperXEngine] Lỗi xử lý nhận diện: {e}")
+            raise e
 
         # Dịch thuật
         if task in ("transcribe_and_translate", "translate") and target_lang and detected_lang.lower() != target_lang.lower():

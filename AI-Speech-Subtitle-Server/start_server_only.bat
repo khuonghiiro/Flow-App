@@ -27,7 +27,7 @@ echo     [*] API Docs:          http://127.0.0.1:8765/docs
 echo ===============================================================================
 echo.
 
-.venv\Scripts\python.exe -m uvicorn backend.server:app --host 127.0.0.1 --port 8765 --workers 1
+.venv\Scripts\python.exe -m uvicorn backend.server:app --host 127.0.0.1 --port 8765 --workers 1 --reload
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

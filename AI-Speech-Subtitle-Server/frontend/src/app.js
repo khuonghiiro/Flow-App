@@ -622,6 +622,18 @@ function initStudioActions() {
       formData.append("device", device);
       formData.append("compute_type", computeType);
 
+      const isDiarize = document.getElementById("diarizeToggle")?.checked || false;
+      if (isDiarize) {
+        formData.append("enable_diarization", "true");
+        const numSpeakersVal = parseInt(document.getElementById("diarizeNumSpeakersSelect")?.value || "0", 10);
+        if (numSpeakersVal > 0) {
+          formData.append("num_speakers", numSpeakersVal);
+        }
+        if (window.characterProfiles && window.characterProfiles.length > 0) {
+          formData.append("character_samples", JSON.stringify(window.characterProfiles));
+        }
+      }
+
       const res = await fetch("/api/transcribe", {
         method: "POST",
         body: formData
@@ -755,7 +767,6 @@ function renderTimeline(segments, responseData) {
   stats.textContent = `${segments.length} câu`;
   if (viewModesContainer) viewModesContainer.style.display = "flex";
   container.innerHTML = "";
-
   const tgtLangCode = responseData.target_lang || "vi";
   const tgtInfo = LANG_FLAG_MAP[tgtLangCode] || { flag: "🌐", name: tgtLangCode.toUpperCase(), tag: tgtLangCode.toUpperCase() };
 
@@ -781,18 +792,34 @@ function renderTimeline(segments, responseData) {
     timeCol.appendChild(timeStampPill);
     timeCol.appendChild(durationText);
 
-    // Col 2: Content Column with Bilingual Display
+    // Col 2: Content Column with Bilingual Display & Speaker Tag
     const contentCol = document.createElement("div");
     contentCol.className = "timeline-content-col";
 
     const srcText = seg.original_text || seg.text || "";
-    const tgtText = seg.translated_text || (seg.translations && seg.translations[tgtLangCode]) || (responseData.translated ? seg.text : "");
+    const hasTranslation = Boolean(
+      responseData.translated &&
+      seg.translated_text &&
+      seg.translated_text.trim() !== "" &&
+      seg.translated_text.trim().toLowerCase() !== srcText.trim().toLowerCase()
+    );
+    const tgtText = hasTranslation ? seg.translated_text : "";
+    const spkName = seg.speaker || "SPEAKER_01";
+    const spkColor = seg.speaker_color || "#3b82f6";
+    const spkConf = Math.round((seg.speaker_confidence || 0.85) * 100);
 
-    // 1. Source Language Row (if mode is bilingual or source)
-    if (currentViewMode === "bilingual" || currentViewMode === "source") {
+    const spkBadgeHtml = `
+      <span class="speaker-badge-pill" style="color: ${spkColor}; border-color: ${spkColor};" onclick="editSegmentSpeaker(${idx})" title="Nhân vật: ${escapeHtml(spkName)} (${spkConf}%) - Click để gán lại nhân vật">
+        🎭 ${escapeHtml(spkName)}
+      </span>
+    `;
+
+    // 1. Source Language Row (Always shown for single language, or in bilingual/source mode)
+    if (!hasTranslation || currentViewMode === "bilingual" || currentViewMode === "source") {
       const srcRow = document.createElement("div");
       srcRow.className = "lang-row";
       srcRow.innerHTML = `
+        ${spkBadgeHtml}
         <span class="lang-tag-pill lang-tag-src">${langInfo.flag} ${langInfo.tag}</span>
         <span class="lang-text-src" contenteditable="true" title="Chỉnh sửa câu gốc">${escapeHtml(srcText)}</span>
       `;
@@ -805,13 +832,14 @@ function renderTimeline(segments, responseData) {
       contentCol.appendChild(srcRow);
     }
 
-    // 2. Translation Language Row (if mode is bilingual or translation, and translation exists)
-    if ((currentViewMode === "bilingual" || currentViewMode === "translation") && (tgtText || responseData.translated)) {
+    // 2. Translation Language Row (ONLY shown when there is an actual different translated text)
+    if (hasTranslation && (currentViewMode === "bilingual" || currentViewMode === "translation")) {
       const tgtRow = document.createElement("div");
       tgtRow.className = "lang-row";
       tgtRow.innerHTML = `
+        ${spkBadgeHtml}
         <span class="lang-tag-pill lang-tag-tgt">${tgtInfo.flag} ${tgtInfo.tag}</span>
-        <span class="lang-text-tgt" contenteditable="true" title="Chỉnh sửa câu dịch">${escapeHtml(tgtText || "⏳ Đang dịch...")}</span>
+        <span class="lang-text-tgt" contenteditable="true" title="Chỉnh sửa câu dịch">${escapeHtml(tgtText)}</span>
       `;
       const tgtTextEl = tgtRow.querySelector(".lang-text-tgt");
       tgtTextEl.addEventListener("blur", () => {
@@ -828,7 +856,7 @@ function renderTimeline(segments, responseData) {
 
     // Audio seek on click
     row.addEventListener("click", (e) => {
-      if (!e.target.isContentEditable) {
+      if (!e.target.isContentEditable && !e.target.classList.contains("speaker-badge-pill")) {
         const audio = document.getElementById("audioPlayer");
         if (audio && audio.src) {
           audio.currentTime = seg.start;
@@ -841,6 +869,27 @@ function renderTimeline(segments, responseData) {
   });
 }
 
+// Inline Speaker Editor
+function editSegmentSpeaker(idx) {
+  if (!currentSegments || !currentSegments[idx]) return;
+  const currentName = currentSegments[idx].speaker || "SPEAKER_01";
+  const newName = prompt(`Nhập tên nhân vật mới cho câu thoại #${idx + 1}:`, currentName);
+  if (newName !== null && newName.trim() !== "") {
+    currentSegments[idx].speaker = newName.trim();
+    currentSegments[idx].speaker_id = newName.trim();
+    
+    // Check if matches a known character profile color
+    const matchedProfile = window.characterProfiles.find(p => p.name.toLowerCase() === newName.trim().toLowerCase());
+    if (matchedProfile) {
+      currentSegments[idx].speaker_color = matchedProfile.color;
+    }
+
+    renderTimeline(currentSegments, currentAudioMeta);
+    showToast(`🎭 Đã đổi nhân vật câu #${idx + 1} thành "${newName.trim()}"!`, "success");
+  }
+}
+window.editSegmentSpeaker = editSegmentSpeaker;
+
 function escapeHtml(str) {
   if (!str) return "";
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -851,6 +900,7 @@ function roundNum(num) {
 }
 
 function formatTimeSec(sec) {
+  if (sec === undefined || sec === null || isNaN(sec)) return "00:00.00";
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   const ms = Math.floor((sec % 1) * 100);
@@ -858,6 +908,7 @@ function formatTimeSec(sec) {
 }
 
 function formatTimeSrt(sec) {
+  if (sec === undefined || sec === null || isNaN(sec)) return "00:00:00,000";
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
@@ -866,6 +917,7 @@ function formatTimeSrt(sec) {
 }
 
 function formatTimeAss(sec) {
+  if (sec === undefined || sec === null || isNaN(sec)) return "0:00:00.00";
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
@@ -874,10 +926,164 @@ function formatTimeAss(sec) {
 }
 
 // ==========================================================================
-// 9. Multi-format & Multi-language Subtitle Exporters
+// 8. Speaker Diarization & Character Sample Profiles Manager
+// ==========================================================================
+window.characterProfiles = [];
+
+const CHARACTER_PALETTE = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#ef4444", "#14b8a6"];
+
+function onDiarizeToggleChange() {
+  const isDiarize = document.getElementById("diarizeToggle").checked;
+  const body = document.getElementById("diarizationBody");
+  const sub = document.getElementById("diarizationSubDesc");
+
+  if (isDiarize) {
+    body.style.display = "block";
+    sub.textContent = "Đang bật phân tách nhân vật: AI sẽ tự động gán nhãn giọng nói hoặc khớp theo mẫu audio.";
+    renderCharacterProfiles();
+  } else {
+    body.style.display = "none";
+    sub.textContent = "Đang tắt phân tách nhân vật: Xuất phụ đề chuẩn không gán nhãn người nói.";
+  }
+}
+window.onDiarizeToggleChange = onDiarizeToggleChange;
+
+function addNewCharacterProfile() {
+  const count = window.characterProfiles.length + 1;
+  const color = CHARACTER_PALETTE[(count - 1) % CHARACTER_PALETTE.length];
+  window.characterProfiles.push({
+    name: `Nhân vật ${count}`,
+    color: color,
+    audio_base64: null,
+    fileName: null
+  });
+  renderCharacterProfiles();
+}
+window.addNewCharacterProfile = addNewCharacterProfile;
+
+function removeCharacterProfile(index) {
+  window.characterProfiles.splice(index, 1);
+  renderCharacterProfiles();
+}
+window.removeCharacterProfile = removeCharacterProfile;
+
+function renderCharacterProfiles() {
+  const container = document.getElementById("characterListContainer");
+  if (!container) return;
+
+  if (window.characterProfiles.length === 0) {
+    container.innerHTML = `
+      <div class="empty-characters-hint" id="emptyCharactersHint">
+        Chưa có nhân vật mẫu. AI sẽ tự động phân cụm <code>SPEAKER_01</code>, <code>SPEAKER_02</code>... hoặc bạn có thể bấm <strong>➕ Thêm Nhân Vật Mẫu</strong> để tải lên đoạn audio mẫu ngắn (3-5s) của từng người.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = "";
+  window.characterProfiles.forEach((char, idx) => {
+    const item = document.createElement("div");
+    item.className = "character-item";
+    item.innerHTML = `
+      <div class="character-color-dot" style="background: ${char.color};"></div>
+      <input type="text" class="character-name-input" value="${escapeHtml(char.name)}" onchange="window.characterProfiles[${idx}].name = this.value; window.characterProfiles[${idx}].speaker = this.value;" placeholder="Tên nhân vật...">
+      
+      <input type="file" id="charAudioInput-${idx}" accept="audio/*" style="display:none;" onchange="onCharacterAudioFileSelected(${idx}, this)">
+      <div class="character-sample-pill ${char.audio_base64 ? 'has-audio' : ''}" onclick="document.getElementById('charAudioInput-${idx}').click()" title="Click để tải lên đoạn giọng mẫu (3-5s)">
+        <span>${char.audio_base64 ? '🎵' : '📁'}</span>
+        <span>${char.fileName || 'Nạp mẫu audio'}</span>
+      </div>
+
+      <button class="btn-char-delete" onclick="removeCharacterProfile(${idx})" title="Xóa nhân vật này">🗑</button>
+    `;
+    container.appendChild(item);
+  });
+}
+window.renderCharacterProfiles = renderCharacterProfiles;
+
+function onCharacterAudioFileSelected(index, input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Data = e.target.result.split(",")[1];
+      window.characterProfiles[index].audio_base64 = base64Data;
+      window.characterProfiles[index].fileName = file.name;
+      renderCharacterProfiles();
+      showToast(`🎵 Đã nạp mẫu giọng cho "${window.characterProfiles[index].name}"!`, "success");
+    };
+    reader.readAsDataURL(file);
+  }
+}
+window.onCharacterAudioFileSelected = onCharacterAudioFileSelected;
+
+async function rediarizeCurrentTimeline() {
+  if (!currentSegments || currentSegments.length === 0) {
+    showToast("⚠️ Chưa có mốc timeline phụ đề để phân tách nhân vật!", "warning");
+    return;
+  }
+
+  const btn = document.getElementById("btnDiarizeNow");
+  btn.disabled = true;
+  btn.innerHTML = `⏳ Đang nhận diện &amp; khớp giọng nói...`;
+
+  try {
+    const numSpeakersVal = parseInt(document.getElementById("diarizeNumSpeakersSelect")?.value || "0", 10);
+    let res;
+
+    if (selectedAudioFile instanceof File) {
+      const fd = new FormData();
+      fd.append("file", selectedAudioFile);
+      fd.append("segments", JSON.stringify(currentSegments));
+      if (window.characterProfiles && window.characterProfiles.length > 0) {
+        fd.append("character_samples", JSON.stringify(window.characterProfiles));
+      }
+      if (numSpeakersVal > 0) {
+        fd.append("num_speakers", numSpeakersVal);
+      }
+      fd.append("similarity_threshold", 0.92);
+
+      res = await fetch("/api/identify-speakers", {
+        method: "POST",
+        body: fd
+      });
+    } else {
+      res = await fetch("/api/identify-speakers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audio_path: (selectedAudioFile && selectedAudioFile.path) ? selectedAudioFile.path : "",
+          segments: currentSegments,
+          character_samples: window.characterProfiles.length > 0 ? window.characterProfiles : null,
+          num_speakers: numSpeakersVal > 0 ? numSpeakersVal : null,
+          similarity_threshold: 0.92
+        })
+      });
+    }
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Lỗi phân tách nhân vật.");
+    }
+
+    const data = await res.json();
+    currentSegments = data.segments || currentSegments;
+    renderTimeline(currentSegments, currentAudioMeta);
+    showToast("🎉 Đã phân tách và cập nhật nhân vật trên Timeline thành công!", "success");
+  } catch (e) {
+    showToast(`❌ Lỗi: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<span>🎭</span> Phân Tách Lại (Timeline Hiện Tại)`;
+  }
+}
+window.rediarizeCurrentTimeline = rediarizeCurrentTimeline;
+
+// ==========================================================================
+// 9. Export Subtitles & FlowMy Integration
 // ==========================================================================
 
-// 9.1 Export Standard Multilingual JSON for App / FlowMy Import
+// 9.1 Export Multilingual JSON for App
 function exportMultilingualJSON() {
   if (!currentSegments || currentSegments.length === 0) {
     showToast("⚠️ Chưa có phụ đề để xuất file!", "error");
@@ -891,12 +1097,12 @@ function exportMultilingualJSON() {
     version: "1.0",
     engine: currentEngine,
     source_language: srcLang,
-    source_language_name: currentAudioMeta.language_name || srcLang,
+    source_language_name: currentAudioMeta.language_name || srcLang.toUpperCase(),
     total_segments: currentSegments.length,
     total_duration_seconds: currentAudioMeta.duration || 0,
     created_at: new Date().toISOString(),
     subtitles: currentSegments.map((seg, i) => {
-      const transMap = seg.translations || {};
+      const transMap = {};
       if (seg.original_text) transMap[srcLang] = seg.original_text;
       if (seg.translated_text) transMap[tgtLang] = seg.translated_text;
 
@@ -907,6 +1113,10 @@ function exportMultilingualJSON() {
         duration: seg.duration || roundNum(seg.end - seg.start),
         start_time: formatTimeSrt(seg.start),
         end_time: formatTimeSrt(seg.end),
+        speaker: seg.speaker || "SPEAKER_01",
+        speaker_id: seg.speaker_id || "SPEAKER_01",
+        speaker_confidence: seg.speaker_confidence || 0.85,
+        speaker_color: seg.speaker_color || "#3b82f6",
         text: seg.translated_text || seg.text,
         original_text: seg.original_text || seg.text,
         translations: transMap
@@ -915,7 +1125,7 @@ function exportMultilingualJSON() {
   };
 
   downloadFile(JSON.stringify(exportData, null, 2), `subtitles_multilingual_${Date.now()}.json`, "application/json");
-  showToast("📦 Đã xuất file JSON đa ngôn ngữ chuẩn App thành công!", "success");
+  showToast("📦 Đã xuất file JSON đa ngôn ngữ kèm Nhân Vật chuẩn App thành công!", "success");
 }
 
 // 9.2 Export Bilingual SRT (Line 1: Original text, Line 2: Translated text)
@@ -929,35 +1139,44 @@ function exportBilingualSRT() {
   currentSegments.forEach((seg, i) => {
     content += `${i + 1}\n`;
     content += `${formatTimeSrt(seg.start)} --> ${formatTimeSrt(seg.end)}\n`;
+    const spkTag = seg.speaker ? `[${seg.speaker}]: ` : "";
     if (seg.original_text && seg.translated_text && seg.original_text !== seg.translated_text) {
-      content += `${seg.original_text}\n${seg.translated_text}\n\n`;
+      content += `${spkTag}${seg.original_text}\n${seg.translated_text}\n\n`;
     } else {
-      content += `${seg.text}\n\n`;
+      content += `${spkTag}${seg.text}\n\n`;
     }
   });
 
   downloadFile(content, `subtitles_bilingual_${Date.now()}.srt`, "text/plain");
-  showToast("📄 Đã xuất file SRT Song Ngữ thành công!", "success");
+  showToast("📄 Đã xuất file SRT Song Ngữ kèm Nhân Vật thành công!", "success");
 }
 
-// 9.3 Export Bilingual ASS with Color Styles
+// 9.3 Export Bilingual ASS with Character Styles & Colors
 function exportBilingualASS() {
   if (!currentSegments || currentSegments.length === 0) {
     showToast("⚠️ Chưa có phụ đề để xuất file!", "error");
     return;
   }
 
+  // Generate distinct style for each character
+  const uniqueSpeakers = [...new Set(currentSegments.map(s => s.speaker || "Default"))];
+  let stylesSection = `Style: Default,Arial,22,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,15,1\nStyle: Translated,Arial,24,&H0000D7FF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,48,1\n`;
+
+  uniqueSpeakers.forEach((spk, idx) => {
+    if (spk !== "Default") {
+      stylesSection += `Style: ${spk},Arial,22,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,15,1\n`;
+    }
+  });
+
   let content = `[Script Info]
-Title: FlowMy Bilingual Subtitles
+Title: FlowMy Bilingual Subtitles with Speaker Diarization
 ScriptType: v4.00+
 PlayResX: 1920
 PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,22,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,15,1
-Style: Translated,Arial,24,&H0000D7FF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,48,1
-
+${stylesSection}
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
@@ -965,16 +1184,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   currentSegments.forEach((seg) => {
     const startT = formatTimeAss(seg.start);
     const endT = formatTimeAss(seg.end);
+    const spk = seg.speaker || "Default";
     if (seg.original_text && seg.translated_text && seg.original_text !== seg.translated_text) {
-      content += `Dialogue: 0,${startT},${endT},Translated,,0,0,0,,${seg.translated_text}\n`;
-      content += `Dialogue: 0,${startT},${endT},Default,,0,0,0,,${seg.original_text}\n`;
+      content += `Dialogue: 0,${startT},${endT},Translated,${spk},0,0,0,,${seg.translated_text}\n`;
+      content += `Dialogue: 0,${startT},${endT},${spk},${spk},0,0,0,,${seg.original_text}\n`;
     } else {
-      content += `Dialogue: 0,${startT},${endT},Default,,0,0,0,,${seg.text}\n`;
+      content += `Dialogue: 0,${startT},${endT},${spk},${spk},0,0,0,,${seg.text}\n`;
     }
   });
 
   downloadFile(content, `subtitles_bilingual_${Date.now()}.ass`, "text/plain");
-  showToast("🎨 Đã xuất file ASS Đa Sắc Song Ngữ thành công!", "success");
+  showToast("🎨 Đã xuất file ASS Đa Sắc Song Ngữ theo Nhân Vật thành công!", "success");
 }
 
 // 9.4 Export Single Language SRT
@@ -988,13 +1208,14 @@ function exportSingleSRT(type = "translated") {
   currentSegments.forEach((seg, i) => {
     content += `${i + 1}\n`;
     content += `${formatTimeSrt(seg.start)} --> ${formatTimeSrt(seg.end)}\n`;
+    const spkTag = seg.speaker ? `[${seg.speaker}]: ` : "";
     const textOut = (type === "source") ? (seg.original_text || seg.text) : (seg.translated_text || seg.text);
-    content += `${textOut}\n\n`;
+    content += `${spkTag}${textOut}\n\n`;
   });
 
   const label = type === "source" ? "goc" : "dich";
   downloadFile(content, `subtitles_${label}_${Date.now()}.srt`, "text/plain");
-  showToast(`💾 Đã xuất file SRT ${type === "source" ? "Bản Gốc" : "Bản Dịch"} thành công!`, "success");
+  showToast(`💾 Đã xuất file SRT ${type === "source" ? "Bản Gốc" : "Bản Dịch"} kèm Nhân Vật thành công!`, "success");
 }
 
 // 9.5 Export Plain Text
@@ -1483,5 +1704,90 @@ async function executeSwaggerJsonPost(path, inputId, cardKey) {
   }
 }
 window.executeSwaggerJsonPost = executeSwaggerJsonPost;
+
+function resetSwaggerIdentifySpeakersJson() {
+  const el = document.getElementById("swJsonInput-identify-speakers");
+  if (el) {
+    el.value = JSON.stringify({
+      audio_path: "D:\\UngDung_PC\\Flow-App\\audio_sample.mp3",
+      similarity_threshold: 0.68,
+      character_samples: [
+        {
+          name: "Nam Chính",
+          audio_path: "D:\\UngDung_PC\\Flow-App\\sample_nam.mp3"
+        },
+        {
+          name: "Nữ Chính",
+          audio_path: "D:\\UngDung_PC\\Flow-App\\sample_nu.mp3"
+        }
+      ],
+      segments: [
+        {
+          id: 1,
+          start: 1.2,
+          end: 4.5,
+          text: "Chào em, em đang đi đâu đấy?"
+        },
+        {
+          id: 2,
+          start: 6.0,
+          end: 8.5,
+          text: "Em đang chuẩn bị đến trường đây."
+        }
+      ]
+    }, null, 2);
+    showToast("🔄 Đã khôi phục mẫu JSON /api/identify-speakers!", "info");
+  }
+}
+window.resetSwaggerIdentifySpeakersJson = resetSwaggerIdentifySpeakersJson;
+
+async function executeSwaggerIdentifySpeakers() {
+  const btn = document.getElementById("swBtnExec-identify-speakers");
+  const panel = document.getElementById("swResponsePanel-identify-speakers");
+  const statusPill = document.getElementById("swStatusPill-identify-speakers");
+  const timePill = document.getElementById("swTimePill-identify-speakers");
+  const bodyEl = document.getElementById("swResponseBody-identify-speakers");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Đang phân tách...";
+  panel.style.display = "block";
+  bodyEl.textContent = "Đang trích xuất vector giọng nói và phân tách nhân vật...";
+
+  const t0 = performance.now();
+  try {
+    const jsonStr = document.getElementById("swJsonInput-identify-speakers")?.value || "{}";
+    const payload = JSON.parse(jsonStr);
+
+    const res = await fetch("/api/identify-speakers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const elapsed = Math.round(performance.now() - t0);
+    const data = await res.json();
+
+    statusPill.textContent = `${res.status} ${res.statusText || (res.ok ? "OK" : "Error")}`;
+    statusPill.className = `swagger-status-pill status-${res.ok ? "200" : "500"}`;
+    timePill.textContent = `⚡ ${elapsed}ms`;
+    bodyEl.textContent = JSON.stringify(data, null, 2);
+
+    if (res.ok) {
+      showToast(`🎉 Phân tách nhân vật thành công trong ${elapsed}ms!`, "success");
+    }
+  } catch (err) {
+    const elapsed = Math.round(performance.now() - t0);
+    statusPill.textContent = `Lỗi Client`;
+    statusPill.className = `swagger-status-pill status-500`;
+    timePill.textContent = `⚡ ${elapsed}ms`;
+    bodyEl.textContent = `Lỗi: ${err.message}`;
+    showToast(`❌ Lỗi: ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⚡ Thực Thi API (Execute)";
+  }
+}
+window.executeSwaggerIdentifySpeakers = executeSwaggerIdentifySpeakers;
+
 
 

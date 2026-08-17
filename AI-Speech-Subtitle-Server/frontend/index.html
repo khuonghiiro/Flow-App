@@ -247,6 +247,61 @@
             </div>
           </div>
 
+          <!-- Speaker Diarization & Character Sample Manager -->
+          <div class="diarization-card">
+            <div class="diarization-header">
+              <div class="diarization-info">
+                <div class="diarization-title">
+                  <span>🎭</span> Phân Tách &amp; Nhận Diện Nhân Vật (Diarization)
+                </div>
+                <div class="diarization-sub" id="diarizationSubDesc">
+                  Tự động gán SPEAKER_01, SPEAKER_02... hoặc nhận diện chính xác theo danh sách mẫu giọng.
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="diarizeToggle" onchange="onDiarizeToggleChange()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="diarization-body" id="diarizationBody" style="display: none;">
+              <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label" for="diarizeNumSpeakersSelect" style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>👥 Số lượng nhân vật ước lượng trong Audio:</span>
+                  <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(Giúp gom cụm chính xác số giọng)</span>
+                </label>
+                <select id="diarizeNumSpeakersSelect" class="form-select">
+                  <option value="0" selected>⚡ Tự động nhận diện tối ưu (Auto Detect)</option>
+                  <option value="1">1 người (Độc thoại)</option>
+                  <option value="2">2 người (Hội thoại đôi)</option>
+                  <option value="3">3 người</option>
+                  <option value="4">4 người</option>
+                  <option value="5">5 người</option>
+                  <option value="6">6 người</option>
+                  <option value="7">7 người</option>
+                  <option value="8">8 người</option>
+                </select>
+              </div>
+
+              <div class="character-section-header">
+                <span class="character-section-title">Danh Sách Nhân Vật Mẫu (Khớp Giọng Nói):</span>
+                <button class="btn btn-secondary btn-xs" onclick="addNewCharacterProfile()">➕ Thêm Nhân Vật Mẫu</button>
+              </div>
+
+              <div class="character-list-container" id="characterListContainer">
+                <div class="empty-characters-hint" id="emptyCharactersHint">
+                  Chưa có nhân vật mẫu. AI sẽ tự động phân cụm <code>SPEAKER_01</code>, <code>SPEAKER_02</code>... hoặc bạn có thể bấm <strong>➕ Thêm Nhân Vật Mẫu</strong> để tải lên đoạn audio mẫu ngắn (3-5s) của từng người.
+                </div>
+              </div>
+
+              <div class="diarization-action-row">
+                <button class="btn btn-diarize-now" id="btnDiarizeNow" onclick="rediarizeCurrentTimeline()" title="Nhận diện lại nhân vật cho timeline hiện tại theo danh sách mẫu giọng">
+                  <span>🎭</span> Phân Tách Lại (Timeline Hiện Tại)
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Dropzone -->
           <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none;">
           <div class="dropzone" id="dropzone">
@@ -630,6 +685,91 @@
               </div>
               <div class="swagger-response-body">
                 <pre><code id="swResponseBody-translate">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Endpoint: POST /api/identify-speakers -->
+        <div class="swagger-card" id="card-identify-speakers">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-identify-speakers')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-post">POST</span>
+              <span class="swagger-path">/api/identify-speakers</span>
+              <span class="swagger-summary">Phân tách nhân vật &amp; so khớp giọng nói mẫu (Voice Diarization)</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Nhận Diện Giọng</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Nhận diện và gán tên nhân vật cho danh sách các câu trong timeline phụ đề dựa trên vector âm sắc (Voiceprint Embeddings) hoặc so khớp với các đoạn audio mẫu của từng nhân vật mà bạn truyền vào.
+            </div>
+
+            <div class="swagger-section-title">Tham Số Gửi Đi (JSON Payload):</div>
+            <div class="swagger-input-container">
+              <div class="swagger-editor-header">
+                <span>Content-Type: <code>application/json</code></span>
+                <div class="swagger-editor-actions">
+                  <button class="btn btn-secondary btn-xs" onclick="resetSwaggerIdentifySpeakersJson()">🔄 Khôi Phục Mẫu</button>
+                  <button class="btn btn-secondary btn-xs" onclick="copyElementText('swJsonInput-identify-speakers')">📋 Sao Chép Body</button>
+                </div>
+              </div>
+              <textarea id="swJsonInput-identify-speakers" class="swagger-textarea" rows="9">{
+  "audio_path": "D:\\UngDung_PC\\Flow-App\\audio_sample.mp3",
+  "similarity_threshold": 0.68,
+  "character_samples": [
+    {
+      "name": "Nam Chính",
+      "audio_path": "D:\\UngDung_PC\\Flow-App\\sample_nam.mp3"
+    },
+    {
+      "name": "Nữ Chính",
+      "audio_path": "D:\\UngDung_PC\\Flow-App\\sample_nu.mp3"
+    }
+  ],
+  "segments": [
+    {
+      "id": 1,
+      "start": 1.2,
+      "end": 4.5,
+      "text": "Chào em, em đang đi đâu đấy?"
+    },
+    {
+      "id": 2,
+      "start": 6.0,
+      "end": 8.5,
+      "text": "Em đang chuẩn bị đến trường đây."
+    }
+  ]
+}</textarea>
+            </div>
+
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" id="swBtnExec-identify-speakers" onclick="executeSwaggerIdentifySpeakers()">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlJsonPost('/api/identify-speakers', 'swJsonInput-identify-speakers')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/identify-speakers')">
+                🔗 Copy URL
+              </button>
+            </div>
+
+            <div class="swagger-response-panel" id="swResponsePanel-identify-speakers" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-identify-speakers">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-identify-speakers">⚡ 110ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-identify-speakers')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-identify-speakers">// Kết quả JSON trả về từ Server...</code></pre>
               </div>
             </div>
           </div>

@@ -10,6 +10,10 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 # Cấu hình UTF-8 cho console Windows
 try:
     if sys.stdout and hasattr(sys.stdout, "reconfigure"):
@@ -31,6 +35,7 @@ from .engines.faster_whisper_engine import FasterWhisperEngine
 from .engines.whisperx_engine import WhisperXEngine
 from .engines.sensevoice_engine import SenseVoiceEngine
 from .engines.seamless_m4t_engine import SeamlessM4TEngine
+from .engines.speaker_diarizer import get_global_diarizer
 
 app = FastAPI(
     title="FlowMy AI Speech-to-Subtitle Server",
@@ -323,27 +328,127 @@ def clear_all_models_endpoint():
     success = model_manager.clear_all_models()
     return {"status": "success" if success else "failed"}
 
+@app.post("/api/identify-speakers")
+async def identify_speakers_endpoint(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    audio_path: Optional[str] = Form(None),
+    segments: Optional[str] = Form(None),
+    character_samples: Optional[str] = Form(None),
+    num_speakers: Optional[int] = Form(None),
+    similarity_threshold: Optional[float] = Form(0.92)
+):
+    """
+    Endpoint phân tách và nhận diện nhân vật cho danh sách timeline hiện có
+    Hỗ trợ cả JSON body và Multipart Form (khi gọi từ Web UI)
+    """
+    temp_file_to_clean = None
+    target_audio_path = None
+    segs_list = []
+    char_samples_list = None
+    n_speakers = None
+    sim_thresh = 0.92
+
+    content_type = request.headers.get("content-type", "")
+
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        target_audio_path = body.get("audio_path")
+        segs_list = body.get("segments", [])
+        char_samples_list = body.get("character_samples") or body.get("characters")
+        n_speakers = body.get("num_speakers")
+        sim_thresh = body.get("similarity_threshold", 0.65)
+    elif file is not None:
+        suffix = Path(file.filename).suffix if file.filename else ".wav"
+        fd, temp_path = tempfile.mkstemp(prefix="flowmy_diarize_", suffix=suffix)
+        os.close(fd)
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        target_audio_path = temp_path
+        temp_file_to_clean = temp_path
+        if segments:
+            try:
+                segs_list = json.loads(segments)
+            except Exception:
+                segs_list = []
+        if character_samples:
+            try:
+                char_samples_list = json.loads(character_samples)
+            except Exception:
+                char_samples_list = None
+        n_speakers = num_speakers
+        sim_thresh = similarity_threshold or 0.65
+    elif audio_path is not None:
+        target_audio_path = audio_path
+        if segments:
+            try:
+                segs_list = json.loads(segments)
+            except Exception:
+                segs_list = []
+        if character_samples:
+            try:
+                char_samples_list = json.loads(character_samples)
+            except Exception:
+                char_samples_list = None
+        n_speakers = num_speakers
+        sim_thresh = similarity_threshold or 0.65
+
+    if not target_audio_path or not os.path.exists(target_audio_path):
+        raise HTTPException(status_code=400, detail="Thiếu file audio hoặc đường dẫn audio_path hợp lệ để phân tách nhân vật.")
+
+    try:
+        diarizer = get_global_diarizer()
+        updated_segs = diarizer.diarize_and_identify(
+            audio_path=target_audio_path,
+            segments=segs_list,
+            character_samples=char_samples_list,
+            num_speakers=n_speakers,
+            similarity_threshold=sim_thresh
+        )
+        return {
+            "status": "success",
+            "total_segments": len(updated_segs),
+            "segments": updated_segs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi phân tách nhân vật: {str(e)}")
+    finally:
+        if temp_file_to_clean and os.path.exists(temp_file_to_clean):
+            try:
+                os.remove(temp_file_to_clean)
+            except Exception:
+                pass
+
 @app.post("/api/transcribe")
 async def transcribe_endpoint(
     request: Request,
     file: Optional[UploadFile] = File(None),
     audio_path: Optional[str] = Form(None),
-    chunkIndex: Optional[int] = Form(0),
-    engine: Optional[str] = Form("faster-whisper"),
-    model_size: Optional[str] = Form("small"),
-    enable_translate: Optional[bool] = Form(False),
-    target_lang: Optional[str] = Form("vi"),
-    task: Optional[str] = Form("transcribe"),
-    device: Optional[str] = Form("auto"),
-    compute_type: Optional[str] = Form("default"),
-    vad_filter: Optional[bool] = Form(True)
+    chunkIndex: Optional[int] = Form(None),
+    engine: Optional[str] = Form(None),
+    model_size: Optional[str] = Form(None),
+    enable_translate: Optional[bool] = Form(None),
+    task: Optional[str] = Form(None),
+    target_lang: Optional[str] = Form(None),
+    device: Optional[str] = Form(None),
+    compute_type: Optional[str] = Form(None),
+    vad_filter: bool = Form(True),
+    enable_diarization: Optional[bool] = Form(None),
+    num_speakers: Optional[int] = Form(None),
+    character_samples: Optional[str] = Form(None) # JSON string list if passed in form
 ):
     """
-    Endpoint chính nhận diện giọng nói, tự động phát hiện ngôn ngữ & dịch phụ đề
+    Endpoint chính nhận diện giọng nói, tự động phát hiện ngôn ngữ, dịch phụ đề & phân tách nhân vật
     Hỗ trợ cả JSON body (FlowMy HttpRequestNode) và Multipart Form (Web UI)
     """
     temp_file_to_clean = None
     target_audio_path = None
+    char_samples_list = None
+    is_diarize = False
+    n_speakers = None
 
     content_type = request.headers.get("content-type", "")
 
@@ -365,6 +470,9 @@ async def transcribe_endpoint(
         dev = body.get("device", "auto")
         comp = body.get("compute_type", "default")
         vad = body.get("vad_filter", True)
+        is_diarize = body.get("enable_diarization", False)
+        n_speakers = body.get("num_speakers")
+        char_samples_list = body.get("character_samples") or body.get("characters")
     elif file is not None:
         # Multipart upload file từ Web UI
         suffix = Path(file.filename).suffix if file.filename else ".wav"
@@ -383,6 +491,13 @@ async def transcribe_endpoint(
         dev = device or "auto"
         comp = compute_type or "default"
         vad = vad_filter
+        is_diarize = enable_diarization if enable_diarization is not None else False
+        n_speakers = num_speakers
+        if character_samples:
+            try:
+                char_samples_list = json.loads(character_samples)
+            except Exception:
+                char_samples_list = None
     elif audio_path is not None:
         target_audio_path = audio_path
         chunk_idx = chunkIndex or 0
@@ -394,6 +509,13 @@ async def transcribe_endpoint(
         dev = device or "auto"
         comp = compute_type or "default"
         vad = vad_filter
+        is_diarize = enable_diarization if enable_diarization is not None else False
+        n_speakers = num_speakers
+        if character_samples:
+            try:
+                char_samples_list = json.loads(character_samples)
+            except Exception:
+                char_samples_list = None
     else:
         raise HTTPException(status_code=400, detail="Thiếu file audio hoặc đường dẫn audio_path.")
 
@@ -417,6 +539,20 @@ async def transcribe_endpoint(
         result["language_name"] = lang_name
         result["translated"] = bool(is_translate and tgt_lang and lang_code != tgt_lang.lower()[:2])
         result["target_lang"] = tgt_lang if result["translated"] else None
+
+        # 3. Phân tách nhân vật & nhận diện giọng nói nếu được bật
+        if is_diarize or char_samples_list:
+            try:
+                diarizer = get_global_diarizer()
+                result["segments"] = diarizer.diarize_and_identify(
+                    audio_path=target_audio_path,
+                    segments=result.get("segments", []),
+                    character_samples=char_samples_list,
+                    num_speakers=n_speakers
+                )
+                result["has_speakers"] = True
+            except Exception as d_err:
+                print(f"[SpeakerDiarizer] Cảnh báo lỗi phân tách nhân vật: {d_err}")
 
         return result
     except Exception as e:
