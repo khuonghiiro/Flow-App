@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlowMy AI Speech-to-Subtitle Studio &amp; REST API Server</title>
+  <title>FlowMy AI Speech-to-Subtitle Studio &amp; Swagger REST API Explorer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
@@ -16,240 +16,957 @@
       <div class="logo-group">
         <div class="logo-icon">🎙️</div>
         <div class="logo-text">
-          <h1>AI Speech-to-Subtitle Studio</h1>
-          <p>Tách mốc thời gian phụ đề &amp; Dịch thuật đa ngôn ngữ (4 Engine AI)</p>
+          <h1>AI Speech-to-Subtitle Studio &amp; API Server</h1>
+          <p>Tách lời thoại &amp; phụ đề phim song ngữ thời gian thực • Dịch AI Đa Ngôn Ngữ • Hỗ trợ GPU CUDA</p>
         </div>
       </div>
-      <div class="header-status">
-        <div class="badge-pill">
+      <div class="header-actions">
+        <!-- VRAM Active Model Pill Badge -->
+        <div class="vram-active-badge" id="vramActiveBadge" title="Trạng thái model đang nạp trong RAM/VRAM GPU">
+          <span class="pulse-dot"></span>
+          <span id="vramActiveText">⚡ Chưa nạp model</span>
+        </div>
+        <!-- Theme Toggle Button -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng / Tối">
+          <span class="theme-icon" id="themeIcon">🌙</span>
+          <span class="theme-label" id="themeLabel">Giao diện Tối</span>
+        </button>
+        <!-- Server Status Badge -->
+        <div class="badge-pill status-ready">
           <div class="dot-live"></div>
           <span>Server Sẵn Sàng (Port 8765)</span>
         </div>
       </div>
     </header>
 
-    <!-- Hardware Advisor Banner -->
-    <div class="advisor-banner">
-      <div class="advisor-left">
-        <div class="advisor-icon">💡</div>
-        <div>
-          <div class="advisor-title">Tư Vấn Tối Ưu Cấu Hình Máy Tính &amp; Số Luồng Song Song</div>
-          <div class="advisor-desc" id="advisorDesc">Đang phân tích cấu hình phần cứng GPU, VRAM và CPU của máy...</div>
-        </div>
-      </div>
-      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-        <div class="badge-pill" id="concurrencyBadge" style="background:rgba(59,130,246,0.15); border-color:#3b82f6; color:#60a5fa;">
-          ⚡ Khuyến nghị: Đang tính toán...
-        </div>
-        <div class="hardware-chips">
-          <div class="chip">GPU: <strong id="gpuName">--</strong></div>
-          <div class="chip">VRAM: <strong id="vramSize">--</strong></div>
-          <div class="chip">CPU: <strong id="cpuThreads">--</strong></div>
-          <div class="chip">RAM: <strong id="ramSize">--</strong></div>
-        </div>
-      </div>
-    </div>
+    <!-- Main Navigation Tabs (Studio & Swagger Explorer) -->
+    <nav class="main-nav-tabs">
+      <button class="nav-tab-btn active" id="tabBtnStudio" onclick="switchMainTab('studio')">
+        <span class="nav-icon">🎙️</span>
+        <span class="nav-text">Studio Tách Phụ Đề &amp; Dịch AI</span>
+      </button>
+      <button class="nav-tab-btn" id="tabBtnSwagger" onclick="switchMainTab('swagger')">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-text">Swagger API Explorer (Test &amp; Copy)</span>
+        <span class="nav-badge">OpenAPI 3.0</span>
+      </button>
+      <a href="/docs" target="_blank" class="nav-tab-btn nav-link-external" title="Mở tài liệu OpenAPI / Swagger UI chuẩn của FastAPI trong tab mới">
+        <span class="nav-icon">📖</span>
+        <span class="nav-text">Swagger UI Gốc (/docs)</span>
+        <span class="external-icon">↗</span>
+      </a>
+    </nav>
 
-    <!-- 4 AI Project Selection Cards -->
-    <div class="section-title">
-      <span>⚡ Chọn Dự Án AI Phù Hợp Với Cấu Hình Máy</span>
-    </div>
-    <div class="engine-grid">
-      <!-- Engine 1: Faster-Whisper + NLLB -->
-      <div class="engine-card active" data-engine="faster-whisper">
-        <div class="card-top">
-          <div class="engine-tag tag-recommended">Khuyên dùng nhất</div>
-          <div style="font-size:18px;">⚡</div>
-        </div>
-        <div class="card-title">1. Faster-Whisper + NLLB</div>
-        <div class="card-desc">Cân bằng hoàn hảo giữa tốc độ và độ chính xác mốc thời gian. Dịch sang tiếng Việt tự nhiên qua Meta NLLB-200.</div>
-        <div class="card-meta">
-          <span>Yêu cầu: GPU 4-8GB VRAM</span>
-          <span>• Tốc độ: 4x</span>
-        </div>
-      </div>
-
-      <!-- Engine 2: WhisperX Alignment -->
-      <div class="engine-card" data-engine="whisperx">
-        <div class="card-top">
-          <div class="engine-tag tag-precise">Chính xác từng từ</div>
-          <div style="font-size:18px;">🎯</div>
-        </div>
-        <div class="card-title">2. WhisperX Alignment</div>
-        <div class="card-desc">Độ chính xác mốc thời gian cao nhất thế giới (Forced Alignment), căn chỉnh chuẩn xác đến từng từ cho video dài.</div>
-        <div class="card-meta">
-          <span>Yêu cầu: GPU &gt;= 8GB VRAM</span>
-          <span>• Độ chuẩn: Cao nhất</span>
-        </div>
-      </div>
-
-      <!-- Engine 3: SenseVoice Ultra-Fast -->
-      <div class="engine-card" data-engine="sensevoice">
-        <div class="card-top">
-          <div class="engine-tag tag-fast">Siêu tốc độ / CPU</div>
-          <div style="font-size:18px;">🚀</div>
-        </div>
-        <div class="card-title">3. SenseVoice Ultra-Fast</div>
-        <div class="card-desc">Mô hình siêu nhẹ của Alibaba. Tốc độ nhận diện nhanh gấp 10x Whisper, chạy mượt mà ngay cả trên máy không có GPU rời.</div>
-        <div class="card-meta">
-          <span>Yêu cầu: Thuần CPU / Máy yếu</span>
-          <span>• Tốc độ: 10x</span>
-        </div>
-      </div>
-
-      <!-- Engine 4: Meta SeamlessM4T v2 -->
-      <div class="engine-card" data-engine="seamless-m4t">
-        <div class="card-top">
-          <div class="engine-tag tag-pro">All-in-One Pro</div>
-          <div style="font-size:18px;">🌐</div>
-        </div>
-        <div class="card-title">4. Meta SeamlessM4T v2</div>
-        <div class="card-desc">Model dịch trực tiếp giọng nói sang văn bản đa ngôn ngữ All-in-One của Meta AI không cần qua 2 bước trung gian.</div>
-        <div class="card-meta">
-          <span>Yêu cầu: GPU &gt;= 12GB VRAM</span>
-          <span>• Đa ngôn ngữ</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Studio Grid -->
-    <div class="studio-grid">
-      <!-- Left Column: Audio Input & Settings -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2><span>🎛️</span> Cấu Hình Chuyển Đổi &amp; Tệp Audio</h2>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="targetLangSelect">Ngôn ngữ dịch phụ đề</label>
-            <select class="form-select" id="targetLangSelect" onchange="updateApiSnippet()">
-              <option value="vi" selected>🇻🇳 Tiếng Việt (Vietnamese)</option>
-              <option value="en">🇺🇸 Tiếng Anh (English)</option>
-              <option value="zh">🇨🇳 Tiếng Trung (Chinese)</option>
-              <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
-              <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
-              <option value="fr">🇫🇷 Tiếng Pháp (French)</option>
-              <option value="de">🇩🇪 Tiếng Đức (German)</option>
-              <option value="es">🇪🇸 Tiếng TBN (Spanish)</option>
-              <option value="ru">🇷🇺 Tiếng Nga (Russian)</option>
-              <option value="th">🇹🇭 Tiếng Thái (Thai)</option>
-            </select>
+    <!-- ==================================================================== -->
+    <!-- VIEW 1: STUDIO (Default View) -->
+    <!-- ==================================================================== -->
+    <main id="viewStudio" class="main-view active">
+      <!-- Hardware Advisor Banner -->
+      <div class="advisor-banner">
+        <div class="advisor-left">
+          <div class="advisor-icon">💡</div>
+          <div>
+            <div class="advisor-title">Tư Vấn Tối Ưu Cấu Hình Máy Tính &amp; Số Luồng Song Song</div>
+            <div class="advisor-desc" id="advisorDesc">Đang phân tích cấu hình phần cứng GPU, VRAM và CPU của máy...</div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="modelSizeSelect">Kích thước Model AI</label>
-            <select class="form-select" id="modelSizeSelect" onchange="updateApiSnippet()">
-              <option value="tiny">Tiny (39M params - Nhanh nhất)</option>
-              <option value="base">Base (74M params - Nhẹ)</option>
-              <option value="small" selected>Small (244M params - Cân bằng)</option>
-              <option value="medium">Medium (769M params - Chuẩn cao)</option>
-              <option value="large-v3">Large-v3 (1.5B params - Tốt nhất)</option>
-              <option value="large-v3-turbo">Large-v3 Turbo (Tối ưu)</option>
-            </select>
+        </div>
+        <div class="advisor-right">
+          <div class="badge-pill concurrency-pill" id="concurrencyBadge">
+            ⚡ Khuyến nghị: Đang tính toán...
+          </div>
+          <div class="hardware-chips">
+            <div class="chip">GPU: <strong id="gpuName">--</strong></div>
+            <div class="chip">VRAM: <strong id="vramSize">--</strong></div>
+            <div class="chip">CPU: <strong id="cpuThreads">--</strong></div>
+            <div class="chip">RAM: <strong id="ramSize">--</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 AI Project Selection Cards -->
+      <div class="section-title">
+        <span>⚡ 1. Chọn Engine AI Phù Hợp Với Cấu Hình</span>
+      </div>
+      <div class="engine-grid">
+        <!-- Engine 1: Faster-Whisper + NLLB -->
+        <div class="engine-card active" data-engine="faster-whisper">
+          <div class="card-top">
+            <div class="engine-tag tag-recommended">Khuyên dùng nhất</div>
+            <div class="card-status-badge" id="cardStatus-faster-whisper">🟢 Đã có model</div>
+          </div>
+          <div class="card-title">1. Faster-Whisper + NLLB</div>
+          <div class="card-desc">Cân bằng hoàn hảo giữa tốc độ và độ chuẩn mốc thời gian. Tự động nhận diện ngôn ngữ audio và dịch chuẩn xác.</div>
+          <div class="card-meta">
+            <span>Yêu cầu: GPU 4-8GB VRAM</span>
+            <span>• Tốc độ: 4x</span>
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="deviceSelect">Thiết bị xử lý (Device)</label>
-            <select class="form-select" id="deviceSelect">
-              <option value="auto" selected>⚡ Tự động (Ưu tiên CUDA GPU)</option>
-              <option value="cuda">🟢 NVIDIA CUDA (GPU)</option>
-              <option value="cpu">🔵 CPU Mode (Đa nhân)</option>
-            </select>
+        <!-- Engine 2: WhisperX Alignment -->
+        <div class="engine-card" data-engine="whisperx">
+          <div class="card-top">
+            <div class="engine-tag tag-precise">Chính xác từng từ</div>
+            <div class="card-status-badge" id="cardStatus-whisperx">🟢 Đã có model</div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="computeTypeSelect">Định dạng số (Compute Type)</label>
-            <select class="form-select" id="computeTypeSelect">
-              <option value="default" selected>Mặc định theo phần cứng</option>
-              <option value="float16">float16 (Tối ưu GPU)</option>
-              <option value="int8_float16">int8_float16 (Tiết kiệm VRAM)</option>
-              <option value="int8">int8 (Tối ưu CPU)</option>
-            </select>
+          <div class="card-title">2. WhisperX Alignment</div>
+          <div class="card-desc">Độ chính xác mốc thời gian cao nhất (Forced Alignment), căn chỉnh chuẩn xác đến từng từ cho video dài.</div>
+          <div class="card-meta">
+            <span>Yêu cầu: GPU &gt;= 8GB VRAM</span>
+            <span>• Độ chuẩn: Từng từ</span>
           </div>
         </div>
 
-        <!-- Dropzone -->
-        <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none;">
-        <div class="dropzone" id="dropzone">
-          <div class="dropzone-icon">📁</div>
-          <div class="dropzone-text" id="dropzoneText">Kéo thả file Audio vào đây hoặc Click để chọn</div>
-          <div class="dropzone-sub" id="dropzoneSub">Hỗ trợ: MP3, WAV, M4A, AAC, FLAC, MP4, MKV...</div>
-        </div>
-
-        <!-- Audio Player Box -->
-        <div class="audio-player-box" id="audioPlayerBox">
-          <audio id="audioPlayer" controls></audio>
-        </div>
-
-        <!-- Action Button -->
-        <button class="btn btn-primary" id="btnProcess">
-          <span>🚀</span> Bắt Đầu Chuyển Đổi &amp; Dịch Phụ Đề
-        </button>
-      </div>
-
-      <!-- Right Column: Subtitle Timeline Preview -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2><span>📝</span> Bảng Mốc Thời Gian Phụ Đề (Timeline)</h2>
-          <span style="font-size:11px; color:#60a5fa; font-weight:600;" id="timelineStats">0 câu</span>
-        </div>
-
-        <div class="timeline-container" id="timelineContainer">
-          <div class="empty-timeline">
-            Chọn file audio bên trái và nhấn <strong>Bắt đầu chuyển đổi</strong> để tạo phụ đề.
+        <!-- Engine 3: SenseVoice Ultra-Fast -->
+        <div class="engine-card" data-engine="sensevoice">
+          <div class="card-top">
+            <div class="engine-tag tag-fast">Siêu tốc độ / CPU</div>
+            <div class="card-status-badge" id="cardStatus-sensevoice">⚪ Chưa tải</div>
+          </div>
+          <div class="card-title">3. SenseVoice Ultra-Fast</div>
+          <div class="card-desc">Mô hình siêu nhẹ của Alibaba. Tốc độ nhận diện nhanh gấp 10x Whisper, chạy mượt mà ngay cả trên CPU không có GPU rời.</div>
+          <div class="card-meta">
+            <span>Yêu cầu: Thuần CPU / Máy yếu</span>
+            <span>• Tốc độ: 10x</span>
           </div>
         </div>
 
-        <div style="display:flex; gap:10px; margin-top:14px;">
-          <button class="btn btn-secondary btn-sm" id="btnExportSrt">💾 Xuất File .SRT</button>
-          <button class="btn btn-secondary btn-sm" id="btnExportAss">💾 Xuất File .ASS</button>
-          <button class="btn btn-secondary btn-sm" id="btnExportJson">💾 Xuất File .JSON</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bottom Grid: Model Cache & FlowMy API Integration -->
-    <div class="bottom-grid">
-      <!-- Model Cache Manager -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2><span>📂</span> Quản Lý Bộ Nhớ Model AI</h2>
-          <span style="font-size:11px; color:#f59e0b; font-weight:600;" id="totalModelSize">0 MB</span>
-        </div>
-        <div style="font-size:11px; color:#94a3b8; margin-bottom:10px;">
-          Thư mục lưu trữ: <code id="modelsDirText" style="color:#60a5fa; background:#0f172a; padding:2px 6px; border-radius:4px;">models/</code>
-        </div>
-        <div id="installedModelsList" style="max-height:180px; overflow-y:auto; margin-bottom:10px;">
-          <!-- Loaded dynamically -->
-        </div>
-        <div style="font-size:10.5px; color:#64748b;">
-          💡 Model sẽ tự động tải về khi gọi lần đầu. Bạn có thể bấm <strong>🗑 Xóa</strong> để giải phóng ổ cứng bất cứ khi nào.
+        <!-- Engine 4: Meta SeamlessM4T v2 -->
+        <div class="engine-card" data-engine="seamless-m4t">
+          <div class="card-top">
+            <div class="engine-tag tag-pro">All-in-One Pro</div>
+            <div class="card-status-badge" id="cardStatus-seamless-m4t">⚪ Chưa tải</div>
+          </div>
+          <div class="card-title">4. Meta SeamlessM4T v2</div>
+          <div class="card-desc">Model dịch trực tiếp giọng nói sang văn bản đa ngôn ngữ All-in-One của Meta AI không cần qua 2 bước trung gian.</div>
+          <div class="card-meta">
+            <span>Yêu cầu: GPU &gt;= 12GB VRAM</span>
+            <span>• Đa ngôn ngữ</span>
+          </div>
         </div>
       </div>
 
-      <!-- FlowMy HttpRequestNode Integration -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2><span>🔗</span> Tích Hợp API Cho FlowMy (HttpRequestNode)</h2>
-          <button class="btn btn-secondary btn-sm" id="btnCopyApi">📋 Copy JSON</button>
+      <!-- Main Studio Grid -->
+      <div class="studio-grid">
+        <!-- Left Column: Model Setup, Translation & Audio Input -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2><span>🎛️</span> 2. Cấu Hình Chuyển Đổi &amp; Tệp Audio</h2>
+            <span class="active-engine-badge" id="activeEngineBadge">Engine: Faster-Whisper</span>
+          </div>
+
+          <!-- Model Selection & Preload Action Row -->
+          <div class="model-control-box">
+            <div class="form-group" style="flex: 1;">
+              <div class="form-label-row">
+                <label class="form-label" for="modelSizeSelect">Kích thước Model AI</label>
+                <span class="model-exist-badge" id="modelExistBadge">🟢 Đã tải về máy</span>
+              </div>
+              <select class="form-select" id="modelSizeSelect" onchange="onModelSizeChanged()">
+                <option value="tiny">Tiny (39M params - Nhanh nhất)</option>
+                <option value="base">Base (74M params - Nhẹ)</option>
+                <option value="small" selected>Small (244M params - Cân bằng nhất)</option>
+                <option value="medium">Medium (769M params - Chuẩn cao)</option>
+                <option value="large-v3">Large-v3 (1.5B params - Tốt nhất)</option>
+                <option value="large-v3-turbo">Large-v3 Turbo (Tối ưu nhất)</option>
+              </select>
+            </div>
+            <div class="preload-btn-container">
+              <button class="btn btn-preload" id="btnPreloadModel" onclick="preloadCurrentModel()" title="Tải và nạp model vào bộ nhớ trước để xử lý tức thì">
+                <span>⚡</span> Nạp Model
+              </button>
+            </div>
+          </div>
+
+          <!-- Device & Compute Type Row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="deviceSelect">Thiết bị xử lý (Device)</label>
+              <select class="form-select" id="deviceSelect" onchange="updateApiSnippet()">
+                <option value="auto" selected>⚡ Tự động (Ưu tiên CUDA GPU)</option>
+                <option value="cuda">🟢 NVIDIA CUDA (GPU)</option>
+                <option value="cpu">🔵 CPU Mode (Đa nhân)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="computeTypeSelect">Định dạng số (Compute Type)</label>
+              <select class="form-select" id="computeTypeSelect" onchange="updateApiSnippet()">
+                <option value="default" selected>Mặc định theo phần cứng</option>
+                <option value="float16">float16 (Tối ưu GPU)</option>
+                <option value="int8_float16">int8_float16 (Tiết kiệm VRAM)</option>
+                <option value="int8">int8 (Tối ưu CPU)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Translation Toggle & Target Language Row -->
+          <div class="translation-card">
+            <div class="translation-header">
+              <div class="translation-info">
+                <div class="translation-title">
+                  <span>🌐</span> Dịch Phụ Đề Sang Ngôn Ngữ Khác
+                </div>
+                <div class="translation-sub" id="translationSubDesc">
+                  Đang tắt dịch: Xuất phụ đề theo đúng ngôn ngữ gốc nói trong audio.
+                </div>
+              </div>
+              <!-- Modern Toggle Switch -->
+              <label class="toggle-switch">
+                <input type="checkbox" id="translateToggle" onchange="onTranslateToggleChange()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="translation-body" id="translationBody" style="display: none;">
+              <div class="form-group">
+                <label class="form-label" for="targetLangSelect">Chọn ngôn ngữ dịch đích (Target Language)</label>
+                <select class="form-select" id="targetLangSelect" onchange="updateApiSnippet()">
+                  <option value="vi" selected>🇻🇳 Tiếng Việt (Vietnamese)</option>
+                  <option value="en">🇺🇸 Tiếng Anh (English)</option>
+                  <option value="zh">🇨🇳 Tiếng Trung (Chinese)</option>
+                  <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
+                  <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
+                  <option value="fr">🇫🇷 Tiếng Pháp (French)</option>
+                  <option value="de">🇩🇪 Tiếng Đức (German)</option>
+                  <option value="es">🇪🇸 Tiếng Tây Ban Nha (Spanish)</option>
+                  <option value="ru">🇷🇺 Tiếng Nga (Russian)</option>
+                  <option value="th">🇹🇭 Tiếng Thái (Thai)</option>
+                  <option value="id">🇮🇩 Tiếng Indonesia (Indonesian)</option>
+                  <option value="pt">🇵🇹 Tiếng Bồ Đào Nha (Portuguese)</option>
+                  <option value="it">🇮🇹 Tiếng Ý (Italian)</option>
+                  <option value="ar">🇸🇦 Tiếng Ả Rập (Arabic)</option>
+                  <option value="hi">🇮🇳 Tiếng Hindi (Indian)</option>
+                  <option value="tr">🇹🇷 Tiếng Thổ Nhĩ Kỳ (Turkish)</option>
+                  <option value="nl">🇳🇱 Tiếng Hà Lan (Dutch)</option>
+                </select>
+              </div>
+              <div class="translation-action-row">
+                <button class="btn btn-translate-now" id="btnTranslateNow" onclick="translateCurrentTimeline()" title="Dịch danh sách phụ đề hiện tại sang ngôn ngữ đang chọn mà không cần chạy lại âm thanh">
+                  <span>🌐</span> Dịch Ngay (Từ Timeline Hiện Tại)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dropzone -->
+          <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none;">
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text" id="dropzoneText">Kéo thả file Audio vào đây hoặc Click để chọn</div>
+            <div class="dropzone-sub" id="dropzoneSub">Hỗ trợ: MP3, WAV, M4A, AAC, FLAC, MP4, MKV, AVI, WEBM...</div>
+          </div>
+
+          <!-- Audio Player Box -->
+          <div class="audio-player-box" id="audioPlayerBox">
+            <div class="player-title">
+              <span>🎵 Đang phát thử nghiệm:</span>
+              <span id="playerFileName" style="color:var(--accent-primary); font-weight:600;">audio.mp3</span>
+            </div>
+            <audio id="audioPlayer" controls></audio>
+          </div>
+
+          <!-- Action Button -->
+          <button class="btn btn-primary" id="btnProcess">
+            <span>🚀</span> Bắt Đầu Chuyển Đổi &amp; Tách Phụ Đề
+          </button>
         </div>
-        <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">
-          Endpoint: <strong style="color:#38bdf8;">POST http://127.0.0.1:8765/api/transcribe</strong>
+
+        <!-- Right Column: Subtitle Timeline Preview -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2><span>📝</span> 3. Bảng Mốc Thời Gian Phụ Đề (Timeline)</h2>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="detected-lang-pill" id="detectedLangPill" style="display:none;">
+                <span id="detectedLangFlag">🌐</span>
+                <span id="detectedLangText">Tự động phát hiện</span>
+              </div>
+              <span class="timeline-stats-badge" id="timelineStats">0 câu</span>
+            </div>
+          </div>
+
+          <!-- Detected Language Banner (When available) -->
+          <div class="detected-lang-banner" id="detectedLangBanner" style="display:none;">
+            <div class="banner-left">
+              <span class="banner-icon" id="bannerFlag">🎯</span>
+              <div>
+                <div class="banner-title" id="bannerLangTitle">Phát hiện ngôn ngữ: Tiếng Việt (vi)</div>
+                <div class="banner-desc" id="bannerLangDesc">Độ tin cậy: 99.8% • Đã tách mốc thời gian chuẩn theo ngôn ngữ audio</div>
+              </div>
+            </div>
+            <div class="banner-tag" id="bannerTranslateTag">Bản gốc audio</div>
+          </div>
+
+          <!-- Timeline View Mode Filters -->
+          <div class="timeline-view-modes" id="timelineViewModes" style="display: none;">
+            <button class="view-mode-btn active" id="modeBilingual" onclick="setTimelineViewMode('bilingual')">👥 Song Ngữ (Gốc + Dịch)</button>
+            <button class="view-mode-btn" id="modeTranslation" onclick="setTimelineViewMode('translation')">🌐 Chỉ Bản Dịch</button>
+            <button class="view-mode-btn" id="modeSource" onclick="setTimelineViewMode('source')">🎙️ Chỉ Bản Gốc</button>
+          </div>
+
+          <div class="timeline-container" id="timelineContainer">
+            <div class="empty-timeline">
+              <div style="font-size:36px; margin-bottom:10px;">🎙️</div>
+              Chọn file audio bên trái và nhấn <strong>Bắt đầu chuyển đổi</strong> để AI phân tích tiếng nói và xuất phụ đề.
+            </div>
+          </div>
+
+          <div class="export-actions">
+            <button class="btn btn-export-primary btn-sm" id="btnExportBilingualSrt" onclick="exportBilingualSRT()">📄 SRT Song Ngữ</button>
+            <button class="btn btn-secondary btn-sm" id="btnExportJson" onclick="exportMultilingualJSON()">📦 JSON Đa Ngôn Ngữ (App)</button>
+            <button class="btn btn-secondary btn-sm" id="btnExportAss" onclick="exportBilingualASS()">🎨 ASS Đa Sắc</button>
+            <button class="btn btn-secondary btn-sm" id="btnExportSrt" onclick="exportSingleSRT('translated')">💾 SRT Bản Dịch</button>
+            <button class="btn btn-secondary btn-sm" id="btnExportSourceSrt" onclick="exportSingleSRT('source')">💾 SRT Bản Gốc</button>
+            <button class="btn btn-secondary btn-sm" id="btnExportTxt" onclick="exportTxtFile()">📝 TXT</button>
+          </div>
         </div>
-        <div class="code-block" id="apiJsonSnippet">{
+      </div>
+
+      <!-- Bottom Grid: Model Cache & FlowMy API Integration -->
+      <div class="bottom-grid">
+        <!-- Model Cache Manager -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2><span>📂</span> Quản Lý Kho Model AI Trên Máy</h2>
+            <span class="model-size-badge" id="totalModelSize">0 MB</span>
+          </div>
+          <div class="storage-dir-row">
+            <span>Thư mục lưu trữ:</span>
+            <code id="modelsDirText">models/</code>
+          </div>
+          <div id="installedModelsList" class="model-list-container">
+            <!-- Loaded dynamically -->
+          </div>
+          <div class="panel-footer-note">
+            💡 Model AI sẽ tự động tải về khi bạn bấm <strong>⚡ Nạp Model</strong> hoặc chạy lần đầu. Bạn có thể bấm <strong>🗑 Xóa</strong> để giải phóng ổ cứng bất cứ khi nào.
+          </div>
+        </div>
+
+        <!-- FlowMy HttpRequestNode Integration -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2><span>🔗</span> Tích Hợp API Cho FlowMy (HttpRequestNode)</h2>
+            <button class="btn btn-secondary btn-sm" id="btnCopyApi">📋 Copy JSON</button>
+          </div>
+          <div class="api-endpoint-row">
+            Endpoint: <strong>POST http://127.0.0.1:8765/api/transcribe</strong>
+          </div>
+          <div class="code-block" id="apiJsonSnippet">{
   "audio_path": "{{linkAudio}}",
   "chunkIndex": {{chunkIndex}},
-  "target_lang": "vi",
   "engine": "faster-whisper",
-  "model_size": "small"
+  "model_size": "small",
+  "enable_translate": false,
+  "target_lang": "vi"
 }</div>
-        <div style="font-size:10.5px; color:#64748b;">
-          Dán nội dung JSON trên vào ô Body của node <strong>HttpRequestNode</strong> trong FlowMy để tự động chạy phụ đề!
+          <div class="panel-footer-note">
+            Dán nội dung JSON trên vào ô <strong>Body</strong> của node <strong>HttpRequestNode</strong> trong FlowMy để tự động chạy phụ đề trong quy trình!
+          </div>
         </div>
       </div>
+    </main>
+
+    <!-- ==================================================================== -->
+    <!-- VIEW 2: SWAGGER API EXPLORER (IIS / OpenAPI 3.0 Interactive Docs) -->
+    <!-- ==================================================================== -->
+    <main id="viewSwagger" class="main-view">
+      <div class="swagger-header-card">
+        <div class="swagger-header-left">
+          <div class="swagger-api-badge">OpenAPI 3.0 (Chuẩn Swagger)</div>
+          <h2>⚡ FlowMy REST API &amp; Swagger Explorer</h2>
+          <p class="swagger-base-url">
+            Địa chỉ máy chủ (Base URL): <code id="swaggerBaseUrl">http://127.0.0.1:8765</code>
+            <button class="btn-copy-mini" onclick="copyText('http://127.0.0.1:8765')" title="Sao chép Base URL">📋 Sao Chép</button>
+          </p>
+        </div>
+        <div class="swagger-header-right">
+          <div class="swagger-search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="swaggerSearchInput" class="swagger-search-input" placeholder="Tìm kiếm API (transcribe, models, translate, hardware)..." oninput="filterSwaggerEndpoints()">
+          </div>
+          <div class="swagger-btn-group">
+            <button class="btn btn-secondary btn-sm" onclick="expandAllSwaggerCards(true)">➕ Mở Tất Cả</button>
+            <button class="btn btn-secondary btn-sm" onclick="expandAllSwaggerCards(false)">➖ Thu Gọn</button>
+            <a href="/docs" target="_blank" class="btn btn-primary btn-sm">📖 Mở /docs Gốc</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Swagger Group 1: Nhận Diện Giọng Nói & Bóc Tách Phụ Đề -->
+      <div class="swagger-group" data-group="transcribe">
+        <div class="swagger-group-title">
+          <span>🎙️ 1. Nhận Diện Giọng Nói &amp; Bóc Tách Phụ Đề (Speech Recognition)</span>
+          <span class="swagger-group-count">1 Endpoint</span>
+        </div>
+
+        <!-- Endpoint: POST /api/transcribe -->
+        <div class="swagger-card" id="card-transcribe">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-transcribe')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-post">POST</span>
+              <span class="swagger-path">/api/transcribe</span>
+              <span class="swagger-summary">Bóc tách phụ đề &amp; dịch thuật song ngữ (Tự động nạp model nếu chưa có)</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Lõi Xử Lý</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Nhận diện giọng nói từ tệp âm thanh (Upload trực tiếp hoặc qua đường dẫn file trên máy), tự động phát hiện ngôn ngữ, tạo mốc thời gian phụ đề chuẩn xác từng câu và tự động dịch song ngữ nếu bật tùy chọn dịch. Nếu chưa nạp model trước đó, hệ thống sẽ <strong>tự động nạp model chỉ định vào GPU VRAM</strong> trước khi xử lý.
+            </div>
+
+            <!-- Mode Selector: Multipart (Default) vs JSON Body -->
+            <div class="swagger-mode-tabs">
+              <button class="swagger-mode-btn active" id="swModeForm-transcribe" onclick="setSwaggerTranscribeMode('form')">📁 Multipart Form (Upload File Trực Tiếp - Mặc Định)</button>
+              <button class="swagger-mode-btn" id="swModeJson-transcribe" onclick="setSwaggerTranscribeMode('json')">📦 JSON Body (FlowMy HttpRequestNode)</button>
+            </div>
+
+            <!-- Parameters / Body Area -->
+            <div class="swagger-section-title">Tham Số Gửi Đi (Cấu hình bên dưới sẽ được đồng bộ y nguyên khi bấm Copy cURL / URL):</div>
+
+            <!-- Multipart Form Mode (Default) -->
+            <div id="swFormContainer-transcribe" class="swagger-input-container">
+              <div class="swagger-form-grid">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label">Chọn File Audio Từ Máy (Tham số <code>file</code>):</label>
+                  <input type="file" id="swFileInput-transcribe" class="form-input" accept="audio/*,video/*" onchange="onSwaggerFormChanged()">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label">Hoặc Đường Dẫn File Cục Bộ (Tham số <code>audio_path</code>):</label>
+                  <input type="text" id="swAudioPathInput-transcribe" class="form-input" value="D:\UngDung_PC\Flow-App\audio_sample.mp3" placeholder="Ví dụ: D:\UngDung_PC\Flow-App\audio.mp3" oninput="onSwaggerFormChanged()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Engine AI (<code>engine</code>):</label>
+                  <select id="swEngineInput-transcribe" class="form-select" onchange="onSwaggerFormChanged()">
+                    <option value="faster-whisper" selected>faster-whisper (Khuyên dùng)</option>
+                    <option value="whisperx">whisperx (Alignment từng từ)</option>
+                    <option value="sensevoice">sensevoice (Siêu tốc độ)</option>
+                    <option value="seamless-m4t">seamless-m4t (Meta All-in-One)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Kích thước Model (<code>model_size</code>):</label>
+                  <select id="swModelSizeInput-transcribe" class="form-select" onchange="onSwaggerFormChanged()">
+                    <option value="tiny">tiny (Siêu nhẹ)</option>
+                    <option value="base">base (Nhẹ)</option>
+                    <option value="small" selected>small (Cân bằng nhất)</option>
+                    <option value="medium">medium (Chuẩn cao)</option>
+                    <option value="large-v3">large-v3 (Chính xác cao)</option>
+                    <option value="large-v3-turbo">large-v3-turbo (Tối ưu nhất)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Dịch phụ đề song ngữ (<code>enable_translate</code>):</label>
+                  <select id="swTranslateInput-transcribe" class="form-select" onchange="onSwaggerFormChanged()">
+                    <option value="true" selected>true (Bật dịch song ngữ NLLB)</option>
+                    <option value="false">false (Chỉ lấy bản gốc audio)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Ngôn ngữ đích (<code>target_lang</code>):</label>
+                  <select id="swTargetLangInput-transcribe" class="form-select" onchange="onSwaggerFormChanged()">
+                    <option value="vi" selected>🇻🇳 Tiếng Việt (vi)</option>
+                    <option value="en">🇺🇸 Tiếng Anh (en)</option>
+                    <option value="zh">🇨🇳 Tiếng Trung (zh)</option>
+                    <option value="ja">🇯🇵 Tiếng Nhật (ja)</option>
+                    <option value="ko">🇰🇷 Tiếng Hàn (ko)</option>
+                    <option value="fr">🇫🇷 Tiếng Pháp (fr)</option>
+                    <option value="de">🇩🇪 Tiếng Đức (de)</option>
+                    <option value="es">🇪🇸 Tiếng Tây Ban Nha (es)</option>
+                    <option value="ru">🇷🇺 Tiếng Nga (ru)</option>
+                    <option value="th">🇹🇭 Tiếng Thái (th)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Thiết bị xử lý (<code>device</code>):</label>
+                  <select id="swDeviceInput-transcribe" class="form-select" onchange="onSwaggerFormChanged()">
+                    <option value="auto" selected>auto (Tự động ưu tiên CUDA GPU)</option>
+                    <option value="cuda">cuda (NVIDIA GPU)</option>
+                    <option value="cpu">cpu (CPU Đa luồng)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Định dạng số (<code>compute_type</code>):</label>
+                  <select id="swComputeTypeInput-transcribe" class="form-select" onchange="onSwaggerFormChanged()">
+                    <option value="default" selected>default (Mặc định)</option>
+                    <option value="float16">float16 (Tối ưu GPU)</option>
+                    <option value="int8_float16">int8_float16 (Tiết kiệm VRAM)</option>
+                    <option value="int8">int8 (Tối ưu CPU)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- JSON Editor Mode -->
+            <div id="swJsonContainer-transcribe" class="swagger-input-container" style="display: none;">
+              <div class="swagger-editor-header">
+                <span>Content-Type: <code>application/json</code></span>
+                <div class="swagger-editor-actions">
+                  <button class="btn btn-secondary btn-xs" onclick="resetSwaggerTranscribeJson()">🔄 Khôi Phục Mẫu</button>
+                  <button class="btn btn-secondary btn-xs" onclick="copyElementText('swJsonInput-transcribe')">📋 Sao Chép Body</button>
+                </div>
+              </div>
+              <textarea id="swJsonInput-transcribe" class="swagger-textarea" rows="8">{
+  "audio_path": "D:\\UngDung_PC\\Flow-App\\audio_sample.mp3",
+  "chunkIndex": 0,
+  "engine": "faster-whisper",
+  "model_size": "small",
+  "enable_translate": true,
+  "target_lang": "vi",
+  "device": "auto",
+  "compute_type": "default"
+}</textarea>
+            </div>
+
+            <!-- Swagger Action Bar -->
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" id="swBtnExec-transcribe" onclick="executeSwaggerTranscribe()">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurl('transcribe')">
+                📋 Copy cURL (Theo Cấu Hình Hiện Tại)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerTranscribeUrl()">
+                🔗 Copy URL
+              </button>
+            </div>
+
+            <!-- Response Panel -->
+            <div class="swagger-response-panel" id="swResponsePanel-transcribe" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-transcribe">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-transcribe">⚡ 120ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-transcribe')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-transcribe">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Swagger Group 2: Dịch Thuật Phụ Đề & Xử Lý Timeline -->
+      <div class="swagger-group" data-group="translate">
+        <div class="swagger-group-title">
+          <span>🌐 2. Dịch Thuật Phụ Đề &amp; Xử Lý Timeline (Translation Service)</span>
+          <span class="swagger-group-count">1 Endpoint</span>
+        </div>
+
+        <!-- Endpoint: POST /api/translate-segments -->
+        <div class="swagger-card" id="card-translate-segments">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-translate-segments')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-post">POST</span>
+              <span class="swagger-path">/api/translate-segments</span>
+              <span class="swagger-summary">Dịch mảng timeline phụ đề độc lập (NLLB-200 GPU Engine)</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Dịch Thuật AI</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Dịch danh sách các câu trong timeline phụ đề sang ngôn ngữ đích mà không cần chạy lại file âm thanh từ đầu. Tận dụng model Meta NLLB-200 Distilled tốc độ cao trên GPU CUDA. Tự động nạp model NLLB vào bộ nhớ nếu chưa sẵn sàng.
+            </div>
+
+            <div class="swagger-section-title">Tham Số Gửi Đi (JSON Payload):</div>
+            <div class="swagger-input-container">
+              <div class="swagger-editor-header">
+                <span>Content-Type: <code>application/json</code></span>
+                <div class="swagger-editor-actions">
+                  <button class="btn btn-secondary btn-xs" onclick="resetSwaggerTranslateJson()">🔄 Khôi Phục Mẫu</button>
+                  <button class="btn btn-secondary btn-xs" onclick="copyElementText('swJsonInput-translate')">📋 Sao Chép Body</button>
+                </div>
+              </div>
+              <textarea id="swJsonInput-translate" class="swagger-textarea" rows="8">{
+  "src_lang": "en",
+  "target_lang": "vi",
+  "segments": [
+    {
+      "id": 1,
+      "start": 1.2,
+      "end": 4.5,
+      "duration": 3.3,
+      "text": "Hello world, welcome to FlowMy subtitle studio.",
+      "original_text": "Hello world, welcome to FlowMy subtitle studio."
+    },
+    {
+      "id": 2,
+      "start": 8.0,
+      "end": 11.2,
+      "duration": 3.2,
+      "text": "This is a powerful bilingual translation tool.",
+      "original_text": "This is a powerful bilingual translation tool."
+    }
+  ]
+}</textarea>
+            </div>
+
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" id="swBtnExec-translate" onclick="executeSwaggerTranslate()">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurl('translate')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/translate-segments')">
+                🔗 Copy URL
+              </button>
+            </div>
+
+            <div class="swagger-response-panel" id="swResponsePanel-translate" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-translate">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-translate">⚡ 85ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-translate')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-translate">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Swagger Group 3: Quản Lý Kho Model AI & Điều Khiển VRAM GPU -->
+      <div class="swagger-group" data-group="models">
+        <div class="swagger-group-title">
+          <span>🧠 3. Quản Lý Kho Model AI &amp; Điều Khiển VRAM GPU (Model Management)</span>
+          <span class="swagger-group-count">4 Endpoints</span>
+        </div>
+
+        <!-- GET /api/models -->
+        <div class="swagger-card" id="card-get-models">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-get-models')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-get">GET</span>
+              <span class="swagger-path">/api/models</span>
+              <span class="swagger-summary">Lấy danh sách toàn bộ Model AI đã tải và trạng thái sẵn sàng</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Kho Model</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Quét thư mục lưu trữ cục bộ <code>models/</code>, trả về danh sách chi tiết các model đã tải về máy, kích thước file và dung lượng tổng cộng.
+            </div>
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" onclick="executeSwaggerSimpleGet('/api/models', 'get-models')">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlGet('/api/models')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/models')">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div class="swagger-response-panel" id="swResponsePanel-get-models" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-get-models">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-get-models">⚡ 15ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-get-models')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-get-models">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GET /api/models/active -->
+        <div class="swagger-card" id="card-get-models-active">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-get-models-active')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-get">GET</span>
+              <span class="swagger-path">/api/models/active</span>
+              <span class="swagger-summary">Lấy thông tin Model AI hiện đang nạp và hoạt động trong VRAM GPU / RAM</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Theo Dõi VRAM</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Kiểm tra trạng thái bộ nhớ GPU thời gian thực, trả về thông tin engine và kích thước model đang nạp sẵn sàng để phục vụ yêu cầu.
+            </div>
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" onclick="executeSwaggerSimpleGet('/api/models/active', 'get-models-active')">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlGet('/api/models/active')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/models/active')">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div class="swagger-response-panel" id="swResponsePanel-get-models-active" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-get-models-active">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-get-models-active">⚡ 5ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-get-models-active')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-get-models-active">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST /api/models/load -->
+        <div class="swagger-card" id="card-post-models-load">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-post-models-load')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-post">POST</span>
+              <span class="swagger-path">/api/models/load</span>
+              <span class="swagger-summary">Nạp trước Model AI vào VRAM GPU để sẵn sàng chạy tức thì</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Nạp Trước VRAM</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Khởi tạo và nạp trước trọng số AI vào GPU VRAM (tự động giải phóng model cũ trong VRAM để tránh tràn bộ nhớ).
+            </div>
+            <div class="swagger-section-title">Tham Số Gửi Đi (JSON Payload):</div>
+            <div class="swagger-input-container">
+              <textarea id="swJsonInput-models-load" class="swagger-textarea" rows="6">{
+  "engine": "faster-whisper",
+  "model_size": "small",
+  "device": "auto",
+  "compute_type": "default"
+}</textarea>
+            </div>
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" onclick="executeSwaggerJsonPost('/api/models/load', 'swJsonInput-models-load', 'post-models-load')">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlJsonPost('/api/models/load', 'swJsonInput-models-load')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/models/load')">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div class="swagger-response-panel" id="swResponsePanel-post-models-load" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-post-models-load">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-post-models-load">⚡ 1200ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-post-models-load')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-post-models-load">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST /api/models/delete -->
+        <div class="swagger-card" id="card-post-models-delete">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-post-models-delete')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-delete">DELETE / POST</span>
+              <span class="swagger-path">/api/models/delete</span>
+              <span class="swagger-summary">Xóa một model khỏi ổ cứng để giải phóng dung lượng</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Xóa Ổ Cứng</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Xóa thư mục model chỉ định trong thư mục lưu trữ cache <code>models/</code>.
+            </div>
+            <div class="swagger-section-title">Tham Số Gửi Đi (JSON Payload):</div>
+            <div class="swagger-input-container">
+              <textarea id="swJsonInput-models-delete" class="swagger-textarea" rows="4">{
+  "model_path": "D:\\UngDung_PC\\Flow-App\\AI-Speech-Subtitle-Server\\models\\faster-whisper\\models--Systran--faster-whisper-tiny"
+}</textarea>
+            </div>
+            <div class="swagger-action-bar">
+              <button class="btn btn-delete swagger-btn-exec" onclick="executeSwaggerJsonPost('/api/models/delete', 'swJsonInput-models-delete', 'post-models-delete')">
+                🗑 Thực Thi Xóa Model
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlJsonPost('/api/models/delete', 'swJsonInput-models-delete')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/models/delete')">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div class="swagger-response-panel" id="swResponsePanel-post-models-delete" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-post-models-delete">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-post-models-delete">⚡ 25ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-post-models-delete')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-post-models-delete">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Swagger Group 4: Chẩn Đoán Phần Cứng & Trạng Thái Server -->
+      <div class="swagger-group" data-group="hardware">
+        <div class="swagger-group-title">
+          <span>⚙️ 4. Chẩn Đoán Phần Cứng &amp; Trạng Thái Server (Diagnostics &amp; Health)</span>
+          <span class="swagger-group-count">2 Endpoints</span>
+        </div>
+
+        <!-- GET /api/hardware -->
+        <div class="swagger-card" id="card-get-hardware">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-get-hardware')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-get">GET</span>
+              <span class="swagger-path">/api/hardware</span>
+              <span class="swagger-summary">Lấy thông số phần cứng GPU/VRAM/CPU và tính toán luồng song song tối ưu</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Chẩn Đoán GPU</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Tự động quét GPU NVIDIA CUDA, tổng dung lượng VRAM, số nhân CPU logic và RAM khả dụng để đưa ra khuyến nghị số luồng xử lý đồng thời tối ưu nhất.
+            </div>
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" onclick="executeSwaggerSimpleGet('/api/hardware', 'get-hardware')">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlGet('/api/hardware')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/hardware')">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div class="swagger-response-panel" id="swResponsePanel-get-hardware" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-get-hardware">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-get-hardware">⚡ 10ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-get-hardware')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-get-hardware">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GET /api/health -->
+        <div class="swagger-card" id="card-get-health">
+          <div class="swagger-card-header" onclick="toggleSwaggerCard('card-get-health')">
+            <div class="swagger-card-left">
+              <span class="swagger-method swagger-get">GET</span>
+              <span class="swagger-path">/api/health</span>
+              <span class="swagger-summary">Kiểm tra tình trạng hoạt động (Health-Check / Ping) của Server</span>
+            </div>
+            <div class="swagger-card-right">
+              <span class="swagger-tag-pill">Kiểm Tra Ping</span>
+              <span class="swagger-toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="swagger-card-body">
+            <div class="swagger-desc-text">
+              Endpoint nhẹ phục vụ việc Ping / Health-Check từ FlowMy hoặc các hệ thống giám sát định kỳ.
+            </div>
+            <div class="swagger-action-bar">
+              <button class="btn btn-primary swagger-btn-exec" onclick="executeSwaggerSimpleGet('/api/health', 'get-health')">
+                ⚡ Thực Thi API (Execute)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copySwaggerCurlGet('/api/health')">
+                📋 Copy cURL
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyText('http://127.0.0.1:8765/api/health')">
+                🔗 Copy URL
+              </button>
+            </div>
+            <div class="swagger-response-panel" id="swResponsePanel-get-health" style="display: none;">
+              <div class="swagger-response-header">
+                <div class="swagger-res-meta">
+                  <span class="swagger-res-label">Kết Quả Phản Hồi:</span>
+                  <span class="swagger-status-pill" id="swStatusPill-get-health">200 OK</span>
+                  <span class="swagger-time-pill" id="swTimePill-get-health">⚡ 2ms</span>
+                </div>
+                <button class="btn btn-secondary btn-xs" onclick="copyElementText('swResponseBody-get-health')">📋 Sao Chép Response</button>
+              </div>
+              <div class="swagger-response-body">
+                <pre><code id="swResponseBody-get-health">// Kết quả JSON trả về từ Server...</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Model Loading Modal Overlay with Real-Time Percentage -->
+  <div class="modal-overlay" id="loadingModalOverlay">
+    <div class="modal-card">
+      <div class="modal-spinner-wrapper">
+        <div class="modal-spinner"></div>
+        <div class="modal-spinner-icon" id="modalSpinnerIcon">⚡</div>
+      </div>
+      <div class="modal-title" id="loadingModalTitle">Đang Nạp Model AI Vào Bộ Nhớ...</div>
+      
+      <!-- Big Percentage Counter -->
+      <div class="modal-percent-container">
+        <span class="modal-percent" id="modalPercent">0%</span>
+      </div>
+
+      <!-- Linear Dynamic Progress Bar -->
+      <div class="modal-progress-bar">
+        <div class="modal-progress-fill" id="modalProgressFill" style="width: 0%;"></div>
+      </div>
+
+      <!-- 4-Step Stage Chips -->
+      <div class="modal-steps-row">
+        <div class="step-chip active" id="stepChip-init">1. Khởi tạo</div>
+        <div class="step-chip" id="stepChip-download">2. Tải model</div>
+        <div class="step-chip" id="stepChip-load">3. Nạp VRAM</div>
+        <div class="step-chip" id="stepChip-ready">4. Sẵn sàng</div>
+      </div>
+
+      <div class="modal-desc" id="loadingModalDesc">Đang kết nối và tải trọng số model về thư mục máy...</div>
+      <div class="modal-detail-text" id="modalDetail">Vui lòng đợi trong giây lát...</div>
     </div>
   </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
 
   <script src="/src/app.js"></script>
 </body>

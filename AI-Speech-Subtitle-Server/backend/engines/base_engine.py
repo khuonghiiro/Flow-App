@@ -10,8 +10,8 @@ class BaseSpeechEngine(ABC):
         self.model = None
 
     @abstractmethod
-    def load_model(self):
-        """Khởi tạo và nạp model vào VRAM / RAM"""
+    def load_model(self, progress_callback=None):
+        """Khởi tạo và nạp model vào VRAM / RAM kèm callback báo tiến trình (%)"""
         pass
 
     @abstractmethod

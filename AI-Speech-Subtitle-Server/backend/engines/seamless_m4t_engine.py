@@ -13,32 +13,47 @@ class SeamlessM4TEngine(BaseSpeechEngine):
         self.processor = None
         self.model = None
 
-    def load_model(self):
+    def load_model(self, progress_callback=None):
         if self.model is not None:
+            if progress_callback:
+                progress_callback(100, "ready", "Model đã có sẵn trong bộ nhớ RAM/VRAM", "Sẵn sàng")
             return
 
         import torch
         from transformers import AutoProcessor, SeamlessM4Tv2ForSpeechToText
+
+        if progress_callback:
+            progress_callback(10, "init", f"Khởi tạo SeamlessM4T ({self.model_size})...", "Khởi tạo")
 
         actual_device = self.device
         if actual_device == "auto":
             actual_device = "cuda" if torch.cuda.is_available() else "cpu"
 
         model_name = "facebook/seamless-m4t-v2-large" if "large" in self.model_size.lower() else "facebook/seamless-m4t-medium"
-        print(f"[SeamlessM4TEngine] Nạp SeamlessM4T '{model_name}' trên {actual_device}...")
+        print(f"[SeamlessM4TEngine] Nap SeamlessM4T '{model_name}' tren {actual_device}...")
 
         kwargs = {}
         if self.download_root:
             kwargs["cache_dir"] = self.download_root
 
         try:
+            if progress_callback:
+                progress_callback(35, "downloading", f"Đang nạp processor & weights '{model_name}'...", "Nạp weights")
             self.processor = AutoProcessor.from_pretrained(model_name, **kwargs)
+            if progress_callback:
+                progress_callback(70, "loading", f"Đang chuyển model sang {actual_device}...", "Nạp VRAM")
             self.model = SeamlessM4Tv2ForSpeechToText.from_pretrained(model_name, **kwargs).to(actual_device)
-            print("[SeamlessM4TEngine] ✅ Nạp SeamlessM4T thành công!")
+            print("[SeamlessM4TEngine] [OK] Nap SeamlessM4T thanh cong!")
+            if progress_callback:
+                progress_callback(100, "ready", f"Nạp thành công SeamlessM4T ({self.model_size})!", "Hoàn tất (100%)")
         except Exception as e:
-            print(f"[SeamlessM4TEngine] ⚠ Lỗi nạp SeamlessM4T ({e}). Chuyển sang Faster-Whisper.")
+            print(f"[SeamlessM4TEngine] Loi nap SeamlessM4T ({e}). Chuyen sang Faster-Whisper.")
+            if progress_callback:
+                progress_callback(60, "loading", "Chuyển sang Faster-Whisper fallback...", "Nạp fallback")
             from faster_whisper import WhisperModel
             self.model = WhisperModel(model_size_or_path="medium", device=actual_device)
+            if progress_callback:
+                progress_callback(100, "ready", "Nạp thành công Faster-Whisper fallback!", "Hoàn tất (100%)")
 
     def transcribe(
         self,

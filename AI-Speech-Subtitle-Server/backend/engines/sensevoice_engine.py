@@ -12,11 +12,16 @@ class SenseVoiceEngine(BaseSpeechEngine):
         super().__init__(model_size, device, compute_type, download_root)
         self.model = None
 
-    def load_model(self):
+    def load_model(self, progress_callback=None):
         if self.model is not None:
+            if progress_callback:
+                progress_callback(100, "ready", "Model đã có sẵn trong bộ nhớ RAM/VRAM", "Sẵn sàng")
             return
 
         import torch
+        if progress_callback:
+            progress_callback(10, "init", "Khởi tạo SenseVoice-Small...", "Khởi tạo")
+
         actual_device = self.device
         if actual_device == "auto":
             actual_device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -27,15 +32,21 @@ class SenseVoiceEngine(BaseSpeechEngine):
 
         try:
             from funasr import AutoModel
-            print(f"[SenseVoiceEngine] Nạp SenseVoice-Small trên {actual_device}...")
+            if progress_callback:
+                progress_callback(45, "loading", f"Đang nạp SenseVoice-Small trên {actual_device}...", "Nạp bộ nhớ")
+            print(f"[SenseVoiceEngine] Nap SenseVoice-Small tren {actual_device}...")
             self.model = AutoModel(
                 model="iic/SenseVoiceSmall",
                 device=actual_device,
                 hub="hf"
             )
-            print("[SenseVoiceEngine] ✅ Nạp SenseVoice thành công!")
+            print("[SenseVoiceEngine] [OK] Nap SenseVoice thanh cong!")
+            if progress_callback:
+                progress_callback(100, "ready", "Nạp thành công SenseVoice-Small!", "Hoàn tất (100%)")
         except Exception as e:
-            print(f"[SenseVoiceEngine] ⚠ FunASR chưa sẵn sàng ({e}). Chuyển sang Faster-Whisper Base mode.")
+            print(f"[SenseVoiceEngine] FunASR chua san sang ({e}). Chuyen sang Faster-Whisper Base mode.")
+            if progress_callback:
+                progress_callback(60, "loading", "Chuyển sang Faster-Whisper Base fallback...", "Nạp fallback")
             from faster_whisper import WhisperModel
             self.model = WhisperModel(
                 model_size_or_path="base",
@@ -43,6 +54,8 @@ class SenseVoiceEngine(BaseSpeechEngine):
                 compute_type="int8",
                 download_root=download_dir
             )
+            if progress_callback:
+                progress_callback(100, "ready", "Nạp thành công Faster-Whisper Base fallback!", "Hoàn tất (100%)")
 
     def transcribe(
         self,

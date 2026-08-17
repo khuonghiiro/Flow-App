@@ -77,9 +77,14 @@ class NllbTranslator:
             encoded = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=256)
             encoded = {k: v.to(self.model.device) for k, v in encoded.items()}
 
+            if hasattr(self.tokenizer, "lang_code_to_id") and tgt_code in self.tokenizer.lang_code_to_id:
+                tgt_bos = self.tokenizer.lang_code_to_id[tgt_code]
+            else:
+                tgt_bos = self.tokenizer.convert_tokens_to_ids(tgt_code)
+
             generated_tokens = self.model.generate(
                 **encoded,
-                forced_bos_token_id=self.tokenizer.lang_code_to_id[tgt_code],
+                forced_bos_token_id=tgt_bos,
                 max_length=256
             )
 
