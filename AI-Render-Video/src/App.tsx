@@ -28,8 +28,8 @@ import { ActorVisualState } from './core/camera/CameraFraming';
 import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 
 export const App: React.FC = () => {
-  const [scene, setScene] = useState<MasterSceneConfig>(pirateMapScene);
-  const sceneRef = useRef<MasterSceneConfig>(pirateMapScene);
+  const [scene, setScene] = useState<MasterSceneConfig>(villageClashScene);
+  const sceneRef = useRef<MasterSceneConfig>(villageClashScene);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -54,7 +54,7 @@ export const App: React.FC = () => {
   const cameraDirectorRef = useRef<CameraDirector | null>(null);
   const occlusionFoliageRef = useRef<OcclusionFoliageManager | null>(null);
   const trackEvaluatorRef = useRef<TrackEvaluator | null>(null);
-  const clockRef = useRef<MasterClock>(new MasterClock(pirateMapScene.duration));
+  const clockRef = useRef<MasterClock>(new MasterClock(villageClashScene.duration));
   const actorsMapRef = useRef<Map<string, ActorRuntime>>(new Map());
   const sceneObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   const mapGroupRef = useRef<THREE.Group>(new THREE.Group());
@@ -72,7 +72,7 @@ export const App: React.FC = () => {
 
     const mapName = (newScene.environment.map || '').toLowerCase();
 
-    if (mapName.includes('.glb') || mapName.includes('.gltf') || mapName.includes('cathedral') || mapName.includes('pirate')) {
+    if (mapName.includes('cathedral') || mapName.includes('pirate') || (mapName.endsWith('.glb') && !mapName.includes('village')) || mapName.endsWith('.gltf')) {
       // Add immediate ground plane so it's never a dark void
       const tempFloorGeo = new THREE.PlaneGeometry(80, 80);
       const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
