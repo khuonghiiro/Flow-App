@@ -237,7 +237,7 @@ export const treeClimbingScene: MasterSceneConfig = {
   scene_id: 'scene_tree_climbing',
   title: '🌳 Trèo Cây Trinh Sát Hoàng Hôn',
   fps: 30,
-  duration: 15.0,
+  duration: 18.0,
   environment: {
     map: 'farming_village',
     sky_time: 'sunset',
@@ -257,24 +257,79 @@ export const treeClimbingScene: MasterSceneConfig = {
       speaker_id: 'actor_dark_mage',
       speaker_name: 'Phù Thủy',
       speaker_color: '#a855f7',
-      text: 'Từ ngọn cây này có thể bao quát toàn bộ ngôi làng!',
+      text: 'Từ ngọn cây này có thể bao quát toàn bộ ngôi làng, không ai thấy được ta!',
       voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, emotion: 'serious' },
       audio_path: null,
       audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
       status: 'pending_tts',
-      start_time: 5.5,
+      start_time: 4.5,
       estimated_duration: 3.5,
+    },
+    {
+      line_id: 'dlg_tree_02',
+      speaker_id: 'actor_warrior',
+      speaker_name: 'Chiến Binh',
+      speaker_color: '#eab308',
+      text: 'Ủa? Tên Phù Thủy vừa chạy đằng này mà trốn đâu mất rồi? Tán cây rậm quá chẳng thấy đâu!',
+      voice_config: { voice_id: 'vi-VN-NamMinhNeural', speed: 1.0, emotion: 'fear' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 8.5,
+      estimated_duration: 4.5,
+    },
+    {
+      line_id: 'dlg_tree_03',
+      speaker_id: 'actor_dark_mage',
+      speaker_name: 'Phù Thủy',
+      speaker_color: '#a855f7',
+      text: 'Hehe, ngươi làm sao thấy được ta? Ta đang nhìn xuyên qua kẽ lá quan sát từng bước đi của ngươi đây!',
+      voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, emotion: 'smile' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 13.5,
+      estimated_duration: 4.0,
     },
   ],
   camera_tracks: [
+    // Shot 1 (0.0s - 4.5s): Theo dõi Phù Thủy trèo lên thân cây
     {
       start: 0.0,
-      end: 15.0,
+      end: 4.5,
       shot_type: 'cinematic_dolly',
-      from: [8, 4.5, 3.5],
-      to: [5.2, 3.2, 0.8],
+      from: [7.8, 3.2, 3.8],
+      to: [5.2, 2.8, 1.2],
       look_at: 'actor_dark_mage.head',
       fov: 48,
+    },
+    // Shot 2 (4.5s - 8.2s): Soi cận cảnh Phù Thủy nói trên cây (Tán lá mờ X-Ray)
+    {
+      start: 4.5,
+      end: 8.2,
+      shot_type: 'face_close_up',
+      follow_target: 'actor_dark_mage',
+      fov: 34,
+    },
+    // Shot 3 (8.2s - 13.0s): Góc nhìn từ Chiến Binh dưới đất ngước nhìn lên tán cây đặc rậm rạp
+    {
+      start: 8.2,
+      end: 13.0,
+      shot_type: 'cinematic_dolly',
+      from: [1.2, 1.6, -0.6],
+      to: [1.6, 1.8, -0.9],
+      look_at: [4.6, 3.4, -3.0],
+      fov: 46,
+    },
+    // Shot 4 (13.0s - 18.0s): Góc nhìn từ Phù Thủy trên cây nhìn xuyên qua kẽ lá xuống Chiến Binh
+    {
+      start: 13.0,
+      end: 18.0,
+      shot_type: 'cinematic_dolly',
+      from: [4.9, 2.7, -2.6],
+      to: [4.7, 2.5, -2.4],
+      look_at: [1.2, 1.2, -1.0],
+      fov: 42,
     },
   ],
   actors: [
@@ -287,7 +342,7 @@ export const treeClimbingScene: MasterSceneConfig = {
         movement: [
           {
             start: 0.0,
-            end: 15.0,
+            end: 18.0,
             action: 'climb',
             target_object: 'props.village_tree_01',
           },
@@ -296,6 +351,38 @@ export const treeClimbingScene: MasterSceneConfig = {
           {
             line_ref: 'dlg_tree_01',
             expressions: [{ time_offset: 0.0, type: 'smirk', weight: 0.8 }],
+          },
+          {
+            line_ref: 'dlg_tree_03',
+            expressions: [{ time_offset: 0.0, type: 'smile', weight: 0.9 }],
+          },
+        ],
+      },
+    },
+    {
+      id: 'actor_warrior',
+      name: 'Chiến Binh',
+      model: 'characters/hero_knight.vrm',
+      spawn_point: [-1.0, 0, 1.5],
+      tracks: {
+        movement: [
+          {
+            start: 0.0,
+            end: 6.0,
+            action: 'walk',
+            destination: [1.2, 0, -1.0],
+          },
+          {
+            start: 6.0,
+            end: 18.0,
+            action: 'talk_gesture',
+            look_at: 'actor_dark_mage.head',
+          },
+        ],
+        speech: [
+          {
+            line_ref: 'dlg_tree_02',
+            expressions: [{ time_offset: 0.0, type: 'surprised', weight: 0.8 }],
           },
         ],
       },

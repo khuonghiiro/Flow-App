@@ -80,9 +80,15 @@ export class AssetLoaderRegistry {
     branch.castShadow = true;
     tree.add(branch);
 
-    // Leaves Foliage (CAN become translucent on camera occlusion)
+    // Leaves Foliage (Original clean standard material)
     const leavesGeo1 = new THREE.DodecahedronGeometry(1.6, 1);
-    const leavesMat1 = new THREE.MeshStandardMaterial({ color: 0x1f6629, roughness: 0.7 });
+    const leavesMat1 = new THREE.MeshStandardMaterial({
+      color: 0x1f6629,
+      roughness: 0.7,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: true,
+    });
     const leaves1 = new THREE.Mesh(leavesGeo1, leavesMat1);
     leaves1.name = 'tree_leaves_1';
     leaves1.position.y = 3.6;
@@ -90,7 +96,13 @@ export class AssetLoaderRegistry {
     tree.add(leaves1);
 
     const leavesGeo2 = new THREE.DodecahedronGeometry(1.2, 1);
-    const leavesMat2 = new THREE.MeshStandardMaterial({ color: 0x2e853a, roughness: 0.7 });
+    const leavesMat2 = new THREE.MeshStandardMaterial({
+      color: 0x2e853a,
+      roughness: 0.7,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: true,
+    });
     const leaves2 = new THREE.Mesh(leavesGeo2, leavesMat2);
     leaves2.name = 'tree_leaves_2';
     leaves2.position.set(0.6, 4.4, 0.4);

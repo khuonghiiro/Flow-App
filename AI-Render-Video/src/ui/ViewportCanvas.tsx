@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Camera, Eye, Zap, RotateCcw } from 'lucide-react';
+import { Camera, Zap, RotateCcw } from 'lucide-react';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';

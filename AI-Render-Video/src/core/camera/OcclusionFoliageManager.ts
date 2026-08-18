@@ -82,17 +82,19 @@ export class OcclusionFoliageManager {
       for (const hit of hits) {
         const item = this.occludables.find((o) => o.mesh === hit.object);
         if (item) {
-          // Genshin Impact style: Fade occluding foliage to 0.22 transparency
+          // Fade occluding foliage to 0.22 transparency smoothly
           item.targetOpacity = 0.22;
         }
       }
 
-      // Proximity check: Fade leaves immediately enveloping the focused climber
+      // Proximity check: Fade leaves immediately enveloping the climber or in front of climber's camera POV
       for (const item of this.occludables) {
         const meshPos = new THREE.Vector3();
         item.mesh.getWorldPosition(meshPos);
-        if (meshPos.distanceTo(targetPos) < 1.8) {
-          item.targetOpacity = Math.min(item.targetOpacity, 0.3);
+        const nearClimber = meshPos.distanceTo(targetPos) < 2.0;
+        const nearCameraPOV = camPos.distanceTo(targetPos) < 2.2 && meshPos.distanceTo(camPos) < 1.8;
+        if (nearClimber || nearCameraPOV) {
+          item.targetOpacity = Math.min(item.targetOpacity, 0.25);
         }
       }
     }
