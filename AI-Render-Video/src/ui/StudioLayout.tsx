@@ -32,7 +32,7 @@ interface StudioLayoutProps {
   onInspectDialogue: (dlg: DialogueManifestItem) => void;
   onPreviewSpeech: (dlg: DialogueManifestItem) => void;
   onUpdateScene: (updated: MasterSceneConfig) => void;
-  onExportVideo: () => void;
+  onExportVideo: (fps?: number) => void;
   isExporting: boolean;
   exportProgressMsg: string;
 }
@@ -63,6 +63,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [rightTab, setRightTab] = useState<'director' | 'radar'>('director');
   const [showCC, setShowCC] = useState(true);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
+  const [exportFps, setExportFps] = useState<number>(120);
 
   return (
     <div className="studio-container">

@@ -247,10 +247,10 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleExportVideo = async () => {
+  const handleExportVideo = async (targetFps: number = 120) => {
     if (!rendererRef.current) return;
     setIsExporting(true);
-    setExportProgressMsg('Đang chuẩn bị WebCodecs GPU encoder...');
+    setExportProgressMsg(`Đang chuẩn bị WebCodecs GPU encoder (${targetFps} FPS)...`);
 
     try {
       const recorder = new WebCodecsRecorder();
@@ -261,13 +261,13 @@ export const App: React.FC = () => {
         rendererRef.current.getDomElement(),
         sceneRef.current,
         sceneRef.current.duration,
-        sceneRef.current.fps || 30,
+        targetFps,
         (p) => {
           setExportProgressMsg(`${p.percent}% (${p.currentFrame}/${p.totalFrames})`);
         }
       );
 
-      VideoMuxer.downloadVideoBlob(blob, sceneRef.current.scene_id);
+      VideoMuxer.downloadVideoBlob(blob, `${sceneRef.current.scene_id}_${targetFps}fps`);
       setExportProgressMsg('Xuất thành công!');
     } catch (e) {
       console.error(e);
