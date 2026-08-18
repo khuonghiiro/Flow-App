@@ -390,8 +390,135 @@ export const treeClimbingScene: MasterSceneConfig = {
   ],
 };
 
+export const lanternVillageScene: MasterSceneConfig = {
+  scene_id: 'scene_lantern_twilight',
+  title: '🏮 Cổ Trấn Đèn Lồng (Model Tải Về)',
+  fps: 60,
+  duration: 18.0,
+  environment: {
+    map: 'farming_village',
+    sky_time: 'sunset',
+    weather: { fog: 0.01, wind: 0.35 },
+  },
+  subtitles_config: {
+    enable_overlay: true,
+    burn_in_export: true,
+    font_size: 22,
+    show_speaker_name: true,
+    position: 'bottom',
+    text_color: '#ffffff',
+  },
+  dialogues_manifest: [
+    {
+      line_id: 'dlg_lantern_01',
+      speaker_id: 'actor_anime_girl',
+      speaker_name: 'Tiểu Vũ (VRM)',
+      speaker_color: '#38bdf8',
+      text: 'Hoàng hôn buông xuống ngôi làng thật yên ả, chiếc lồng đèn này sáng lung linh quá!',
+      voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, emotion: 'smile' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 2.5,
+      estimated_duration: 4.8,
+    },
+    {
+      line_id: 'dlg_lantern_02',
+      speaker_id: 'actor_anime_girl',
+      speaker_name: 'Tiểu Vũ (VRM)',
+      speaker_color: '#38bdf8',
+      text: 'Để mình ngồi nghỉ chân tại quán nước bên đường ngắm nhìn cảnh sắc...',
+      voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, emotion: 'serious' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 8.5,
+      estimated_duration: 4.2,
+    },
+    {
+      line_id: 'dlg_lantern_03',
+      speaker_id: 'actor_anime_girl',
+      speaker_name: 'Tiểu Vũ (VRM)',
+      speaker_color: '#38bdf8',
+      text: 'Gió chiều thổi qua mát rượi, một ngày thật tuyệt vời!',
+      voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, emotion: 'smile' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 13.8,
+      estimated_duration: 3.8,
+    },
+  ],
+  camera_tracks: [
+    {
+      start: 0.0,
+      end: 6.5,
+      shot_type: 'cinematic_dolly',
+      from: [2.5, 2.5, 4.0],
+      to: [-1.0, 1.8, 2.2],
+      look_at: 'actor_anime_girl.head',
+      fov: 46,
+    },
+    {
+      start: 6.5,
+      end: 11.5,
+      shot_type: 'face_close_up',
+      follow_target: 'actor_anime_girl',
+      fov: 34,
+    },
+    {
+      start: 11.5,
+      end: 18.0,
+      shot_type: 'cinematic_dolly',
+      from: [-2.0, 1.6, -0.4],
+      to: [-4.2, 1.4, -0.6],
+      look_at: 'actor_anime_girl.head',
+      fov: 40,
+    },
+  ],
+  actors: [
+    {
+      id: 'actor_anime_girl',
+      name: 'Tiểu Vũ (VRM)',
+      model: 'assets/characters/sample_avatar.vrm',
+      spawn_point: [0.5, 0, 1.8],
+      tracks: {
+        movement: [
+          {
+            start: 0.0,
+            end: 8.0,
+            action: 'walk',
+            destination: [-4.0, 0, -1.65],
+          },
+          {
+            start: 8.0,
+            end: 18.0,
+            action: 'sit',
+            target_object: 'props.wooden_chair_01',
+          },
+        ],
+        speech: [
+          {
+            line_ref: 'dlg_lantern_01',
+            expressions: [{ time_offset: 0.0, type: 'smile', weight: 0.8 }],
+          },
+          {
+            line_ref: 'dlg_lantern_02',
+            expressions: [{ time_offset: 0.0, type: 'serious', weight: 0.6 }],
+          },
+          {
+            line_ref: 'dlg_lantern_03',
+            expressions: [{ time_offset: 0.0, type: 'smile', weight: 0.9 }],
+          },
+        ],
+      },
+    },
+  ],
+};
+
 export const sampleScenes = [
   villageClashScene,
   chairSittingScene,
   treeClimbingScene,
+  lanternVillageScene,
 ];

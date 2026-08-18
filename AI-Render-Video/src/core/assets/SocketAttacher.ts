@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export class SocketAttacher {
-  public static createWeapon(type: 'fire_sword' | 'magic_staff'): THREE.Group {
+  public static createWeapon(type: 'fire_sword' | 'magic_staff' | 'lantern'): THREE.Group {
     const weapon = new THREE.Group();
 
     if (type === 'fire_sword') {
@@ -37,6 +37,39 @@ export class SocketAttacher {
       const tipMarker = new THREE.Object3D();
       tipMarker.name = 'weapon_tip';
       tipMarker.position.set(0, 0.82, 0);
+      weapon.add(tipMarker);
+    } else if (type === 'lantern') {
+      weapon.name = 'weapon_lantern';
+      // Handle stick
+      const stickGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.4, 6);
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.7 });
+      const stick = new THREE.Mesh(stickGeo, woodMat);
+      stick.position.set(0, 0.1, 0.15);
+      stick.rotation.x = Math.PI / 3;
+      weapon.add(stick);
+
+      // Lantern Body
+      const lanternGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.32, 8);
+      const glowMat = new THREE.MeshStandardMaterial({
+        color: 0xff4411,
+        emissive: 0xff6600,
+        emissiveIntensity: 0.85,
+        roughness: 0.3,
+      });
+      const lantern = new THREE.Mesh(lanternGeo, glowMat);
+      lantern.position.set(0, -0.08, 0.28);
+      weapon.add(lantern);
+
+      // Roof cap
+      const capGeo = new THREE.ConeGeometry(0.2, 0.1, 8);
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xe6a117, metalness: 0.8, roughness: 0.3 });
+      const cap = new THREE.Mesh(capGeo, goldMat);
+      cap.position.set(0, 0.1, 0.28);
+      weapon.add(cap);
+
+      const tipMarker = new THREE.Object3D();
+      tipMarker.name = 'weapon_tip';
+      tipMarker.position.set(0, 0, 0.28);
       weapon.add(tipMarker);
     } else {
       weapon.name = 'weapon_magic_staff';

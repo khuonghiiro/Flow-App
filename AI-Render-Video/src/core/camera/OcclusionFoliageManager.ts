@@ -15,7 +15,11 @@ export interface FoliageFocusActor {
 
 export class OcclusionFoliageManager {
   private occludables: OccludableMesh[] = [];
-  private raycaster: THREE.Raycaster = new THREE.Raycaster();
+  private raycaster: THREE.Raycaster;
+
+  constructor() {
+    this.raycaster = new THREE.Raycaster();
+  }
 
   public registerSceneFoliage(scene3D: THREE.Scene): void {
     this.occludables = [];

@@ -36,6 +36,8 @@ interface StudioLayoutProps {
   inspectingActorId: string | null;
   onChangeInspectAngle: (angle: InspectCameraAngle) => void;
   onResetCamera: () => void;
+  isFreeCam?: boolean;
+  onToggleFreeCam?: () => void;
   onUpdateScene: (updated: MasterSceneConfig) => void;
   onExportVideo: (fps?: number) => void;
   isExporting: boolean;
@@ -63,6 +65,8 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   inspectingActorId,
   onChangeInspectAngle,
   onResetCamera,
+  isFreeCam,
+  onToggleFreeCam,
   onUpdateScene,
   onExportVideo,
   isExporting,
@@ -214,7 +218,9 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             subtitlesConfig={scene.subtitles_config}
             showCC={showCC}
             isInspecting={!!inspectingActorId}
+            isFreeCam={isFreeCam}
             onToggleCC={() => setShowCC(!showCC)}
+            onToggleFreeCam={onToggleFreeCam}
             onResetCamera={onResetCamera}
           />
 

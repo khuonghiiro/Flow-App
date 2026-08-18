@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export interface RendererOptions {
   antialias?: boolean;
@@ -11,6 +12,7 @@ export class ThreeRenderer {
   public scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
   public renderer: THREE.WebGLRenderer;
+  public controls: OrbitControls | null = null;
   public container: HTMLElement | null = null;
   public isRunning: boolean = false;
   private animationFrameId: number | null = null;
@@ -47,6 +49,13 @@ export class ThreeRenderer {
     this.container = container;
     this.container.innerHTML = '';
     this.container.appendChild(this.renderer.domElement);
+
+    // Initialize OrbitControls for Free Cam mode
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
+    this.controls.enabled = false; // default: director camera tracks take priority
+
     this.handleResize();
     window.addEventListener('resize', this.onWindowResize);
   }
@@ -54,8 +63,21 @@ export class ThreeRenderer {
   public unmount(): void {
     this.stop();
     window.removeEventListener('resize', this.onWindowResize);
+    if (this.controls) {
+      this.controls.dispose();
+      this.controls = null;
+    }
     if (this.container && this.renderer.domElement.parentElement === this.container) {
       this.container.removeChild(this.renderer.domElement);
+    }
+  }
+
+  public setFreeCam(enabled: boolean): void {
+    if (this.controls) {
+      this.controls.enabled = enabled;
+      if (enabled) {
+        this.controls.target.set(0, 1.2, 0);
+      }
     }
   }
 
@@ -109,6 +131,10 @@ export class ThreeRenderer {
       this.fps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
       this.frameCount = 0;
       this.lastFpsUpdate = now;
+    }
+
+    if (this.controls && this.controls.enabled) {
+      this.controls.update();
     }
 
     for (let i = 0; i < this.renderCallbacks.length; i++) {

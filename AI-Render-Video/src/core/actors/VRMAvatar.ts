@@ -36,6 +36,7 @@ export class VRMAvatar {
     }
 
     const isKnight = config.id.includes('warrior') || config.model.includes('knight');
+    const isAnime = config.id.includes('anime') || config.name.includes('Tiểu Vũ') || config.model.includes('sample_avatar') || config.id.includes('girl');
 
     // Hierarchy: Root -> Spine -> Neck -> Head
     this.spineBone = new THREE.Group();
@@ -43,13 +44,26 @@ export class VRMAvatar {
     this.spineBone.position.y = 0.9;
     this.rootObject.add(this.spineBone);
 
-    // Torso / Armor Body
+    // Torso / Dress Body
+    let torsoColor = 0x221333;
+    let metalness = 0.2;
+    let roughness = 0.8;
+    if (isKnight) {
+      torsoColor = 0x3a4f66;
+      metalness = 0.7;
+      roughness = 0.3;
+    } else if (isAnime) {
+      torsoColor = 0x38bdf8;
+      metalness = 0.1;
+      roughness = 0.5;
+    }
+
     const torsoMat = new THREE.MeshStandardMaterial({
-      color: isKnight ? 0x3a4f66 : 0x221333,
-      metalness: isKnight ? 0.7 : 0.2,
-      roughness: isKnight ? 0.3 : 0.8,
+      color: torsoColor,
+      metalness,
+      roughness,
     });
-    const torsoGeo = new THREE.BoxGeometry(0.5, 0.65, 0.3);
+    const torsoGeo = new THREE.BoxGeometry(0.46, 0.62, 0.28);
     const torso = new THREE.Mesh(torsoGeo, torsoMat);
     torso.position.y = 0.32;
     torso.castShadow = true;
@@ -70,6 +84,19 @@ export class VRMAvatar {
       cape.position.set(0, 0.25, -0.16);
       cape.rotation.x = 0.1;
       this.spineBone.add(cape);
+    } else if (isAnime) {
+      // Cute Anime Skirt & Bow
+      const skirtGeo = new THREE.ConeGeometry(0.38, 0.45, 8, 1, true);
+      const skirtMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.6, side: THREE.DoubleSide });
+      const skirt = new THREE.Mesh(skirtGeo, skirtMat);
+      skirt.position.y = 0.05;
+      this.spineBone.add(skirt);
+
+      const bowGeo = new THREE.BoxGeometry(0.16, 0.08, 0.06);
+      const bowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+      const bow = new THREE.Mesh(bowGeo, bowMat);
+      bow.position.set(0, 0.45, 0.15);
+      this.spineBone.add(bow);
     } else {
       // Dark Mage Robe Trim
       const robeGeo = new THREE.CylinderGeometry(0.28, 0.45, 0.8, 8);
@@ -91,19 +118,49 @@ export class VRMAvatar {
     this.neckBone.add(this.headBone);
 
     // Face / Head Mesh
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffd1b3, roughness: 0.6 });
-    const headGeo = new THREE.BoxGeometry(0.32, 0.36, 0.32);
+    const skinMat = new THREE.MeshStandardMaterial({ color: isAnime ? 0xffdfd0 : 0xffd1b3, roughness: 0.5 });
+    const headGeo = new THREE.BoxGeometry(0.32, 0.34, 0.3);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.castShadow = true;
     this.headBone.add(head);
 
-    // Helmet or Wizard Hat
+    // Hair / Helmet / Wizard Hat
     if (isKnight) {
       const helmGeo = new THREE.BoxGeometry(0.36, 0.2, 0.36);
       const helmMat = new THREE.MeshStandardMaterial({ color: 0x2c3b4d, metalness: 0.8, roughness: 0.2 });
       const helm = new THREE.Mesh(helmGeo, helmMat);
       helm.position.y = 0.12;
       this.headBone.add(helm);
+    } else if (isAnime) {
+      // Anime Twin-Tails Hair with Golden Clips
+      const hairMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 });
+      const bangGeo = new THREE.BoxGeometry(0.34, 0.12, 0.32);
+      const bangs = new THREE.Mesh(bangGeo, hairMat);
+      bangs.position.y = 0.16;
+      this.headBone.add(bangs);
+
+      // Left Tail
+      const tailGeo = new THREE.ConeGeometry(0.08, 0.65, 6);
+      const tailL = new THREE.Mesh(tailGeo, hairMat);
+      tailL.position.set(-0.22, -0.15, -0.05);
+      tailL.rotation.z = 0.2;
+      this.headBone.add(tailL);
+
+      // Right Tail
+      const tailR = new THREE.Mesh(tailGeo, hairMat);
+      tailR.position.set(0.22, -0.15, -0.05);
+      tailR.rotation.z = -0.2;
+      this.headBone.add(tailR);
+
+      // Hair Ribbon Clips
+      const clipGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const clipMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 });
+      const clipL = new THREE.Mesh(clipGeo, clipMat);
+      clipL.position.set(-0.2, 0.15, 0.05);
+      this.headBone.add(clipL);
+      const clipR = new THREE.Mesh(clipGeo, clipMat);
+      clipR.position.set(0.2, 0.15, 0.05);
+      this.headBone.add(clipR);
     } else {
       const hatGeo = new THREE.ConeGeometry(0.35, 0.7, 8);
       const hatMat = new THREE.MeshStandardMaterial({ color: 0x371357, roughness: 0.7 });
@@ -114,14 +171,14 @@ export class VRMAvatar {
     }
 
     // Eyes & Eyebrows
-    const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: isKnight ? 0x224488 : 0x9922cc });
+    const eyeGeo = new THREE.SphereGeometry(isAnime ? 0.045 : 0.035, 8, 8);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: isKnight ? 0x224488 : isAnime ? 0x0284c7 : 0x9922cc });
     this.eyeLMesh = new THREE.Mesh(eyeGeo, eyeMat);
-    this.eyeLMesh.position.set(-0.08, 0.04, 0.165);
+    this.eyeLMesh.position.set(-0.08, 0.04, 0.155);
     this.headBone.add(this.eyeLMesh);
 
     this.eyeRMesh = new THREE.Mesh(eyeGeo, eyeMat);
-    this.eyeRMesh.position.set(0.08, 0.04, 0.165);
+    this.eyeRMesh.position.set(0.08, 0.04, 0.155);
     this.headBone.add(this.eyeRMesh);
 
     const browGeo = new THREE.BoxGeometry(0.08, 0.02, 0.02);
@@ -262,6 +319,9 @@ export class VRMAvatar {
     if (isKnight) {
       const sword = SocketAttacher.createWeapon('fire_sword');
       this.weaponSocketR.add(sword);
+    } else if (isAnime) {
+      const lantern = SocketAttacher.createWeapon('lantern');
+      this.weaponSocketR.add(lantern);
     } else {
       const staff = SocketAttacher.createWeapon('magic_staff');
       this.weaponSocketR.add(staff);

@@ -1,14 +1,11 @@
 import * as THREE from 'three';
 import { CameraTrack, MasterSceneConfig } from '../../types/scene';
 import { CameraFraming, CameraPose, ActorVisualState, InspectCameraAngle } from './CameraFraming';
+export type { InspectCameraAngle };
 
 export class CameraDirector {
   private camera: THREE.PerspectiveCamera;
-  private currentPose: CameraPose = {
-    position: new THREE.Vector3(0, 3, 10),
-    target: new THREE.Vector3(0, 1.2, 0),
-    fov: 50,
-  };
+  private currentPose: CameraPose;
   private inspectTarget: {
     actorId: string;
     untilTime: number;
@@ -17,6 +14,11 @@ export class CameraDirector {
 
   constructor(camera: THREE.PerspectiveCamera) {
     this.camera = camera;
+    this.currentPose = {
+      position: new THREE.Vector3(0, 3, 10),
+      target: new THREE.Vector3(0, 1.2, 0),
+      fov: 50,
+    };
   }
 
   public setInspectMode(

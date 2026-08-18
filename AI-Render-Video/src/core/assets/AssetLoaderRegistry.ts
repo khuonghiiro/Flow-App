@@ -208,4 +208,85 @@ export class AssetLoaderRegistry {
 
     return farm;
   }
+
+  public static createDuckProp(position: [number, number, number]): THREE.Group {
+    const duck = new THREE.Group();
+    duck.position.set(...position);
+    duck.name = 'props.duck_prop_01';
+
+    // Yellow Duck Body
+    const bodyGeo = new THREE.SphereGeometry(0.22, 12, 12);
+    bodyGeo.scale(1.2, 0.9, 1.0);
+    const yellowMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.3 });
+    const body = new THREE.Mesh(bodyGeo, yellowMat);
+    body.position.y = 0.2;
+    body.castShadow = true;
+    duck.add(body);
+
+    // Head
+    const headGeo = new THREE.SphereGeometry(0.14, 10, 10);
+    const head = new THREE.Mesh(headGeo, yellowMat);
+    head.position.set(0.16, 0.35, 0);
+    head.castShadow = true;
+    duck.add(head);
+
+    // Orange Beak
+    const beakGeo = new THREE.ConeGeometry(0.06, 0.12, 6);
+    const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.4 });
+    const beak = new THREE.Mesh(beakGeo, orangeMat);
+    beak.position.set(0.3, 0.34, 0);
+    beak.rotation.z = -Math.PI / 2;
+    duck.add(beak);
+
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.02, 6, 6);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(0.22, 0.38, 0.09);
+    duck.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.22, 0.38, -0.09);
+    duck.add(eyeR);
+
+    return duck;
+  }
+
+  public static createLanternStand(position: [number, number, number]): THREE.Group {
+    const stand = new THREE.Group();
+    stand.position.set(...position);
+    stand.name = 'props.lantern_stand_01';
+
+    // Wooden Pole
+    const poleGeo = new THREE.CylinderGeometry(0.06, 0.08, 2.6, 8);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.8 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.y = 1.3;
+    pole.castShadow = true;
+    stand.add(pole);
+
+    // Cross Arm
+    const armGeo = new THREE.BoxGeometry(0.7, 0.08, 0.08);
+    const arm = new THREE.Mesh(armGeo, poleMat);
+    arm.position.set(0.25, 2.45, 0);
+    stand.add(arm);
+
+    // Hanging Large Lantern
+    const lanternGeo = new THREE.CylinderGeometry(0.18, 0.22, 0.45, 8);
+    const glowMat = new THREE.MeshStandardMaterial({
+      color: 0xff4411,
+      emissive: 0xff7711,
+      emissiveIntensity: 0.9,
+      roughness: 0.2,
+    });
+    const lantern = new THREE.Mesh(lanternGeo, glowMat);
+    lantern.position.set(0.5, 2.0, 0);
+    stand.add(lantern);
+
+    // Point Light emitting warm glow
+    const light = new THREE.PointLight(0xffaa44, 2.0, 8);
+    light.position.set(0.5, 2.0, 0);
+    stand.add(light);
+
+    return stand;
+  }
 }

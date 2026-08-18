@@ -9,8 +9,7 @@ import { CombatVFXTrigger } from './core/combat/CombatVFXTrigger';
 import { CombatSyncEngine } from './core/combat/CombatSyncEngine';
 import { NavMeshManager } from './core/navigation/NavMeshManager';
 import { PathNavigator } from './core/navigation/PathNavigator';
-import { CameraDirector } from './core/camera/CameraDirector';
-import { InspectCameraAngle, ActorVisualState } from './core/camera/CameraFraming';
+import { CameraDirector, InspectCameraAngle } from './core/camera/CameraDirector';
 import { OcclusionFoliageManager, FoliageFocusActor } from './core/camera/OcclusionFoliageManager';
 import { TrackEvaluator, ActorRuntime } from './core/timeline/TrackEvaluator';
 import { MasterClock } from './core/timeline/MasterClock';
@@ -19,17 +18,16 @@ import { ActorAnimator } from './core/actors/ActorAnimator';
 import { ActorMorphController } from './core/actors/ActorMorphController';
 import { ActorLipSync } from './core/actors/ActorLipSync';
 import { ActorLookAt } from './core/actors/ActorLookAt';
-import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 import { SubtitleSynchronizer, ActiveSubtitle } from './core/subtitles/SubtitleSynchronizer';
 import { WebCodecsRecorder } from './core/export/WebCodecsRecorder';
 import { VideoMuxer } from './core/export/VideoMuxer';
 import { StudioLayout } from './ui/StudioLayout';
-import './styles/studio.css';
+import { ActorVisualState } from './core/camera/CameraFraming';
+import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 
 export const App: React.FC = () => {
   const [scene, setScene] = useState<MasterSceneConfig>(villageClashScene);
   const sceneRef = useRef<MasterSceneConfig>(villageClashScene);
-
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -40,6 +38,8 @@ export const App: React.FC = () => {
   const [inspectingActorId, setInspectingActorId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgressMsg, setExportProgressMsg] = useState('');
+  const [isFreeCam, setIsFreeCam] = useState(false);
+  const isFreeCamRef = useRef(false);
 
   // Engine references
   const rendererRef = useRef<ThreeRenderer | null>(null);
@@ -78,7 +78,7 @@ export const App: React.FC = () => {
     occlusionFoliageRef.current = new OcclusionFoliageManager();
     trackEvaluatorRef.current = new TrackEvaluator(combatSync, pathNav);
 
-    // Build 3D Environment (Ground, Trees, Chair, Farm plot)
+    // Build 3D Environment (Ground, Trees, Chair, Farm plot, Lantern stand, Duck)
     const ground = AssetLoaderRegistry.createGround();
     renderer.scene.add(ground);
 
@@ -95,7 +95,14 @@ export const App: React.FC = () => {
       sceneObjectsRef.current.set('props.farm_plot_01.crop', crop);
     }
 
-    // Register foliage for Genshin-style X-Ray occlusion transparency
+    // Add Golden Duck prop & Large Lantern Stand from downloaded assets
+    const duck = AssetLoaderRegistry.createDuckProp([0.8, 0, -2.5]);
+    renderer.scene.add(duck);
+
+    const lanternStand = AssetLoaderRegistry.createLanternStand([-3.2, 0, -2.0]);
+    renderer.scene.add(lanternStand);
+
+    // Register foliage for occlusion transparency
     occlusionFoliageRef.current.registerSceneFoliage(renderer.scene);
 
     // Build Actors
@@ -173,18 +180,18 @@ export const App: React.FC = () => {
         });
       }
 
-      // Camera Director Update
-      if (cameraDirectorRef.current) {
+      // Camera Director Update (only active when Free Cam is NOT enabled)
+      if (!isFreeCamRef.current && cameraDirectorRef.current) {
         cameraDirectorRef.current.update(activeScene, t, actorStates, delta);
       }
 
-      // Occlusion Transparency: Only active tree climbers that are currently focused turn foliage transparent!
+      // Occlusion Transparency
       if (occlusionFoliageRef.current) {
         occlusionFoliageRef.current.update(renderer.camera, foliageActors, delta);
       }
 
-      // Screen Shake Post-processing
-      if (postProcessorRef.current) {
+      // Screen Shake Post-processing (only in Director Cam)
+      if (!isFreeCamRef.current && postProcessorRef.current) {
         postProcessorRef.current.applyToCamera(renderer.camera, t);
       }
 
@@ -270,6 +277,10 @@ export const App: React.FC = () => {
       setInspectingActorId(null);
     } else {
       // Toggle on: seek, play, and inspect
+      setIsFreeCam(false);
+      isFreeCamRef.current = false;
+      if (rendererRef.current) rendererRef.current.setFreeCam(false);
+
       clockRef.current.seek(dlg.start_time);
       clockRef.current.play();
       setIsPlaying(true);
@@ -285,6 +296,19 @@ export const App: React.FC = () => {
       cameraDirectorRef.current.clearInspectMode();
     }
     setInspectingActorId(null);
+    setIsFreeCam(false);
+    isFreeCamRef.current = false;
+    if (rendererRef.current) rendererRef.current.setFreeCam(false);
+  };
+
+  const handleToggleFreeCam = () => {
+    const next = !isFreeCam;
+    setIsFreeCam(next);
+    isFreeCamRef.current = next;
+    setInspectingActorId(null);
+    if (rendererRef.current) {
+      rendererRef.current.setFreeCam(next);
+    }
   };
 
   const handleChangeInspectAngle = (angle: InspectCameraAngle) => {
@@ -389,6 +413,8 @@ export const App: React.FC = () => {
       inspectingActorId={inspectingActorId}
       onChangeInspectAngle={handleChangeInspectAngle}
       onResetCamera={handleResetCamera}
+      isFreeCam={isFreeCam}
+      onToggleFreeCam={handleToggleFreeCam}
       onUpdateScene={handleUpdateScene}
       onExportVideo={handleExportVideo}
       isExporting={isExporting}
