@@ -10,6 +10,8 @@ import { CombatSyncEngine } from './core/combat/CombatSyncEngine';
 import { NavMeshManager } from './core/navigation/NavMeshManager';
 import { PathNavigator } from './core/navigation/PathNavigator';
 import { CameraDirector } from './core/camera/CameraDirector';
+import { InspectCameraAngle, ActorVisualState } from './core/camera/CameraFraming';
+import { OcclusionFoliageManager } from './core/camera/OcclusionFoliageManager';
 import { TrackEvaluator, ActorRuntime } from './core/timeline/TrackEvaluator';
 import { MasterClock } from './core/timeline/MasterClock';
 import { VRMAvatar } from './core/actors/VRMAvatar';
@@ -34,6 +36,8 @@ export const App: React.FC = () => {
   const [isLooping, setIsLooping] = useState(true);
   const [fps, setFps] = useState(60);
   const [activeSubtitle, setActiveSubtitle] = useState<ActiveSubtitle | null>(null);
+  const [inspectAngle, setInspectAngle] = useState<InspectCameraAngle>('front');
+  const [inspectingActorId, setInspectingActorId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgressMsg, setExportProgressMsg] = useState('');
 
@@ -45,6 +49,7 @@ export const App: React.FC = () => {
   const combatSyncRef = useRef<CombatSyncEngine | null>(null);
   const navMeshRef = useRef<NavMeshManager>(new NavMeshManager());
   const cameraDirectorRef = useRef<CameraDirector | null>(null);
+  const occlusionFoliageRef = useRef<OcclusionFoliageManager | null>(null);
   const trackEvaluatorRef = useRef<TrackEvaluator | null>(null);
   const clockRef = useRef<MasterClock>(new MasterClock(villageClashScene.duration));
   const actorsMapRef = useRef<Map<string, ActorRuntime>>(new Map());
@@ -70,6 +75,7 @@ export const App: React.FC = () => {
 
     const pathNav = new PathNavigator(navMeshRef.current);
     cameraDirectorRef.current = new CameraDirector(renderer.camera);
+    occlusionFoliageRef.current = new OcclusionFoliageManager();
     trackEvaluatorRef.current = new TrackEvaluator(combatSync, pathNav);
 
     // Build 3D Environment (Ground, Trees, Chair, Farm plot)
@@ -88,6 +94,9 @@ export const App: React.FC = () => {
     if (crop) {
       sceneObjectsRef.current.set('props.farm_plot_01.crop', crop);
     }
+
+    // Register foliage for Genshin-style X-Ray occlusion transparency
+    occlusionFoliageRef.current.registerSceneFoliage(renderer.scene);
 
     // Build Actors
     initActors(sceneRef.current, renderer.scene);
@@ -112,17 +121,28 @@ export const App: React.FC = () => {
         );
       }
 
-      // Collect actor positions for Camera
-      const actorPositions = new Map<string, THREE.Vector3>();
+      // Collect actor visual states & head positions for camera & foliage
+      const actorStates = new Map<string, ActorVisualState>();
+      const targetPositions: THREE.Vector3[] = [];
+
       for (const [id, runtime] of actorsMapRef.current.entries()) {
         const p = new THREE.Vector3();
         runtime.avatar.rootObject.getWorldPosition(p);
-        actorPositions.set(id, p);
+        const head = runtime.avatar.getHeadPosition();
+        const rotY = runtime.avatar.rootObject.rotation.y;
+
+        actorStates.set(id, { position: p, headPosition: head, rotationY: rotY });
+        targetPositions.push(head);
       }
 
       // Camera Director Update
       if (cameraDirectorRef.current) {
-        cameraDirectorRef.current.update(activeScene, t, actorPositions, delta);
+        cameraDirectorRef.current.update(activeScene, t, actorStates, delta);
+      }
+
+      // Occlusion Transparency (Genshin Impact foliage X-Ray)
+      if (occlusionFoliageRef.current) {
+        occlusionFoliageRef.current.update(renderer.camera, targetPositions, delta);
       }
 
       // Screen Shake Post-processing
@@ -206,11 +226,33 @@ export const App: React.FC = () => {
   };
 
   const handleInspectDialogue = (dlg: DialogueManifestItem) => {
-    clockRef.current.seek(dlg.start_time);
-    clockRef.current.play();
-    setIsPlaying(true);
+    if (inspectingActorId === dlg.speaker_id) {
+      // Toggle off: clear inspect mode and restore camera
+      cameraDirectorRef.current?.clearInspectMode();
+      setInspectingActorId(null);
+    } else {
+      // Toggle on: seek, play, and inspect
+      clockRef.current.seek(dlg.start_time);
+      clockRef.current.play();
+      setIsPlaying(true);
+      if (cameraDirectorRef.current) {
+        cameraDirectorRef.current.setInspectMode(dlg.speaker_id, 12.0, inspectAngle);
+        setInspectingActorId(dlg.speaker_id);
+      }
+    }
+  };
+
+  const handleResetCamera = () => {
     if (cameraDirectorRef.current) {
-      cameraDirectorRef.current.setInspectMode(dlg.speaker_id, 4.0);
+      cameraDirectorRef.current.clearInspectMode();
+    }
+    setInspectingActorId(null);
+  };
+
+  const handleChangeInspectAngle = (angle: InspectCameraAngle) => {
+    setInspectAngle(angle);
+    if (cameraDirectorRef.current) {
+      cameraDirectorRef.current.setInspectAngle(angle);
     }
   };
 
@@ -225,6 +267,7 @@ export const App: React.FC = () => {
     clockRef.current.setDuration(newScene.duration);
     setCurrentTime(0);
     setIsPlaying(false);
+    setInspectingActorId(null);
 
     if (combatSyncRef.current) {
       combatSyncRef.current.reset();
@@ -235,6 +278,9 @@ export const App: React.FC = () => {
     }
     if (rendererRef.current) {
       initActors(newScene, rendererRef.current.scene);
+      if (occlusionFoliageRef.current) {
+        occlusionFoliageRef.current.registerSceneFoliage(rendererRef.current.scene);
+      }
       if (trackEvaluatorRef.current) {
         trackEvaluatorRef.current.evaluate(
           newScene,
@@ -301,6 +347,10 @@ export const App: React.FC = () => {
       onChangePlaybackRate={handleChangePlaybackRate}
       onInspectDialogue={handleInspectDialogue}
       onPreviewSpeech={handlePreviewSpeech}
+      inspectAngle={inspectAngle}
+      inspectingActorId={inspectingActorId}
+      onChangeInspectAngle={handleChangeInspectAngle}
+      onResetCamera={handleResetCamera}
       onUpdateScene={handleUpdateScene}
       onExportVideo={handleExportVideo}
       isExporting={isExporting}

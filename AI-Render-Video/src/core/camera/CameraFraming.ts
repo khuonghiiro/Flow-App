@@ -1,19 +1,32 @@
 import * as THREE from 'three';
 import { CameraTrack, Vec3Tuple } from '../../types/scene';
 
+export type InspectCameraAngle = 'front' | 'three_quarter' | 'side' | 'low_angle';
+
 export interface CameraPose {
   position: THREE.Vector3;
   target: THREE.Vector3;
   fov: number;
 }
 
+export interface ActorVisualState {
+  position: THREE.Vector3;
+  headPosition: THREE.Vector3;
+  rotationY: number;
+}
+
 export class CameraFraming {
   public static evaluatePose(
     track: CameraTrack,
     time: number,
-    actorPositions: Map<string, THREE.Vector3>
+    actorStates: Map<string, ActorVisualState>,
+    inspectAngle: InspectCameraAngle = 'front'
   ): CameraPose {
-    const progress = THREE.MathUtils.clamp((time - track.start) / Math.max(0.01, track.end - track.start), 0, 1);
+    const progress = THREE.MathUtils.clamp(
+      (time - track.start) / Math.max(0.01, track.end - track.start),
+      0,
+      1
+    );
     const pos = new THREE.Vector3();
     const target = new THREE.Vector3(0, 1.2, 0);
     const fov = track.fov || 50;
@@ -26,10 +39,9 @@ export class CameraFraming {
 
         if (typeof track.look_at === 'string') {
           const actorId = track.look_at.replace('.head', '');
-          const actorPos = actorPositions.get(actorId);
-          if (actorPos) {
-            target.copy(actorPos);
-            target.y += 1.4; // head level
+          const actorState = actorStates.get(actorId);
+          if (actorState) {
+            target.copy(actorState.headPosition);
           }
         } else if (Array.isArray(track.look_at)) {
           target.set(...(track.look_at as Vec3Tuple));
@@ -39,11 +51,11 @@ export class CameraFraming {
 
       case 'combat_action_cam': {
         const targetId = track.follow_target || 'actor_warrior';
-        const actorPos = actorPositions.get(targetId) || new THREE.Vector3(0, 0, 0);
+        const actorState = actorStates.get(targetId);
+        const actorPos = actorState ? actorState.position : new THREE.Vector3(0, 0, 0);
         const dist = track.distance || 3.5;
         const height = track.height || 1.6;
 
-        // Orbit slightly around the fight
         const angle = Math.PI * 0.2 + Math.sin(time * 0.5) * 0.2;
         pos.set(
           actorPos.x + Math.sin(angle) * dist,
@@ -57,9 +69,44 @@ export class CameraFraming {
 
       case 'face_close_up': {
         const targetId = track.follow_target || 'actor_warrior';
-        const actorPos = actorPositions.get(targetId) || new THREE.Vector3(0, 0, 0);
-        pos.set(actorPos.x, actorPos.y + 1.45, actorPos.z + 1.1);
-        target.set(actorPos.x, actorPos.y + 1.4, actorPos.z);
+        const actorState = actorStates.get(targetId);
+
+        if (actorState) {
+          const headPos = actorState.headPosition;
+          const facingY = actorState.rotationY;
+
+          let angleOffset = 0; // 'front'
+          let dist = 0.95;
+          let heightOffset = 0.02;
+
+          if (inspectAngle === 'three_quarter') {
+            angleOffset = Math.PI * 0.22; // 40 degrees
+            dist = 1.05;
+            heightOffset = 0.04;
+          } else if (inspectAngle === 'side') {
+            angleOffset = Math.PI * 0.5; // 90 degrees
+            dist = 0.95;
+            heightOffset = 0.0;
+          } else if (inspectAngle === 'low_angle') {
+            angleOffset = Math.PI * 0.08;
+            dist = 1.15;
+            heightOffset = -0.28;
+          }
+
+          // Compute camera position relative to the avatar's facing angle
+          const totalAngle = facingY + angleOffset;
+          pos.set(
+            headPos.x + Math.sin(totalAngle) * dist,
+            headPos.y + heightOffset,
+            headPos.z + Math.cos(totalAngle) * dist
+          );
+
+          // Focus right at the eye/nose center with slight headroom
+          target.copy(headPos);
+        } else {
+          pos.set(0, 1.6, 1.2);
+          target.set(0, 1.5, 0);
+        }
         break;
       }
 
@@ -71,6 +118,6 @@ export class CameraFraming {
       }
     }
 
-    return { position: pos, target, fov };
+    return { position: pos, target, fov: track.shot_type === 'face_close_up' ? 32 : fov };
   }
 }

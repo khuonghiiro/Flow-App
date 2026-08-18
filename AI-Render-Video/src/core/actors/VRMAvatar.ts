@@ -9,9 +9,15 @@ export class VRMAvatar {
   public neckBone: THREE.Object3D;
   public spineBone: THREE.Object3D;
   public leftArm: THREE.Object3D;
+  public leftElbow: THREE.Object3D;
   public rightArm: THREE.Object3D;
+  public rightElbow: THREE.Object3D;
   public leftLeg: THREE.Object3D;
+  public leftKnee: THREE.Object3D;
   public rightLeg: THREE.Object3D;
+  public rightKnee: THREE.Object3D;
+  public leftFoot: THREE.Object3D;
+  public rightFoot: THREE.Object3D;
   public mouthMesh: THREE.Mesh;
   public eyeLMesh: THREE.Mesh;
   public eyeRMesh: THREE.Mesh;
@@ -50,7 +56,7 @@ export class VRMAvatar {
     this.spineBone.add(torso);
 
     if (isKnight) {
-      // Golden Chest Emblem & Pauldrons
+      // Golden Chest Emblem & Cape
       const emblemGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 6);
       const goldMat = new THREE.MeshStandardMaterial({ color: 0xdfa012, metalness: 0.8, roughness: 0.3 });
       const emblem = new THREE.Mesh(emblemGeo, goldMat);
@@ -58,7 +64,6 @@ export class VRMAvatar {
       emblem.position.set(0, 0.45, 0.16);
       this.spineBone.add(emblem);
 
-      // Cape
       const capeGeo = new THREE.PlaneGeometry(0.5, 0.9);
       const capeMat = new THREE.MeshStandardMaterial({ color: 0x8b1c1c, side: THREE.DoubleSide });
       const cape = new THREE.Mesh(capeGeo, capeMat);
@@ -66,7 +71,7 @@ export class VRMAvatar {
       cape.rotation.x = 0.1;
       this.spineBone.add(cape);
     } else {
-      // Dark Mage Cape / Robe Trim
+      // Dark Mage Robe Trim
       const robeGeo = new THREE.CylinderGeometry(0.28, 0.45, 0.8, 8);
       const robeMat = new THREE.MeshStandardMaterial({ color: 0x190f29, roughness: 0.85 });
       const robe = new THREE.Mesh(robeGeo, robeMat);
@@ -137,60 +142,120 @@ export class VRMAvatar {
     this.mouthMesh.position.set(0, -0.08, 0.165);
     this.headBone.add(this.mouthMesh);
 
-    // Arms
+    // Limbs Material
     const limbMat = new THREE.MeshStandardMaterial({
       color: isKnight ? 0x2c3b4d : 0x2a1740,
       metalness: isKnight ? 0.6 : 0.2,
       roughness: 0.4,
     });
-    const armGeo = new THREE.CylinderGeometry(0.07, 0.06, 0.55, 6);
 
+    // Articulated Arms (Shoulder -> Upper Arm -> Elbow -> Forearm -> Hand Socket)
+    const upperArmGeo = new THREE.CylinderGeometry(0.065, 0.06, 0.28, 6);
+    const forearmGeo = new THREE.CylinderGeometry(0.06, 0.052, 0.26, 6);
+
+    // Left Arm
     this.leftArm = new THREE.Group();
-    this.leftArm.name = 'arm_l';
-    this.leftArm.position.set(-0.35, 0.55, 0);
-    const armMeshL = new THREE.Mesh(armGeo, limbMat);
-    armMeshL.position.y = -0.25;
-    armMeshL.castShadow = true;
-    this.leftArm.add(armMeshL);
-    this.spineBone.add(this.leftArm);
+    this.leftArm.name = 'shoulder_l';
+    this.leftArm.position.set(-0.34, 0.55, 0);
+    const upperArmMeshL = new THREE.Mesh(upperArmGeo, limbMat);
+    upperArmMeshL.position.y = -0.14;
+    upperArmMeshL.castShadow = true;
+    this.leftArm.add(upperArmMeshL);
+
+    this.leftElbow = new THREE.Group();
+    this.leftElbow.name = 'elbow_l';
+    this.leftElbow.position.set(0, -0.28, 0);
+    const forearmMeshL = new THREE.Mesh(forearmGeo, limbMat);
+    forearmMeshL.position.y = -0.13;
+    forearmMeshL.castShadow = true;
+    this.leftElbow.add(forearmMeshL);
+    this.leftArm.add(this.leftElbow);
 
     this.weaponSocketL = new THREE.Group();
     this.weaponSocketL.name = 'weapon_l';
-    this.weaponSocketL.position.set(0, -0.5, 0);
-    this.leftArm.add(this.weaponSocketL);
+    this.weaponSocketL.position.set(0, -0.26, 0);
+    this.leftElbow.add(this.weaponSocketL);
+    this.spineBone.add(this.leftArm);
 
+    // Right Arm
     this.rightArm = new THREE.Group();
-    this.rightArm.name = 'arm_r';
-    this.rightArm.position.set(0.35, 0.55, 0);
-    const armMeshR = new THREE.Mesh(armGeo, limbMat);
-    armMeshR.position.y = -0.25;
-    armMeshR.castShadow = true;
-    this.rightArm.add(armMeshR);
-    this.spineBone.add(this.rightArm);
+    this.rightArm.name = 'shoulder_r';
+    this.rightArm.position.set(0.34, 0.55, 0);
+    const upperArmMeshR = new THREE.Mesh(upperArmGeo, limbMat);
+    upperArmMeshR.position.y = -0.14;
+    upperArmMeshR.castShadow = true;
+    this.rightArm.add(upperArmMeshR);
+
+    this.rightElbow = new THREE.Group();
+    this.rightElbow.name = 'elbow_r';
+    this.rightElbow.position.set(0, -0.28, 0);
+    const forearmMeshR = new THREE.Mesh(forearmGeo, limbMat);
+    forearmMeshR.position.y = -0.13;
+    forearmMeshR.castShadow = true;
+    this.rightElbow.add(forearmMeshR);
+    this.rightArm.add(this.rightElbow);
 
     this.weaponSocketR = new THREE.Group();
     this.weaponSocketR.name = 'weapon_r';
-    this.weaponSocketR.position.set(0, -0.5, 0);
-    this.rightArm.add(this.weaponSocketR);
+    this.weaponSocketR.position.set(0, -0.26, 0);
+    this.rightElbow.add(this.weaponSocketR);
+    this.spineBone.add(this.rightArm);
 
-    // Legs
-    const legGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.8, 6);
+    // Articulated Legs (Hip -> Thigh -> Knee -> Calf/Shin -> Foot)
+    const thighGeo = new THREE.CylinderGeometry(0.08, 0.072, 0.42, 6);
+    const calfGeo = new THREE.CylinderGeometry(0.072, 0.062, 0.42, 6);
+    const footGeo = new THREE.BoxGeometry(0.11, 0.06, 0.17);
+    const bootMat = new THREE.MeshStandardMaterial({
+      color: isKnight ? 0x1e2733 : 0x180d24,
+      roughness: 0.6,
+    });
+
+    // Left Leg
     this.leftLeg = new THREE.Group();
-    this.leftLeg.name = 'leg_l';
+    this.leftLeg.name = 'hip_l';
     this.leftLeg.position.set(-0.16, 0.85, 0);
-    const legMeshL = new THREE.Mesh(legGeo, limbMat);
-    legMeshL.position.y = -0.4;
-    legMeshL.castShadow = true;
-    this.leftLeg.add(legMeshL);
+    const thighMeshL = new THREE.Mesh(thighGeo, limbMat);
+    thighMeshL.position.y = -0.21;
+    thighMeshL.castShadow = true;
+    this.leftLeg.add(thighMeshL);
+
+    this.leftKnee = new THREE.Group();
+    this.leftKnee.name = 'knee_l';
+    this.leftKnee.position.set(0, -0.42, 0);
+    const calfMeshL = new THREE.Mesh(calfGeo, limbMat);
+    calfMeshL.position.y = -0.21;
+    calfMeshL.castShadow = true;
+    this.leftKnee.add(calfMeshL);
+
+    this.leftFoot = new THREE.Mesh(footGeo, bootMat);
+    this.leftFoot.position.set(0, -0.42, 0.04);
+    this.leftFoot.castShadow = true;
+    this.leftKnee.add(this.leftFoot);
+    this.leftLeg.add(this.leftKnee);
     this.rootObject.add(this.leftLeg);
 
+    // Right Leg
     this.rightLeg = new THREE.Group();
-    this.rightLeg.name = 'leg_r';
+    this.rightLeg.name = 'hip_r';
     this.rightLeg.position.set(0.16, 0.85, 0);
-    const legMeshR = new THREE.Mesh(legGeo, limbMat);
-    legMeshR.position.y = -0.4;
-    legMeshR.castShadow = true;
-    this.rightLeg.add(legMeshR);
+    const thighMeshR = new THREE.Mesh(thighGeo, limbMat);
+    thighMeshR.position.y = -0.21;
+    thighMeshR.castShadow = true;
+    this.rightLeg.add(thighMeshR);
+
+    this.rightKnee = new THREE.Group();
+    this.rightKnee.name = 'knee_r';
+    this.rightKnee.position.set(0, -0.42, 0);
+    const calfMeshR = new THREE.Mesh(calfGeo, limbMat);
+    calfMeshR.position.y = -0.21;
+    calfMeshR.castShadow = true;
+    this.rightKnee.add(calfMeshR);
+
+    this.rightFoot = new THREE.Mesh(footGeo, bootMat);
+    this.rightFoot.position.set(0, -0.42, 0.04);
+    this.rightFoot.castShadow = true;
+    this.rightKnee.add(this.rightFoot);
+    this.rightLeg.add(this.rightKnee);
     this.rootObject.add(this.rightLeg);
 
     // Attach Default Weapon

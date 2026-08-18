@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Camera, Eye, Zap, Layers } from 'lucide-react';
+import { Camera, Eye, Zap, RotateCcw } from 'lucide-react';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -11,7 +11,9 @@ interface ViewportCanvasProps {
   activeSubtitle: ActiveSubtitle | null;
   subtitlesConfig: SubtitlesConfig;
   showCC: boolean;
+  isInspecting?: boolean;
   onToggleCC: () => void;
+  onResetCamera?: () => void;
 }
 
 export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
@@ -20,7 +22,9 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   activeSubtitle,
   subtitlesConfig,
   showCC,
+  isInspecting,
   onToggleCC,
+  onResetCamera,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +44,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
 
       {/* Top HUD */}
       <div className="viewport-hud">
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div className="hud-pill fps-counter">
             <Zap size={13} /> {fps} FPS
           </div>
@@ -48,6 +52,28 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
             <Camera size={13} /> Live GPU Viewport
           </div>
         </div>
+
+        {/* Center Prompt when Inspecting Face */}
+        {isInspecting && (
+          <button
+            className="btn-primary"
+            style={{
+              padding: '4px 14px',
+              fontSize: 11,
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(244, 63, 94, 0.9))',
+              borderColor: '#f43f5e',
+              boxShadow: '0 0 16px rgba(244, 63, 94, 0.4)',
+              borderRadius: 20,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onClick={onResetCamera}
+          >
+            <RotateCcw size={12} /> Đang Soi Cận Cảnh — <strong>Bấm để Khôi Phục Cam Đạo Diễn</strong>
+          </button>
+        )}
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button

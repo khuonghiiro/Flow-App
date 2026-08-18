@@ -15,8 +15,8 @@ export class SmartSocketRegistry {
       {
         id: 'props.wooden_chair_01',
         type: 'chair',
-        entryPosition: [-4, 0, -1.0],
-        targetPosition: [-4, 0, -2.0],
+        entryPosition: [-4, 0, -1.65], // Right at the front edge of chair cushion
+        targetPosition: [-4, 0, -1.90], // Firmly seated against backrest
         targetRotationY: 0, // Faces forward towards camera (+Z)
       },
     ],
@@ -25,7 +25,7 @@ export class SmartSocketRegistry {
       {
         id: 'props.village_tree_01',
         type: 'tree',
-        entryPosition: [4, 0, -1.8],
+        entryPosition: [4, 0, -2.2],
         targetPosition: [4.6, 2.3, -3.0],
         targetRotationY: -Math.PI / 4,
       },

@@ -13,6 +13,7 @@ import { MapRadarView } from './MapRadarView';
 import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
 import { sampleScenes } from '../samples/villageClashScene';
+import { InspectCameraAngle } from '../core/camera/CameraFraming';
 
 interface StudioLayoutProps {
   scene: MasterSceneConfig;
@@ -31,6 +32,10 @@ interface StudioLayoutProps {
   onChangePlaybackRate: (rate: number) => void;
   onInspectDialogue: (dlg: DialogueManifestItem) => void;
   onPreviewSpeech: (dlg: DialogueManifestItem) => void;
+  inspectAngle: InspectCameraAngle;
+  inspectingActorId: string | null;
+  onChangeInspectAngle: (angle: InspectCameraAngle) => void;
+  onResetCamera: () => void;
   onUpdateScene: (updated: MasterSceneConfig) => void;
   onExportVideo: (fps?: number) => void;
   isExporting: boolean;
@@ -54,6 +59,10 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   onChangePlaybackRate,
   onInspectDialogue,
   onPreviewSpeech,
+  inspectAngle,
+  inspectingActorId,
+  onChangeInspectAngle,
+  onResetCamera,
   onUpdateScene,
   onExportVideo,
   isExporting,
@@ -179,7 +188,11 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               <SubtitleInspector
                 scene={scene}
                 currentTime={currentTime}
+                inspectAngle={inspectAngle}
+                inspectingActorId={inspectingActorId}
+                onChangeInspectAngle={onChangeInspectAngle}
                 onInspectDialogue={onInspectDialogue}
+                onResetCamera={onResetCamera}
                 onPreviewSpeech={onPreviewSpeech}
               />
             ) : (
@@ -200,7 +213,9 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             activeSubtitle={activeSubtitle}
             subtitlesConfig={scene.subtitles_config}
             showCC={showCC}
+            isInspecting={!!inspectingActorId}
             onToggleCC={() => setShowCC(!showCC)}
+            onResetCamera={onResetCamera}
           />
 
           <TimelineScrubber
