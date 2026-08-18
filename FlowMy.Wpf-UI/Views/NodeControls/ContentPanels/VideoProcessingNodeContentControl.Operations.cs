@@ -591,6 +591,16 @@ namespace FlowMy.Views.NodeControls
             if (dlg.ShowDialog() != true) return;
             track.SourceOutputKey = dlg.FileName;
             AudioTracksList.Items.Refresh();
+
+            var parentContainer = FindVisualParent<Border>(btn);
+            if (parentContainer != null)
+            {
+                var visualizer = FindVisualChild<AudioTrimWaveformVisualizer>(parentContainer);
+                if (visualizer != null)
+                {
+                    _ = LoadTrackWaveformAsync(track, visualizer, forceReload: true);
+                }
+            }
         }
 
         private void RunSpecificOperation(string operationType)

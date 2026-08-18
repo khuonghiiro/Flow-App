@@ -818,16 +818,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 LogLine?.Invoke(node, "Audio source stream not found; exporting video without source audio.");
             }
 
-            foreach (var t in node.AudioTracks)
+            if (node.MultiTrackBgmEnabled)
             {
-                var path = ResolveFromMapping(env, t.SourceNodeId, t.SourceOutputKey);
-                if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(t.SourceNodeId))
-                    path = t.SourceOutputKey;
+                foreach (var t in node.AudioTracks)
+                {
+                    if (t.IsMuted) continue;
+                    var path = ResolveFromMapping(env, t.SourceNodeId, t.SourceOutputKey);
+                    if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(t.SourceNodeId))
+                        path = t.SourceOutputKey;
 
-                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
-                    audioInputs.Add((path, t));
-                else if (!string.IsNullOrWhiteSpace(path))
-                    LogLine?.Invoke(node, $"⚠ Audio track not found: {path}");
+                    if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                        audioInputs.Add((path, t));
+                    else if (!string.IsNullOrWhiteSpace(path))
+                        LogLine?.Invoke(node, $"⚠ Audio track not found: {path}");
+                }
             }
 
             if (audioInputs.Count == 0)
@@ -858,38 +862,80 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             foreach (var track in preparedAudio) args.AddRange(new[] { "-i", track.path });
 
             var filterChains = new List<string>();
-            var mixInputs = new List<string>();
-            for (var i = 0; i < preparedAudio.Count; i++)
-            {
-                var inputIndex = i + 1;
-                var trackCfg = preparedAudio[i].cfg;
-                var volume = trackCfg.IsMuted ? 0.0 : Math.Max(0, trackCfg.VolumePercent) / 100d;
-                var delayMs = (int)Math.Max(0, Math.Round(trackCfg.StartAtSec * 1000));
-                
-                var trackFilters = new List<string>();
-                if (delayMs > 0) trackFilters.Add($"adelay={delayMs}|{delayMs}");
-                if (trackCfg.FadeInSec > 0.05)
-                    trackFilters.Add($"afade=t=in:ss=0:d={trackCfg.FadeInSec.ToString("0.###", CultureInfo.InvariantCulture)}");
-                if (trackCfg.FadeOutSec > 0.05 && videoDuration > trackCfg.FadeOutSec)
-                {
-                    var st = (videoDuration - trackCfg.FadeOutSec).ToString("0.###", CultureInfo.InvariantCulture);
-                    trackFilters.Add($"afade=t=out:st={st}:d={trackCfg.FadeOutSec.ToString("0.###", CultureInfo.InvariantCulture)}");
-                }
-                trackFilters.Add($"volume={volume.ToString("0.###", CultureInfo.InvariantCulture)}");
+            var amixInputs = new List<string>();
+            var trackIndex = 1;
 
-                filterChains.Add($"[{inputIndex}:a]{string.Join(",", trackFilters)}[a{i}]");
-                mixInputs.Add($"[a{i}]");
+            foreach (var (_, cfg) in preparedAudio)
+            {
+                var tag = $"[a{trackIndex}]";
+                var inputTag = $"[{trackIndex}:a]";
+                var chain = new List<string>();
+
+                if (Math.Abs(cfg.VolumePercent - 100) > 0.01)
+                {
+                    var vol = (Math.Max(0, cfg.VolumePercent) / 100.0).ToString("0.###", CultureInfo.InvariantCulture);
+                    chain.Add($"volume={vol}");
+                }
+
+                if (cfg.StartAtSec > 0.001)
+                {
+                    var delayMs = (int)Math.Round(cfg.StartAtSec * 1000.0);
+                    chain.Add($"adelay={delayMs}|{delayMs}");
+                }
+
+                if (cfg.FadeInSec > 0.001)
+                {
+                    var d = cfg.FadeInSec.ToString("0.###", CultureInfo.InvariantCulture);
+                    chain.Add($"afade=t=in:ss=0:d={d}");
+                }
+
+                if (cfg.FadeOutSec > 0.001 && videoDuration > cfg.FadeOutSec)
+                {
+                    var st = (videoDuration - cfg.FadeOutSec).ToString("0.###", CultureInfo.InvariantCulture);
+                    var d = cfg.FadeOutSec.ToString("0.###", CultureInfo.InvariantCulture);
+                    chain.Add($"afade=t=out:st={st}:d={d}");
+                }
+
+                if (chain.Count > 0)
+                {
+                    filterChains.Add($"{inputTag}{string.Join(",", chain)}{tag}");
+                    amixInputs.Add(tag);
+                }
+                else
+                {
+                    amixInputs.Add(inputTag);
+                }
+
+                trackIndex++;
             }
-            filterChains.Add($"{string.Join(string.Empty, mixInputs)}amix=inputs={preparedAudio.Count}:dropout_transition=0:normalize=0[aout]");
+
+            if (amixInputs.Count == 1)
+            {
+                if (filterChains.Count > 0)
+                {
+                    args.AddRange(new[] { "-filter_complex", filterChains[0] });
+                    args.AddRange(new[] { "-map", "0:v:0", "-map", amixInputs[0] });
+                }
+                else
+                {
+                    args.AddRange(new[] { "-map", "0:v:0", "-map", "1:a:0" });
+                }
+            }
+            else
+            {
+                var mixChain = $"{string.Join(string.Empty, amixInputs)}amix=inputs={amixInputs.Count}:duration=first:dropout_transition=2[aout]";
+                filterChains.Add(mixChain);
+                args.AddRange(new[] { "-filter_complex", string.Join(";", filterChains) });
+                args.AddRange(new[] { "-map", "0:v:0", "-map", "[aout]" });
+            }
 
             args.AddRange(new[]
             {
-                "-filter_complex", string.Join(";", filterChains),
-                "-map", "0:v:0",
-                "-map", "[aout]",
                 "-c:v", "copy",
-                "-c:a", ResolveAudioCodecArg(node.AudioCodec),
-                "-b:a", node.AudioBitrate,
+                "-c:a", "aac",
+                "-b:a", "320k",
+                "-ar", "48000",
+                "-ac", "2",
                 "-movflags", "+faststart",
                 "-avoid_negative_ts", "make_zero",
                 outputVideo
@@ -935,10 +981,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var audioDuration = await ProbeDurationSecondsAsync(sourceAudio, ct).ConfigureAwait(false);
             if (audioDuration <= 0) return sourceAudio;
 
-            var isShorter = audioDuration < videoDurationSec - 0.0001;
+            var startAt = Math.Max(0, cfg.StartAtSec);
+            var slotDurationSec = Math.Max(0.001, videoDurationSec - startAt);
+            var isShorter = audioDuration < slotDurationSec - 0.0001;
             var mode = isShorter ? cfg.ShorterMode : cfg.LongerMode;
             var output = Path.Combine(tempRoot, $"audio_sync_{Guid.NewGuid():N}.wav");
-            var trim = videoDurationSec.ToString("0.###", CultureInfo.InvariantCulture);
+            var slotTrim = slotDurationSec.ToString("0.###", CultureInfo.InvariantCulture);
 
             switch (mode)
             {
@@ -948,32 +996,36 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         "-y", "-hide_banner", "-loglevel", "error",
                         "-stream_loop", "-1",
                         "-i", sourceAudio,
-                        "-t", trim,
+                        "-t", slotTrim,
                         "-c:a", "pcm_s16le",
                         output
                     }, ct).ConfigureAwait(false);
                     return output;
 
                 case AudioSyncMode.PadSilence:
-                    await RunFfmpegAsync(new[]
+                    if (audioDuration > slotDurationSec)
                     {
-                        "-y", "-hide_banner", "-loglevel", "error",
-                        "-i", inputAudioPath,
-                        "-af", $"apad,atrim=0:{trim}",
-                        "-c:a", "pcm_s16le",
-                        output
-                    }, ct).ConfigureAwait(false);
-                    return output;
+                        await RunFfmpegAsync(new[]
+                        {
+                            "-y", "-hide_banner", "-loglevel", "error",
+                            "-i", sourceAudio,
+                            "-af", $"atrim=0:{slotTrim}",
+                            "-c:a", "pcm_s16le",
+                            output
+                        }, ct).ConfigureAwait(false);
+                        return output;
+                    }
+                    return sourceAudio;
 
                 case AudioSyncMode.Stretch:
                 {
-                    var factor = Math.Max(0.01, audioDuration / Math.Max(0.001, videoDurationSec));
+                    var factor = Math.Max(0.01, audioDuration / slotDurationSec);
                     var atempo = BuildAtempoChain(factor);
                     await RunFfmpegAsync(new[]
                     {
                         "-y", "-hide_banner", "-loglevel", "error",
-                        "-i", inputAudioPath,
-                        "-af", $"{atempo},atrim=0:{trim}",
+                        "-i", sourceAudio,
+                        "-af", $"{atempo},atrim=0:{slotTrim}",
                         "-c:a", "pcm_s16le",
                         output
                     }, ct).ConfigureAwait(false);
@@ -981,33 +1033,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 case AudioSyncMode.Trim:
-                    await RunFfmpegAsync(new[]
-                    {
-                        "-y", "-hide_banner", "-loglevel", "error",
-                        "-i", inputAudioPath,
-                        "-af", $"atrim=0:{trim}",
-                        "-c:a", "pcm_s16le",
-                        output
-                    }, ct).ConfigureAwait(false);
-                    return output;
-
                 case AudioSyncMode.Compress:
-                {
-                    var factor = Math.Max(0.01, audioDuration / Math.Max(0.001, videoDurationSec));
-                    var atempo = BuildAtempoChain(factor);
-                    await RunFfmpegAsync(new[]
+                    if (audioDuration > slotDurationSec)
                     {
-                        "-y", "-hide_banner", "-loglevel", "error",
-                        "-i", inputAudioPath,
-                        "-af", $"{atempo},atrim=0:{trim}",
-                        "-c:a", "pcm_s16le",
-                        output
-                    }, ct).ConfigureAwait(false);
-                    return output;
-                }
+                        await RunFfmpegAsync(new[]
+                        {
+                            "-y", "-hide_banner", "-loglevel", "error",
+                            "-i", sourceAudio,
+                            "-af", $"atrim=0:{slotTrim}",
+                            "-c:a", "pcm_s16le",
+                            output
+                        }, ct).ConfigureAwait(false);
+                        return output;
+                    }
+                    return sourceAudio;
 
                 default:
-                    return inputAudioPath;
+                    return sourceAudio;
             }
         }
 

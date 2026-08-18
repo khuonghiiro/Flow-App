@@ -1018,6 +1018,7 @@ namespace FlowMy.Views.NodeControls
             {
                 PreviewMedia.Pause();
                 _realTimeAudioEngine?.Pause();
+                _audioTrackPreviewPlayer.Pause();
                 _isPlaying = false;
                 LiveDot.Visibility = Visibility.Collapsed;
             }
@@ -1054,6 +1055,7 @@ namespace FlowMy.Views.NodeControls
             if (PreviewMedia.Source == null) return;
             PreviewMedia.Stop();
             _realTimeAudioEngine?.Stop();
+            _audioTrackPreviewPlayer.Close();
             PreviewMedia.Position = TimeSpan.Zero;
             _isPlaying = false;
             LiveDot.Visibility = Visibility.Collapsed;

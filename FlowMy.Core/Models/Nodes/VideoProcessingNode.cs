@@ -48,7 +48,7 @@ namespace FlowMy.Models.Nodes
         private double _startAtSec;
         private double _trimStartSec;
         private double _trimEndSec;
-        private AudioSyncMode _shorterMode = AudioSyncMode.Loop;
+        private AudioSyncMode _shorterMode = AudioSyncMode.PadSilence;
         private AudioSyncMode _longerMode = AudioSyncMode.Trim;
 
         public string TrackName
@@ -153,6 +153,14 @@ namespace FlowMy.Models.Nodes
         {
             get => _longerMode;
             set { if (_longerMode != value) { _longerMode = value; OnPropertyChanged(); } }
+        }
+
+        private bool _lockToVideoDuration;
+
+        public bool LockToVideoDuration
+        {
+            get => _lockToVideoDuration;
+            set { if (_lockToVideoDuration != value) { _lockToVideoDuration = value; OnPropertyChanged(); } }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -318,6 +326,11 @@ namespace FlowMy.Models.Nodes
         private double _audioHarmonicExciterPercent;
         private bool _audioPhaseInvertLeft;
         private bool _audioPhaseInvertRight;
+        private bool _voiceChangerEnabled;
+        private bool _equalizerFxEnabled;
+        private bool _dynamicsMasteringEnabled;
+        private bool _multiTrackBgmEnabled;
+        private bool _audioExportConfigEnabled = true;
         private bool _audioTrimEnabled;
         private double _audioTrimStartSec;
         private double _audioTrimEndSec;
@@ -1070,6 +1083,36 @@ namespace FlowMy.Models.Nodes
         {
             get => _audioPhaseInvertRight;
             set { if (_audioPhaseInvertRight != value) { _audioPhaseInvertRight = value; OnPropertyChanged(); } }
+        }
+
+        public bool VoiceChangerEnabled
+        {
+            get => _voiceChangerEnabled;
+            set { if (_voiceChangerEnabled != value) { _voiceChangerEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool EqualizerFxEnabled
+        {
+            get => _equalizerFxEnabled;
+            set { if (_equalizerFxEnabled != value) { _equalizerFxEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool DynamicsMasteringEnabled
+        {
+            get => _dynamicsMasteringEnabled;
+            set { if (_dynamicsMasteringEnabled != value) { _dynamicsMasteringEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool MultiTrackBgmEnabled
+        {
+            get => _multiTrackBgmEnabled;
+            set { if (_multiTrackBgmEnabled != value) { _multiTrackBgmEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool AudioExportConfigEnabled
+        {
+            get => _audioExportConfigEnabled;
+            set { if (_audioExportConfigEnabled != value) { _audioExportConfigEnabled = value; OnPropertyChanged(); } }
         }
 
         public bool AudioTrimEnabled

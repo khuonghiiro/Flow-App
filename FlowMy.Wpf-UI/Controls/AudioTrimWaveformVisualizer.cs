@@ -93,6 +93,14 @@ namespace FlowMy.Controls
             DependencyProperty.Register(nameof(WaveformData), typeof(AudioWaveformData), typeof(AudioTrimWaveformVisualizer),
                 new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnWaveformDataChanged));
 
+        public static readonly DependencyProperty IsRangeDurationLockedProperty =
+            DependencyProperty.Register(nameof(IsRangeDurationLocked), typeof(bool), typeof(AudioTrimWaveformVisualizer),
+                new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender, OnLockedDurationChangedCallback));
+
+        public static readonly DependencyProperty LockedDurationSecProperty =
+            DependencyProperty.Register(nameof(LockedDurationSec), typeof(double), typeof(AudioTrimWaveformVisualizer),
+                new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender, OnLockedDurationChangedCallback));
+
         public double TotalDurationSec
         {
             get => (double)GetValue(TotalDurationSecProperty);
@@ -127,6 +135,32 @@ namespace FlowMy.Controls
         {
             get => (AudioWaveformData?)GetValue(WaveformDataProperty);
             set => SetValue(WaveformDataProperty, value);
+        }
+
+        public bool IsRangeDurationLocked
+        {
+            get => (bool)GetValue(IsRangeDurationLockedProperty);
+            set => SetValue(IsRangeDurationLockedProperty, value);
+        }
+
+        public double LockedDurationSec
+        {
+            get => (double)GetValue(LockedDurationSecProperty);
+            set => SetValue(LockedDurationSecProperty, value);
+        }
+
+        private static void OnLockedDurationChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is AudioTrimWaveformVisualizer v && v.IsRangeDurationLocked && v.LockedDurationSec > 0)
+            {
+                var total = Math.Max(0.1, v.TotalDurationSec > 0 ? v.TotalDurationSec : (v.WaveformData?.DurationSec ?? 10.0));
+                var lockDur = Math.Min(total, v.LockedDurationSec);
+                var newStart = Math.Clamp(v.TrimStartSec, 0.0, Math.Max(0.0, total - lockDur));
+                v.TrimStartSec = newStart;
+                v.TrimEndSec = newStart + lockDur;
+                v.TrimRangeChanged?.Invoke(v, EventArgs.Empty);
+                v.InvalidateVisual();
+            }
         }
 
         #endregion
@@ -620,19 +654,35 @@ namespace FlowMy.Controls
 
             if (_activeDrag == DragMode.None)
             {
-                if (Math.Abs(pos.X - startX) <= 8 || Math.Abs(pos.X - endX) <= 8)
+                if (IsRangeDurationLocked && LockedDurationSec > 0)
                 {
-                    Cursor = Cursors.SizeWE;
+                    if (pos.X >= startX && pos.X <= endX)
+                        Cursor = Cursors.SizeAll;
+                    else
+                        Cursor = Cursors.Hand;
                 }
                 else
                 {
-                    Cursor = Cursors.Cross;
+                    if (Math.Abs(pos.X - startX) <= 8 || Math.Abs(pos.X - endX) <= 8)
+                        Cursor = Cursors.SizeWE;
+                    else
+                        Cursor = Cursors.Cross;
                 }
                 return;
             }
 
             var curTime = PixelXToTime(pos.X);
             var total = Math.Max(0.1, TotalDurationSec > 0 ? TotalDurationSec : (WaveformData?.DurationSec ?? 10.0));
+
+            if (IsRangeDurationLocked && LockedDurationSec > 0)
+            {
+                var lockDur = Math.Min(total, LockedDurationSec);
+                var deltaSec = curTime - PixelXToTime(_dragStartMouseX);
+                var newStart = Math.Clamp(_dragStartTrimStart + deltaSec, 0.0, Math.Max(0.0, total - lockDur));
+                TrimStartSec = newStart;
+                TrimEndSec = newStart + lockDur;
+                return;
+            }
 
             switch (_activeDrag)
             {
@@ -679,6 +729,33 @@ namespace FlowMy.Controls
             var pos = e.GetPosition(this);
             var startX = TimeToPixelX(TrimStartSec);
             var endX = TimeToPixelX(TrimEndSec);
+            var total = Math.Max(0.1, TotalDurationSec > 0 ? TotalDurationSec : (WaveformData?.DurationSec ?? 10.0));
+
+            if (IsRangeDurationLocked && LockedDurationSec > 0)
+            {
+                var lockDur = Math.Min(total, LockedDurationSec);
+                if (pos.X < startX || pos.X > endX)
+                {
+                    // Click outside range -> Jump the locked window to center at clicked position
+                    var clickedTime = PixelXToTime(pos.X);
+                    var newStart = Math.Clamp(clickedTime - (lockDur / 2.0), 0.0, Math.Max(0.0, total - lockDur));
+                    TrimStartSec = newStart;
+                    TrimEndSec = newStart + lockDur;
+                    _dragStartTrimStart = newStart;
+                    _dragStartTrimEnd = newStart + lockDur;
+                    _dragStartMouseX = pos.X;
+                    _activeDrag = DragMode.RangeBody;
+                    _hasMovedDuringDrag = true;
+                    return;
+                }
+
+                _dragStartMouseX = pos.X;
+                _dragStartTrimStart = TrimStartSec;
+                _dragStartTrimEnd = TrimEndSec;
+                _activeDrag = DragMode.RangeBody;
+                _hasMovedDuringDrag = false;
+                return;
+            }
 
             _dragStartMouseX = pos.X;
             _dragStartTrimStart = TrimStartSec;
@@ -705,7 +782,7 @@ namespace FlowMy.Controls
         {
             base.OnMouseLeftButtonUp(e);
 
-            if (_activeDrag == DragMode.CreatingRange && !_hasMovedDuringDrag)
+            if (_activeDrag == DragMode.CreatingRange && !_hasMovedDuringDrag && (!IsRangeDurationLocked || LockedDurationSec <= 0))
             {
                 // Click đơn thuần không kéo -> Nhảy Playhead (Seek)
                 var clickedSec = PixelXToTime(_dragStartMouseX);

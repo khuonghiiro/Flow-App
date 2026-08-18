@@ -389,6 +389,7 @@ namespace FlowMy.Views.NodeControls
             if (PresetAudioTrebleButton != null) PresetAudioTrebleButton.Click += (_, _) => ApplyAudioEqPreset("treble");
             if (PresetAudioPodcastButton != null) PresetAudioPodcastButton.Click += (_, _) => ApplyAudioEqPreset("podcast");
 
+            WireAudioMasterToggles();
             WireVoiceAndToneEvents();
             WireEqualizer5BandEvents();
             WireCreativeAudioFxEvents();
@@ -1310,6 +1311,8 @@ namespace FlowMy.Views.NodeControls
             _suppressControlSync = true;
             try
             {
+                SyncAudioMasterTogglesFromModel();
+
                 if (SourceAudioToggle != null)
                 {
                     SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
