@@ -36,6 +36,8 @@ export class ActorMorphController {
     eyebrowR.rotation.z = 0;
     eyeLMesh.scale.set(1, 1, 1);
     eyeRMesh.scale.set(1, 1, 1);
+    mouthMesh.scale.set(1, 1, 1);
+    mouthMesh.rotation.z = 0;
 
     const w = this.expressionWeight;
 
@@ -53,21 +55,21 @@ export class ActorMorphController {
     switch (this.currentExpression) {
       case 'angry':
         // Slanted inward eyebrows
-        eyebrowL.rotation.z = 0.35 * w;
-        eyebrowR.rotation.z = -0.35 * w;
-        eyebrowL.position.y = (0.1 - 0.02 * w);
-        eyebrowR.position.y = (0.1 - 0.02 * w);
+        eyebrowL.rotation.z = 0.4 * w;
+        eyebrowR.rotation.z = -0.4 * w;
+        eyebrowL.position.y = (0.1 - 0.03 * w);
+        eyebrowR.position.y = (0.1 - 0.03 * w);
         break;
 
       case 'pain':
-        // Tightly shut squinting eyes, arched distressed brows
-        eyebrowL.rotation.z = -0.3 * w;
-        eyebrowR.rotation.z = 0.3 * w;
-        eyebrowL.position.y = (0.1 + 0.02 * w);
-        eyebrowR.position.y = (0.1 + 0.02 * w);
-        eyeLMesh.scale.y = Math.max(0.1, 1 - 0.8 * w);
-        eyeRMesh.scale.y = Math.max(0.1, 1 - 0.8 * w);
-        mouthMesh.scale.set(1.4, 1.8, 1); // open mouth grimace
+        // Tightly shut squinting eyes, arched distressed distressed brows
+        eyebrowL.rotation.z = -0.45 * w;
+        eyebrowR.rotation.z = 0.45 * w;
+        eyebrowL.position.y = (0.1 + 0.04 * w);
+        eyebrowR.position.y = (0.1 + 0.04 * w);
+        eyeLMesh.scale.set(1.1, Math.max(0.08, 1 - 0.9 * w), 1);
+        eyeRMesh.scale.set(1.1, Math.max(0.08, 1 - 0.9 * w), 1);
+        mouthMesh.scale.set(1.6, 2.5, 1); // wide open grimace in pain
         break;
 
       case 'smirk':

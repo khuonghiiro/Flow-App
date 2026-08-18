@@ -26,6 +26,8 @@ import './styles/studio.css';
 
 export const App: React.FC = () => {
   const [scene, setScene] = useState<MasterSceneConfig>(villageClashScene);
+  const sceneRef = useRef<MasterSceneConfig>(villageClashScene);
+
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -55,7 +57,7 @@ export const App: React.FC = () => {
 
     const lighting = new SceneLighting(renderer.scene);
     lightingRef.current = lighting;
-    lighting.applyEnvironment(scene.environment);
+    lighting.applyEnvironment(sceneRef.current.environment);
 
     const postProcessor = new PostProcessor();
     postProcessorRef.current = postProcessor;
@@ -88,7 +90,7 @@ export const App: React.FC = () => {
     }
 
     // Build Actors
-    initActors(scene, renderer.scene);
+    initActors(sceneRef.current, renderer.scene);
 
     // Main Render & Evaluation Loop (60-120fps GPU)
     renderer.onRender((delta) => {
@@ -97,10 +99,12 @@ export const App: React.FC = () => {
       setCurrentTime(t);
       setFps(renderer.fps);
 
+      const activeScene = sceneRef.current;
+
       // Evaluate Tracks
       if (trackEvaluatorRef.current) {
         trackEvaluatorRef.current.evaluate(
-          scene,
+          activeScene,
           t,
           delta,
           actorsMapRef.current,
@@ -118,7 +122,7 @@ export const App: React.FC = () => {
 
       // Camera Director Update
       if (cameraDirectorRef.current) {
-        cameraDirectorRef.current.update(scene, t, actorPositions, delta);
+        cameraDirectorRef.current.update(activeScene, t, actorPositions, delta);
       }
 
       // Screen Shake Post-processing
@@ -132,8 +136,13 @@ export const App: React.FC = () => {
       }
 
       // Active Subtitle Update
-      const sub = SubtitleSynchronizer.getActiveSubtitle(scene, t);
+      const sub = SubtitleSynchronizer.getActiveSubtitle(activeScene, t);
       setActiveSubtitle(sub);
+
+      // Dynamic Sun & Lighting update across timeline
+      if (lightingRef.current) {
+        lightingRef.current.update(t, activeScene.duration);
+      }
     });
 
     return () => {
@@ -175,6 +184,15 @@ export const App: React.FC = () => {
   const handleSeek = (time: number) => {
     clockRef.current.seek(time);
     setCurrentTime(time);
+    if (trackEvaluatorRef.current) {
+      trackEvaluatorRef.current.evaluate(
+        sceneRef.current,
+        time,
+        0.016,
+        actorsMapRef.current,
+        sceneObjectsRef.current
+      );
+    }
   };
 
   const handleToggleLoop = () => {
@@ -201,13 +219,31 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateScene = (newScene: MasterSceneConfig) => {
+    sceneRef.current = newScene;
     setScene(newScene);
+    clockRef.current.seek(0);
     clockRef.current.setDuration(newScene.duration);
+    setCurrentTime(0);
+    setIsPlaying(false);
+
+    if (combatSyncRef.current) {
+      combatSyncRef.current.reset();
+    }
     if (lightingRef.current) {
       lightingRef.current.applyEnvironment(newScene.environment);
+      lightingRef.current.update(0, newScene.duration);
     }
     if (rendererRef.current) {
       initActors(newScene, rendererRef.current.scene);
+      if (trackEvaluatorRef.current) {
+        trackEvaluatorRef.current.evaluate(
+          newScene,
+          0,
+          0.016,
+          actorsMapRef.current,
+          sceneObjectsRef.current
+        );
+      }
     }
   };
 
@@ -223,15 +259,15 @@ export const App: React.FC = () => {
 
       const blob = await recorder.recordCanvasLive(
         rendererRef.current.getDomElement(),
-        scene,
-        scene.duration,
-        scene.fps || 30,
+        sceneRef.current,
+        sceneRef.current.duration,
+        sceneRef.current.fps || 30,
         (p) => {
           setExportProgressMsg(`${p.percent}% (${p.currentFrame}/${p.totalFrames})`);
         }
       );
 
-      VideoMuxer.downloadVideoBlob(blob, scene.scene_id);
+      VideoMuxer.downloadVideoBlob(blob, sceneRef.current.scene_id);
       setExportProgressMsg('Xuất thành công!');
     } catch (e) {
       console.error(e);

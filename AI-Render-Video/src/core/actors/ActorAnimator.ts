@@ -32,13 +32,17 @@ export class ActorAnimator {
   public update(time: number, actionProgress: number = 0): void {
     const { leftArm, rightArm, leftLeg, rightLeg, spineBone, headBone } = this.avatar;
 
-    // Reset default rotations
+    // Reset default rotations & positions
     leftArm.rotation.set(0, 0, 0);
     rightArm.rotation.set(0, 0, 0);
     leftLeg.rotation.set(0, 0, 0);
     rightLeg.rotation.set(0, 0, 0);
     spineBone.rotation.set(0, 0, 0);
     headBone.rotation.set(0, 0, 0);
+
+    leftLeg.position.set(-0.16, 0.85, 0);
+    rightLeg.position.set(0.16, 0.85, 0);
+    spineBone.position.set(0, 0.9, 0);
 
     switch (this.currentAction) {
       case 'walk': {
@@ -75,18 +79,16 @@ export class ActorAnimator {
         break;
       }
 
-      case 'heavy_slash_combo': {
+      case 'heavy_slash_combo':
+      case 'fast_slash': {
         // Attack animation: windup -> slash down -> follow through
-        // actionProgress: 0.0 to 1.0
         if (actionProgress < 0.35) {
-          // Windup: raise right arm high back
           const p = actionProgress / 0.35;
           rightArm.rotation.x = -Math.PI * 0.85 * p;
           rightArm.rotation.z = -0.4 * p;
           spineBone.rotation.y = -0.5 * p;
           spineBone.rotation.x = -0.15 * p;
         } else if (actionProgress < 0.65) {
-          // Slash Down: slam sword down forward with power
           const p = (actionProgress - 0.35) / 0.3;
           rightArm.rotation.x = -Math.PI * 0.85 + (Math.PI * 0.85 + 0.6) * p;
           rightArm.rotation.z = -0.4 + 0.6 * p;
@@ -94,7 +96,6 @@ export class ActorAnimator {
           spineBone.rotation.x = -0.15 + 0.45 * p;
           leftArm.rotation.x = 0.5 * p;
         } else {
-          // Recovery
           const p = (actionProgress - 0.65) / 0.35;
           rightArm.rotation.x = 0.6 * (1 - p);
           spineBone.rotation.y = 0.4 * (1 - p);
@@ -104,14 +105,17 @@ export class ActorAnimator {
       }
 
       case 'fly_back_knockdown': {
-        // Hit reaction: fly back & knockdown
+        // Hit reaction: fly back & fall down
         const p = Math.min(1, Math.max(0, actionProgress));
-        spineBone.rotation.x = -Math.PI * 0.45 * Math.min(1, p * 1.5);
-        headBone.rotation.x = -0.5;
-        leftArm.rotation.x = -1.2;
-        rightArm.rotation.x = -1.2;
-        leftLeg.rotation.x = 0.8 * Math.min(1, p * 1.5);
-        rightLeg.rotation.x = 0.6 * Math.min(1, p * 1.5);
+        spineBone.rotation.x = -Math.PI * 0.4 * Math.min(1, p * 1.6);
+        spineBone.position.y = 0.9 - 0.5 * Math.min(1, p * 1.6);
+        headBone.rotation.x = -0.6;
+        leftArm.rotation.x = -1.5;
+        rightArm.rotation.x = -1.5;
+        leftLeg.position.y = 0.85 - 0.45 * Math.min(1, p * 1.6);
+        rightLeg.position.y = 0.85 - 0.45 * Math.min(1, p * 1.6);
+        leftLeg.rotation.x = 0.8 * Math.min(1, p * 1.6);
+        rightLeg.rotation.x = 0.6 * Math.min(1, p * 1.6);
         break;
       }
 
@@ -125,22 +129,25 @@ export class ActorAnimator {
       }
 
       case 'sit': {
-        // Sitting pose: 90-degree bent legs, arms resting
+        // Sitting pose: 90-degree bent legs, torso lowered onto seat
+        leftLeg.position.set(-0.16, 0.5, 0);
+        rightLeg.position.set(0.16, 0.5, 0);
+        spineBone.position.set(0, 0.5, 0);
+
         leftLeg.rotation.x = -Math.PI / 2;
         rightLeg.rotation.x = -Math.PI / 2;
         leftArm.rotation.x = -Math.PI / 4;
         rightArm.rotation.x = -Math.PI / 4;
-        spineBone.position.y = 0.45;
         break;
       }
 
       case 'climb': {
-        const climbTime = time * 3;
+        const climbTime = time * 4;
         const swing = Math.sin(climbTime);
-        leftArm.rotation.x = -Math.PI * 0.7 + swing * 0.4;
-        rightArm.rotation.x = -Math.PI * 0.7 - swing * 0.4;
-        leftLeg.rotation.x = -0.4 + swing * 0.3;
-        rightLeg.rotation.x = -0.4 - swing * 0.3;
+        leftArm.rotation.x = -Math.PI * 0.85 + swing * 0.4;
+        rightArm.rotation.x = -Math.PI * 0.85 - swing * 0.4;
+        leftLeg.rotation.x = -0.5 + swing * 0.35;
+        rightLeg.rotation.x = -0.5 - swing * 0.35;
         break;
       }
 

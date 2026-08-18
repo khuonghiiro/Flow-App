@@ -44,7 +44,7 @@ export class TrackEvaluator {
       actorPositions.set(id, pos);
     }
 
-    // 1. Evaluate Actor Tracks
+    // 1. Evaluate Actor Tracks (Movement & Speech)
     for (const actorConfig of scene.actors) {
       const runtime = actorsMap.get(actorConfig.id);
       if (!runtime) continue;
@@ -52,9 +52,16 @@ export class TrackEvaluator {
       const { avatar, animator, morph, lipSync, lookAt } = runtime;
       const tracks = actorConfig.tracks;
 
-      // A. Movement Track
+      // Check if this actor is currently targeted by an active combat hit
+      const isTargetOfCombatHit = scene.actors.some((a) =>
+        (a.tracks.combat_actions || []).some(
+          (cb) => cb.target.actor_id === actorConfig.id && currentTime >= cb.impact_time
+        )
+      );
+
+      // A. Movement Track (if not actively being knocked back)
       let movementHandled = false;
-      if (tracks.movement) {
+      if (!isTargetOfCombatHit && tracks.movement) {
         for (const mov of tracks.movement) {
           if (currentTime >= mov.start && currentTime <= mov.end) {
             movementHandled = true;
@@ -69,8 +76,10 @@ export class TrackEvaluator {
               animator.update(currentTime);
             } else if (mov.action === 'sit' && mov.target_object) {
               ChairInteraction.executeSitting(avatar, animator, mov.target_object, progress);
+              animator.update(currentTime);
             } else if (mov.action === 'climb' && mov.target_object) {
               ClimbingInteraction.executeClimb(avatar, animator, mov.target_object, progress);
+              animator.update(currentTime);
             } else {
               animator.setAction(mov.action);
               animator.update(currentTime);
@@ -89,7 +98,8 @@ export class TrackEvaluator {
         }
       }
 
-      if (!movementHandled && (!tracks.combat_actions || tracks.combat_actions.length === 0)) {
+      // If idle (not moving, not attacking, and not hit by combat)
+      if (!isTargetOfCombatHit && !movementHandled && (!tracks.combat_actions || tracks.combat_actions.length === 0)) {
         animator.setAction('idle');
         animator.update(currentTime);
       }
@@ -105,7 +115,7 @@ export class TrackEvaluator {
               isSpeaking = true;
 
               // Apply Expression Keyframes
-              if (sp.expressions) {
+              if (!isTargetOfCombatHit && sp.expressions) {
                 const offset = currentTime - dlg.start_time;
                 for (const exp of sp.expressions) {
                   if (offset >= exp.time_offset) {
@@ -118,34 +128,41 @@ export class TrackEvaluator {
         }
       }
 
-      lipSync.setSpeaking(isSpeaking, currentTime);
-      lipSync.update();
+      if (!isTargetOfCombatHit) {
+        lipSync.setSpeaking(isSpeaking, currentTime);
+        lipSync.update();
+      }
+
       morph.update(delta);
       lookAt.update(delta);
+    }
 
-      // C. Combat Actions
-      if (tracks.combat_actions) {
-        for (const action of tracks.combat_actions) {
-          const targetRuntime = actorsMap.get(action.target.actor_id);
-          const targetConfig = scene.actors.find((a) => a.id === action.target.actor_id);
-          if (targetRuntime && targetConfig) {
-            this.combatSync.evaluateCombat(
-              action,
-              { config: actorConfig, avatar, animator },
-              {
-                config: targetConfig,
-                avatar: targetRuntime.avatar,
-                animator: targetRuntime.animator,
-                morph: targetRuntime.morph,
-              },
-              currentTime
-            );
-          }
+    // 2. Evaluate Combat Actions across all actors
+    for (const actorConfig of scene.actors) {
+      const runtime = actorsMap.get(actorConfig.id);
+      if (!runtime || !actorConfig.tracks.combat_actions) continue;
+
+      for (const action of actorConfig.tracks.combat_actions) {
+        const targetRuntime = actorsMap.get(action.target.actor_id);
+        const targetConfig = scene.actors.find((a) => a.id === action.target.actor_id);
+
+        if (targetRuntime && targetConfig) {
+          this.combatSync.evaluateCombat(
+            action,
+            { config: actorConfig, avatar: runtime.avatar, animator: runtime.animator },
+            {
+              config: targetConfig,
+              avatar: targetRuntime.avatar,
+              animator: targetRuntime.animator,
+              morph: targetRuntime.morph,
+            },
+            currentTime
+          );
         }
       }
     }
 
-    // 2. Dynamic World Events (e.g. Farming crop growth)
+    // 3. Dynamic World Events (e.g. Farming crop growth)
     if (scene.dynamic_world_events) {
       for (const ev of scene.dynamic_world_events) {
         if (ev.growth_timeline && ev.target) {

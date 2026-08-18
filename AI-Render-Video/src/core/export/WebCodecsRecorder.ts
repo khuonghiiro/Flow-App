@@ -34,7 +34,8 @@ export class WebCodecsRecorder {
     compCanvas.height = sourceCanvas.height || 1080;
     const compCtx = compCanvas.getContext('2d')!;
 
-    const stream = compCanvas.captureStream(fps);
+    const targetFps = Math.max(30, Math.min(120, fps));
+    const stream = compCanvas.captureStream(targetFps);
     const mimeTypes = [
       'video/mp4;codecs=avc1',
       'video/webm;codecs=vp9',
@@ -51,7 +52,7 @@ export class WebCodecsRecorder {
 
     this.mediaRecorder = new MediaRecorder(stream, {
       mimeType: selectedMime,
-      videoBitsPerSecond: 12_000_000, // 12 Mbps crystal clear
+      videoBitsPerSecond: targetFps >= 120 ? 25_000_000 : 16_000_000, // 25 Mbps for 120 FPS HFR
     });
 
     this.mediaRecorder.ondataavailable = (e) => {

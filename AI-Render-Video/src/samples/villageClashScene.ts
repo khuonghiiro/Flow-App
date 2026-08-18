@@ -1,14 +1,14 @@
 import { MasterSceneConfig } from '../types/scene';
 
 export const villageClashScene: MasterSceneConfig = {
-  scene_id: 'scene_village_clash',
-  title: 'Đại Chiến Làng Hoàng Hôn: Chiến Binh vs Phù Thủy',
+  scene_id: 'scene_village_clash_01',
+  title: '⚔️ Đại Chiến Làng Hoàng Hôn',
   fps: 30,
   duration: 25.0,
   environment: {
     map: 'farming_village',
     sky_time: 'sunset',
-    weather: { fog: 0.012, wind: 0.3 },
+    weather: { fog: 0.015, wind: 0.5 },
   },
   subtitles_config: {
     enable_overlay: true,
@@ -16,35 +16,44 @@ export const villageClashScene: MasterSceneConfig = {
     font_size: 24,
     show_speaker_name: true,
     position: 'bottom',
-    text_color: '#ffffff',
-    background_opacity: 0.75,
+    text_color: '#f8fafc',
   },
   dialogues_manifest: [
     {
       line_id: 'dlg_01',
       speaker_id: 'actor_warrior',
-      speaker_name: 'Chiến Binh',
-      speaker_color: '#eab308',
-      text: 'Ngươi đã chuẩn bị tinh thần để đền tội chưa?',
-      voice_config: { voice_id: 'vi-VN-NamMinhNeural', speed: 1.05, emotion: 'angry' },
+      speaker_name: 'Chiến Binh Áo Giáp',
+      speaker_color: '#38bdf8',
+      text: 'Ngươi đã phá hủy cánh đồng của ngôi làng này!',
+      voice_config: {
+        voice_id: 'vi-VN-NamMinhNeural',
+        speed: 1.05,
+        pitch: 1.0,
+        emotion: 'angry',
+      },
       audio_path: null,
       audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
       status: 'pending_tts',
       start_time: 2.0,
-      estimated_duration: 3.2,
+      estimated_duration: 3.5,
     },
     {
       line_id: 'dlg_02',
       speaker_id: 'actor_dark_mage',
       speaker_name: 'Phù Thủy Tối Thượng',
-      speaker_color: '#a855f7',
-      text: 'Ha ha! Một kẻ như ngươi mà cũng đòi cản đường ta sao?',
-      voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, pitch: 0.1, emotion: 'arrogant' },
+      speaker_color: '#f43f5e',
+      text: 'Ngươi nghĩ sức mạnh tầm thường đó có thể ngăn cản ta sao?',
+      voice_config: {
+        voice_id: 'vi-VN-HoaiMyNeural',
+        speed: 0.95,
+        pitch: 0.9,
+        emotion: 'smirk',
+      },
       audio_path: null,
       audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
       status: 'pending_tts',
       start_time: 5.5,
-      estimated_duration: 3.5,
+      estimated_duration: 3.0,
     },
   ],
   camera_tracks: [
@@ -52,35 +61,26 @@ export const villageClashScene: MasterSceneConfig = {
       start: 0.0,
       end: 5.0,
       shot_type: 'cinematic_dolly',
-      from: [-6, 3, 10],
-      to: [-1.5, 1.8, 4.5],
+      from: [-6, 3, 5],
+      to: [-2, 2, 3],
       look_at: 'actor_warrior.head',
       fov: 45,
     },
     {
       start: 5.0,
-      end: 8.0,
-      shot_type: 'cinematic_dolly',
-      from: [6, 2.5, 9],
-      to: [1.5, 1.8, 4],
+      end: 8.5,
+      shot_type: 'face_close_up',
+      from: [4, 2, 3],
+      to: [3, 1.8, 2.2],
       look_at: 'actor_dark_mage.head',
-      fov: 45,
+      fov: 35,
     },
     {
-      start: 8.0,
-      end: 15.0,
-      shot_type: 'combat_action_cam',
-      follow_target: 'actor_warrior',
-      distance: 4.2,
-      height: 1.8,
-      fov: 55,
-    },
-    {
-      start: 15.0,
+      start: 8.5,
       end: 25.0,
       shot_type: 'cinematic_dolly',
-      from: [0, 5, 12],
-      to: [0, 3, 7],
+      from: [0, 4, 10],
+      to: [0, 2.5, 6],
       look_at: [0, 1.0, 0],
       fov: 50,
     },
@@ -116,10 +116,10 @@ export const villageClashScene: MasterSceneConfig = {
             target: {
               actor_id: 'actor_dark_mage',
               reaction_anim: 'fly_back_knockdown',
-              knockback_distance: 2.5,
+              knockback_distance: 3.2,
               facial_expression: 'pain',
               impact_vfx: 'impact_hit_sparks',
-              screen_shake: { intensity: 0.38, duration: 0.3 },
+              screen_shake: { intensity: 0.45, duration: 0.35 },
             },
           },
         ],
@@ -162,3 +162,149 @@ export const villageClashScene: MasterSceneConfig = {
     },
   ],
 };
+
+export const chairSittingScene: MasterSceneConfig = {
+  scene_id: 'scene_chair_sitting',
+  title: '🪑 Đàm Đạo Quán Nước (Ngồi Ghế Gỗ)',
+  fps: 30,
+  duration: 15.0,
+  environment: {
+    map: 'farming_village',
+    sky_time: 'noon',
+    weather: { fog: 0.008, wind: 0.2 },
+  },
+  subtitles_config: {
+    enable_overlay: true,
+    burn_in_export: true,
+    font_size: 22,
+    show_speaker_name: true,
+    position: 'bottom',
+    text_color: '#ffffff',
+  },
+  dialogues_manifest: [
+    {
+      line_id: 'dlg_sit_01',
+      speaker_id: 'actor_warrior',
+      speaker_name: 'Chiến Binh',
+      speaker_color: '#eab308',
+      text: 'Trận chiến vừa rồi mệt thật, ngồi nghỉ một chút đã!',
+      voice_config: { voice_id: 'vi-VN-NamMinhNeural', speed: 1.0, emotion: 'smile' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 4.5,
+      estimated_duration: 3.5,
+    },
+  ],
+  camera_tracks: [
+    {
+      start: 0.0,
+      end: 15.0,
+      shot_type: 'cinematic_dolly',
+      from: [-6.5, 2.5, 3],
+      to: [-3.5, 1.8, 1.2],
+      look_at: 'actor_warrior.head',
+      fov: 45,
+    },
+  ],
+  actors: [
+    {
+      id: 'actor_warrior',
+      name: 'Chiến Binh',
+      model: 'characters/hero_knight.vrm',
+      spawn_point: [-2, 0, 1],
+      tracks: {
+        movement: [
+          {
+            start: 0.0,
+            end: 15.0,
+            action: 'sit',
+            target_object: 'props.wooden_chair_01',
+          },
+        ],
+        speech: [
+          {
+            line_ref: 'dlg_sit_01',
+            expressions: [{ time_offset: 0.0, type: 'smile', weight: 0.9 }],
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const treeClimbingScene: MasterSceneConfig = {
+  scene_id: 'scene_tree_climbing',
+  title: '🌳 Trèo Cây Trinh Sát Hoàng Hôn',
+  fps: 30,
+  duration: 15.0,
+  environment: {
+    map: 'farming_village',
+    sky_time: 'sunset',
+    weather: { fog: 0.01, wind: 0.4 },
+  },
+  subtitles_config: {
+    enable_overlay: true,
+    burn_in_export: true,
+    font_size: 22,
+    show_speaker_name: true,
+    position: 'bottom',
+    text_color: '#ffffff',
+  },
+  dialogues_manifest: [
+    {
+      line_id: 'dlg_tree_01',
+      speaker_id: 'actor_dark_mage',
+      speaker_name: 'Phù Thủy',
+      speaker_color: '#a855f7',
+      text: 'Từ ngọn cây này có thể bao quát toàn bộ ngôi làng!',
+      voice_config: { voice_id: 'vi-VN-HoaiMyNeural', speed: 1.0, emotion: 'serious' },
+      audio_path: null,
+      audio_naming_rule: 'audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3',
+      status: 'pending_tts',
+      start_time: 5.5,
+      estimated_duration: 3.5,
+    },
+  ],
+  camera_tracks: [
+    {
+      start: 0.0,
+      end: 15.0,
+      shot_type: 'cinematic_dolly',
+      from: [8, 4.5, 3.5],
+      to: [5.2, 3.2, 0.8],
+      look_at: 'actor_dark_mage.head',
+      fov: 48,
+    },
+  ],
+  actors: [
+    {
+      id: 'actor_dark_mage',
+      name: 'Phù Thủy',
+      model: 'characters/dark_mage.vrm',
+      spawn_point: [2, 0, 1],
+      tracks: {
+        movement: [
+          {
+            start: 0.0,
+            end: 15.0,
+            action: 'climb',
+            target_object: 'props.village_tree_01',
+          },
+        ],
+        speech: [
+          {
+            line_ref: 'dlg_tree_01',
+            expressions: [{ time_offset: 0.0, type: 'smirk', weight: 0.8 }],
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const sampleScenes = [
+  villageClashScene,
+  chairSittingScene,
+  treeClimbingScene,
+];

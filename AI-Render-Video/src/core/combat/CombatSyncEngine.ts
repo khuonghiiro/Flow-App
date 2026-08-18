@@ -51,7 +51,7 @@ export class CombatSyncEngine {
       attacker.animator.update(currentTime, progress);
     }
 
-    // Trigger Weapon VFX
+    // Trigger Weapon VFX (e.g. flaming sword trail)
     if (weapon_vfx && currentTime >= weapon_vfx.start && currentTime <= weapon_vfx.end) {
       if (!state.hasTriggeredWeaponVFX) {
         state.hasTriggeredWeaponVFX = true;
@@ -67,28 +67,33 @@ export class CombatSyncEngine {
       }
     }
 
-    // Exact Impact Frame Trigger!
-    if (currentTime >= impact_time && currentTime <= impact_time + 1.5) {
-      const hitProgress = (currentTime - impact_time) / 1.5;
+    // Exact Impact Frame & Sustained Knockback Reaction
+    if (currentTime >= impact_time) {
+      const hitElapsed = currentTime - impact_time;
+      const hitProgress = Math.min(1, hitElapsed / 1.5);
 
       // Reaction animation
       targetActor.animator.setAction(target.reaction_anim);
       targetActor.animator.update(currentTime, hitProgress);
 
-      // Facial expression
-      targetActor.morph.setExpression(target.facial_expression, Math.max(0, 1 - hitProgress * 0.8));
+      // Set Pain Facial Expression
+      const painWeight = Math.max(0.2, 1 - hitElapsed / 4.0);
+      targetActor.morph.setExpression(target.facial_expression, painWeight);
 
       // Calculate knockback displacement
       const hitCalc = HitBoxDetector.calculateHit(attacker.avatar, targetActor.avatar);
-      const knockbackStep = target.knockback_distance * Math.min(1, hitProgress * 2);
+      const knockbackStep = target.knockback_distance * Math.min(1, hitProgress * 2.5);
       const originalSpawn = targetActor.config.spawn_point;
+
+      // Arc flight during knockback
+      const flyHeight = hitProgress < 0.6 ? Math.sin(hitProgress * Math.PI * (1 / 0.6)) * 0.7 : 0;
       targetActor.avatar.rootObject.position.set(
         originalSpawn[0] + hitCalc.knockbackDirection.x * knockbackStep,
-        originalSpawn[1] + (hitProgress < 0.3 ? Math.sin(hitProgress * Math.PI * 3) * 0.4 : 0),
+        originalSpawn[1] + flyHeight,
         originalSpawn[2] + hitCalc.knockbackDirection.z * knockbackStep
       );
 
-      // Trigger Impact VFX & Screen Shake once on impact
+      // Trigger Impact Hit Sparks & Screen Shake once on impact frame
       if (!state.hasTriggeredImpact) {
         state.hasTriggeredImpact = true;
         this.vfxTrigger.spawnHitSparks(hitCalc.hitPoint);
@@ -99,11 +104,16 @@ export class CombatSyncEngine {
       }
     }
 
-    // Reset state if scrubbing backwards before start_time
+    // Reset state if scrubbing backwards
     if (currentTime < start_time) {
       state.hasTriggeredWeaponVFX = false;
       state.hasTriggeredImpact = false;
       targetActor.avatar.rootObject.position.set(...targetActor.config.spawn_point);
+      targetActor.morph.setExpression('neutral', 1.0);
+    } else if (currentTime < impact_time) {
+      state.hasTriggeredImpact = false;
+      targetActor.avatar.rootObject.position.set(...targetActor.config.spawn_point);
+      targetActor.morph.setExpression('neutral', 1.0);
     }
   }
 

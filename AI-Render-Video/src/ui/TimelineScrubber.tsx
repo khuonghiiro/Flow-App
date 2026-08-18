@@ -29,8 +29,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   const duration = scene.duration || 25.0;
 
   const handleLaneClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const progress = Math.max(0, Math.min(1, clickX / rect.width));
     onSeek(progress * duration);

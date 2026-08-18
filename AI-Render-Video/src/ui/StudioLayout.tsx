@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -12,6 +12,7 @@ import { CombatDebugger } from './CombatDebugger';
 import { MapRadarView } from './MapRadarView';
 import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
+import { sampleScenes } from '../samples/villageClashScene';
 
 interface StudioLayoutProps {
   scene: MasterSceneConfig;
@@ -78,7 +79,63 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           <span className="studio-badge">TypeScript + WebCodecs</span>
         </div>
 
+        {/* Scene Presets Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Clapperboard size={12} color="#38bdf8" /> Mẫu Cảnh:
+          </span>
+          <select
+            className="form-input"
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              borderRadius: 8,
+              background: 'rgba(15, 20, 36, 0.9)',
+              border: '1px solid var(--border-glow)',
+              color: '#ffffff',
+              cursor: 'pointer',
+            }}
+            value={scene.scene_id}
+            onChange={(e) => {
+              const selected = sampleScenes.find((s) => s.scene_id === e.target.value);
+              if (selected) {
+                onUpdateScene(selected);
+              }
+            }}
+          >
+            {sampleScenes.map((s) => (
+              <option key={s.scene_id} value={s.scene_id}>
+                {s.title || s.scene_id}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="header-actions">
+          {/* Export FPS Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>FPS Xuất:</span>
+            <select
+              className="form-input"
+              style={{
+                padding: '4px 8px',
+                fontSize: 11,
+                borderRadius: 6,
+                background: 'rgba(15, 20, 36, 0.9)',
+                border: '1px solid var(--border-glow)',
+                color: '#38bdf8',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              value={exportFps}
+              onChange={(e) => setExportFps(Number(e.target.value))}
+            >
+              <option value={30}>30 FPS</option>
+              <option value={60}>60 FPS (Mượt)</option>
+              <option value={120}>✨ 120 FPS (Siêu Mượt HFR)</option>
+            </select>
+          </div>
+
           <button
             className="btn-secondary"
             onClick={() => setShowDialogueModal(true)}
@@ -88,11 +145,11 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             className="btn-primary"
-            onClick={onExportVideo}
+            onClick={() => onExportVideo(exportFps)}
             disabled={isExporting}
           >
             <Download size={14} />
-            {isExporting ? exportProgressMsg || 'Đang Xuất Video...' : 'Xuất Video MP4 (GPU)'}
+            {isExporting ? exportProgressMsg || 'Đang Xuất Video...' : `Xuất MP4 (${exportFps} FPS)`}
           </button>
         </div>
       </header>
@@ -175,7 +232,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             </button>
           </div>
 
-          <div className="sidebar-content">
+          <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
             {rightTab === 'director' ? (
               <AIChatDirector scene={scene} onApplyScene={onUpdateScene} />
             ) : (
