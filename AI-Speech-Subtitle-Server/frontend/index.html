@@ -265,24 +265,89 @@
             </div>
 
             <div class="diarization-body" id="diarizationBody" style="display: none;">
-              <div class="form-group" style="margin-bottom: 12px;">
-                <label class="form-label" for="diarizeNumSpeakersSelect" style="display: flex; align-items: center; justify-content: space-between;">
-                  <span>👥 Số lượng nhân vật ước lượng trong Audio:</span>
-                  <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(Giúp gom cụm chính xác số giọng)</span>
-                </label>
-                <select id="diarizeNumSpeakersSelect" class="form-select">
-                  <option value="0" selected>⚡ Tự động nhận diện tối ưu (Auto Detect)</option>
-                  <option value="1">1 người (Độc thoại)</option>
-                  <option value="2">2 người (Hội thoại đôi)</option>
-                  <option value="3">3 người</option>
-                  <option value="4">4 người</option>
-                  <option value="5">5 người</option>
-                  <option value="6">6 người</option>
-                  <option value="7">7 người</option>
-                  <option value="8">8 người</option>
-                </select>
+              <!-- Estimates & Engine Row -->
+              <div class="diarize-config-grid">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" for="diarizeNumSpeakersSelect">
+                    <span>👥 Số nhân vật ước lượng:</span>
+                  </label>
+                  <select id="diarizeNumSpeakersSelect" class="form-select">
+                    <option value="0" selected>⚡ Tự động phân cụm (Auto AHC - Tối ưu)</option>
+                    <option value="1">👤 1 Người nói (Độc thoại / Kể chuyện)</option>
+                    <option value="2">👥 2 Người nói (Đối thoại 2 người)</option>
+                    <option value="3">👥 3 Người nói</option>
+                    <option value="4">👥 4 Người nói</option>
+                    <option value="5">👥 5 Người nói</option>
+                    <option value="6">👥 6 Người nói</option>
+                  </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" for="diarizeEngineSelect">
+                    <span>🧠 Bộ não AI nhận diện vân giọng:</span>
+                  </label>
+                  <select id="diarizeEngineSelect" class="form-select">
+                    <option value="auto" selected>🧠 CAM++ Deep Neural AI (SOTA &gt;98%)</option>
+                    <option value="neural">🧠 CAM++ Neural ONNX (Chính xác cao)</option>
+                    <option value="spectral">⚡ High-Res Spectral Engine (Offline Siêu Tốc)</option>
+                  </select>
+                </div>
               </div>
 
+              <!-- Advanced AI Tuning Sliders -->
+              <div class="diarize-tuning-box">
+                <div class="tuning-box-header">
+                  <span class="tuning-box-title">🎛️ Cấu Hình Tinh Chỉnh Độ Chính Xác &amp; Gom Nhóm Người Nói:</span>
+                  <button class="btn btn-secondary btn-xs" onclick="resetDiarizeSlidersToDefault()" title="Đưa toàn bộ thanh trượt về thông số tối ưu">🔄 Mặc Định</button>
+                </div>
+
+                <div class="tuning-slider-group">
+                  <div class="slider-label-row">
+                    <label class="form-label" for="diarizeThresholdSlider">
+                      <span>🎯 Độ Nhạy Gom Nhóm / Khớp Giọng (Similarity Threshold):</span>
+                    </label>
+                    <span class="tuning-value-badge" id="diarizeThresholdBadge">65% (Cân bằng khuyến nghị)</span>
+                  </div>
+                  <div class="slider-track-wrap">
+                    <span class="slider-bound">40% (Gom mạnh)</span>
+                    <input type="range" id="diarizeThresholdSlider" class="form-range custom-slider" min="40" max="90" step="1" value="65" oninput="onDiarizeThresholdChange(this.value)">
+                    <span class="slider-bound">90% (Khắt khe)</span>
+                  </div>
+                  <div class="slider-hint">
+                    Kéo sang trái (50-60%) để AI gom nhóm mạnh hơn (tránh tạo quá nhiều SPEAKER_). Kéo sang phải (75-85%) khi bạn có mẫu giọng chuẩn cho từng người.
+                  </div>
+                </div>
+
+                <div class="tuning-slider-group">
+                  <div class="slider-label-row">
+                    <label class="form-label" for="diarizeMinDurationSlider">
+                      <span>⏱️ Độ Dài Câu Nói Tối Thiểu (Min Speech Duration):</span>
+                    </label>
+                    <span class="tuning-value-badge" id="diarizeMinDurationBadge">0.4s</span>
+                  </div>
+                  <div class="slider-track-wrap">
+                    <span class="slider-bound">0.2s</span>
+                    <input type="range" id="diarizeMinDurationSlider" class="form-range custom-slider" min="0.2" max="2.0" step="0.1" value="0.4" oninput="onDiarizeMinDurationChange(this.value)">
+                    <span class="slider-bound">2.0s</span>
+                  </div>
+                  <div class="slider-hint">
+                    Bỏ qua các đoạn âm thanh/tiếng thở/tặc lưỡi quá ngắn dưới ngưỡng này để tránh gán nhầm nhân vật mới.
+                  </div>
+                </div>
+
+                <div class="tuning-toggle-row">
+                  <div class="toggle-info">
+                    <span class="toggle-name">✨ Tự Động Thích Nghi Ngữ Điệu (Adaptive Voice Learning)</span>
+                    <span class="toggle-desc">Tự động học và thích nghi với chất giọng của nhân vật theo tiến trình video để càng về sau nhận diện càng chuẩn xác.</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="diarizeAdaptiveToggle" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Character Reference Samples Section -->
               <div class="character-section-header">
                 <span class="character-section-title">Danh Sách Nhân Vật Mẫu (Khớp Giọng Nói):</span>
                 <button class="btn btn-secondary btn-xs" onclick="addNewCharacterProfile()">➕ Thêm Nhân Vật Mẫu</button>
@@ -295,7 +360,7 @@
               </div>
 
               <div class="diarization-action-row">
-                <button class="btn btn-diarize-now" id="btnDiarizeNow" onclick="rediarizeCurrentTimeline()" title="Nhận diện lại nhân vật cho timeline hiện tại theo danh sách mẫu giọng">
+                <button class="btn btn-diarize-now" id="btnDiarizeNow" onclick="rediarizeCurrentTimeline()" title="Nhận diện lại nhân vật cho timeline hiện tại theo danh sách mẫu giọng và cấu hình slider">
                   <span>🎭</span> Phân Tách Lại (Timeline Hiện Tại)
                 </button>
               </div>

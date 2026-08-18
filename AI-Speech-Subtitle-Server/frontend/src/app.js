@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initDropzone();
   initStudioActions();
   initApiCopy();
+  initDiarizationTuning();
 });
 
 // ==========================================================================
@@ -632,6 +633,11 @@ function initStudioActions() {
         if (window.characterProfiles && window.characterProfiles.length > 0) {
           formData.append("character_samples", JSON.stringify(window.characterProfiles));
         }
+        const tuning = getDiarizeTuningOptions();
+        formData.append("similarity_threshold", tuning.threshold);
+        formData.append("min_duration", tuning.minDuration);
+        formData.append("embedding_engine", tuning.engine);
+        formData.append("adaptive_learning", tuning.adaptive);
       }
 
       const res = await fetch("/api/transcribe", {
@@ -926,11 +932,126 @@ function formatTimeAss(sec) {
 }
 
 // ==========================================================================
-// 8. Speaker Diarization & Character Sample Profiles Manager
+// 8. Speaker Diarization & Neural Voice Tuning Manager
 // ==========================================================================
 window.characterProfiles = [];
 
 const CHARACTER_PALETTE = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#ef4444", "#14b8a6"];
+
+function initDiarizationTuning() {
+  const savedThresh = localStorage.getItem("flowmy_diarize_threshold") || "65";
+  const savedMinDur = localStorage.getItem("flowmy_diarize_min_dur") || "0.4";
+  const savedEngine = localStorage.getItem("flowmy_diarize_engine") || "auto";
+  const savedAdaptive = localStorage.getItem("flowmy_diarize_adaptive");
+
+  const threshSlider = document.getElementById("diarizeThresholdSlider");
+  if (threshSlider) {
+    threshSlider.value = savedThresh;
+    onDiarizeThresholdChange(savedThresh, false);
+  }
+
+  const minDurSlider = document.getElementById("diarizeMinDurationSlider");
+  if (minDurSlider) {
+    minDurSlider.value = savedMinDur;
+    onDiarizeMinDurationChange(savedMinDur, false);
+  }
+
+  const engineSelect = document.getElementById("diarizeEngineSelect");
+  if (engineSelect) {
+    engineSelect.value = savedEngine;
+    engineSelect.addEventListener("change", (e) => {
+      localStorage.setItem("flowmy_diarize_engine", e.target.value);
+    });
+  }
+
+  const adaptiveToggle = document.getElementById("diarizeAdaptiveToggle");
+  if (adaptiveToggle) {
+    if (savedAdaptive !== null) {
+      adaptiveToggle.checked = savedAdaptive === "true";
+    }
+    adaptiveToggle.addEventListener("change", (e) => {
+      localStorage.setItem("flowmy_diarize_adaptive", e.target.checked.toString());
+    });
+  }
+}
+window.initDiarizationTuning = initDiarizationTuning;
+
+function onDiarizeThresholdChange(val, save = true) {
+  const numVal = parseInt(val, 10);
+  const badge = document.getElementById("diarizeThresholdBadge");
+  if (badge) {
+    if (numVal < 55) {
+      badge.textContent = `${numVal}% (Gom nhóm rất mạnh / 1-2 người)`;
+      badge.style.color = "#38bdf8";
+    } else if (numVal <= 72) {
+      badge.textContent = `${numVal}% (Cân bằng khuyến nghị)`;
+      badge.style.color = "#34d399";
+    } else {
+      badge.textContent = `${numVal}% (Khắt khe / Khi có mẫu giọng)`;
+      badge.style.color = "#fbbf24";
+    }
+  }
+  if (save) {
+    localStorage.setItem("flowmy_diarize_threshold", val.toString());
+  }
+}
+window.onDiarizeThresholdChange = onDiarizeThresholdChange;
+
+function onDiarizeMinDurationChange(val, save = true) {
+  const floatVal = parseFloat(val);
+  const badge = document.getElementById("diarizeMinDurationBadge");
+  if (badge) {
+    badge.textContent = `${floatVal.toFixed(1)}s`;
+  }
+  if (save) {
+    localStorage.setItem("flowmy_diarize_min_dur", val.toString());
+  }
+}
+window.onDiarizeMinDurationChange = onDiarizeMinDurationChange;
+
+function resetDiarizeSlidersToDefault() {
+  const threshSlider = document.getElementById("diarizeThresholdSlider");
+  if (threshSlider) {
+    threshSlider.value = "65";
+    onDiarizeThresholdChange("65");
+  }
+
+  const minDurSlider = document.getElementById("diarizeMinDurationSlider");
+  if (minDurSlider) {
+    minDurSlider.value = "0.4";
+    onDiarizeMinDurationChange("0.4");
+  }
+
+  const engineSelect = document.getElementById("diarizeEngineSelect");
+  if (engineSelect) {
+    engineSelect.value = "auto";
+    localStorage.setItem("flowmy_diarize_engine", "auto");
+  }
+
+  const adaptiveToggle = document.getElementById("diarizeAdaptiveToggle");
+  if (adaptiveToggle) {
+    adaptiveToggle.checked = true;
+    localStorage.setItem("flowmy_diarize_adaptive", "true");
+  }
+
+  showToast("🔄 Đã khôi phục cấu hình nhận diện vân giọng về thông số tối ưu!", "info");
+}
+window.resetDiarizeSlidersToDefault = resetDiarizeSlidersToDefault;
+
+function getDiarizeTuningOptions() {
+  const rawThresh = parseInt(document.getElementById("diarizeThresholdSlider")?.value || "65", 10);
+  const rawDur = parseFloat(document.getElementById("diarizeMinDurationSlider")?.value || "0.4");
+  const engine = document.getElementById("diarizeEngineSelect")?.value || "auto";
+  const adaptive = document.getElementById("diarizeAdaptiveToggle")?.checked !== false;
+
+  return {
+    threshold: parseFloat((rawThresh / 100.0).toFixed(2)),
+    minDuration: parseFloat(rawDur.toFixed(1)),
+    engine: engine,
+    adaptive: adaptive
+  };
+}
+window.getDiarizeTuningOptions = getDiarizeTuningOptions;
 
 function onDiarizeToggleChange() {
   const isDiarize = document.getElementById("diarizeToggle").checked;
@@ -939,7 +1060,7 @@ function onDiarizeToggleChange() {
 
   if (isDiarize) {
     body.style.display = "block";
-    sub.textContent = "Đang bật phân tách nhân vật: AI sẽ tự động gán nhãn giọng nói hoặc khớp theo mẫu audio.";
+    sub.textContent = "Đang bật phân tách nhân vật: AI CAM++ sẽ trích xuất vân giọng và so khớp thông minh.";
     renderCharacterProfiles();
   } else {
     body.style.display = "none";
@@ -1025,10 +1146,11 @@ async function rediarizeCurrentTimeline() {
 
   const btn = document.getElementById("btnDiarizeNow");
   btn.disabled = true;
-  btn.innerHTML = `⏳ Đang nhận diện &amp; khớp giọng nói...`;
+  btn.innerHTML = `⏳ Đang trích xuất vân giọng &amp; khớp nhân vật...`;
 
   try {
     const numSpeakersVal = parseInt(document.getElementById("diarizeNumSpeakersSelect")?.value || "0", 10);
+    const tuning = getDiarizeTuningOptions();
     let res;
 
     if (selectedAudioFile instanceof File) {
@@ -1041,7 +1163,10 @@ async function rediarizeCurrentTimeline() {
       if (numSpeakersVal > 0) {
         fd.append("num_speakers", numSpeakersVal);
       }
-      fd.append("similarity_threshold", 0.92);
+      fd.append("similarity_threshold", tuning.threshold);
+      fd.append("min_duration", tuning.minDuration);
+      fd.append("embedding_engine", tuning.engine);
+      fd.append("adaptive_learning", tuning.adaptive);
 
       res = await fetch("/api/identify-speakers", {
         method: "POST",
@@ -1056,7 +1181,10 @@ async function rediarizeCurrentTimeline() {
           segments: currentSegments,
           character_samples: window.characterProfiles.length > 0 ? window.characterProfiles : null,
           num_speakers: numSpeakersVal > 0 ? numSpeakersVal : null,
-          similarity_threshold: 0.92
+          similarity_threshold: tuning.threshold,
+          min_duration: tuning.minDuration,
+          embedding_engine: tuning.engine,
+          adaptive_learning: tuning.adaptive
         })
       });
     }
@@ -1069,7 +1197,7 @@ async function rediarizeCurrentTimeline() {
     const data = await res.json();
     currentSegments = data.segments || currentSegments;
     renderTimeline(currentSegments, currentAudioMeta);
-    showToast("🎉 Đã phân tách và cập nhật nhân vật trên Timeline thành công!", "success");
+    showToast(`🎉 Phân tách hoàn tất! Đã cập nhật nhân vật (Ngưỡng: ${Math.round(tuning.threshold * 100)}%)`, "success");
   } catch (e) {
     showToast(`❌ Lỗi: ${e.message}`, "error");
   } finally {

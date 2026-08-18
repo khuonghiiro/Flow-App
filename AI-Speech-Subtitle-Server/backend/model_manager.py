@@ -45,6 +45,7 @@ class ModelManager:
             self.models_dir / "faster-whisper",
             self.models_dir / "whisperx",
             self.models_dir / "sensevoice",
+            self.models_dir / "campplus",
             self.models_dir / "hub"
         ]
 
@@ -52,16 +53,19 @@ class ModelManager:
             if not s_dir.exists():
                 continue
             for item in s_dir.iterdir():
-                if item.is_dir():
+                if item.is_dir() or item.is_file():
                     name_lower = item.name.lower()
                     if engine in ("faster-whisper", "whisperx"):
                         # Khớp các dạng: models--Systran--faster-whisper-small, small, faster-whisper-small
                         if size_str in name_lower and ("whisper" in name_lower or item.name == model_size):
                             # Kiểm tra xem thư mục có tệp tin thực sự bên trong không (không phải thư mục rỗng)
-                            if any(item.glob("**/*.bin")) or any(item.glob("**/*.safetensors")) or any(item.glob("**/snapshots/**/*")):
+                            if item.is_dir() and (any(item.glob("**/*.bin")) or any(item.glob("**/*.safetensors")) or any(item.glob("**/snapshots/**/*"))):
                                 return True
                     elif engine == "sensevoice":
                         if "sensevoice" in name_lower:
+                            return True
+                    elif engine == "campplus":
+                        if "campplus" in name_lower:
                             return True
                     elif engine == "seamless-m4t":
                         if "seamless-m4t" in name_lower and ("large" in size_str if "large" in name_lower else "medium" in size_str):
@@ -82,6 +86,9 @@ class ModelManager:
             "whisperx": {},
             "sensevoice": {
                 "base": self.is_model_installed("sensevoice", "base")
+            },
+            "campplus": {
+                "base": self.is_model_installed("campplus", "base")
             },
             "seamless-m4t": {
                 "medium": self.is_model_installed("seamless-m4t", "medium"),

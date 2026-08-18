@@ -1,5 +1,21 @@
+import os
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
+
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
+
+try:
+    import imageio_ffmpeg
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    ffmpeg_dir = os.path.dirname(ffmpeg_exe)
+    if ffmpeg_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+except Exception:
+    pass
 
 class BaseSpeechEngine(ABC):
     def __init__(self, model_size: str = "small", device: str = "auto", compute_type: str = "default", download_root: str = None):

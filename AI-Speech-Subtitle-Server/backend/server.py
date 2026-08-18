@@ -5,6 +5,26 @@ import tempfile
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
+# Tích hợp Windows System Certificate Store để sửa lỗi SSL Certificate Verify Failed trên Windows/VPN
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
+
+# Tự động nạp FFmpeg từ imageio_ffmpeg vào PATH để pydub, torchaudio, funasr nhận diện tức thì
+try:
+    import imageio_ffmpeg
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    ffmpeg_dir = os.path.dirname(ffmpeg_exe)
+    if ffmpeg_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+    from pydub import AudioSegment
+    AudioSegment.converter = ffmpeg_exe
+    AudioSegment.ffmpeg = ffmpeg_exe
+except Exception:
+    pass
+
 # Tắt cảnh báo Symlink & Tokenizer trên Windows
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -336,18 +356,24 @@ async def identify_speakers_endpoint(
     segments: Optional[str] = Form(None),
     character_samples: Optional[str] = Form(None),
     num_speakers: Optional[int] = Form(None),
-    similarity_threshold: Optional[float] = Form(0.92)
+    similarity_threshold: Optional[float] = Form(0.75),
+    min_duration: Optional[float] = Form(0.4),
+    adaptive_learning: Optional[bool] = Form(True),
+    embedding_engine: Optional[str] = Form("auto")
 ):
     """
-    Endpoint phân tách và nhận diện nhân vật cho danh sách timeline hiện có
-    Hỗ trợ cả JSON body và Multipart Form (khi gọi từ Web UI)
+    Endpoint phân tách và nhận diện nhân vật cho danh sách timeline hiện có.
+    Hỗ trợ cả JSON body và Multipart Form (khi gọi từ Web UI / FlowMy Node).
     """
     temp_file_to_clean = None
     target_audio_path = None
     segs_list = []
     char_samples_list = None
     n_speakers = None
-    sim_thresh = 0.92
+    sim_thresh = 0.70
+    min_dur = 0.4
+    adapt_learn = True
+    emb_engine = "auto"
 
     content_type = request.headers.get("content-type", "")
 
@@ -360,7 +386,10 @@ async def identify_speakers_endpoint(
         segs_list = body.get("segments", [])
         char_samples_list = body.get("character_samples") or body.get("characters")
         n_speakers = body.get("num_speakers")
-        sim_thresh = body.get("similarity_threshold", 0.65)
+        sim_thresh = float(body.get("similarity_threshold", 0.70))
+        min_dur = float(body.get("min_duration", 0.4))
+        adapt_learn = bool(body.get("adaptive_learning", True))
+        emb_engine = str(body.get("embedding_engine", "auto"))
     elif file is not None:
         suffix = Path(file.filename).suffix if file.filename else ".wav"
         fd, temp_path = tempfile.mkstemp(prefix="flowmy_diarize_", suffix=suffix)
@@ -380,7 +409,10 @@ async def identify_speakers_endpoint(
             except Exception:
                 char_samples_list = None
         n_speakers = num_speakers
-        sim_thresh = similarity_threshold or 0.65
+        sim_thresh = similarity_threshold if similarity_threshold is not None else 0.70
+        min_dur = min_duration if min_duration is not None else 0.4
+        adapt_learn = adaptive_learning if adaptive_learning is not None else True
+        emb_engine = embedding_engine or "auto"
     elif audio_path is not None:
         target_audio_path = audio_path
         if segments:
@@ -394,7 +426,10 @@ async def identify_speakers_endpoint(
             except Exception:
                 char_samples_list = None
         n_speakers = num_speakers
-        sim_thresh = similarity_threshold or 0.65
+        sim_thresh = similarity_threshold if similarity_threshold is not None else 0.70
+        min_dur = min_duration if min_duration is not None else 0.4
+        adapt_learn = adaptive_learning if adaptive_learning is not None else True
+        emb_engine = embedding_engine or "auto"
 
     if not target_audio_path or not os.path.exists(target_audio_path):
         raise HTTPException(status_code=400, detail="Thiếu file audio hoặc đường dẫn audio_path hợp lệ để phân tách nhân vật.")
@@ -406,11 +441,16 @@ async def identify_speakers_endpoint(
             segments=segs_list,
             character_samples=char_samples_list,
             num_speakers=n_speakers,
-            similarity_threshold=sim_thresh
+            similarity_threshold=sim_thresh,
+            min_duration=min_dur,
+            adaptive_learning=adapt_learn,
+            embedding_engine=emb_engine
         )
         return {
             "status": "success",
             "total_segments": len(updated_segs),
+            "similarity_threshold": sim_thresh,
+            "min_duration": min_dur,
             "segments": updated_segs
         }
     except Exception as e:
@@ -438,17 +478,25 @@ async def transcribe_endpoint(
     vad_filter: bool = Form(True),
     enable_diarization: Optional[bool] = Form(None),
     num_speakers: Optional[int] = Form(None),
-    character_samples: Optional[str] = Form(None) # JSON string list if passed in form
+    character_samples: Optional[str] = Form(None),
+    similarity_threshold: Optional[float] = Form(0.75),
+    min_duration: Optional[float] = Form(0.4),
+    adaptive_learning: Optional[bool] = Form(True),
+    embedding_engine: Optional[str] = Form("auto")
 ):
     """
-    Endpoint chính nhận diện giọng nói, tự động phát hiện ngôn ngữ, dịch phụ đề & phân tách nhân vật
-    Hỗ trợ cả JSON body (FlowMy HttpRequestNode) và Multipart Form (Web UI)
+    Endpoint chính nhận diện giọng nói, tự động phát hiện ngôn ngữ, dịch phụ đề & phân tách nhân vật.
+    Hỗ trợ cả JSON body (FlowMy HttpRequestNode) và Multipart Form (Web UI).
     """
     temp_file_to_clean = None
     target_audio_path = None
     char_samples_list = None
     is_diarize = False
     n_speakers = None
+    sim_thresh = 0.75
+    min_dur = 0.4
+    adapt_learn = True
+    emb_engine = "auto"
 
     content_type = request.headers.get("content-type", "")
 
@@ -473,6 +521,10 @@ async def transcribe_endpoint(
         is_diarize = body.get("enable_diarization", False)
         n_speakers = body.get("num_speakers")
         char_samples_list = body.get("character_samples") or body.get("characters")
+        sim_thresh = float(body.get("similarity_threshold", 0.75))
+        min_dur = float(body.get("min_duration", 0.4))
+        adapt_learn = bool(body.get("adaptive_learning", True))
+        emb_engine = str(body.get("embedding_engine", "auto"))
     elif file is not None:
         # Multipart upload file từ Web UI
         suffix = Path(file.filename).suffix if file.filename else ".wav"
@@ -493,6 +545,10 @@ async def transcribe_endpoint(
         vad = vad_filter
         is_diarize = enable_diarization if enable_diarization is not None else False
         n_speakers = num_speakers
+        sim_thresh = similarity_threshold if similarity_threshold is not None else 0.75
+        min_dur = min_duration if min_duration is not None else 0.4
+        adapt_learn = adaptive_learning if adaptive_learning is not None else True
+        emb_engine = embedding_engine or "auto"
         if character_samples:
             try:
                 char_samples_list = json.loads(character_samples)
@@ -511,6 +567,10 @@ async def transcribe_endpoint(
         vad = vad_filter
         is_diarize = enable_diarization if enable_diarization is not None else False
         n_speakers = num_speakers
+        sim_thresh = similarity_threshold if similarity_threshold is not None else 0.75
+        min_dur = min_duration if min_duration is not None else 0.4
+        adapt_learn = adaptive_learning if adaptive_learning is not None else True
+        emb_engine = embedding_engine or "auto"
         if character_samples:
             try:
                 char_samples_list = json.loads(character_samples)
@@ -548,7 +608,11 @@ async def transcribe_endpoint(
                     audio_path=target_audio_path,
                     segments=result.get("segments", []),
                     character_samples=char_samples_list,
-                    num_speakers=n_speakers
+                    num_speakers=n_speakers,
+                    similarity_threshold=sim_thresh,
+                    min_duration=min_dur,
+                    adaptive_learning=adapt_learn,
+                    embedding_engine=emb_engine
                 )
                 result["has_speakers"] = True
             except Exception as d_err:
