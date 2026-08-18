@@ -10,59 +10,67 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <header>
-      <div class="logo-group">
-        <div class="logo-icon">🎙️</div>
-        <div class="logo-text">
-          <h1>AI Speech-to-Subtitle Studio &amp; API Server</h1>
-          <p>Tách lời thoại &amp; phụ đề phim song ngữ thời gian thực • Dịch AI Đa Ngôn Ngữ • Hỗ trợ GPU CUDA</p>
+  <div class="app-layout">
+    <!-- Fixed Top Header & Navigation Shell -->
+    <header class="app-header-shell">
+      <div class="header-inner">
+        <!-- Top Brand & Status Row -->
+        <div class="header-top-row">
+          <div class="logo-group">
+            <div class="logo-icon">🎙️</div>
+            <div class="logo-text">
+              <h1>AI Speech-to-Subtitle Studio &amp; API Server</h1>
+              <p>Tách lời thoại &amp; phụ đề phim song ngữ thời gian thực • Dịch AI Đa Ngôn Ngữ • Hỗ trợ GPU CUDA</p>
+            </div>
+          </div>
+          <div class="header-actions">
+            <!-- VRAM Active Model Pill Badge -->
+            <div class="vram-active-badge" id="vramActiveBadge" title="Trạng thái model đang nạp trong RAM/VRAM GPU">
+              <span class="pulse-dot"></span>
+              <span id="vramActiveText">⚡ Chưa nạp model</span>
+            </div>
+            <!-- Theme Toggle Button -->
+            <button class="theme-toggle-btn" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng / Tối">
+              <span class="theme-icon" id="themeIcon">🌙</span>
+              <span class="theme-label" id="themeLabel">Giao diện Tối</span>
+            </button>
+            <!-- Server Status Badge -->
+            <div class="badge-pill status-ready">
+              <div class="dot-live"></div>
+              <span>Server Sẵn Sàng (Port 8765)</span>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="header-actions">
-        <!-- VRAM Active Model Pill Badge -->
-        <div class="vram-active-badge" id="vramActiveBadge" title="Trạng thái model đang nạp trong RAM/VRAM GPU">
-          <span class="pulse-dot"></span>
-          <span id="vramActiveText">⚡ Chưa nạp model</span>
-        </div>
-        <!-- Theme Toggle Button -->
-        <button class="theme-toggle-btn" id="themeToggleBtn" title="Chuyển đổi giao diện Sáng / Tối">
-          <span class="theme-icon" id="themeIcon">🌙</span>
-          <span class="theme-label" id="themeLabel">Giao diện Tối</span>
-        </button>
-        <!-- Server Status Badge -->
-        <div class="badge-pill status-ready">
-          <div class="dot-live"></div>
-          <span>Server Sẵn Sàng (Port 8765)</span>
-        </div>
+
+        <!-- Fixed Main Navigation Tabs (Studio & Swagger Explorer) -->
+        <nav class="main-nav-tabs">
+          <button class="nav-tab-btn active" id="tabBtnStudio" onclick="switchMainTab('studio')">
+            <span class="nav-icon">🎙️</span>
+            <span class="nav-text">Studio Tách Phụ Đề &amp; Dịch AI</span>
+          </button>
+          <button class="nav-tab-btn" id="tabBtnSwagger" onclick="switchMainTab('swagger')">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-text">Swagger API Explorer (Test &amp; Copy)</span>
+            <span class="nav-badge">OpenAPI 3.0</span>
+          </button>
+          <a href="/docs" target="_blank" class="nav-tab-btn nav-link-external" title="Mở tài liệu OpenAPI / Swagger UI chuẩn của FastAPI trong tab mới">
+            <span class="nav-icon">📖</span>
+            <span class="nav-text">Swagger UI Gốc (/docs)</span>
+            <span class="external-icon">↗</span>
+          </a>
+        </nav>
       </div>
     </header>
 
-    <!-- Main Navigation Tabs (Studio & Swagger Explorer) -->
-    <nav class="main-nav-tabs">
-      <button class="nav-tab-btn active" id="tabBtnStudio" onclick="switchMainTab('studio')">
-        <span class="nav-icon">🎙️</span>
-        <span class="nav-text">Studio Tách Phụ Đề &amp; Dịch AI</span>
-      </button>
-      <button class="nav-tab-btn" id="tabBtnSwagger" onclick="switchMainTab('swagger')">
-        <span class="nav-icon">⚡</span>
-        <span class="nav-text">Swagger API Explorer (Test &amp; Copy)</span>
-        <span class="nav-badge">OpenAPI 3.0</span>
-      </button>
-      <a href="/docs" target="_blank" class="nav-tab-btn nav-link-external" title="Mở tài liệu OpenAPI / Swagger UI chuẩn của FastAPI trong tab mới">
-        <span class="nav-icon">📖</span>
-        <span class="nav-text">Swagger UI Gốc (/docs)</span>
-        <span class="external-icon">↗</span>
-      </a>
-    </nav>
-
-    <!-- ==================================================================== -->
-    <!-- VIEW 1: STUDIO (Default View) -->
-    <!-- ==================================================================== -->
-    <main id="viewStudio" class="main-view active">
-      <!-- Hardware Advisor Banner -->
-      <div class="advisor-banner">
+    <!-- Scrollable Main Content Shell (Only this area scrolls) -->
+    <div class="app-content-shell" id="appContentShell">
+      <div class="content-container">
+        <!-- ==================================================================== -->
+        <!-- VIEW 1: STUDIO (Default View) -->
+        <!-- ==================================================================== -->
+        <main id="viewStudio" class="main-view active">
+          <!-- Hardware Advisor Banner -->
+          <div class="advisor-banner">
         <div class="advisor-left">
           <div class="advisor-icon">💡</div>
           <div>
@@ -1136,6 +1144,8 @@
         </div>
       </div>
     </main>
+      </div>
+    </div>
   </div>
 
   <!-- Model Loading Modal Overlay with Real-Time Percentage -->
