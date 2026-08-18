@@ -9,18 +9,36 @@
 
 # Build results
 
-.git*
-*/[Dd]ebug/
-*/[Rr]elease/
-*/x64/
-*/[Bb]in/
-*/[Oo]bj/
-*/temp/
-*/Setup/
+# Build results & Binaries
+[Dd]ebug/
+[Rr]elease/
+x64/
+[Bb]in/
+[Oo]bj/
+**/bin/
+**/obj/
+**/temp/
+**/Setup/
 .vscode/
 bin*
-*/Assets/Icon*
 */Ffmpeg/
+**/Ffmpeg/
+
+# Assets & Icons
+**/Assets/Icons/
+**/Assets/Icons/**
+FlowMy.Wpf-UI/Assets/Icons/
+FlowMy.Wpf-UI/Assets/Icons/**
+
+# WPF MSBuild temporary project files & cache
+*_wpftmp.csproj
+*_wpftmp.*
+*_wpftmp/
+FlowMy_*_wpftmp.*
+FlowMy_*.csproj
+!FlowMy.csproj
+!FlowMy.Core.csproj
+!FlowMy.Wpf-UI.csproj
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
