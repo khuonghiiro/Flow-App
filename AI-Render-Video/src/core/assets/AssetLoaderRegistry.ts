@@ -1,6 +1,138 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class AssetLoaderRegistry {
+  private static gltfLoader: GLTFLoader | null = null;
+  private static modelCache = new Map<string, THREE.Group>();
+
+  public static getGLTFLoader(): GLTFLoader {
+    if (!this.gltfLoader) {
+      this.gltfLoader = new GLTFLoader();
+    }
+    return this.gltfLoader;
+  }
+
+  public static async loadGLTF(url: string): Promise<THREE.Group> {
+    if (this.modelCache.has(url)) {
+      return this.modelCache.get(url)!;
+    }
+
+    const loader = this.getGLTFLoader();
+    return new Promise((resolve, reject) => {
+      loader.load(
+        url,
+        (gltf) => {
+          const model = gltf.scene;
+
+          // Decompose all matrix-only nodes so Three.js transforms and scales work accurately
+          model.traverse((child) => {
+            if (child.matrix && !child.matrixAutoUpdate) {
+              child.position.setFromMatrixPosition(child.matrix);
+              child.quaternion.setFromRotationMatrix(child.matrix);
+              child.scale.setFromMatrixScale(child.matrix);
+              child.matrixAutoUpdate = true;
+            }
+
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              mesh.frustumCulled = false;
+              if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach((mat) => {
+                  mat.side = THREE.DoubleSide;
+                  mat.depthWrite = true;
+                  mat.needsUpdate = true;
+                  if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+                    const stdMat = mat as THREE.MeshStandardMaterial;
+                    // Sketchfab convention: if emissiveMap has the texture, link it to map and brighten color
+                    if (stdMat.emissiveMap && !stdMat.map) {
+                      stdMat.map = stdMat.emissiveMap;
+                    }
+                    stdMat.color.set(0xffffff);
+                    if (stdMat.emissiveMap) {
+                      stdMat.emissive.set(0xffffff);
+                      stdMat.emissiveIntensity = 0.8;
+                    }
+                    stdMat.roughness = 0.8;
+                    stdMat.metalness = 0.1;
+                    stdMat.needsUpdate = true;
+                  }
+                });
+              }
+            }
+          });
+
+          this.modelCache.set(url, model);
+          resolve(model);
+        },
+        undefined,
+        (err) => {
+          console.error(`Lỗi tải model GLTF từ ${url}:`, err);
+          reject(err);
+        }
+      );
+    });
+  }
+
+  public static async loadGLTFFromBuffer(buffer: ArrayBuffer): Promise<THREE.Group> {
+    const loader = this.getGLTFLoader();
+    return new Promise((resolve, reject) => {
+      loader.parse(
+        buffer,
+        '',
+        (gltf) => {
+          const model = gltf.scene;
+
+          model.traverse((child) => {
+            if (child.matrix && !child.matrixAutoUpdate) {
+              child.position.setFromMatrixPosition(child.matrix);
+              child.quaternion.setFromRotationMatrix(child.matrix);
+              child.scale.setFromMatrixScale(child.matrix);
+              child.matrixAutoUpdate = true;
+            }
+
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              mesh.frustumCulled = false;
+              if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach((mat) => {
+                  mat.side = THREE.DoubleSide;
+                  mat.depthWrite = true;
+                  mat.needsUpdate = true;
+                  if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+                    const stdMat = mat as THREE.MeshStandardMaterial;
+                    if (stdMat.emissiveMap && !stdMat.map) {
+                      stdMat.map = stdMat.emissiveMap;
+                    }
+                    stdMat.color.set(0xffffff);
+                    if (stdMat.emissiveMap) {
+                      stdMat.emissive.set(0xffffff);
+                      stdMat.emissiveIntensity = 0.8;
+                    }
+                    stdMat.roughness = 0.8;
+                    stdMat.metalness = 0.1;
+                    stdMat.needsUpdate = true;
+                  }
+                });
+              }
+            }
+          });
+
+          resolve(model);
+        },
+        (err) => {
+          console.error('Lỗi phân tích model GLTF từ buffer:', err);
+          reject(err);
+        }
+      );
+    });
+  }
+
   public static createGround(): THREE.Group {
     const ground = new THREE.Group();
     ground.name = 'environment_ground';

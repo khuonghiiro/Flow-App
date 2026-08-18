@@ -13,6 +13,7 @@ interface ViewportCanvasProps {
   showCC: boolean;
   isInspecting?: boolean;
   isFreeCam?: boolean;
+  isLoadingMap?: boolean;
   onToggleCC: () => void;
   onToggleFreeCam?: () => void;
   onResetCamera?: () => void;
@@ -26,6 +27,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   showCC,
   isInspecting,
   isFreeCam,
+  isLoadingMap,
   onToggleCC,
   onToggleFreeCam,
   onResetCamera,
@@ -45,6 +47,43 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   return (
     <div className="viewport-wrapper">
       <div ref={mountRef} className="viewport-canvas-container" />
+
+      {/* Loading Map Notification Banner */}
+      {isLoadingMap && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 54,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid #38bdf8',
+            boxShadow: '0 0 24px rgba(56, 189, 248, 0.45)',
+            borderRadius: 24,
+            padding: '8px 20px',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            zIndex: 100,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              width: 14,
+              height: 14,
+              border: '2px solid #38bdf8',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+            }}
+          />
+          ⏳ Đang nạp Map 3D Đại Thánh Đường (103.8 MB)... Vui lòng đợi trong giây lát
+        </div>
+      )}
 
       {/* Top HUD */}
       <div className="viewport-hud">

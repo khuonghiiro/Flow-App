@@ -1,0 +1,180 @@
+{
+  "scene_id": "scene_cathedral_mystery",
+  "title": "⛪ Thánh Đường Cổ Kính (Map cathedral.glb)",
+  "duration": 20.0,
+  "environment": {
+    "map": "assets/maps/cathedral.glb",
+    "sky_time": "night",
+    "weather": {
+      "fog": 0.015,
+      "wind": 0.1
+    }
+  },
+  "dialogues_manifest": [
+    {
+      "id": "dlg_cath_01",
+      "speaker_id": "actor_warrior",
+      "text": "Đây chính là Đại Thánh Đường Cổ Kính ngàn năm lưu truyền...",
+      "start_time": 1.0,
+      "actual_duration": 4.5
+    },
+    {
+      "id": "dlg_cath_02",
+      "speaker_id": "actor_anime_girl",
+      "text": "Kiến trúc mái vòm Gothic ở đây thật tráng lệ và bí ẩn!",
+      "start_time": 6.5,
+      "actual_duration": 4.8
+    },
+    {
+      "id": "dlg_cath_03",
+      "speaker_id": "actor_dark_mage",
+      "text": "Kẻ phàm trần... sao dám bước chân vào nơi linh thiêng này!",
+      "start_time": 12.0,
+      "actual_duration": 5.0
+    },
+    {
+      "id": "dlg_cath_04",
+      "speaker_id": "actor_warrior",
+      "text": "Hãy chuẩn bị tiếp chiêu đi, Hắc Pháp Sư!",
+      "start_time": 17.2,
+      "actual_duration": 2.8
+    }
+  ],
+  "subtitles": {
+    "font_size": 20,
+    "position": "bottom",
+    "style": "anime_glow"
+  },
+  "audio_tracks": {
+    "bgm": "assets/audio/bgm/cathedral_choir.mp3",
+    "ambience": "assets/audio/sfx/wind_chime.wav"
+  },
+  "camera_tracks": [
+    {
+      "start": 0.0,
+      "end": 6.0,
+      "shot_type": "cinematic_dolly",
+      "from": [0, 4.0, 12.0],
+      "to": [0, 2.5, 5.0],
+      "look_at": "actor_warrior.head",
+      "fov": 55
+    },
+    {
+      "start": 6.0,
+      "end": 11.5,
+      "shot_type": "face_close_up",
+      "follow_target": "actor_anime_girl",
+      "fov": 34
+    },
+    {
+      "start": 11.5,
+      "end": 16.5,
+      "shot_type": "cinematic_dolly",
+      "from": [4.0, 3.2, 0.0],
+      "to": [1.2, 1.8, -3.5],
+      "look_at": "actor_dark_mage.head",
+      "fov": 48
+    },
+    {
+      "start": 16.5,
+      "end": 20.0,
+      "shot_type": "combat_action_cam",
+      "follow_target": "actor_warrior",
+      "distance": 4.0,
+      "height": 1.8,
+      "fov": 52
+    }
+  ],
+  "actors": [
+    {
+      "id": "actor_warrior",
+      "name": "Chiến Binh Ánh Sáng",
+      "model": "assets/characters/knight_avatar.vrm",
+      "spawn_point": [-1.2, 0, 3.5],
+      "tracks": {
+        "movement": [
+          {
+            "start": 0.0,
+            "end": 5.0,
+            "action": "walk",
+            "destination": [-0.6, 0, 0.5]
+          },
+          {
+            "start": 16.5,
+            "end": 19.5,
+            "action": "combat"
+          }
+        ],
+        "combat": [
+          {
+            "start": 16.8,
+            "end": 19.5,
+            "action": "slash_heavy",
+            "target_actor": "actor_dark_mage"
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_cath_01",
+            "expressions": [{ "time_offset": 0.0, "type": "serious", "weight": 0.8 }]
+          },
+          {
+            "line_ref": "dlg_cath_04",
+            "expressions": [{ "time_offset": 0.0, "type": "angry", "weight": 0.9 }]
+          }
+        ]
+      }
+    },
+    {
+      "id": "actor_anime_girl",
+      "name": "Tiểu Vũ (Anime)",
+      "model": "assets/characters/sample_avatar.vrm",
+      "spawn_point": [1.2, 0, 4.0],
+      "tracks": {
+        "movement": [
+          {
+            "start": 0.0,
+            "end": 6.0,
+            "action": "walk",
+            "destination": [0.8, 0, 1.2]
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_cath_02",
+            "expressions": [{ "time_offset": 0.0, "type": "smile", "weight": 0.9 }]
+          }
+        ]
+      }
+    },
+    {
+      "id": "actor_dark_mage",
+      "name": "Hắc Pháp Sư",
+      "model": "assets/characters/dark_mage.vrm",
+      "spawn_point": [0, 0, -4.5],
+      "tracks": {
+        "movement": [
+          {
+            "start": 16.5,
+            "end": 20.0,
+            "action": "combat"
+          }
+        ],
+        "combat": [
+          {
+            "start": 16.8,
+            "end": 20.0,
+            "action": "cast_fireball",
+            "target_actor": "actor_warrior"
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_cath_03",
+            "expressions": [{ "time_offset": 0.0, "type": "smirk", "weight": 0.9 }]
+          }
+        ]
+      }
+    }
+  ]
+}

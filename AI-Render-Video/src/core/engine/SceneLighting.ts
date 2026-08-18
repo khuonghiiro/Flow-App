@@ -96,7 +96,19 @@ export class SceneLighting {
     // Dynamic Color Transition based on Sun Altitude & preset
     const altitude = Math.max(0, sunY / (sunDist * 0.7)); // 0 = horizon, 1 = noon
 
-    if (this.currentEnv.sky_time === 'sunset') {
+    const isCathedralMap = (this.currentEnv.map || '').toLowerCase().includes('cathedral') ||
+                           (this.currentEnv.map || '').toLowerCase().endsWith('.glb');
+
+    if (isCathedralMap) {
+      this.scene.background = new THREE.Color(0x0a0f1f);
+      this.fog.color.set(0x0a0f1f);
+      this.fog.density = 0.0005; // Gentle near-zero fog so large 3D maps are 100% visible
+      this.sunLight.color.set(0xaaccff);
+      this.sunLight.intensity = 2.5;
+      this.ambientLight.color.set(0x8899bb);
+      this.ambientLight.intensity = 1.8;
+      (this.sunMesh.material as THREE.MeshBasicMaterial).color.set(0xccddee);
+    } else if (this.currentEnv.sky_time === 'sunset') {
       // Warm golden hour into twilight
       const sunsetFactor = 1 - progress;
       const skyR = THREE.MathUtils.lerp(0.08, 0.25, altitude);

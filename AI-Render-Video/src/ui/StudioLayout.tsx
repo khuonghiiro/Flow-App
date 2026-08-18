@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -37,8 +37,10 @@ interface StudioLayoutProps {
   onChangeInspectAngle: (angle: InspectCameraAngle) => void;
   onResetCamera: () => void;
   isFreeCam?: boolean;
+  isLoadingMap?: boolean;
   onToggleFreeCam?: () => void;
   onUpdateScene: (updated: MasterSceneConfig) => void;
+  onImportCustomMap?: (file: File) => void;
   onExportVideo: (fps?: number) => void;
   isExporting: boolean;
   exportProgressMsg: string;
@@ -66,8 +68,10 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   onChangeInspectAngle,
   onResetCamera,
   isFreeCam,
+  isLoadingMap,
   onToggleFreeCam,
   onUpdateScene,
+  onImportCustomMap,
   onExportVideo,
   isExporting,
   exportProgressMsg,
@@ -77,9 +81,26 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [showCC, setShowCC] = useState(true);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
+  const mapInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMapFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImportCustomMap) {
+      onImportCustomMap(file);
+    }
+  };
 
   return (
     <div className="studio-container">
+      {/* Hidden Map File Input */}
+      <input
+        type="file"
+        ref={mapInputRef}
+        accept=".glb,.gltf"
+        style={{ display: 'none' }}
+        onChange={handleMapFileChange}
+      />
+
       {/* Studio Header */}
       <header className="studio-header">
         <div className="studio-brand">
@@ -126,6 +147,20 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         </div>
 
         <div className="header-actions">
+          {/* Import Map Button */}
+          <button
+            className="btn-secondary"
+            style={{
+              borderColor: '#38bdf8',
+              color: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.1)',
+            }}
+            onClick={() => mapInputRef.current?.click()}
+            title="Chọn file 3D .glb / .gltf từ máy tính để làm map sân khấu"
+          >
+            <FolderUp size={14} color="#38bdf8" /> <strong>Import Map 3D (.glb)</strong>
+          </button>
+
           {/* Export FPS Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 11, color: '#94a3b8' }}>FPS Xuất:</span>
@@ -219,6 +254,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             showCC={showCC}
             isInspecting={!!inspectingActorId}
             isFreeCam={isFreeCam}
+            isLoadingMap={isLoadingMap}
             onToggleCC={() => setShowCC(!showCC)}
             onToggleFreeCam={onToggleFreeCam}
             onResetCamera={onResetCamera}

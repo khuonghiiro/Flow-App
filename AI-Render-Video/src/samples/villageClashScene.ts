@@ -516,9 +516,15 @@ export const lanternVillageScene: MasterSceneConfig = {
   ],
 };
 
+import { cathedralScene } from './cathedralScene';
+import { pirateMapScene } from './pirateMapScene';
+
 export const sampleScenes = [
+  pirateMapScene,
   villageClashScene,
   chairSittingScene,
   treeClimbingScene,
   lanternVillageScene,
+  cathedralScene,
 ];
+
