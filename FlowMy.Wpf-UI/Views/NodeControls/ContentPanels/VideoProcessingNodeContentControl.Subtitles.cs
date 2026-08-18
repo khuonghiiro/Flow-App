@@ -568,6 +568,10 @@ namespace FlowMy.Views.NodeControls
             var style = _node.SubtitleStyle ??= new SubtitleStyleConfig();
             style.Enabled = SubtitleEnabledToggle.IsChecked == true;
             _node.BurnSubtitleEnabled = style.Enabled;
+            if (SubtitlesMasterContainer != null)
+                SubtitlesMasterContainer.Visibility = style.Enabled ? Visibility.Visible : Visibility.Collapsed;
+            if (SubtitleStatusText != null)
+                SubtitleStatusText.Text = style.Enabled ? "ĐANG BẬT" : "TẮT";
             style.FontFamily = (SubFontFamilyCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI";
             if (double.TryParse(SubFontSizeBox.Text, out var fs)) style.FontSize = fs;
             style.IsBold = SubBoldToggle.IsChecked == true;

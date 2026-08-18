@@ -197,6 +197,7 @@ namespace FlowMy.Models.Nodes
         private string _preferredHwAccel = "cuda";
         private double _sourceFps = 30;
         private double _extractFps = 1;
+        private bool _colorGradingEnabled;
         private double _brightness;
         private double _contrast = 1;
         private double _saturation = 1;
@@ -210,10 +211,14 @@ namespace FlowMy.Models.Nodes
         private bool _blurEnabled;
         private double _blurRadius = 3;
         private bool _stabilizeEnabled;
+        private bool _speedAdjustEnabled;
         private double _speedFactor = 1;
+        private bool _transformEnabled;
         private double _rotationDegrees;
         private bool _flipH;
         private bool _flipV;
+        private bool _canvasOverlayEnabled;
+        private bool _dubbingEnabled;
 
         private string _outputFormat = "mp4_h264";
         private string _encoderPreset = "veryfast";
@@ -582,6 +587,12 @@ namespace FlowMy.Models.Nodes
             }
         }
 
+        public bool ColorGradingEnabled
+        {
+            get => _colorGradingEnabled;
+            set { if (_colorGradingEnabled != value) { _colorGradingEnabled = value; OnPropertyChanged(); } }
+        }
+
         public double Brightness
         {
             get => _brightness;
@@ -686,6 +697,12 @@ namespace FlowMy.Models.Nodes
             set { if (_stabilizeEnabled != value) { _stabilizeEnabled = value; OnPropertyChanged(); } }
         }
 
+        public bool SpeedAdjustEnabled
+        {
+            get => _speedAdjustEnabled;
+            set { if (_speedAdjustEnabled != value) { _speedAdjustEnabled = value; OnPropertyChanged(); } }
+        }
+
         public double SpeedFactor
         {
             get => _speedFactor;
@@ -694,6 +711,12 @@ namespace FlowMy.Models.Nodes
                 var next = value < 0.25 ? 0.25 : (value > 4 ? 4 : value);
                 if (Math.Abs(_speedFactor - next) > 0.001) { _speedFactor = next; OnPropertyChanged(); }
             }
+        }
+
+        public bool TransformEnabled
+        {
+            get => _transformEnabled;
+            set { if (_transformEnabled != value) { _transformEnabled = value; OnPropertyChanged(); } }
         }
 
         public double RotationDegrees
@@ -1203,6 +1226,18 @@ namespace FlowMy.Models.Nodes
                     OnPropertyChanged();
                 }
             }
+        }
+
+        public bool CanvasOverlayEnabled
+        {
+            get => _canvasOverlayEnabled;
+            set { if (_canvasOverlayEnabled != value) { _canvasOverlayEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public bool DubbingEnabled
+        {
+            get => _dubbingEnabled;
+            set { if (_dubbingEnabled != value) { _dubbingEnabled = value; OnPropertyChanged(); } }
         }
 
         public bool WatermarkEnabled

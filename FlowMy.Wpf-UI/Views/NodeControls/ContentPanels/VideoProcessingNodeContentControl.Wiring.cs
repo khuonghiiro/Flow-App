@@ -683,18 +683,76 @@ namespace FlowMy.Views.NodeControls
                 AppendLog("ℹ Preview effect reset (không thay đổi thông số node).");
             };
 
-            SharpenToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.SharpenEnabled = true; SharpenSlider.IsEnabled = true; };
-            SharpenToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.SharpenEnabled = false; SharpenSlider.IsEnabled = false; };
-            DenoiseToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.DenoiseEnabled = true; DenoiseSlider.IsEnabled = true; };
-            DenoiseToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.DenoiseEnabled = false; DenoiseSlider.IsEnabled = false; };
-            BlurToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.BlurEnabled = true; BlurSlider.IsEnabled = true; ApplyPreviewTransformEffects(); };
-            BlurToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.BlurEnabled = false; BlurSlider.IsEnabled = false; ApplyPreviewTransformEffects(); };
+            ColorGradingToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.ColorGradingEnabled = true;
+                if (ColorGradingContainer != null) ColorGradingContainer.Visibility = Visibility.Visible;
+                if (ColorGradingStatusText != null) ColorGradingStatusText.Text = "ĐANG BẬT";
+                ApplyPreviewColorTransform();
+            };
+            ColorGradingToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.ColorGradingEnabled = false;
+                if (ColorGradingContainer != null) ColorGradingContainer.Visibility = Visibility.Collapsed;
+                if (ColorGradingStatusText != null) ColorGradingStatusText.Text = "TẮT (Gốc)";
+                ApplyPreviewColorTransform();
+            };
+
+            SharpenToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.SharpenEnabled = true; SharpenSlider.IsEnabled = true; if (SharpenContainer != null) SharpenContainer.Visibility = Visibility.Visible; };
+            SharpenToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.SharpenEnabled = false; SharpenSlider.IsEnabled = false; if (SharpenContainer != null) SharpenContainer.Visibility = Visibility.Collapsed; };
+            DenoiseToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.DenoiseEnabled = true; DenoiseSlider.IsEnabled = true; if (DenoiseContainer != null) DenoiseContainer.Visibility = Visibility.Visible; };
+            DenoiseToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.DenoiseEnabled = false; DenoiseSlider.IsEnabled = false; if (DenoiseContainer != null) DenoiseContainer.Visibility = Visibility.Collapsed; };
+            BlurToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.BlurEnabled = true; BlurSlider.IsEnabled = true; if (BlurContainer != null) BlurContainer.Visibility = Visibility.Visible; ApplyPreviewTransformEffects(); };
+            BlurToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.BlurEnabled = false; BlurSlider.IsEnabled = false; if (BlurContainer != null) BlurContainer.Visibility = Visibility.Collapsed; ApplyPreviewTransformEffects(); };
+
+            TransformToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.TransformEnabled = true;
+                if (TransformContainer != null) TransformContainer.Visibility = Visibility.Visible;
+                if (TransformStatusText != null) TransformStatusText.Text = "ĐANG BẬT";
+                ApplyPreviewTransformEffects();
+            };
+            TransformToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.TransformEnabled = false;
+                if (TransformContainer != null) TransformContainer.Visibility = Visibility.Collapsed;
+                if (TransformStatusText != null) TransformStatusText.Text = "TẮT (Gốc)";
+                ApplyPreviewTransformEffects();
+            };
+
+            SpeedAdjustToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.SpeedAdjustEnabled = true;
+                if (SpeedAdjustContainer != null) SpeedAdjustContainer.Visibility = Visibility.Visible;
+                if (SpeedAdjustStatusText != null) SpeedAdjustStatusText.Text = $"{_node.SpeedFactor:0.##}x";
+            };
+            SpeedAdjustToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.SpeedAdjustEnabled = false;
+                if (SpeedAdjustContainer != null) SpeedAdjustContainer.Visibility = Visibility.Collapsed;
+                if (SpeedAdjustStatusText != null) SpeedAdjustStatusText.Text = "TẮT (1.0x)";
+            };
+
             StabilizeToggle.Checked += (_, _) => { if (_suppressControlSync) return; _node.StabilizeEnabled = true; };
             StabilizeToggle.Unchecked += (_, _) => { if (_suppressControlSync) return; _node.StabilizeEnabled = false; };
             SharpenSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.SharpenStrength = e.NewValue; SharpenLabel.Text = $"{e.NewValue:0.#}"; };
             DenoiseSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.DenoiseStrength = e.NewValue; DenoiseLabel.Text = $"{e.NewValue:0.#}"; };
             BlurSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.BlurRadius = e.NewValue; BlurLabel.Text = $"{e.NewValue:0.#}"; ApplyPreviewTransformEffects(); };
-            SpeedSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.SpeedFactor = e.NewValue; SpeedLabel.Text = $"{e.NewValue:0.##}x"; ApplyPreviewTransformEffects(); };
+            SpeedSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.SpeedFactor = e.NewValue;
+                SpeedLabel.Text = $"{e.NewValue:0.##}x";
+                if (_node.SpeedAdjustEnabled && SpeedAdjustStatusText != null)
+                    SpeedAdjustStatusText.Text = $"{e.NewValue:0.##}x";
+                ApplyPreviewTransformEffects();
+            };
 
             Rotate0Button.Click += (_, _) => SetRotate(0, Rotate0Button);
             Rotate90Button.Click += (_, _) => SetRotate(90, Rotate90Button);
@@ -716,7 +774,10 @@ namespace FlowMy.Views.NodeControls
         {
             TrimToggle.Checked += (_, _) =>
             {
+                if (_suppressControlSync) return;
                 _node.TrimEnabled = true;
+                if (TrimContainer != null) TrimContainer.Visibility = Visibility.Visible;
+                if (TrimStatusText != null) TrimStatusText.Text = "ĐANG BẬT";
                 if (PreviewMedia.Source != null)
                 {
                     var duration = GetNaturalDurationSeconds();
@@ -737,13 +798,32 @@ namespace FlowMy.Views.NodeControls
             };
             TrimToggle.Unchecked += (_, _) =>
             {
+                if (_suppressControlSync) return;
                 _node.TrimEnabled = false;
+                if (TrimContainer != null) TrimContainer.Visibility = Visibility.Collapsed;
+                if (TrimStatusText != null) TrimStatusText.Text = "TẮT (Toàn bộ)";
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
                 if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Collapsed;
                 if (TrimReviewCheckBox != null) TrimReviewCheckBox.IsChecked = false;
                 UpdatePlaybackUi();
                 RefreshInfoText();
             };
+
+            ConcatToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.ConcatEnabled = true;
+                if (ConcatContainer != null) ConcatContainer.Visibility = Visibility.Visible;
+                if (ConcatStatusText != null) ConcatStatusText.Text = $"{_node.ConcatVideos.Count} video";
+            };
+            ConcatToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.ConcatEnabled = false;
+                if (ConcatContainer != null) ConcatContainer.Visibility = Visibility.Collapsed;
+                if (ConcatStatusText != null) ConcatStatusText.Text = "TẮT";
+            };
+
             TrimReviewCheckBox.Checked += (_, _) =>
             {
                 if (_node.TrimEnabled)
@@ -777,6 +857,24 @@ namespace FlowMy.Views.NodeControls
                         SafeCopyToClipboard(range.Text);
                 }
             };
+
+            CanvasOverlayToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.CanvasOverlayEnabled = true;
+                if (CanvasOverlayContainer != null) CanvasOverlayContainer.Visibility = Visibility.Visible;
+                if (CanvasOverlayStatusText != null) CanvasOverlayStatusText.Text = "ĐANG BẬT";
+                ApplyOverlaysToVideo();
+            };
+            CanvasOverlayToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.CanvasOverlayEnabled = false;
+                if (CanvasOverlayContainer != null) CanvasOverlayContainer.Visibility = Visibility.Collapsed;
+                if (CanvasOverlayStatusText != null) CanvasOverlayStatusText.Text = "TẮT";
+                ApplyOverlaysToVideo();
+            };
+
             AddTextOverlayItemButton.Click += (_, _) => AddOverlayItem("text");
             AddImageOverlayItemButton.Click += (_, _) => AddOverlayItem("image");
             RemoveSelectedOverlayItemButton.Click += (_, _) => RemoveSelectedOverlayItem();
@@ -918,8 +1016,22 @@ namespace FlowMy.Views.NodeControls
                 _node.OverlayFontSize = (int)e.NewValue;
                 TextSizeLabel.Text = $"{(int)e.NewValue}px";
             };
-            FrameLabelToggle.Checked += (_, _) => { _node.FrameLabelEnabled = true; UpdateFrameLabelPreviewUi(); };
-            FrameLabelToggle.Unchecked += (_, _) => { _node.FrameLabelEnabled = false; UpdateFrameLabelPreviewUi(); };
+            FrameLabelToggle.Checked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.FrameLabelEnabled = true;
+                if (FrameLabelContainer != null) FrameLabelContainer.Visibility = Visibility.Visible;
+                if (FrameLabelStatusText != null) FrameLabelStatusText.Text = "ĐANG BẬT";
+                UpdateFrameLabelPreviewUi();
+            };
+            FrameLabelToggle.Unchecked += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.FrameLabelEnabled = false;
+                if (FrameLabelContainer != null) FrameLabelContainer.Visibility = Visibility.Collapsed;
+                if (FrameLabelStatusText != null) FrameLabelStatusText.Text = "TẮT";
+                UpdateFrameLabelPreviewUi();
+            };
             FrameLabelTemplateTextBox.TextChanged += (_, _) => { _node.FrameLabelTemplate = FrameLabelTemplateTextBox.Text; UpdateFrameLabelPreviewUi(); };
             FrameLabelXSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.FrameLabelX = e.NewValue; UpdateFrameLabelPreviewUi(); };
             FrameLabelYSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.FrameLabelY = e.NewValue; UpdateFrameLabelPreviewUi(); };

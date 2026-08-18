@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -28,6 +28,24 @@ namespace FlowMy.Views.NodeControls
             };
             UpdateDubbingBadge();
             UpdateDubbingRamUsage();
+
+            // Dubbing Master Toggle
+            DubbingEnabledToggle.Checked += (s, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.DubbingEnabled = true;
+                DubbingMasterContainer.Visibility = Visibility.Visible;
+                DubbingStatusText.Text = "ĐANG BẬT";
+                SyncDubbingMixerState();
+            };
+            DubbingEnabledToggle.Unchecked += (s, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.DubbingEnabled = false;
+                DubbingMasterContainer.Visibility = Visibility.Collapsed;
+                DubbingStatusText.Text = "TẮT";
+                SyncDubbingMixerState();
+            };
 
             // RAM Management
             ClearDubbingRamCacheButton.Click += (s, e) =>
@@ -93,6 +111,8 @@ namespace FlowMy.Views.NodeControls
             if (_node == null) return;
             var duck = _node.AutoDucking ??= new AutoDuckingConfig();
             duck.Enabled = AutoDuckingToggle.IsChecked == true;
+            if (AutoDuckingParamsContainer != null)
+                AutoDuckingParamsContainer.Visibility = duck.Enabled ? Visibility.Visible : Visibility.Collapsed;
             duck.DuckingAmountDb = AutoDuckingAmountSlider.Value;
             duck.AttackMs = AutoDuckingAttackSlider.Value;
             duck.ReleaseMs = AutoDuckingReleaseSlider.Value;

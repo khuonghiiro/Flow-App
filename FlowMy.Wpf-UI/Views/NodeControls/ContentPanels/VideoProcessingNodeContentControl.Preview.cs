@@ -250,6 +250,13 @@ namespace FlowMy.Views.NodeControls
                 var h = (int)(PreviewMedia.NaturalVideoHeight * _frameResizeScale);
                 FrameResizeLabel.Text = (w <= 0 || h <= 0) ? $"{_frameResizeScale:0.##}x" : $"{w}×{h}";
 
+                if (ColorGradingToggle != null)
+                    ColorGradingToggle.IsChecked = _node.ColorGradingEnabled;
+                if (ColorGradingContainer != null)
+                    ColorGradingContainer.Visibility = _node.ColorGradingEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (ColorGradingStatusText != null)
+                    ColorGradingStatusText.Text = _node.ColorGradingEnabled ? "ĐANG BẬT" : "TẮT (Gốc)";
+
                 BrightnessSlider.Value = _node.Brightness;
                 ContrastSlider.Value = _node.Contrast;
                 SaturationSlider.Value = _node.Saturation;
@@ -271,15 +278,39 @@ namespace FlowMy.Views.NodeControls
                 SharpenSlider.IsEnabled = _node.SharpenEnabled;
                 SharpenSlider.Value = _node.SharpenStrength;
                 SharpenLabel.Text = $"{_node.SharpenStrength:0.#}";
+                if (SharpenContainer != null)
+                    SharpenContainer.Visibility = _node.SharpenEnabled ? Visibility.Visible : Visibility.Collapsed;
+
                 DenoiseToggle.IsChecked = _node.DenoiseEnabled;
                 DenoiseSlider.IsEnabled = _node.DenoiseEnabled;
                 DenoiseSlider.Value = _node.DenoiseStrength;
                 DenoiseLabel.Text = $"{_node.DenoiseStrength:0.#}";
+                if (DenoiseContainer != null)
+                    DenoiseContainer.Visibility = _node.DenoiseEnabled ? Visibility.Visible : Visibility.Collapsed;
+
                 BlurToggle.IsChecked = _node.BlurEnabled;
                 BlurSlider.IsEnabled = _node.BlurEnabled;
                 BlurSlider.Value = _node.BlurRadius;
                 BlurLabel.Text = $"{_node.BlurRadius:0.#}";
+                if (BlurContainer != null)
+                    BlurContainer.Visibility = _node.BlurEnabled ? Visibility.Visible : Visibility.Collapsed;
+
                 StabilizeToggle.IsChecked = _node.StabilizeEnabled;
+
+                if (TransformToggle != null)
+                    TransformToggle.IsChecked = _node.TransformEnabled;
+                if (TransformContainer != null)
+                    TransformContainer.Visibility = _node.TransformEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (TransformStatusText != null)
+                    TransformStatusText.Text = _node.TransformEnabled ? "ĐANG BẬT" : "TẮT (Gốc)";
+
+                if (SpeedAdjustToggle != null)
+                    SpeedAdjustToggle.IsChecked = _node.SpeedAdjustEnabled;
+                if (SpeedAdjustContainer != null)
+                    SpeedAdjustContainer.Visibility = _node.SpeedAdjustEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (SpeedAdjustStatusText != null)
+                    SpeedAdjustStatusText.Text = _node.SpeedAdjustEnabled ? $"{_node.SpeedFactor:0.##}x" : "TẮT (1.0x)";
+
                 SpeedSlider.Value = _node.SpeedFactor;
                 SpeedLabel.Text = $"{_node.SpeedFactor:0.##}x";
 
@@ -301,8 +332,18 @@ namespace FlowMy.Views.NodeControls
                 if (DefaultAudioFolderHintText != null) DefaultAudioFolderHintText.Text = $"📍 Mặc định (khi để trống): {defaultAudioFolder}";
 
                 TrimToggle.IsChecked = _node.TrimEnabled;
+                if (TrimContainer != null)
+                    TrimContainer.Visibility = _node.TrimEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (TrimStatusText != null)
+                    TrimStatusText.Text = _node.TrimEnabled ? "ĐANG BẬT" : "TẮT (Toàn bộ)";
+
                 ConcatToggle.IsChecked = _node.ConcatEnabled;
+                if (ConcatContainer != null)
+                    ConcatContainer.Visibility = _node.ConcatEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (ConcatStatusText != null)
+                    ConcatStatusText.Text = _node.ConcatEnabled ? $"{_node.ConcatVideos.Count} video" : "TẮT";
                 ConcatVideosList.ItemsSource = _node.ConcatVideos;
+
                 TrimReviewCheckBox.IsChecked = _node.TrimEnabled;
                 TrimReviewHitArea.Visibility = _node.TrimEnabled ? Visibility.Visible : Visibility.Collapsed;
                 if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = _node.TrimEnabled ? Visibility.Visible : Visibility.Collapsed;
@@ -334,11 +375,45 @@ namespace FlowMy.Views.NodeControls
                 WatermarkInsetPercentSlider.Value = Math.Clamp(_node.WatermarkInsetFraction * 100.0, WatermarkInsetPercentSlider.Minimum, WatermarkInsetPercentSlider.Maximum);
                 WatermarkInsetPercentLabel.Text = $"{WatermarkInsetPercentSlider.Value:0.#}% mép";
                 UpdateWatermarkPreviewUi();
+
+                if (CanvasOverlayToggle != null)
+                    CanvasOverlayToggle.IsChecked = _node.CanvasOverlayEnabled;
+                if (CanvasOverlayContainer != null)
+                    CanvasOverlayContainer.Visibility = _node.CanvasOverlayEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (CanvasOverlayStatusText != null)
+                    CanvasOverlayStatusText.Text = _node.CanvasOverlayEnabled ? "ĐANG BẬT" : "TẮT";
+
                 TextOverlayToggle.IsChecked = _node.TextOverlayEnabled;
                 OverlayTextBox.Text = _node.OverlayText;
                 TextSizeSlider.Value = _node.OverlayFontSize;
                 TextSizeLabel.Text = $"{_node.OverlayFontSize}px";
                 FrameLabelToggle.IsChecked = _node.FrameLabelEnabled;
+                if (FrameLabelContainer != null)
+                    FrameLabelContainer.Visibility = _node.FrameLabelEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (FrameLabelStatusText != null)
+                    FrameLabelStatusText.Text = _node.FrameLabelEnabled ? "ĐANG BẬT" : "TẮT";
+
+                var subEnabled = _node.SubtitleStyle?.Enabled ?? _node.BurnSubtitleEnabled;
+                if (SubtitleEnabledToggle != null)
+                    SubtitleEnabledToggle.IsChecked = subEnabled;
+                if (SubtitlesMasterContainer != null)
+                    SubtitlesMasterContainer.Visibility = subEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (SubtitleStatusText != null)
+                    SubtitleStatusText.Text = subEnabled ? "ĐANG BẬT" : "TẮT";
+
+                if (DubbingEnabledToggle != null)
+                    DubbingEnabledToggle.IsChecked = _node.DubbingEnabled;
+                if (DubbingMasterContainer != null)
+                    DubbingMasterContainer.Visibility = _node.DubbingEnabled ? Visibility.Visible : Visibility.Collapsed;
+                if (DubbingStatusText != null)
+                    DubbingStatusText.Text = _node.DubbingEnabled ? "ĐANG BẬT" : "TẮT";
+
+                var duckEnabled = _node.AutoDucking?.Enabled ?? true;
+                if (AutoDuckingToggle != null)
+                    AutoDuckingToggle.IsChecked = duckEnabled;
+                if (AutoDuckingParamsContainer != null)
+                    AutoDuckingParamsContainer.Visibility = duckEnabled ? Visibility.Visible : Visibility.Collapsed;
+
                 FrameLabelTemplateTextBox.Text = _node.FrameLabelTemplate;
                 FrameLabelXSlider.Value = _node.FrameLabelX;
                 FrameLabelYSlider.Value = _node.FrameLabelY;

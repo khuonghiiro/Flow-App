@@ -1098,11 +1098,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var fpsVal = extractFps.Value.ToString("0.####", CultureInfo.InvariantCulture);
                 filters.Add($"fps=fps={fpsVal}");
             }
-            filters.Add(VideoColorGrading.BuildEqFilter(node));
-            var hueF = VideoColorGrading.BuildHueFilter(node.Hue);
-            if (hueF != null) filters.Add(hueF);
-            var gammaF = VideoColorGrading.BuildGammaLutRgbFilter(node.Gamma);
-            if (gammaF != null) filters.Add(gammaF);
+            if (node.ColorGradingEnabled)
+            {
+                filters.Add(VideoColorGrading.BuildEqFilter(node));
+                var hueF = VideoColorGrading.BuildHueFilter(node.Hue);
+                if (hueF != null) filters.Add(hueF);
+                var gammaF = VideoColorGrading.BuildGammaLutRgbFilter(node.Gamma);
+                if (gammaF != null) filters.Add(gammaF);
+            }
             if (node.SharpenEnabled && node.SharpenStrength > 0)
             {
                 var s = (node.SharpenStrength * 0.3).ToString("0.###", CultureInfo.InvariantCulture);
@@ -1119,19 +1122,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 filters.Add($"gblur=sigma={r}");
             }
 
-            var rot = ((int)node.RotationDegrees / 90) % 4;
-            if (rot == 1) filters.Add("transpose=1");
-            else if (rot == 2) filters.Add("transpose=2,transpose=2");
-            else if (rot == 3) filters.Add("transpose=2");
-            if (node.FlipH) filters.Add("hflip");
-            if (node.FlipV) filters.Add("vflip");
+            if (node.TransformEnabled)
+            {
+                var rot = ((int)node.RotationDegrees / 90) % 4;
+                if (rot == 1) filters.Add("transpose=1");
+                else if (rot == 2) filters.Add("transpose=2,transpose=2");
+                else if (rot == 3) filters.Add("transpose=2");
+                if (node.FlipH) filters.Add("hflip");
+                if (node.FlipV) filters.Add("vflip");
+            }
 
-            if (Math.Abs(node.SpeedFactor - 1) > 0.01)
+            if (node.SpeedAdjustEnabled && Math.Abs(node.SpeedFactor - 1) > 0.01)
             {
                 var pts = (1.0 / node.SpeedFactor).ToString("0.######", CultureInfo.InvariantCulture);
                 filters.Add($"setpts={pts}*PTS");
             }
-            if (includeTextOverlay && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
+            if (includeTextOverlay && node.CanvasOverlayEnabled && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
             {
                 var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
                 var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
@@ -1309,11 +1315,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             var filters = new List<string>();
 
-            filters.Add(VideoColorGrading.BuildEqFilter(node));
-            var hueNoFps = VideoColorGrading.BuildHueFilter(node.Hue);
-            if (hueNoFps != null) filters.Add(hueNoFps);
-            var gammaNoFps = VideoColorGrading.BuildGammaLutRgbFilter(node.Gamma);
-            if (gammaNoFps != null) filters.Add(gammaNoFps);
+            if (node.ColorGradingEnabled)
+            {
+                filters.Add(VideoColorGrading.BuildEqFilter(node));
+                var hueNoFps = VideoColorGrading.BuildHueFilter(node.Hue);
+                if (hueNoFps != null) filters.Add(hueNoFps);
+                var gammaNoFps = VideoColorGrading.BuildGammaLutRgbFilter(node.Gamma);
+                if (gammaNoFps != null) filters.Add(gammaNoFps);
+            }
             if (node.SharpenEnabled && node.SharpenStrength > 0)
                 filters.Add($"unsharp=5:5:{(node.SharpenStrength * 0.3).ToString("0.###", CultureInfo.InvariantCulture)}:5:5:0");
             if (node.DenoiseEnabled && node.DenoiseStrength > 0)
@@ -1324,14 +1333,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (node.BlurEnabled && node.BlurRadius > 0)
                 filters.Add($"gblur=sigma={node.BlurRadius.ToString("0.###", CultureInfo.InvariantCulture)}");
 
-            var rot = ((int)node.RotationDegrees / 90) % 4;
-            if (rot == 1) filters.Add("transpose=1");
-            else if (rot == 2) filters.Add("transpose=2,transpose=2");
-            else if (rot == 3) filters.Add("transpose=2");
-            if (node.FlipH) filters.Add("hflip");
-            if (node.FlipV) filters.Add("vflip");
+            if (node.TransformEnabled)
+            {
+                var rot = ((int)node.RotationDegrees / 90) % 4;
+                if (rot == 1) filters.Add("transpose=1");
+                else if (rot == 2) filters.Add("transpose=2,transpose=2");
+                else if (rot == 3) filters.Add("transpose=2");
+                if (node.FlipH) filters.Add("hflip");
+                if (node.FlipV) filters.Add("vflip");
+            }
 
-            if (includeTextOverlay && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
+            if (includeTextOverlay && node.CanvasOverlayEnabled && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
             {
                 var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
                 var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
@@ -1366,10 +1378,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             int overlayProbeSrcHForFontScale = 0,
             bool isVideoExport = false)
         {
-            var hasWatermark = node.WatermarkEnabled &&
+            var hasWatermark = (node.CanvasOverlayEnabled || node.WatermarkEnabled) &&
+                               node.WatermarkEnabled &&
                                !string.IsNullOrWhiteSpace(node.WatermarkImagePath) &&
                                File.Exists(node.WatermarkImagePath);
-            var hasNonDeferredCanvasLayer = node.Overlays.Any(o =>
+            var hasNonDeferredCanvasLayer = node.CanvasOverlayEnabled && node.Overlays.Any(o =>
             {
                 if (!o.IsVisible) return false;
                 var t = (o.Type ?? string.Empty).Trim();

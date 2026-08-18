@@ -374,6 +374,8 @@ public sealed partial class FileWorkflowPersistenceService
                 }
                 catch { /* ignore invalid JSON */ }
             }
+            if (properties.TryGetValue("ColorGradingEnabled", out var cgeObj) && cgeObj != null && bool.TryParse(cgeObj.ToString(), out var cge))
+                videoNode.ColorGradingEnabled = cge;
             if (properties.TryGetValue("Brightness", out var brObj) && brObj != null && double.TryParse(brObj.ToString(), out var br))
                 videoNode.Brightness = br;
             if (properties.TryGetValue("Contrast", out var ctObj) && ctObj != null && double.TryParse(ctObj.ToString(), out var ct))
@@ -398,14 +400,22 @@ public sealed partial class FileWorkflowPersistenceService
                 videoNode.BlurRadius = brd;
             if (properties.TryGetValue("StabilizeEnabled", out var stabEnabledObj) && stabEnabledObj != null && bool.TryParse(stabEnabledObj.ToString(), out var stabEnabledVal))
                 videoNode.StabilizeEnabled = stabEnabledVal;
+            if (properties.TryGetValue("SpeedAdjustEnabled", out var saeAdjustObj) && saeAdjustObj != null && bool.TryParse(saeAdjustObj.ToString(), out var saeAdjustVal))
+                videoNode.SpeedAdjustEnabled = saeAdjustVal;
             if (properties.TryGetValue("SpeedFactor", out var spdObj) && spdObj != null && double.TryParse(spdObj.ToString(), out var spd))
                 videoNode.SpeedFactor = spd;
+            if (properties.TryGetValue("TransformEnabled", out var transObj) && transObj != null && bool.TryParse(transObj.ToString(), out var transVal))
+                videoNode.TransformEnabled = transVal;
             if (properties.TryGetValue("RotationDegrees", out var rotObj) && rotObj != null && double.TryParse(rotObj.ToString(), out var rot))
                 videoNode.RotationDegrees = rot;
             if (properties.TryGetValue("FlipH", out var flipHObj) && flipHObj != null && bool.TryParse(flipHObj.ToString(), out var flipHVal))
                 videoNode.FlipH = flipHVal;
             if (properties.TryGetValue("FlipV", out var flipVObj) && flipVObj != null && bool.TryParse(flipVObj.ToString(), out var flipVVal))
                 videoNode.FlipV = flipVVal;
+            if (properties.TryGetValue("CanvasOverlayEnabled", out var coeObj) && coeObj != null && bool.TryParse(coeObj.ToString(), out var coeVal))
+                videoNode.CanvasOverlayEnabled = coeVal;
+            if (properties.TryGetValue("DubbingEnabled", out var dubEnabledObj) && dubEnabledObj != null && bool.TryParse(dubEnabledObj.ToString(), out var dubVal))
+                videoNode.DubbingEnabled = dubVal;
             if (properties.TryGetValue("OutputFormat", out var ofObj))
                 videoNode.OutputFormat = ofObj?.ToString() ?? "mp4_h264";
             if (properties.TryGetValue("EncoderPreset", out var epObj))
@@ -1046,6 +1056,7 @@ public sealed partial class FileWorkflowPersistenceService
             dict["ExtractFps"] = videoNode.ExtractFps;
             if (videoNode.ExcludedFrameTimestamps.Count > 0)
                 dict["ExcludedFrameTimestamps"] = JsonSerializer.Serialize(videoNode.ExcludedFrameTimestamps);
+            dict["ColorGradingEnabled"] = videoNode.ColorGradingEnabled;
             dict["Brightness"] = videoNode.Brightness;
             dict["Contrast"] = videoNode.Contrast;
             dict["Saturation"] = videoNode.Saturation;
@@ -1058,10 +1069,14 @@ public sealed partial class FileWorkflowPersistenceService
             dict["BlurEnabled"] = videoNode.BlurEnabled;
             dict["BlurRadius"] = videoNode.BlurRadius;
             dict["StabilizeEnabled"] = videoNode.StabilizeEnabled;
+            dict["SpeedAdjustEnabled"] = videoNode.SpeedAdjustEnabled;
             dict["SpeedFactor"] = videoNode.SpeedFactor;
+            dict["TransformEnabled"] = videoNode.TransformEnabled;
             dict["RotationDegrees"] = videoNode.RotationDegrees;
             dict["FlipH"] = videoNode.FlipH;
             dict["FlipV"] = videoNode.FlipV;
+            dict["CanvasOverlayEnabled"] = videoNode.CanvasOverlayEnabled;
+            dict["DubbingEnabled"] = videoNode.DubbingEnabled;
             dict["OutputFormat"] = videoNode.OutputFormat;
             dict["EncoderPreset"] = videoNode.EncoderPreset;
             dict["Crf"] = videoNode.Crf;
