@@ -94,6 +94,21 @@ class NllbTranslator:
             print(f"[NllbTranslator] Lỗi dịch batch: {e}")
             return texts
 
+    def unload_model(self):
+        """Giải phóng hoàn toàn model NLLB khỏi GPU VRAM / RAM"""
+        self.model = None
+        self.tokenizer = None
+        self._is_loaded = False
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        import gc
+        gc.collect()
+        print("[NllbTranslator] [OK] Đã giải phóng model NLLB khỏi bộ nhớ!")
+
 # Global instance
 _global_translator = None
 

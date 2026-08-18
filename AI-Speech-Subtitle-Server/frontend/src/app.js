@@ -30,6 +30,7 @@ const LANG_FLAG_MAP = {
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  initMainTabs();
   initHardwareInfo();
   initModelsList();
   initVramActiveTracker();
@@ -1134,6 +1135,7 @@ function onCharacterAudioFileSelected(index, input) {
       showToast(`🎵 Đã nạp mẫu giọng cho "${window.characterProfiles[index].name}"!`, "success");
     };
     reader.readAsDataURL(file);
+
   }
 }
 window.onCharacterAudioFileSelected = onCharacterAudioFileSelected;
@@ -1146,7 +1148,7 @@ async function rediarizeCurrentTimeline() {
 
   const btn = document.getElementById("btnDiarizeNow");
   btn.disabled = true;
-  btn.innerHTML = `⏳ Đang trích xuất vân giọng &amp; khớp nhân vật...`;
+  btn.innerHTML = `⏳ Đang trích xuất vân giọng & khớp nhân vật...`;
 
   try {
     const numSpeakersVal = parseInt(document.getElementById("diarizeNumSpeakersSelect")?.value || "0", 10);
@@ -1290,7 +1292,7 @@ function exportBilingualASS() {
   const uniqueSpeakers = [...new Set(currentSegments.map(s => s.speaker || "Default"))];
   let stylesSection = `Style: Default,Arial,22,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,15,1\nStyle: Translated,Arial,24,&H0000D7FF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,48,1\n`;
 
-  uniqueSpeakers.forEach((spk, idx) => {
+  uniqueSpeakers.forEach((spk) => {
     if (spk !== "Default") {
       stylesSection += `Style: ${spk},Arial,22,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,15,1\n`;
     }
@@ -1356,6 +1358,7 @@ function exportTxtFile() {
   let content = "";
   currentSegments.forEach((seg) => {
     content += `[${formatTimeSec(seg.start)} ➜ ${formatTimeSec(seg.end)} (Dài: ${seg.duration || roundNum(seg.end - seg.start)}s)]\n`;
+    if (seg.speaker) content += `Nhân vật: ${seg.speaker}\n`;
     if (seg.original_text) content += `Gốc: ${seg.original_text}\n`;
     if (seg.translated_text) content += `Dịch: ${seg.translated_text}\n`;
     if (!seg.original_text && !seg.translated_text) content += `${seg.text}\n`;
@@ -1419,6 +1422,12 @@ function showToast(message, type = "info") {
 // ==========================================================================
 // 12. Main Navigation Tabs (Studio vs Swagger Explorer)
 // ==========================================================================
+function initMainTabs() {
+  const savedTab = localStorage.getItem("flowmy_main_tab") || "studio";
+  switchMainTab(savedTab);
+}
+window.initMainTabs = initMainTabs;
+
 function switchMainTab(tab) {
   const tabStudio = document.getElementById("tabBtnStudio");
   const tabSwagger = document.getElementById("tabBtnSwagger");
@@ -1430,6 +1439,7 @@ function switchMainTab(tab) {
     tabSwagger?.classList.add("active");
     viewStudio?.classList.remove("active");
     viewSwagger?.classList.add("active");
+    renderSwaggerPipelineCharacters();
     try { localStorage.setItem("flowmy_main_tab", "swagger"); } catch (e) {}
   } else {
     tabSwagger?.classList.remove("active");
@@ -1500,9 +1510,7 @@ function resetSwaggerTranscribeJson() {
       engine: "faster-whisper",
       model_size: "small",
       enable_translate: true,
-      target_lang: "vi",
-      device: "auto",
-      compute_type: "default"
+      target_lang: "vi"
     }, null, 2);
     showToast("🔄 Đã khôi phục mẫu JSON /api/transcribe!", "info");
   }
@@ -1565,15 +1573,13 @@ function copySwaggerCurl(key) {
       const modelSize = document.getElementById("swModelSizeInput-transcribe")?.value || "small";
       const enableTranslate = document.getElementById("swTranslateInput-transcribe")?.value || "true";
       const targetLang = document.getElementById("swTargetLangInput-transcribe")?.value || "vi";
-      const device = document.getElementById("swDeviceInput-transcribe")?.value || "auto";
-      const computeType = document.getElementById("swComputeTypeInput-transcribe")?.value || "default";
 
       const fileParam = (fileInput && fileInput.files && fileInput.files.length > 0)
         ? `  -F "file=@${fileInput.files[0].name}" \\\n`
         : `  -F "file=@D:/path/to/audio.mp3" \\\n`;
       const pathParam = audioPath ? `  -F "audio_path=${audioPath}" \\\n` : "";
 
-      curl = `curl -X POST "http://127.0.0.1:8765/api/transcribe" \\\n${fileParam}${pathParam}  -F "engine=${engine}" \\\n  -F "model_size=${modelSize}" \\\n  -F "enable_translate=${enableTranslate}" \\\n  -F "target_lang=${targetLang}" \\\n  -F "device=${device}" \\\n  -F "compute_type=${computeType}"`;
+      curl = `curl -X POST "http://127.0.0.1:8765/api/transcribe" \\\n${fileParam}${pathParam}  -F "engine=${engine}" \\\n  -F "model_size=${modelSize}" \\\n  -F "enable_translate=${enableTranslate}" \\\n  -F "target_lang=${targetLang}"`;
     } else {
       const body = document.getElementById("swJsonInput-transcribe")?.value || "{}";
       curl = `curl -X POST "http://127.0.0.1:8765/api/transcribe" \\\n  -H "Content-Type: application/json" \\\n  -d '${body.replace(/\n/g, " ")}'`;
@@ -1581,6 +1587,9 @@ function copySwaggerCurl(key) {
   } else if (key === "translate") {
     const body = document.getElementById("swJsonInput-translate")?.value || "{}";
     curl = `curl -X POST "http://127.0.0.1:8765/api/translate-segments" \\\n  -H "Content-Type: application/json" \\\n  -d '${body.replace(/\n/g, " ")}'`;
+  } else if (key === "pipeline") {
+    const body = document.getElementById("swJsonInput-pipeline")?.value || "{}";
+    curl = `curl -X POST "http://127.0.0.1:8765/api/pipeline" \\\n  -H "Content-Type: application/json" \\\n  -d '${body.replace(/\n/g, " ")}'`;
   }
   copyText(curl);
 }
@@ -1592,14 +1601,11 @@ function copySwaggerTranscribeUrl() {
 window.copySwaggerTranscribeUrl = copySwaggerTranscribeUrl;
 
 function onSwaggerFormChanged() {
-  // Sync form inputs to JSON textarea
   const audioPath = document.getElementById("swAudioPathInput-transcribe")?.value || "D:\\UngDung_PC\\Flow-App\\audio_sample.mp3";
   const engine = document.getElementById("swEngineInput-transcribe")?.value || "faster-whisper";
   const modelSize = document.getElementById("swModelSizeInput-transcribe")?.value || "small";
   const enableTranslate = document.getElementById("swTranslateInput-transcribe")?.value === "true";
   const targetLang = document.getElementById("swTargetLangInput-transcribe")?.value || "vi";
-  const device = document.getElementById("swDeviceInput-transcribe")?.value || "auto";
-  const computeType = document.getElementById("swComputeTypeInput-transcribe")?.value || "default";
 
   const jsonEl = document.getElementById("swJsonInput-transcribe");
   if (jsonEl) {
@@ -1609,9 +1615,7 @@ function onSwaggerFormChanged() {
       engine: engine,
       model_size: modelSize,
       enable_translate: enableTranslate,
-      target_lang: targetLang,
-      device: device,
-      compute_type: computeType
+      target_lang: targetLang
     }, null, 2);
   }
 }
@@ -1666,8 +1670,6 @@ async function executeSwaggerTranscribe() {
       formData.append("model_size", document.getElementById("swModelSizeInput-transcribe")?.value || "small");
       formData.append("enable_translate", document.getElementById("swTranslateInput-transcribe")?.value === "true");
       formData.append("target_lang", document.getElementById("swTargetLangInput-transcribe")?.value || "vi");
-      formData.append("device", document.getElementById("swDeviceInput-transcribe")?.value || "auto");
-      formData.append("compute_type", document.getElementById("swComputeTypeInput-transcribe")?.value || "default");
 
       res = await fetch("/api/transcribe", { method: "POST", body: formData });
     } else {
@@ -1752,7 +1754,7 @@ async function executeSwaggerTranslate() {
     showToast(`❌ Lỗi: ${err.message}`, "error");
   } finally {
     btn.disabled = false;
-    btn.textContent = "⚡ Execute (Thực Thi API)";
+    btn.textContent = "⚡ Thực Thi Dịch Thuật (Execute)";
   }
 }
 window.executeSwaggerTranslate = executeSwaggerTranslate;
@@ -1838,7 +1840,8 @@ function resetSwaggerIdentifySpeakersJson() {
   if (el) {
     el.value = JSON.stringify({
       audio_path: "D:\\UngDung_PC\\Flow-App\\audio_sample.mp3",
-      similarity_threshold: 0.68,
+      similarity_threshold: 0.65,
+      num_speakers: null,
       character_samples: [
         {
           name: "Nam Chính",
@@ -1849,20 +1852,7 @@ function resetSwaggerIdentifySpeakersJson() {
           audio_path: "D:\\UngDung_PC\\Flow-App\\sample_nu.mp3"
         }
       ],
-      segments: [
-        {
-          id: 1,
-          start: 1.2,
-          end: 4.5,
-          text: "Chào em, em đang đi đâu đấy?"
-        },
-        {
-          id: 2,
-          start: 6.0,
-          end: 8.5,
-          text: "Em đang chuẩn bị đến trường đây."
-        }
-      ]
+      segments: []
     }, null, 2);
     showToast("🔄 Đã khôi phục mẫu JSON /api/identify-speakers!", "info");
   }
@@ -1912,10 +1902,285 @@ async function executeSwaggerIdentifySpeakers() {
     showToast(`❌ Lỗi: ${err.message}`, "error");
   } finally {
     btn.disabled = false;
-    btn.textContent = "⚡ Thực Thi API (Execute)";
+    btn.textContent = "⚡ Thực Thi Diarization (Execute)";
   }
 }
 window.executeSwaggerIdentifySpeakers = executeSwaggerIdentifySpeakers;
 
+// ==========================================================================
+// 15. Swagger Pipeline All-in-One Handlers
+// ==========================================================================
+window.swPipelineCharacters = [
+  { name: "Nam Chính", audio_path: "D:\\\\UngDung_PC\\\\Flow-App\\\\sample_nam.mp3" },
+  { name: "Nữ Chính", audio_path: "D:\\\\UngDung_PC\\\\Flow-App\\\\sample_nu.mp3" }
+];
 
+function addSwaggerPipelineCharacter() {
+  if (!window.swPipelineCharacters) window.swPipelineCharacters = [];
+  window.swPipelineCharacters.push({
+    name: `Nhân vật ${window.swPipelineCharacters.length + 1}`,
+    audio_path: ""
+  });
+  renderSwaggerPipelineCharacters();
+  onSwaggerPipelineFormChanged();
+}
+window.addSwaggerPipelineCharacter = addSwaggerPipelineCharacter;
 
+function removeSwaggerPipelineCharacter(idx) {
+  if (window.swPipelineCharacters && window.swPipelineCharacters.length > idx) {
+    window.swPipelineCharacters.splice(idx, 1);
+    renderSwaggerPipelineCharacters();
+    onSwaggerPipelineFormChanged();
+  }
+}
+window.removeSwaggerPipelineCharacter = removeSwaggerPipelineCharacter;
+
+function onSwaggerPipelineCharChanged(idx, field, val) {
+  if (window.swPipelineCharacters && window.swPipelineCharacters[idx]) {
+    window.swPipelineCharacters[idx][field] = val;
+    onSwaggerPipelineFormChanged();
+  }
+}
+window.onSwaggerPipelineCharChanged = onSwaggerPipelineCharChanged;
+
+function renderSwaggerPipelineCharacters() {
+  const container = document.getElementById("swCharSamplesList-pipeline");
+  if (!container) return;
+  if (!window.swPipelineCharacters || window.swPipelineCharacters.length === 0) {
+    container.innerHTML = `<div style="font-size: 12px; color: var(--text-dim); font-style: italic; padding: 6px 0;">Chưa thêm mẫu nhân vật tham chiếu nào (AI sẽ tự động phân cụm không giám sát AHC). Bấm "➕ Thêm Mẫu Nhân Vật" ở trên để gán tên cụ thể.</div>`;
+    return;
+  }
+
+  container.innerHTML = "";
+  window.swPipelineCharacters.forEach((char, idx) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display: flex; gap: 8px; align-items: center; background: var(--bg-input); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap;";
+    row.innerHTML = `
+      <span style="font-size: 12px; font-weight: 700; color: var(--accent-cyan); min-width: 30px;">#${idx + 1}:</span>
+      <input type="text" class="form-input" style="flex: 1; min-width: 130px; padding: 6px 10px; font-size: 12px;" placeholder="Tên nhân vật (ví dụ: Nam Chính)" value="${char.name || ''}" oninput="onSwaggerPipelineCharChanged(${idx}, 'name', this.value)">
+      <input type="text" class="form-input" style="flex: 2; min-width: 200px; padding: 6px 10px; font-size: 12px;" placeholder="Đường dẫn file audio mẫu (audio_path)" value="${char.audio_path || ''}" oninput="onSwaggerPipelineCharChanged(${idx}, 'audio_path', this.value)">
+      <button type="button" class="btn btn-secondary btn-xs" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="removeSwaggerPipelineCharacter(${idx})" title="Xóa mẫu này">🗑️</button>
+    `;
+    container.appendChild(row);
+  });
+}
+window.renderSwaggerPipelineCharacters = renderSwaggerPipelineCharacters;
+
+function setSwaggerPipelineMode(mode) {
+  const btnJson = document.getElementById("swModeJson-pipeline");
+  const btnForm = document.getElementById("swModeForm-pipeline");
+  const cJson = document.getElementById("swJsonContainer-pipeline");
+  const cForm = document.getElementById("swFormContainer-pipeline");
+
+  if (mode === "form") {
+    btnJson?.classList.remove("active");
+    btnForm?.classList.add("active");
+    if (cJson) cJson.style.display = "none";
+    if (cForm) cForm.style.display = "block";
+    renderSwaggerPipelineCharacters();
+  } else {
+    btnForm?.classList.remove("active");
+    btnJson?.classList.add("active");
+    if (cForm) cForm.style.display = "none";
+    if (cJson) cJson.style.display = "block";
+  }
+}
+window.setSwaggerPipelineMode = setSwaggerPipelineMode;
+
+function onSwaggerPipelineFormChanged() {
+  const audioPath = document.getElementById("swAudioPathInput-pipeline")?.value || "D:\\\\UngDung_PC\\\\Flow-App\\\\audio_sample.mp3";
+  const execMode = document.getElementById("swExecModeInput-pipeline")?.value || "concurrent";
+  const asrEngine = document.getElementById("swAsrEngineInput-pipeline")?.value || "faster-whisper";
+  const asrSize = document.getElementById("swAsrSizeInput-pipeline")?.value || "small";
+  const enableDiar = document.getElementById("swEnableDiarInput-pipeline")?.value === "true";
+  const enableTrans = document.getElementById("swEnableTransInput-pipeline")?.value === "true";
+  const targetLang = document.getElementById("swTargetLangInput-pipeline")?.value || "vi";
+  const simThresh = parseFloat(document.getElementById("swSimThreshInput-pipeline")?.value || "0.65");
+  const numSpk = document.getElementById("swNumSpeakersInput-pipeline")?.value ? parseInt(document.getElementById("swNumSpeakersInput-pipeline").value) : null;
+
+  const charSamples = (window.swPipelineCharacters && window.swPipelineCharacters.length > 0)
+    ? window.swPipelineCharacters.filter(c => c.name || c.audio_path)
+    : undefined;
+
+  const payload = {
+    audio_path: audioPath,
+    enable_transcribe: true,
+    enable_diarization: enableDiar,
+    enable_translate: enableTrans,
+    execution_mode: execMode,
+    asr_engine: asrEngine,
+    asr_model_size: asrSize,
+    target_lang: targetLang,
+    similarity_threshold: simThresh,
+    num_speakers: numSpk,
+    device: "auto",
+    compute_type: "default"
+  };
+
+  if (charSamples && charSamples.length > 0) {
+    payload.character_samples = charSamples;
+  }
+
+  const jsonEl = document.getElementById("swJsonInput-pipeline");
+  if (jsonEl) {
+    jsonEl.value = JSON.stringify(payload, null, 2);
+  }
+}
+window.onSwaggerPipelineFormChanged = onSwaggerPipelineFormChanged;
+
+function resetSwaggerPipelineJson() {
+  window.swPipelineCharacters = [
+    { name: "Nam Chính", audio_path: "D:\\\\UngDung_PC\\\\Flow-App\\\\sample_nam.mp3" },
+    { name: "Nữ Chính", audio_path: "D:\\\\UngDung_PC\\\\Flow-App\\\\sample_nu.mp3" }
+  ];
+  renderSwaggerPipelineCharacters();
+
+  const el = document.getElementById("swJsonInput-pipeline");
+  if (el) {
+    el.value = JSON.stringify({
+      audio_path: "D:\\\\UngDung_PC\\\\Flow-App\\\\audio_sample.mp3",
+      enable_transcribe: true,
+      enable_diarization: true,
+      enable_translate: true,
+      execution_mode: "concurrent",
+      asr_engine: "faster-whisper",
+      asr_model_size: "small",
+      target_lang: "vi",
+      similarity_threshold: 0.65,
+      character_samples: window.swPipelineCharacters,
+      device: "auto",
+      compute_type: "default"
+    }, null, 2);
+    showToast("🔄 Đã khôi phục mẫu JSON /api/pipeline kèm mẫu nhân vật!", "info");
+  }
+}
+window.resetSwaggerPipelineJson = resetSwaggerPipelineJson;
+
+async function executeSwaggerPipeline() {
+  const btn = document.getElementById("swBtnExec-pipeline");
+  const panel = document.getElementById("swResponsePanel-pipeline");
+  const statusPill = document.getElementById("swStatusPill-pipeline");
+  const timePill = document.getElementById("swTimePill-pipeline");
+  const bodyEl = document.getElementById("swResponseBody-pipeline");
+  const isForm = document.getElementById("swModeForm-pipeline")?.classList.contains("active");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Đang chạy Pipeline All-in-One...";
+  panel.style.display = "block";
+  bodyEl.textContent = "Đang xử lý đồng thời / tuần tự ASR, Diarization và Translation...";
+
+  const t0 = performance.now();
+  try {
+    let res;
+    if (isForm) {
+      const fileInput = document.getElementById("swFileInput-pipeline");
+      const audioPath = document.getElementById("swAudioPathInput-pipeline")?.value.trim() || "";
+
+      if ((!fileInput.files || fileInput.files.length === 0) && !audioPath) {
+        throw new Error("Vui lòng chọn một tệp âm thanh hoặc nhập đường dẫn audio_path!");
+      }
+
+      const formData = new FormData();
+      if (fileInput.files && fileInput.files.length > 0) {
+        formData.append("file", fileInput.files[0]);
+      } else if (audioPath) {
+        formData.append("audio_path", audioPath);
+      }
+
+      formData.append("execution_mode", document.getElementById("swExecModeInput-pipeline")?.value || "concurrent");
+      formData.append("asr_engine", document.getElementById("swAsrEngineInput-pipeline")?.value || "faster-whisper");
+      formData.append("asr_model_size", document.getElementById("swAsrSizeInput-pipeline")?.value || "small");
+      formData.append("enable_diarization", document.getElementById("swEnableDiarInput-pipeline")?.value || "true");
+      formData.append("enable_translate", document.getElementById("swEnableTransInput-pipeline")?.value || "true");
+      formData.append("target_lang", document.getElementById("swTargetLangInput-pipeline")?.value || "vi");
+      formData.append("similarity_threshold", document.getElementById("swSimThreshInput-pipeline")?.value || "0.65");
+      const numSpk = document.getElementById("swNumSpeakersInput-pipeline")?.value;
+      if (numSpk) formData.append("num_speakers", numSpk);
+
+      const charSamples = (window.swPipelineCharacters && window.swPipelineCharacters.length > 0)
+        ? window.swPipelineCharacters.filter(c => c.name || c.audio_path)
+        : null;
+      if (charSamples && charSamples.length > 0) {
+        formData.append("character_samples", JSON.stringify(charSamples));
+      }
+
+      res = await fetch("/api/pipeline", {
+        method: "POST",
+        body: formData
+      });
+    } else {
+      const jsonStr = document.getElementById("swJsonInput-pipeline")?.value || "{}";
+      const payload = JSON.parse(jsonStr);
+      res = await fetch("/api/pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const elapsed = Math.round(performance.now() - t0);
+    const data = await res.json();
+
+    statusPill.textContent = `${res.status} ${res.statusText || (res.ok ? "OK" : "Error")}`;
+    statusPill.className = `swagger-status-pill status-${res.ok ? "200" : "500"}`;
+    timePill.textContent = `⚡ ${elapsed}ms`;
+    bodyEl.textContent = JSON.stringify(data, null, 2);
+
+    if (res.ok) {
+      showToast(`🎉 Pipeline All-in-One hoàn tất trong ${elapsed}ms!`, "success");
+      initVramActiveTracker();
+    }
+  } catch (err) {
+    const elapsed = Math.round(performance.now() - t0);
+    statusPill.textContent = `Lỗi Client`;
+    statusPill.className = `swagger-status-pill status-500`;
+    timePill.textContent = `⚡ ${elapsed}ms`;
+    bodyEl.textContent = `Lỗi: ${err.message}`;
+    showToast(`❌ Lỗi: ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⚡ Thực Thi Pipeline All-in-One";
+  }
+}
+window.executeSwaggerPipeline = executeSwaggerPipeline;
+
+async function executeSwaggerSimplePost(path, key) {
+  const panel = document.getElementById(`swResponsePanel-${key}`);
+  const statusPill = document.getElementById(`swStatusPill-${key}`);
+  const timePill = document.getElementById(`swTimePill-${key}`);
+  const bodyEl = document.getElementById(`swResponseBody-${key}`);
+
+  panel.style.display = "block";
+  bodyEl.textContent = `Đang gửi POST ${path}...`;
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(path, { method: "POST" });
+    const elapsed = Math.round(performance.now() - t0);
+    const data = await res.json();
+
+    statusPill.textContent = `${res.status} ${res.statusText || (res.ok ? "OK" : "Error")}`;
+    statusPill.className = `swagger-status-pill status-${res.ok ? "200" : "500"}`;
+    timePill.textContent = `⚡ ${elapsed}ms`;
+    bodyEl.textContent = JSON.stringify(data, null, 2);
+
+    if (res.ok) {
+      showToast(`✅ ${data.message || "Thao tác thành công!"}`, "success");
+      initVramActiveTracker();
+      initModelsList();
+    }
+  } catch (err) {
+    const elapsed = Math.round(performance.now() - t0);
+    statusPill.textContent = `Lỗi`;
+    statusPill.className = `swagger-status-pill status-500`;
+    timePill.textContent = `⚡ ${elapsed}ms`;
+    bodyEl.textContent = `Lỗi: ${err.message}`;
+    showToast(`❌ Lỗi: ${err.message}`, "error");
+  }
+}
+window.executeSwaggerSimplePost = executeSwaggerSimplePost;
+
+function copySwaggerCurlSimplePost(path) {
+  copyText(`curl -X POST "http://127.0.0.1:8765${path}"`);
+}
+window.copySwaggerCurlSimplePost = copySwaggerCurlSimplePost;

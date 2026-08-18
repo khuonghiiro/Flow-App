@@ -273,7 +273,84 @@ class SpeakerDiarizer:
 
         except Exception as e:
             print(f"[SpeakerDiarizer] Canh bao khi doc audio: {e}")
-            return np.zeros(self.sample_rate, dtype=np.float32)
+    def detect_speech_segments(
+        self,
+        audio_path_or_array: Any,
+        min_speech_duration: float = 0.4,
+        min_silence_duration: float = 0.5,
+        energy_threshold_ratio: float = 0.05
+    ) -> List[Dict[str, Any]]:
+        """Tu dong phat hien cac khoang thoi gian co tieng noi (VAD) khi khong co danh sach segments phu de"""
+        audio = self.load_audio_segment(audio_path_or_array) if not isinstance(audio_path_or_array, np.ndarray) else audio_path_or_array
+        if len(audio) < int(self.sample_rate * 0.2):
+            return []
+
+        frame_size = int(self.sample_rate * 0.03)  # 30ms
+        hop_size = int(self.sample_rate * 0.015)   # 15ms
+
+        energies = []
+        for i in range(0, len(audio) - frame_size, hop_size):
+            frame = audio[i : i + frame_size]
+            rms = float(np.sqrt(np.mean(frame**2)))
+            energies.append(rms)
+
+        if not energies:
+            return []
+
+        max_energy = max(energies)
+        if max_energy < 1e-4:
+            return []
+
+        thresh = max(0.004, max_energy * energy_threshold_ratio)
+        speech_mask = [e > thresh for e in energies]
+
+        segments = []
+        in_speech = False
+        start_frame = 0
+
+        for idx, is_spk in enumerate(speech_mask):
+            if is_spk and not in_speech:
+                in_speech = True
+                start_frame = idx
+            elif not is_spk and in_speech:
+                in_speech = False
+                start_sec = start_frame * hop_size / self.sample_rate
+                end_sec = idx * hop_size / self.sample_rate
+                dur = end_sec - start_sec
+                if dur >= min_speech_duration:
+                    segments.append({
+                        "start": round(start_sec, 2),
+                        "end": round(end_sec, 2),
+                        "duration": round(dur, 2),
+                        "text": ""
+                    })
+
+        if in_speech:
+            start_sec = start_frame * hop_size / self.sample_rate
+            end_sec = len(audio) / self.sample_rate
+            dur = end_sec - start_sec
+            if dur >= min_speech_duration:
+                segments.append({
+                    "start": round(start_sec, 2),
+                    "end": round(end_sec, 2),
+                    "duration": round(dur, 2),
+                    "text": ""
+                })
+
+        # Gop cac khoang noi co khoang lang ngan < min_silence_duration
+        if len(segments) > 1:
+            merged = [segments[0]]
+            for seg in segments[1:]:
+                prev = merged[-1]
+                gap = seg["start"] - prev["end"]
+                if gap < min_silence_duration:
+                    prev["end"] = seg["end"]
+                    prev["duration"] = round(prev["end"] - prev["start"], 2)
+                else:
+                    merged.append(seg)
+            segments = merged
+
+        return segments
 
     def extract_voice_embedding(self, audio: np.ndarray, engine: str = "auto") -> np.ndarray:
         """
@@ -638,12 +715,17 @@ class SpeakerDiarizer:
         - Tu dong gom cum AHC toan cuc cho cac cau chua xac dinh de khong bi phan manh SPEAKER_.
         - Lam min theo truc thoi gian (Temporal Continuity).
         """
-        if not segments:
-            return segments
-
         full_audio = None
         if audio_path and os.path.exists(audio_path):
             full_audio = self.load_audio_segment(audio_path)
+
+        if not segments:
+            segments = self.detect_speech_segments(
+                full_audio if full_audio is not None else audio_path,
+                min_speech_duration=min_duration
+            )
+            if not segments:
+                return []
 
         # 1. Nap cac mau nhan vat tham chieu
         reference_profiles = []

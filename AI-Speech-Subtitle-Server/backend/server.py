@@ -56,6 +56,7 @@ from .engines.whisperx_engine import WhisperXEngine
 from .engines.sensevoice_engine import SenseVoiceEngine
 from .engines.seamless_m4t_engine import SeamlessM4TEngine
 from .engines.speaker_diarizer import get_global_diarizer
+from .pipeline_runner import get_pipeline_runner
 
 app = FastAPI(
     title="FlowMy AI Speech-to-Subtitle Server",
@@ -73,14 +74,22 @@ app.add_middleware(
 
 # Cache active engine instances
 import time
+import threading
 
 active_engines = {}
 current_active_model = None
+_engine_lock = threading.Lock()
 
 def get_engine_instance(engine_name: str, model_size: str, device: str, compute_type: str):
     global current_active_model
     key = f"{engine_name}_{model_size}_{device}_{compute_type}"
-    if key not in active_engines:
+    if key in active_engines:
+        return active_engines[key]
+
+    with _engine_lock:
+        if key in active_engines:
+            return active_engines[key]
+
         # 1. Hủy và giải phóng toàn bộ model cũ trong VRAM để tránh tràn bộ nhớ GPU
         for old_key, old_engine in list(active_engines.items()):
             if hasattr(old_engine, "unload_model"):
@@ -168,6 +177,38 @@ class TranslateSegmentsRequest(BaseModel):
     segments: List[Dict[str, Any]]
     src_lang: Optional[str] = "auto"
     target_lang: Optional[str] = "vi"
+
+class TranscribeOnlyRequest(BaseModel):
+    audio_path: Optional[str] = None
+    engine: Optional[str] = "faster-whisper"
+    model_size: Optional[str] = "small"
+    device: Optional[str] = "auto"
+    compute_type: Optional[str] = "default"
+    vad_filter: Optional[bool] = True
+    word_timestamps: Optional[bool] = False
+
+class PipelineRequest(BaseModel):
+    audio_path: Optional[str] = None
+    enable_transcribe: Optional[bool] = True
+    enable_diarization: Optional[bool] = True
+    enable_translate: Optional[bool] = False
+    execution_mode: Optional[str] = "concurrent"  # "concurrent" | "sequential"
+    asr_engine: Optional[str] = "faster-whisper"
+    asr_model_size: Optional[str] = "small"
+    target_lang: Optional[str] = "vi"
+    src_lang: Optional[str] = "auto"
+    character_samples: Optional[List[Dict[str, Any]]] = None
+    num_speakers: Optional[int] = None
+    similarity_threshold: Optional[float] = 0.65
+    min_duration: Optional[float] = 0.4
+    adaptive_learning: Optional[bool] = True
+    diarize_engine: Optional[str] = "auto"
+    device: Optional[str] = "auto"
+    compute_type: Optional[str] = "default"
+    vad_filter: Optional[bool] = True
+    word_timestamps: Optional[bool] = False
+    chunkIndex: Optional[int] = 0
+    time_offset: Optional[float] = 0.0
 
 # --- API Endpoints ---
 @app.get("/api/health")
@@ -343,10 +384,32 @@ def delete_model_endpoint(req: DeleteModelRequest):
     success = model_manager.delete_model(target_path)
     return {"status": "success" if success else "failed"}
 
-@app.post("/api/models/clear")
-def clear_all_models_endpoint():
-    success = model_manager.clear_all_models()
-    return {"status": "success" if success else "failed"}
+@app.post("/api/models/unload")
+def unload_models_endpoint():
+    """Giải phóng toàn bộ model AI khỏi GPU VRAM / RAM tức thì"""
+    for key, eng in list(active_engines.items()):
+        if hasattr(eng, "unload_model"):
+            try:
+                eng.unload_model()
+            except Exception:
+                pass
+    active_engines.clear()
+    global current_active_model
+    current_active_model = None
+    try:
+        from .engines.nllb_translator import get_global_translator
+        get_global_translator().unload_model()
+    except Exception:
+        pass
+    import gc
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+    return {"status": "success", "message": "Đã giải phóng toàn bộ model AI khỏi VRAM và RAM!"}
 
 @app.post("/api/identify-speakers")
 async def identify_speakers_endpoint(
@@ -621,6 +684,284 @@ async def transcribe_endpoint(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi nhận diện âm thanh ({engine_name}): {str(e)}")
+    finally:
+        if temp_file_to_clean and os.path.exists(temp_file_to_clean):
+            try:
+                os.remove(temp_file_to_clean)
+            except Exception:
+                pass
+
+@app.post("/api/transcribe-only")
+async def transcribe_only_endpoint(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    audio_path: Optional[str] = Form(None),
+    engine: Optional[str] = Form(None),
+    model_size: Optional[str] = Form(None),
+    device: Optional[str] = Form(None),
+    compute_type: Optional[str] = Form(None),
+    vad_filter: bool = Form(True),
+    word_timestamps: bool = Form(False)
+):
+    """
+    Endpoint chỉ có nhiệm vụ bóc tách phụ đề thuần túy (ASR Only).
+    Không dịch, không phân tách nhân vật -> Tốc độ xử lý nhanh nhất!
+    """
+    temp_file_to_clean = None
+    target_audio_path = None
+    engine_name = "faster-whisper"
+    size = "small"
+    dev = "auto"
+    comp = "default"
+    vad = True
+    word_ts = False
+
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        target_audio_path = body.get("audio_path")
+        engine_name = body.get("engine", "faster-whisper")
+        size = body.get("model_size", "small")
+        dev = body.get("device", "auto")
+        comp = body.get("compute_type", "default")
+        vad = body.get("vad_filter", True)
+        word_ts = body.get("word_timestamps", False)
+    elif file is not None:
+        suffix = Path(file.filename).suffix if file.filename else ".wav"
+        fd, temp_path = tempfile.mkstemp(prefix="flowmy_trans_only_", suffix=suffix)
+        os.close(fd)
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        target_audio_path = temp_path
+        temp_file_to_clean = temp_path
+        engine_name = engine or "faster-whisper"
+        size = model_size or "small"
+        dev = device or "auto"
+        comp = compute_type or "default"
+        vad = vad_filter
+        word_ts = word_timestamps
+    elif audio_path is not None:
+        target_audio_path = audio_path
+        engine_name = engine or "faster-whisper"
+        size = model_size or "small"
+        dev = device or "auto"
+        comp = compute_type or "default"
+        vad = vad_filter
+        word_ts = word_timestamps
+    else:
+        raise HTTPException(status_code=400, detail="Thiếu file audio hoặc đường dẫn audio_path.")
+
+    if not target_audio_path or not os.path.exists(target_audio_path):
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy file audio: {target_audio_path}")
+
+    try:
+        engine_inst = get_engine_instance(engine_name, size, dev, comp)
+        raw_result = engine_inst.transcribe(
+            audio_path=target_audio_path,
+            task="transcribe_only",
+            vad_filter=vad,
+            word_timestamps=word_ts
+        )
+        detected_lang = raw_result.get("language", "auto")
+        lang_code = detected_lang.lower()[:2] if detected_lang else "auto"
+        lang_name = LANGUAGE_NAMES.get(lang_code, detected_lang.upper())
+
+        return {
+            "status": "success",
+            "task": "transcribe_only",
+            "engine": engine_name,
+            "model_size": size,
+            "language": detected_lang,
+            "language_name": lang_name,
+            "language_probability": raw_result.get("language_probability", 1.0),
+            "total_segments": len(raw_result.get("segments", [])),
+            "segments": raw_result.get("segments", [])
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi bóc tách phụ đề ({engine_name}): {str(e)}")
+    finally:
+        if temp_file_to_clean and os.path.exists(temp_file_to_clean):
+            try:
+                os.remove(temp_file_to_clean)
+            except Exception:
+                pass
+
+@app.post("/api/pipeline")
+async def pipeline_endpoint(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    audio_path: Optional[str] = Form(None),
+    enable_transcribe: Optional[bool] = Form(True),
+    enable_diarization: Optional[bool] = Form(True),
+    enable_translate: Optional[bool] = Form(False),
+    execution_mode: Optional[str] = Form("concurrent"),
+    asr_engine: Optional[str] = Form("faster-whisper"),
+    asr_model_size: Optional[str] = Form("small"),
+    target_lang: Optional[str] = Form("vi"),
+    src_lang: Optional[str] = Form("auto"),
+    character_samples: Optional[str] = Form(None),
+    num_speakers: Optional[int] = Form(None),
+    similarity_threshold: Optional[float] = Form(0.65),
+    min_duration: Optional[float] = Form(0.4),
+    adaptive_learning: Optional[bool] = Form(True),
+    diarize_engine: Optional[str] = Form("auto"),
+    device: Optional[str] = Form("auto"),
+    compute_type: Optional[str] = Form("default"),
+    vad_filter: bool = Form(True),
+    word_timestamps: bool = Form(False),
+    chunkIndex: Optional[int] = Form(0),
+    time_offset: Optional[float] = Form(0.0)
+):
+    """
+    Endpoint Tổng Hợp All-in-One: Bóc tách phụ đề + Nhận diện nhân vật + Dịch thuật.
+    Hỗ trợ chế độ Concurrent (song song khi đủ VRAM) hoặc Sequential (tuần tự tiết kiệm VRAM).
+    Hỗ trợ xử lý song song các chunk audio cắt nhỏ với tham số chunkIndex & time_offset.
+    """
+    temp_file_to_clean = None
+    target_audio_path = None
+    e_trans = True
+    e_diar = True
+    e_tl = False
+    exec_mode = "concurrent"
+    a_eng = "faster-whisper"
+    a_size = "small"
+    tgt_l = "vi"
+    src_l = "auto"
+    char_samples_list = None
+    n_spk = None
+    sim_th = 0.65
+    min_d = 0.4
+    ad_learn = True
+    d_eng = "auto"
+    dev = "auto"
+    comp = "default"
+    vad = True
+    word_ts = False
+
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        target_audio_path = body.get("audio_path")
+        e_trans = bool(body.get("enable_transcribe", True))
+        e_diar = bool(body.get("enable_diarization", True))
+        e_tl = bool(body.get("enable_translate", False))
+        exec_mode = str(body.get("execution_mode", "concurrent"))
+        a_eng = str(body.get("asr_engine", "faster-whisper"))
+        a_size = str(body.get("asr_model_size", "small"))
+        tgt_l = str(body.get("target_lang", "vi"))
+        src_l = str(body.get("src_lang", "auto"))
+        char_samples_list = body.get("character_samples") or body.get("characters")
+        n_spk = body.get("num_speakers")
+        sim_th = float(body.get("similarity_threshold", 0.65))
+        min_d = float(body.get("min_duration", 0.4))
+        ad_learn = bool(body.get("adaptive_learning", True))
+        d_eng = str(body.get("diarize_engine", "auto"))
+        dev = str(body.get("device", "auto"))
+        comp = str(body.get("compute_type", "default"))
+        vad = bool(body.get("vad_filter", True))
+        word_ts = bool(body.get("word_timestamps", False))
+        chunk_idx = int(body.get("chunkIndex", 0) or 0)
+        t_offset = float(body.get("time_offset", 0.0) or 0.0)
+    elif file is not None:
+        suffix = Path(file.filename).suffix if file.filename else ".wav"
+        fd, temp_path = tempfile.mkstemp(prefix="flowmy_pipeline_", suffix=suffix)
+        os.close(fd)
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        target_audio_path = temp_path
+        temp_file_to_clean = temp_path
+        e_trans = enable_transcribe if enable_transcribe is not None else True
+        e_diar = enable_diarization if enable_diarization is not None else True
+        e_tl = enable_translate if enable_translate is not None else False
+        exec_mode = execution_mode or "concurrent"
+        a_eng = asr_engine or "faster-whisper"
+        a_size = asr_model_size or "small"
+        tgt_l = target_lang or "vi"
+        src_l = src_lang or "auto"
+        n_spk = num_speakers
+        sim_th = similarity_threshold if similarity_threshold is not None else 0.65
+        min_d = min_duration if min_duration is not None else 0.4
+        ad_learn = adaptive_learning if adaptive_learning is not None else True
+        d_eng = diarize_engine or "auto"
+        dev = device or "auto"
+        comp = compute_type or "default"
+        vad = vad_filter
+        word_ts = word_timestamps
+        chunk_idx = int(chunkIndex or 0)
+        t_offset = float(time_offset or 0.0)
+        if character_samples:
+            try:
+                char_samples_list = json.loads(character_samples)
+            except Exception:
+                char_samples_list = None
+    elif audio_path is not None:
+        target_audio_path = audio_path
+        e_trans = enable_transcribe if enable_transcribe is not None else True
+        e_diar = enable_diarization if enable_diarization is not None else True
+        e_tl = enable_translate if enable_translate is not None else False
+        exec_mode = execution_mode or "concurrent"
+        a_eng = asr_engine or "faster-whisper"
+        a_size = asr_model_size or "small"
+        tgt_l = target_lang or "vi"
+        src_l = src_lang or "auto"
+        n_spk = num_speakers
+        sim_th = similarity_threshold if similarity_threshold is not None else 0.65
+        min_d = min_duration if min_duration is not None else 0.4
+        ad_learn = adaptive_learning if adaptive_learning is not None else True
+        d_eng = diarize_engine or "auto"
+        dev = device or "auto"
+        comp = compute_type or "default"
+        vad = vad_filter
+        word_ts = word_timestamps
+        chunk_idx = int(chunkIndex or 0)
+        t_offset = float(time_offset or 0.0)
+        if character_samples:
+            try:
+                char_samples_list = json.loads(character_samples)
+            except Exception:
+                char_samples_list = None
+    else:
+        raise HTTPException(status_code=400, detail="Thiếu file audio hoặc đường dẫn audio_path.")
+
+    if not target_audio_path or not os.path.exists(target_audio_path):
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy file audio: {target_audio_path}")
+
+    try:
+        runner = get_pipeline_runner()
+        result = runner.run_pipeline(
+            audio_path=target_audio_path,
+            enable_transcribe=e_trans,
+            enable_diarization=e_diar,
+            enable_translate=e_tl,
+            execution_mode=exec_mode,
+            asr_engine=a_eng,
+            asr_model_size=a_size,
+            target_lang=tgt_l,
+            src_lang=src_l,
+            character_samples=char_samples_list,
+            num_speakers=n_spk,
+            similarity_threshold=sim_th,
+            min_duration=min_d,
+            adaptive_learning=ad_learn,
+            diarize_engine=d_eng,
+            device=dev,
+            compute_type=comp,
+            vad_filter=vad,
+            word_timestamps=word_ts,
+            chunk_index=chunk_idx,
+            time_offset=t_offset,
+            active_engines_dict=active_engines,
+            get_engine_func=get_engine_instance
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi thực thi Pipeline All-in-One: {str(e)}")
     finally:
         if temp_file_to_clean and os.path.exists(temp_file_to_clean):
             try:
