@@ -348,6 +348,10 @@ namespace FlowMy.Views.NodeControls
                     chunkList,
                     _node.ReturnSubtitleCodeIdKeys,
                     _node.ReturnSubtitleTextKeys,
+                    _node.ReturnSubtitleOrigTextKeys,
+                    _node.ReturnSubtitleSpeakerKeys,
+                    _node.ReturnSubtitleTranslationsKeys,
+                    _node.ReturnSubtitleWordsKeys,
                     _node.ReturnSubtitleStartKeys,
                     _node.ReturnSubtitleEndKeys,
                     _node.ReturnSubtitleListKeys);
@@ -399,7 +403,7 @@ namespace FlowMy.Views.NodeControls
     }
 
     /// <summary>
-    /// Bộ phân tích JSON / SRT / VTT thông minh cho phụ đề AI trả về.
+    /// Bộ phân tích JSON / SRT / VTT thông minh cho phụ đề AI trả về (hỗ trợ cả Offline Server và mọi API Online).
     /// </summary>
     public static class SubtitleAiPayloadParser
     {
@@ -408,6 +412,33 @@ namespace FlowMy.Views.NodeControls
             List<AudioChunkInfo> chunkList,
             string codeIdKeys,
             string textKeys,
+            string startKeys,
+            string endKeys,
+            string listKeys)
+        {
+            return ParseSubtitles(
+                payload,
+                chunkList,
+                codeIdKeys,
+                textKeys,
+                "original_text, orig_text, source_text, src_text, raw_text, origin, raw, source",
+                "speaker, speaker_id, speaker_name, character, person, voice, role, actor",
+                "translations, langs, localized, translated, languages, trans",
+                "words, word_timestamps, tokens, word_list, aligned_words",
+                startKeys,
+                endKeys,
+                listKeys);
+        }
+
+        public static List<SubtitleItem> ParseSubtitles(
+            string payload,
+            List<AudioChunkInfo> chunkList,
+            string codeIdKeys,
+            string textKeys,
+            string origTextKeys,
+            string speakerKeys,
+            string translationsKeys,
+            string wordsKeys,
             string startKeys,
             string endKeys,
             string listKeys)
@@ -425,7 +456,7 @@ namespace FlowMy.Views.NodeControls
 
                     if (root.ValueKind == JsonValueKind.Array)
                     {
-                        ParseJsonArray(root, chunkList, null, results, textKeys, startKeys, endKeys, listKeys);
+                        ParseJsonArray(root, chunkList, null, results, textKeys, origTextKeys, speakerKeys, translationsKeys, wordsKeys, startKeys, endKeys, listKeys);
                     }
                     else if (root.ValueKind == JsonValueKind.Object)
                     {
@@ -437,17 +468,29 @@ namespace FlowMy.Views.NodeControls
                         var listProp = FindMatchingArrayProperty(root, listKeys);
                         if (listProp.HasValue && listProp.Value.ValueKind == JsonValueKind.Array)
                         {
-                            ParseJsonArray(listProp.Value, chunkList, matchedChunk, results, textKeys, startKeys, endKeys, listKeys);
+                            ParseJsonArray(listProp.Value, chunkList, matchedChunk, results, textKeys, origTextKeys, speakerKeys, translationsKeys, wordsKeys, startKeys, endKeys, listKeys);
                         }
                         else
                         {
                             var text = FindMatchingStringProperty(root, textKeys);
                             if (!string.IsNullOrWhiteSpace(text))
                             {
-                                var st = FindMatchingDoubleProperty(root, startKeys) ?? 0.0;
-                                var ed = FindMatchingDoubleProperty(root, endKeys) ?? (st + 3.0);
+                                var st = ParseFlexibleTimeSeconds(root, startKeys, "start, start_time, startTime, from, begin, st") ?? 0.0;
+                                var ed = ParseFlexibleTimeSeconds(root, endKeys, "end, end_time, endTime, to, ed");
+                                if (!ed.HasValue || ed.Value <= st)
+                                {
+                                    var dur = ParseFlexibleTimeSeconds(root, "duration, dur, length", null);
+                                    ed = dur.HasValue && dur.Value > 0 ? st + dur.Value : st + 2.5;
+                                }
+
+                                if (st > 1000 && ed.Value > 1000 && (ed.Value - st) > 50)
+                                {
+                                    st /= 1000.0;
+                                    ed /= 1000.0;
+                                }
+
                                 var offset = matchedChunk?.StartSec ?? 0.0;
-                                results.Add(new SubtitleItem { StartTimeSec = offset + st, EndTimeSec = offset + ed, Text = text });
+                                results.Add(new SubtitleItem { StartTimeSec = offset + st, EndTimeSec = offset + ed.Value, Text = text });
                             }
                         }
                     }
@@ -464,6 +507,10 @@ namespace FlowMy.Views.NodeControls
             AudioChunkInfo? inheritedChunk,
             List<SubtitleItem> results,
             string textKeys,
+            string origTextKeys,
+            string speakerKeys,
+            string translationsKeys,
+            string wordsKeys,
             string startKeys,
             string endKeys,
             string listKeys)
@@ -473,14 +520,19 @@ namespace FlowMy.Views.NodeControls
                 if (item.ValueKind == JsonValueKind.Object)
                 {
                     var text = FindMatchingStringProperty(item, textKeys) ??
-                               FindMatchingStringProperty(item, "text,content,translated_text,trans");
-                    var origText = FindMatchingStringProperty(item, "original_text,orig_text,source_text,src_text,raw_text,origin");
-                    var sourceLang = FindMatchingStringProperty(item, "source_language,source_lang,src_lang,lang") ?? "zh";
+                               FindMatchingStringProperty(item, "text, translated_text, translation, content, subtitle, transcript, result, sentence, caption, val");
+                    var origText = FindMatchingStringProperty(item, origTextKeys) ??
+                                   FindMatchingStringProperty(item, "original_text, orig_text, source_text, src_text, raw_text, origin, raw, source");
+                    var speaker = FindMatchingStringProperty(item, speakerKeys) ??
+                                  FindMatchingStringProperty(item, "speaker, speaker_id, speaker_name, character, person, voice, role, actor");
+                    var sourceLang = FindMatchingStringProperty(item, "source_language, source_lang, src_lang, lang, detected_language") ?? "zh";
 
                     var translations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    if (item.TryGetProperty("translations", out var transProp) && transProp.ValueKind == JsonValueKind.Object)
+                    var transProp = FindMatchingObjectProperty(item, translationsKeys) ??
+                                    (item.TryGetProperty("translations", out var tp) && tp.ValueKind == JsonValueKind.Object ? tp : (JsonElement?)null);
+                    if (transProp.HasValue && transProp.Value.ValueKind == JsonValueKind.Object)
                     {
-                        foreach (var prop in transProp.EnumerateObject())
+                        foreach (var prop in transProp.Value.EnumerateObject())
                         {
                             if (prop.Value.ValueKind == JsonValueKind.String)
                                 translations[prop.Name] = prop.Value.GetString() ?? string.Empty;
@@ -489,17 +541,30 @@ namespace FlowMy.Views.NodeControls
 
                     if (!string.IsNullOrWhiteSpace(text) || !string.IsNullOrWhiteSpace(origText) || translations.Count > 0)
                     {
-                        var st = FindMatchingDoubleProperty(item, startKeys) ??
-                                 FindMatchingDoubleProperty(item, "start,start_sec,start_time,st") ?? 0.0;
-                        var ed = FindMatchingDoubleProperty(item, endKeys) ??
-                                 FindMatchingDoubleProperty(item, "end,end_sec,end_time,ed") ?? (st + 2.5);
+                        var st = ParseFlexibleTimeSeconds(item, startKeys, "start, start_time, startTime, from, begin, st, start_sec, start_ms, offset") ?? 0.0;
+                        var ed = ParseFlexibleTimeSeconds(item, endKeys, "end, end_time, endTime, to, ed, end_sec, end_ms");
+                        if (!ed.HasValue || ed.Value <= st)
+                        {
+                            var dur = ParseFlexibleTimeSeconds(item, "duration, dur, length", null);
+                            ed = dur.HasValue && dur.Value > 0 ? st + dur.Value : st + 2.5;
+                        }
+
+                        // Tự động nhận diện nếu API trả về mili-giây (ví dụ AssemblyAI start=1500, end=4500)
+                        if (st > 1000 && ed.Value > 1000 && (ed.Value - st) > 50)
+                        {
+                            st /= 1000.0;
+                            ed /= 1000.0;
+                        }
+
                         var offset = inheritedChunk?.StartSec ?? 0.0;
 
                         var subItem = new SubtitleItem
                         {
                             StartTimeSec = offset + st,
-                            EndTimeSec = offset + ed,
+                            EndTimeSec = offset + ed.Value,
                             SourceLanguage = sourceLang,
+                            Speaker = speaker ?? string.Empty,
+                            SpeakerId = speaker ?? string.Empty,
                             OriginalText = origText ?? string.Empty,
                             Text = text ?? string.Empty,
                             Translations = translations
@@ -509,6 +574,29 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
             }
+        }
+
+        private static double? ParseFlexibleTimeSeconds(JsonElement elem, string keysStr, string? fallbackKeysStr)
+        {
+            var d = FindMatchingDoubleProperty(elem, keysStr);
+            if (d.HasValue) return d.Value;
+
+            if (!string.IsNullOrWhiteSpace(fallbackKeysStr))
+            {
+                d = FindMatchingDoubleProperty(elem, fallbackKeysStr);
+                if (d.HasValue) return d.Value;
+            }
+
+            var strVal = FindMatchingStringProperty(elem, keysStr) ??
+                         (!string.IsNullOrWhiteSpace(fallbackKeysStr) ? FindMatchingStringProperty(elem, fallbackKeysStr) : null);
+
+            if (!string.IsNullOrWhiteSpace(strVal))
+            {
+                if (SubtitleItem.TryParseHms(strVal, out var sec))
+                    return sec;
+            }
+
+            return null;
         }
 
         private static string? FindMatchingStringProperty(JsonElement elem, string keysStr)
@@ -542,6 +630,17 @@ namespace FlowMy.Views.NodeControls
             foreach (var key in keys)
             {
                 if (elem.TryGetProperty(key.Trim(), out var prop) && prop.ValueKind == JsonValueKind.Array)
+                    return prop;
+            }
+            return null;
+        }
+
+        private static JsonElement? FindMatchingObjectProperty(JsonElement elem, string keysStr)
+        {
+            var keys = (keysStr ?? string.Empty).Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var key in keys)
+            {
+                if (elem.TryGetProperty(key.Trim(), out var prop) && prop.ValueKind == JsonValueKind.Object)
                     return prop;
             }
             return null;

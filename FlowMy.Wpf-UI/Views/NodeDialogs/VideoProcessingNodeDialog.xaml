@@ -41,6 +41,7 @@
                                 Height="24"
                                 Content="▶"
                                 FontSize="12"
+                                Padding="0"
                                 Style="{DynamicResource PrimaryButton}"
                                 Margin="8,0,0,0"
                                 Command="{Binding RunSingleNodeCommand}"/>
@@ -48,6 +49,7 @@
                                 Width="24"
                                 Height="24"
                                 Style="{DynamicResource DangerButton}"
+                                Padding="0"
                                 Content="✕"
                                 FontSize="12"
                                 FontWeight="Bold"
@@ -416,7 +418,7 @@
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                 <Expander IsExpanded="True" BorderThickness="0">
                                     <Expander.Header>
-                                        <TextBlock Text="🔗 Node nhận lại Phụ đề AI (Luồng song song)" 
+                                        <TextBlock Text="Cấu hình nhận dữ liệu trả về" 
                                                    Foreground="{DynamicResource TextBrush}"
                                                    FontSize="12" FontWeight="SemiBold" />
                                     </Expander.Header>
@@ -431,7 +433,7 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBlock Text="Node trả về (Return Node)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                                 <controls:NodeSearchComboBoxUserControl x:Name="ReturnSubtitleNodeComboBox"
                                                            Height="32"
                                                            ItemsSource="{Binding ReturnSubtitleNodeOptions}"
@@ -440,7 +442,7 @@
                                                            SelectionChanged="ReturnSubtitleNodeComboBox_SelectionChanged"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBlock Text="Key cổng dữ liệu (Output Key)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                                 <ComboBox x:Name="ReturnSubtitleKeyComboBox"
                                                            Height="32"
                                                            Style="{DynamicResource BaseComboBox}"
@@ -451,31 +453,93 @@
                                             </StackPanel>
                                         </Grid>
 
-                                        <!-- Cấu hình tên trường JSON -->
-                                        <TextBlock Text="Tên trường Code ID / Chunk ID trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,4"/>
-                                        <TextBox Text="{Binding ReturnSubtitleCodeIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Cách nhau bởi dấu phẩy, ví dụ: chunkId, codeId, chunkIndex, id"/>
+                                        <!-- Header phân cách -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="4" Padding="8,4" Margin="0,4,0,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                            <TextBlock Text="📐 Ánh xạ các trường JSON (JSON Field Mapping)" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                        </Border>
 
-                                        <TextBlock Text="Tên trường Nội dung / Phụ đề trong JSON" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding ReturnSubtitleTextKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" Margin="0,0,0,8" ToolTip="Ví dụ: text, subtitle, subtitles, transcript, result, content"/>
-
-                                        <Grid Margin="0,0,0,8">
+                                        <!-- Hàng 1: Chunk ID & Danh sách Mảng Segments -->
+                                        <Grid Margin="0,0,0,6">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="8"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Trường Bắt đầu (start time)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                <TextBox Text="{Binding ReturnSubtitleStartKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: start, start_time, startTime, from"/>
+                                                <TextBlock Text="1. Trường Code ID / Chunk ID" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleCodeIdKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường chứa số thứ tự hoặc mã phân đoạn Audio (ví dụ chunkIndex=0, chunkId). Giúp tự động cộng dồn mốc thời gian của chunk vào timeline video khi chạy song song."/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Trường Kết thúc (end time)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                                <TextBox Text="{Binding ReturnSubtitleEndKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: end, end_time, endTime, to"/>
+                                                <TextBlock Text="2. Danh sách phân đoạn (Array List)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleListKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường chứa mảng (Array) danh sách các câu phụ đề trong JSON. Ví dụ 'segments' (Whisper), 'utterances' (AssemblyAI), 'subtitles' (LLM)."/>
                                             </StackPanel>
                                         </Grid>
 
-                                        <TextBlock Text="Tên trường Danh sách phân đoạn (Array items)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding ReturnSubtitleListKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="30" ToolTip="Ví dụ: segments, items, lines, subtitles, chunks, words, data"/>
+                                        <!-- Hàng 2: Nội dung phụ đề chính & Lời thoại gốc -->
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="3. Nội dung phụ đề chính (Text)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleTextKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường chứa nội dung phụ đề hiển thị chính (đã dịch hoặc phiên âm). Ví dụ: 'text', 'translated_text', 'content'."/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="4. Lời thoại gốc / Song ngữ (Original Text)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleOrigTextKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường chứa lời thoại gốc nhận diện từ âm thanh (ví dụ tiếng Trung/Anh). Giúp hiển thị phụ đề song ngữ 2 dòng (Bản gốc + Bản dịch) trên video."/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Hàng 3: Bắt đầu & Kết thúc / Duration -->
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="5. Mốc bắt đầu (Start Time)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleStartKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường mốc thời gian bắt đầu câu nói (hỗ trợ giây 1.5, mili-giây 1500, hoặc HH:mm:ss.fff)."/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="6. Mốc kết thúc / Độ dài (End / Duration)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleEndKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường mốc thời gian kết thúc hoặc độ dài duration của câu nói. Nếu API trả về duration, hệ thống tự động tính EndTime = StartTime + Duration."/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Hàng 4: Người nói & Bản đồ đa ngôn ngữ -->
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="7. Người nói / Nhân vật (Speaker)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleSpeakerKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường định danh người nói hoặc tên nhân vật (ví dụ 'SPEAKER_01', 'Doraemon'). Phục vụ đổi màu phụ đề riêng theo từng nhân vật hoặc phân vai lồng tiếng."/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="8. Bản đồ đa ngôn ngữ (Translations)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding ReturnSubtitleTranslationsKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                         ToolTip="Tên trường chứa object các bản dịch đa ngôn ngữ dạng key-value {'zh': '...', 'vi': '...', 'en': '...'}. Hệ thống sẽ tự tạo các thẻ ngôn ngữ màu sắc riêng."/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Hàng 5: Word Timestamps -->
+                                        <StackPanel Margin="0,0,0,4">
+                                            <TextBlock Text="9. Khớp chữ từng từ (Word Timestamps)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding ReturnSubtitleWordsKeys, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="28"
+                                                     ToolTip="Tên trường chứa danh sách mốc thời gian chi tiết đến từng từ đơn (Word-level). Phục vụ hiệu ứng Karaoke chạy chữ hoặc highlight từng từ."/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Expander>
                             </Border>
@@ -487,70 +551,140 @@
                                 <Expander IsExpanded="False" BorderThickness="0">
                                     <Expander.Header>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="💡 Hướng dẫn cấu trúc JSON &amp; Mẫu Prompt chuẩn" 
+                                            <TextBlock Text="💡 Hướng dẫn cấu trúc JSON &amp; Mẫu Prompt chuẩn (Offline &amp; Online API)" 
                                                        Foreground="#60A5FA"
                                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                                             <Border Background="#1E3A8A" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
-                                                <TextBlock Text="Click để xem" FontSize="9.5" FontWeight="Bold" Foreground="#93C5FD"/>
+                                                <TextBlock Text="Click để xem chi tiết" FontSize="9.5" FontWeight="Bold" Foreground="#93C5FD"/>
                                             </Border>
                                         </StackPanel>
                                     </Expander.Header>
                                     <StackPanel Margin="0,10,0,0">
-                                        <!-- Hướng dẫn dạng 1: Theo từng Chunk -->
+                                        <!-- Dạng 1: AI-Speech-Subtitle-Server Offline -->
                                         <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                             <StackPanel>
-                                                <TextBlock Text="1. Dạng trả về theo từng Chunk (Khuyên dùng khi chạy Loop Node):" 
+                                                <TextBlock Text="1. Chuẩn AI-Speech-Subtitle-Server (Offline Server: WhisperX, CAM++, NLLB-200):" 
                                                            Foreground="#4ADE80" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
-                                                <TextBlock Text="Khi cắt audio thành nhiều đoạn, AI trả về mốc thời gian tương đối (từ 0s) trong chunk đó, hệ thống sẽ tự động cộng dồn với thời gian bắt đầu của Chunk vào timeline video:" 
+                                                <TextBlock Text="Cung cấp đầy đủ toàn bộ trường dữ liệu: Phụ đề dịch, lời thoại gốc, đa ngôn ngữ, người nói (Speaker Diarization), màu sắc nhân vật và khớp chữ từng từ (Word Timestamps):" 
                                                            Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10.5"
-                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">{
+                                                
+                                                <!-- Mẫu Pipeline All-in-One (/api/pipeline) -->
+                                                <TextBlock Text="✦ Mẫu trả về từ Endpoint All-in-One (/api/pipeline):" Foreground="#A7F3D0" FontSize="10" FontWeight="SemiBold" Margin="0,2,0,4"/>
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10"
+                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" Margin="0,0,0,6" xml:space="preserve">{
+  "status": "success",
   "chunkIndex": 0,
+  "time_offset": 0.0,
+  "elapsed_ms": 1420.5,
+  "total_segments": 1,
+  "source_language": "zh",
+  "source_language_probability": 0.99,
+  "target_language": "vi",
+  "detected_speakers_count": 1,
+  "detected_speakers": [
+    {
+      "name": "Doraemon",
+      "color": "#3b82f6"
+    }
+  ],
+  "pipeline_summary": {
+    "transcribe": true,
+    "diarization": true,
+    "translation": true
+  },
   "segments": [
     {
-      "start": 1.25,
-      "end": 4.50,
-      "text": "Xin chào các bạn đã quay trở lại..."
-    },
+      "id": 1,
+      "start": 0.52,
+      "end": 3.48,
+      "duration": 2.96,
+      "text": "Xin chào các bạn đã quay trở lại",
+      "original_text": "大家好，欢迎回来",
+      "translated_text": "Xin chào các bạn đã quay trở lại",
+      "translation": "Xin chào các bạn đã quay trở lại",
+      "speaker": "Doraemon",
+      "speaker_id": "Doraemon",
+      "speaker_color": "#3b82f6",
+      "speaker_confidence": 0.89,
+      "translations": {
+        "zh": "大家好，欢迎回来",
+        "vi": "Xin chào các bạn đã quay trở lại",
+        "en": "Hello everyone, welcome back"
+      },
+      "words": [
+        { "word": "Xin", "start": 0.52, "end": 0.85, "score": 0.95 },
+        { "word": "chào", "start": 0.86, "end": 1.20, "score": 0.98 }
+      ]
+    }
+  ]
+}</TextBox>
+
+                                                <!-- Bảng giải thích trường cho Server Offline -->
+                                                <TextBlock Text="✦ Bảng ý nghĩa các trường từ AI-Speech-Subtitle-Server:" Foreground="#93C5FD" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                                                <Border Background="#0D1117" BorderBrush="#30363D" BorderThickness="1" CornerRadius="4" Padding="6">
+                                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="9.5" TextWrapping="Wrap" LineHeight="15">
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">chunkIndex</Run>: Số thứ tự phân đoạn (FlowMy tự động cộng dồn timeline khi chia nhỏ audio).&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">segments</Run>: Danh sách mảng các câu phụ đề.&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">start / end / duration</Run>: Mốc bắt đầu, kết thúc và độ dài câu (giây).&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">text / translated_text / translation</Run>: Câu phụ đề hiển thị chính (tiếng Việt).&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">original_text</Run>: Lời thoại gốc nhận diện bằng AI (tiếng Trung, Anh, Nhật...).&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">speaker / speaker_id</Run>: Định danh nhân vật / người nói (Doraemon, Nobita, SPEAKER_01...).&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">translations</Run>: Bản đồ song ngữ/đa ngôn ngữ để hiển thị phụ đề 2 dòng hoặc đổi ngôn ngữ.&#x0a;
+                                                        • <Run FontWeight="Bold" Foreground="#60A5FA">words</Run>: Mốc thời gian từng từ đơn cho hiệu ứng karaoke chạy chữ.
+                                                    </TextBlock>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Dạng 2: OpenAI / Groq Whisper API Online -->
+                                        <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <TextBlock Text="2. Chuẩn OpenAI / Groq Whisper API Online (/v1/audio/transcriptions):" 
+                                                           Foreground="#38BDF8" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBlock Text="API verbose_json trả về danh sách phân đoạn segments kèm mốc thời gian start, end tính theo giây:" 
+                                                           Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10"
+                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">{
+  "task": "transcribe",
+  "language": "vietnamese",
+  "segments": [
     {
-      "start": 5.10,
-      "end": 8.60,
-      "text": "Hôm nay chúng ta tìm hiểu về phụ đề AI..."
+      "start": 1.20,
+      "end": 4.50,
+      "text": "Nội dung câu phụ đề được nhận diện từ giọng nói..."
     }
   ]
 }</TextBox>
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Hướng dẫn dạng 2: Danh sách mốc tuyệt đối -->
+                                        <!-- Dạng 3: AssemblyAI Online API (mili-giây & utterances) -->
                                         <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                             <StackPanel>
-                                                <TextBlock Text="2. Dạng mảng danh sách phụ đề tuyệt đối (Mảng Array):" 
-                                                           Foreground="#38BDF8" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
-                                                <TextBlock Text="Nếu node AI trả về trực tiếp danh sách các câu phụ đề theo toàn bộ timeline video:" 
+                                                <TextBlock Text="3. Chuẩn AssemblyAI Online (Key: utterances, thời gian tính bằng mili-giây):" 
+                                                           Foreground="#A78BFA" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBlock Text="Hệ thống FlowMy tự động nhận diện và chuyển đổi mili-giây (1500ms -> 1.5s) và map trường speaker:" 
                                                            Foreground="{DynamicResource TextMuted}" FontSize="10.5" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10.5"
-                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">[
-  {
-    "start": 0.50,
-    "end": 3.80,
-    "text": "Câu phụ đề đầu tiên trong video"
-  },
-  {
-    "start": 4.10,
-    "end": 7.20,
-    "text": "Câu phụ đề tiếp theo"
-  }
-]</TextBox>
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#F0F6FC" FontFamily="Consolas" FontSize="10"
+                                                         BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">{
+  "utterances": [
+    {
+      "start": 1500,
+      "end": 4800,
+      "text": "Hello, this is transcribed with speaker diarization.",
+      "speaker": "SPEAKER_01"
+    }
+  ]
+}</TextBox>
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Mẫu Prompt cho LLM -->
+                                        <!-- Dạng 4: Mẫu Prompt cho LLM (Gemini / Claude / GPT) -->
                                         <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="6" Padding="10">
                                             <StackPanel>
-                                                <TextBlock Text="3. Mẫu System Prompt gợi ý cho AI / OpenAI / Gemini / Whisper:" 
+                                                <TextBlock Text="4. Mẫu System Prompt chuẩn gợi ý cho LLM (Gemini / Claude / OpenAI):" 
                                                            Foreground="#FBBF24" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
-                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#FDE047" FontFamily="Consolas" FontSize="10.5"
+                                                <TextBox IsReadOnly="True" Background="#0D1117" Foreground="#FDE047" FontFamily="Consolas" FontSize="10"
                                                          BorderBrush="#30363D" BorderThickness="1" Padding="8" xml:space="preserve">Hãy nghe audio và trích xuất phụ đề kèm mốc thời gian chính xác (giây).
 Chỉ trả về duy nhất một chuỗi JSON hợp lệ theo định dạng sau:
 {
@@ -559,7 +693,9 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ theo định dạng sa
     {
       "start": 0.00,
       "end": 3.50,
-      "text": "Nội dung câu nói"
+      "text": "Nội dung câu dịch (tiếng Việt)",
+      "original_text": "Lời thoại gốc (tiếng Anh/Trung)",
+      "speaker": "Tên người nói"
     }
   ]
 }</TextBox>

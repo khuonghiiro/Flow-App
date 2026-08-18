@@ -1504,6 +1504,8 @@ namespace FlowMy.Views.NodeControls
                     $"{(PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--")}";
             }
 
+            SyncTrimWaveformPlayhead(position.TotalSeconds);
+
             if (_isSeekLatencyPending && _lastSeekTargetSeconds >= 0)
             {
                 var acceptedDiff = GetEffectivePreviewQualityMode() switch

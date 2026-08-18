@@ -368,6 +368,8 @@ namespace FlowMy.Core.Models.Media
         private string _text = string.Empty;
         private string _originalText = string.Empty;
         private string _sourceLanguage = string.Empty;
+        private string _speaker = string.Empty;
+        private string _speakerId = string.Empty;
         private bool _isSelected;
         private ObservableCollection<SubtitleLineItem> _lines = new();
         private Dictionary<string, string> _translations = new(StringComparer.OrdinalIgnoreCase);
@@ -449,6 +451,18 @@ namespace FlowMy.Core.Models.Media
         {
             get => _sourceLanguage;
             set => SetField(ref _sourceLanguage, value ?? string.Empty);
+        }
+
+        public string Speaker
+        {
+            get => _speaker;
+            set => SetField(ref _speaker, value ?? string.Empty);
+        }
+
+        public string SpeakerId
+        {
+            get => _speakerId;
+            set => SetField(ref _speakerId, value ?? string.Empty);
         }
 
         public Dictionary<string, string> Translations

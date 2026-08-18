@@ -26,11 +26,15 @@ namespace FlowMy.Models.Nodes
 
         private string? _returnSubtitleNodeId;
         private string? _returnSubtitleOutputKey;
-        private string _returnSubtitleCodeIdKeys = "chunkId, codeId, chunkIndex, segmentId, id";
-        private string _returnSubtitleTextKeys = "text, subtitle, subtitles, transcript, result, content";
-        private string _returnSubtitleStartKeys = "start, start_time, startTime, from, begin";
-        private string _returnSubtitleEndKeys = "end, end_time, endTime, to";
-        private string _returnSubtitleListKeys = "segments, items, lines, subtitles, chunks, words, data";
+        private string _returnSubtitleCodeIdKeys = "chunkIndex, chunkId, codeId, segmentId, chunk_index, chunk_id, id";
+        private string _returnSubtitleTextKeys = "text, translated_text, translation, content, subtitle, transcript, result, sentence, caption, val";
+        private string _returnSubtitleOrigTextKeys = "original_text, orig_text, source_text, src_text, raw_text, origin, raw, source";
+        private string _returnSubtitleSpeakerKeys = "speaker, speaker_id, speaker_name, character, person, voice, role, actor";
+        private string _returnSubtitleTranslationsKeys = "translations, langs, localized, translated, languages, trans";
+        private string _returnSubtitleWordsKeys = "words, word_timestamps, tokens, word_list, aligned_words";
+        private string _returnSubtitleStartKeys = "start, start_time, startTime, from, begin, st, start_sec, start_ms, offset";
+        private string _returnSubtitleEndKeys = "end, end_time, endTime, to, ed, end_sec, end_ms, duration, dur, length";
+        private string _returnSubtitleListKeys = "segments, items, lines, subtitles, chunks, utterances, data, results, sentences";
 
         public string SubtitleSplitMode
         {
@@ -153,31 +157,55 @@ namespace FlowMy.Models.Nodes
         public string ReturnSubtitleCodeIdKeys
         {
             get => _returnSubtitleCodeIdKeys;
-            set { if (_returnSubtitleCodeIdKeys != value) { _returnSubtitleCodeIdKeys = value ?? "chunkId, codeId, chunkIndex, segmentId, id"; OnPropertyChanged(); } }
+            set { if (_returnSubtitleCodeIdKeys != value) { _returnSubtitleCodeIdKeys = value ?? "chunkIndex, chunkId, codeId, segmentId, chunk_index, chunk_id, id"; OnPropertyChanged(); } }
         }
 
         public string ReturnSubtitleTextKeys
         {
             get => _returnSubtitleTextKeys;
-            set { if (_returnSubtitleTextKeys != value) { _returnSubtitleTextKeys = value ?? "text, subtitle, subtitles, transcript, result, content"; OnPropertyChanged(); } }
+            set { if (_returnSubtitleTextKeys != value) { _returnSubtitleTextKeys = value ?? "text, translated_text, translation, content, subtitle, transcript, result, sentence, caption, val"; OnPropertyChanged(); } }
+        }
+
+        public string ReturnSubtitleOrigTextKeys
+        {
+            get => _returnSubtitleOrigTextKeys;
+            set { if (_returnSubtitleOrigTextKeys != value) { _returnSubtitleOrigTextKeys = value ?? "original_text, orig_text, source_text, src_text, raw_text, origin, raw, source"; OnPropertyChanged(); } }
+        }
+
+        public string ReturnSubtitleSpeakerKeys
+        {
+            get => _returnSubtitleSpeakerKeys;
+            set { if (_returnSubtitleSpeakerKeys != value) { _returnSubtitleSpeakerKeys = value ?? "speaker, speaker_id, speaker_name, character, person, voice, role, actor"; OnPropertyChanged(); } }
+        }
+
+        public string ReturnSubtitleTranslationsKeys
+        {
+            get => _returnSubtitleTranslationsKeys;
+            set { if (_returnSubtitleTranslationsKeys != value) { _returnSubtitleTranslationsKeys = value ?? "translations, langs, localized, translated, languages, trans"; OnPropertyChanged(); } }
+        }
+
+        public string ReturnSubtitleWordsKeys
+        {
+            get => _returnSubtitleWordsKeys;
+            set { if (_returnSubtitleWordsKeys != value) { _returnSubtitleWordsKeys = value ?? "words, word_timestamps, tokens, word_list, aligned_words"; OnPropertyChanged(); } }
         }
 
         public string ReturnSubtitleStartKeys
         {
             get => _returnSubtitleStartKeys;
-            set { if (_returnSubtitleStartKeys != value) { _returnSubtitleStartKeys = value ?? "start, start_time, startTime, from, begin"; OnPropertyChanged(); } }
+            set { if (_returnSubtitleStartKeys != value) { _returnSubtitleStartKeys = value ?? "start, start_time, startTime, from, begin, st, start_sec, start_ms, offset"; OnPropertyChanged(); } }
         }
 
         public string ReturnSubtitleEndKeys
         {
             get => _returnSubtitleEndKeys;
-            set { if (_returnSubtitleEndKeys != value) { _returnSubtitleEndKeys = value ?? "end, end_time, endTime, to"; OnPropertyChanged(); } }
+            set { if (_returnSubtitleEndKeys != value) { _returnSubtitleEndKeys = value ?? "end, end_time, endTime, to, ed, end_sec, end_ms, duration, dur, length"; OnPropertyChanged(); } }
         }
 
         public string ReturnSubtitleListKeys
         {
             get => _returnSubtitleListKeys;
-            set { if (_returnSubtitleListKeys != value) { _returnSubtitleListKeys = value ?? "segments, items, lines, subtitles, chunks, words, data"; OnPropertyChanged(); } }
+            set { if (_returnSubtitleListKeys != value) { _returnSubtitleListKeys = value ?? "segments, items, lines, subtitles, chunks, utterances, data, results, sentences"; OnPropertyChanged(); } }
         }
 
         // ═════════════════════════════════════════════════════════════════════

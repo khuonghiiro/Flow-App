@@ -1934,7 +1934,47 @@
                                                     <ToggleButton x:Name="AudioTrimToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}" ToolTip="Bật/tắt cắt riêng phân đoạn audio"/>
                                                 </Grid>
 
-                                                <StackPanel x:Name="AudioTrimContainer" Visibility="Collapsed" Margin="0,4,0,0">
+                                                <StackPanel x:Name="AudioTrimContainer" Visibility="Collapsed" Margin="0,6,0,0">
+                                                    <!-- 🌊 Bản đồ Sóng âm trực quan & Thanh điều khiển Zoom -->
+                                                    <Border Background="{DynamicResource ThemeInnerCardBackgroundBrush}" CornerRadius="6" BorderBrush="{DynamicResource ThemeInnerCardBorderBrush}" BorderThickness="1" Padding="8" Margin="0,0,0,8">
+                                                        <StackPanel>
+                                                            <!-- Waveform Zoom & Navigation Toolbar -->
+                                                            <Grid Margin="0,0,0,6">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                
+                                                                <StackPanel Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center">
+                                                                    <TextBlock Text="🌊 Sóng âm phân đoạn (Kéo 2 cột hoặc Nhấn giữ &amp; Rê chuột để chọn):" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                </StackPanel>
+
+                                                                <!-- Zoom Controls -->
+                                                                <StackPanel Orientation="Horizontal" Grid.Column="2" VerticalAlignment="Center">
+                                                                    <TextBlock x:Name="AudioWaveformZoomLabel" Text="🔍 1.0x (Toàn cảnh)" FontSize="9" FontFamily="Consolas" Foreground="{DynamicResource ThemeSliderActiveBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                                    <Button x:Name="AudioWaveformZoomOutButton" Width="22" Height="22" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Content="➖" FontSize="9" ToolTip="Thu nhỏ sóng âm" Margin="0,0,2,0"/>
+                                                                    <Slider x:Name="AudioWaveformZoomSlider" Width="70" Minimum="1" Maximum="50" Value="1" SmallChange="0.5" LargeChange="2" Style="{StaticResource ModernSliderStyle}" VerticalAlignment="Center" ToolTip="Phóng to sóng âm để dãn rộng mốc giây/mili-giây"/>
+                                                                    <Button x:Name="AudioWaveformZoomInButton" Width="22" Height="22" Padding="0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Content="➕" FontSize="9" ToolTip="Phóng to sóng âm (chi tiết đến mili-giây)" Margin="2,0,4,0"/>
+                                                                    <Button x:Name="AudioWaveformFitButton" Height="22" Padding="6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Content="↔ Fit" FontSize="9" ToolTip="Xem toàn cảnh chiều dài bài"/>
+                                                                </StackPanel>
+                                                            </Grid>
+
+                                                            <!-- Interactive Waveform Visualizer Canvas inside Horizontal ScrollViewer -->
+                                                            <Border CornerRadius="6" ClipToBounds="True" Background="{DynamicResource ThemeTimelinePanelBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1">
+                                                                <ScrollViewer x:Name="AudioWaveformScrollViewer" 
+                                                                              HorizontalScrollBarVisibility="Auto" 
+                                                                              VerticalScrollBarVisibility="Disabled" 
+                                                                              Focusable="False"
+                                                                              PanningMode="HorizontalOnly"
+                                                                              CanContentScroll="False"
+                                                                              Height="135">
+                                                                    <controls:AudioTrimWaveformVisualizer x:Name="AudioTrimWaveformControl" Height="135" HorizontalAlignment="Left"/>
+                                                                </ScrollViewer>
+                                                            </Border>
+                                                        </StackPanel>
+                                                    </Border>
+
                                                     <!-- Start Time Control -->
                                                     <Grid Margin="0,0,0,6">
                                                         <Grid.RowDefinitions>
@@ -1942,7 +1982,7 @@
                                                             <RowDefinition Height="Auto"/>
                                                         </Grid.RowDefinitions>
                                                         <Grid Margin="0,0,0,2">
-                                                            <TextBlock Text="Mốc Bắt đầu (Start Time)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                            <TextBlock Text="Mốc Bắt đầu (Start Time - Cột Trái 🟢)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                             <TextBlock x:Name="AudioTrimStartSecLabel" Text="0.00s" HorizontalAlignment="Right" FontSize="9.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                                         </Grid>
                                                         <Grid Grid.Row="1">
@@ -1966,7 +2006,7 @@
                                                             <RowDefinition Height="Auto"/>
                                                         </Grid.RowDefinitions>
                                                         <Grid Margin="0,0,0,2">
-                                                            <TextBlock Text="Mốc Kết thúc (End Time)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                                            <TextBlock Text="Mốc Kết thúc (End Time - Cột Phải 🔴)" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                                             <TextBlock x:Name="AudioTrimEndSecLabel" Text="0.00s" HorizontalAlignment="Right" FontSize="9.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                                         </Grid>
                                                         <Grid Grid.Row="1">
@@ -1983,20 +2023,30 @@
                                                         </Grid>
                                                     </Grid>
 
-                                                    <!-- Actions -->
+                                                    <!-- Actions: Nghe thử, Xuất Audio, Đặt lại -->
                                                     <Grid Margin="0,2,0,0">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="6"/>
                                                             <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="6"/>
+                                                            <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <Button x:Name="PreviewAudioTrimButton" Grid.Column="0" Height="26" Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}">
+                                                        
+                                                        <Button x:Name="PreviewAudioTrimButton" Grid.Column="0" Height="28" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}">
                                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                                 <controls:SvgViewboxEx Width="11" Height="11" Margin="0,0,5,0" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-light'}"/>
-                                                                <TextBlock Text="▶ Nghe thử đoạn cắt này" FontSize="10" FontWeight="SemiBold"/>
+                                                                <TextBlock Text="▶ Nghe thử khoảng cắt này" FontSize="10" FontWeight="SemiBold"/>
                                                             </StackPanel>
                                                         </Button>
-                                                        <Button x:Name="ResetAudioTrimButton" Grid.Column="2" Height="26" Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Content="Đặt lại đoạn" FontSize="10"/>
+                                                        
+                                                        <Button x:Name="ExportAudioTrimButton" Grid.Column="2" Height="28" Padding="10,0" Style="{DynamicResource PrimaryButton}">
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                                <TextBlock Text="💾 Xuất Audio đã cắt" FontSize="10" FontWeight="SemiBold"/>
+                                                            </StackPanel>
+                                                        </Button>
+
+                                                        <Button x:Name="ResetAudioTrimButton" Grid.Column="4" Height="28" Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Content="Đặt lại đoạn" FontSize="10"/>
                                                     </Grid>
                                                 </StackPanel>
                                             </StackPanel>

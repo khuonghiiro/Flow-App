@@ -784,15 +784,23 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("ReturnSubtitleOutputKey", out var rskObj))
                 videoNode.ReturnSubtitleOutputKey = rskObj?.ToString();
             if (properties.TryGetValue("ReturnSubtitleCodeIdKeys", out var rsckObj))
-                videoNode.ReturnSubtitleCodeIdKeys = rsckObj?.ToString() ?? "chunkId, codeId, chunkIndex, segmentId, id";
+                videoNode.ReturnSubtitleCodeIdKeys = rsckObj?.ToString() ?? "chunkIndex, chunkId, codeId, segmentId, chunk_index, chunk_id, id";
             if (properties.TryGetValue("ReturnSubtitleTextKeys", out var rstkObj))
-                videoNode.ReturnSubtitleTextKeys = rstkObj?.ToString() ?? "text, subtitle, subtitles, transcript, result, content";
+                videoNode.ReturnSubtitleTextKeys = rstkObj?.ToString() ?? "text, translated_text, translation, content, subtitle, transcript, result, sentence, caption, val";
+            if (properties.TryGetValue("ReturnSubtitleOrigTextKeys", out var rsotkObj))
+                videoNode.ReturnSubtitleOrigTextKeys = rsotkObj?.ToString() ?? "original_text, orig_text, source_text, src_text, raw_text, origin, raw, source";
+            if (properties.TryGetValue("ReturnSubtitleSpeakerKeys", out var rsspeakerkObj))
+                videoNode.ReturnSubtitleSpeakerKeys = rsspeakerkObj?.ToString() ?? "speaker, speaker_id, speaker_name, character, person, voice, role, actor";
+            if (properties.TryGetValue("ReturnSubtitleTranslationsKeys", out var rstranskObj))
+                videoNode.ReturnSubtitleTranslationsKeys = rstranskObj?.ToString() ?? "translations, langs, localized, translated, languages, trans";
+            if (properties.TryGetValue("ReturnSubtitleWordsKeys", out var rswordkObj))
+                videoNode.ReturnSubtitleWordsKeys = rswordkObj?.ToString() ?? "words, word_timestamps, tokens, word_list, aligned_words";
             if (properties.TryGetValue("ReturnSubtitleStartKeys", out var rsskObj))
-                videoNode.ReturnSubtitleStartKeys = rsskObj?.ToString() ?? "start, start_time, startTime, from, begin";
+                videoNode.ReturnSubtitleStartKeys = rsskObj?.ToString() ?? "start, start_time, startTime, from, begin, st, start_sec, start_ms, offset";
             if (properties.TryGetValue("ReturnSubtitleEndKeys", out var rsekObj))
-                videoNode.ReturnSubtitleEndKeys = rsekObj?.ToString() ?? "end, end_time, endTime, to";
+                videoNode.ReturnSubtitleEndKeys = rsekObj?.ToString() ?? "end, end_time, endTime, to, ed, end_sec, end_ms, duration, dur, length";
             if (properties.TryGetValue("ReturnSubtitleListKeys", out var rslkObj))
-                videoNode.ReturnSubtitleListKeys = rslkObj?.ToString() ?? "segments, items, lines, subtitles, chunks, words, data";
+                videoNode.ReturnSubtitleListKeys = rslkObj?.ToString() ?? "segments, items, lines, subtitles, chunks, utterances, data, results, sentences";
 
             if (properties.TryGetValue("DubbingSplitMode", out var dsmObj))
                 videoNode.DubbingSplitMode = dsmObj?.ToString() ?? "SubtitleSegments";
@@ -1181,6 +1189,10 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["ReturnSubtitleOutputKey"] = videoNode.ReturnSubtitleOutputKey;
             dict["ReturnSubtitleCodeIdKeys"] = videoNode.ReturnSubtitleCodeIdKeys;
             dict["ReturnSubtitleTextKeys"] = videoNode.ReturnSubtitleTextKeys;
+            dict["ReturnSubtitleOrigTextKeys"] = videoNode.ReturnSubtitleOrigTextKeys;
+            dict["ReturnSubtitleSpeakerKeys"] = videoNode.ReturnSubtitleSpeakerKeys;
+            dict["ReturnSubtitleTranslationsKeys"] = videoNode.ReturnSubtitleTranslationsKeys;
+            dict["ReturnSubtitleWordsKeys"] = videoNode.ReturnSubtitleWordsKeys;
             dict["ReturnSubtitleStartKeys"] = videoNode.ReturnSubtitleStartKeys;
             dict["ReturnSubtitleEndKeys"] = videoNode.ReturnSubtitleEndKeys;
             dict["ReturnSubtitleListKeys"] = videoNode.ReturnSubtitleListKeys;

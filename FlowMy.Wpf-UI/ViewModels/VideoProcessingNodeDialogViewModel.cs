@@ -58,11 +58,15 @@ namespace FlowMy.ViewModels
 
         [ObservableProperty] private string? _returnSubtitleNodeId;
         [ObservableProperty] private string? _returnSubtitleOutputKey;
-        [ObservableProperty] private string _returnSubtitleCodeIdKeys = "chunkId, codeId, chunkIndex, segmentId, id";
-        [ObservableProperty] private string _returnSubtitleTextKeys = "text, subtitle, subtitles, transcript, result, content";
-        [ObservableProperty] private string _returnSubtitleStartKeys = "start, start_time, startTime, from, begin";
-        [ObservableProperty] private string _returnSubtitleEndKeys = "end, end_time, endTime, to";
-        [ObservableProperty] private string _returnSubtitleListKeys = "segments, items, lines, subtitles, chunks, words, data";
+        [ObservableProperty] private string _returnSubtitleCodeIdKeys = "chunkIndex, chunkId, codeId, segmentId, chunk_index, chunk_id, id";
+        [ObservableProperty] private string _returnSubtitleTextKeys = "text, translated_text, translation, content, subtitle, transcript, result, sentence, caption, val";
+        [ObservableProperty] private string _returnSubtitleOrigTextKeys = "original_text, orig_text, source_text, src_text, raw_text, origin, raw, source";
+        [ObservableProperty] private string _returnSubtitleSpeakerKeys = "speaker, speaker_id, speaker_name, character, person, voice, role, actor";
+        [ObservableProperty] private string _returnSubtitleTranslationsKeys = "translations, langs, localized, translated, languages, trans";
+        [ObservableProperty] private string _returnSubtitleWordsKeys = "words, word_timestamps, tokens, word_list, aligned_words";
+        [ObservableProperty] private string _returnSubtitleStartKeys = "start, start_time, startTime, from, begin, st, start_sec, start_ms, offset";
+        [ObservableProperty] private string _returnSubtitleEndKeys = "end, end_time, endTime, to, ed, end_sec, end_ms, duration, dur, length";
+        [ObservableProperty] private string _returnSubtitleListKeys = "segments, items, lines, subtitles, chunks, utterances, data, results, sentences";
 
         // ═══════ Dubbing (TTS / Voiceover Workflow) ═══════
         [ObservableProperty] private string _dubbingSplitMode = "SubtitleSegments";
@@ -145,6 +149,10 @@ namespace FlowMy.ViewModels
             ReturnSubtitleOutputKey = node.ReturnSubtitleOutputKey;
             ReturnSubtitleCodeIdKeys = node.ReturnSubtitleCodeIdKeys;
             ReturnSubtitleTextKeys = node.ReturnSubtitleTextKeys;
+            ReturnSubtitleOrigTextKeys = node.ReturnSubtitleOrigTextKeys;
+            ReturnSubtitleSpeakerKeys = node.ReturnSubtitleSpeakerKeys;
+            ReturnSubtitleTranslationsKeys = node.ReturnSubtitleTranslationsKeys;
+            ReturnSubtitleWordsKeys = node.ReturnSubtitleWordsKeys;
             ReturnSubtitleStartKeys = node.ReturnSubtitleStartKeys;
             ReturnSubtitleEndKeys = node.ReturnSubtitleEndKeys;
             ReturnSubtitleListKeys = node.ReturnSubtitleListKeys;
@@ -408,6 +416,18 @@ namespace FlowMy.ViewModels
                 case nameof(ReturnSubtitleTextKeys):
                     _videoNode.ReturnSubtitleTextKeys = ReturnSubtitleTextKeys;
                     break;
+                case nameof(ReturnSubtitleOrigTextKeys):
+                    _videoNode.ReturnSubtitleOrigTextKeys = ReturnSubtitleOrigTextKeys;
+                    break;
+                case nameof(ReturnSubtitleSpeakerKeys):
+                    _videoNode.ReturnSubtitleSpeakerKeys = ReturnSubtitleSpeakerKeys;
+                    break;
+                case nameof(ReturnSubtitleTranslationsKeys):
+                    _videoNode.ReturnSubtitleTranslationsKeys = ReturnSubtitleTranslationsKeys;
+                    break;
+                case nameof(ReturnSubtitleWordsKeys):
+                    _videoNode.ReturnSubtitleWordsKeys = ReturnSubtitleWordsKeys;
+                    break;
                 case nameof(ReturnSubtitleStartKeys):
                     _videoNode.ReturnSubtitleStartKeys = ReturnSubtitleStartKeys;
                     break;
@@ -619,6 +639,10 @@ namespace FlowMy.ViewModels
             _videoNode.ReturnSubtitleOutputKey = string.IsNullOrWhiteSpace(ReturnSubtitleOutputKey) ? null : ReturnSubtitleOutputKey;
             _videoNode.ReturnSubtitleCodeIdKeys = ReturnSubtitleCodeIdKeys;
             _videoNode.ReturnSubtitleTextKeys = ReturnSubtitleTextKeys;
+            _videoNode.ReturnSubtitleOrigTextKeys = ReturnSubtitleOrigTextKeys;
+            _videoNode.ReturnSubtitleSpeakerKeys = ReturnSubtitleSpeakerKeys;
+            _videoNode.ReturnSubtitleTranslationsKeys = ReturnSubtitleTranslationsKeys;
+            _videoNode.ReturnSubtitleWordsKeys = ReturnSubtitleWordsKeys;
             _videoNode.ReturnSubtitleStartKeys = ReturnSubtitleStartKeys;
             _videoNode.ReturnSubtitleEndKeys = ReturnSubtitleEndKeys;
             _videoNode.ReturnSubtitleListKeys = ReturnSubtitleListKeys;

@@ -249,6 +249,11 @@ namespace FlowMy.Views.NodeControls
             targetTab.Visibility = Visibility.Visible;
             targetTab.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)));
 
+            if (idx == 3)
+            {
+                _ = LoadWaveformDataForCurrentVideoAsync();
+            }
+
             UpdateBottomBarGroupHighlight(Math.Max(0, idx));
         }
 

@@ -1,4 +1,4 @@
-﻿// =========================================================================================
+// =========================================================================================
 // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
 // =========================================================================================
 using System;
@@ -210,6 +210,8 @@ namespace FlowMy.Views.NodeControls
             }
 
             // 3. Audio Trimming (Applied on release / box enter)
+            InitAudioTrimWaveformWiring();
+
             if (AudioTrimToggle != null)
             {
                 AudioTrimToggle.Checked += (_, _) =>
@@ -217,6 +219,7 @@ namespace FlowMy.Views.NodeControls
                     if (_suppressControlSync) return;
                     _node.AudioTrimEnabled = true;
                     if (AudioTrimContainer != null) AudioTrimContainer.Visibility = Visibility.Visible;
+                    _ = LoadWaveformDataForCurrentVideoAsync();
                     TriggerDspRegenIfActive();
                 };
                 AudioTrimToggle.Unchecked += (_, _) =>
@@ -237,6 +240,11 @@ namespace FlowMy.Views.NodeControls
                     _node.AudioTrimStartSec = val;
                     if (AudioTrimStartBox != null) AudioTrimStartBox.Text = FormatTimeSec(val);
                     if (AudioTrimStartSecLabel != null) AudioTrimStartSecLabel.Text = $"{val:0.##}s";
+                    if (AudioTrimWaveformControl != null)
+                    {
+                        AudioTrimWaveformControl.TrimStartSec = val;
+                        AudioTrimWaveformControl.InvalidateVisual();
+                    }
                     UpdateAudioTrimDurationLabel();
                 };
                 AudioTrimStartSlider.PreviewMouseLeftButtonUp += (_, _) => CommitTrimSeekPosition(_node.AudioTrimStartSec);
@@ -252,6 +260,11 @@ namespace FlowMy.Views.NodeControls
                     _node.AudioTrimEndSec = val;
                     if (AudioTrimEndBox != null) AudioTrimEndBox.Text = FormatTimeSec(val);
                     if (AudioTrimEndSecLabel != null) AudioTrimEndSecLabel.Text = $"{val:0.##}s";
+                    if (AudioTrimWaveformControl != null)
+                    {
+                        AudioTrimWaveformControl.TrimEndSec = val;
+                        AudioTrimWaveformControl.InvalidateVisual();
+                    }
                     UpdateAudioTrimDurationLabel();
                 };
                 AudioTrimEndSlider.PreviewMouseLeftButtonUp += (_, _) => CommitTrimSeekPosition(_node.AudioTrimEndSec);
@@ -1343,6 +1356,14 @@ namespace FlowMy.Views.NodeControls
                 if (AudioTrimStartSecLabel != null) AudioTrimStartSecLabel.Text = $"{_node.AudioTrimStartSec:0.##}s";
                 if (AudioTrimEndSecLabel != null) AudioTrimEndSecLabel.Text = $"{_node.AudioTrimEndSec:0.##}s";
                 UpdateAudioTrimDurationLabel();
+
+                if (AudioTrimWaveformControl != null)
+                {
+                    AudioTrimWaveformControl.TotalDurationSec = totalDuration > 0 ? totalDuration : 100;
+                    AudioTrimWaveformControl.TrimStartSec = _node.AudioTrimStartSec;
+                    AudioTrimWaveformControl.TrimEndSec = _node.AudioTrimEndSec > 0 ? _node.AudioTrimEndSec : (totalDuration > 0 ? totalDuration : 100);
+                    AudioTrimWaveformControl.InvalidateVisual();
+                }
 
                 if (AudioPitchSlider != null)
                 {
