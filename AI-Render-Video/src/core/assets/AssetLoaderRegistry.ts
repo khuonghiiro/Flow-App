@@ -1,55 +1,59 @@
 import * as THREE from 'three';
 
 export class AssetLoaderRegistry {
-  private static cache: Map<string, THREE.Object3D> = new Map();
+  public static createGround(): THREE.Group {
+    const ground = new THREE.Group();
+    ground.name = 'environment_ground';
 
-  public static createGround(size: number = 60): THREE.Group {
-    const group = new THREE.Group();
-    group.name = 'Environment_Ground';
-
-    // Grass & Terrain Base
-    const groundGeo = new THREE.PlaneGeometry(size, size, 32, 32);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x2e4a2b,
+    // Grass terrain
+    const grassGeo = new THREE.PlaneGeometry(30, 30);
+    const grassMat = new THREE.MeshStandardMaterial({
+      color: 0x2d5a27,
       roughness: 0.85,
-      metalness: 0.1,
+      metalness: 0.05,
     });
-    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-    groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.receiveShadow = true;
-    group.add(groundMesh);
+    const grass = new THREE.Mesh(grassGeo, grassMat);
+    grass.rotation.x = -Math.PI / 2;
+    grass.receiveShadow = true;
+    ground.add(grass);
 
-    // Stone Path in the middle
-    const pathGeo = new THREE.PlaneGeometry(4, size * 0.8);
+    // Dirt Path
+    const pathGeo = new THREE.PlaneGeometry(3.5, 30);
     const pathMat = new THREE.MeshStandardMaterial({
-      color: 0x4f4943,
-      roughness: 0.9,
-      metalness: 0.1,
+      color: 0x5c4033,
+      roughness: 0.95,
     });
-    const pathMesh = new THREE.Mesh(pathGeo, pathMat);
-    pathMesh.rotation.x = -Math.PI / 2;
-    pathMesh.position.set(0, 0.02, 0);
-    pathMesh.receiveShadow = true;
-    group.add(pathMesh);
+    const path = new THREE.Mesh(pathGeo, pathMat);
+    path.rotation.x = -Math.PI / 2;
+    path.position.set(0, 0.01, 0);
+    path.receiveShadow = true;
+    ground.add(path);
 
-    // Village boundaries / low fence markers
-    const fenceGeo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
-    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.8 });
-    for (let i = -15; i <= 15; i += 3) {
-      if (Math.abs(i) > 2) {
-        const postL = new THREE.Mesh(fenceGeo, fenceMat);
-        postL.position.set(-6, 0.4, i);
-        postL.castShadow = true;
-        group.add(postL);
+    // Fences
+    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 0.8 });
+    const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6);
+    const railGeo = new THREE.BoxGeometry(2.0, 0.08, 0.04);
 
-        const postR = new THREE.Mesh(fenceGeo, fenceMat);
-        postR.position.set(6, 0.4, i);
-        postR.castShadow = true;
-        group.add(postR);
+    for (let i = -4; i <= 4; i += 2) {
+      const post = new THREE.Mesh(postGeo, fenceMat);
+      post.position.set(2.2, 0.55, i);
+      post.castShadow = true;
+      ground.add(post);
+
+      if (i < 4) {
+        const rail1 = new THREE.Mesh(railGeo, fenceMat);
+        rail1.position.set(2.2, 0.8, i + 1);
+        rail1.castShadow = true;
+        ground.add(rail1);
+
+        const rail2 = new THREE.Mesh(railGeo, fenceMat);
+        rail2.position.set(2.2, 0.4, i + 1);
+        rail2.castShadow = true;
+        ground.add(rail2);
       }
     }
 
-    return group;
+    return ground;
   }
 
   public static createTree(position: [number, number, number]): THREE.Group {
@@ -57,27 +61,30 @@ export class AssetLoaderRegistry {
     tree.position.set(...position);
     tree.name = 'prop_village_tree';
 
-    // Trunk
+    // Solid Wood Trunk (NEVER transparent)
     const trunkGeo = new THREE.CylinderGeometry(0.35, 0.55, 3.2, 8);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.name = 'tree_trunk';
     trunk.position.y = 1.6;
     trunk.castShadow = true;
     trunk.receiveShadow = true;
     tree.add(trunk);
 
-    // Branch seat
+    // Solid Wood Branch seat (NEVER transparent)
     const branchGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.6, 6);
     const branch = new THREE.Mesh(branchGeo, trunkMat);
+    branch.name = 'tree_branch';
     branch.rotation.z = Math.PI / 3;
     branch.position.set(0.6, 2.3, 0);
     branch.castShadow = true;
     tree.add(branch);
 
-    // Leaves Foliage
+    // Leaves Foliage (CAN become translucent on camera occlusion)
     const leavesGeo1 = new THREE.DodecahedronGeometry(1.6, 1);
-    const leavesMat = new THREE.MeshStandardMaterial({ color: 0x1f6629, roughness: 0.7 });
-    const leaves1 = new THREE.Mesh(leavesGeo1, leavesMat);
+    const leavesMat1 = new THREE.MeshStandardMaterial({ color: 0x1f6629, roughness: 0.7 });
+    const leaves1 = new THREE.Mesh(leavesGeo1, leavesMat1);
+    leaves1.name = 'tree_leaves_1';
     leaves1.position.y = 3.6;
     leaves1.castShadow = true;
     tree.add(leaves1);
@@ -85,6 +92,7 @@ export class AssetLoaderRegistry {
     const leavesGeo2 = new THREE.DodecahedronGeometry(1.2, 1);
     const leavesMat2 = new THREE.MeshStandardMaterial({ color: 0x2e853a, roughness: 0.7 });
     const leaves2 = new THREE.Mesh(leavesGeo2, leavesMat2);
+    leaves2.name = 'tree_leaves_2';
     leaves2.position.set(0.6, 4.4, 0.4);
     leaves2.castShadow = true;
     tree.add(leaves2);
@@ -102,6 +110,7 @@ export class AssetLoaderRegistry {
     // Seat
     const seatGeo = new THREE.BoxGeometry(0.7, 0.08, 0.7);
     const seat = new THREE.Mesh(seatGeo, woodMat);
+    seat.name = 'chair_seat';
     seat.position.y = 0.5;
     seat.castShadow = true;
     chair.add(seat);
@@ -109,6 +118,7 @@ export class AssetLoaderRegistry {
     // Backrest
     const backGeo = new THREE.BoxGeometry(0.7, 0.8, 0.08);
     const back = new THREE.Mesh(backGeo, woodMat);
+    back.name = 'chair_back';
     back.position.set(0, 0.9, -0.31);
     back.castShadow = true;
     chair.add(back);

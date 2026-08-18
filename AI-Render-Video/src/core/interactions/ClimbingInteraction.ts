@@ -8,7 +8,8 @@ export class ClimbingInteraction {
     avatar: VRMAvatar,
     animator: ActorAnimator,
     treeSocketId: string,
-    progress: number // 0.0 (start) to 1.0 (end of track)
+    progress: number, // 0.0 (start) to 1.0 (end of track)
+    currentTime: number = 0
   ): void {
     const socket = SmartSocketRegistry.getSocket(treeSocketId);
     if (!socket || socket.type !== 'tree') return;
@@ -17,9 +18,10 @@ export class ClimbingInteraction {
     const base = new THREE.Vector3(...socket.entryPosition);
     const branch = new THREE.Vector3(...socket.targetPosition);
     const targetRotY = socket.targetRotationY ?? 0;
+    const trunkFacingAngle = Math.PI; // Face toward the tree trunk while climbing
 
     if (progress < 0.2) {
-      // Phase 1 (0% - 20%): Walk towards tree base
+      // Phase 1 (0% - 20%): Walk towards tree trunk base
       const p = progress / 0.2;
       avatar.rootObject.position.lerpVectors(startPos, base, p);
       const dir = base.clone().sub(startPos);
@@ -27,17 +29,39 @@ export class ClimbingInteraction {
         avatar.rootObject.rotation.y = Math.atan2(dir.x, dir.z);
       }
       animator.setAction('walk');
+      animator.update(currentTime);
     } else if (progress < 0.55) {
-      // Phase 2 (20% - 55%): Climb up the tree trunk vertically
+      // Phase 2 (20% - 55%): Climb up the tree trunk vertically with realistic gripping cadence
       const p = (progress - 0.2) / 0.35;
       avatar.rootObject.position.lerpVectors(base, branch, p);
-      avatar.rootObject.rotation.y = targetRotY;
+
+      // Face the trunk while climbing, then rotate to face out when near the branch
+      if (p < 0.85) {
+        avatar.rootObject.rotation.y = trunkFacingAngle;
+      } else {
+        const turnProgress = (p - 0.85) / 0.15;
+        avatar.rootObject.rotation.y = THREE.MathUtils.lerp(
+          trunkFacingAngle,
+          targetRotY,
+          turnProgress
+        );
+      }
+
       animator.setAction('climb');
-    } else {
-      // Phase 3 (55% - 100%): Seated comfortably on the high branch
+      animator.update(currentTime);
+    } else if (progress < 0.65) {
+      // Phase 3 (55% - 65%): Smoothly settle onto the branch
+      const p = (progress - 0.55) / 0.10;
       avatar.rootObject.position.copy(branch);
       avatar.rootObject.rotation.y = targetRotY;
       animator.setAction('sit');
+      animator.update(currentTime, p);
+    } else {
+      // Phase 4 (65% - 100%): Seated comfortably on the branch
+      avatar.rootObject.position.copy(branch);
+      avatar.rootObject.rotation.y = targetRotY;
+      animator.setAction('sit');
+      animator.update(currentTime, 1.0);
     }
   }
 }

@@ -6,6 +6,13 @@ export interface OccludableMesh {
   targetOpacity: number;
 }
 
+export interface FoliageFocusActor {
+  id: string;
+  headPosition: THREE.Vector3;
+  isClimbingOrOnTree: boolean;
+  isFocused: boolean; // is being inspected, is speaking, or is camera target
+}
+
 export class OcclusionFoliageManager {
   private occludables: OccludableMesh[] = [];
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
@@ -17,14 +24,13 @@ export class OcclusionFoliageManager {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         const name = mesh.name.toLowerCase();
-        const parentName = mesh.parent?.name.toLowerCase() || '';
 
-        // Identify foliage, leaves, tree crowns, and branches
+        // ONLY leaf clusters/foliage can become translucent!
+        // Solid wood trunks and wooden branches are NEVER foliage and stay 100% solid/opaque!
         const isFoliage =
-          name.includes('leaves') ||
-          name.includes('foliage') ||
-          name.includes('branch') ||
-          parentName.includes('tree');
+          (name.includes('leaves') || name.includes('foliage') || name.includes('leaf')) &&
+          !name.includes('trunk') &&
+          !name.includes('branch');
 
         if (isFoliage && mesh.material) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -45,20 +51,23 @@ export class OcclusionFoliageManager {
 
   public update(
     camera: THREE.PerspectiveCamera,
-    targetPositions: THREE.Vector3[],
+    actors: FoliageFocusActor[],
     delta: number
   ): void {
-    if (this.occludables.length === 0 || targetPositions.length === 0) return;
+    if (this.occludables.length === 0) return;
 
-    // Reset all target opacities to full
+    // Default: All foliage is 100% solid/opaque (che kín cây tự nhiên)
     for (const item of this.occludables) {
       item.targetOpacity = 1.0;
     }
 
     const camPos = camera.position;
 
-    // Raycast from camera to each active actor position
-    for (const targetPos of targetPositions) {
+    // ONLY activate X-Ray transparency on leaves if the actor is on the tree AND currently focused/speaking/inspected
+    const activeTreeClimbers = actors.filter((a) => a.isClimbingOrOnTree && a.isFocused);
+
+    for (const actor of activeTreeClimbers) {
+      const targetPos = actor.headPosition;
       const dir = targetPos.clone().sub(camPos);
       const dist = dir.length();
       if (dist < 0.1) continue;
@@ -78,25 +87,29 @@ export class OcclusionFoliageManager {
         }
       }
 
-      // Proximity check: If actor is inside/on tree, fade near leaves
+      // Proximity check: Fade leaves immediately enveloping the focused climber
       for (const item of this.occludables) {
         const meshPos = new THREE.Vector3();
         item.mesh.getWorldPosition(meshPos);
-        if (meshPos.distanceTo(targetPos) < 2.2) {
-          item.targetOpacity = Math.min(item.targetOpacity, 0.35);
+        if (meshPos.distanceTo(targetPos) < 1.8) {
+          item.targetOpacity = Math.min(item.targetOpacity, 0.3);
         }
       }
     }
 
     // Smoothly lerp opacities
-    const lerpSpeed = delta * 8;
+    const lerpSpeed = delta * 6;
     for (const item of this.occludables) {
       const mats = Array.isArray(item.mesh.material)
         ? item.mesh.material
         : [item.mesh.material];
 
       mats.forEach((mat) => {
-        mat.opacity = THREE.MathUtils.lerp(mat.opacity, item.targetOpacity, Math.min(1, lerpSpeed));
+        mat.opacity = THREE.MathUtils.lerp(
+          mat.opacity,
+          item.targetOpacity,
+          Math.min(1, lerpSpeed)
+        );
       });
     }
   }

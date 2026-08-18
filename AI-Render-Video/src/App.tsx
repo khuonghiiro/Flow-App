@@ -11,7 +11,7 @@ import { NavMeshManager } from './core/navigation/NavMeshManager';
 import { PathNavigator } from './core/navigation/PathNavigator';
 import { CameraDirector } from './core/camera/CameraDirector';
 import { InspectCameraAngle, ActorVisualState } from './core/camera/CameraFraming';
-import { OcclusionFoliageManager } from './core/camera/OcclusionFoliageManager';
+import { OcclusionFoliageManager, FoliageFocusActor } from './core/camera/OcclusionFoliageManager';
 import { TrackEvaluator, ActorRuntime } from './core/timeline/TrackEvaluator';
 import { MasterClock } from './core/timeline/MasterClock';
 import { VRMAvatar } from './core/actors/VRMAvatar';
@@ -121,9 +121,28 @@ export const App: React.FC = () => {
         );
       }
 
-      // Collect actor visual states & head positions for camera & foliage
+      // Collect actor visual states & foliage focus states
       const actorStates = new Map<string, ActorVisualState>();
-      const targetPositions: THREE.Vector3[] = [];
+      const foliageActors: FoliageFocusActor[] = [];
+
+      const activeDialogues = activeScene.dialogues_manifest || [];
+      const currentSpeakingSpeakerId = activeDialogues.find(
+        (d) =>
+          t >= d.start_time &&
+          t <= d.start_time + (d.actual_duration || d.estimated_duration || 3.0)
+      )?.speaker_id;
+
+      const currentInspectId = cameraDirectorRef.current?.getInspectTargetId();
+
+      const currentCameraTrack =
+        (activeScene.camera_tracks || []).find((c) => t >= c.start && t <= c.end) ||
+        (activeScene.camera_tracks || [])[0];
+
+      const currentCameraTargetId =
+        currentCameraTrack?.follow_target ||
+        (typeof currentCameraTrack?.look_at === 'string'
+          ? currentCameraTrack.look_at.replace('.head', '')
+          : null);
 
       for (const [id, runtime] of actorsMapRef.current.entries()) {
         const p = new THREE.Vector3();
@@ -132,7 +151,26 @@ export const App: React.FC = () => {
         const rotY = runtime.avatar.rootObject.rotation.y;
 
         actorStates.set(id, { position: p, headPosition: head, rotationY: rotY });
-        targetPositions.push(head);
+
+        // Actor is on tree if climbing track is active or altitude is up in the canopy
+        const isClimbingOrOnTree =
+          p.y > 1.2 ||
+          (runtime.avatar.config.tracks.movement || []).some(
+            (m) => m.action === 'climb' && t >= m.start && t <= m.end
+          );
+
+        // Foliage only turns transparent if this actor is actively focused / speaking / inspected
+        const isFocused =
+          currentInspectId === id ||
+          currentSpeakingSpeakerId === id ||
+          currentCameraTargetId === id;
+
+        foliageActors.push({
+          id,
+          headPosition: head,
+          isClimbingOrOnTree,
+          isFocused,
+        });
       }
 
       // Camera Director Update
@@ -140,9 +178,9 @@ export const App: React.FC = () => {
         cameraDirectorRef.current.update(activeScene, t, actorStates, delta);
       }
 
-      // Occlusion Transparency (Genshin Impact foliage X-Ray)
+      // Occlusion Transparency: Only active tree climbers that are currently focused turn foliage transparent!
       if (occlusionFoliageRef.current) {
-        occlusionFoliageRef.current.update(renderer.camera, targetPositions, delta);
+        occlusionFoliageRef.current.update(renderer.camera, foliageActors, delta);
       }
 
       // Screen Shake Post-processing

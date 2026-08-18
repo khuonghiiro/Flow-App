@@ -77,8 +77,7 @@ export class TrackEvaluator {
             } else if (mov.action === 'sit' && mov.target_object) {
               ChairInteraction.executeSitting(avatar, animator, mov.target_object, progress, currentTime);
             } else if (mov.action === 'climb' && mov.target_object) {
-              ClimbingInteraction.executeClimb(avatar, animator, mov.target_object, progress);
-              animator.update(currentTime);
+              ClimbingInteraction.executeClimb(avatar, animator, mov.target_object, progress, currentTime);
             } else {
               animator.setAction(mov.action);
               animator.update(currentTime);
