@@ -1,5 +1,16 @@
 // Types for AI 3D Animation Studio - Master Scene Schema
 
+import { CombatMasterTrack } from './combat';
+import {
+  ObjectInteractionTrack,
+  TransformConfig,
+  UpgradeEvent,
+  SpawnObjectEvent,
+  DestroyObjectEvent,
+  InventoryActionTrack,
+  ActorInventory,
+} from './interactions';
+
 export interface Vector3D {
   x: number;
   y: number;
@@ -81,16 +92,27 @@ export interface CameraTrack {
 export interface MovementTrackItem {
   start: number;
   end: number;
-  action: 'idle' | 'walk' | 'run' | 'talk_gesture' | 'sit' | 'climb';
+  action:
+    | 'idle' | 'walk' | 'run' | 'talk_gesture' | 'sit' | 'climb'
+    | 'fly_to' | 'dash_to' | 'teleport'
+    | 'kneel' | 'bow' | 'meditate'
+    | 'arms_crossed' | 'hands_behind_back';
   destination?: Vec3Tuple;
   target_object?: string;
   avoid_obstacles?: boolean;
   look_at?: string;
+  fly_height?: number;        // Chiều cao bay (cho fly_to)
+  speed_multiplier?: number;  // Tốc độ di chuyển (1.0 = bình thường)
 }
 
 export interface ExpressionKeyframe {
   time_offset: number;
-  type: 'angry' | 'pain' | 'smile' | 'smirk' | 'sad' | 'serious' | 'surprised' | 'neutral';
+  type:
+    | 'angry' | 'pain' | 'smile' | 'smirk' | 'sad' | 'serious'
+    | 'surprised' | 'neutral' | 'shock'
+    // Xianxia / Tiên hiệp biểu cảm
+    | 'cold' | 'arrogant' | 'contempt' | 'wise' | 'fierce'
+    | 'meditative' | 'menacing' | 'compassionate' | 'determined';
   weight: number;
 }
 
@@ -137,6 +159,11 @@ export interface ActorTracks {
   speech?: SpeechTrackItem[];
   combat_actions?: CombatActionItem[];
   vfx?: VFXTrackItem[];
+  // Hệ thống mới
+  object_interactions?: ObjectInteractionTrack[];
+  transformations?: TransformConfig[];
+  combat_master?: CombatMasterTrack;
+  inventory_actions?: InventoryActionTrack[];
 }
 
 export interface ActorConfig {
@@ -147,6 +174,11 @@ export interface ActorConfig {
   spawn_point: Vec3Tuple;
   rotation_y?: number;
   tracks: ActorTracks;
+  // Hệ thống mới
+  inventory?: ActorInventory;
+  can_fly?: boolean;            // Nhân vật có thể bay
+  power_level?: number;         // Cấp lực (dùng cho xianxia)
+  faction?: string;             // Phe phái
 }
 
 export interface CropGrowthStage {
@@ -159,6 +191,10 @@ export interface DynamicWorldEvent {
   target: string;
   growth_timeline?: CropGrowthStage[];
   custom_event?: string;
+  // Hệ thống mới
+  upgrade?: UpgradeEvent;
+  spawn_object?: SpawnObjectEvent;
+  destroy_object?: DestroyObjectEvent;
 }
 
 export interface MasterSceneConfig {

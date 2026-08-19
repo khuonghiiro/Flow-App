@@ -2,10 +2,18 @@ import * as THREE from 'three';
 import { VRMAvatar } from './VRMAvatar';
 
 export type AnimationAction =
+  // Basic Movement
   | 'idle'
   | 'walk'
   | 'run'
   | 'talk_gesture'
+  | 'sit'
+  | 'climb'
+  // Advanced Movement
+  | 'fly_to'
+  | 'dash_to'
+  | 'teleport'
+  // Combat
   | 'heavy_slash_combo'
   | 'fast_slash'
   | 'magic_blast'
@@ -14,8 +22,28 @@ export type AnimationAction =
   | 'stagger_back'
   | 'block_defend'
   | 'dodge'
-  | 'sit'
-  | 'climb';
+  // Xianxia Poses
+  | 'arms_crossed'
+  | 'hands_behind_back'
+  | 'kneel'
+  | 'bow'
+  | 'meditate'
+  | 'fist_salute'
+  | 'finger_spell'
+  | 'power_charge'
+  | 'flying_stance'
+  // Object Interaction
+  | 'pickup_right'
+  | 'carry_two_hands'
+  | 'drink'
+  | 'pour'
+  | 'dig'
+  | 'water_plants'
+  | 'plant_seed'
+  | 'harvest'
+  | 'wave'
+  | 'dance'
+  | 'throw';
 
 export class ActorAnimator {
   private avatar: VRMAvatar;
