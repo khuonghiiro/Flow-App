@@ -19,8 +19,6 @@ lib64/
 parts/
 sdist/
 var/
-assets/maps/*.glb
-assets/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/
@@ -28,10 +26,11 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# AI Models & Temp Data (Users can download and store models locally)
+# AI Models & Temp Data / Media
 models/
 temp_audio/
 temp/
+exports/
 *.wav
 *.mp3
 *.mp4
@@ -51,3 +50,10 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Assets Directory:
+# Ignore everything in assets/ except directories, .md files, and asset_manifest.json
+assets/**/*
+!assets/**/
+!assets/**/*.md
+!assets/**/asset_manifest.json

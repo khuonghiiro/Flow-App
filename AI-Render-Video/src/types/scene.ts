@@ -166,10 +166,24 @@ export interface ActorTracks {
   inventory_actions?: InventoryActionTrack[];
 }
 
+/** Lắp ráp nhân vật từ các parts modular */
+export interface CharacterAssembly {
+  base_body: string;           // "characters/base_bodies/male_warrior.vrm"
+  face?: string;               // "characters/faces/face_male_young.glb"
+  hairstyle?: string;          // "characters/hairstyles/hair_long_flowing.glb"
+  beard?: string;              // "characters/beards/beard_long_sage.glb"
+  costume?: string;            // "characters/costumes/costume_xianxia_white.glb"
+  accessories?: string[];      // ["characters/accessories/acc_crown_gold.glb"]
+  skin_color?: string;         // "#ffd1b3"
+  hair_color?: string;         // "#1a1a2e"
+  eye_color?: string;          // "#4a90d9"
+}
+
 export interface ActorConfig {
   id: string;
   name: string;
-  model: string;
+  model: string;                      // Backward compat: "characters/hero_knight.vrm"
+  assembly?: CharacterAssembly;       // Modular character assembly
   costume?: string;
   spawn_point: Vec3Tuple;
   rotation_y?: number;
@@ -180,6 +194,7 @@ export interface ActorConfig {
   power_level?: number;         // Cấp lực (dùng cho xianxia)
   faction?: string;             // Phe phái
 }
+
 
 export interface CropGrowthStage {
   time: number;

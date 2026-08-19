@@ -1,0 +1,133 @@
+{
+  "generated_at": "2026-08-19 08:23:22",
+  "total_files": 5,
+  "total_size_mb": 23.5,
+  "characters": {
+    "base_bodies": [
+      {
+        "id": "sample_avatar",
+        "name": "sample_avatar.vrm",
+        "relPath": "characters/sample_avatar.vrm",
+        "format": "VRM",
+        "sizeMB": "10.28"
+      }
+    ],
+    "faces": [],
+    "hairstyles": [],
+    "beards": [],
+    "costumes": [],
+    "accessories": []
+  },
+  "props": {
+    "weapons": [],
+    "tools": [],
+    "consumables": [],
+    "furniture": [],
+    "buildings": [],
+    "nature": [],
+    "vehicles": [],
+    "legacy": [
+      {
+        "id": "duck_prop",
+        "name": "duck_prop.glb",
+        "relPath": "props/duck_prop.glb",
+        "format": "GLB",
+        "sizeMB": "0.11"
+      },
+      {
+        "id": "lantern_prop",
+        "name": "lantern_prop.glb",
+        "relPath": "props/lantern_prop.glb",
+        "format": "GLB",
+        "sizeMB": "9.42"
+      }
+    ]
+  },
+  "maps": [
+    {
+      "id": "scene",
+      "name": "scene.gltf",
+      "relPath": "maps/medieval_fantasy_book/scene.gltf",
+      "format": "GLTF",
+      "sizeMB": "0.03"
+    },
+    {
+      "id": "medieval_fantasy_book",
+      "name": "medieval_fantasy_book.glb",
+      "relPath": "maps/medieval_fantasy_book.glb",
+      "format": "GLB",
+      "sizeMB": "3.70"
+    }
+  ],
+  "audio": {
+    "bgm": [],
+    "sfx_combat": [],
+    "sfx_interaction": [],
+    "sfx_ambient": []
+  },
+  "animations": {
+    "combat": [],
+    "interaction": [],
+    "xianxia": [],
+    "locomotion": []
+  },
+  "vfx": [],
+  "available_actions": [
+    "idle",
+    "walk",
+    "run",
+    "sit",
+    "climb",
+    "fly_to",
+    "dash_to",
+    "teleport",
+    "kneel",
+    "bow",
+    "meditate",
+    "heavy_slash_combo",
+    "fast_slash",
+    "magic_blast",
+    "punch_kick",
+    "fly_back_knockdown",
+    "stagger_back",
+    "block_defend",
+    "dodge",
+    "arms_crossed",
+    "hands_behind_back",
+    "fist_salute",
+    "finger_spell",
+    "power_charge",
+    "flying_stance",
+    "pickup_right",
+    "carry_two_hands",
+    "drink",
+    "pour",
+    "dig",
+    "water_plants",
+    "plant_seed",
+    "harvest",
+    "wave",
+    "dance",
+    "throw"
+  ],
+  "available_expressions": [
+    "neutral",
+    "angry",
+    "pain",
+    "smile",
+    "smirk",
+    "sad",
+    "serious",
+    "surprised",
+    "shock",
+    "cold",
+    "arrogant",
+    "contempt",
+    "wise",
+    "fierce",
+    "meditative",
+    "menacing",
+    "compassionate",
+    "determined"
+  ]
+}
