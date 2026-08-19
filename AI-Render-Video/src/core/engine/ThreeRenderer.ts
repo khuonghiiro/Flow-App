@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GizmoTransformManager } from './GizmoTransformManager';
 
 export interface RendererOptions {
   antialias?: boolean;
@@ -13,6 +14,7 @@ export class ThreeRenderer {
   public camera: THREE.PerspectiveCamera;
   public renderer: THREE.WebGLRenderer;
   public controls: OrbitControls | null = null;
+  public gizmo: GizmoTransformManager | null = null;
   public container: HTMLElement | null = null;
   public isRunning: boolean = false;
   private animationFrameId: number | null = null;
@@ -21,6 +23,7 @@ export class ThreeRenderer {
   public fps: number = 60;
   private frameCount: number = 0;
   private lastFpsUpdate: number = 0;
+  private isFreeCamEnabled: boolean = false;
 
   constructor(options: RendererOptions = {}) {
     this.scene = new THREE.Scene();
@@ -56,6 +59,14 @@ export class ThreeRenderer {
     this.controls.dampingFactor = 0.05;
     this.controls.enabled = false; // default: director camera tracks take priority
 
+    // Initialize Unity-Style Transform Gizmo Controls
+    this.gizmo = new GizmoTransformManager(this.camera, this.renderer.domElement, this.scene);
+    this.gizmo.onDraggingChange((isDragging) => {
+      if (this.controls) {
+        this.controls.enabled = !isDragging && this.isFreeCamEnabled;
+      }
+    });
+
     this.handleResize();
     window.addEventListener('resize', this.onWindowResize);
   }
@@ -63,6 +74,10 @@ export class ThreeRenderer {
   public unmount(): void {
     this.stop();
     window.removeEventListener('resize', this.onWindowResize);
+    if (this.gizmo) {
+      this.gizmo.dispose();
+      this.gizmo = null;
+    }
     if (this.controls) {
       this.controls.dispose();
       this.controls = null;
@@ -73,6 +88,7 @@ export class ThreeRenderer {
   }
 
   public setFreeCam(enabled: boolean): void {
+    this.isFreeCamEnabled = enabled;
     if (this.controls) {
       this.controls.enabled = enabled;
       if (enabled) {

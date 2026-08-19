@@ -28,12 +28,20 @@ import { ActorVisualState } from './core/camera/CameraFraming';
 import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 import { MapPresetManager } from './core/maps/MapPresetManager';
 import { GifOverlayManager } from './core/vfx/GifOverlayManager';
+import { PlacedProp } from './types/map_preset';
+import { SelectedSceneObject } from './ui/TransformInspector';
 
 export const App: React.FC = () => {
 
   const [scene, setScene] = useState<MasterSceneConfig>(defaultScene);
   const sceneRef = useRef<MasterSceneConfig>(defaultScene);
+  const [selectedObject, setSelectedObject] = useState<SelectedSceneObject | null>(null);
+  const selectedObjectRef = useRef<SelectedSceneObject | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    selectedObjectRef.current = selectedObject;
+  }, [selectedObject]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [isLooping, setIsLooping] = useState(true);
@@ -80,29 +88,53 @@ export const App: React.FC = () => {
   const gifOverlayRef = useRef<GifOverlayManager | null>(null);
   const lastStateSyncRef = useRef({ time: 0, fps: 0, subLineId: '' });
 
+  // Default Initial Village Props with unique IDs and initial positions
+  const defaultVillageProps: PlacedProp[] = [
+    { id: 'placed_tree_oak_01', asset_path: 'props/nature/tree_sakura.glb', position: [4, 0, -3], type: 'nature', is_obstacle: true },
+    { id: 'placed_chair_01', asset_path: 'props/furniture/chair_wooden.glb', position: [-4, 0, -2], type: 'furniture', is_obstacle: true, smart_socket: { socket_type: 'sit', entry_offset: [0, 0, 0.8], target_offset: [0, 0.5, 0], target_rotation_y: 0 } },
+    { id: 'placed_farm_plot_01', asset_path: 'props/nature/farm_plot.glb', position: [0, 0, -5], type: 'nature', is_obstacle: true },
+    { id: 'placed_duck_01', asset_path: 'props/nature/duck.glb', position: [0.8, 0, -2.5], type: 'animal', is_obstacle: false },
+    { id: 'placed_lantern_stand_01', asset_path: 'props/furniture/lantern_stand.glb', position: [-3.2, 0, -2.0], type: 'furniture', is_obstacle: true },
+  ];
+
   // Populate complete village props (ground, tree, chair, farm, duck, lantern)
-  const populateVillageProps = (group: THREE.Group) => {
+  const populateVillageProps = (group: THREE.Group, propsList?: PlacedProp[]) => {
     const ground = AssetLoaderRegistry.createGround();
     group.add(ground);
 
-    const tree = AssetLoaderRegistry.createTree([4, 0, -3]);
+    const getPos = (id: string, def: [number, number, number]): [number, number, number] => {
+      const found = (propsList || []).find((p) => p.id === id);
+      return found ? found.position : def;
+    };
+
+    const tree = AssetLoaderRegistry.createTree(getPos('placed_tree_oak_01', [4, 0, -3]));
+    tree.name = 'placed_tree_oak_01';
     group.add(tree);
+    sceneObjectsRef.current.set('placed_tree_oak_01', tree);
 
-    const chair = AssetLoaderRegistry.createChair([-4, 0, -2]);
+    const chair = AssetLoaderRegistry.createChair(getPos('placed_chair_01', [-4, 0, -2]));
+    chair.name = 'placed_chair_01';
     group.add(chair);
+    sceneObjectsRef.current.set('placed_chair_01', chair);
 
-    const farm = AssetLoaderRegistry.createFarmPlot([0, 0, -5]);
+    const farm = AssetLoaderRegistry.createFarmPlot(getPos('placed_farm_plot_01', [0, 0, -5]));
+    farm.name = 'placed_farm_plot_01';
     group.add(farm);
+    sceneObjectsRef.current.set('placed_farm_plot_01', farm);
     const crop = farm.getObjectByName('crop');
     if (crop) {
       sceneObjectsRef.current.set('props.farm_plot_01.crop', crop);
     }
 
-    const duck = AssetLoaderRegistry.createDuckProp([0.8, 0, -2.5]);
+    const duck = AssetLoaderRegistry.createDuckProp(getPos('placed_duck_01', [0.8, 0, -2.5]));
+    duck.name = 'placed_duck_01';
     group.add(duck);
+    sceneObjectsRef.current.set('placed_duck_01', duck);
 
-    const lanternStand = AssetLoaderRegistry.createLanternStand([-3.2, 0, -2.0]);
+    const lanternStand = AssetLoaderRegistry.createLanternStand(getPos('placed_lantern_stand_01', [-3.2, 0, -2.0]));
+    lanternStand.name = 'placed_lantern_stand_01';
     group.add(lanternStand);
+    sceneObjectsRef.current.set('placed_lantern_stand_01', lanternStand);
   };
 
   // Dynamic Environment Loader (supports .glb maps and procedural village)
@@ -243,6 +275,21 @@ export const App: React.FC = () => {
     // Build Environment & Actors
     initEnvironment(sceneRef.current, renderer.scene);
     initActors(sceneRef.current, renderer.scene);
+
+    // Connect Unity-Style 3D Transform Gizmo changes to state
+    if (renderer.gizmo) {
+      renderer.gizmo.onTransformChange((data) => {
+        const current = selectedObjectRef.current;
+        if (!current || current.id !== data.id) return;
+        const updated: SelectedSceneObject = {
+          ...current,
+          position: data.position,
+          rotation: data.rotation,
+          scale: data.scale,
+        };
+        handleUpdateTransform(updated);
+      });
+    }
 
 
     // Main Render & Evaluation Loop (60-120fps GPU)
@@ -603,6 +650,276 @@ export const App: React.FC = () => {
     }
   };
 
+  // Place Prop from Asset Browser into Scene
+  const handlePlaceProp = (asset: any) => {
+    if (!rendererRef.current) return;
+    
+    // Find active actor or camera center
+    const activeActor = actorsMapRef.current.get(playerControllerRef.current?.controlledActorId || '') 
+      || Array.from(actorsMapRef.current.values())[0];
+    
+    let targetPos: [number, number, number] = [0, 0, 0];
+    if (activeActor && activeActor.avatar.rootObject) {
+      const p = activeActor.avatar.rootObject.position;
+      const rotY = activeActor.avatar.rootObject.rotation.y;
+      // Spawn 2 meters in front of actor
+      targetPos = [
+        parseFloat((p.x + Math.sin(rotY) * 2.0).toFixed(2)),
+        0,
+        parseFloat((p.z + Math.cos(rotY) * 2.0).toFixed(2)),
+      ];
+    }
+
+    const propId = `placed_${asset.id}_${Date.now().toString().slice(-4)}`;
+    const newProp: PlacedProp = {
+      id: propId,
+      asset_path: asset.path,
+      position: targetPos,
+      scale: asset.propData?.scale || 1.0,
+      type: asset.propData?.type || 'furniture',
+      is_obstacle: asset.propData?.is_obstacle !== undefined ? asset.propData.is_obstacle : true,
+      obstacle_radius: asset.propData?.obstacle_radius || 0.6,
+      smart_socket: asset.propData?.smart_socket,
+    };
+
+    const updatedScene: MasterSceneConfig = {
+      ...sceneRef.current,
+      environment: {
+        ...sceneRef.current.environment,
+        placed_props: [...(sceneRef.current.environment.placed_props || []), newProp],
+      },
+    };
+
+    sceneRef.current = updatedScene;
+    setScene(updatedScene);
+
+    // Instantiate 3D Prop directly in mapGroupRef
+    MapPresetManager.buildPlacedProps(
+      {
+        map_id: 'custom_runtime_props',
+        name: 'Runtime Props',
+        placed_props: [newProp],
+      },
+      mapGroupRef.current,
+      sceneObjectsRef.current
+    );
+  };
+
+  // Switch Map from Asset Browser
+  const handleSelectMap = (mapIdOrGlb: string) => {
+    const isGlb = mapIdOrGlb.endsWith('.glb') || mapIdOrGlb.endsWith('.gltf');
+    const updatedScene: MasterSceneConfig = {
+      ...sceneRef.current,
+      environment: {
+        ...sceneRef.current.environment,
+        map: isGlb ? mapIdOrGlb : 'farming_village',
+        map_preset: isGlb ? undefined : mapIdOrGlb,
+      },
+    };
+
+    handleUpdateScene(updatedScene);
+  };
+
+  // Switch Avatar from Asset Browser
+  const handleSelectAvatar = async (actorId: string, vrmUrl: string) => {
+    const targetActor = sceneRef.current.actors.find((a) => a.id === actorId) || sceneRef.current.actors[0];
+    if (!targetActor) return;
+
+    targetActor.model = vrmUrl;
+    const updatedScene = { ...sceneRef.current };
+    handleUpdateScene(updatedScene);
+  };
+
+  // Play Animation Preview from Asset Browser
+  const handlePlayAnimationPreview = (animName: string) => {
+    const targetId = playerControllerRef.current?.controlledActorId || sceneRef.current.actors[0]?.id;
+    if (targetId) {
+      const runtime = actorsMapRef.current.get(targetId);
+      if (runtime && runtime.animator) {
+        runtime.animator.setAction(animName as any);
+      }
+    }
+  };
+
+  // Update Transform from Inspector in Real-Time
+  const handleUpdateTransform = (updated: SelectedSceneObject) => {
+    setSelectedObject(updated);
+    selectedObjectRef.current = updated;
+
+    if (updated.category === 'actor') {
+      const actorIndex = sceneRef.current.actors.findIndex((a) => a.id === updated.id);
+      if (actorIndex !== -1) {
+        const actor = { ...sceneRef.current.actors[actorIndex] };
+        actor.spawn_point = [...updated.position];
+        actor.rotation_y = (updated.rotation[1] * Math.PI) / 180;
+
+        // Apply immediately to live Three.js avatar
+        const runtime = actorsMapRef.current.get(updated.id);
+        if (runtime && runtime.avatar.rootObject) {
+          runtime.avatar.rootObject.position.set(...updated.position);
+          runtime.avatar.rootObject.rotation.y = actor.rotation_y;
+        }
+
+        const newActors = [...sceneRef.current.actors];
+        newActors[actorIndex] = actor;
+
+        const nextScene: MasterSceneConfig = {
+          ...sceneRef.current,
+          actors: newActors,
+        };
+        sceneRef.current = nextScene;
+        setScene(nextScene);
+      }
+    } else if (updated.category === 'prop') {
+      const placedProps = sceneRef.current.environment.placed_props || [];
+      const propIndex = placedProps.findIndex((p) => p.id === updated.id);
+      if (propIndex !== -1) {
+        const prop: PlacedProp = {
+          ...placedProps[propIndex],
+          position: [...updated.position],
+          rotation: [
+            (updated.rotation[0] * Math.PI) / 180,
+            (updated.rotation[1] * Math.PI) / 180,
+            (updated.rotation[2] * Math.PI) / 180,
+          ],
+          scale: updated.scale,
+          is_obstacle: updated.isObstacle,
+          obstacle_radius: updated.obstacleRadius || 0.6,
+          smart_socket: updated.socketType && updated.socketType !== 'none' ? {
+            socket_type: updated.socketType,
+            entry_offset: [0, 0, 0.8],
+            target_offset: [0, 0.5, 0],
+            target_rotation_y: 0,
+          } : undefined,
+        };
+
+        const newPlacedProps = [...placedProps];
+        newPlacedProps[propIndex] = prop;
+
+        // Apply immediately to live Three.js 3D prop object
+        const threeObj = sceneObjectsRef.current.get(updated.id) || mapGroupRef.current.getObjectByName(updated.id) || rendererRef.current?.scene.getObjectByName(updated.id);
+        if (threeObj) {
+          threeObj.position.set(updated.position[0], updated.position[1], updated.position[2]);
+          if (prop.rotation) {
+            threeObj.rotation.set(prop.rotation[0], prop.rotation[1], prop.rotation[2]);
+          }
+          if (typeof prop.scale === 'number') {
+            threeObj.scale.setScalar(prop.scale);
+          }
+        }
+
+        const nextScene: MasterSceneConfig = {
+          ...sceneRef.current,
+          environment: {
+            ...sceneRef.current.environment,
+            placed_props: newPlacedProps,
+          },
+        };
+        sceneRef.current = nextScene;
+        setScene(nextScene);
+      }
+    }
+  };
+
+  // Delete Prop from Scene
+  const handleDeleteProp = (propId: string) => {
+    const placedProps = sceneRef.current.environment.placed_props || [];
+    const filteredProps = placedProps.filter((p) => p.id !== propId);
+
+    // Remove from 3D Map Group
+    const threeObj = sceneObjectsRef.current.get(propId) || mapGroupRef.current.getObjectByName(propId);
+    if (threeObj) {
+      mapGroupRef.current.remove(threeObj);
+      sceneObjectsRef.current.delete(propId);
+    }
+
+    if (selectedObjectRef.current?.id === propId) {
+      rendererRef.current?.gizmo?.detach();
+    }
+
+    const nextScene: MasterSceneConfig = {
+      ...sceneRef.current,
+      environment: {
+        ...sceneRef.current.environment,
+        placed_props: filteredProps,
+      },
+    };
+    sceneRef.current = nextScene;
+    setScene(nextScene);
+    setSelectedObject(null);
+  };
+
+  // Duplicate Prop in Scene
+  const handleDuplicateProp = (prop: PlacedProp) => {
+    if (!rendererRef.current) return;
+    const newId = `placed_${prop.id.replace('placed_', '')}_copy_${Date.now().toString().slice(-3)}`;
+    const clonedProp: PlacedProp = {
+      ...prop,
+      id: newId,
+      position: [
+        parseFloat((prop.position[0] + 1.2).toFixed(2)),
+        prop.position[1],
+        parseFloat((prop.position[2] + 1.2).toFixed(2)),
+      ],
+    };
+
+    const nextScene: MasterSceneConfig = {
+      ...sceneRef.current,
+      environment: {
+        ...sceneRef.current.environment,
+        placed_props: [...(sceneRef.current.environment.placed_props || []), clonedProp],
+      },
+    };
+    sceneRef.current = nextScene;
+    setScene(nextScene);
+
+    // Instantiate in 3D
+    MapPresetManager.buildPlacedProps(
+      {
+        map_id: 'custom_runtime_props',
+        name: 'Runtime Props',
+        placed_props: [clonedProp],
+      },
+      mapGroupRef.current,
+      sceneObjectsRef.current
+    );
+  };
+
+  // Focus Camera on Object
+  const handleFocusObject = (position: [number, number, number]) => {
+    if (!rendererRef.current) return;
+    rendererRef.current.camera.position.set(position[0] + 3.0, position[1] + 2.5, position[2] + 4.0);
+    rendererRef.current.camera.lookAt(position[0], position[1] + 0.8, position[2]);
+    if (rendererRef.current.controls) {
+      rendererRef.current.controls.target.set(position[0], position[1] + 0.8, position[2]);
+      rendererRef.current.controls.update();
+    }
+  };
+
+  // Select Object and attach Unity 3D Transform Gizmo
+  const handleSelectObject = (obj: SelectedSceneObject | null) => {
+    setSelectedObject(obj);
+    selectedObjectRef.current = obj;
+    if (!rendererRef.current || !rendererRef.current.gizmo) return;
+
+    if (!obj) {
+      rendererRef.current.gizmo.detach();
+      return;
+    }
+
+    if (obj.category === 'actor') {
+      const runtime = actorsMapRef.current.get(obj.id);
+      if (runtime && runtime.avatar.rootObject) {
+        rendererRef.current.gizmo.attach(obj.id, runtime.avatar.rootObject);
+      }
+    } else if (obj.category === 'prop') {
+      const threeObj = sceneObjectsRef.current.get(obj.id) || mapGroupRef.current.getObjectByName(obj.id);
+      if (threeObj) {
+        rendererRef.current.gizmo.attach(obj.id, threeObj);
+      }
+    }
+  };
+
   const handleExportVideo = async (targetFps: number = 60) => {
     if (!rendererRef.current) return;
     setIsExporting(true);
@@ -931,6 +1248,16 @@ export const App: React.FC = () => {
       exportProgressMsg={exportProgressMsg}
       envOverride={envOverride}
       onUpdateEnvOverride={setEnvOverride}
+      onPlaceProp={handlePlaceProp}
+      onSelectMap={handleSelectMap}
+      onSelectAvatar={handleSelectAvatar}
+      onPlayAnimationPreview={handlePlayAnimationPreview}
+      selectedObject={selectedObject}
+      onSelectObject={handleSelectObject}
+      onUpdateTransform={handleUpdateTransform}
+      onDeleteProp={handleDeleteProp}
+      onDuplicateProp={handleDuplicateProp}
+      onFocusObject={handleFocusObject}
     />
   );
 };

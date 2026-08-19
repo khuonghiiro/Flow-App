@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -13,9 +13,12 @@ import { MapRadarView } from './MapRadarView';
 import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
 import { WeatherControlPanel } from './WeatherControlPanel';
+import { AssetBrowserPanel } from './AssetBrowserPanel';
+import { TransformInspector, SelectedSceneObject } from './TransformInspector';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
 import { MapPresetManager } from '../core/maps/MapPresetManager';
+import { PlacedProp } from '../types/map_preset';
 
 interface StudioLayoutProps {
   scene: MasterSceneConfig;
@@ -48,6 +51,16 @@ interface StudioLayoutProps {
   exportProgressMsg: string;
   envOverride: EnvironmentOverride;
   onUpdateEnvOverride: (override: EnvironmentOverride) => void;
+  onPlaceProp?: (prop: any) => void;
+  onSelectMap?: (mapId: string) => void;
+  onSelectAvatar?: (actorId: string, vrmUrl: string) => void;
+  onPlayAnimationPreview?: (animName: string) => void;
+  selectedObject?: SelectedSceneObject | null;
+  onSelectObject?: (obj: SelectedSceneObject | null) => void;
+  onUpdateTransform?: (updated: SelectedSceneObject) => void;
+  onDeleteProp?: (propId: string) => void;
+  onDuplicateProp?: (prop: PlacedProp) => void;
+  onFocusObject?: (position: [number, number, number]) => void;
 }
 
 export const StudioLayout: React.FC<StudioLayoutProps> = ({
@@ -81,12 +94,41 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   exportProgressMsg,
   envOverride,
   onUpdateEnvOverride,
+  onPlaceProp,
+  onSelectMap,
+  onSelectAvatar,
+  onPlayAnimationPreview,
+  selectedObject,
+  onSelectObject,
+  onUpdateTransform,
+  onDeleteProp,
+  onDuplicateProp,
+  onFocusObject,
 }) => {
   const [leftTab, setLeftTab] = useState<'dialogue' | 'combat' | 'weather'>('dialogue');
-  const [rightTab, setRightTab] = useState<'director' | 'radar'>('director');
+  const [rightTab, setRightTab] = useState<'director' | 'radar' | 'inspector'>('inspector');
+  const [bottomTab, setBottomTab] = useState<'timeline' | 'assets'>('timeline');
+  const [isBottomMaximized, setIsBottomMaximized] = useState<boolean>(false);
   const [showCC, setShowCC] = useState(true);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
+  const [gizmoMode, setGizmoMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
+  const [gizmoSpace, setGizmoSpace] = useState<'world' | 'local'>('world');
+
+  const handleChangeGizmoMode = (mode: 'translate' | 'rotate' | 'scale') => {
+    setGizmoMode(mode);
+    if (renderer && renderer.gizmo) {
+      renderer.gizmo.setMode(mode);
+    }
+  };
+
+  const handleToggleGizmoSpace = () => {
+    const next = gizmoSpace === 'world' ? 'local' : 'world';
+    setGizmoSpace(next);
+    if (renderer && renderer.gizmo) {
+      renderer.gizmo.setSpace(next);
+    }
+  };
   
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
     return sceneCategories.find(c => c.scenes.some(s => s.scene_id === scene.scene_id))?.id || sceneCategories[0]?.id || '';
@@ -432,54 +474,126 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           </div>
         </aside>
 
-        {/* Central Viewport & Multi-Track Timeline */}
+        {/* Central Viewport & Multi-Track Timeline / Asset Browser */}
         <main className="studio-center">
           <ViewportCanvas
             renderer={renderer}
             fps={fps}
             activeSubtitle={activeSubtitle}
             subtitlesConfig={scene.subtitles_config}
+            scene={scene}
             showCC={showCC}
             isInspecting={!!inspectingActorId}
             isFreeCam={isFreeCam}
             isLoadingMap={isLoadingMap}
+            selectedObjectId={selectedObject?.id || null}
+            selectedObjectName={selectedObject?.name || null}
+            gizmoMode={gizmoMode}
+            gizmoSpace={gizmoSpace}
+            onChangeGizmoMode={handleChangeGizmoMode}
+            onToggleGizmoSpace={handleToggleGizmoSpace}
+            onSelectObject={onSelectObject}
+            onDeselectObject={() => onSelectObject?.(null)}
+            onDeleteProp={onDeleteProp}
             onToggleCC={() => setShowCC(!showCC)}
             onToggleFreeCam={onToggleFreeCam}
             onResetCamera={onResetCamera}
           />
 
-          <TimelineScrubber
-            scene={scene}
-            currentTime={currentTime}
-            isPlaying={isPlaying}
-            playbackRate={playbackRate}
-            isLooping={isLooping}
-            onTogglePlay={onTogglePlay}
-            onSeek={onSeek}
-            onToggleLoop={onToggleLoop}
-            onChangePlaybackRate={onChangePlaybackRate}
-          />
+          {/* Unity-Style Bottom Dock Panel */}
+          <div className={`studio-bottom-dock ${isBottomMaximized ? 'maximized' : ''}`}>
+            <div className="bottom-dock-tabs">
+              <div className="dock-tabs-left">
+                <button
+                  className={`dock-tab-btn ${bottomTab === 'timeline' ? 'active' : ''}`}
+                  onClick={() => setBottomTab('timeline')}
+                >
+                  <Film size={13} /> Timeline & Hoạt Cảnh
+                </button>
+                <button
+                  className={`dock-tab-btn ${bottomTab === 'assets' ? 'active' : ''}`}
+                  onClick={() => setBottomTab('assets')}
+                >
+                  <FolderOpen size={13} /> Project Assets (Thư Mục Tài Nguyên)
+                </button>
+              </div>
+
+              <div className="dock-tabs-right">
+                <button
+                  className="dock-btn"
+                  title={isBottomMaximized ? 'Thu nhỏ về chuẩn' : 'Mở rộng khung làm việc'}
+                  onClick={() => setIsBottomMaximized(!isBottomMaximized)}
+                >
+                  {isBottomMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  {isBottomMaximized ? 'Thu Nhỏ' : 'Mở Rộng'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bottom-dock-content">
+              {bottomTab === 'timeline' ? (
+                <TimelineScrubber
+                  scene={scene}
+                  currentTime={currentTime}
+                  isPlaying={isPlaying}
+                  playbackRate={playbackRate}
+                  isLooping={isLooping}
+                  onTogglePlay={onTogglePlay}
+                  onSeek={onSeek}
+                  onToggleLoop={onToggleLoop}
+                  onChangePlaybackRate={onChangePlaybackRate}
+                />
+              ) : (
+                <AssetBrowserPanel
+                  onPlaceProp={(prop) => onPlaceProp?.(prop)}
+                  onSelectMap={(mapId) => onSelectMap?.(mapId)}
+                  onSelectAvatar={(actorId, vrmUrl) => onSelectAvatar?.(actorId, vrmUrl)}
+                  onPlayAnimationPreview={onPlayAnimationPreview}
+                  onImportCustomFiles={onImportCustomMap}
+                  actorsList={scene.actors.map((a) => ({ id: a.id, name: a.name || a.id }))}
+                  isMaximized={isBottomMaximized}
+                  onToggleMaximize={() => setIsBottomMaximized(!isBottomMaximized)}
+                />
+              )}
+            </div>
+          </div>
         </main>
 
-        {/* Right Sidebar: AI Director & Radar */}
+        {/* Right Sidebar: AI Director & Radar & Transform Inspector */}
         <aside className="studio-sidebar right">
           <div className="sidebar-tabs">
+            <button
+              className={`sidebar-tab-btn ${rightTab === 'inspector' ? 'active' : ''}`}
+              onClick={() => setRightTab('inspector')}
+            >
+              <Move size={13} /> Transform (XYZ)
+            </button>
             <button
               className={`sidebar-tab-btn ${rightTab === 'director' ? 'active' : ''}`}
               onClick={() => setRightTab('director')}
             >
-              <Bot size={14} /> AI Đạo Diễn
+              <Bot size={13} /> AI Đạo Diễn
             </button>
             <button
               className={`sidebar-tab-btn ${rightTab === 'radar' ? 'active' : ''}`}
               onClick={() => setRightTab('radar')}
             >
-              <Map size={14} /> 2D Radar Map
+              <Map size={13} /> 2D Radar
             </button>
           </div>
 
           <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
-            {rightTab === 'director' ? (
+            {rightTab === 'inspector' ? (
+              <TransformInspector
+                scene={scene}
+                selectedObject={selectedObject || null}
+                onSelectObject={(obj) => onSelectObject?.(obj)}
+                onUpdateTransform={(updated) => onUpdateTransform?.(updated)}
+                onDeleteProp={(propId) => onDeleteProp?.(propId)}
+                onDuplicateProp={(prop) => onDuplicateProp?.(prop)}
+                onFocusObject={(pos) => onFocusObject?.(pos)}
+              />
+            ) : rightTab === 'director' ? (
               <AIChatDirector scene={scene} onApplyScene={onUpdateScene} />
             ) : (
               <MapRadarView actors={actors} navMesh={navMesh} />
