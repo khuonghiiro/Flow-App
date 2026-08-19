@@ -33,7 +33,8 @@ export class TrackEvaluator {
     currentTime: number,
     delta: number,
     actorsMap: Map<string, ActorRuntime>,
-    sceneObjects: Map<string, THREE.Object3D>
+    sceneObjects: Map<string, THREE.Object3D>,
+    controlledActorId: string | null = null
   ): void {
     const actorPositions = new Map<string, THREE.Vector3>();
 
@@ -59,9 +60,11 @@ export class TrackEvaluator {
         )
       );
 
-      // A. Movement Track (if not actively being knocked back)
+      // A. Movement Track (if not actively being knocked back and NOT player-controlled)
       let movementHandled = false;
-      if (!isTargetOfCombatHit && tracks.movement) {
+      const isPlayerControlled = actorConfig.id === controlledActorId;
+
+      if (!isTargetOfCombatHit && tracks.movement && !isPlayerControlled) {
         for (const mov of tracks.movement) {
           if (currentTime >= mov.start && currentTime <= mov.end) {
             movementHandled = true;
@@ -97,7 +100,7 @@ export class TrackEvaluator {
       }
 
       // If idle (not moving, not attacking, and not hit by combat)
-      if (!isTargetOfCombatHit && !movementHandled && (!tracks.combat_actions || tracks.combat_actions.length === 0)) {
+      if (!isTargetOfCombatHit && !movementHandled && (!tracks.combat_actions || tracks.combat_actions.length === 0) && !isPlayerControlled) {
         animator.setAction('idle');
         animator.update(currentTime);
       }

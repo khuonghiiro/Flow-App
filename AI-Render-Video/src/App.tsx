@@ -14,6 +14,7 @@ import { CameraDirector, InspectCameraAngle } from './core/camera/CameraDirector
 import { OcclusionFoliageManager, FoliageFocusActor } from './core/camera/OcclusionFoliageManager';
 import { TrackEvaluator, ActorRuntime } from './core/timeline/TrackEvaluator';
 import { MasterClock } from './core/timeline/MasterClock';
+import { PlayerController } from './core/navigation/PlayerController';
 import { VRMAvatar } from './core/actors/VRMAvatar';
 import { ActorAnimator } from './core/actors/ActorAnimator';
 import { ActorMorphController } from './core/actors/ActorMorphController';
@@ -72,6 +73,7 @@ export const App: React.FC = () => {
   const mapGroupRef = useRef<THREE.Group>(new THREE.Group());
   const mapMixerRef = useRef<THREE.AnimationMixer | null>(null);
   const mapCollidersRef = useRef<THREE.Object3D[]>([]);
+  const playerControllerRef = useRef<PlayerController | null>(null);
 
   // Populate complete village props (ground, tree, chair, farm, duck, lantern)
   const populateVillageProps = (group: THREE.Group) => {
@@ -177,6 +179,7 @@ export const App: React.FC = () => {
     cameraDirectorRef.current = new CameraDirector(renderer.camera);
     occlusionFoliageRef.current = new OcclusionFoliageManager();
     trackEvaluatorRef.current = new TrackEvaluator(combatSync, pathNav);
+    playerControllerRef.current = new PlayerController();
 
     // Build Environment & Actors
     initEnvironment(sceneRef.current, renderer.scene);
@@ -198,8 +201,22 @@ export const App: React.FC = () => {
           t,
           delta,
           actorsMapRef.current,
-          sceneObjectsRef.current
+          sceneObjectsRef.current,
+          playerControllerRef.current?.controlledActorId || null
         );
+      }
+
+      // Auto-assign player controller to the first actor if none selected
+      if (playerControllerRef.current && activeScene.actors.length > 0 && !playerControllerRef.current.controlledActorId) {
+        playerControllerRef.current.controlledActorId = activeScene.actors[0].id;
+      }
+
+      // Player Controller Update
+      if (playerControllerRef.current && playerControllerRef.current.controlledActorId) {
+        const controlledRuntime = actorsMapRef.current.get(playerControllerRef.current.controlledActorId);
+        if (controlledRuntime) {
+          playerControllerRef.current.update(delta, controlledRuntime.avatar, controlledRuntime.animator, renderer.camera, mapCollidersRef.current);
+        }
       }
 
       // Ground Snapping (Physics)
@@ -210,15 +227,44 @@ export const App: React.FC = () => {
             (m) => m.action === 'climb' && t >= m.start && t <= m.end
           );
           if (isClimbing) continue;
-
+          
+          const isPlayer = id === playerControllerRef.current?.controlledActorId;
           const pos = runtime.avatar.rootObject.position;
-          // Cast a ray from 2 meters above the character's root, pointing straight down
+          
           raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
           const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
           
-          if (hits.length > 0) {
-            // Snap to the highest ground point hit by the ray
-            pos.y = hits[0].point.y;
+          let validGroundY: number | null = null;
+          for (const hit of hits) {
+            if (hit.face) {
+              const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+              const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+              // Only consider it ground if the slope is not too steep (worldNormal.y > 0.6 is < ~53 degrees)
+              if (worldNormal.y > 0.6) {
+                validGroundY = hit.point.y;
+                break;
+              }
+            }
+          }
+
+          if (validGroundY !== null) {
+            const groundY = validGroundY;
+            
+            if (isPlayer && playerControllerRef.current) {
+              if (pos.y <= groundY + 0.05) {
+                pos.y = groundY;
+                playerControllerRef.current.isGrounded = true;
+                playerControllerRef.current.velocityY = 0;
+              } else {
+                playerControllerRef.current.isGrounded = false;
+              }
+            } else {
+              pos.y = groundY;
+            }
+          } else {
+            if (isPlayer && playerControllerRef.current) {
+               playerControllerRef.current.isGrounded = false;
+            }
           }
         }
       }
@@ -315,7 +361,8 @@ export const App: React.FC = () => {
     });
 
     return () => {
-      renderer.stop();
+      renderer.unmount();
+      playerControllerRef.current?.dispose();
     };
   }, []);
 

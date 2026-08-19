@@ -89,10 +89,49 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       {/* Top HUD */}
       <div className="viewport-hud" style={{ alignItems: 'flex-start' }}>
         
-        {/* Left Side: FPS */}
+        {/* Left Side: FPS & Controls Guide */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: showUI ? 1 : 0, transition: 'opacity 0.2s', pointerEvents: showUI ? 'auto' : 'none' }}>
-          <div className="hud-pill fps-counter" style={{ padding: '2px 8px', fontSize: 10, borderRadius: 12, background: 'rgba(15, 23, 42, 0.6)' }}>
+          <div className="hud-pill fps-counter" style={{ padding: '2px 8px', fontSize: 10, borderRadius: 12, background: 'rgba(15, 23, 42, 0.6)', alignSelf: 'flex-start' }}>
             <Zap size={10} /> {fps} FPS
+          </div>
+          
+          {/* Controls Guide */}
+          <div style={{
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: 8,
+            padding: '10px 12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            fontSize: 10,
+            color: '#cbd5e1',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            marginTop: 4,
+            width: 140
+          }}>
+            <div style={{ color: '#38bdf8', fontWeight: 600, marginBottom: 4, fontSize: 11 }}>ĐIỀU KHIỂN</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>W,A,S,D</span> <span style={{ opacity: 0.7 }}>Di chuyển</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Space</span> <span style={{ opacity: 0.7 }}>Nhảy</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Shift</span> <span style={{ opacity: 0.7 }}>Chạy</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>1</span> <span style={{ opacity: 0.7 }}>Nói chuyện</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>2</span> <span style={{ opacity: 0.7 }}>Đỡ đòn</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>3</span> <span style={{ opacity: 0.7 }}>Ngồi</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>4</span> <span style={{ opacity: 0.7 }}>Tấn công</span>
+            </div>
           </div>
         </div>
         <div style={{ flex: 1 }} />
