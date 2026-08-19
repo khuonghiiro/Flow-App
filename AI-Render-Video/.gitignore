@@ -56,4 +56,5 @@ Thumbs.db
 assets/**/*
 !assets/**/
 !assets/**/*.md
+!assets/**/*.png
 !assets/**/asset_manifest.json

@@ -29,7 +29,7 @@ export class ThreeRenderer {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#0f111a');
 
-    this.camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 500);
+    this.camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 3000);
     this.camera.position.set(0, 3, 10);
 
     this.renderer = new THREE.WebGLRenderer({

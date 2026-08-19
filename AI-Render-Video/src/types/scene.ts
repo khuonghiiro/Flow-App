@@ -34,6 +34,11 @@ export interface EnvironmentConfig {
     cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
     cloud_layers?: number;         // 1, 2, or 3 layers
     cloud_altitude?: number;       // altitude multiplier
+    skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
+    skybox_url?: string;
+    skybox_rotation?: number;      // 0 to 360 degrees
+    skybox_exposure?: number;      // 0.2 to 2.5
+    skybox_blur?: number;          // 0.0 to 1.0
   };
   placed_props?: PlacedProp[];     // Additional placed props specific to this scene
 }
@@ -51,6 +56,11 @@ export interface EnvironmentOverride {
   cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
   cloud_layers?: number;         // 1, 2, or 3 layers
   cloud_altitude?: number;
+  skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
+  skybox_url?: string;
+  skybox_rotation?: number;      // 0 to 360 degrees
+  skybox_exposure?: number;      // 0.2 to 2.5
+  skybox_blur?: number;          // 0.0 to 1.0
 }
 
 export interface SubtitlesConfig {

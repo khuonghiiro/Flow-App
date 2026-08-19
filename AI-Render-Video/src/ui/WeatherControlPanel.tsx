@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   CloudRain, Sun, Wind, CloudFog, Compass, Droplets, 
-  Cloud, CloudSun, CloudLightning, Sunset, Sunrise, Moon, Layers
+  Cloud, CloudSun, CloudLightning, Sunset, Sunrise, Moon, Layers,
+  Image, RotateCw, Upload
 } from 'lucide-react';
 import { EnvironmentOverride } from '../types/scene';
 
@@ -348,6 +349,180 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
               <span>🌇 Tây (Lặn)</span>
               <span>🌙 Nửa Đêm</span>
             </div>
+          </div>
+
+          {/* ẢNH NỀN BẦU TRỜI 360° (SKYBOX / EQUIRECTANGULAR PANORAMA - UNITY STYLE) */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(147, 51, 234, 0.06))',
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid rgba(56, 189, 248, 0.2)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: '11px', color: '#bae6fd', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Image size={13} color="#38bdf8" /> ẢNH BẦU TRỜI (SKYBOX 360°)
+              </label>
+              <span style={{ fontSize: '10px', fontWeight: 600, color: (override.skybox_type && override.skybox_type !== 'none') ? '#38bdf8' : '#94a3b8' }}>
+                {(() => {
+                  const t = override.skybox_type || 'none';
+                  if (t === 'day') return '☀️ Ban Ngày';
+                  if (t === 'morning') return '🌅 Sáng Sớm';
+                  if (t === 'night') return '🌙 Đêm Sao';
+                  if (t === 'space') return '🌌 Vũ Trụ';
+                  if (t === 'alien') return '👽 Hành Tinh Lạ';
+                  if (t === 'custom') return '📁 Ảnh Tự Tải';
+                  return '🎨 Mặc định';
+                })()}
+              </span>
+            </div>
+
+            {/* Skybox Presets Selector */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+              {[
+                { key: 'none', label: '🎨 Mặc Định', skyTime: 'noon', sunPos: 0.5 },
+                { key: 'day', label: '☀️ Ban Ngày', skyTime: 'noon', sunPos: 0.5 },
+                { key: 'morning', label: '🌅 Sáng Sớm', skyTime: 'sunrise', sunPos: 0.15 },
+                { key: 'night', label: '🌙 Đêm Sao', skyTime: 'night', sunPos: 0.95 },
+                { key: 'space', label: '🌌 Vũ Trụ', skyTime: 'night', sunPos: 0.98 },
+                { key: 'alien', label: '👽 Hành Tinh Lạ', skyTime: 'sunset', sunPos: 0.82 },
+              ].map((item) => {
+                const isSelected = (override.skybox_type || 'none') === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className="btn-secondary"
+                    style={{
+                      padding: '6px 4px',
+                      fontSize: 9.5,
+                      fontWeight: isSelected ? 700 : 500,
+                      borderRadius: 6,
+                      textAlign: 'center',
+                      backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.25)' : 'rgba(30, 41, 59, 0.6)',
+                      borderColor: isSelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)',
+                      color: isSelected ? '#38bdf8' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => onChange({ 
+                      ...override, 
+                      enabled: true,
+                      skybox_type: item.key as any,
+                      ...(item.key !== 'none' ? {
+                        sky_time: item.skyTime as any,
+                        sun_position: item.sunPos,
+                      } : {})
+                    })}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom File Upload Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <label style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                background: override.skybox_type === 'custom' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                padding: '6px 8px',
+                borderRadius: 6,
+                border: `1px dashed ${override.skybox_type === 'custom' ? '#38bdf8' : '#475569'}`,
+                color: override.skybox_type === 'custom' ? '#38bdf8' : '#cbd5e1',
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+                <Upload size={12} />
+                <span>{override.skybox_type === 'custom' ? '✅ Đã nạp ảnh Skybox riêng' : '📁 Tải ảnh Skybox từ máy (.png, .jpg)'}</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const url = event.target?.result as string;
+                        if (url) {
+                          onChange({
+                            ...override,
+                            skybox_type: 'custom',
+                            skybox_url: url,
+                          });
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* Skybox Fine-Tuning Sliders (when a Skybox is active) */}
+            {override.skybox_type && override.skybox_type !== 'none' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingTop: 6, borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                {/* Rotation Y Slider */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#94a3b8' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <RotateCw size={10} /> Xoay hướng Skybox (360°):
+                    </span>
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>{Math.round(override.skybox_rotation ?? 0)}°</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="1"
+                    value={override.skybox_rotation ?? 0}
+                    onChange={(e) => onChange({ ...override, skybox_rotation: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                  />
+                </div>
+
+                {/* Exposure / Intensity Slider */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#94a3b8' }}>
+                    <span>Độ sáng Skybox (Exposure):</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>{Math.round((override.skybox_exposure ?? 1.0) * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="2.5"
+                    step="0.05"
+                    value={override.skybox_exposure ?? 1.0}
+                    onChange={(e) => onChange({ ...override, skybox_exposure: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                  />
+                </div>
+
+                {/* Blur Slider */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#94a3b8' }}>
+                    <span>Độ mờ hậu cảnh (Sky Blur):</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>{Math.round((override.skybox_blur ?? 0) * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.02"
+                    value={override.skybox_blur ?? 0}
+                    onChange={(e) => onChange({ ...override, skybox_blur: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />

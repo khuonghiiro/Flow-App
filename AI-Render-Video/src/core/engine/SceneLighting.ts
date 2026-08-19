@@ -127,76 +127,192 @@ export class SceneLighting {
     }
 
     const explicitMode = overrideEnv ? overrideEnv.sky_time : this.currentEnv.sky_time;
+    const skyboxType = overrideEnv?.skybox_type ?? this.currentEnv.weather?.skybox_type ?? 'none';
+    const isSkyboxActive = skyboxType !== 'none';
     
+    // ── 1. Calculate lighting & colors based on time/mode ──
+    let targetBgColor = new THREE.Color(0x5ea5fb);
+    let targetFogColor = new THREE.Color(0x93c5fd);
+    let targetSunColor = new THREE.Color(0xffffff);
+    let targetSunIntensity = 2.8;
+    let targetAmbColor = new THREE.Color(0xffffff);
+    let targetAmbIntensity = 1.25;
+    let targetSpriteColor = new THREE.Color(0xffee88);
+    let targetSpriteOpacity = isSkyboxActive ? 0.0 : 1.0; // Hide 2D procedural sun when using photo skybox
+
     if (explicitMode === 'overcast') {
-      this.scene.background = new THREE.Color(0x475569);
-      this.fog.color.set(0x64748b);
-      this.sunLight.color.set(0x94a3b8);
-      this.sunLight.intensity = 1.4;
-      this.ambientLight.color.set(0x64748b);
-      this.ambientLight.intensity = 0.95;
-      this.sunSprite.material.color.set(0x94a3b8);
-      this.sunSprite.material.opacity = 0.25;
+      targetBgColor.set(0x475569);
+      targetFogColor.set(0x64748b);
+      targetSunColor.set(0x94a3b8);
+      targetSunIntensity = 1.4;
+      targetAmbColor.set(0x64748b);
+      targetAmbIntensity = 0.95;
+      targetSpriteColor.set(0x94a3b8);
+      targetSpriteOpacity = isSkyboxActive ? 0.0 : 0.25;
     } else if (progress >= 0.88 || explicitMode === 'night') {
-      this.scene.background = new THREE.Color(0x0a1120);
-      this.fog.color.set(0x0f172a);
-      this.sunLight.color.set(0x93c5fd);
-      this.sunLight.intensity = 1.2;
-      this.ambientLight.color.set(0x334155);
-      this.ambientLight.intensity = 0.75;
-      this.sunSprite.material.color.set(0xd0e2ff);
-      this.sunSprite.material.opacity = 0.85;
+      targetBgColor.set(0x0a1120);
+      targetFogColor.set(0x0f172a);
+      targetSunColor.set(0x93c5fd);
+      targetSunIntensity = 1.2;
+      targetAmbColor.set(0x334155);
+      targetAmbIntensity = 0.75;
+      targetSpriteColor.set(0xd0e2ff);
+      targetSpriteOpacity = isSkyboxActive ? 0.0 : 0.85;
     } else if (progress >= 0.68 || explicitMode === 'sunset') {
       const sunRatio = Math.max(0, Math.min(1, (progress - 0.68) / 0.2));
       const skyR = THREE.MathUtils.lerp(0.95, 0.82, sunRatio);
       const skyG = THREE.MathUtils.lerp(0.55, 0.32, sunRatio);
       const skyB = THREE.MathUtils.lerp(0.35, 0.42, sunRatio);
-      this.scene.background = new THREE.Color(skyR, skyG, skyB);
-      this.fog.color.setRGB(skyR, skyG, skyB);
+      targetBgColor.setRGB(skyR, skyG, skyB);
+      targetFogColor.setRGB(skyR, skyG, skyB);
 
-      this.sunLight.color.setRGB(1.0, 0.65, 0.35);
-      this.sunLight.intensity = 2.4;
-      this.ambientLight.color.setRGB(1.0, 0.82, 0.7);
-      this.ambientLight.intensity = 1.1;
-      this.sunSprite.material.color.set(0xff7733);
-      this.sunSprite.material.opacity = 0.95;
+      targetSunColor.setRGB(1.0, 0.65, 0.35);
+      targetSunIntensity = 2.4;
+      targetAmbColor.setRGB(1.0, 0.82, 0.7);
+      targetAmbIntensity = 1.1;
+      targetSpriteColor.set(0xff7733);
+      targetSpriteOpacity = isSkyboxActive ? 0.0 : 0.95;
     } else if (progress <= 0.24 || explicitMode === 'sunrise') {
       const dawnRatio = Math.max(0, Math.min(1, progress / 0.24));
       const skyR = THREE.MathUtils.lerp(0.85, 0.96, dawnRatio);
       const skyG = THREE.MathUtils.lerp(0.58, 0.82, dawnRatio);
       const skyB = THREE.MathUtils.lerp(0.65, 0.95, dawnRatio);
-      this.scene.background = new THREE.Color(skyR, skyG, skyB);
-      this.fog.color.setRGB(skyR, skyG, skyB);
+      targetBgColor.setRGB(skyR, skyG, skyB);
+      targetFogColor.setRGB(skyR, skyG, skyB);
 
-      this.sunLight.color.setRGB(1.0, 0.88, 0.72);
-      this.sunLight.intensity = 2.3;
-      this.ambientLight.color.setRGB(0.95, 0.85, 0.92);
-      this.ambientLight.intensity = 1.1;
-      this.sunSprite.material.color.set(0xffbb66);
-      this.sunSprite.material.opacity = 0.95;
-    } else {
-      this.scene.background = new THREE.Color(0x5ea5fb);
-      this.fog.color.set(0x93c5fd);
-      this.sunLight.color.set(0xffffff);
-      this.sunLight.intensity = 2.8;
-      this.ambientLight.color.set(0xffffff);
-      this.ambientLight.intensity = 1.25;
-      this.sunSprite.material.color.set(0xffee88);
-      this.sunSprite.material.opacity = 1.0;
+      targetSunColor.setRGB(1.0, 0.88, 0.72);
+      targetSunIntensity = 2.3;
+      targetAmbColor.setRGB(0.95, 0.85, 0.92);
+      targetAmbIntensity = 1.1;
+      targetSpriteColor.set(0xffbb66);
+      targetSpriteOpacity = isSkyboxActive ? 0.0 : 0.95;
     }
 
+    // Skybox-specific color & lighting harmonies
+    if (skyboxType === 'night' || skyboxType === 'space') {
+      targetFogColor.set(0x0a1020);
+      targetSunColor.set(0x93c5fd);
+      targetSunIntensity = 1.1;
+      targetAmbColor.set(0x223355);
+      targetAmbIntensity = 0.7;
+    } else if (skyboxType === 'alien') {
+      targetFogColor.set(0x2a1538);
+      targetSunColor.set(0xf472b6);
+      targetSunIntensity = 2.2;
+      targetAmbColor.set(0x818cf8);
+      targetAmbIntensity = 1.1;
+    } else if (skyboxType === 'morning') {
+      targetFogColor.set(0xd4a882);
+      targetSunColor.set(0xffbc75);
+      targetSunIntensity = 2.4;
+      targetAmbColor.set(0xfed7aa);
+      targetAmbIntensity = 1.15;
+    }
+
+    // Rain factor
     const rain = overrideEnv?.rain_intensity ?? this.currentEnv.weather?.rain ?? 0;
     if (rain > 0.05) {
       const rainFactor = Math.min(1, rain * 1.2);
-      this.sunLight.intensity *= (1.0 - rainFactor * 0.55);
-      this.ambientLight.intensity *= (1.0 - rainFactor * 0.35);
+      targetSunIntensity *= (1.0 - rainFactor * 0.55);
+      targetAmbIntensity *= (1.0 - rainFactor * 0.35);
 
       const rainSkyColor = new THREE.Color(0x334155).lerp(new THREE.Color(0x1e293b), rainFactor);
-      if (this.scene.background instanceof THREE.Color) {
-        this.scene.background.lerp(rainSkyColor, rainFactor * 0.7);
-      }
-      this.fog.color.lerp(rainSkyColor, rainFactor * 0.7);
+      targetBgColor.lerp(rainSkyColor, rainFactor * 0.7);
+      targetFogColor.lerp(rainSkyColor, rainFactor * 0.7);
       this.fog.density = Math.max(this.fog.density, 0.012 + rainFactor * 0.018);
     }
+
+    // Apply lights & sprite
+    this.sunLight.color.copy(targetSunColor);
+    this.sunLight.intensity = targetSunIntensity;
+    this.ambientLight.color.copy(targetAmbColor);
+    this.ambientLight.intensity = targetAmbIntensity;
+    this.sunSprite.material.color.copy(targetSpriteColor);
+    this.sunSprite.material.opacity = targetSpriteOpacity;
+
+    // ── 2. Background handling: Skybox Texture VS Procedural Color ──
+    if (isSkyboxActive) {
+      // Keep fog subtle so skybox remains crystal clear like in Unity
+      if (overrideEnv?.fog_density === undefined && !this.currentEnv.weather?.fog) {
+        this.fog.density = 0.004; // Atmospheric ground haze
+      }
+      this.fog.color.copy(targetFogColor);
+      this.updateSkybox(overrideEnv);
+    } else {
+      // Procedural Sky Color
+      this.scene.background = targetBgColor;
+      this.scene.environment = null;
+      this.fog.color.copy(targetFogColor);
+      this.activeSkyboxKey = 'none';
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  // Skybox Texture Management (Equirectangular 360°)
+  // ══════════════════════════════════════════════════
+
+  private textureLoader = new THREE.TextureLoader();
+  private skyboxCache = new Map<string, THREE.Texture>();
+  private activeSkyboxKey = 'none';
+
+  private static SKYBOX_PRESETS: Record<string, string> = {
+    day: '/assets/SkyBoxs/skybox-day.png',
+    morning: '/assets/SkyBoxs/skybox-morning.png',
+    night: '/assets/SkyBoxs/skybox-night.png',
+    space: '/assets/SkyBoxs/skybox-space.png',
+    alien: '/assets/SkyBoxs/skybox-alien.png',
+  };
+
+  private updateSkybox(overrideEnv?: EnvironmentOverride): void {
+    const skyboxType = overrideEnv?.skybox_type ?? this.currentEnv.weather?.skybox_type ?? 'none';
+    const customUrl = overrideEnv?.skybox_url ?? this.currentEnv.weather?.skybox_url ?? '';
+    const rotationDeg = overrideEnv?.skybox_rotation ?? this.currentEnv.weather?.skybox_rotation ?? 0;
+    const exposure = overrideEnv?.skybox_exposure ?? this.currentEnv.weather?.skybox_exposure ?? 1.0;
+    const blur = overrideEnv?.skybox_blur ?? this.currentEnv.weather?.skybox_blur ?? 0.0;
+
+    const targetUrl = skyboxType === 'custom' ? customUrl : (SceneLighting.SKYBOX_PRESETS[skyboxType] || '');
+    if (!targetUrl) return;
+
+    this.activeSkyboxKey = targetUrl;
+    const cached = this.skyboxCache.get(targetUrl);
+
+    if (cached) {
+      // Apply immediately from memory cache
+      this.applySkyboxTexture(cached, rotationDeg, exposure, blur);
+    } else {
+      // Load asynchronously and cache
+      this.textureLoader.load(
+        targetUrl,
+        (tex) => {
+          tex.mapping = THREE.EquirectangularReflectionMapping;
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.generateMipmaps = true;
+          tex.minFilter = THREE.LinearMipmapLinearFilter;
+          tex.magFilter = THREE.LinearFilter;
+          this.skyboxCache.set(targetUrl, tex);
+          
+          if (this.activeSkyboxKey === targetUrl) {
+            this.applySkyboxTexture(tex, rotationDeg, exposure, blur);
+          }
+        },
+        undefined,
+        (err) => console.error('Failed to load skybox texture:', targetUrl, err)
+      );
+    }
+  }
+
+  private applySkyboxTexture(tex: THREE.Texture, rotationDeg: number, exposure: number, blur: number): void {
+    this.scene.background = tex;
+    this.scene.environment = tex; // Enables full Unity HDRP-style IBL reflections!
+    this.applySkyboxParams(rotationDeg, exposure, blur);
+  }
+
+  private applySkyboxParams(rotationDeg: number, exposure: number, blur: number): void {
+    const rotRad = THREE.MathUtils.degToRad(rotationDeg);
+    this.scene.backgroundRotation.y = rotRad;
+    this.scene.environmentRotation.y = rotRad;
+    this.scene.backgroundIntensity = exposure;
+    this.scene.backgroundBlurriness = blur;
+    this.scene.environmentIntensity = exposure * 0.85;
   }
 }
