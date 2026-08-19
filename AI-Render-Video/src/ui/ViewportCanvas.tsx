@@ -89,101 +89,89 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       {/* Top HUD */}
       <div className="viewport-hud" style={{ alignItems: 'flex-start' }}>
         
-        {/* Left Side: FPS and Free Cam */}
+        {/* Left Side: FPS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: showUI ? 1 : 0, transition: 'opacity 0.2s', pointerEvents: showUI ? 'auto' : 'none' }}>
-          <div className="hud-pill fps-counter">
-            <Zap size={13} /> {fps} FPS
+          <div className="hud-pill fps-counter" style={{ padding: '2px 8px', fontSize: 10, borderRadius: 12, background: 'rgba(15, 23, 42, 0.6)' }}>
+            <Zap size={10} /> {fps} FPS
           </div>
-          
-          {/* Free Cam Toggle */}
-          {isFreeCam ? (
-            <button
-              id="toggle-free-cam-btn"
-              className="btn-primary"
-              style={{
-                borderRadius: 20,
-                padding: '4px 14px',
-                fontSize: 11,
-                background: 'linear-gradient(135deg, #059669, #10b981)',
-                borderColor: '#34d399',
-                boxShadow: '0 0 16px rgba(16, 185, 129, 0.4)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-              onClick={onToggleFreeCam}
-            >
-              <RotateCcw size={13} /> <strong>360 độ (Tắt)</strong>
-            </button>
-          ) : (
-            <button
-              id="toggle-free-cam-btn"
-              className="btn-secondary"
-              style={{
-                borderRadius: 20,
-                padding: '4px 12px',
-                fontSize: 11,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                borderColor: '#38bdf8',
-                color: '#38bdf8',
-                cursor: 'pointer',
-                background: 'rgba(15, 23, 42, 0.7)',
-              }}
-              onClick={onToggleFreeCam}
-              title="Ngắt camera kịch bản để tự do xoay, phóng to thu nhỏ và soi quanh cảnh vật bằng chuột"
-            >
-              <Compass size={13} /> <strong>Cam Tự Do</strong>
-            </button>
-          )}
         </div>
         <div style={{ flex: 1 }} />
 
-        {/* Right Actions: Eye Toggle, CC Subtitle, Inspect Reset */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', pointerEvents: 'auto' }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="btn-secondary"
-              style={{
-                borderRadius: '50%',
-                width: 28,
-                height: 28,
-                padding: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(30, 41, 59, 0.7)',
-                borderColor: '#475569',
-                color: showUI ? '#38bdf8' : '#94a3b8',
-                cursor: 'pointer',
-              }}
-              onClick={() => setShowUI(!showUI)}
-              title="Ẩn/Hiện Giao Diện"
-            >
-              {showUI ? <Eye size={14} /> : <EyeOff size={14} />}
-            </button>
+        {/* Right Actions: Eye Toggle, CC Subtitle, 360 Free Cam, Inspect Reset */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', pointerEvents: 'auto' }}>
+          {/* Eye Toggle (Always visible) */}
+          <button
+            className="btn-secondary"
+            style={{
+              borderRadius: 8,
+              width: 32,
+              height: 32,
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(30, 41, 59, 0.7)',
+              borderColor: '#475569',
+              color: showUI ? '#38bdf8' : '#94a3b8',
+              cursor: 'pointer',
+            }}
+            onClick={() => setShowUI(!showUI)}
+            title="Ẩn/Hiện Giao Diện"
+          >
+            {showUI ? <Eye size={16} /> : <EyeOff size={16} />}
+          </button>
 
+          {/* Hidden UI Items */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, opacity: showUI ? 1 : 0, pointerEvents: showUI ? 'auto' : 'none', transition: 'opacity 0.2s', alignItems: 'flex-end' }}>
+            
+            {/* CC Toggle */}
             <button
               id="toggle-subtitles-btn"
               className={`btn-secondary ${showCC ? 'active' : ''}`}
               style={{
-                borderRadius: 20,
-                padding: '4px 12px',
-                fontSize: 11,
+                borderRadius: 8,
+                width: 32,
+                height: 32,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 backgroundColor: showCC ? 'rgba(99, 102, 241, 0.8)' : 'rgba(30, 41, 59, 0.7)',
                 borderColor: showCC ? '#818cf8' : '#475569',
                 color: showCC ? '#ffffff' : '#64748b',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
                 cursor: 'pointer',
-                fontWeight: showCC ? 600 : 400,
+                fontWeight: 700,
+                fontSize: 12,
               }}
               onClick={onToggleCC}
+              title="Phụ đề"
             >
-              <MessageSquare size={12} /> CC
+              CC
+            </button>
+
+            {/* 360 Cam Toggle */}
+            <button
+              id="toggle-free-cam-btn"
+              className={isFreeCam ? "btn-primary" : "btn-secondary"}
+              style={{
+                borderRadius: 8,
+                width: 32,
+                height: 32,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isFreeCam ? 'rgba(16, 185, 129, 0.9)' : 'rgba(30, 41, 59, 0.7)',
+                borderColor: isFreeCam ? '#34d399' : '#475569',
+                color: isFreeCam ? '#ffffff' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: 10,
+              }}
+              onClick={onToggleFreeCam}
+              title="Cam tự do (360 độ)"
+            >
+              360
             </button>
           </div>
 

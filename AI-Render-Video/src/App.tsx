@@ -70,6 +70,8 @@ export const App: React.FC = () => {
   const actorsMapRef = useRef<Map<string, ActorRuntime>>(new Map());
   const sceneObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   const mapGroupRef = useRef<THREE.Group>(new THREE.Group());
+  const mapMixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const mapCollidersRef = useRef<THREE.Object3D[]>([]);
 
   // Populate complete village props (ground, tree, chair, farm, duck, lantern)
   const populateVillageProps = (group: THREE.Group) => {
@@ -117,15 +119,6 @@ export const App: React.FC = () => {
       !mapName.includes('village');
 
     if (isCustomMap) {
-      // Add subtle dark ground floor plane
-      const tempFloorGeo = new THREE.PlaneGeometry(60, 60);
-      const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.8 });
-      const tempFloor = new THREE.Mesh(tempFloorGeo, tempFloorMat);
-      tempFloor.rotation.x = -Math.PI / 2;
-      tempFloor.position.y = -0.01;
-      tempFloor.receiveShadow = true;
-      mapGroupRef.current.add(tempFloor);
-
       const glbUrl = mapName.startsWith('assets/') || mapName.startsWith('/assets/')
         ? (mapName.startsWith('/') ? mapName : `/${mapName}`)
         : `/assets/maps/${newScene.environment.map}`;
@@ -135,29 +128,9 @@ export const App: React.FC = () => {
         const mapModel = await AssetLoaderRegistry.loadGLTF(glbUrl);
         mapModel.name = 'custom_glb_map_mesh';
 
-        // Auto-scale to ideal 3D world footprint
-        mapModel.updateMatrixWorld(true);
-        const bbox = new THREE.Box3().setFromObject(mapModel);
-        const size = bbox.getSize(new THREE.Vector3());
-        const center = bbox.getCenter(new THREE.Vector3());
-
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (isFinite(maxDim) && maxDim > 0) {
-          const targetDiameter = 26.0;
-          const s = maxDim > 35 || maxDim < 6 ? targetDiameter / maxDim : 1.0;
-          mapModel.scale.set(s, s, s);
-          mapModel.updateMatrixWorld(true);
-
-          bbox.setFromObject(mapModel);
-          bbox.getSize(size);
-          bbox.getCenter(center);
-
-          // Center on X and Z, align base to y=0
-          mapModel.position.x = -center.x;
-          mapModel.position.y = -bbox.min.y;
-          mapModel.position.z = -center.z;
-        }
-
+        // Removed forced scaling down to 26 units. Maps should retain their authored scale 
+        // and position (0,0,0) so characters stand correctly on the ground.
+        mapModel.position.set(0, 0, 0);
         mapGroupRef.current.add(mapModel);
       } catch (err) {
         console.warn('Không tải được model map tùy chỉnh, chuyển về map làng quê mẫu:', err);
@@ -168,6 +141,14 @@ export const App: React.FC = () => {
     } else {
       populateVillageProps(mapGroupRef.current);
     }
+
+    // Collect Map Colliders for Ground Snapping
+    mapCollidersRef.current = [];
+    mapGroupRef.current.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        mapCollidersRef.current.push(child);
+      }
+    });
 
     if (occlusionFoliageRef.current) {
       occlusionFoliageRef.current.registerSceneFoliage(scene3D);
@@ -219,6 +200,27 @@ export const App: React.FC = () => {
           actorsMapRef.current,
           sceneObjectsRef.current
         );
+      }
+
+      // Ground Snapping (Physics)
+      if (mapCollidersRef.current.length > 0) {
+        const raycaster = new THREE.Raycaster();
+        for (const [id, runtime] of actorsMapRef.current.entries()) {
+          const isClimbing = (runtime.avatar.config.tracks.movement || []).some(
+            (m) => m.action === 'climb' && t >= m.start && t <= m.end
+          );
+          if (isClimbing) continue;
+
+          const pos = runtime.avatar.rootObject.position;
+          // Cast a ray from 2 meters above the character's root, pointing straight down
+          raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
+          const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
+          
+          if (hits.length > 0) {
+            // Snap to the highest ground point hit by the ray
+            pos.y = hits[0].point.y;
+          }
+        }
       }
 
       // Collect actor visual states & foliage focus states
@@ -291,6 +293,11 @@ export const App: React.FC = () => {
       // Combat VFX particles update
       if (vfxTriggerRef.current) {
         vfxTriggerRef.current.update(delta);
+      }
+
+      // Map animations
+      if (mapMixerRef.current) {
+        mapMixerRef.current.update(delta);
       }
 
       // Active Subtitle Update
@@ -488,6 +495,7 @@ export const App: React.FC = () => {
       if (fileList.length === 0) return;
 
       let customModel: THREE.Group | null = null;
+      let loadedGltf: any = null;
       let mapTitle = 'Custom Map';
 
       const glbFile = fileList.find((f) => f.name.toLowerCase().endsWith('.glb'));
@@ -497,7 +505,9 @@ export const App: React.FC = () => {
         // 1. Single .glb standalone file
         mapTitle = glbFile.name;
         const arrayBuffer = await glbFile.arrayBuffer();
-        customModel = await AssetLoaderRegistry.loadGLTFFromBuffer(arrayBuffer);
+        const loader = new GLTFLoader();
+        loadedGltf = await loader.parseAsync(arrayBuffer, '');
+        customModel = loadedGltf.scene;
       } else if (gltfFile || glbFile) {
         // 2. Folder containing .gltf + .bin + textures or .glb with textures
         const mainFile = gltfFile || glbFile!;
@@ -546,8 +556,8 @@ export const App: React.FC = () => {
 
         const loader = new GLTFLoader(manager);
         const mainUrl = fileMap.get(mainFile.name.toLowerCase()) || URL.createObjectURL(mainFile);
-        const gltf = await loader.loadAsync(mainUrl);
-        customModel = gltf.scene;
+        loadedGltf = await loader.loadAsync(mainUrl);
+        customModel = loadedGltf.scene;
       } else {
         throw new Error('Không tìm thấy file 3D hợp lệ (.gltf hoặc .glb) trong thư mục đã chọn!');
       }
@@ -566,38 +576,30 @@ export const App: React.FC = () => {
         mapGroupRef.current.remove(child);
       }
 
-      // Add dark ground plane
-      const tempFloorGeo = new THREE.PlaneGeometry(60, 60);
-      const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.8 });
-      const tempFloor = new THREE.Mesh(tempFloorGeo, tempFloorMat);
-      tempFloor.rotation.x = -Math.PI / 2;
-      tempFloor.position.y = -0.01;
-      tempFloor.receiveShadow = true;
-      mapGroupRef.current.add(tempFloor);
-
       // Auto-scale to ideal 3D world footprint
-      customModel.updateMatrixWorld(true);
-      const bbox = new THREE.Box3().setFromObject(customModel);
-      const size = bbox.getSize(new THREE.Vector3());
-      const center = bbox.getCenter(new THREE.Vector3());
+      // Removed forced scaling down to 26 units. Maps should retain their authored scale 
+      // and position (0,0,0) so characters stand correctly on the ground.
+      customModel.position.set(0, 0, 0);
 
-      const maxDim = Math.max(size.x, size.y, size.z);
-      if (isFinite(maxDim) && maxDim > 0) {
-        const targetDiameter = 26.0;
-        const s = maxDim > 35 || maxDim < 6 ? targetDiameter / maxDim : 1.0;
-        customModel.scale.set(s, s, s);
-        customModel.updateMatrixWorld(true);
-
-        bbox.setFromObject(customModel);
-        bbox.getSize(size);
-        bbox.getCenter(center);
-
-        customModel.position.x = -center.x;
-        customModel.position.y = -bbox.min.y;
-        customModel.position.z = -center.z;
+      // Extract and play animations (if map has built-in animations like wind, water)
+      if (loadedGltf && loadedGltf.animations && loadedGltf.animations.length > 0) {
+        mapMixerRef.current = new THREE.AnimationMixer(customModel);
+        loadedGltf.animations.forEach((clip: any) => {
+          mapMixerRef.current?.clipAction(clip).play();
+        });
+      } else {
+        mapMixerRef.current = null;
       }
 
       mapGroupRef.current.add(customModel);
+
+      // Collect Map Colliders for Ground Snapping
+      mapCollidersRef.current = [];
+      customModel.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          mapCollidersRef.current.push(child);
+        }
+      });
 
       // Update scene config
       const updatedScene: MasterSceneConfig = {
