@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MasterSceneConfig, DialogueManifestItem } from './types/scene';
-import { villageClashScene } from './samples/villageClashScene';
-import { cathedralScene } from './samples/cathedralScene';
-import { pirateMapScene } from './samples/pirateMapScene';
+import { defaultScene, sampleScenes } from './core/scenes/SceneRegistry';
 import { ThreeRenderer } from './core/engine/ThreeRenderer';
 import { SceneLighting } from './core/engine/SceneLighting';
 import { PostProcessor } from './core/engine/PostProcessor';
@@ -28,8 +27,8 @@ import { ActorVisualState } from './core/camera/CameraFraming';
 import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 
 export const App: React.FC = () => {
-  const [scene, setScene] = useState<MasterSceneConfig>(villageClashScene);
-  const sceneRef = useRef<MasterSceneConfig>(villageClashScene);
+  const [scene, setScene] = useState<MasterSceneConfig>(defaultScene);
+  const sceneRef = useRef<MasterSceneConfig>(defaultScene);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -54,16 +53,45 @@ export const App: React.FC = () => {
   const cameraDirectorRef = useRef<CameraDirector | null>(null);
   const occlusionFoliageRef = useRef<OcclusionFoliageManager | null>(null);
   const trackEvaluatorRef = useRef<TrackEvaluator | null>(null);
-  const clockRef = useRef<MasterClock>(new MasterClock(villageClashScene.duration));
+  const clockRef = useRef<MasterClock>(new MasterClock(defaultScene.duration));
   const actorsMapRef = useRef<Map<string, ActorRuntime>>(new Map());
   const sceneObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   const mapGroupRef = useRef<THREE.Group>(new THREE.Group());
 
+  // Populate complete village props (ground, tree, chair, farm, duck, lantern)
+  const populateVillageProps = (group: THREE.Group) => {
+    const ground = AssetLoaderRegistry.createGround();
+    group.add(ground);
+
+    const tree = AssetLoaderRegistry.createTree([4, 0, -3]);
+    group.add(tree);
+
+    const chair = AssetLoaderRegistry.createChair([-4, 0, -2]);
+    group.add(chair);
+
+    const farm = AssetLoaderRegistry.createFarmPlot([0, 0, -5]);
+    group.add(farm);
+    const crop = farm.getObjectByName('crop');
+    if (crop) {
+      sceneObjectsRef.current.set('props.farm_plot_01.crop', crop);
+    }
+
+    const duck = AssetLoaderRegistry.createDuckProp([0.8, 0, -2.5]);
+    group.add(duck);
+
+    const lanternStand = AssetLoaderRegistry.createLanternStand([-3.2, 0, -2.0]);
+    group.add(lanternStand);
+  };
+
   // Dynamic Environment Loader (supports .glb maps and procedural village)
   const initEnvironment = async (newScene: MasterSceneConfig, scene3D: THREE.Scene) => {
-    if (!mapGroupRef.current.parent) {
+    if (mapGroupRef.current.parent !== scene3D) {
       scene3D.add(mapGroupRef.current);
     }
+    mapGroupRef.current.position.set(0, 0, 0);
+    mapGroupRef.current.rotation.set(0, 0, 0);
+    mapGroupRef.current.scale.set(1, 1, 1);
+
     while (mapGroupRef.current.children.length > 0) {
       const child = mapGroupRef.current.children[0];
       mapGroupRef.current.remove(child);
@@ -71,27 +99,19 @@ export const App: React.FC = () => {
     sceneObjectsRef.current.clear();
 
     const mapName = (newScene.environment.map || '').toLowerCase();
+    const isCustomMap =
+      (mapName.endsWith('.glb') || mapName.endsWith('.gltf')) &&
+      !mapName.includes('village');
 
-    if (mapName.includes('cathedral') || mapName.includes('pirate') || (mapName.endsWith('.glb') && !mapName.includes('village')) || mapName.endsWith('.gltf')) {
-      // Add immediate ground plane so it's never a dark void
-      const tempFloorGeo = new THREE.PlaneGeometry(80, 80);
-      const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
+    if (isCustomMap) {
+      // Add subtle dark ground floor plane
+      const tempFloorGeo = new THREE.PlaneGeometry(60, 60);
+      const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.8 });
       const tempFloor = new THREE.Mesh(tempFloorGeo, tempFloorMat);
       tempFloor.rotation.x = -Math.PI / 2;
       tempFloor.position.y = -0.01;
       tempFloor.receiveShadow = true;
       mapGroupRef.current.add(tempFloor);
-
-      // High-Intensity Multi-Angle Directional & Ambient Lighting
-      const dirLight = new THREE.DirectionalLight(0xfffaed, 3.0);
-      dirLight.position.set(20, 35, 20);
-      mapGroupRef.current.add(dirLight);
-
-      const hemiLight = new THREE.HemisphereLight(0xddf0ff, 0x554433, 2.0);
-      mapGroupRef.current.add(hemiLight);
-
-      const fillLight = new THREE.AmbientLight(0xffffff, 1.8);
-      mapGroupRef.current.add(fillLight);
 
       const glbUrl = mapName.startsWith('assets/') || mapName.startsWith('/assets/')
         ? (mapName.startsWith('/') ? mapName : `/${mapName}`)
@@ -109,57 +129,31 @@ export const App: React.FC = () => {
         const center = bbox.getCenter(new THREE.Vector3());
 
         const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 150) {
-          const s = 60.0 / maxDim;
+        if (isFinite(maxDim) && maxDim > 0) {
+          const targetDiameter = 26.0;
+          const s = maxDim > 35 || maxDim < 6 ? targetDiameter / maxDim : 1.0;
           mapModel.scale.set(s, s, s);
           mapModel.updateMatrixWorld(true);
-          bbox.setFromObject(mapModel);
-          bbox.getSize(size);
-          bbox.getCenter(center);
-        } else if (maxDim < 3) {
-          const s = 30.0 / maxDim;
-          mapModel.scale.set(s, s, s);
-          mapModel.updateMatrixWorld(true);
-          bbox.setFromObject(mapModel);
-          bbox.getSize(size);
-          bbox.getCenter(center);
-        }
 
-        // Center on X and Z, align base to y=0
-        mapModel.position.x = -center.x;
-        mapModel.position.y = -bbox.min.y;
-        mapModel.position.z = -center.z;
+          bbox.setFromObject(mapModel);
+          bbox.getSize(size);
+          bbox.getCenter(center);
+
+          // Center on X and Z, align base to y=0
+          mapModel.position.x = -center.x;
+          mapModel.position.y = -bbox.min.y;
+          mapModel.position.z = -center.z;
+        }
 
         mapGroupRef.current.add(mapModel);
       } catch (err) {
-        console.warn('Fallback to procedural ground for map:', err);
-        const ground = AssetLoaderRegistry.createGround();
-        mapGroupRef.current.add(ground);
+        console.warn('Không tải được model map tùy chỉnh, chuyển về map làng quê mẫu:', err);
+        populateVillageProps(mapGroupRef.current);
       } finally {
         setIsLoadingMap(false);
       }
     } else {
-      const ground = AssetLoaderRegistry.createGround();
-      mapGroupRef.current.add(ground);
-
-      const tree = AssetLoaderRegistry.createTree([4, 0, -3]);
-      mapGroupRef.current.add(tree);
-
-      const chair = AssetLoaderRegistry.createChair([-4, 0, -2]);
-      mapGroupRef.current.add(chair);
-
-      const farm = AssetLoaderRegistry.createFarmPlot([0, 0, -5]);
-      mapGroupRef.current.add(farm);
-      const crop = farm.getObjectByName('crop');
-      if (crop) {
-        sceneObjectsRef.current.set('props.farm_plot_01.crop', crop);
-      }
-
-      const duck = AssetLoaderRegistry.createDuckProp([0.8, 0, -2.5]);
-      mapGroupRef.current.add(duck);
-
-      const lanternStand = AssetLoaderRegistry.createLanternStand([-3.2, 0, -2.0]);
-      mapGroupRef.current.add(lanternStand);
+      populateVillageProps(mapGroupRef.current);
     }
 
     if (occlusionFoliageRef.current) {
@@ -469,13 +463,85 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleImportCustomMap = async (file: File) => {
+  const handleImportCustomMap = async (files: FileList | File[]) => {
     if (!rendererRef.current) return;
     setIsLoadingMap(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const customModel = await AssetLoaderRegistry.loadGLTFFromBuffer(arrayBuffer);
+      const fileList = Array.from(files);
+      if (fileList.length === 0) return;
+
+      let customModel: THREE.Group | null = null;
+      let mapTitle = 'Custom Map';
+
+      const glbFile = fileList.find((f) => f.name.toLowerCase().endsWith('.glb'));
+      const gltfFile = fileList.find((f) => f.name.toLowerCase().endsWith('.gltf'));
+
+      if (glbFile && fileList.length === 1) {
+        // 1. Single .glb standalone file
+        mapTitle = glbFile.name;
+        const arrayBuffer = await glbFile.arrayBuffer();
+        customModel = await AssetLoaderRegistry.loadGLTFFromBuffer(arrayBuffer);
+      } else if (gltfFile || glbFile) {
+        // 2. Folder containing .gltf + .bin + textures or .glb with textures
+        const mainFile = gltfFile || glbFile!;
+        mapTitle = mainFile.name;
+
+        const binFile = fileList.find((f) => f.name.toLowerCase().endsWith('.bin'));
+        if (!binFile && gltfFile && fileList.length === 1) {
+          throw new Error(
+            `File '${gltfFile.name}' là file cấu trúc JSON rời, cần có file '.bin' và thư mục 'textures/' đi kèm.\n\n👉 Vui lòng bấm nút "📂 Chọn Folder Map (.gltf)" để chọn cả thư mục '${gltfFile.name.replace('.gltf', '')}', hoặc chọn file '.glb' đóng gói sẵn!`
+          );
+        }
+
+        // Create Object URLs for all files in the folder
+        const manager = new THREE.LoadingManager();
+        const fileMap = new Map<string, string>();
+
+        for (const file of fileList) {
+          const url = URL.createObjectURL(file);
+          fileMap.set(file.name.toLowerCase(), url);
+
+          if (file.webkitRelativePath) {
+            const parts = file.webkitRelativePath.split('/');
+            parts.shift(); // remove root folder
+            const subPath = parts.join('/').toLowerCase();
+            fileMap.set(subPath, url);
+            fileMap.set(`./${subPath}`, url);
+            fileMap.set(file.webkitRelativePath.toLowerCase(), url);
+          }
+        }
+
+        manager.setURLModifier((url) => {
+          const decoded = decodeURIComponent(url).split('?')[0];
+          const fileName = decoded.split(/[/\\]/).pop()?.toLowerCase() || '';
+          const subMatch = decoded.toLowerCase().match(/(textures[/\\][^/\\]+)$/);
+          const subPath = subMatch ? subMatch[1].replace(/\\/g, '/') : '';
+
+          const resolved =
+            (subPath ? fileMap.get(subPath) : null) ||
+            fileMap.get(fileName) ||
+            (subPath ? fileMap.get(`./${subPath}`) : null) ||
+            fileMap.get(`./${fileName}`) ||
+            url;
+
+          return resolved;
+        });
+
+        const loader = new GLTFLoader(manager);
+        const mainUrl = fileMap.get(mainFile.name.toLowerCase()) || URL.createObjectURL(mainFile);
+        const gltf = await loader.loadAsync(mainUrl);
+        customModel = gltf.scene;
+      } else {
+        throw new Error('Không tìm thấy file 3D hợp lệ (.gltf hoặc .glb) trong thư mục đã chọn!');
+      }
+
+      if (!customModel) throw new Error('Không thể khởi tạo model 3D từ dữ liệu đã chọn.');
+
       customModel.name = 'imported_custom_map';
+
+      if (mapGroupRef.current.parent !== rendererRef.current.scene) {
+        rendererRef.current.scene.add(mapGroupRef.current);
+      }
 
       // Clear previous map objects
       while (mapGroupRef.current.children.length > 0) {
@@ -483,25 +549,14 @@ export const App: React.FC = () => {
         mapGroupRef.current.remove(child);
       }
 
-      // Add ground plane
-      const tempFloorGeo = new THREE.PlaneGeometry(80, 80);
-      const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
+      // Add dark ground plane
+      const tempFloorGeo = new THREE.PlaneGeometry(60, 60);
+      const tempFloorMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.8 });
       const tempFloor = new THREE.Mesh(tempFloorGeo, tempFloorMat);
       tempFloor.rotation.x = -Math.PI / 2;
       tempFloor.position.y = -0.01;
       tempFloor.receiveShadow = true;
       mapGroupRef.current.add(tempFloor);
-
-      // High-Intensity Multi-Angle Directional & Ambient Lighting
-      const dirLight = new THREE.DirectionalLight(0xfffaed, 3.0);
-      dirLight.position.set(20, 35, 20);
-      mapGroupRef.current.add(dirLight);
-
-      const hemiLight = new THREE.HemisphereLight(0xddf0ff, 0x554433, 2.0);
-      mapGroupRef.current.add(hemiLight);
-
-      const fillLight = new THREE.AmbientLight(0xffffff, 2.0);
-      mapGroupRef.current.add(fillLight);
 
       // Auto-scale to ideal 3D world footprint
       customModel.updateMatrixWorld(true);
@@ -510,35 +565,30 @@ export const App: React.FC = () => {
       const center = bbox.getCenter(new THREE.Vector3());
 
       const maxDim = Math.max(size.x, size.y, size.z);
-      if (maxDim > 150) {
-        const s = 60.0 / maxDim;
+      if (isFinite(maxDim) && maxDim > 0) {
+        const targetDiameter = 26.0;
+        const s = maxDim > 35 || maxDim < 6 ? targetDiameter / maxDim : 1.0;
         customModel.scale.set(s, s, s);
         customModel.updateMatrixWorld(true);
-        bbox.setFromObject(customModel);
-        bbox.getSize(size);
-        bbox.getCenter(center);
-      } else if (maxDim < 3) {
-        const s = 30.0 / maxDim;
-        customModel.scale.set(s, s, s);
-        customModel.updateMatrixWorld(true);
-        bbox.setFromObject(customModel);
-        bbox.getSize(size);
-        bbox.getCenter(center);
-      }
 
-      customModel.position.x = -center.x;
-      customModel.position.y = -bbox.min.y;
-      customModel.position.z = -center.z;
+        bbox.setFromObject(customModel);
+        bbox.getSize(size);
+        bbox.getCenter(center);
+
+        customModel.position.x = -center.x;
+        customModel.position.y = -bbox.min.y;
+        customModel.position.z = -center.z;
+      }
 
       mapGroupRef.current.add(customModel);
 
       // Update scene config
       const updatedScene: MasterSceneConfig = {
         ...sceneRef.current,
-        title: `🗺️ Map Tùy Chỉnh (${file.name})`,
+        title: `🗺️ Map Tùy Chỉnh (${mapTitle})`,
         environment: {
           ...sceneRef.current.environment,
-          map: file.name,
+          map: mapTitle,
           weather: {
             ...sceneRef.current.environment.weather,
             fog: 0.000,
@@ -547,9 +597,9 @@ export const App: React.FC = () => {
       };
       sceneRef.current = updatedScene;
       setScene(updatedScene);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert(`Lỗi khi nạp file map ${file.name}: ${e}`);
+      alert(`Lỗi khi nạp file map:\n${e?.message || e}`);
     } finally {
       setIsLoadingMap(false);
     }

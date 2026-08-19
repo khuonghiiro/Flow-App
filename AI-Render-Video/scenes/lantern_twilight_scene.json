@@ -112,11 +112,11 @@
           },
           {
             "line_ref": "dlg_lantern_02",
-            "expressions": [{ time_offset: 0.0, type: "serious", weight: 0.6 }]
+            "expressions": [{ "time_offset": 0.0, "type": "serious", "weight": 0.6 }]
           },
           {
             "line_ref": "dlg_lantern_03",
-            "expressions": [{ time_offset: 0.0, type: "smile", weight: 0.9 }]
+            "expressions": [{ "time_offset": 0.0, "type": "smile", "weight": 0.9 }]
           }
         ]
       }

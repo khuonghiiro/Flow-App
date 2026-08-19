@@ -11,17 +11,21 @@ export default defineConfig({
       name: 'serve-assets',
       configureServer(server) {
         server.middlewares.use('/assets', (req, res, next) => {
-          const filePath = path.join(__dirname, 'assets', decodeURIComponent(req.url || ''));
+          const rawUrl = (req.url || '').split('?')[0];
+          const filePath = path.join(__dirname, 'assets', decodeURIComponent(rawUrl));
           if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             const ext = path.extname(filePath).toLowerCase();
             const mimeTypes: Record<string, string> = {
               '.vrm': 'model/gltf-binary',
               '.glb': 'model/gltf-binary',
               '.gltf': 'model/gltf+json',
+              '.bin': 'application/octet-stream',
               '.mp3': 'audio/mpeg',
               '.wav': 'audio/wav',
               '.png': 'image/png',
               '.jpg': 'image/jpeg',
+              '.jpeg': 'image/jpeg',
+              '.webp': 'image/webp',
               '.json': 'application/json',
             };
             res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');

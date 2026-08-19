@@ -96,55 +96,47 @@ export class SceneLighting {
     // Dynamic Color Transition based on Sun Altitude & preset
     const altitude = Math.max(0, sunY / (sunDist * 0.7)); // 0 = horizon, 1 = noon
 
-    const isCathedralMap = (this.currentEnv.map || '').toLowerCase().includes('cathedral') ||
-                           (this.currentEnv.map || '').toLowerCase().endsWith('.glb');
-
-    if (isCathedralMap) {
-      this.scene.background = new THREE.Color(0x0a0f1f);
-      this.fog.color.set(0x0a0f1f);
-      this.fog.density = 0.0005; // Gentle near-zero fog so large 3D maps are 100% visible
-      this.sunLight.color.set(0xaaccff);
-      this.sunLight.intensity = 2.5;
-      this.ambientLight.color.set(0x8899bb);
-      this.ambientLight.intensity = 1.8;
-      (this.sunMesh.material as THREE.MeshBasicMaterial).color.set(0xccddee);
-    } else if (this.currentEnv.sky_time === 'sunset') {
-      // Warm golden hour into twilight
-      const sunsetFactor = 1 - progress;
-      const skyR = THREE.MathUtils.lerp(0.08, 0.25, altitude);
-      const skyG = THREE.MathUtils.lerp(0.06, 0.12, altitude);
-      const skyB = THREE.MathUtils.lerp(0.15, 0.22, altitude);
-      this.scene.background = new THREE.Color(skyR, skyG, skyB);
-      this.fog.color.setRGB(skyR * 1.1, skyG * 0.9, skyB * 1.2);
-
-      this.sunLight.color.setRGB(1.0, 0.65 + altitude * 0.3, 0.35 + altitude * 0.4);
-      this.sunLight.intensity = 1.2 + altitude * 1.0;
-      this.ambientLight.color.setRGB(0.9, 0.6, 0.5);
-      this.ambientLight.intensity = 0.4 + altitude * 0.3;
-    } else if (this.currentEnv.sky_time === 'sunrise') {
-      const skyR = THREE.MathUtils.lerp(0.15, 0.45, altitude);
-      const skyG = THREE.MathUtils.lerp(0.12, 0.6, altitude);
-      const skyB = THREE.MathUtils.lerp(0.25, 0.85, altitude);
+    if (this.currentEnv.sky_time === 'sunset') {
+      // Warm golden hour into rich twilight
+      const skyR = THREE.MathUtils.lerp(0.85, 0.95, altitude);
+      const skyG = THREE.MathUtils.lerp(0.42, 0.58, altitude);
+      const skyB = THREE.MathUtils.lerp(0.28, 0.45, altitude);
       this.scene.background = new THREE.Color(skyR, skyG, skyB);
       this.fog.color.setRGB(skyR, skyG, skyB);
-      this.sunLight.color.setRGB(1.0, 0.85, 0.7);
-      this.sunLight.intensity = 1.5 + altitude * 0.8;
+
+      this.sunLight.color.setRGB(1.0, 0.75 + altitude * 0.2, 0.45 + altitude * 0.4);
+      this.sunLight.intensity = 2.2 + altitude * 0.8;
+      this.ambientLight.color.setRGB(1.0, 0.85, 0.75);
+      this.ambientLight.intensity = 1.0 + altitude * 0.3;
+      (this.sunMesh.material as THREE.MeshBasicMaterial).color.set(0xffaa44);
+    } else if (this.currentEnv.sky_time === 'sunrise') {
+      const skyR = THREE.MathUtils.lerp(0.92, 0.96, altitude);
+      const skyG = THREE.MathUtils.lerp(0.65, 0.82, altitude);
+      const skyB = THREE.MathUtils.lerp(0.48, 0.72, altitude);
+      this.scene.background = new THREE.Color(skyR, skyG, skyB);
+      this.fog.color.setRGB(skyR, skyG, skyB);
+      this.sunLight.color.setRGB(1.0, 0.9, 0.75);
+      this.sunLight.intensity = 2.2 + altitude * 0.8;
+      this.ambientLight.color.setRGB(0.95, 0.85, 0.9);
+      this.ambientLight.intensity = 1.0 + altitude * 0.3;
+      (this.sunMesh.material as THREE.MeshBasicMaterial).color.set(0xffbb55);
     } else if (this.currentEnv.sky_time === 'night') {
-      this.scene.background = new THREE.Color(0x060814);
-      this.fog.color.set(0x080a18);
-      this.sunLight.color.set(0x7799ee);
-      this.sunLight.intensity = 0.6;
-      this.ambientLight.color.set(0x223355);
-      this.ambientLight.intensity = 0.25;
+      this.scene.background = new THREE.Color(0x0f172a);
+      this.fog.color.set(0x0f172a);
+      this.sunLight.color.set(0x93c5fd);
+      this.sunLight.intensity = 1.5;
+      this.ambientLight.color.set(0x475569);
+      this.ambientLight.intensity = 0.9;
       (this.sunMesh.material as THREE.MeshBasicMaterial).color.set(0xccddee); // Moon
     } else {
-      // Noon
-      this.scene.background = new THREE.Color(0x66aadd);
-      this.fog.color.set(0x88bbdd);
+      // Noon / Daytime
+      this.scene.background = new THREE.Color(0x60a5fa);
+      this.fog.color.set(0x93c5fd);
       this.sunLight.color.set(0xffffff);
-      this.sunLight.intensity = 2.2;
+      this.sunLight.intensity = 2.8;
       this.ambientLight.color.set(0xffffff);
-      this.ambientLight.intensity = 0.5;
+      this.ambientLight.intensity = 1.2;
+      (this.sunMesh.material as THREE.MeshBasicMaterial).color.set(0xffee88);
     }
   }
 }

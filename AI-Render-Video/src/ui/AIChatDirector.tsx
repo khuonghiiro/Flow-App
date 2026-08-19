@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Copy, Check, Code, Sparkles, RefreshCw, MessageSquare, Flame, TreePine, Armchair, Wheat } from 'lucide-react';
+import { Bot, Send, Copy, Check, Code, Sparkles, RefreshCw, MessageSquare, Flame, TreePine, Armchair, Wheat, BookOpen } from 'lucide-react';
 import { MasterSceneConfig } from '../types/scene';
 import { PromptBuilder } from '../ai/prompt_builder';
-import { sampleScenes, villageClashScene, chairSittingScene, treeClimbingScene } from '../samples/villageClashScene';
+import { sampleScenes, findSceneById, findSceneByKeyword } from '../core/scenes/SceneRegistry';
 
 interface AIChatDirectorProps {
   scene: MasterSceneConfig;
@@ -14,7 +14,7 @@ export const AIChatDirector: React.FC<AIChatDirectorProps> = ({ scene, onApplySc
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'ai'; text: string; scenePreset?: MasterSceneConfig }>>([
     {
       role: 'ai',
-      text: 'Xin chào Đạo Diễn! Tôi là **AI Studio Director**. Tôi đã nạp toàn bộ Asset Catalog (nhân vật, vũ khí, hiệu ứng) và tọa độ bản đồ làng quê. Hãy cho tôi biết kịch bản bạn muốn chỉ đạo biên kịch!',
+      text: 'Xin chào Đạo Diễn! Tôi là **AI Studio Director**. Tôi đã nạp toàn bộ Asset Catalog và các kịch bản mẫu từ thư mục JSON. Hãy cho tôi biết kịch bản bạn muốn chỉ đạo biên kịch!',
     },
   ]);
   const [inputText, setInputText] = useState('');
@@ -59,16 +59,30 @@ export const AIChatDirector: React.FC<AIChatDirectorProps> = ({ scene, onApplySc
       let replyText = `Tôi đã biên đạo kịch bản theo yêu cầu của bạn: "${query}".`;
 
       if (lower.includes('ngồi ghế') || lower.includes('quán nước') || lower.includes('ghế')) {
-        matchedScene = chairSittingScene;
+        matchedScene = findSceneById('scene_chair_sitting');
         replyText = '🪑 **Đã biên đạo Kịch bản Ngồi Ghế Đàm Đạo:** Nhân vật tiếp cận ghế gỗ, tự động xoay 180° hướng ra ngoài, khớp tư thế ngồi và bắt đầu câu thoại!';
       } else if (lower.includes('trèo cây') || lower.includes('cây') || lower.includes('ngắm')) {
-        matchedScene = treeClimbingScene;
+        matchedScene = findSceneById('scene_tree_climbing');
         replyText = '🌳 **Đã biên đạo Kịch bản Trèo Cây Trinh Sát:** Nhân vật leo dọc thân cây làng quê theo waypoints lên nhánh chạc ba, ngồi ngắm cảnh hoàng hôn!';
+      } else if (lower.includes('sách') || lower.includes('thần thoại') || lower.includes('fantasy') || lower.includes('book')) {
+        matchedScene = findSceneById('scene_medieval_fantasy_book');
+        replyText = '📖 **Đã biên đạo Kịch bản Sách Thần Thoại:** Khởi tạo map Cuốn Sách Huyền Ảo (medieval_fantasy_book.glb) cùng lâu đài và dòng suối ma thuật!';
+      } else if (lower.includes('thánh đường') || lower.includes('cathedral')) {
+        matchedScene = findSceneById('scene_cathedral_mystery');
+        replyText = '⛪ **Đã biên đạo Kịch bản Thánh Đường:** Khởi tạo không gian kiến trúc Gothic trang nghiêm và màn đấu trí phép thuật!';
+      } else if (lower.includes('hải tặc') || lower.includes('cướp biển') || lower.includes('pirate')) {
+        matchedScene = findSceneById('scene_pirate_adventure');
+        replyText = '🏴‍☠️ **Đã biên đạo Kịch bản Đảo Hải Tặc:** Khởi tạo chiến hạm cướp biển và hòn đảo nhiệt đới!';
       } else if (lower.includes('combat') || lower.includes('đánh') || lower.includes('chém') || lower.includes('chiến')) {
-        matchedScene = villageClashScene;
-        replyText = '⚔️ **Đã biên đạo Kịch bản Đại Chiến Võ Thuật:** Khớp frame vung kiếm t=8.5s kèm vệt lửa, va chạm t=9.1s đối thủ văng lùi 2.5m, mặt nhăn đau đớn, nổ tia lửa và rung camera!';
+        matchedScene = findSceneById('scene_village_clash_01');
+        replyText = '⚔️ **Đã biên đạo Kịch bản Đại Chiến Võ Thuật:** Khớp frame vung kiếm t=8.5s kèm vệt lửa, va chạm t=9.1s đối thủ văng lùi 3.2m, mặt nhăn đau đớn, nổ tia lửa và rung camera!';
       } else {
-        replyText += '\nBạn có thể chuyển sang tab **Master JSON** để tinh chỉnh từng mili-giây, hoặc tải các kịch bản mẫu bên dưới!';
+        matchedScene = findSceneByKeyword(query);
+        if (matchedScene) {
+          replyText = `🎬 **Đã chuyển sang kịch bản:** ${matchedScene.title || matchedScene.scene_id}`;
+        } else {
+          replyText += '\nBạn có thể chuyển sang tab **Master JSON** để tinh chỉnh từng mili-giây, hoặc tải các kịch bản mẫu từ menu trên cùng!';
+        }
       }
 
       if (matchedScene) {

@@ -14,7 +14,7 @@ export class AssetLoaderRegistry {
 
   public static async loadGLTF(url: string): Promise<THREE.Group> {
     if (this.modelCache.has(url)) {
-      return this.modelCache.get(url)!;
+      return this.modelCache.get(url)!.clone(true);
     }
 
     const loader = this.getGLTFLoader();
@@ -46,18 +46,11 @@ export class AssetLoaderRegistry {
                   mat.needsUpdate = true;
                   if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                     const stdMat = mat as THREE.MeshStandardMaterial;
-                    // Sketchfab convention: if emissiveMap has the texture, link it to map and brighten color
+                    // If map is missing but emissiveMap exists (common Sketchfab unlit conversion)
                     if (stdMat.emissiveMap && !stdMat.map) {
                       stdMat.map = stdMat.emissiveMap;
+                      stdMat.needsUpdate = true;
                     }
-                    stdMat.color.set(0xffffff);
-                    if (stdMat.emissiveMap) {
-                      stdMat.emissive.set(0xffffff);
-                      stdMat.emissiveIntensity = 0.8;
-                    }
-                    stdMat.roughness = 0.8;
-                    stdMat.metalness = 0.1;
-                    stdMat.needsUpdate = true;
                   }
                 });
               }
@@ -65,7 +58,7 @@ export class AssetLoaderRegistry {
           });
 
           this.modelCache.set(url, model);
-          resolve(model);
+          resolve(model.clone(true));
         },
         undefined,
         (err) => {
@@ -108,15 +101,8 @@ export class AssetLoaderRegistry {
                     const stdMat = mat as THREE.MeshStandardMaterial;
                     if (stdMat.emissiveMap && !stdMat.map) {
                       stdMat.map = stdMat.emissiveMap;
+                      stdMat.needsUpdate = true;
                     }
-                    stdMat.color.set(0xffffff);
-                    if (stdMat.emissiveMap) {
-                      stdMat.emissive.set(0xffffff);
-                      stdMat.emissiveIntensity = 0.8;
-                    }
-                    stdMat.roughness = 0.8;
-                    stdMat.metalness = 0.1;
-                    stdMat.needsUpdate = true;
                   }
                 });
               }
@@ -138,10 +124,10 @@ export class AssetLoaderRegistry {
     ground.name = 'environment_ground';
 
     // Grass terrain
-    const grassGeo = new THREE.PlaneGeometry(30, 30);
+    const grassGeo = new THREE.PlaneGeometry(80, 80);
     const grassMat = new THREE.MeshStandardMaterial({
-      color: 0x2d5a27,
-      roughness: 0.85,
+      color: 0x3d7038,
+      roughness: 0.8,
       metalness: 0.05,
     });
     const grass = new THREE.Mesh(grassGeo, grassMat);

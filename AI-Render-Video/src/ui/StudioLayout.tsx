@@ -12,7 +12,7 @@ import { CombatDebugger } from './CombatDebugger';
 import { MapRadarView } from './MapRadarView';
 import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
-import { sampleScenes } from '../samples/villageClashScene';
+import { sampleScenes } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
 
 interface StudioLayoutProps {
@@ -40,7 +40,7 @@ interface StudioLayoutProps {
   isLoadingMap?: boolean;
   onToggleFreeCam?: () => void;
   onUpdateScene: (updated: MasterSceneConfig) => void;
-  onImportCustomMap?: (file: File) => void;
+  onImportCustomMap?: (files: FileList | File[]) => void;
   onExportVideo: (fps?: number) => void;
   isExporting: boolean;
   exportProgressMsg: string;
@@ -82,21 +82,34 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
   const mapInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const handleMapFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onImportCustomMap) {
-      onImportCustomMap(file);
+    const files = e.target.files;
+    if (files && files.length > 0 && onImportCustomMap) {
+      onImportCustomMap(files);
     }
+    e.target.value = '';
   };
 
   return (
     <div className="studio-container">
-      {/* Hidden Map File Input */}
+      {/* Hidden Folder Map Input */}
+      <input
+        type="file"
+        ref={folderInputRef}
+        {...({ webkitdirectory: '', directory: '' } as any)}
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleMapFileChange}
+      />
+
+      {/* Hidden Single File Map Input */}
       <input
         type="file"
         ref={mapInputRef}
-        accept=".glb,.gltf"
+        accept=".glb,.gltf,.bin,.png,.jpg,.jpeg,.webp"
+        multiple
         style={{ display: 'none' }}
         onChange={handleMapFileChange}
       />
@@ -147,18 +160,32 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         </div>
 
         <div className="header-actions">
-          {/* Import Map Button */}
+          {/* Import Folder Map Button */}
           <button
             className="btn-secondary"
             style={{
               borderColor: '#38bdf8',
               color: '#38bdf8',
-              background: 'rgba(56, 189, 248, 0.1)',
+              background: 'rgba(56, 189, 248, 0.12)',
+            }}
+            onClick={() => folderInputRef.current?.click()}
+            title="Chọn thư mục chứa scene.gltf, scene.bin và textures để nạp trọn bộ map"
+          >
+            <FolderUp size={14} color="#38bdf8" /> <strong>Chọn Folder Map (.gltf)</strong>
+          </button>
+
+          {/* Import Single File Map Button */}
+          <button
+            className="btn-secondary"
+            style={{
+              borderColor: '#a855f7',
+              color: '#c084fc',
+              background: 'rgba(168, 85, 247, 0.12)',
             }}
             onClick={() => mapInputRef.current?.click()}
-            title="Chọn file 3D .glb / .gltf từ máy tính để làm map sân khấu"
+            title="Chọn file 3D .glb đóng gói sẵn từ máy tính"
           >
-            <FolderUp size={14} color="#38bdf8" /> <strong>Import Map 3D (.glb)</strong>
+            <Layers size={14} color="#c084fc" /> <strong>File .glb</strong>
           </button>
 
           {/* Export FPS Selector */}

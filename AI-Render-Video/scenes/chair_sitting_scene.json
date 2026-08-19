@@ -1,0 +1,78 @@
+{
+  "scene_id": "scene_chair_sitting",
+  "title": "🪑 Đàm Đạo Quán Nước (Ngồi Ghế Gỗ)",
+  "fps": 30,
+  "duration": 15.0,
+  "environment": {
+    "map": "farming_village",
+    "sky_time": "noon",
+    "weather": {
+      "fog": 0.008,
+      "wind": 0.2
+    }
+  },
+  "subtitles_config": {
+    "enable_overlay": true,
+    "burn_in_export": true,
+    "font_size": 22,
+    "show_speaker_name": true,
+    "position": "bottom",
+    "text_color": "#ffffff"
+  },
+  "dialogues_manifest": [
+    {
+      "line_id": "dlg_sit_01",
+      "speaker_id": "actor_warrior",
+      "speaker_name": "Chiến Binh",
+      "speaker_color": "#eab308",
+      "text": "Trận chiến vừa rồi mệt thật, ngồi nghỉ một chút đã!",
+      "voice_config": {
+        "voice_id": "vi-VN-NamMinhNeural",
+        "speed": 1.0,
+        "emotion": "smile"
+      },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
+      "status": "pending_tts",
+      "start_time": 4.5,
+      "estimated_duration": 3.5
+    }
+  ],
+  "camera_tracks": [
+    {
+      "start": 0.0,
+      "end": 15.0,
+      "shot_type": "cinematic_dolly",
+      "from": [-6.5, 2.5, 3],
+      "to": [-3.5, 1.8, 1.2],
+      "look_at": "actor_warrior.head",
+      "fov": 45
+    }
+  ],
+  "actors": [
+    {
+      "id": "actor_warrior",
+      "name": "Chiến Binh",
+      "model": "characters/hero_knight.vrm",
+      "spawn_point": [-2, 0, 1],
+      "tracks": {
+        "movement": [
+          {
+            "start": 0.0,
+            "end": 15.0,
+            "action": "sit",
+            "target_object": "props.wooden_chair_01"
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_sit_01",
+            "expressions": [
+              { "time_offset": 0.0, "type": "smile", "weight": 0.9 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,14 +1,14 @@
 {
-  "scene_id": "scene_cathedral_mystery",
-  "title": "⛪ Thánh Đường Cổ Kính (Map cathedral.glb)",
+  "scene_id": "scene_pirate_adventure",
+  "title": "🏴‍☠️ Đảo Hải Tặc Phiêu Lưu (Map game_pirate_adventure_map.glb)",
   "fps": 60,
   "duration": 20.0,
   "environment": {
-    "map": "assets/maps/cathedral.glb",
-    "sky_time": "night",
+    "map": "assets/maps/game_pirate_adventure_map.glb",
+    "sky_time": "sunset",
     "weather": {
-      "fog": 0.0,
-      "wind": 0.05
+      "fog": 0.0005,
+      "wind": 0.2
     }
   },
   "subtitles_config": {
@@ -21,11 +21,11 @@
   },
   "dialogues_manifest": [
     {
-      "line_id": "dlg_cath_01",
+      "line_id": "dlg_pirate_01",
       "speaker_id": "actor_warrior",
-      "speaker_name": "Chiến Binh Ánh Sáng",
+      "speaker_name": "Chiến Binh Thám Hiểm",
       "speaker_color": "#38bdf8",
-      "text": "Đây chính là Đại Thánh Đường Cổ Kính ngàn năm lưu truyền...",
+      "text": "Chúng ta đã chính thức cập bến Đảo Hải Tặc trong truyền thuyết!",
       "voice_config": { "voice_id": "vi-VN-NamMinhNeural", "speed": 1.0, "emotion": "serious" },
       "audio_path": null,
       "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
@@ -34,11 +34,11 @@
       "estimated_duration": 4.5
     },
     {
-      "line_id": "dlg_cath_02",
+      "line_id": "dlg_pirate_02",
       "speaker_id": "actor_anime_girl",
-      "speaker_name": "Tiểu Vũ (Anime)",
+      "speaker_name": "Tiểu Vũ Hoa Tiêu",
       "speaker_color": "#f472b6",
-      "text": "Kiến trúc mái vòm Gothic ở đây thật tráng lệ và bí ẩn!",
+      "text": "Nhìn kìa, chiến hạm hải tặc và hòn đảo nhiệt đới này thật kỳ vĩ!",
       "voice_config": { "voice_id": "vi-VN-HoaiMyNeural", "speed": 1.0, "emotion": "smile" },
       "audio_path": null,
       "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
@@ -47,11 +47,11 @@
       "estimated_duration": 4.8
     },
     {
-      "line_id": "dlg_cath_03",
+      "line_id": "dlg_pirate_03",
       "speaker_id": "actor_dark_mage",
-      "speaker_name": "Hắc Pháp Sư",
+      "speaker_name": "Thuyền Trưởng Hắc Ám",
       "speaker_color": "#a855f7",
-      "text": "Kẻ phàm trần... sao dám bước chân vào nơi linh thiêng này!",
+      "text": "Dừng bước! Muốn đụng vào kho báu thì phải bước qua lưỡi kiếm của ta!",
       "voice_config": { "voice_id": "vi-VN-HoaiMyNeural", "speed": 0.95, "emotion": "smirk" },
       "audio_path": null,
       "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
@@ -60,11 +60,11 @@
       "estimated_duration": 5.0
     },
     {
-      "line_id": "dlg_cath_04",
+      "line_id": "dlg_pirate_04",
       "speaker_id": "actor_warrior",
-      "speaker_name": "Chiến Binh Ánh Sáng",
+      "speaker_name": "Chiến Binh Thám Hiểm",
       "speaker_color": "#38bdf8",
-      "text": "Hãy chuẩn bị tiếp chiêu đi, Hắc Pháp Sư!",
+      "text": "Hãy tiếp chiêu đi, tên cướp biển hung tợn!",
       "voice_config": { "voice_id": "vi-VN-NamMinhNeural", "speed": 1.05, "emotion": "angry" },
       "audio_path": null,
       "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
@@ -78,8 +78,8 @@
       "start": 0.0,
       "end": 6.0,
       "shot_type": "cinematic_dolly",
-      "from": [0, 4.0, 12.0],
-      "to": [0, 2.5, 5.0],
+      "from": [0, 4.5, 14.0],
+      "to": [0, 2.8, 6.5],
       "look_at": "actor_warrior.head",
       "fov": 55
     },
@@ -94,8 +94,8 @@
       "start": 11.5,
       "end": 16.5,
       "shot_type": "cinematic_dolly",
-      "from": [4.0, 3.2, 0.0],
-      "to": [1.2, 1.8, -3.5],
+      "from": [4.5, 3.5, 0.0],
+      "to": [1.5, 2.0, -3.5],
       "look_at": "actor_dark_mage.head",
       "fov": 48
     },
@@ -104,24 +104,24 @@
       "end": 20.0,
       "shot_type": "combat_action_cam",
       "follow_target": "actor_warrior",
-      "distance": 4.0,
-      "height": 1.8,
+      "distance": 4.5,
+      "height": 2.0,
       "fov": 52
     }
   ],
   "actors": [
     {
       "id": "actor_warrior",
-      "name": "Chiến Binh Ánh Sáng",
+      "name": "Chiến Binh Thám Hiểm",
       "model": "characters/hero_knight.vrm",
-      "spawn_point": [-1.2, 0, 3.5],
+      "spawn_point": [-1.5, 0, 3.5],
       "tracks": {
         "movement": [
           {
             "start": 0.0,
             "end": 5.0,
             "action": "walk",
-            "destination": [-0.6, 0, 0.5]
+            "destination": [-0.6, 0, 0.8]
           },
           {
             "start": 5.0,
@@ -154,11 +154,11 @@
         ],
         "speech": [
           {
-            "line_ref": "dlg_cath_01",
+            "line_ref": "dlg_pirate_01",
             "expressions": [{ "time_offset": 0.0, "type": "serious", "weight": 0.8 }]
           },
           {
-            "line_ref": "dlg_cath_04",
+            "line_ref": "dlg_pirate_04",
             "expressions": [{ "time_offset": 0.0, "type": "angry", "weight": 0.9 }]
           }
         ]
@@ -166,9 +166,9 @@
     },
     {
       "id": "actor_anime_girl",
-      "name": "Tiểu Vũ (Anime)",
+      "name": "Tiểu Vũ Hoa Tiêu",
       "model": "assets/characters/sample_avatar.vrm",
-      "spawn_point": [1.2, 0, 4.0],
+      "spawn_point": [1.5, 0, 4.0],
       "tracks": {
         "movement": [
           {
@@ -186,7 +186,7 @@
         ],
         "speech": [
           {
-            "line_ref": "dlg_cath_02",
+            "line_ref": "dlg_pirate_02",
             "expressions": [{ "time_offset": 0.0, "type": "smile", "weight": 0.9 }]
           }
         ]
@@ -194,7 +194,7 @@
     },
     {
       "id": "actor_dark_mage",
-      "name": "Hắc Pháp Sư",
+      "name": "Thuyền Trưởng Hắc Ám",
       "model": "characters/dark_mage.vrm",
       "spawn_point": [0, 0, -4.5],
       "tracks": {
@@ -217,7 +217,7 @@
         ],
         "speech": [
           {
-            "line_ref": "dlg_cath_03",
+            "line_ref": "dlg_pirate_03",
             "expressions": [{ "time_offset": 0.0, "type": "smirk", "weight": 0.9 }]
           }
         ]

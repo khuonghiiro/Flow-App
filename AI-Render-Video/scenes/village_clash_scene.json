@@ -1,0 +1,165 @@
+{
+  "scene_id": "scene_village_clash_01",
+  "title": "⚔️ Đại Chiến Làng Hoàng Hôn",
+  "fps": 30,
+  "duration": 25.0,
+  "environment": {
+    "map": "farming_village",
+    "sky_time": "sunset",
+    "weather": {
+      "fog": 0.015,
+      "wind": 0.5
+    }
+  },
+  "subtitles_config": {
+    "enable_overlay": true,
+    "burn_in_export": true,
+    "font_size": 24,
+    "show_speaker_name": true,
+    "position": "bottom",
+    "text_color": "#f8fafc"
+  },
+  "dialogues_manifest": [
+    {
+      "line_id": "dlg_01",
+      "speaker_id": "actor_warrior",
+      "speaker_name": "Chiến Binh Áo Giáp",
+      "speaker_color": "#38bdf8",
+      "text": "Ngươi đã phá hủy cánh đồng của ngôi làng này!",
+      "voice_config": {
+        "voice_id": "vi-VN-NamMinhNeural",
+        "speed": 1.05,
+        "pitch": 1.0,
+        "emotion": "angry"
+      },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
+      "status": "pending_tts",
+      "start_time": 2.0,
+      "estimated_duration": 3.5
+    },
+    {
+      "line_id": "dlg_02",
+      "speaker_id": "actor_dark_mage",
+      "speaker_name": "Phù Thủy Tối Thượng",
+      "speaker_color": "#f43f5e",
+      "text": "Ngươi nghĩ sức mạnh tầm thường đó có thể ngăn cản ta sao?",
+      "voice_config": {
+        "voice_id": "vi-VN-HoaiMyNeural",
+        "speed": 0.95,
+        "pitch": 0.9,
+        "emotion": "smirk"
+      },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
+      "status": "pending_tts",
+      "start_time": 5.5,
+      "estimated_duration": 3.0
+    }
+  ],
+  "camera_tracks": [
+    {
+      "start": 0.0,
+      "end": 5.0,
+      "shot_type": "cinematic_dolly",
+      "from": [-6, 3, 5],
+      "to": [-2, 2, 3],
+      "look_at": "actor_warrior.head",
+      "fov": 45
+    },
+    {
+      "start": 5.0,
+      "end": 8.5,
+      "shot_type": "face_close_up",
+      "from": [4, 2, 3],
+      "to": [3, 1.8, 2.2],
+      "look_at": "actor_dark_mage.head",
+      "fov": 35
+    },
+    {
+      "start": 8.5,
+      "end": 25.0,
+      "shot_type": "cinematic_dolly",
+      "from": [0, 4, 10],
+      "to": [0, 2.5, 6],
+      "look_at": [0, 1.0, 0],
+      "fov": 50
+    }
+  ],
+  "actors": [
+    {
+      "id": "actor_warrior",
+      "name": "Chiến Binh Áo Giáp",
+      "model": "characters/hero_knight.vrm",
+      "costume": "default_armor",
+      "spawn_point": [-3.5, 0, 2],
+      "rotation_y": 0.3,
+      "tracks": {
+        "movement": [
+          { "start": 0.0, "end": 2.0, "action": "walk", "destination": [-0.8, 0, 1.5], "avoid_obstacles": true },
+          { "start": 2.0, "end": 8.2, "action": "talk_gesture", "look_at": "actor_dark_mage.head" }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_01",
+            "expressions": [
+              { "time_offset": 0.0, "type": "angry", "weight": 1.0 },
+              { "time_offset": 2.0, "type": "serious", "weight": 0.8 }
+            ]
+          }
+        ],
+        "combat_actions": [
+          {
+            "start_time": 8.5,
+            "impact_time": 9.1,
+            "anim": "heavy_slash_combo",
+            "weapon_vfx": { "type": "sword_slash_fire", "start": 8.6, "end": 9.4 },
+            "target": {
+              "actor_id": "actor_dark_mage",
+              "reaction_anim": "fly_back_knockdown",
+              "knockback_distance": 3.2,
+              "facial_expression": "pain",
+              "impact_vfx": "impact_hit_sparks",
+              "screen_shake": { "intensity": 0.45, "duration": 0.35 }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "actor_dark_mage",
+      "name": "Phù Thủy Tối Thượng",
+      "model": "characters/dark_mage.vrm",
+      "spawn_point": [2.5, 0, 1.5],
+      "rotation_y": -0.4,
+      "tracks": {
+        "movement": [
+          { "start": 0.0, "end": 5.5, "action": "idle", "look_at": "actor_warrior.head" },
+          { "start": 5.5, "end": 8.5, "action": "talk_gesture", "look_at": "actor_warrior.head" }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_02",
+            "expressions": [
+              { "time_offset": 0.0, "type": "smirk", "weight": 0.95 },
+              { "time_offset": 2.0, "type": "surprised", "weight": 0.7 }
+            ]
+          }
+        ],
+        "vfx": [
+          { "start": 7.0, "end": 8.5, "type": "magic_shield_barrier", "attach_to": "root" }
+        ]
+      }
+    }
+  ],
+  "dynamic_world_events": [
+    {
+      "target": "props.farm_plot_01.crop",
+      "growth_timeline": [
+        { "time": 2.0, "stage": "seed", "scale": 0.1 },
+        { "time": 8.0, "stage": "sprout", "scale": 0.6 },
+        { "time": 18.0, "stage": "mature_crop", "scale": 1.0 }
+      ]
+    }
+  ]
+}
