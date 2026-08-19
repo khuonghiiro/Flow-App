@@ -15,6 +15,7 @@ import { DialogueEditorModal } from './DialogueEditorModal';
 import { WeatherControlPanel } from './WeatherControlPanel';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
+import { MapPresetManager } from '../core/maps/MapPresetManager';
 
 interface StudioLayoutProps {
   scene: MasterSceneConfig;
@@ -269,9 +270,45 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             >
               <Layers size={12} /> GLB
             </button>
+            <button
+              onClick={() => {
+                const mapId = prompt('Nhập mã định danh Map ID (ví dụ: my_custom_village):', `custom_map_${Date.now().toString().slice(-4)}`);
+                if (!mapId) return;
+                const name = prompt('Nhập tên hiển thị của Map:', 'Bản Đồ Tùy Chỉnh') || mapId;
+                const desc = prompt('Nhập mô tả bối cảnh (để AI đọc hiểu):', 'Bản đồ tùy chỉnh gồm các vật thể và điểm xuất hiện.') || '';
+                
+                const placedProps = scene.environment.placed_props || [
+                  { id: 'tree_main', asset_path: 'props/nature/tree_sakura.glb', position: [4, 0, -3] as [number, number, number], type: 'nature' as const },
+                  { id: 'bench_rest', asset_path: 'props/furniture/chair_wooden.glb', position: [-4, 0, -2] as [number, number, number], type: 'furniture' as const, smart_socket: { socket_type: 'sit' as const } },
+                  { id: 'farm_plot', asset_path: 'props/tools/farm_plot.glb', position: [0, 0, -5] as [number, number, number], type: 'nature' as const, smart_socket: { socket_type: 'harvest' as const } }
+                ];
+
+                const preset = MapPresetManager.createPresetFromScene(scene, placedProps, mapId, name, desc);
+                MapPresetManager.downloadPresetJson(preset);
+                alert(`✅ Đã xuất tệp cấu hình ${mapId}.json!\n\nHãy lưu file này vào thư mục assets/maps/presets/ rồi chạy _scan_assets.bat để AI tự động nhận diện và tái sử dụng bản đồ này.`);
+              }}
+              title="Lưu cấu hình bản đồ hiện tại (Map Preset JSON)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                background: 'rgba(34, 197, 94, 0.1)',
+                color: '#4ade80',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Map size={12} /> Lưu Map
+            </button>
           </div>
 
           <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }}></div>
+
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button

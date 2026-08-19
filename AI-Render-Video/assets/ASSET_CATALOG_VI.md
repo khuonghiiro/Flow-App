@@ -1,16 +1,24 @@
 # 📦 DANH MỤC TÀI NGUYÊN (ASSET CATALOG) — AI 3D Animation Studio
 
-> **DÀNH CHO NGƯỜI DÙNG:** File tài liệu Tiếng Việt có dấu giúp bạn dễ dàng theo dõi toàn bộ tài nguyên hiện có trong dự án.
+> **DÀNH CHO NGƯỜI DÙNG:** File tài liệu Tiếng Việt có dấu giúp bạn dễ dàng theo dõi toàn bộ tài nguyên và bản đồ đã lưu trong dự án.
 > **Quy định AI:** AI chỉ đọc file `ASSET_CATALOG.md` (tiếng Anh). File `_VI.md` này chỉ phục vụ người dùng.
-> **Thời gian quét:** 2026-08-19 08:23:22
-> **Tổng tài nguyên:** 5 tệp tin, 23.5 MB
+> **Thời gian quét:** 2026-08-19 08:42:49
+> **Tổng tài nguyên:** 5 tệp tin (23.5 MB), 2 bản đồ lưu sẵn
 
 ---
 
 ## 1. Hướng Dẫn Soạn Kịch Bản Scene JSON Cho Người Dùng
 
-### Bước 1: Chọn Bản Đồ Bối Cảnh (Map)
-Khai báo trường `environment.map` trỏ tới model trong thư mục `maps/`.
+### Bước 1: Chọn Bản Đồ Hoặc Tái Sử Dụng Bản Đồ Đã Lưu (Map Preset)
+Bạn có thể trỏ trực tiếp tới bản đồ đã lưu để tận dụng ngay vị trí đồ vật, cây cối, ao hồ và điểm xuất hiện:
+```json
+"environment": {
+  "map": "farming_village",
+  "map_preset": "sakura_lake_village",
+  "sky_time": "sunset",
+  "weather": { "fog": 0.012, "wind": 0.35 }
+}
+```
 
 ### Bước 2: Lắp Ráp Ngoại Hình Nhân Vật (Modular Assembly)
 Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu và phụ kiện cho từng nhân vật bằng khối `assembly`:
@@ -28,7 +36,7 @@ Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu 
     "skin_color": "#ffd1b3",
     "hair_color": "#1a1a2e"
   },
-  "spawn_point": [0, 0, 0]
+  "spawn_point": [-3.5, 0, -1.8]
 }
 ```
 
@@ -38,7 +46,42 @@ Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu 
 
 ---
 
-## 2. Bảng Danh Mục Tài Nguyên Chi Tiết
+## 2. Danh Sách Bản Đồ Đã Lưu (Map Presets)
+
+#### Mã Map: `sakura_lake_village` — Làng Hoa Anh Đào Ven Hồ
+- **Tệp cấu hình**: `maps/presets/sakura_lake_village.json`
+- **Mô tả bối cảnh**: Ngôi làng thanh tịnh ven hồ nước, có 2 hàng cây hoa anh đào lớn, một ghế dài đá ngồi ngắm cảnh hướng ra hồ, và vườn thảo dược phía đông.
+- **Map nền**: `farming_village` | **Bầu trời & Thời tiết**: sunset, Sương mù: 0.012
+- **Các điểm xuất hiện (Spawn Points)**:
+  - Điểm xuất hiện `"lakeside_bench"`: [-3.5, 0, -1.8]
+  - Điểm xuất hiện `"village_entrance"`: [0, 0, 4]
+  - Điểm xuất hiện `"sakura_tree_north"`: [4, 0, -3]
+  - Điểm xuất hiện `"herb_garden"`: [0, 0, -5]
+- **Danh sách đồ vật & điểm tương tác**:
+  - `sakura_tree_01` (nature) tại [4, 0, -3] — Model: `props/nature/tree_sakura.glb` (Tương tác: climb)
+  - `stone_bench_01` (furniture) tại [-3.5, 0, -1.8] — Model: `props/furniture/chair_wooden.glb` (Tương tác: sit)
+  - `herb_farm_plot` (nature) tại [0, 0, -5] — Model: `props/tools/farm_plot.glb` (Tương tác: harvest)
+  - `night_lantern_stand` (furniture) tại [-2.8, 0, -1.5] — Model: `props/furniture/lantern_prop.glb`
+
+#### Mã Map: `xianxia_mountain_arena` — Vấn Đỉnh Phong — Đấu Trường Tiên Giới
+- **Tệp cấu hình**: `maps/presets/xianxia_mountain_arena.json`
+- **Mô tả bối cảnh**: Đỉnh núi mây mù bao phủ, có các cột đá khắc phù văn cổ xưa xung quanh đài tỷ võ, hướng bắc có tảng đá linh khí tọa thiền.
+- **Map nền**: `medieval_fantasy_book` | **Bầu trời & Thời tiết**: sunrise, Sương mù: 0.02
+- **Các điểm xuất hiện (Spawn Points)**:
+  - Điểm xuất hiện `"challenger_1_west"`: [-4, 0, 0]
+  - Điểm xuất hiện `"challenger_2_east"`: [4, 0, 0]
+  - Điểm xuất hiện `"meditation_stone_north"`: [0, 0, -4.5]
+  - Điểm xuất hiện `"arena_center"`: [0, 0, 0]
+- **Danh sách đồ vật & điểm tương tác**:
+  - `meditation_stone_01` (nature) tại [0, 0, -4.5] — Model: `props/nature/rock_large.glb` (Tương tác: stand)
+  - `ancient_pillar_west` (building) tại [-5.5, 0, -2] — Model: `props/buildings/tower_mage.glb`
+  - `ancient_pillar_east` (building) tại [5.5, 0, -2] — Model: `props/buildings/tower_mage.glb`
+
+
+
+---
+
+## 3. Bảng Danh Mục Tài Nguyên Chi Tiết
 
 ### 👤 Nhân Vật — Thân Hình Cơ Bản (Base Bodies)
 | ID | Path | Format | Size |
@@ -146,7 +189,7 @@ Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu 
 
 ---
 
-## 3. Bảng Tra Cứu Hành Động & Biểu Cảm Hỗ Trợ
+## 4. Bảng Tra Cứu Hành Động & Biểu Cảm Hỗ Trợ
 
 ### 🏃 Hành Động Cơ Thể (40 Hành động)
 - **Cơ bản:** `idle` (đứng thở), `walk` (đi bộ), `run` (chạy), `sit` (ngồi), `climb` (trèo)

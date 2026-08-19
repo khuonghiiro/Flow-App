@@ -11,6 +11,8 @@ import {
   ActorInventory,
 } from './interactions';
 
+import { MapPresetConfig, PlacedProp } from './map_preset';
+
 export interface Vector3D {
   x: number;
   y: number;
@@ -21,13 +23,16 @@ export type Vec3Tuple = [number, number, number];
 
 export interface EnvironmentConfig {
   map: string;
+  map_preset?: string;             // Reference to a saved map preset ID (e.g. "sakura_lake_village")
   sky_time: 'sunrise' | 'noon' | 'sunset' | 'night';
   weather: {
     fog: number;
     wind: number;
     rain?: number;
   };
+  placed_props?: PlacedProp[];     // Additional placed props specific to this scene
 }
+
 
 export interface EnvironmentOverride {
   enabled: boolean;

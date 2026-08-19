@@ -1,7 +1,243 @@
 {
-  "generated_at": "2026-08-19 08:23:22",
+  "generated_at": "2026-08-19 08:42:49",
   "total_files": 5,
   "total_size_mb": 23.5,
+  "map_presets": [
+    {
+      "map_id": "sakura_lake_village",
+      "name": "Làng Hoa Anh Đào Ven Hồ",
+      "description": "Ngôi làng thanh tịnh ven hồ nước, có 2 hàng cây hoa anh đào lớn, một ghế dài đá ngồi ngắm cảnh hướng ra hồ, và vườn thảo dược phía đông.",
+      "base_map": "farming_village",
+      "sky_time": "sunset",
+      "weather": {
+        "fog": 0.012,
+        "wind": 0.35,
+        "rain": 0
+      },
+      "default_spawn_points": {
+        "lakeside_bench": [
+          -3.5,
+          0,
+          -1.8
+        ],
+        "village_entrance": [
+          0,
+          0,
+          4
+        ],
+        "sakura_tree_north": [
+          4,
+          0,
+          -3
+        ],
+        "herb_garden": [
+          0,
+          0,
+          -5
+        ]
+      },
+      "placed_props": [
+        {
+          "id": "sakura_tree_01",
+          "asset_path": "props/nature/tree_sakura.glb",
+          "position": [
+            4,
+            0,
+            -3
+          ],
+          "scale": 1.2,
+          "type": "nature",
+          "is_obstacle": true,
+          "obstacle_radius": 0.8,
+          "smart_socket": {
+            "socket_type": "climb",
+            "entry_offset": [
+              0,
+              0,
+              1.2
+            ],
+            "target_offset": [
+              0,
+              2.2,
+              0
+            ],
+            "target_rotation_y": 0
+          }
+        },
+        {
+          "id": "stone_bench_01",
+          "asset_path": "props/furniture/chair_wooden.glb",
+          "position": [
+            -3.5,
+            0,
+            -1.8
+          ],
+          "rotation": [
+            0,
+            0.4,
+            0
+          ],
+          "scale": 1,
+          "type": "furniture",
+          "is_obstacle": true,
+          "obstacle_radius": 0.5,
+          "smart_socket": {
+            "socket_type": "sit",
+            "entry_offset": [
+              0,
+              0,
+              0.9
+            ],
+            "target_offset": [
+              0,
+              0.5,
+              0
+            ],
+            "target_rotation_y": 0.4
+          }
+        },
+        {
+          "id": "herb_farm_plot",
+          "asset_path": "props/tools/farm_plot.glb",
+          "position": [
+            0,
+            0,
+            -5
+          ],
+          "scale": 1,
+          "type": "nature",
+          "smart_socket": {
+            "socket_type": "harvest",
+            "entry_offset": [
+              0,
+              0,
+              1
+            ],
+            "target_offset": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "night_lantern_stand",
+          "asset_path": "props/furniture/lantern_prop.glb",
+          "position": [
+            -2.8,
+            0,
+            -1.5
+          ],
+          "scale": 1,
+          "type": "furniture"
+        }
+      ],
+      "tags": [
+        "village",
+        "peaceful",
+        "sakura",
+        "lake",
+        "xianxia"
+      ],
+      "relPath": "maps/presets/sakura_lake_village.json"
+    },
+    {
+      "map_id": "xianxia_mountain_arena",
+      "name": "Vấn Đỉnh Phong — Đấu Trường Tiên Giới",
+      "description": "Đỉnh núi mây mù bao phủ, có các cột đá khắc phù văn cổ xưa xung quanh đài tỷ võ, hướng bắc có tảng đá linh khí tọa thiền.",
+      "base_map": "medieval_fantasy_book",
+      "sky_time": "sunrise",
+      "weather": {
+        "fog": 0.02,
+        "wind": 0.6,
+        "rain": 0
+      },
+      "default_spawn_points": {
+        "challenger_1_west": [
+          -4,
+          0,
+          0
+        ],
+        "challenger_2_east": [
+          4,
+          0,
+          0
+        ],
+        "meditation_stone_north": [
+          0,
+          0,
+          -4.5
+        ],
+        "arena_center": [
+          0,
+          0,
+          0
+        ]
+      },
+      "placed_props": [
+        {
+          "id": "meditation_stone_01",
+          "asset_path": "props/nature/rock_large.glb",
+          "position": [
+            0,
+            0,
+            -4.5
+          ],
+          "scale": 1.5,
+          "type": "nature",
+          "is_obstacle": true,
+          "obstacle_radius": 1.2,
+          "smart_socket": {
+            "socket_type": "stand",
+            "entry_offset": [
+              0,
+              0,
+              1.5
+            ],
+            "target_offset": [
+              0,
+              0.8,
+              0
+            ]
+          }
+        },
+        {
+          "id": "ancient_pillar_west",
+          "asset_path": "props/buildings/tower_mage.glb",
+          "position": [
+            -5.5,
+            0,
+            -2
+          ],
+          "scale": 0.8,
+          "type": "building",
+          "is_obstacle": true,
+          "obstacle_radius": 0.9
+        },
+        {
+          "id": "ancient_pillar_east",
+          "asset_path": "props/buildings/tower_mage.glb",
+          "position": [
+            5.5,
+            0,
+            -2
+          ],
+          "scale": 0.8,
+          "type": "building",
+          "is_obstacle": true,
+          "obstacle_radius": 0.9
+        }
+      ],
+      "tags": [
+        "xianxia",
+        "combat",
+        "arena",
+        "mountain",
+        "clouds"
+      ],
+      "relPath": "maps/presets/xianxia_mountain_arena.json"
+    }
+  ],
   "characters": {
     "base_bodies": [
       {

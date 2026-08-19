@@ -88,6 +88,33 @@ const rootProps = fs.existsSync(path.join(rootDir, 'props'))
 
 const maps = getFiles(path.join(rootDir, 'maps'), modelExts);
 
+// Scan Saved Map Presets (.json)
+const mapPresetsFolder = path.join(rootDir, 'maps/presets');
+const mapPresetFiles = fs.existsSync(mapPresetsFolder)
+  ? fs.readdirSync(mapPresetsFolder).filter(f => f.endsWith('.json'))
+  : [];
+
+const mapPresets = mapPresetFiles.map(f => {
+  const full = path.join(mapPresetsFolder, f);
+  try {
+    const data = JSON.parse(fs.readFileSync(full, 'utf-8'));
+    return {
+      map_id: data.map_id || path.parse(f).name,
+      name: data.name || data.map_id,
+      description: data.description || '',
+      base_map: data.base_map || 'farming_village',
+      sky_time: data.sky_time || 'sunset',
+      weather: data.weather || { fog: 0.01, wind: 0.3 },
+      default_spawn_points: data.default_spawn_points || {},
+      placed_props: data.placed_props || [],
+      tags: data.tags || [],
+      relPath: `maps/presets/${f}`
+    };
+  } catch {
+    return null;
+  }
+}).filter(Boolean);
+
 const bgm = getFiles(path.join(rootDir, 'audio/bgm'), audioExts);
 const sfxCombat = getFiles(path.join(rootDir, 'audio/sfx/combat'), audioExts);
 const sfxInteract = getFiles(path.join(rootDir, 'audio/sfx/interaction'), audioExts);
@@ -119,6 +146,56 @@ function makeTable(items, fallback) {
   return table;
 }
 
+function makePresetsEn(presets) {
+  if (!presets || presets.length === 0) return '*No saved map presets found.*\n';
+  let md = '';
+  for (const p of presets) {
+    const spawns = Object.entries(p.default_spawn_points || {})
+      .map(([name, pos]) => `  - \`"${name}"\`: [${pos.join(', ')}]`)
+      .join('\n');
+    const props = (p.placed_props || [])
+      .map(pr => `  - \`${pr.id}\` (${pr.type || 'prop'}) at [${pr.position.join(', ')}] — Asset: \`${pr.asset_path}\`${pr.smart_socket ? ` (Socket: ${pr.smart_socket.socket_type})` : ''}`)
+      .join('\n');
+
+    md += `#### Preset ID: \`${p.map_id}\` — ${p.name}
+- **File**: \`${p.relPath}\`
+- **Description**: ${p.description || 'Custom map configuration.'}
+- **Base Map**: \`${p.base_map}\` | **Default Sky/Weather**: ${p.sky_time}, Fog: ${p.weather?.fog ?? 0.01}
+- **Named Spawn Points**:
+${spawns || '  - None'}
+- **Placed Objects & Interactables**:
+${props || '  - None'}
+
+`;
+  }
+  return md;
+}
+
+function makePresetsVi(presets) {
+  if (!presets || presets.length === 0) return '*Chưa có bản đồ lưu sẵn.*\n';
+  let md = '';
+  for (const p of presets) {
+    const spawns = Object.entries(p.default_spawn_points || {})
+      .map(([name, pos]) => `  - Điểm xuất hiện \`"${name}"\`: [${pos.join(', ')}]`)
+      .join('\n');
+    const props = (p.placed_props || [])
+      .map(pr => `  - \`${pr.id}\` (${pr.type || 'vật thể'}) tại [${pr.position.join(', ')}] — Model: \`${pr.asset_path}\`${pr.smart_socket ? ` (Tương tác: ${pr.smart_socket.socket_type})` : ''}`)
+      .join('\n');
+
+    md += `#### Mã Map: \`${p.map_id}\` — ${p.name}
+- **Tệp cấu hình**: \`${p.relPath}\`
+- **Mô tả bối cảnh**: ${p.description || 'Bản đồ tùy chỉnh.'}
+- **Map nền**: \`${p.base_map}\` | **Bầu trời & Thời tiết**: ${p.sky_time}, Sương mù: ${p.weather?.fog ?? 0.01}
+- **Các điểm xuất hiện (Spawn Points)**:
+${spawns || '  - Chưa có điểm xuất hiện'}
+- **Danh sách đồ vật & điểm tương tác**:
+${props || '  - Không có đồ vật'}
+
+`;
+  }
+  return md;
+}
+
 // ----------------------------------------------------
 // 1. GENERATE ASSET_CATALOG.md (English for AI)
 // ----------------------------------------------------
@@ -127,14 +204,27 @@ const mdEn = `# ASSET CATALOG — AI 3D Animation Studio
 > **FOR AI AGENTS:** This file is the single source of truth for all available scene resources. Read this file carefully before generating JSON \`MasterSceneConfig\`.
 > **Language Rule:** AI agents must read \`ASSET_CATALOG.md\` (English). Do not rely on \`_VI.md\` files which are formatted for human users.
 > **Auto-generated:** ${timestamp}
-> **Total assets:** ${allAssets.length} files, ${totalSize} MB
+> **Total assets:** ${allAssets.length} asset files (${totalSize} MB), ${mapPresets.length} saved map presets
 
 ---
 
 ## 1. AI Guidelines for Scene JSON Generation
 
-### Step 1: Map Selection
-Reference an available environment model via \`environment.map\`:
+### Step 1: Map Selection & Saved Map Presets
+You can use a raw map file OR reference a **Saved Map Preset** directly:
+
+**Option A: Using a Saved Map Preset (Recommended when user asks for a saved map):**
+\`\`\`json
+"environment": {
+  "map": "farming_village",
+  "map_preset": "sakura_lake_village",
+  "sky_time": "sunset",
+  "weather": { "fog": 0.012, "wind": 0.35 }
+}
+\`\`\`
+*Benefit:* When using a map preset, you can place actors at named spawn points (e.g. \`[-3.5, 0, -1.8]\` at lakeside bench) and interact with preset props (e.g. \`"props.stone_bench_01"\` or \`"props.sakura_tree_01"\`).
+
+**Option B: Standard Raw Map:**
 \`\`\`json
 "environment": {
   "map": "medieval_fantasy_book",
@@ -159,7 +249,7 @@ Characters can be composed from modular parts using the \`assembly\` object:
     "skin_color": "#ffd1b3",
     "hair_color": "#1a1a2e"
   },
-  "spawn_point": [0, 0, 0]
+  "spawn_point": [-3.5, 0, -1.8]
 }
 \`\`\`
 *Backward Compatibility:* If modular parts are not available, specify \`model: "characters/sample_avatar.vrm"\` directly.
@@ -172,7 +262,13 @@ Use exact IDs from the tables below:
 
 ---
 
-## 2. Available Asset Catalog
+## 2. Saved Map Presets (Configured Environments)
+
+${makePresetsEn(mapPresets)}
+
+---
+
+## 3. Available Raw Asset Catalog
 
 ### Characters — Base Bodies
 ${makeTable([...baseBodies, ...rootCharFiles], 'No base body assets found. Add .vrm/.glb to characters/base_bodies/')}
@@ -248,7 +344,7 @@ ${makeTable(vfx, 'Procedural VFX shaders active.')}
 
 ---
 
-## 3. Supported Actions & Expressions Reference
+## 4. Supported Actions & Expressions Reference
 
 ### Locomotion & Body Actions (40 Actions)
 - **Basic:** \`idle\`, \`walk\`, \`run\`, \`sit\`, \`climb\`
@@ -263,21 +359,29 @@ ${makeTable(vfx, 'Procedural VFX shaders active.')}
 `;
 
 // ----------------------------------------------------
-// 2. GENERATE ASSET_CATALOG_VI.md (Tiếng Việt có dấu cho User)
+// 2. GENERATE ASSET_CATALOG_VI.md (Tiếng Việt cho User)
 // ----------------------------------------------------
 const mdVi = `# 📦 DANH MỤC TÀI NGUYÊN (ASSET CATALOG) — AI 3D Animation Studio
 
-> **DÀNH CHO NGƯỜI DÙNG:** File tài liệu Tiếng Việt có dấu giúp bạn dễ dàng theo dõi toàn bộ tài nguyên hiện có trong dự án.
+> **DÀNH CHO NGƯỜI DÙNG:** File tài liệu Tiếng Việt có dấu giúp bạn dễ dàng theo dõi toàn bộ tài nguyên và bản đồ đã lưu trong dự án.
 > **Quy định AI:** AI chỉ đọc file \`ASSET_CATALOG.md\` (tiếng Anh). File \`_VI.md\` này chỉ phục vụ người dùng.
 > **Thời gian quét:** ${timestamp}
-> **Tổng tài nguyên:** ${allAssets.length} tệp tin, ${totalSize} MB
+> **Tổng tài nguyên:** ${allAssets.length} tệp tin (${totalSize} MB), ${mapPresets.length} bản đồ lưu sẵn
 
 ---
 
 ## 1. Hướng Dẫn Soạn Kịch Bản Scene JSON Cho Người Dùng
 
-### Bước 1: Chọn Bản Đồ Bối Cảnh (Map)
-Khai báo trường \`environment.map\` trỏ tới model trong thư mục \`maps/\`.
+### Bước 1: Chọn Bản Đồ Hoặc Tái Sử Dụng Bản Đồ Đã Lưu (Map Preset)
+Bạn có thể trỏ trực tiếp tới bản đồ đã lưu để tận dụng ngay vị trí đồ vật, cây cối, ao hồ và điểm xuất hiện:
+\`\`\`json
+"environment": {
+  "map": "farming_village",
+  "map_preset": "sakura_lake_village",
+  "sky_time": "sunset",
+  "weather": { "fog": 0.012, "wind": 0.35 }
+}
+\`\`\`
 
 ### Bước 2: Lắp Ráp Ngoại Hình Nhân Vật (Modular Assembly)
 Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu và phụ kiện cho từng nhân vật bằng khối \`assembly\`:
@@ -295,7 +399,7 @@ Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu 
     "skin_color": "#ffd1b3",
     "hair_color": "#1a1a2e"
   },
-  "spawn_point": [0, 0, 0]
+  "spawn_point": [-3.5, 0, -1.8]
 }
 \`\`\`
 
@@ -305,7 +409,13 @@ Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu 
 
 ---
 
-## 2. Bảng Danh Mục Tài Nguyên Chi Tiết
+## 2. Danh Sách Bản Đồ Đã Lưu (Map Presets)
+
+${makePresetsVi(mapPresets)}
+
+---
+
+## 3. Bảng Danh Mục Tài Nguyên Chi Tiết
 
 ### 👤 Nhân Vật — Thân Hình Cơ Bản (Base Bodies)
 ${makeTable([...baseBodies, ...rootCharFiles], 'Chưa có thân hình cơ bản. Thả tệp .vrm/.glb vào characters/base_bodies/')}
@@ -381,7 +491,7 @@ ${makeTable(vfx, 'Shader hiệu ứng hạt nội tại đang kích hoạt.')}
 
 ---
 
-## 3. Bảng Tra Cứu Hành Động & Biểu Cảm Hỗ Trợ
+## 4. Bảng Tra Cứu Hành Động & Biểu Cảm Hỗ Trợ
 
 ### 🏃 Hành Động Cơ Thể (40 Hành động)
 - **Cơ bản:** \`idle\` (đứng thở), \`walk\` (đi bộ), \`run\` (chạy), \`sit\` (ngồi), \`climb\` (trèo)
@@ -402,6 +512,7 @@ const manifest = {
   generated_at: timestamp,
   total_files: allAssets.length,
   total_size_mb: parseFloat(totalSize),
+  map_presets: mapPresets,
   characters: {
     base_bodies: [...baseBodies, ...rootCharFiles],
     faces,
@@ -452,7 +563,7 @@ const manifest = {
 };
 
 fs.writeFileSync(outputMdEn, mdEn, 'utf-8');
-console.log('✓ Generated ASSET_CATALOG.md (English for AI)');
+console.log('✓ Generated ASSET_CATALOG.md (English for AI, including Map Presets)');
 
 fs.writeFileSync(outputMdVi, mdVi, 'utf-8');
 console.log('✓ Generated ASSET_CATALOG_VI.md (Tiếng Việt cho User)');

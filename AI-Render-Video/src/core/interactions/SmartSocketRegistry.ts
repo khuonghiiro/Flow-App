@@ -2,11 +2,12 @@ import { Vec3Tuple } from '../../types/scene';
 
 export interface SmartSocket {
   id: string;
-  type: 'chair' | 'tree' | 'farm_plot';
+  type: 'chair' | 'tree' | 'farm_plot' | 'stand' | 'climb' | 'sit' | 'harvest' | 'look_at' | 'general';
   entryPosition: Vec3Tuple;
   targetPosition: Vec3Tuple;
   targetRotationY?: number;
 }
+
 
 export class SmartSocketRegistry {
   private static sockets: Map<string, SmartSocket> = new Map([

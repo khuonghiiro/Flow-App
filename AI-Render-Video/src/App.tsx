@@ -26,6 +26,7 @@ import { VideoMuxer } from './core/export/VideoMuxer';
 import { StudioLayout } from './ui/StudioLayout';
 import { ActorVisualState } from './core/camera/CameraFraming';
 import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
+import { MapPresetManager } from './core/maps/MapPresetManager';
 
 export const App: React.FC = () => {
   const [scene, setScene] = useState<MasterSceneConfig>(defaultScene);
@@ -115,23 +116,25 @@ export const App: React.FC = () => {
     }
     sceneObjectsRef.current.clear();
 
-    const mapName = (newScene.environment.map || '').toLowerCase();
+    const presetId = newScene.environment.map_preset || newScene.environment.map;
+    const preset = MapPresetManager.getPreset(presetId);
+
+    const baseMapName = (preset ? (preset.base_map || '') : (newScene.environment.map || '')).toLowerCase();
     const isCustomMap =
-      (mapName.endsWith('.glb') || mapName.endsWith('.gltf')) &&
-      !mapName.includes('village');
+      (baseMapName.endsWith('.glb') || baseMapName.endsWith('.gltf')) &&
+      !baseMapName.includes('village');
 
     if (isCustomMap) {
-      const glbUrl = mapName.startsWith('assets/') || mapName.startsWith('/assets/')
-        ? (mapName.startsWith('/') ? mapName : `/${mapName}`)
-        : `/assets/maps/${newScene.environment.map}`;
+      const glbSource = preset ? (preset.base_map || '') : newScene.environment.map;
+      const glbUrl = glbSource.startsWith('assets/') || glbSource.startsWith('/assets/')
+        ? (glbSource.startsWith('/') ? glbSource : `/${glbSource}`)
+        : `/assets/maps/${glbSource}`;
 
       try {
         setIsLoadingMap(true);
         const mapModel = await AssetLoaderRegistry.loadGLTF(glbUrl);
         mapModel.name = 'custom_glb_map_mesh';
 
-        // Removed forced scaling down to 26 units. Maps should retain their authored scale 
-        // and position (0,0,0) so characters stand correctly on the ground.
         mapModel.position.set(0, 0, 0);
         mapGroupRef.current.add(mapModel);
         
@@ -145,13 +148,42 @@ export const App: React.FC = () => {
         }
       } catch (err) {
         console.warn('Không tải được model map tùy chỉnh, chuyển về map làng quê mẫu:', err);
-        populateVillageProps(mapGroupRef.current);
+        if (!preset) {
+          populateVillageProps(mapGroupRef.current);
+        } else {
+          const ground = AssetLoaderRegistry.createGround();
+          mapGroupRef.current.add(ground);
+        }
       } finally {
         setIsLoadingMap(false);
       }
     } else {
-      populateVillageProps(mapGroupRef.current);
+      if (!preset) {
+        populateVillageProps(mapGroupRef.current);
+      } else {
+        const ground = AssetLoaderRegistry.createGround();
+        mapGroupRef.current.add(ground);
+      }
     }
+
+    // Build placed props from preset if available
+    if (preset) {
+      MapPresetManager.buildPlacedProps(preset, mapGroupRef.current, sceneObjectsRef.current);
+    }
+
+    // Build additional scene-specific placed props if available
+    if (newScene.environment.placed_props && newScene.environment.placed_props.length > 0) {
+      MapPresetManager.buildPlacedProps(
+        {
+          map_id: 'scene_props',
+          name: 'Scene Props',
+          placed_props: newScene.environment.placed_props,
+        },
+        mapGroupRef.current,
+        sceneObjectsRef.current
+      );
+    }
+
 
     // Collect Map Colliders for Ground Snapping
     mapCollidersRef.current = [];
