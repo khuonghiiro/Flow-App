@@ -19,6 +19,7 @@ import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
 import { MapPresetManager } from '../core/maps/MapPresetManager';
 import { PlacedProp } from '../types/map_preset';
+import { getSavedViewportSettings, saveViewportSetting } from '../core/storage/ViewportSettingsStorage';
 
 interface StudioLayoutProps {
   scene: MasterSceneConfig;
@@ -109,7 +110,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [rightTab, setRightTab] = useState<'director' | 'radar' | 'inspector'>('inspector');
   const [bottomTab, setBottomTab] = useState<'timeline' | 'assets'>('timeline');
   const [isBottomMaximized, setIsBottomMaximized] = useState<boolean>(false);
-  const [showCC, setShowCC] = useState(true);
+  const [showCC, setShowCC] = useState(() => getSavedViewportSettings().showCC);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
   const [gizmoMode, setGizmoMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
@@ -495,7 +496,11 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             onSelectObject={onSelectObject}
             onDeselectObject={() => onSelectObject?.(null)}
             onDeleteProp={onDeleteProp}
-            onToggleCC={() => setShowCC(!showCC)}
+            onToggleCC={() => {
+              const next = !showCC;
+              setShowCC(next);
+              saveViewportSetting('showCC', next);
+            }}
             onToggleFreeCam={onToggleFreeCam}
             onResetCamera={onResetCamera}
           />

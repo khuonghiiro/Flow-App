@@ -29,11 +29,16 @@ export interface MapPresetConfig {
   name: string;                        // Human readable name: "Làng Hoa Anh Đào Bên Hồ"
   description?: string;                // Detailed spatial description for AI prompt understanding
   base_map?: string;                   // Base terrain .glb, e.g. "maps/medieval_fantasy_book.glb"
-  sky_time?: 'sunrise' | 'noon' | 'sunset' | 'night';
+  sky_time?: 'sunrise' | 'noon' | 'sunset' | 'night' | 'overcast';
   weather?: {
     fog: number;
     wind: number;
     rain?: number;
+    wind_direction?: number;
+    cloud_coverage?: number;
+    cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
+    cloud_layers?: number;
+    cloud_altitude?: number;
   };
   lighting?: {
     ambient_color?: string;

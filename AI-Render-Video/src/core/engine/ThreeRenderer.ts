@@ -57,7 +57,11 @@ export class ThreeRenderer {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
-    this.controls.enabled = false; // default: director camera tracks take priority
+    // Apply saved free cam state (setFreeCam may have been called before mount)
+    this.controls.enabled = this.isFreeCamEnabled;
+    if (this.isFreeCamEnabled) {
+      this.controls.target.set(0, 1.2, 0);
+    }
 
     // Initialize Unity-Style Transform Gizmo Controls
     this.gizmo = new GizmoTransformManager(this.camera, this.renderer.domElement, this.scene);

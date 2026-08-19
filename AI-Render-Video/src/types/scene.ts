@@ -24,11 +24,16 @@ export type Vec3Tuple = [number, number, number];
 export interface EnvironmentConfig {
   map: string;
   map_preset?: string;             // Reference to a saved map preset ID (e.g. "sakura_lake_village")
-  sky_time: 'sunrise' | 'noon' | 'sunset' | 'night';
+  sky_time: 'sunrise' | 'noon' | 'sunset' | 'night' | 'overcast';
   weather: {
     fog: number;
     wind: number;
-    rain?: number;
+    rain?: number;                 // 0.0 to 1.0 (Rain intensity)
+    wind_direction?: number;        // 0 to 360 degrees
+    cloud_coverage?: number;       // 0.0 to 1.0 (0 = clear, 1 = heavy overcast)
+    cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
+    cloud_layers?: number;         // 1, 2, or 3 layers
+    cloud_altitude?: number;       // altitude multiplier
   };
   placed_props?: PlacedProp[];     // Additional placed props specific to this scene
 }
@@ -36,10 +41,16 @@ export interface EnvironmentConfig {
 
 export interface EnvironmentOverride {
   enabled: boolean;
-  sky_time: 'sunrise' | 'noon' | 'sunset' | 'night' | 'manual';
+  sky_time: 'sunrise' | 'noon' | 'sunset' | 'night' | 'overcast' | 'manual';
   sun_position?: number;
   fog_density?: number;
   wind_intensity?: number;
+  rain_intensity?: number;         // 0.0 to 1.0 (Rain intensity)
+  wind_direction?: number;         // 0 to 360 degrees
+  cloud_coverage?: number;         // 0.0 to 1.0 (Cloud coverage)
+  cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
+  cloud_layers?: number;         // 1, 2, or 3 layers
+  cloud_altitude?: number;
 }
 
 export interface SubtitlesConfig {

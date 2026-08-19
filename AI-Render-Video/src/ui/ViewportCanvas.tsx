@@ -9,6 +9,7 @@ import { SubtitleOverlay } from './SubtitleOverlay';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
 import { SubtitlesConfig, MasterSceneConfig } from '../types/scene';
 import { SelectedSceneObject } from './TransformInspector';
+import { getSavedViewportSettings, saveViewportSetting } from '../core/storage/ViewportSettingsStorage';
 
 interface ProjectedMarker {
   id: string;
@@ -70,9 +71,9 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   onResetCamera,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [showUI, setShowUI] = useState(true);
-  const [showControlsGuide, setShowControlsGuide] = useState(true);
-  const [showCoordinates, setShowCoordinates] = useState(false);
+  const [showUI, setShowUI] = useState(() => getSavedViewportSettings().showUI);
+  const [showControlsGuide, setShowControlsGuide] = useState(() => getSavedViewportSettings().showControlsGuide);
+  const [showCoordinates, setShowCoordinates] = useState(() => getSavedViewportSettings().showCoordinates);
   const [projectedMarkers, setProjectedMarkers] = useState<ProjectedMarker[]>([]);
 
   useEffect(() => {
@@ -332,7 +333,11 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 alignItems: 'center',
                 gap: 4,
               }}
-              onClick={() => setShowControlsGuide(!showControlsGuide)}
+              onClick={() => {
+                const next = !showControlsGuide;
+                setShowControlsGuide(next);
+                saveViewportSetting('showControlsGuide', next);
+              }}
               title={showControlsGuide ? "Đóng bảng phím tắt" : "Hiện bảng phím tắt"}
             >
               <Keyboard size={11} />
@@ -362,7 +367,10 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 <span style={{ color: '#38bdf8', fontWeight: 700, fontSize: 10 }}>ĐIỀU KHIỂN 3D</span>
                 <button
                   style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setShowControlsGuide(false)}
+                  onClick={() => {
+                    setShowControlsGuide(false);
+                    saveViewportSetting('showControlsGuide', false);
+                  }}
                   title="Đóng"
                 >
                   <X size={12} />
@@ -483,7 +491,11 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
               color: showUI ? '#38bdf8' : '#94a3b8',
               cursor: 'pointer',
             }}
-            onClick={() => setShowUI(!showUI)}
+            onClick={() => {
+              const next = !showUI;
+              setShowUI(next);
+              saveViewportSetting('showUI', next);
+            }}
             title="Ẩn/Hiện Giao Diện"
           >
             {showUI ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -562,7 +574,11 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 fontSize: 9,
                 boxShadow: showCoordinates ? '0 0 12px rgba(56, 189, 248, 0.5)' : 'none',
               }}
-              onClick={() => setShowCoordinates(!showCoordinates)}
+              onClick={() => {
+                const next = !showCoordinates;
+                setShowCoordinates(next);
+                saveViewportSetting('showCoordinates', next);
+              }}
               title={showCoordinates ? "Tắt nhãn tọa độ trên Scene" : "Bật hiển thị nhãn tọa độ XYZ của các đối tượng"}
             >
               XYZ

@@ -30,6 +30,9 @@ import { MapPresetManager } from './core/maps/MapPresetManager';
 import { GifOverlayManager } from './core/vfx/GifOverlayManager';
 import { PlacedProp } from './types/map_preset';
 import { SelectedSceneObject } from './ui/TransformInspector';
+import { WeatherParticleSystem } from './core/weather/WeatherParticleSystem';
+import { CloudSystem } from './core/weather/CloudSystem';
+import { getSavedViewportSettings, saveViewportSetting } from './core/storage/ViewportSettingsStorage';
 
 export const App: React.FC = () => {
 
@@ -51,8 +54,8 @@ export const App: React.FC = () => {
   const [inspectingActorId, setInspectingActorId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgressMsg, setExportProgressMsg] = useState('');
-  const [isFreeCam, setIsFreeCam] = useState(false);
-  const isFreeCamRef = useRef(false);
+  const [isFreeCam, setIsFreeCam] = useState(() => getSavedViewportSettings().isFreeCam);
+  const isFreeCamRef = useRef(getSavedViewportSettings().isFreeCam);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
   const [envOverride, setEnvOverride] = useState<EnvironmentOverride>({
     enabled: false,
@@ -86,6 +89,8 @@ export const App: React.FC = () => {
   const mapCollidersRef = useRef<THREE.Object3D[]>([]);
   const playerControllerRef = useRef<PlayerController | null>(null);
   const gifOverlayRef = useRef<GifOverlayManager | null>(null);
+  const weatherParticlesRef = useRef<WeatherParticleSystem | null>(null);
+  const cloudSystemRef = useRef<CloudSystem | null>(null);
   const lastStateSyncRef = useRef({ time: 0, fps: 0, subLineId: '' });
 
   // Default Initial Village Props with unique IDs and initial positions
@@ -271,6 +276,12 @@ export const App: React.FC = () => {
     gifOverlayRef.current = new GifOverlayManager(renderer.scene, renderer.camera);
     trackEvaluatorRef.current = new TrackEvaluator(combatSync, pathNav);
     playerControllerRef.current = new PlayerController();
+    weatherParticlesRef.current = new WeatherParticleSystem(renderer.scene);
+    cloudSystemRef.current = new CloudSystem(renderer.scene);
+
+    if (isFreeCamRef.current) {
+      renderer.setFreeCam(true);
+    }
 
     // Build Environment & Actors
     initEnvironment(sceneRef.current, renderer.scene);
@@ -493,11 +504,80 @@ export const App: React.FC = () => {
           lightingRef.current.update(t, activeScene.duration);
         }
       }
+
+      // 3D Rain & Wind Weather Particle Simulation Update
+      if (weatherParticlesRef.current) {
+        const rainIntensity = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_intensity ?? 0)
+          : (activeScene.environment.weather?.rain ?? 0);
+
+        const windIntensity = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.wind_intensity ?? 0.3)
+          : (activeScene.environment.weather?.wind ?? 0.3);
+
+        const windDirection = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.wind_direction ?? 45)
+          : (activeScene.environment.weather?.wind_direction ?? 45);
+
+        weatherParticlesRef.current.update(
+          delta,
+          renderer.camera.position,
+          rainIntensity,
+          windIntensity,
+          windDirection
+        );
+      }
+
+      // 3D Cinematic Cloud Simulation Update
+      if (cloudSystemRef.current) {
+        const cloudCoverage = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.cloud_coverage ?? 0.5)
+          : (activeScene.environment.weather?.cloud_coverage ?? 0.5);
+
+        const cloudType = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.cloud_type || 'cumulus')
+          : (activeScene.environment.weather?.cloud_type || 'cumulus');
+
+        const cloudAltitude = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.cloud_altitude ?? 1.0)
+          : (activeScene.environment.weather?.cloud_altitude ?? 1.0);
+
+        const cloudLayers = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.cloud_layers ?? 3)
+          : (activeScene.environment.weather?.cloud_layers ?? 3);
+
+        const skyTime = envOverrideRef.current.enabled
+          ? envOverrideRef.current.sky_time
+          : activeScene.environment.sky_time;
+
+        const windIntensity = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.wind_intensity ?? 0.3)
+          : (activeScene.environment.weather?.wind ?? 0.3);
+
+        const windDirection = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.wind_direction ?? 45)
+          : (activeScene.environment.weather?.wind_direction ?? 45);
+
+        cloudSystemRef.current.update(
+          delta,
+          renderer.camera.position,
+          cloudCoverage,
+          cloudType as any,
+          windIntensity,
+          windDirection,
+          skyTime,
+          cloudAltitude,
+          cloudLayers,
+          lightingRef.current?.sunLight.position
+        );
+      }
     });
 
     return () => {
       renderer.unmount();
       playerControllerRef.current?.dispose();
+      weatherParticlesRef.current?.dispose();
+      cloudSystemRef.current?.dispose();
     };
   }, []);
 
@@ -591,6 +671,7 @@ export const App: React.FC = () => {
     const next = !isFreeCam;
     setIsFreeCam(next);
     isFreeCamRef.current = next;
+    saveViewportSetting('isFreeCam', next);
     setInspectingActorId(null);
     if (rendererRef.current) {
       rendererRef.current.setFreeCam(next);
