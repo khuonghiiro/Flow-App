@@ -1,16 +1,45 @@
 import { MasterSceneConfig } from '../../types/scene';
 
-// Auto-scan all JSON scene configurations in the /scenes directory
-const sceneModules = import.meta.glob<MasterSceneConfig>('../../../scenes/*.json', {
+// Auto-scan all JSON scene configurations in the /scenes directory (recursive)
+const sceneModules = import.meta.glob<MasterSceneConfig>('../../../scenes/**/*.json', {
   eager: true,
 });
 
-/**
- * All loaded scene presets from JSON files
- */
-export const sampleScenes: MasterSceneConfig[] = Object.values(sceneModules).map(
-  (mod: any) => mod.default || mod
-);
+export interface SceneCategory {
+  id: string;
+  title: string;
+  scenes: MasterSceneConfig[];
+}
+
+export const sceneCategories: SceneCategory[] = [];
+export const sampleScenes: MasterSceneConfig[] = [];
+
+const categoryMap = new Map<string, SceneCategory>();
+
+for (const [path, moduleObj] of Object.entries(sceneModules)) {
+  const scene: MasterSceneConfig = (moduleObj as any).default || moduleObj;
+  sampleScenes.push(scene);
+  
+  const parts = path.split('/');
+  let categoryId = parts[parts.length - 2];
+  if (categoryId === 'scenes') {
+    categoryId = 'root';
+  }
+  
+  if (!categoryMap.has(categoryId)) {
+    categoryMap.set(categoryId, {
+      id: categoryId,
+      title: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
+      scenes: []
+    });
+  }
+  
+  categoryMap.get(categoryId)!.scenes.push(scene);
+}
+
+for (const cat of categoryMap.values()) {
+  sceneCategories.push(cat);
+}
 
 /**
  * Default fallback scene to load when studio launches

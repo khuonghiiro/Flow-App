@@ -1,6 +1,7 @@
 import { MasterSceneConfig } from '../../types/scene';
 import { SubtitleSynchronizer } from '../subtitles/SubtitleSynchronizer';
 import { SubtitleCanvasBurner } from '../subtitles/SubtitleCanvasBurner';
+import * as Mp4Muxer from 'mp4-muxer';
 
 export interface ExportProgress {
   currentFrame: number;
@@ -11,14 +12,14 @@ export interface ExportProgress {
 
 export class WebCodecsRecorder {
   private isRecording: boolean = false;
-  private mediaRecorder: MediaRecorder | null = null;
-  private recordedChunks: Blob[] = [];
+  private cancelRequested: boolean = false;
 
-  public async recordCanvasLive(
+  public async recordOffline(
     sourceCanvas: HTMLCanvasElement,
     scene: MasterSceneConfig,
     durationSeconds: number,
     fps: number = 30,
+    renderFrameFn: (time: number) => void,
     onProgress?: (progress: ExportProgress) => void
   ): Promise<Blob> {
     if (this.isRecording) {
@@ -26,105 +27,99 @@ export class WebCodecsRecorder {
     }
 
     this.isRecording = true;
-    this.recordedChunks = [];
+    this.cancelRequested = false;
 
     // Create a composition canvas to burn in crisp subtitles
     const compCanvas = document.createElement('canvas');
     compCanvas.width = sourceCanvas.width || 1920;
     compCanvas.height = sourceCanvas.height || 1080;
-    const compCtx = compCanvas.getContext('2d')!;
+    const compCtx = compCanvas.getContext('2d', { willReadFrequently: true })!;
 
     const targetFps = Math.max(30, Math.min(120, fps));
-    const stream = compCanvas.captureStream(targetFps);
-    const mimeTypes = [
-      'video/mp4;codecs=avc1',
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-    ];
-    let selectedMime = 'video/webm';
-    for (const mime of mimeTypes) {
-      if (MediaRecorder.isTypeSupported(mime)) {
-        selectedMime = mime;
-        break;
-      }
-    }
+    const totalFrames = Math.floor(durationSeconds * targetFps);
 
-    this.mediaRecorder = new MediaRecorder(stream, {
-      mimeType: selectedMime,
-      videoBitsPerSecond: targetFps >= 120 ? 25_000_000 : 16_000_000, // 25 Mbps for 120 FPS HFR
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: {
+        codec: 'avc',
+        width: compCanvas.width,
+        height: compCanvas.height,
+      },
+      fastStart: 'in-memory',
+      firstTimestampBehavior: 'offset',
     });
 
-    this.mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        this.recordedChunks.push(e.data);
+    const videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta as any),
+      error: (e) => console.error('VideoEncoder error:', e),
+    });
+
+    videoEncoder.configure({
+      codec: 'avc1.640028',
+      width: compCanvas.width,
+      height: compCanvas.height,
+      framerate: targetFps,
+      bitrate: targetFps >= 120 ? 25_000_000 : 16_000_000,
+    });
+
+    for (let frame = 0; frame < totalFrames; frame++) {
+      if (this.cancelRequested) break;
+
+      const currentTime = frame / targetFps;
+
+      // 1. Tell Three.js to render the frame at exactly `currentTime`
+      renderFrameFn(currentTime);
+
+      // 2. Draw 3D scene from WebGL canvas
+      compCtx.drawImage(sourceCanvas, 0, 0, compCanvas.width, compCanvas.height);
+
+      // 3. Burn-in Subtitles if enabled
+      if (scene.subtitles_config && scene.subtitles_config.burn_in_export) {
+        const activeSub = SubtitleSynchronizer.getActiveSubtitle(scene, currentTime);
+        SubtitleCanvasBurner.burnSubtitleToCanvas(
+          compCtx,
+          activeSub,
+          scene.subtitles_config,
+          compCanvas.width,
+          compCanvas.height
+        );
       }
-    };
 
-    return new Promise((resolve, reject) => {
-      if (!this.mediaRecorder) {
-        reject(new Error('MediaRecorder initialization failed'));
-        return;
-      }
+      // 4. Create VideoFrame and encode
+      const timestampMicroseconds = (frame * 1_000_000) / targetFps;
+      const videoFrame = new VideoFrame(compCanvas, { timestamp: timestampMicroseconds });
+      
+      const keyFrame = frame % (targetFps * 2) === 0; // Keyframe every 2 seconds
+      videoEncoder.encode(videoFrame, { keyFrame });
+      videoFrame.close();
 
-      this.mediaRecorder.onstop = () => {
-        this.isRecording = false;
-        const blob = new Blob(this.recordedChunks, { type: selectedMime });
-        resolve(blob);
-      };
-
-      this.mediaRecorder.onerror = (e) => {
-        this.isRecording = false;
-        reject(e);
-      };
-
-      this.mediaRecorder.start();
-
-      const totalFrames = Math.floor(durationSeconds * fps);
-      let frame = 0;
-      const intervalMs = 1000 / fps;
-
-      const recordInterval = setInterval(() => {
-        if (!this.isRecording || frame >= totalFrames) {
-          clearInterval(recordInterval);
-          if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-            this.mediaRecorder.stop();
-          }
-          return;
-        }
-
-        const currentTime = (frame / totalFrames) * durationSeconds;
-
-        // Draw 3D scene from WebGL canvas
-        compCtx.drawImage(sourceCanvas, 0, 0, compCanvas.width, compCanvas.height);
-
-        // Burn-in Subtitles if enabled
-        if (scene.subtitles_config && scene.subtitles_config.burn_in_export) {
-          const activeSub = SubtitleSynchronizer.getActiveSubtitle(scene, currentTime);
-          SubtitleCanvasBurner.burnSubtitleToCanvas(
-            compCtx,
-            activeSub,
-            scene.subtitles_config,
-            compCanvas.width,
-            compCanvas.height
-          );
-        }
-
-        frame++;
+      // Report progress and yield to event loop
+      if (frame % 5 === 0) {
         onProgress?.({
           currentFrame: frame,
           totalFrames,
           percent: Math.round((frame / totalFrames) * 100),
-          status: `Đang render GPU (${frame}/${totalFrames} frames)...`,
+          status: `Đang render GPU offline (${frame}/${totalFrames} frames)...`,
         });
-      }, intervalMs);
-    });
+        
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      // Throttle if encoder queue is too large
+      if (videoEncoder.encodeQueueSize > 30) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+
+    await videoEncoder.flush();
+    muxer.finalize();
+    this.isRecording = false;
+
+    const buffer = muxer.target.buffer;
+    return new Blob([buffer], { type: 'video/mp4' });
   }
 
   public cancel(): void {
-    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop();
-    }
-    this.isRecording = false;
+    this.cancelRequested = true;
   }
 }

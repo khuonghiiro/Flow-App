@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -13,7 +13,7 @@ import { MapRadarView } from './MapRadarView';
 import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
 import { WeatherControlPanel } from './WeatherControlPanel';
-import { sampleScenes } from '../core/scenes/SceneRegistry';
+import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
 
 interface StudioLayoutProps {
@@ -86,6 +86,16 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [showCC, setShowCC] = useState(true);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
+  
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    return sceneCategories.find(c => c.scenes.some(s => s.scene_id === scene.scene_id))?.id || sceneCategories[0]?.id || '';
+  });
+
+  React.useEffect(() => {
+    const cat = sceneCategories.find(c => c.scenes.some(s => s.scene_id === scene.scene_id))?.id;
+    if (cat) setSelectedCategory(cat);
+  }, [scene.scene_id]);
+
   const mapInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,34 +129,86 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         onChange={handleMapFileChange}
       />
 
-      {/* Studio Header */}
-      <header className="studio-header">
-        <div className="studio-brand">
-          <div className="studio-logo">
-            <Film size={20} />
+      {/* Sleek Studio Header */}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+          padding: '0 16px',
+          background: 'rgba(11, 15, 25, 0.85)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          zIndex: 100,
+          flexShrink: 0,
+        }}
+      >
+        {/* Brand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 28,
+              height: 28,
+              background: 'linear-gradient(135deg, #38bdf8, #a855f7)',
+              borderRadius: 6,
+              color: 'white',
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)',
+            }}
+          >
+            <Film size={16} />
           </div>
           <div>
-            <div className="studio-title">AI 3D Animation Studio</div>
-            <div style={{ fontSize: 10, color: '#94a3b8' }}>All-in-One Master Orchestrator</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', lineHeight: 1.1 }}>FlowMy AI Studio</div>
+            <div style={{ fontSize: 10, color: '#64748b' }}>WebCodecs GPU Render</div>
           </div>
-          <span className="studio-badge">TypeScript + WebCodecs</span>
         </div>
 
-        {/* Scene Presets Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Clapperboard size={12} color="#38bdf8" /> Mẫu Cảnh:
-          </span>
+        {/* Center: Scene Selection */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Mẫu cảnh:</span>
+          
           <select
-            className="form-input"
             style={{
-              padding: '4px 10px',
+              padding: '2px 8px',
               fontSize: 12,
-              borderRadius: 8,
+              borderRadius: 6,
               background: 'rgba(15, 20, 36, 0.9)',
-              border: '1px solid var(--border-glow)',
+              border: '1px solid rgba(255,255,255,0.1)',
               color: '#ffffff',
               cursor: 'pointer',
+              outline: 'none',
+            }}
+            value={selectedCategory}
+            onChange={(e) => {
+              const catId = e.target.value;
+              setSelectedCategory(catId);
+              const cat = sceneCategories.find((c) => c.id === catId);
+              if (cat && cat.scenes.length > 0) {
+                onUpdateScene(cat.scenes[0]);
+              }
+            }}
+          >
+            {sceneCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                📁 {c.title}
+              </option>
+            ))}
+          </select>
+
+          <select
+            style={{
+              padding: '2px 8px',
+              fontSize: 12,
+              borderRadius: 6,
+              background: 'rgba(15, 20, 36, 0.9)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#ffffff',
+              cursor: 'pointer',
+              outline: 'none',
             }}
             value={scene.scene_id}
             onChange={(e) => {
@@ -156,7 +218,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               }
             }}
           >
-            {sampleScenes.map((s) => (
+            {sceneCategories.find((c) => c.id === selectedCategory)?.scenes.map((s) => (
               <option key={s.scene_id} value={s.scene_id}>
                 {s.title || s.scene_id}
               </option>
@@ -164,74 +226,118 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           </select>
         </div>
 
-        <div className="header-actions">
-          {/* Import Folder Map Button */}
-          <button
-            className="btn-secondary"
-            style={{
-              borderColor: '#38bdf8',
-              color: '#38bdf8',
-              background: 'rgba(56, 189, 248, 0.12)',
-            }}
-            onClick={() => folderInputRef.current?.click()}
-            title="Chọn thư mục chứa scene.gltf, scene.bin và textures để nạp trọn bộ map"
-          >
-            <FolderUp size={14} color="#38bdf8" /> <strong>Folder (.gltf)</strong>
-          </button>
+        {/* Right: Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => folderInputRef.current?.click()}
+              title="Import Folder (.gltf + .bin + textures)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                background: 'rgba(56, 189, 248, 0.1)',
+                color: '#38bdf8',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <FolderUp size={12} /> Folder
+            </button>
+            <button
+              onClick={() => mapInputRef.current?.click()}
+              title="Import File .glb"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: 'rgba(168, 85, 247, 0.1)',
+                color: '#c084fc',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Layers size={12} /> GLB
+            </button>
+          </div>
 
-          {/* Import Single File Map Button */}
-          <button
-            className="btn-secondary"
-            style={{
-              borderColor: '#a855f7',
-              color: '#c084fc',
-              background: 'rgba(168, 85, 247, 0.12)',
-            }}
-            onClick={() => mapInputRef.current?.click()}
-            title="Chọn file 3D .glb đóng gói sẵn từ máy tính"
-          >
-            <Layers size={14} color="#c084fc" /> <strong>File .glb</strong>
-          </button>
+          <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }}></div>
 
-          {/* Export FPS Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>FPS Xuất:</span>
+            <button
+              onClick={() => setShowDialogueModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: '1px solid rgba(234, 179, 8, 0.3)',
+                background: 'rgba(234, 179, 8, 0.1)',
+                color: '#eab308',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <MessageSquare size={12} /> TTS
+            </button>
+
+            <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }}></div>
+            
             <select
-              className="form-input"
               style={{
                 padding: '4px 8px',
                 fontSize: 11,
                 borderRadius: 6,
                 background: 'rgba(15, 20, 36, 0.9)',
-                border: '1px solid var(--border-glow)',
+                border: '1px solid rgba(255,255,255,0.1)',
                 color: '#38bdf8',
                 fontWeight: 600,
                 cursor: 'pointer',
+                outline: 'none',
               }}
               value={exportFps}
-              onChange={(e) => setExportFps(Number(e.target.value))}
+              onChange={(e) => setExportFps(parseInt(e.target.value))}
             >
               <option value={30}>30 FPS</option>
-              <option value={60}>60 FPS (Mượt)</option>
-              <option value={120}>✨ 120 FPS (Siêu Mượt HFR)</option>
+              <option value={60}>60 FPS</option>
+              <option value={120}>120 FPS</option>
             </select>
+
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                borderRadius: 6,
+                background: 'linear-gradient(135deg, #38bdf8, #2563eb)',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: isExporting ? 0.7 : 1,
+              }}
+              onClick={() => onExportVideo(exportFps)}
+              disabled={isExporting}
+            >
+              {isExporting ? <Loader className="spin" size={14} /> : <Download size={14} />}
+              {isExporting ? 'Đang xuất...' : 'Xuất MP4'}
+            </button>
           </div>
-
-          <button
-            className="btn-secondary"
-            onClick={() => setShowDialogueModal(true)}
-          >
-            <MessageSquare size={14} color="#eab308" /> Quản Lý Thoại (TTS)
-          </button>
-
-          <button
-            className="btn-primary"
-            onClick={() => onExportVideo(exportFps)}
-            disabled={isExporting}
-          >
-            <Download size={14} />
-            {isExporting ? exportProgressMsg || 'Đang Xuất Video...' : `Xuất MP4 (${exportFps} FPS)`}
-          </button>
         </div>
       </header>
 

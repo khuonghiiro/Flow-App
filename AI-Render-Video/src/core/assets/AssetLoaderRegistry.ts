@@ -14,7 +14,10 @@ export class AssetLoaderRegistry {
 
   public static async loadGLTF(url: string): Promise<THREE.Group> {
     if (this.modelCache.has(url)) {
-      return this.modelCache.get(url)!.clone(true);
+      const cached = this.modelCache.get(url)!;
+      const clone = cached.clone(true);
+      clone.animations = cached.animations;
+      return clone;
     }
 
     const loader = this.getGLTFLoader();
@@ -37,7 +40,11 @@ export class AssetLoaderRegistry {
               const mesh = child as THREE.Mesh;
               mesh.castShadow = true;
               mesh.receiveShadow = true;
-              mesh.frustumCulled = false;
+              mesh.frustumCulled = true;
+              if (mesh.geometry) {
+                mesh.geometry.computeBoundingBox();
+                mesh.geometry.computeBoundingSphere();
+              }
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
@@ -57,8 +64,11 @@ export class AssetLoaderRegistry {
             }
           });
 
+          model.animations = gltf.animations || [];
           this.modelCache.set(url, model);
-          resolve(model.clone(true));
+          const initialClone = model.clone(true);
+          initialClone.animations = model.animations;
+          resolve(initialClone);
         },
         undefined,
         (err) => {

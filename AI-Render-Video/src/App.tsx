@@ -134,6 +134,15 @@ export const App: React.FC = () => {
         // and position (0,0,0) so characters stand correctly on the ground.
         mapModel.position.set(0, 0, 0);
         mapGroupRef.current.add(mapModel);
+        
+        if (mapModel.animations && mapModel.animations.length > 0) {
+          mapMixerRef.current = new THREE.AnimationMixer(mapModel);
+          mapModel.animations.forEach((clip: any) => {
+            mapMixerRef.current?.clipAction(clip).play();
+          });
+        } else {
+          mapMixerRef.current = null;
+        }
       } catch (err) {
         console.warn('Không tải được model map tùy chỉnh, chuyển về map làng quê mẫu:', err);
         populateVillageProps(mapGroupRef.current);
@@ -515,11 +524,107 @@ export const App: React.FC = () => {
       clockRef.current.seek(0);
       clockRef.current.play();
 
-      const blob = await recorder.recordCanvasLive(
+      const blob = await recorder.recordOffline(
         rendererRef.current.getDomElement(),
         sceneRef.current,
         sceneRef.current.duration,
         targetFps,
+        (time: number) => {
+          const delta = 1 / targetFps;
+          const activeScene = sceneRef.current;
+          
+          // Explicitly update engine for this timestamp and render
+          if (trackEvaluatorRef.current) {
+            trackEvaluatorRef.current.evaluate(
+              activeScene,
+              time,
+              delta,
+              actorsMapRef.current,
+              sceneObjectsRef.current,
+              playerControllerRef.current?.controlledActorId || null
+            );
+          }
+
+          // Player Controller Update (if needed)
+          if (playerControllerRef.current && playerControllerRef.current.controlledActorId) {
+            const controlledRuntime = actorsMapRef.current.get(playerControllerRef.current.controlledActorId);
+            if (controlledRuntime && rendererRef.current) {
+              playerControllerRef.current.update(delta, controlledRuntime.avatar, controlledRuntime.animator, rendererRef.current.camera, mapCollidersRef.current);
+            }
+          }
+          
+          // Ground Snapping (Physics)
+          if (mapCollidersRef.current.length > 0) {
+            const raycaster = new THREE.Raycaster();
+            for (const [id, runtime] of actorsMapRef.current.entries()) {
+              const isClimbing = (runtime.avatar.config.tracks.movement || []).some(
+                (m) => m.action === 'climb' && time >= m.start && time <= m.end
+              );
+              if (isClimbing) continue;
+              
+              const isPlayer = id === playerControllerRef.current?.controlledActorId;
+              const pos = runtime.avatar.rootObject.position;
+              
+              raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
+              const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
+              
+              let validGroundY: number | null = null;
+              for (const hit of hits) {
+                if (hit.face) {
+                  const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+                  const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+                  if (worldNormal.y > 0.6 && hit.point.y <= pos.y + 0.6) {
+                    validGroundY = hit.point.y;
+                    break;
+                  }
+                }
+              }
+              if (validGroundY !== null) {
+                pos.y = validGroundY;
+              }
+            }
+          }
+
+          // Collect actor visual states
+          const actorStates = new Map<string, any>();
+          for (const [id, runtime] of actorsMapRef.current.entries()) {
+            const p = new THREE.Vector3();
+            runtime.avatar.rootObject.getWorldPosition(p);
+            const head = runtime.avatar.getHeadPosition();
+            const rotY = runtime.avatar.rootObject.rotation.y;
+            actorStates.set(id, { position: p, headPosition: head, rotationY: rotY });
+          }
+
+          // Camera Director Update
+          if (!isFreeCamRef.current && cameraDirectorRef.current) {
+            cameraDirectorRef.current.update(activeScene, time, actorStates as any, delta);
+          }
+          
+          // Post processing
+          if (!isFreeCamRef.current && postProcessorRef.current && rendererRef.current) {
+            postProcessorRef.current.applyToCamera(rendererRef.current.camera, time);
+          }
+
+          // VFX Update
+          if (vfxTriggerRef.current) {
+            vfxTriggerRef.current.update(delta);
+          }
+
+          if (lightingRef.current) {
+            if (envOverrideRef.current.enabled) {
+              lightingRef.current.updateManual(envOverrideRef.current);
+            } else {
+              lightingRef.current.update(time, activeScene.duration);
+            }
+          }
+          
+          // Update map animation
+          if (mapMixerRef.current) {
+            mapMixerRef.current.update(delta); // Advance the mixer by delta
+          }
+          
+          rendererRef.current?.renderDirect();
+        },
         (p) => {
           setExportProgressMsg(`${p.percent}% (${p.currentFrame}/${p.totalFrames})`);
         }
