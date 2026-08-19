@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { Camera, Zap, RotateCcw, Compass, MessageSquare } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Camera, Zap, RotateCcw, Compass, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -33,6 +33,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   onResetCamera,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [showUI, setShowUI] = useState(true);
 
   useEffect(() => {
     if (!renderer || !mountRef.current) return;
@@ -86,43 +87,15 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       )}
 
       {/* Top HUD */}
-      <div className="viewport-hud">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', pointerEvents: 'auto' }}>
+      <div className="viewport-hud" style={{ alignItems: 'flex-start' }}>
+        
+        {/* Left Side: FPS and Free Cam */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: showUI ? 1 : 0, transition: 'opacity 0.2s', pointerEvents: showUI ? 'auto' : 'none' }}>
           <div className="hud-pill fps-counter">
             <Zap size={13} /> {fps} FPS
           </div>
-          <div className="hud-pill">
-            <Camera size={13} /> {isFreeCam ? '🎮 Cam Tự Do (Kéo Chuột Soi 360°)' : '🎬 Cam Đạo Diễn (Theo Kịch Bản)'}
-          </div>
-        </div>
-
-        {/* Center Prompts */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', pointerEvents: 'auto' }}>
-          {/* Inspect Dialog Mode active */}
-          {isInspecting && !isFreeCam && (
-            <button
-              id="reset-inspect-camera-btn"
-              className="btn-primary"
-              style={{
-                padding: '4px 14px',
-                fontSize: 11,
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.85), rgba(244, 63, 94, 0.95))',
-                borderColor: '#f43f5e',
-                boxShadow: '0 0 16px rgba(244, 63, 94, 0.4)',
-                borderRadius: 20,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                pointerEvents: 'auto',
-              }}
-              onClick={onResetCamera}
-            >
-              <RotateCcw size={12} /> Đang Soi Cận Cảnh — <strong>Khôi Phục Cam Phim</strong>
-            </button>
-          )}
-
-          {/* Free Cam Controls */}
+          
+          {/* Free Cam Toggle */}
           {isFreeCam ? (
             <button
               id="toggle-free-cam-btn"
@@ -138,11 +111,10 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                pointerEvents: 'auto',
               }}
               onClick={onToggleFreeCam}
             >
-              <RotateCcw size={13} /> <strong>Đang Soi Tự Do (Bấm Khôi Phục Cam Phim ↺)</strong>
+              <RotateCcw size={13} /> <strong>360 độ (Tắt)</strong>
             </button>
           ) : (
             <button
@@ -158,39 +130,85 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 borderColor: '#38bdf8',
                 color: '#38bdf8',
                 cursor: 'pointer',
-                pointerEvents: 'auto',
+                background: 'rgba(15, 23, 42, 0.7)',
               }}
               onClick={onToggleFreeCam}
               title="Ngắt camera kịch bản để tự do xoay, phóng to thu nhỏ và soi quanh cảnh vật bằng chuột"
             >
-              <Compass size={13} /> <strong>Ngắt Cam Phim (Soi 360°)</strong>
+              <Compass size={13} /> <strong>Cam Tự Do</strong>
             </button>
           )}
         </div>
+        <div style={{ flex: 1 }} />
 
-        {/* Right Actions: Subtitle Toggle */}
-        <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto' }}>
-          <button
-            id="toggle-subtitles-btn"
-            className={`btn-secondary ${showCC ? 'active' : ''}`}
-            style={{
-              borderRadius: 20,
-              padding: '4px 12px',
-              fontSize: 11,
-              backgroundColor: showCC ? 'rgba(99, 102, 241, 0.3)' : 'rgba(30, 41, 59, 0.7)',
-              borderColor: showCC ? '#818cf8' : '#475569',
-              color: showCC ? '#c7d2fe' : '#94a3b8',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              pointerEvents: 'auto',
-            }}
-            onClick={onToggleCC}
-          >
-            <MessageSquare size={12} />
-            <strong>[CC]</strong> Phụ Đề: {showCC ? '🟢 ĐANG BẬT' : '⚪ ĐÃ TẮT'}
-          </button>
+        {/* Right Actions: Eye Toggle, CC Subtitle, Inspect Reset */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', pointerEvents: 'auto' }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn-secondary"
+              style={{
+                borderRadius: '50%',
+                width: 28,
+                height: 28,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(30, 41, 59, 0.7)',
+                borderColor: '#475569',
+                color: showUI ? '#38bdf8' : '#94a3b8',
+                cursor: 'pointer',
+              }}
+              onClick={() => setShowUI(!showUI)}
+              title="Ẩn/Hiện Giao Diện"
+            >
+              {showUI ? <Eye size={14} /> : <EyeOff size={14} />}
+            </button>
+
+            <button
+              id="toggle-subtitles-btn"
+              className={`btn-secondary ${showCC ? 'active' : ''}`}
+              style={{
+                borderRadius: 20,
+                padding: '4px 12px',
+                fontSize: 11,
+                backgroundColor: showCC ? 'rgba(99, 102, 241, 0.8)' : 'rgba(30, 41, 59, 0.7)',
+                borderColor: showCC ? '#818cf8' : '#475569',
+                color: showCC ? '#ffffff' : '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                fontWeight: showCC ? 600 : 400,
+              }}
+              onClick={onToggleCC}
+            >
+              <MessageSquare size={12} /> CC
+            </button>
+          </div>
+
+          {/* Inspect Mode Reset Button (Only visible if showUI is true) */}
+          {showUI && isInspecting && !isFreeCam && (
+            <button
+              id="reset-inspect-camera-btn"
+              className="btn-primary"
+              style={{
+                padding: '4px 12px',
+                fontSize: 10,
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.85), rgba(244, 63, 94, 0.95))',
+                borderColor: '#f43f5e',
+                boxShadow: '0 0 16px rgba(244, 63, 94, 0.4)',
+                borderRadius: 20,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              onClick={onResetCamera}
+            >
+              <RotateCcw size={10} /> Khôi Phục Cam Phim
+            </button>
+          )}
         </div>
       </div>
 

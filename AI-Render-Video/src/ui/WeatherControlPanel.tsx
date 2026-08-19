@@ -15,13 +15,32 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           <CloudRain size={16} className="icon-glow" /> Thời Tiết & Môi Trường
         </h3>
         
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+        <label 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            cursor: 'pointer', 
+            fontSize: '12px',
+            background: override.enabled ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.8)',
+            padding: '4px 10px',
+            borderRadius: '16px',
+            border: `1px solid ${override.enabled ? '#38bdf8' : '#475569'}`,
+            color: override.enabled ? '#38bdf8' : '#94a3b8',
+            transition: 'all 0.2s',
+          }}
+        >
           <input 
             type="checkbox" 
             checked={override.enabled}
             onChange={(e) => onChange({ ...override, enabled: e.target.checked })}
+            style={{ display: 'none' }}
           />
-          Tự Do Cấu Hình
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: override.enabled ? '#38bdf8' : '#64748b',
+          }} />
+          {override.enabled ? 'Đang Bật' : 'Đã Tắt'}
         </label>
       </div>
 

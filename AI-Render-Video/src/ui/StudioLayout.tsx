@@ -176,7 +176,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             onClick={() => folderInputRef.current?.click()}
             title="Chọn thư mục chứa scene.gltf, scene.bin và textures để nạp trọn bộ map"
           >
-            <FolderUp size={14} color="#38bdf8" /> <strong>Chọn Folder Map (.gltf)</strong>
+            <FolderUp size={14} color="#38bdf8" /> <strong>Folder (.gltf)</strong>
           </button>
 
           {/* Import Single File Map Button */}
