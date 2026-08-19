@@ -27,8 +27,10 @@ import { StudioLayout } from './ui/StudioLayout';
 import { ActorVisualState } from './core/camera/CameraFraming';
 import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 import { MapPresetManager } from './core/maps/MapPresetManager';
+import { GifOverlayManager } from './core/vfx/GifOverlayManager';
 
 export const App: React.FC = () => {
+
   const [scene, setScene] = useState<MasterSceneConfig>(defaultScene);
   const sceneRef = useRef<MasterSceneConfig>(defaultScene);
   const [currentTime, setCurrentTime] = useState(0);
@@ -75,6 +77,7 @@ export const App: React.FC = () => {
   const mapMixerRef = useRef<THREE.AnimationMixer | null>(null);
   const mapCollidersRef = useRef<THREE.Object3D[]>([]);
   const playerControllerRef = useRef<PlayerController | null>(null);
+  const gifOverlayRef = useRef<GifOverlayManager | null>(null);
 
   // Populate complete village props (ground, tree, chair, farm, duck, lantern)
   const populateVillageProps = (group: THREE.Group) => {
@@ -219,12 +222,14 @@ export const App: React.FC = () => {
     const pathNav = new PathNavigator(navMeshRef.current);
     cameraDirectorRef.current = new CameraDirector(renderer.camera);
     occlusionFoliageRef.current = new OcclusionFoliageManager();
+    gifOverlayRef.current = new GifOverlayManager(renderer.scene, renderer.camera);
     trackEvaluatorRef.current = new TrackEvaluator(combatSync, pathNav);
     playerControllerRef.current = new PlayerController();
 
     // Build Environment & Actors
     initEnvironment(sceneRef.current, renderer.scene);
     initActors(sceneRef.current, renderer.scene);
+
 
     // Main Render & Evaluation Loop (60-120fps GPU)
     renderer.onRender((delta) => {
@@ -301,7 +306,8 @@ export const App: React.FC = () => {
                 playerControllerRef.current.isGrounded = false;
               }
             } else {
-              pos.y = groundY;
+              // Smooth ground snapping for non-player actors to prevent vertical camera jitter on bumpy terrain
+              pos.y = THREE.MathUtils.lerp(pos.y, groundY, 1 - Math.exp(-15 * delta));
             }
           } else {
             if (isPlayer && playerControllerRef.current) {
@@ -342,7 +348,18 @@ export const App: React.FC = () => {
 
         actorStates.set(id, { position: p, headPosition: head, rotationY: rotY });
 
+        // Evaluate Animated GIF Emotes / Stickers
+        if (gifOverlayRef.current) {
+          gifOverlayRef.current.evaluateActorOverlays(
+            id,
+            runtime.avatar.config.tracks.gif_overlays,
+            runtime.avatar.rootObject,
+            t
+          );
+        }
+
         // Actor is on tree if climbing track is active or altitude is up in the canopy
+
         const isClimbingOrOnTree =
           p.y > 1.2 ||
           (runtime.avatar.config.tracks.movement || []).some(

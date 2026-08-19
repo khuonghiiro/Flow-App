@@ -75,11 +75,21 @@ export interface DialogueManifestItem {
 }
 
 export type ShotType =
+  // Basic & Established
   | 'cinematic_dolly'
   | 'combat_action_cam'
   | 'face_close_up'
   | 'wide_overview'
-  | 'free_orbit';
+  | 'free_orbit'
+  // Professional Anime & Cartoon Cinematic Shots
+  | 'hero_low_angle'         // Low-angle dramatic heroic shot looking up
+  | 'crash_zoom'             // Instant high-speed zoom into character face (shock/rage)
+  | 'over_the_shoulder'      // OTS dialogue camera behind shoulder
+  | 'bullet_time_orbit'      // Slow-mo arc rotation around center actor
+  | 'dutch_tilt_cam'         // Tilted cinematic camera for combat tension
+  | 'tracking_lead'          // Reverse chase camera flying ahead of moving character
+  | 'birds_eye_view'         // Top-down overhead cinematic view
+  | 'action_whip_pan';       // Fast lateral camera pan between two actors
 
 export interface CameraTrack {
   start: number;
@@ -89,10 +99,29 @@ export interface CameraTrack {
   to?: Vec3Tuple;
   look_at?: string | Vec3Tuple;
   follow_target?: string;
+  second_target?: string;    // Used for OTS dialogue or whip-pan between 2 actors
   distance?: number;
   height?: number;
   fov?: number;
+  fov_end?: number;          // For dynamic FOV zooms (crash zoom / vertigo effect)
+  dutch_angle?: number;      // Roll angle in degrees (e.g. 12 deg for dramatic tilt)
+  easing?: 'linear' | 'ease_in' | 'ease_out' | 'ease_in_out' | 'snap_fast';
 }
+
+/**
+ * Animated GIF Overlay / Emote Sprite for 2D/3D Hybrid Anime Aesthetics
+ */
+export interface GifOverlayTrackItem {
+  start: number;
+  end: number;
+  gif_path: string;           // e.g. "vfx/emotes/sweat_drop.gif", "vfx/emotes/anger_vein.gif", "vfx/overlays/speed_lines.gif"
+  attach_to?: 'head' | 'root' | 'weapon_r' | 'screen_overlay';
+  offset?: Vec3Tuple;         // Position offset relative to attach point (e.g. [0, 0.4, 0] above head)
+  scale?: number | Vec3Tuple; // Scaling size
+  blend_mode?: 'normal' | 'additive';
+  loop?: boolean;
+}
+
 
 export interface MovementTrackItem {
   start: number;
@@ -169,7 +198,9 @@ export interface ActorTracks {
   transformations?: TransformConfig[];
   combat_master?: CombatMasterTrack;
   inventory_actions?: InventoryActionTrack[];
+  gif_overlays?: GifOverlayTrackItem[]; // Anime sticker/emotion overlays (sweat, rage vein, sparkles)
 }
+
 
 /** Lắp ráp nhân vật từ các parts modular */
 export interface CharacterAssembly {

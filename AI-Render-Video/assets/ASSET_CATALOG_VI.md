@@ -2,7 +2,7 @@
 
 > **DÀNH CHO NGƯỜI DÙNG:** File tài liệu Tiếng Việt có dấu giúp bạn dễ dàng theo dõi toàn bộ tài nguyên và bản đồ đã lưu trong dự án.
 > **Quy định AI:** AI chỉ đọc file `ASSET_CATALOG.md` (tiếng Anh). File `_VI.md` này chỉ phục vụ người dùng.
-> **Thời gian quét:** 2026-08-19 08:42:49
+> **Thời gian quét:** 2026-08-19 08:58:24
 > **Tổng tài nguyên:** 5 tệp tin (23.5 MB), 2 bản đồ lưu sẵn
 
 ---

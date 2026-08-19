@@ -15,6 +15,12 @@ export default defineConfig({
           const filePath = path.join(__dirname, 'assets', decodeURIComponent(rawUrl));
           if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             const ext = path.extname(filePath).toLowerCase();
+            
+            // CRITICAL FIX: Let Vite handle .json files so import.meta.glob can transpile them into ES modules.
+            if (ext === '.json' || req.url?.includes('?import')) {
+              return next();
+            }
+
             const mimeTypes: Record<string, string> = {
               '.vrm': 'model/gltf-binary',
               '.glb': 'model/gltf-binary',
@@ -26,7 +32,7 @@ export default defineConfig({
               '.jpg': 'image/jpeg',
               '.jpeg': 'image/jpeg',
               '.webp': 'image/webp',
-              '.json': 'application/json',
+              // Note: DO NOT intercept .json, let Vite transform it for import.meta.glob!
             };
             res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
             res.setHeader('Access-Control-Allow-Origin', '*');

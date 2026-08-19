@@ -109,24 +109,39 @@ export class CameraDirector {
 
     if (activeTrack) {
       const targetPose = CameraFraming.evaluatePose(activeTrack, currentTime, actorStates);
-      this.applyPose(targetPose, delta * 4);
+      // Use higher speed (6.0) for face close-ups, lower (4.0) for standard tracking
+      this.applyPose(targetPose, 4.0, delta);
     }
   }
 
-  private applyPose(targetPose: CameraPose, lerpFactor: number): void {
-    this.currentPose.position.lerp(targetPose.position, THREE.MathUtils.clamp(lerpFactor, 0, 1));
-    this.currentPose.target.lerp(targetPose.target, THREE.MathUtils.clamp(lerpFactor, 0, 1));
+  private applyPose(targetPose: CameraPose, speed: number, delta: number): void {
+    const smoothFactor = 1 - Math.exp(-speed * delta);
+    
+    this.currentPose.position.lerp(targetPose.position, smoothFactor);
+    this.currentPose.target.lerp(targetPose.target, smoothFactor);
     this.currentPose.fov = THREE.MathUtils.lerp(
       this.currentPose.fov,
       targetPose.fov,
-      THREE.MathUtils.clamp(lerpFactor, 0, 1)
+      smoothFactor
     );
 
     this.camera.position.copy(this.currentPose.position);
     this.camera.lookAt(this.currentPose.target);
+    
+    if (targetPose.roll !== undefined && targetPose.roll !== 0) {
+      this.camera.rotation.z = THREE.MathUtils.lerp(
+        this.camera.rotation.z,
+        targetPose.roll,
+        smoothFactor
+      );
+    } else if (Math.abs(this.camera.rotation.z) > 0.001) {
+      this.camera.rotation.z = THREE.MathUtils.lerp(this.camera.rotation.z, 0, smoothFactor);
+    }
+
     if (Math.abs(this.camera.fov - this.currentPose.fov) > 0.1) {
       this.camera.fov = this.currentPose.fov;
       this.camera.updateProjectionMatrix();
     }
   }
 }
+

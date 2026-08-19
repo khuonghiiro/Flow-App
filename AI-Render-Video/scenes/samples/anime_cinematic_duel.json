@@ -1,0 +1,191 @@
+{
+  "scene_id": "scene_anime_cinematic_duel_01",
+  "title": "Anime Tỷ Võ — Hồ Anh Đào Phong Vân",
+  "fps": 60,
+  "duration": 12.0,
+  "environment": {
+    "map": "farming_village",
+    "map_preset": "sakura_lake_village",
+    "sky_time": "sunset",
+    "weather": {
+      "fog": 0.012,
+      "wind": 0.35,
+      "rain": 0
+    }
+  },
+  "subtitles_config": {
+    "enable_overlay": true,
+    "burn_in_export": true,
+    "font_size": 22,
+    "show_speaker_name": true,
+    "text_color": "#ffffff"
+  },
+  "dialogues_manifest": [
+    {
+      "line_id": "line_01",
+      "speaker_id": "actor_hero",
+      "speaker_name": "Lý Thanh Vân",
+      "speaker_color": "#38bdf8",
+      "text": "Ngươi rốt cuộc cũng đã đến. Hồ Anh Đào này sẽ là nơi kết thúc ân oán!",
+      "voice_config": { "voice_id": "vi_male_hero", "emotion": "determined" },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/scene_anime_duel_actor_hero_line_01.mp3",
+      "status": "pending_tts",
+      "start_time": 0.5,
+      "estimated_duration": 3.2
+    },
+    {
+      "line_id": "line_02",
+      "speaker_id": "actor_rival",
+      "speaker_name": "Dạ Vô Nhai",
+      "speaker_color": "#f43f5e",
+      "text": "Nực cười! Hôm nay để xem kiếm pháp của ai sắc bén hơn!",
+      "voice_config": { "voice_id": "vi_male_rival", "emotion": "arrogant" },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/scene_anime_duel_actor_rival_line_02.mp3",
+      "status": "pending_tts",
+      "start_time": 4.0,
+      "estimated_duration": 3.0
+    }
+  ],
+  "camera_tracks": [
+    {
+      "start": 0.0,
+      "end": 2.5,
+      "shot_type": "hero_low_angle",
+      "follow_target": "actor_hero",
+      "distance": 2.6,
+      "fov": 58
+    },
+    {
+      "start": 2.5,
+      "end": 3.8,
+      "shot_type": "crash_zoom",
+      "follow_target": "actor_hero",
+      "fov": 55,
+      "fov_end": 26
+    },
+    {
+      "start": 3.8,
+      "end": 6.5,
+      "shot_type": "over_the_shoulder",
+      "follow_target": "actor_hero",
+      "second_target": "actor_rival",
+      "fov": 38
+    },
+    {
+      "start": 6.5,
+      "end": 8.5,
+      "shot_type": "dutch_tilt_cam",
+      "from": [-4.0, 1.6, 2.0],
+      "to": [2.0, 2.0, 2.5],
+      "look_at": "actor_rival.head",
+      "dutch_angle": 14
+    },
+    {
+      "start": 8.5,
+      "end": 12.0,
+      "shot_type": "bullet_time_orbit",
+      "follow_target": "actor_hero",
+      "distance": 3.5,
+      "height": 1.6
+    }
+  ],
+  "actors": [
+    {
+      "id": "actor_hero",
+      "name": "Lý Thanh Vân",
+      "model": "characters/sample_avatar.vrm",
+      "assembly": {
+        "base_body": "characters/base_bodies/male_warrior.vrm",
+        "face": "characters/faces/face_male_young.glb",
+        "hairstyle": "characters/hairstyles/hair_topknot.glb",
+        "costume": "characters/costumes/costume_xianxia_white.glb",
+        "accessories": ["characters/accessories/acc_headband.glb"],
+        "skin_color": "#ffd1b3",
+        "hair_color": "#1a1a2e"
+      },
+      "spawn_point": [-3.5, 0, -1.8],
+      "rotation_y": 0.4,
+      "tracks": {
+        "movement": [
+          { "start": 0, "end": 6.5, "action": "arms_crossed" },
+          { "start": 6.5, "end": 8.0, "action": "dash_to", "destination": [-0.8, 0, -1.0] },
+          { "start": 8.0, "end": 12.0, "action": "heavy_slash_combo" }
+        ],
+        "speech": [
+          {
+            "line_ref": "line_01",
+            "expressions": [
+              { "time_offset": 0.0, "type": "determined", "weight": 1.0 },
+              { "time_offset": 2.5, "type": "fierce", "weight": 1.0 }
+            ]
+          }
+        ],
+        "gif_overlays": [
+          {
+            "start": 2.5,
+            "end": 3.8,
+            "gif_path": "vfx/emotes/sparkles.gif",
+            "attach_to": "head",
+            "offset": [0.25, 0.45, 0],
+            "scale": 0.5
+          }
+        ],
+        "combat_actions": [
+          {
+            "start_time": 8.5,
+            "impact_time": 9.2,
+            "anim": "heavy_slash_combo",
+            "weapon_vfx": {
+              "type": "sword_slash_fire",
+              "start": 8.5,
+              "end": 9.3
+            },
+            "target": {
+              "actor_id": "actor_rival",
+              "reaction_anim": "block_defend",
+              "knockback_distance": 1.2,
+              "facial_expression": "pain",
+              "impact_vfx": "impact_hit_sparks",
+              "screen_shake": { "intensity": 0.25, "duration": 0.4 }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "actor_rival",
+      "name": "Dạ Vô Nhai",
+      "model": "characters/sample_avatar.vrm",
+      "spawn_point": [1.5, 0, 0.5],
+      "rotation_y": -2.4,
+      "tracks": {
+        "movement": [
+          { "start": 0, "end": 6.5, "action": "hands_behind_back" },
+          { "start": 6.5, "end": 8.0, "action": "dash_to", "destination": [0.5, 0, -0.6] },
+          { "start": 8.0, "end": 12.0, "action": "block_defend" }
+        ],
+        "speech": [
+          {
+            "line_ref": "line_02",
+            "expressions": [
+              { "time_offset": 0.0, "type": "arrogant", "weight": 1.0 },
+              { "time_offset": 2.0, "type": "cold", "weight": 1.0 }
+            ]
+          }
+        ],
+        "gif_overlays": [
+          {
+            "start": 4.0,
+            "end": 5.5,
+            "gif_path": "vfx/emotes/anger_vein.gif",
+            "attach_to": "head",
+            "offset": [0.2, 0.45, 0],
+            "scale": 0.45
+          }
+        ]
+      }
+    }
+  ]
+}

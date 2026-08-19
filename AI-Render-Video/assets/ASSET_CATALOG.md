@@ -2,7 +2,7 @@
 
 > **FOR AI AGENTS:** This file is the single source of truth for all available scene resources. Read this file carefully before generating JSON `MasterSceneConfig`.
 > **Language Rule:** AI agents must read `ASSET_CATALOG.md` (English). Do not rely on `_VI.md` files which are formatted for human users.
-> **Auto-generated:** 2026-08-19 08:42:49
+> **Auto-generated:** 2026-08-19 08:58:24
 > **Total assets:** 5 asset files (23.5 MB), 2 saved map presets
 
 ---

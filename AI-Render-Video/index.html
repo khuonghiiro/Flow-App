@@ -5,6 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><circle cx='12' cy='12' r='10'/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI 3D Animation Studio | Master Orchestrator</title>
+    <!-- Global Error Handler -->
+    <script>
+      window.addEventListener('error', function(e) {
+        document.body.innerHTML += '<div style="position:fixed;top:0;left:0;z-index:9999;background:red;color:white;padding:20px;font-family:monospace;font-size:16px;width:100%;"><h3>Global Error (Module Load Failure):</h3><pre>' + (e.error ? e.error.stack : e.message) + '</pre></div>';
+      });
+    </script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
