@@ -78,6 +78,7 @@ export const App: React.FC = () => {
   const mapCollidersRef = useRef<THREE.Object3D[]>([]);
   const playerControllerRef = useRef<PlayerController | null>(null);
   const gifOverlayRef = useRef<GifOverlayManager | null>(null);
+  const lastStateSyncRef = useRef({ time: 0, fps: 0, subLineId: '' });
 
   // Populate complete village props (ground, tree, chair, farm, duck, lantern)
   const populateVillageProps = (group: THREE.Group) => {
@@ -187,12 +188,26 @@ export const App: React.FC = () => {
       );
     }
 
+    // Always ensure a fast ground collision plane at y = 0 matching the map size (80x80 for farming village)
+    const mapGroundSize = isCustomMap ? 180 : 80;
+    const groundPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(mapGroundSize, mapGroundSize),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    groundPlane.rotation.x = -Math.PI / 2;
+    groundPlane.position.y = 0;
+    groundPlane.name = 'fast_physics_ground_plane';
+    mapGroupRef.current.add(groundPlane);
 
-    // Collect Map Colliders for Ground Snapping
-    mapCollidersRef.current = [];
+    // Collect Map Colliders for Ground Snapping (fast ground plane + lightweight props only)
+    mapCollidersRef.current = [groundPlane];
     mapGroupRef.current.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        mapCollidersRef.current.push(child);
+      if ((child as THREE.Mesh).isMesh && child !== groundPlane) {
+        const mesh = child as THREE.Mesh;
+        // High-poly environment meshes (>10,000 vertices) are excluded from CPU physics raycast to maintain 60-120 FPS
+        if (mesh.geometry && mesh.geometry.attributes.position && mesh.geometry.attributes.position.count < 10000) {
+          mapCollidersRef.current.push(child);
+        }
       }
     });
 
@@ -208,7 +223,6 @@ export const App: React.FC = () => {
 
     const lighting = new SceneLighting(renderer.scene);
     lightingRef.current = lighting;
-    lighting.applyEnvironment(sceneRef.current.environment);
 
     const postProcessor = new PostProcessor();
     postProcessorRef.current = postProcessor;
@@ -235,8 +249,18 @@ export const App: React.FC = () => {
     renderer.onRender((delta) => {
       clockRef.current.update(delta);
       const t = clockRef.current.currentTime;
-      setCurrentTime(t);
-      setFps(renderer.fps);
+
+      // Throttle React UI timeline scrubber update (~30 FPS) to prevent UI thread thrashing
+      const now = performance.now();
+      if (now - lastStateSyncRef.current.time >= 33) {
+        lastStateSyncRef.current.time = now;
+        setCurrentTime(t);
+      }
+
+      if (renderer.fps !== lastStateSyncRef.current.fps) {
+        lastStateSyncRef.current.fps = renderer.fps;
+        setFps(renderer.fps);
+      }
 
       const activeScene = sceneRef.current;
 
@@ -268,6 +292,8 @@ export const App: React.FC = () => {
       // Ground Snapping (Physics)
       if (mapCollidersRef.current.length > 0) {
         const raycaster = new THREE.Raycaster();
+        raycaster.far = 4.0;
+
         for (const [id, runtime] of actorsMapRef.current.entries()) {
           const isClimbing = (runtime.avatar.config.tracks.movement || []).some(
             (m) => m.action === 'climb' && t >= m.start && t <= m.end
@@ -276,7 +302,7 @@ export const App: React.FC = () => {
           
           const isPlayer = id === playerControllerRef.current?.controlledActorId;
           const pos = runtime.avatar.rootObject.position;
-          
+
           raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
           const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
           
@@ -285,8 +311,6 @@ export const App: React.FC = () => {
             if (hit.face) {
               const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
               const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-              // Only consider it ground if the slope is not too steep (worldNormal.y > 0.6 is < ~53 degrees)
-              // AND it is not higher than our step limit (0.6m above current feet)
               if (worldNormal.y > 0.6 && hit.point.y <= pos.y + 0.6) {
                 validGroundY = hit.point.y;
                 break;
@@ -310,8 +334,9 @@ export const App: React.FC = () => {
               pos.y = THREE.MathUtils.lerp(pos.y, groundY, 1 - Math.exp(-15 * delta));
             }
           } else {
+            // Out of map bounds: Character loses ground support and falls into void
             if (isPlayer && playerControllerRef.current) {
-               playerControllerRef.current.isGrounded = false;
+              playerControllerRef.current.isGrounded = false;
             }
           }
         }
@@ -390,9 +415,9 @@ export const App: React.FC = () => {
         occlusionFoliageRef.current.update(renderer.camera, foliageActors, delta);
       }
 
-      // Screen Shake Post-processing (only in Director Cam)
+      // Screen Shake Post-processing (only in Director Cam and ONLY when playing)
       if (!isFreeCamRef.current && postProcessorRef.current) {
-        postProcessorRef.current.applyToCamera(renderer.camera, t);
+        postProcessorRef.current.applyToCamera(renderer.camera, t, clockRef.current.isPlaying);
       }
 
       // Combat VFX particles update
@@ -405,9 +430,13 @@ export const App: React.FC = () => {
         mapMixerRef.current.update(delta);
       }
 
-      // Active Subtitle Update
+      // Active Subtitle Update (only trigger React state update when dialogue line actually changes)
       const sub = SubtitleSynchronizer.getActiveSubtitle(activeScene, t);
-      setActiveSubtitle(sub);
+      const subKey = sub ? `${sub.line_id}_${sub.speaker_id}` : '';
+      if (subKey !== lastStateSyncRef.current.subLineId) {
+        lastStateSyncRef.current.subLineId = subKey;
+        setActiveSubtitle(sub);
+      }
 
       // Dynamic Sun & Lighting update across timeline
       if (lightingRef.current) {
@@ -486,16 +515,16 @@ export const App: React.FC = () => {
       cameraDirectorRef.current?.clearInspectMode();
       setInspectingActorId(null);
     } else {
-      // Toggle on: seek, play, and inspect
+      // Toggle on: seek to dialogue timestamp without overriding pause state
       setIsFreeCam(false);
       isFreeCamRef.current = false;
       if (rendererRef.current) rendererRef.current.setFreeCam(false);
 
       clockRef.current.seek(dlg.start_time);
-      clockRef.current.play();
-      setIsPlaying(true);
+      setCurrentTime(dlg.start_time);
+
       if (cameraDirectorRef.current) {
-        cameraDirectorRef.current.setInspectMode(dlg.speaker_id, 12.0, inspectAngle);
+        cameraDirectorRef.current.setInspectMode(dlg.speaker_id, inspectAngle);
         setInspectingActorId(dlg.speaker_id);
       }
     }
@@ -533,10 +562,21 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateScene = (newScene: MasterSceneConfig) => {
-    sceneRef.current = newScene;
-    setScene(newScene);
+    const safeScene: MasterSceneConfig = {
+      ...newScene,
+      subtitles_config: newScene.subtitles_config || {
+        enable_overlay: true,
+        burn_in_export: true,
+        font_size: 20,
+        show_speaker_name: true,
+        position: 'bottom',
+        text_color: '#ffffff',
+      },
+    };
+    sceneRef.current = safeScene;
+    setScene(safeScene);
     clockRef.current.seek(0);
-    clockRef.current.setDuration(newScene.duration);
+    clockRef.current.setDuration(safeScene.duration);
     setCurrentTime(0);
     setIsPlaying(false);
     setInspectingActorId(null);
@@ -563,15 +603,22 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleExportVideo = async (targetFps: number = 120) => {
+  const handleExportVideo = async (targetFps: number = 60) => {
     if (!rendererRef.current) return;
     setIsExporting(true);
     setExportProgressMsg(`Đang chuẩn bị WebCodecs GPU encoder (${targetFps} FPS)...`);
 
+    // 1. Pause live requestAnimationFrame loop to prevent race conditions during offline export
+    rendererRef.current.stop();
+    if (combatSyncRef.current) combatSyncRef.current.reset();
+    if (vfxTriggerRef.current) vfxTriggerRef.current.clear();
+    if (gifOverlayRef.current) gifOverlayRef.current.reset();
+    if (postProcessorRef.current) postProcessorRef.current.clear();
+
     try {
       const recorder = new WebCodecsRecorder();
       clockRef.current.seek(0);
-      clockRef.current.play();
+      clockRef.current.pause();
 
       const blob = await recorder.recordOffline(
         rendererRef.current.getDomElement(),
@@ -602,16 +649,17 @@ export const App: React.FC = () => {
             }
           }
           
-          // Ground Snapping (Physics)
+          // Ground Snapping (Physics) with Fast Spatial Filter
           if (mapCollidersRef.current.length > 0) {
             const raycaster = new THREE.Raycaster();
+            raycaster.far = 4.0;
+
             for (const [id, runtime] of actorsMapRef.current.entries()) {
               const isClimbing = (runtime.avatar.config.tracks.movement || []).some(
                 (m) => m.action === 'climb' && time >= m.start && time <= m.end
               );
               if (isClimbing) continue;
               
-              const isPlayer = id === playerControllerRef.current?.controlledActorId;
               const pos = runtime.avatar.rootObject.position;
               
               raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
@@ -630,6 +678,8 @@ export const App: React.FC = () => {
               }
               if (validGroundY !== null) {
                 pos.y = validGroundY;
+              } else if (pos.y < 0) {
+                pos.y = 0;
               }
             }
           }
@@ -669,7 +719,7 @@ export const App: React.FC = () => {
           
           // Update map animation
           if (mapMixerRef.current) {
-            mapMixerRef.current.update(delta); // Advance the mixer by delta
+            mapMixerRef.current.update(delta);
           }
           
           rendererRef.current?.renderDirect();
@@ -686,6 +736,10 @@ export const App: React.FC = () => {
       alert(`Lỗi xuất video: ${e}`);
     } finally {
       setIsExporting(false);
+      // Resume live render loop
+      if (rendererRef.current) {
+        rendererRef.current.start();
+      }
     }
   };
 
@@ -795,11 +849,24 @@ export const App: React.FC = () => {
 
       mapGroupRef.current.add(customModel);
 
-      // Collect Map Colliders for Ground Snapping
-      mapCollidersRef.current = [];
+      // Ensure fast ground collision plane
+      const groundPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(500, 500),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      groundPlane.rotation.x = -Math.PI / 2;
+      groundPlane.position.y = 0;
+      groundPlane.name = 'fast_physics_ground_plane';
+      mapGroupRef.current.add(groundPlane);
+
+      // Collect Map Colliders for Ground Snapping (ground plane + lightweight props only)
+      mapCollidersRef.current = [groundPlane];
       customModel.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          mapCollidersRef.current.push(child);
+        if ((child as THREE.Mesh).isMesh && child !== groundPlane) {
+          const mesh = child as THREE.Mesh;
+          if (mesh.geometry && mesh.geometry.attributes.position && mesh.geometry.attributes.position.count < 10000) {
+            mapCollidersRef.current.push(child);
+          }
         }
       });
 

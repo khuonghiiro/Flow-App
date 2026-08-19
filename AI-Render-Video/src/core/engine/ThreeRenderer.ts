@@ -26,7 +26,7 @@ export class ThreeRenderer {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#0f111a');
 
-    this.camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 500);
     this.camera.position.set(0, 3, 10);
 
     this.renderer = new THREE.WebGLRenderer({
@@ -36,9 +36,9 @@ export class ThreeRenderer {
       alpha: options.alpha ?? false,
     });
 
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.0));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
 

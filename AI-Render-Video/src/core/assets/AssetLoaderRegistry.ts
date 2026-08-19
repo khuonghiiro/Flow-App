@@ -38,9 +38,13 @@ export class AssetLoaderRegistry {
 
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              mesh.castShadow = true;
+              // Map/Environment models only receive shadows; characters/props cast shadows
+              mesh.castShadow = false;
               mesh.receiveShadow = true;
               mesh.frustumCulled = true;
+              mesh.matrixAutoUpdate = false; // Static mesh optimization - don't recompute 2.1M matrices every frame
+              mesh.updateMatrix();
+
               if (mesh.geometry) {
                 mesh.geometry.computeBoundingBox();
                 mesh.geometry.computeBoundingSphere();
@@ -48,16 +52,20 @@ export class AssetLoaderRegistry {
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.DoubleSide;
+                  mat.side = THREE.FrontSide; // Enable GPU backface culling for high FPS
                   mat.depthWrite = true;
-                  mat.needsUpdate = true;
+                  // Enable Early-Z depth testing on transparent materials to eliminate heavy overdraw
+                  if (mat.transparent) {
+                    mat.alphaTest = 0.05;
+                  }
                   if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                     const stdMat = mat as THREE.MeshStandardMaterial;
                     // If map is missing but emissiveMap exists (common Sketchfab unlit conversion)
                     if (stdMat.emissiveMap && !stdMat.map) {
                       stdMat.map = stdMat.emissiveMap;
-                      stdMat.needsUpdate = true;
                     }
+                    stdMat.roughness = Math.max(0.6, stdMat.roughness || 0.6);
+                    stdMat.metalness = Math.min(0.2, stdMat.metalness || 0.0);
                   }
                 });
               }

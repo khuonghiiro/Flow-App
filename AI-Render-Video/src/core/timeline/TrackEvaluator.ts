@@ -99,8 +99,13 @@ export class TrackEvaluator {
         }
       }
 
-      // If idle (not moving, not attacking, and not hit by combat)
-      if (!isTargetOfCombatHit && !movementHandled && (!tracks.combat_actions || tracks.combat_actions.length === 0) && !isPlayerControlled) {
+      // If idle (not moving, not actively executing an attack animation, and not hit by combat)
+      const isActivelyAttacking = (tracks.combat_actions || []).some((cb) => {
+        const duration = (cb.impact_time - cb.start_time) * 1.6;
+        return currentTime >= cb.start_time && currentTime <= cb.start_time + duration;
+      });
+
+      if (!isTargetOfCombatHit && !movementHandled && !isActivelyAttacking && !isPlayerControlled) {
         animator.setAction('idle');
         animator.update(currentTime);
       }

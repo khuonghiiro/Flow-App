@@ -9,7 +9,7 @@ interface ViewportCanvasProps {
   renderer: ThreeRenderer | null;
   fps: number;
   activeSubtitle: ActiveSubtitle | null;
-  subtitlesConfig: SubtitlesConfig;
+  subtitlesConfig?: SubtitlesConfig | null;
   showCC: boolean;
   isInspecting?: boolean;
   isFreeCam?: boolean;

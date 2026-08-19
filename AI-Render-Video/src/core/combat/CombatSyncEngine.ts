@@ -99,7 +99,8 @@ export class CombatSyncEngine {
         this.vfxTrigger.spawnHitSparks(hitCalc.hitPoint);
         this.postProcessor.triggerScreenShake(
           target.screen_shake.intensity,
-          target.screen_shake.duration
+          target.screen_shake.duration,
+          currentTime
         );
       }
     }

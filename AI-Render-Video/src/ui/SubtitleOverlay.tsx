@@ -4,25 +4,31 @@ import { SubtitlesConfig } from '../types/scene';
 
 interface SubtitleOverlayProps {
   subtitle: ActiveSubtitle | null;
-  config: SubtitlesConfig;
+  config?: SubtitlesConfig | null;
   showCC: boolean;
 }
 
 export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ subtitle, config, showCC }) => {
-  if (!showCC || !config.enable_overlay || !subtitle) {
+  const isEnabled = config?.enable_overlay ?? true;
+  if (!showCC || !isEnabled || !subtitle) {
     return null;
   }
 
+  const showSpeaker = config?.show_speaker_name ?? true;
+  const fontSize = config?.font_size || 20;
+  const textColor = config?.text_color || '#ffffff';
+  const speakerColor = subtitle.speaker_color || '#38bdf8';
+
   return (
     <div className="subtitle-overlay-container">
-      {config.show_speaker_name && (
-        <div className="subtitle-badge" style={{ color: subtitle.speaker_color }}>
+      {showSpeaker && subtitle.speaker_name && (
+        <div className="subtitle-badge" style={{ color: speakerColor }}>
           <span
             style={{
               width: 8,
               height: 8,
               borderRadius: '50%',
-              backgroundColor: subtitle.speaker_color,
+              backgroundColor: speakerColor,
             }}
           />
           {subtitle.speaker_name}
@@ -31,8 +37,8 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ subtitle, conf
       <div
         className="subtitle-text-box"
         style={{
-          fontSize: `${config.font_size || 20}px`,
-          color: config.text_color || '#ffffff',
+          fontSize: `${fontSize}px`,
+          color: textColor,
         }}
       >
         {subtitle.text}

@@ -13,10 +13,10 @@ export interface ActiveSubtitle {
 
 export class SubtitleSynchronizer {
   public static getActiveSubtitle(
-    scene: MasterSceneConfig,
+    scene: MasterSceneConfig | null | undefined,
     currentTime: number
   ): ActiveSubtitle | null {
-    if (!scene.dialogues_manifest) return null;
+    if (!scene || !scene.dialogues_manifest) return null;
 
     for (const item of scene.dialogues_manifest) {
       const duration = item.actual_duration || item.estimated_duration || 3.0;

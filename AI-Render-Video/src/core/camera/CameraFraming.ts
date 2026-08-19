@@ -44,7 +44,7 @@ export class CameraFraming {
         if (typeof track.look_at === 'string') {
           const actorId = track.look_at.replace('.head', '');
           const actorState = actorStates.get(actorId);
-          if (actorState) target.copy(actorState.headPosition);
+          if (actorState) target.set(actorState.position.x, actorState.position.y + 1.45, actorState.position.z);
         } else if (Array.isArray(track.look_at)) {
           target.set(...(track.look_at as Vec3Tuple));
         }
@@ -70,23 +70,25 @@ export class CameraFraming {
         break;
       }
 
-      // 3. Face Close-up
+      // 3. Face Close-up (Soi toàn bộ khuôn mặt & khẩu hình)
       case 'face_close_up': {
         const targetId = track.follow_target || 'actor_warrior';
         const actorState = actorStates.get(targetId);
 
         if (actorState) {
-          const headPos = actorState.headPosition;
+          // Exact head & face center height in avatar world coordinates (Y = 1.77m)
+          const basePos = actorState.position;
+          const stableHeadY = basePos.y + 1.77;
           const facingY = actorState.rotationY;
 
           let angleOffset = 0;
           let dist = 0.95;
-          let heightOffset = 0.02;
+          let heightOffset = 0.0;
 
           if (inspectAngle === 'three_quarter') {
             angleOffset = Math.PI * 0.22;
             dist = 1.05;
-            heightOffset = 0.04;
+            heightOffset = 0.02;
           } else if (inspectAngle === 'side') {
             angleOffset = Math.PI * 0.5;
             dist = 0.95;
@@ -94,19 +96,19 @@ export class CameraFraming {
           } else if (inspectAngle === 'low_angle') {
             angleOffset = Math.PI * 0.08;
             dist = 1.15;
-            heightOffset = -0.28;
+            heightOffset = -0.22;
           }
 
           const totalAngle = facingY + angleOffset;
           pos.set(
-            headPos.x + Math.sin(totalAngle) * dist,
-            headPos.y + heightOffset,
-            headPos.z + Math.cos(totalAngle) * dist
+            basePos.x + Math.sin(totalAngle) * dist,
+            stableHeadY + heightOffset,
+            basePos.z + Math.cos(totalAngle) * dist
           );
-          target.copy(headPos);
+          target.set(basePos.x, stableHeadY, basePos.z);
         } else {
-          pos.set(0, 1.6, 1.2);
-          target.set(0, 1.5, 0);
+          pos.set(0, 1.77, 0.95);
+          target.set(0, 1.77, 0);
         }
         fov = 32;
         break;
@@ -126,8 +128,8 @@ export class CameraFraming {
           actorPos.z + Math.cos(facingY + 0.2) * dist
         );
         target.copy(actorPos);
-        target.y += 1.4; // Look up at chest/head
-        fov = track.fov || 58; // Wider FOV for heroic perspective distortion
+        target.y += 1.6; // Look up at head/chest
+        fov = track.fov || 58;
         break;
       }
 
@@ -135,24 +137,25 @@ export class CameraFraming {
       case 'crash_zoom': {
         const targetId = track.follow_target || 'actor_warrior';
         const actorState = actorStates.get(targetId);
-        const headPos = actorState ? actorState.headPosition : new THREE.Vector3(0, 1.5, 0);
+        const basePos = actorState ? actorState.position : new THREE.Vector3(0, 0, 0);
+        const stableHeadY = basePos.y + 1.77;
 
         // Exponential snap in the first 0.35 fraction of track
         const zoomProgress = Math.min(1, Math.pow(progress * 2.8, 3));
         const startDist = track.distance || 4.0;
-        const endDist = 0.85;
+        const endDist = 0.95;
         const currentDist = THREE.MathUtils.lerp(startDist, endDist, zoomProgress);
 
         const facingY = actorState ? actorState.rotationY : 0;
         pos.set(
-          headPos.x + Math.sin(facingY) * currentDist,
-          headPos.y + 0.05,
-          headPos.z + Math.cos(facingY) * currentDist
+          basePos.x + Math.sin(facingY) * currentDist,
+          stableHeadY + 0.02,
+          basePos.z + Math.cos(facingY) * currentDist
         );
-        target.copy(headPos);
+        target.set(basePos.x, stableHeadY, basePos.z);
 
         const startFov = track.fov || 55;
-        const endFov = track.fov_end || 26;
+        const endFov = track.fov_end || 28;
         fov = THREE.MathUtils.lerp(startFov, endFov, zoomProgress);
         break;
       }
@@ -163,19 +166,21 @@ export class CameraFraming {
         const speakerB = actorStates.get(track.second_target || track.look_at as string || '');
 
         if (speakerA && speakerB) {
-          const dir = new THREE.Vector3().subVectors(speakerB.position, speakerA.position).normalize();
+          const headA = new THREE.Vector3(speakerA.position.x, speakerA.position.y + 1.77, speakerA.position.z);
+          const headB = new THREE.Vector3(speakerB.position.x, speakerB.position.y + 1.77, speakerB.position.z);
+          const dir = new THREE.Vector3().subVectors(headB, headA).normalize();
           const right = new THREE.Vector3(-dir.z, 0, dir.x);
 
-          // Position camera just behind speaker A's shoulder
-          pos.copy(speakerA.headPosition)
-            .addScaledVector(dir, -0.65) // Behind
-            .addScaledVector(right, 0.42) // Over right shoulder
-            .add(new THREE.Vector3(0, 0.08, 0));
+          // Position camera just behind speaker A's shoulder at eye level
+          pos.copy(headA)
+            .addScaledVector(dir, -0.65)
+            .addScaledVector(right, 0.38)
+            .add(new THREE.Vector3(0, -0.05, 0));
 
-          target.copy(speakerB.headPosition);
+          target.copy(headB);
         } else if (speakerA) {
-          pos.set(speakerA.position.x + 0.4, speakerA.position.y + 1.5, speakerA.position.z - 0.7);
-          target.set(speakerA.position.x, speakerA.position.y + 1.4, speakerA.position.z + 2.0);
+          pos.set(speakerA.position.x + 0.35, speakerA.position.y + 1.72, speakerA.position.z - 0.7);
+          target.set(speakerA.position.x, speakerA.position.y + 1.77, speakerA.position.z + 2.0);
         }
         fov = track.fov || 38;
         break;

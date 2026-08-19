@@ -6,10 +6,10 @@ export class PlayerController {
   private keys: { [key: string]: boolean } = {};
   public controlledActorId: string | null = null;
   public velocityY: number = 0;
-  public isGrounded: boolean = false;
+  public isGrounded: boolean = true;
   
   private moveSpeed = 4.0;
-  private jumpForce = 8.0;
+  private jumpForce = 7.5;
   private gravity = 20.0;
 
   constructor() {
@@ -65,13 +65,14 @@ export class PlayerController {
 
       let finalMove = moveDir.clone();
 
-      // Horizontal Collision Detection & Sliding (Capsule simulation)
-      if (colliders.length > 0 && finalMove.lengthSq() > 0) {
+      // Horizontal Wall Collision Detection & Sliding (exclude ground plane)
+      const wallColliders = colliders.filter((c) => c.name !== 'fast_physics_ground_plane');
+      if (wallColliders.length > 0 && finalMove.lengthSq() > 0) {
         const moveNorm = finalMove.clone().normalize();
         const right = new THREE.Vector3(moveNorm.z, 0, -moveNorm.x).multiplyScalar(0.25);
         const left = right.clone().negate();
-        
-        // Check 3 heights: 0.4 (Feet/Step offset), 0.9 (Waist), 1.4 (Head/Shoulders)
+
+        // Check 3 heights: 0.4 (Feet), 0.9 (Waist), 1.4 (Shoulders)
         const heights = [0.4, 0.9, 1.4];
         let slideNormal = new THREE.Vector3();
         let hitFound = false;
@@ -90,11 +91,10 @@ export class PlayerController {
           ];
           
           for (const origin of origins) {
-            // Raycast 0.4 units forward
-            const raycaster = new THREE.Raycaster(origin, moveNorm, 0, 0.4);
-            const hits = raycaster.intersectObjects(colliders, false);
+            const raycaster = new THREE.Raycaster(origin, moveNorm, 0, 0.45);
+            const hits = raycaster.intersectObjects(wallColliders, false);
             
-            // Only block movement if the hit surface is a wall (steep angle, worldNormal.y <= 0.6)
+            // Only block movement if the hit surface is a steep wall (worldNormal.y <= 0.6)
             const validWallHit = hits.find(h => {
               if (!h.face) return false;
               const normalMatrix = new THREE.Matrix3().getNormalMatrix(h.object.matrixWorld);
@@ -119,11 +119,10 @@ export class PlayerController {
             horizontalNormal.normalize();
             const dot = finalMove.dot(horizontalNormal);
             if (dot < 0) {
-              // Slide along the wall
               finalMove.sub(horizontalNormal.multiplyScalar(dot));
             }
           } else {
-            finalMove.set(0, 0, 0); // fallback block
+            finalMove.set(0, 0, 0);
           }
         }
       }
@@ -136,30 +135,26 @@ export class PlayerController {
 
       // Update rotation
       const targetRotation = Math.atan2(moveDir.x, moveDir.z);
-      
-      // Smooth rotation
       let currentRotation = avatar.rootObject.rotation.y;
       
-      // Handle wrap around -PI and PI
       let diff = targetRotation - currentRotation;
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
 
       avatar.rootObject.rotation.y += diff * 10 * delta;
 
-      animator.setAction(this.keys['ShiftLeft'] ? 'run' : 'walk');
+      animator.setAction(isRunning ? 'run' : 'walk');
     } else {
       // Action triggers (Emotes)
       if (this.keys['Digit1']) {
-        animator.setAction('talk_gesture'); // instead of wave
+        animator.setAction('talk_gesture');
       } else if (this.keys['Digit2']) {
-        animator.setAction('block_defend'); // instead of dance
+        animator.setAction('block_defend');
       } else if (this.keys['Digit3']) {
         animator.setAction('sit');
       } else if (this.keys['Digit4']) {
-        animator.setAction('heavy_slash_combo'); // instead of attack
+        animator.setAction('heavy_slash_combo');
       } else {
-        // Only set idle if not currently jumping
         if (this.isGrounded) {
           animator.setAction('idle');
         }
@@ -170,7 +165,7 @@ export class PlayerController {
     if (this.keys['Space'] && this.isGrounded) {
       this.velocityY = this.jumpForce;
       this.isGrounded = false;
-      animator.setAction('dodge'); // fallback for jump
+      animator.setAction('dodge');
     }
 
     // Apply gravity
@@ -178,29 +173,38 @@ export class PlayerController {
       this.velocityY -= this.gravity * delta;
       
       // Upward Ceiling Collision Check when jumping up
-      if (this.velocityY > 0 && colliders.length > 0) {
+      const ceilingColliders = colliders.filter((c) => c.name !== 'fast_physics_ground_plane');
+      if (this.velocityY > 0 && ceilingColliders.length > 0) {
         const headOrigin = new THREE.Vector3(
           avatar.rootObject.position.x,
-          avatar.rootObject.position.y + 1.0, // Chest level
+          avatar.rootObject.position.y + 1.0,
           avatar.rootObject.position.z
         );
-        // Cast upward 0.6m (total height 1.6m)
         const upRay = new THREE.Raycaster(headOrigin, new THREE.Vector3(0, 1, 0), 0, 0.6);
-        const hits = upRay.intersectObjects(colliders, false);
+        const hits = upRay.intersectObjects(ceilingColliders, false);
         const ceilingHit = hits.find(h => {
             if (!h.face) return false;
             const normalMatrix = new THREE.Matrix3().getNormalMatrix(h.object.matrixWorld);
             const worldNormal = h.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-            return worldNormal.y < -0.5; // Ceiling normal points downwards
+            return worldNormal.y < -0.5;
         });
         
         if (ceilingHit) {
-           this.velocityY = 0; // Bonk head, stop moving up
-           avatar.rootObject.position.y = ceilingHit.point.y - 1.6; // Keep head just below ceiling
+           this.velocityY = 0;
+           avatar.rootObject.position.y = ceilingHit.point.y - 1.6;
         }
       }
 
       avatar.rootObject.position.y += this.velocityY * delta;
+
+      // Phương án 3: Rơi tự do khỏi mép bản đồ và tự động hồi sinh (Respawn)
+      if (avatar.rootObject.position.y < -12.0) {
+        const spawn = avatar.config.spawn_point || [0, 0, 0];
+        avatar.rootObject.position.set(...spawn);
+        this.velocityY = 0;
+        this.isGrounded = true;
+        animator.setAction('idle');
+      }
     }
   }
 }

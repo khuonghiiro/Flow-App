@@ -2,34 +2,46 @@ import * as THREE from 'three';
 
 export class CombatVFXTrigger {
   private scene: THREE.Scene;
-  private activeVFX: Array<{ object: THREE.Object3D; update: (delta: number) => boolean }> = [];
+  private activeVFX: Array<{ object: THREE.Object3D; update: (delta: number) => boolean; dispose: () => void }> = [];
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
   }
 
   public spawnSlashTrail(position: THREE.Vector3, direction: THREE.Vector3): void {
-    const slashGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24, Math.PI * 0.8);
+    const slashGeo = new THREE.RingGeometry(0.7, 1.3, 32, 1, 0, Math.PI * 0.8);
     const slashMat = new THREE.MeshBasicMaterial({
-      color: 0xff5500,
+      color: 0xff3b00,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
     const mesh = new THREE.Mesh(slashGeo, slashMat);
     mesh.position.copy(position);
     mesh.rotation.x = Math.PI / 2;
+
     this.scene.add(mesh);
 
-    let life = 0.4;
+    let life = 0.28;
+    const maxLife = 0.28;
+
+    const dispose = () => {
+      slashGeo.dispose();
+      slashMat.dispose();
+    };
+
     this.activeVFX.push({
       object: mesh,
+      dispose,
       update: (delta: number) => {
         life -= delta;
-        slashMat.opacity = Math.max(0, life / 0.4);
-        mesh.scale.multiplyScalar(1.05);
+        slashMat.opacity = Math.max(0, (life / maxLife) * 0.95);
+        mesh.scale.addScalar(delta * 1.6);
         if (life <= 0) {
-          this.scene.remove(mesh);
+          if (mesh.parent) mesh.parent.remove(mesh);
+          dispose();
           return false;
         }
         return true;
@@ -38,7 +50,7 @@ export class CombatVFXTrigger {
   }
 
   public spawnHitSparks(position: THREE.Vector3): void {
-    const count = 30;
+    const count = 32;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
     const velocities: THREE.Vector3[] = [];
@@ -51,7 +63,7 @@ export class CombatVFXTrigger {
       velocities.push(
         new THREE.Vector3(
           (Math.random() - 0.5) * 6,
-          Math.random() * 4 + 1,
+          Math.random() * 4 + 1.2,
           (Math.random() - 0.5) * 6
         )
       );
@@ -59,22 +71,31 @@ export class CombatVFXTrigger {
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const material = new THREE.PointsMaterial({
-      color: 0xffdd44,
-      size: 0.15,
+      color: 0xffe066,
+      size: 0.16,
       transparent: true,
       opacity: 1.0,
       blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
 
     const particles = new THREE.Points(geometry, material);
     this.scene.add(particles);
 
-    let life = 0.5;
+    let life = 0.45;
+    const maxLife = 0.45;
+
+    const dispose = () => {
+      geometry.dispose();
+      material.dispose();
+    };
+
     this.activeVFX.push({
       object: particles,
+      dispose,
       update: (delta: number) => {
         life -= delta;
-        material.opacity = Math.max(0, life / 0.5);
+        material.opacity = Math.max(0, (life / maxLife) * 1.0);
         const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
 
@@ -87,7 +108,8 @@ export class CombatVFXTrigger {
         posAttr.needsUpdate = true;
 
         if (life <= 0) {
-          this.scene.remove(particles);
+          if (particles.parent) particles.parent.remove(particles);
+          dispose();
           return false;
         }
         return true;
@@ -104,19 +126,27 @@ export class CombatVFXTrigger {
       transparent: true,
       opacity: 0.45,
       wireframe: true,
+      depthWrite: false,
     });
     const shield = new THREE.Mesh(shieldGeo, shieldMat);
     shield.position.y = 0.8;
     targetObject.add(shield);
 
     let life = duration;
+    const dispose = () => {
+      shieldGeo.dispose();
+      shieldMat.dispose();
+    };
+
     this.activeVFX.push({
       object: shield,
+      dispose,
       update: (delta: number) => {
         life -= delta;
         shield.rotation.y += delta * 2;
         if (life <= 0) {
           targetObject.remove(shield);
+          dispose();
           return false;
         }
         return true;
@@ -133,6 +163,7 @@ export class CombatVFXTrigger {
       if (vfx.object.parent) {
         vfx.object.parent.remove(vfx.object);
       }
+      vfx.dispose();
     }
     this.activeVFX = [];
   }

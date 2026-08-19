@@ -5,11 +5,11 @@ export class SubtitleCanvasBurner {
   public static burnSubtitleToCanvas(
     ctx: CanvasRenderingContext2D,
     subtitle: ActiveSubtitle | null,
-    config: SubtitlesConfig,
+    config: SubtitlesConfig | null | undefined,
     width: number,
     height: number
   ): void {
-    if (!subtitle || !config.enable_overlay) return;
+    if (!subtitle || !config || config.enable_overlay === false) return;
 
     ctx.save();
 

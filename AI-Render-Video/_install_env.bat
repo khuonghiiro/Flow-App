@@ -49,7 +49,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ==============================================================================
-echo       CAI DAT HOAN TAT! BAN CO THE CHAY FILE start_studio.bat DE BAT DAU.
+echo       CAI DAT HOAN TAT! BAN CO THE CHAY FILE _start_studio.bat DE BAT DAU.
 echo ==============================================================================
 echo.
 pause

@@ -12,16 +12,22 @@ export class PostProcessor {
   public bloomStrength: number = 0.5;
   public vignetteDarkness: number = 0.8;
 
-  public triggerScreenShake(intensity: number = 0.35, duration: number = 0.25): void {
+  public triggerScreenShake(intensity: number = 0.35, duration: number = 0.25, timeStamp?: number): void {
     this.activeShakes.push({
       intensity,
       duration,
-      startTime: performance.now() / 1000,
+      startTime: timeStamp !== undefined ? timeStamp : performance.now() / 1000,
     });
   }
 
-  public update(currentTimeSeconds: number): THREE.Vector3 {
+  public update(currentTimeSeconds: number, isPlaying: boolean = true): THREE.Vector3 {
     this.shakeOffset.set(0, 0, 0);
+
+    // If playback is paused or stopped, NEVER apply random camera shakes
+    if (!isPlaying || this.activeShakes.length === 0) {
+      if (!isPlaying) this.activeShakes = [];
+      return this.shakeOffset;
+    }
 
     // Filter and accumulate active screen shakes
     this.activeShakes = this.activeShakes.filter((shake) => {
@@ -40,8 +46,9 @@ export class PostProcessor {
     return this.shakeOffset;
   }
 
-  public applyToCamera(camera: THREE.Camera, currentTimeSeconds: number): void {
-    const offset = this.update(currentTimeSeconds);
+  public applyToCamera(camera: THREE.Camera, currentTimeSeconds: number, isPlaying: boolean = true): void {
+    if (!isPlaying) return;
+    const offset = this.update(currentTimeSeconds, isPlaying);
     camera.position.add(offset);
   }
 

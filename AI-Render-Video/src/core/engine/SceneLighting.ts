@@ -26,20 +26,21 @@ export class SceneLighting {
     this.hemiLight.position.set(0, 50, 0);
     this.scene.add(this.hemiLight);
 
-    // Directional Sun Light with Soft Shadows
+    // Directional Sun Light with Optimized Shadows
     this.sunLight = new THREE.DirectionalLight(0xffaa55, 2.0);
     this.sunLight.position.set(15, 20, 15);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
     this.sunLight.shadow.camera.near = 0.5;
-    this.sunLight.shadow.camera.far = 120;
-    const d = 25;
+    this.sunLight.shadow.camera.far = 60;
+    const d = 14;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
-    this.sunLight.shadow.bias = -0.0005;
+    this.sunLight.shadow.bias = -0.0003;
+    this.sunLight.shadow.normalBias = 0.02;
     this.scene.add(this.sunLight);
 
     // Fog
