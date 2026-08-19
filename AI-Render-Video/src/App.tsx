@@ -240,7 +240,8 @@ export const App: React.FC = () => {
               const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
               const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
               // Only consider it ground if the slope is not too steep (worldNormal.y > 0.6 is < ~53 degrees)
-              if (worldNormal.y > 0.6) {
+              // AND it is not higher than our step limit (0.6m above current feet)
+              if (worldNormal.y > 0.6 && hit.point.y <= pos.y + 0.6) {
                 validGroundY = hit.point.y;
                 break;
               }

@@ -65,48 +65,51 @@ export class PlayerController {
 
       let finalMove = moveDir.clone();
 
-      // Horizontal Collision Detection & Sliding
+      // Horizontal Collision Detection & Sliding (Capsule simulation)
       if (colliders.length > 0 && finalMove.lengthSq() > 0) {
-        const bodyHeight = 1.0; // Shoot ray from chest level
-        const rayOrigin = new THREE.Vector3(
-          avatar.rootObject.position.x,
-          avatar.rootObject.position.y + bodyHeight,
-          avatar.rootObject.position.z
-        );
-        
-        // Setup 3 rays (Center, Left Offset, Right Offset) to simulate body width
         const moveNorm = finalMove.clone().normalize();
         const right = new THREE.Vector3(moveNorm.z, 0, -moveNorm.x).multiplyScalar(0.25);
         const left = right.clone().negate();
         
-        const origins = [
-          rayOrigin,
-          rayOrigin.clone().add(right),
-          rayOrigin.clone().add(left)
-        ];
-        
+        // Check 3 heights: 0.4 (Feet/Step offset), 0.9 (Waist), 1.4 (Head/Shoulders)
+        const heights = [0.4, 0.9, 1.4];
         let slideNormal = new THREE.Vector3();
         let hitFound = false;
 
-        for (const origin of origins) {
-          // Raycast 0.4 units forward
-          const raycaster = new THREE.Raycaster(origin, moveNorm, 0, 0.4);
-          const hits = raycaster.intersectObjects(colliders, false);
+        for (const height of heights) {
+          const rayOrigin = new THREE.Vector3(
+            avatar.rootObject.position.x,
+            avatar.rootObject.position.y + height,
+            avatar.rootObject.position.z
+          );
           
-          // Only block movement if the hit surface is a wall (steep angle, worldNormal.y <= 0.6)
-          const validWallHit = hits.find(h => {
-            if (!h.face) return false;
-            const normalMatrix = new THREE.Matrix3().getNormalMatrix(h.object.matrixWorld);
-            const worldNormal = h.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-            return worldNormal.y <= 0.6;
-          });
+          const origins = [
+            rayOrigin,
+            rayOrigin.clone().add(right),
+            rayOrigin.clone().add(left)
+          ];
           
-          if (validWallHit && validWallHit.face) {
-             const normalMatrix = new THREE.Matrix3().getNormalMatrix(validWallHit.object.matrixWorld);
-             slideNormal = validWallHit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-             hitFound = true;
-             break;
+          for (const origin of origins) {
+            // Raycast 0.4 units forward
+            const raycaster = new THREE.Raycaster(origin, moveNorm, 0, 0.4);
+            const hits = raycaster.intersectObjects(colliders, false);
+            
+            // Only block movement if the hit surface is a wall (steep angle, worldNormal.y <= 0.6)
+            const validWallHit = hits.find(h => {
+              if (!h.face) return false;
+              const normalMatrix = new THREE.Matrix3().getNormalMatrix(h.object.matrixWorld);
+              const worldNormal = h.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+              return worldNormal.y <= 0.6;
+            });
+            
+            if (validWallHit && validWallHit.face) {
+               const normalMatrix = new THREE.Matrix3().getNormalMatrix(validWallHit.object.matrixWorld);
+               slideNormal = validWallHit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+               hitFound = true;
+               break;
+            }
           }
+          if (hitFound) break;
         }
 
         if (hitFound) {
@@ -173,6 +176,30 @@ export class PlayerController {
     // Apply gravity
     if (!this.isGrounded) {
       this.velocityY -= this.gravity * delta;
+      
+      // Upward Ceiling Collision Check when jumping up
+      if (this.velocityY > 0 && colliders.length > 0) {
+        const headOrigin = new THREE.Vector3(
+          avatar.rootObject.position.x,
+          avatar.rootObject.position.y + 1.0, // Chest level
+          avatar.rootObject.position.z
+        );
+        // Cast upward 0.6m (total height 1.6m)
+        const upRay = new THREE.Raycaster(headOrigin, new THREE.Vector3(0, 1, 0), 0, 0.6);
+        const hits = upRay.intersectObjects(colliders, false);
+        const ceilingHit = hits.find(h => {
+            if (!h.face) return false;
+            const normalMatrix = new THREE.Matrix3().getNormalMatrix(h.object.matrixWorld);
+            const worldNormal = h.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+            return worldNormal.y < -0.5; // Ceiling normal points downwards
+        });
+        
+        if (ceilingHit) {
+           this.velocityY = 0; // Bonk head, stop moving up
+           avatar.rootObject.position.y = ceilingHit.point.y - 1.6; // Keep head just below ceiling
+        }
+      }
+
       avatar.rootObject.position.y += this.velocityY * delta;
     }
   }
