@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp } from 'lucide-react';
-import { MasterSceneConfig, DialogueManifestItem } from '../types/scene';
+import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
 import { VRMAvatar } from '../core/actors/VRMAvatar';
@@ -12,6 +12,7 @@ import { CombatDebugger } from './CombatDebugger';
 import { MapRadarView } from './MapRadarView';
 import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
+import { WeatherControlPanel } from './WeatherControlPanel';
 import { sampleScenes } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
 
@@ -44,6 +45,8 @@ interface StudioLayoutProps {
   onExportVideo: (fps?: number) => void;
   isExporting: boolean;
   exportProgressMsg: string;
+  envOverride: EnvironmentOverride;
+  onUpdateEnvOverride: (override: EnvironmentOverride) => void;
 }
 
 export const StudioLayout: React.FC<StudioLayoutProps> = ({
@@ -75,8 +78,10 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   onExportVideo,
   isExporting,
   exportProgressMsg,
+  envOverride,
+  onUpdateEnvOverride,
 }) => {
-  const [leftTab, setLeftTab] = useState<'dialogue' | 'combat'>('dialogue');
+  const [leftTab, setLeftTab] = useState<'dialogue' | 'combat' | 'weather'>('dialogue');
   const [rightTab, setRightTab] = useState<'director' | 'radar'>('director');
   const [showCC, setShowCC] = useState(true);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
@@ -247,10 +252,16 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             >
               <Swords size={14} /> Combat Sync
             </button>
+            <button
+              className={`sidebar-tab-btn ${leftTab === 'weather' ? 'active' : ''}`}
+              onClick={() => setLeftTab('weather')}
+            >
+              <Sparkles size={14} /> Thời Tiết
+            </button>
           </div>
 
           <div className="sidebar-content">
-            {leftTab === 'dialogue' ? (
+            {leftTab === 'dialogue' && (
               <SubtitleInspector
                 scene={scene}
                 currentTime={currentTime}
@@ -261,11 +272,18 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 onResetCamera={onResetCamera}
                 onPreviewSpeech={onPreviewSpeech}
               />
-            ) : (
+            )}
+            {leftTab === 'combat' && (
               <CombatDebugger
                 scene={scene}
                 currentTime={currentTime}
                 onSeekToImpact={(impactTime) => onSeek(impactTime)}
+              />
+            )}
+            {leftTab === 'weather' && (
+              <WeatherControlPanel 
+                override={envOverride} 
+                onChange={onUpdateEnvOverride} 
               />
             )}
           </div>

@@ -18,6 +18,14 @@ export interface EnvironmentConfig {
   };
 }
 
+export interface EnvironmentOverride {
+  enabled: boolean;
+  sky_time: 'sunrise' | 'noon' | 'sunset' | 'night' | 'manual';
+  sun_position?: number;
+  fog_density?: number;
+  wind_intensity?: number;
+}
+
 export interface SubtitlesConfig {
   enable_overlay: boolean;
   burn_in_export: boolean;

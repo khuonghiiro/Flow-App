@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MasterSceneConfig, DialogueManifestItem } from './types/scene';
+import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from './types/scene';
 import { defaultScene, sampleScenes } from './core/scenes/SceneRegistry';
 import { ThreeRenderer } from './core/engine/ThreeRenderer';
 import { SceneLighting } from './core/engine/SceneLighting';
@@ -42,6 +42,19 @@ export const App: React.FC = () => {
   const [isFreeCam, setIsFreeCam] = useState(false);
   const isFreeCamRef = useRef(false);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
+  const [envOverride, setEnvOverride] = useState<EnvironmentOverride>({
+    enabled: false,
+    sky_time: 'sunset',
+    sun_position: 0.5,
+    fog_density: 0.012,
+    wind_intensity: 0.3,
+  });
+  const envOverrideRef = useRef(envOverride);
+
+  // Sync ref
+  useEffect(() => {
+    envOverrideRef.current = envOverride;
+  }, [envOverride]);
 
   // Engine references
   const rendererRef = useRef<ThreeRenderer | null>(null);
@@ -286,7 +299,11 @@ export const App: React.FC = () => {
 
       // Dynamic Sun & Lighting update across timeline
       if (lightingRef.current) {
-        lightingRef.current.update(t, activeScene.duration);
+        if (envOverrideRef.current.enabled) {
+          lightingRef.current.updateManual(envOverrideRef.current);
+        } else {
+          lightingRef.current.update(t, activeScene.duration);
+        }
       }
     });
 
@@ -641,6 +658,8 @@ export const App: React.FC = () => {
       onExportVideo={handleExportVideo}
       isExporting={isExporting}
       exportProgressMsg={exportProgressMsg}
+      envOverride={envOverride}
+      onUpdateEnvOverride={setEnvOverride}
     />
   );
 };
