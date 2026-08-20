@@ -432,6 +432,50 @@ export class VRMAvatar {
         }
       }
 
+      // Dynamic Alignment: Tự động căn chỉnh chiều cao và vị trí Face theo đúng Body (Nam/Nữ)
+      const baseBodyGroup = this.modularGroup.getObjectByName('part_base_body');
+      const faceGroup = this.modularGroup.getObjectByName('part_face');
+
+      if (baseBodyGroup && faceGroup) {
+        baseBodyGroup.updateMatrixWorld(true);
+        faceGroup.updateMatrixWorld(true);
+
+        let bodyFaceMesh: THREE.Mesh | null = null;
+        baseBodyGroup.traverse((c) => {
+          if ((c as THREE.Mesh).isMesh && !bodyFaceMesh) {
+            const mesh = c as THREE.Mesh;
+            const n = mesh.name.toLowerCase();
+            const p = (mesh.parent?.name || '').toLowerCase();
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            const m = mats.map((mat: any) => mat?.name?.toLowerCase() || '').join(' ');
+            if (n.includes('face') || p.includes('face') || m.includes('face')) {
+              bodyFaceMesh = mesh;
+            }
+          }
+        });
+
+        let addonFaceMesh: THREE.Mesh | null = null;
+        faceGroup.traverse((c) => {
+          if ((c as THREE.Mesh).isMesh && !addonFaceMesh) {
+            addonFaceMesh = c as THREE.Mesh;
+          }
+        });
+
+        if (bodyFaceMesh && addonFaceMesh) {
+          const bodyFaceBox = new THREE.Box3().setFromObject(bodyFaceMesh);
+          const bodyFaceCenter = new THREE.Vector3();
+          bodyFaceBox.getCenter(bodyFaceCenter);
+
+          const faceBox = new THREE.Box3().setFromObject(addonFaceMesh);
+          const faceCenter = new THREE.Vector3();
+          faceBox.getCenter(faceCenter);
+
+          const delta = bodyFaceCenter.clone().sub(faceCenter);
+          faceGroup.position.add(delta);
+          faceGroup.updateMatrixWorld(true);
+        }
+      }
+
       if (loadedCount > 0) {
         // Successfully loaded real 3D modular meshes, hide procedural placeholder
         this.proceduralGroup.visible = false;

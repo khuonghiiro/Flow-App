@@ -530,6 +530,50 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         if (!isMounted) return;
 
         const hasFace = loadedList.some((item) => item.key === 'face');
+        const bodyItem = loadedList.find((item) => item.key === 'body');
+        const faceItem = loadedList.find((item) => item.key === 'face');
+
+        // Dynamic Anatomical Snapping: Khớp chính xác vị trí và chiều cao của Face theo Body (Nam/Nữ)
+        if (bodyItem && faceItem) {
+          bodyItem.model.updateMatrixWorld(true);
+          faceItem.model.updateMatrixWorld(true);
+
+          let bodyFaceMesh: THREE.Mesh | null = null;
+          bodyItem.model.traverse((c) => {
+            if ((c as THREE.Mesh).isMesh && !bodyFaceMesh) {
+              const mesh = c as THREE.Mesh;
+              const n = mesh.name.toLowerCase();
+              const p = (mesh.parent?.name || '').toLowerCase();
+              const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              const m = mats.map((mat: any) => mat?.name?.toLowerCase() || '').join(' ');
+              if (n.includes('face') || p.includes('face') || m.includes('face')) {
+                bodyFaceMesh = mesh;
+              }
+            }
+          });
+
+          let addonFaceMesh: THREE.Mesh | null = null;
+          faceItem.model.traverse((c) => {
+            if ((c as THREE.Mesh).isMesh && !addonFaceMesh) {
+              addonFaceMesh = c as THREE.Mesh;
+            }
+          });
+
+          if (bodyFaceMesh && addonFaceMesh) {
+            const bodyFaceBox = new THREE.Box3().setFromObject(bodyFaceMesh);
+            const bodyFaceCenter = new THREE.Vector3();
+            bodyFaceBox.getCenter(bodyFaceCenter);
+
+            const faceBox = new THREE.Box3().setFromObject(addonFaceMesh);
+            const faceCenter = new THREE.Vector3();
+            faceBox.getCenter(faceCenter);
+
+            // Bù độ lệch chuẩn xác 100% (Delta X, Y, Z) để Face mới khớp khít vào đầu Body
+            const delta = bodyFaceCenter.clone().sub(faceCenter);
+            faceItem.model.position.add(delta);
+            faceItem.model.updateMatrixWorld(true);
+          }
+        }
 
         loadedList.forEach(({ key, model }) => {
           model.traverse((c) => {
