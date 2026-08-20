@@ -5,7 +5,7 @@
   "duration": 25.0,
   "environment": {
     "map": "farming_village",
-    "sky_time": "sunset",
+    "sky_time": "night",
     "weather": {
       "fog": 0.015,
       "wind": 0.5
@@ -62,8 +62,16 @@
       "start": 0.0,
       "end": 5.0,
       "shot_type": "cinematic_dolly",
-      "from": [-6, 3, 5],
-      "to": [-2, 2, 3],
+      "from": [
+        -6,
+        3,
+        5
+      ],
+      "to": [
+        -2,
+        2,
+        3
+      ],
       "look_at": "actor_warrior.head",
       "fov": 45
     },
@@ -71,8 +79,16 @@
       "start": 5.0,
       "end": 8.5,
       "shot_type": "face_close_up",
-      "from": [4, 2, 3],
-      "to": [3, 1.8, 2.2],
+      "from": [
+        4,
+        2,
+        3
+      ],
+      "to": [
+        3,
+        1.8,
+        2.2
+      ],
       "look_at": "actor_dark_mage.head",
       "fov": 35
     },
@@ -80,9 +96,21 @@
       "start": 8.5,
       "end": 25.0,
       "shot_type": "cinematic_dolly",
-      "from": [0, 4, 10],
-      "to": [0, 2.5, 6],
-      "look_at": [0, 1.0, 0],
+      "from": [
+        0,
+        4,
+        10
+      ],
+      "to": [
+        0,
+        2.5,
+        6
+      ],
+      "look_at": [
+        0,
+        1.0,
+        0
+      ],
       "fov": 50
     }
   ],
@@ -92,19 +120,46 @@
       "name": "Chiến Binh Áo Giáp",
       "model": "characters/hero_knight.vrm",
       "costume": "default_armor",
-      "spawn_point": [-3.5, 0, 2],
+      "spawn_point": [
+        -3.5,
+        0,
+        2
+      ],
       "rotation_y": 0.3,
       "tracks": {
         "movement": [
-          { "start": 0.0, "end": 2.0, "action": "walk", "destination": [-0.8, 0, 1.5], "avoid_obstacles": true },
-          { "start": 2.0, "end": 8.2, "action": "talk_gesture", "look_at": "actor_dark_mage.head" }
+          {
+            "start": 0.0,
+            "end": 2.0,
+            "action": "walk",
+            "destination": [
+              -0.8,
+              0,
+              1.5
+            ],
+            "avoid_obstacles": true
+          },
+          {
+            "start": 2.0,
+            "end": 8.2,
+            "action": "talk_gesture",
+            "look_at": "actor_dark_mage.head"
+          }
         ],
         "speech": [
           {
             "line_ref": "dlg_01",
             "expressions": [
-              { "time_offset": 0.0, "type": "angry", "weight": 1.0 },
-              { "time_offset": 2.0, "type": "serious", "weight": 0.8 }
+              {
+                "time_offset": 0.0,
+                "type": "angry",
+                "weight": 1.0
+              },
+              {
+                "time_offset": 2.0,
+                "type": "serious",
+                "weight": 0.8
+              }
             ]
           }
         ],
@@ -113,14 +168,21 @@
             "start_time": 8.5,
             "impact_time": 9.1,
             "anim": "heavy_slash_combo",
-            "weapon_vfx": { "type": "sword_slash_fire", "start": 8.6, "end": 9.4 },
+            "weapon_vfx": {
+              "type": "sword_slash_fire",
+              "start": 8.6,
+              "end": 9.4
+            },
             "target": {
               "actor_id": "actor_dark_mage",
               "reaction_anim": "fly_back_knockdown",
               "knockback_distance": 3.2,
               "facial_expression": "pain",
               "impact_vfx": "impact_hit_sparks",
-              "screen_shake": { "intensity": 0.45, "duration": 0.35 }
+              "screen_shake": {
+                "intensity": 0.45,
+                "duration": 0.35
+              }
             }
           }
         ]
@@ -130,24 +192,51 @@
       "id": "actor_dark_mage",
       "name": "Phù Thủy Tối Thượng",
       "model": "characters/dark_mage.vrm",
-      "spawn_point": [2.5, 0, 1.5],
+      "spawn_point": [
+        2.5,
+        0,
+        1.5
+      ],
       "rotation_y": -0.4,
       "tracks": {
         "movement": [
-          { "start": 0.0, "end": 5.5, "action": "idle", "look_at": "actor_warrior.head" },
-          { "start": 5.5, "end": 8.5, "action": "talk_gesture", "look_at": "actor_warrior.head" }
+          {
+            "start": 0.0,
+            "end": 5.5,
+            "action": "idle",
+            "look_at": "actor_warrior.head"
+          },
+          {
+            "start": 5.5,
+            "end": 8.5,
+            "action": "talk_gesture",
+            "look_at": "actor_warrior.head"
+          }
         ],
         "speech": [
           {
             "line_ref": "dlg_02",
             "expressions": [
-              { "time_offset": 0.0, "type": "smirk", "weight": 0.95 },
-              { "time_offset": 2.0, "type": "surprised", "weight": 0.7 }
+              {
+                "time_offset": 0.0,
+                "type": "smirk",
+                "weight": 0.95
+              },
+              {
+                "time_offset": 2.0,
+                "type": "surprised",
+                "weight": 0.7
+              }
             ]
           }
         ],
         "vfx": [
-          { "start": 7.0, "end": 8.5, "type": "magic_shield_barrier", "attach_to": "root" }
+          {
+            "start": 7.0,
+            "end": 8.5,
+            "type": "magic_shield_barrier",
+            "attach_to": "root"
+          }
         ]
       }
     }
@@ -156,9 +245,21 @@
     {
       "target": "props.farm_plot_01.crop",
       "growth_timeline": [
-        { "time": 2.0, "stage": "seed", "scale": 0.1 },
-        { "time": 8.0, "stage": "sprout", "scale": 0.6 },
-        { "time": 18.0, "stage": "mature_crop", "scale": 1.0 }
+        {
+          "time": 2.0,
+          "stage": "seed",
+          "scale": 0.1
+        },
+        {
+          "time": 8.0,
+          "stage": "sprout",
+          "scale": 0.6
+        },
+        {
+          "time": 18.0,
+          "stage": "mature_crop",
+          "scale": 1.0
+        }
       ]
     }
   ]

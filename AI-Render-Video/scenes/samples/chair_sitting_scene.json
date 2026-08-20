@@ -5,7 +5,7 @@
   "duration": 15.0,
   "environment": {
     "map": "farming_village",
-    "sky_time": "noon",
+    "sky_time": "night",
     "weather": {
       "fog": 0.008,
       "wind": 0.2

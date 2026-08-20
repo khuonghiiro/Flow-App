@@ -287,6 +287,10 @@ export const App: React.FC = () => {
     initEnvironment(sceneRef.current, renderer.scene);
     initActors(sceneRef.current, renderer.scene);
 
+    // Apply scene lighting from the loaded scene's environment config (sky_time, fog, etc.)
+    lighting.applyEnvironment(sceneRef.current.environment);
+    lighting.update(0, sceneRef.current.duration);
+
     // Connect Unity-Style 3D Transform Gizmo changes to state
     if (renderer.gizmo) {
       renderer.gizmo.onTransformChange((data) => {
