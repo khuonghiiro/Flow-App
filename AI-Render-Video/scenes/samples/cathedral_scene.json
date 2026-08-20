@@ -14,7 +14,15 @@
       "cloud_type": "cumulus",
       "cloud_layers": 3,
       "cloud_altitude": 1.0,
-      "cloud_shadow_darkness": 0.85
+      "cloud_shadow_darkness": 0.85,
+      "point_lights_enabled": true,
+      "custom_lights": [
+        { "type": "point", "color": "#ffaa44", "intensity": 3.2, "distance": 16.0, "decay": 2.0, "flicker": false, "offset": [0, 5.5, -8] },
+        { "type": "point", "color": "#ffaa44", "intensity": 3.2, "distance": 16.0, "decay": 2.0, "flicker": false, "offset": [0, 5.5, 0] },
+        { "type": "point", "color": "#ffaa44", "intensity": 3.2, "distance": 16.0, "decay": 2.0, "flicker": false, "offset": [0, 5.5, 8] },
+        { "type": "point", "color": "#ff7722", "intensity": 2.8, "distance": 10.0, "decay": 2.0, "flicker": true, "offset": [-3.5, 2.5, -2] },
+        { "type": "point", "color": "#ff7722", "intensity": 2.8, "distance": 10.0, "decay": 2.0, "flicker": true, "offset": [3.5, 2.5, -2] }
+      ]
     }
   },
   "subtitles_config": {

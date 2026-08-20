@@ -1,6 +1,24 @@
 import { Vec3Tuple } from './scene';
 
 /**
+ * 3D Light Source Socket Attachment for Props (Unity/Unreal style PointLight / SpotLight)
+ */
+export interface PropLightConfig {
+  type?: 'point' | 'spot' | 'area_glow' | 'directional';
+  preset?: 'custom' | 'flashlight' | 'street_lamp' | 'tree_aura' | 'lantern' | 'candle' | 'magic_crystal' | 'stage_spotlight' | string;
+  color?: string;                      // Hex color, e.g. "#ff9933" (warm flame), "#38bdf8" (magic)
+  intensity?: number;                  // Luminous intensity, e.g. 2.0 to 10.0
+  distance?: number;                   // Illumination range in meters, e.g. 10.0 to 50.0
+  decay?: number;                      // Physical falloff exponent (default 2.0)
+  cast_shadow?: boolean;               // Whether this point light casts 3D shadows
+  flicker?: boolean;                   // Natural organic flame flicker effect
+  offset?: Vec3Tuple;                  // Relative local offset from prop center [x, y, z]
+  target_direction?: Vec3Tuple;        // Direction vector for SpotLight [dx, dy, dz]
+  spot_angle?: number;                 // Angle in radians for SpotLight (default Math.PI / 3)
+  spot_penumbra?: number;              // Soft edge factor for SpotLight (0.0 to 1.0)
+}
+
+/**
  * Placed Object / Prop in a customized map preset
  */
 export interface PlacedProp {
@@ -18,6 +36,7 @@ export interface PlacedProp {
     target_offset?: Vec3Tuple;         // Final resting position
     target_rotation_y?: number;        // Facing rotation
   };
+  light?: PropLightConfig;             // Dynamic 3D Light Socket (Lantern, Torch, Candle, Crystal, etc.)
 }
 
 /**

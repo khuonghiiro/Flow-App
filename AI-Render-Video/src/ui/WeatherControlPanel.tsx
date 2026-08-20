@@ -352,6 +352,52 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
               </label>
             </div>
 
+            {/* 3D Local Lights (PointLights / SpotLights / Lanterns / Chandeliers) */}
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              gap: 6,
+              background: (override.point_lights_enabled ?? true) ? 'rgba(234, 179, 8, 0.09)' : 'rgba(30, 41, 59, 0.5)', 
+              padding: '7px 9px', 
+              borderRadius: 6, 
+              border: `1px solid ${(override.point_lights_enabled ?? true) ? '#eab308' : 'rgba(255, 255, 255, 0.1)'}` 
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: (override.point_lights_enabled ?? true) ? '#fef08a' : '#cbd5e1' }}>
+                    💡 Nguồn Sáng 3D Cục Bộ (Đèn lồng / Đèn chùm / Đuốc)
+                  </span>
+                  <span style={{ fontSize: 9, color: (override.point_lights_enabled ?? true) ? '#fef9c3' : '#64748b' }}>
+                    {(override.point_lights_enabled ?? true) ? '● Bật: Phát sáng 3D rọi sàn & vật thể xung quanh' : '○ Tắt: Tắt toàn bộ đèn 3D'}
+                  </span>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={override.point_lights_enabled ?? true}
+                    onChange={(e) => onChange({ ...override, point_lights_enabled: e.target.checked })}
+                    style={{ accentColor: '#eab308', width: 15, height: 15, cursor: 'pointer' }}
+                  />
+                </label>
+              </div>
+
+              {(override.point_lights_enabled ?? true) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#fef08a' }}>
+                    <span>Cường độ sáng đèn 3D:</span>
+                    <span style={{ fontWeight: 700 }}>{Math.round((override.point_lights_intensity ?? 1.0) * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1" max="2.5" step="0.05"
+                    value={override.point_lights_intensity ?? 1.0}
+                    onChange={(e) => onChange({ ...override, point_lights_intensity: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#eab308', cursor: 'pointer' }}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Sky Time Tags */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {[

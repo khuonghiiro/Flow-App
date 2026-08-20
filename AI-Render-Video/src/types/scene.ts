@@ -11,7 +11,8 @@ import {
   ActorInventory,
 } from './interactions';
 
-import { MapPresetConfig, PlacedProp } from './map_preset';
+import { MapPresetConfig, PlacedProp, PropLightConfig } from './map_preset';
+export type { PropLightConfig };
 
 export interface Vector3D {
   x: number;
@@ -37,6 +38,8 @@ export interface EnvironmentConfig {
     cloud_shadow_darkness?: number;// 0.0 to 1.0 (Cloud shadow darkness on 3D objects)
     cloud_shadow_scale?: number;   // 0.5 to 2.0 (Scale of cloud shadow patches)
     map_dynamic_lighting?: boolean;// Bật/tắt chế độ nhận ánh sáng mặt trời động & bóng mây trên Map
+    point_lights_enabled?: boolean;// Bật/tắt toàn bộ nguồn sáng cục bộ (PointLights / SpotLights) trong Map
+    custom_lights?: PropLightConfig[]; // Custom 3D Point Lights in the environment (e.g. chandeliers, altars)
     skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
     skybox_url?: string;
     skybox_rotation?: number;      // 0 to 360 degrees
@@ -65,6 +68,8 @@ export interface EnvironmentOverride {
   cloud_shadow_darkness?: number;  // 0.0 to 1.0 (Độ đậm bóng râm mây trôi trên vật thể 3D)
   cloud_shadow_scale?: number;     // 0.5 to 2.0 (Kích thước mảng bóng mây)
   map_dynamic_lighting?: boolean;  // Bật/tắt chế độ nhận ánh sáng mặt trời động & bóng mây trên Map
+  point_lights_enabled?: boolean;  // Bật/tắt nguồn sáng 3D cục bộ (Đèn lồng, đuốc, đèn chùm)
+  point_lights_intensity?: number; // Hệ số nhân cường độ sáng của tất cả các đèn (0.0 đến 3.0)
   skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
   skybox_url?: string;
   skybox_rotation?: number;      // 0 to 360 degrees

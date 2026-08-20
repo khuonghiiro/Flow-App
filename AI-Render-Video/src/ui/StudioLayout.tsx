@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -14,6 +14,7 @@ import { AIChatDirector } from './AIChatDirector';
 import { DialogueEditorModal } from './DialogueEditorModal';
 import { WeatherControlPanel } from './WeatherControlPanel';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
+import { LightingStudioPanel } from './LightingStudioPanel';
 import { TransformInspector, SelectedSceneObject } from './TransformInspector';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
@@ -108,7 +109,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 }) => {
   const [leftTab, setLeftTab] = useState<'dialogue' | 'combat' | 'weather'>('dialogue');
   const [rightTab, setRightTab] = useState<'director' | 'radar' | 'inspector'>('inspector');
-  const [bottomTab, setBottomTab] = useState<'timeline' | 'assets'>('timeline');
+  const [bottomTab, setBottomTab] = useState<'timeline' | 'assets' | 'lighting'>('timeline');
   const [isBottomMaximized, setIsBottomMaximized] = useState<boolean>(false);
   const [showCC, setShowCC] = useState(() => getSavedViewportSettings().showCC);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
@@ -521,6 +522,12 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 >
                   <FolderOpen size={13} /> Project Assets (Thư Mục Tài Nguyên)
                 </button>
+                <button
+                  className={`dock-tab-btn ${bottomTab === 'lighting' ? 'active' : ''}`}
+                  onClick={() => setBottomTab('lighting')}
+                >
+                  <Lightbulb size={13} /> Studio Ánh Sáng & Nguồn Sáng 3D
+                </button>
               </div>
 
               <div className="dock-tabs-right">
@@ -548,7 +555,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                   onToggleLoop={onToggleLoop}
                   onChangePlaybackRate={onChangePlaybackRate}
                 />
-              ) : (
+              ) : bottomTab === 'assets' ? (
                 <AssetBrowserPanel
                   onPlaceProp={(prop) => onPlaceProp?.(prop)}
                   onSelectMap={(mapId) => onSelectMap?.(mapId)}
@@ -558,6 +565,13 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                   actorsList={scene.actors.map((a) => ({ id: a.id, name: a.name || a.id }))}
                   isMaximized={isBottomMaximized}
                   onToggleMaximize={() => setIsBottomMaximized(!isBottomMaximized)}
+                />
+              ) : (
+                <LightingStudioPanel
+                  scene={scene}
+                  onUpdateScene={onUpdateScene}
+                  selectedObjectId={selectedObject?.id}
+                  onFocusObject={onFocusObject}
                 />
               )}
             </div>

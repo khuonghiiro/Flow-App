@@ -34,6 +34,7 @@ import { WeatherParticleSystem } from './core/weather/WeatherParticleSystem';
 import { CloudSystem } from './core/weather/CloudSystem';
 import { LightningSystem } from './core/weather/LightningSystem';
 import { VolumetricCloudLighting } from './core/weather/VolumetricCloudLighting';
+import { LightSourceManager } from './core/engine/LightSourceManager';
 import { getSavedViewportSettings, saveViewportSetting } from './core/storage/ViewportSettingsStorage';
 
 // Early initialization of volumetric cloud shader chunks
@@ -97,6 +98,7 @@ export const App: React.FC = () => {
   const weatherParticlesRef = useRef<WeatherParticleSystem | null>(null);
   const cloudSystemRef = useRef<CloudSystem | null>(null);
   const lightningSystemRef = useRef<LightningSystem | null>(null);
+  const lightManagerRef = useRef<LightSourceManager | null>(null);
   const lastStateSyncRef = useRef({ time: 0, fps: 0, subLineId: '' });
   const lastMapLightingModeRef = useRef<boolean | undefined>(undefined);
 
@@ -185,6 +187,9 @@ export const App: React.FC = () => {
 
         mapModel.position.set(0, 0, 0);
         mapGroupRef.current.add(mapModel);
+
+        // Auto-detect and activate PointLights on light fixtures within the GLTF map
+        lightManagerRef.current?.scanAndAttachGLTFLights(mapModel);
 
         if (mapModel.animations && mapModel.animations.length > 0) {
           mapMixerRef.current = new THREE.AnimationMixer(mapModel);
@@ -287,6 +292,15 @@ export const App: React.FC = () => {
       ? (envOverrideRef.current.map_dynamic_lighting ?? true)
       : (newScene.environment.weather?.map_dynamic_lighting ?? true);
     AssetLoaderRegistry.applyMapLightingMode(mapGroupRef.current, mapDynamicLighting);
+
+    // Sync custom 3D Point Lights and Prop Light Sockets
+    lightManagerRef.current?.syncEnvironmentLights(newScene.environment.weather?.custom_lights || []);
+    lightManagerRef.current?.syncPropLights(
+      (newScene.environment.placed_props && newScene.environment.placed_props.length > 0)
+        ? newScene.environment.placed_props
+        : (!preset ? defaultVillageProps : []),
+      sceneObjectsRef.current
+    );
   };
 
   // Setup 3D Scene once
@@ -315,6 +329,7 @@ export const App: React.FC = () => {
     weatherParticlesRef.current = new WeatherParticleSystem(renderer.scene);
     cloudSystemRef.current = new CloudSystem(renderer.scene);
     lightningSystemRef.current = new LightningSystem(renderer.scene);
+    lightManagerRef.current = new LightSourceManager(renderer.scene);
 
     if (isFreeCamRef.current) {
       renderer.setFreeCam(true);
@@ -579,6 +594,15 @@ export const App: React.FC = () => {
         AssetLoaderRegistry.applyMapLightingMode(mapGroupRef.current, mapDynamicLighting);
       }
 
+      // Sync 3D local point lights / spot lights
+      const pointLightsEnabled = envOverrideRef.current.enabled
+        ? (envOverrideRef.current.point_lights_enabled ?? true)
+        : (activeScene.environment.weather?.point_lights_enabled ?? true);
+      const pointLightsMultiplier = envOverrideRef.current.enabled
+        ? (envOverrideRef.current.point_lights_intensity ?? 1.0)
+        : 1.0;
+      lightManagerRef.current?.update(delta, pointLightsMultiplier, pointLightsEnabled);
+
       // 3D Rain & Wind Weather Particle Simulation Update (with 3D Collision Occlusion & Splash VFX)
       if (weatherParticlesRef.current) {
         const isRainActive = envOverrideRef.current.enabled
@@ -737,6 +761,7 @@ export const App: React.FC = () => {
       weatherParticlesRef.current?.dispose();
       cloudSystemRef.current?.dispose();
       lightningSystemRef.current?.dispose();
+      lightManagerRef.current?.dispose();
     };
   }, []);
 
@@ -1068,6 +1093,7 @@ export const App: React.FC = () => {
         };
         sceneRef.current = nextScene;
         setScene(nextScene);
+        lightManagerRef.current?.syncPropLights(newPlacedProps, sceneObjectsRef.current);
       }
     }
   };
@@ -1098,6 +1124,7 @@ export const App: React.FC = () => {
     sceneRef.current = nextScene;
     setScene(nextScene);
     setSelectedObject(null);
+    lightManagerRef.current?.syncPropLights(filteredProps, sceneObjectsRef.current);
   };
 
   // Duplicate Prop in Scene
@@ -1114,11 +1141,12 @@ export const App: React.FC = () => {
       ],
     };
 
+    const nextPlacedProps = [...(sceneRef.current.environment.placed_props || []), clonedProp];
     const nextScene: MasterSceneConfig = {
       ...sceneRef.current,
       environment: {
         ...sceneRef.current.environment,
-        placed_props: [...(sceneRef.current.environment.placed_props || []), clonedProp],
+        placed_props: nextPlacedProps,
       },
     };
     sceneRef.current = nextScene;
@@ -1134,6 +1162,7 @@ export const App: React.FC = () => {
       mapGroupRef.current,
       sceneObjectsRef.current
     );
+    lightManagerRef.current?.syncPropLights(nextPlacedProps, sceneObjectsRef.current);
   };
 
   // Focus Camera on Object
@@ -1284,6 +1313,15 @@ export const App: React.FC = () => {
               lightingRef.current.update(time, activeScene.duration);
             }
           }
+
+          // Sync 3D local point lights in export
+          const pointLightsEnabled = envOverrideRef.current.enabled
+            ? (envOverrideRef.current.point_lights_enabled ?? true)
+            : (activeScene.environment.weather?.point_lights_enabled ?? true);
+          const pointLightsMultiplier = envOverrideRef.current.enabled
+            ? (envOverrideRef.current.point_lights_intensity ?? 1.0)
+            : 1.0;
+          lightManagerRef.current?.update(delta, pointLightsMultiplier, pointLightsEnabled);
 
           // Update map animation
           if (mapMixerRef.current) {
