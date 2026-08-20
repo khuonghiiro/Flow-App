@@ -295,20 +295,22 @@ export class CloudSystem {
           float n1 = cloudFBM(cp * 2.8);
           float n2 = cloudFBM(cp * 3.1 + vec2(3.7, 6.1));
 
-          // Soft feathered threshold (feather width = 0.32 for ultra-soft, fluffy cloud edges)
-          float thr = 0.56 - uCoverage * 0.38;
+          // Soft feathered threshold (at max coverage/rain, coverage expands to 100% full blanket)
+          float thr = 0.56 - uCoverage * 0.50;
           float d1 = smoothstep(thr, thr + 0.32, n1);
           float d2 = smoothstep(thr, thr + 0.32, n2);
 
-          float layerMultiplier = clamp(uLayerCount / 2.0, 0.8, 2.0);
-          float thickness = (d1 * 0.58 + d2 * 0.42) * layerMultiplier * fade;
+          float layerMultiplier = clamp(uLayerCount / 2.0, 0.8, 2.2);
+          // Solid blanket factor when coverage is near 100%
+          float solidBlanket = smoothstep(0.70, 0.98, uCoverage);
+          float thickness = mix((d1 * 0.58 + d2 * 0.42) * layerMultiplier, 1.0, solidBlanket) * fade;
           if (thickness < 0.005) discard;
 
-          // Smooth gradient shadow opacity (feathered from 0% to 75%)
-          float shadowAlpha = clamp(thickness * uShadowDarkness * 1.35, 0.0, 0.75);
+          // Natural atmospheric diffuse shadow opacity (30% to 40% contrast, perfectly balanced with 3D models)
+          float shadowAlpha = clamp(thickness * uShadowDarkness * 0.52, 0.0, 0.40);
 
-          // Soft atmospheric blue-slate shadow tint
-          gl_FragColor = vec4(0.02, 0.04, 0.10, shadowAlpha);
+          // Soft atmospheric cool blue-slate shadow tone
+          gl_FragColor = vec4(0.03, 0.06, 0.14, shadowAlpha);
         }
       `,
       transparent: true,
@@ -353,16 +355,18 @@ export class CloudSystem {
     altitudeMult: number = 1.0,
     layerCount: number = 3,
     sunLightPos?: THREE.Vector3,
-    rainIntensity: number = 0
+    rainIntensity: number = 0,
+    lightningFlash: number = 0,
+    lightningOrigin?: THREE.Vector3
   ): void {
     this.animTimer += delta;
 
     // ── Rain-to-Cloud Integration ──
     // Rain dynamically affects cloud coverage, cloud darkness, and cloud size:
     // - Light rain (0.1 - 0.3): small, sparse, dark-gray clouds
-    // - Heavy rain/storm (0.7 - 1.0): massive, dense, pitch-black/charcoal storm clouds covering the whole sky
+    // - Max rain/storm (0.7 - 1.0): massive, pitch-black storm clouds covering the whole sky
     const rain = Math.max(0, Math.min(1, rainIntensity));
-    const effectiveCoverage = Math.max(coverage, rain * 0.92);
+    const effectiveCoverage = Math.max(coverage, rain * 0.94);
     const cov = Math.max(0, Math.min(1, effectiveCoverage));
     const activeLayers = Math.max(1, Math.min(6, Math.round(layerCount)));
     const R = CloudSystem.RANGE;
@@ -391,13 +395,13 @@ export class CloudSystem {
             : new THREE.Vector3(0.3, 0.85, 0.25).normalize();
     }
 
-    // Base sunlit color dims to stormy gray when raining
-    const rainDarkness = Math.min(1.0, rain * 1.35);
+    // Base sunlit color dims to stormy pitch-dark when raining
+    const rainDarkness = Math.min(1.0, rain * 1.4);
     const baseSunlit = this.toneColors.sun.clone().lerp(this.toneColors.sky, 0.2);
-    const sunlitColor = baseSunlit.lerp(new THREE.Color(0x3b4859), rainDarkness * 0.85);
+    const sunlitColor = baseSunlit.lerp(new THREE.Color(0x18202c), rainDarkness * 0.92);
 
-    // Deep storm cloud black/charcoal underbelly
-    const darkUnderbellyColor = new THREE.Color(0x182230).lerp(new THREE.Color(0x0c121d), rainDarkness);
+    // Deep pitch-black storm cloud underbelly (near black obsidian #03050a at max rain)
+    const darkUnderbellyColor = new THREE.Color(0x182230).lerp(new THREE.Color(0x03050a), rainDarkness);
 
     // Center altitude of active layers
     let avgAlt = 0;
@@ -405,6 +409,9 @@ export class CloudSystem {
       avgAlt += this.layerAltitudes[i];
     }
     avgAlt = (avgAlt / activeLayers) * altitudeMult;
+
+    // Electric cyan-white flash color for lightning
+    const electricFlashColor = new THREE.Color(0xe0f2fe);
 
     // ── 3. Update Every Cloud Sprite in Every Active Layer ──
     for (const sd of this.sprites) {
@@ -463,21 +470,38 @@ export class CloudSystem {
       const distFromCenter = Math.sqrt(localX * localX + localZ * localZ);
       const edgeFade = 1.0 - smoothstep(R * 0.75, R * 0.98, distFromCenter);
 
-      // ── 5. Opacity & Darkness (Beer-Lambert Absorption + Rain Storm Darkening) ──
+      // ── 5. Opacity & Darkness (Beer-Lambert Absorption + Storm Darkening) ──
       // Lower layers + heavy rain create pitch-black stormy undersides
       const layersAbove = (activeLayers - 1) - sd.layer;
       const absorptionFactor = Math.min(1.0, (layersAbove * 0.22 + cov * 0.35) * (cov * 1.1));
-      const totalDarkness = Math.min(1.0, absorptionFactor + rainDarkness * 0.75);
+      const totalDarkness = Math.min(1.0, absorptionFactor + rainDarkness * 0.85);
 
       const mat = sd.sprite.material as THREE.SpriteMaterial;
 
       // Opacity: heavy rain + dense deck = solid dark storm cloud feel
-      const rainOpacityBoost = rain * 0.25;
+      const rainOpacityBoost = rain * 0.30;
       const targetOpacity = (sd.baseOpacity + cov * 0.35 + rainOpacityBoost) * spriteActivity * edgeFade * shape.opacityMult;
-      mat.opacity = Math.min(0.95, Math.max(0.0, targetOpacity));
+      mat.opacity = Math.min(0.96, Math.max(0.0, targetOpacity));
 
       // Color interpolation: Sunlit white/gray -> Pitch-black stormy charcoal
-      const finalColor = sunlitColor.clone().lerp(darkUnderbellyColor, totalDarkness);
+      let finalColor = sunlitColor.clone().lerp(darkUnderbellyColor, totalDarkness);
+
+      // ── 6. Intra-Cloud Lightning Flash Illumination ──
+      if (lightningFlash > 0.01) {
+        // Clouds flash with brilliant electric white-cyan from inside
+        let flashFactor = lightningFlash;
+        if (lightningOrigin) {
+          const distToLightning = Math.sqrt(
+            Math.pow(localX - (lightningOrigin.x - cameraPos.x), 2) +
+            Math.pow(localZ - (lightningOrigin.z - cameraPos.z), 2)
+          );
+          const spatialFalloff = 1.0 - smoothstep(20.0, 180.0, distToLightning);
+          flashFactor = lightningFlash * (0.45 + spatialFalloff * 0.55);
+        }
+        finalColor = finalColor.lerp(electricFlashColor, flashFactor * 0.95);
+        mat.opacity = Math.min(1.0, mat.opacity + flashFactor * 0.2);
+      }
+
       mat.color.copy(finalColor);
     }
 

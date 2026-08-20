@@ -32,6 +32,7 @@ import { PlacedProp } from './types/map_preset';
 import { SelectedSceneObject } from './ui/TransformInspector';
 import { WeatherParticleSystem } from './core/weather/WeatherParticleSystem';
 import { CloudSystem } from './core/weather/CloudSystem';
+import { LightningSystem } from './core/weather/LightningSystem';
 import { getSavedViewportSettings, saveViewportSetting } from './core/storage/ViewportSettingsStorage';
 
 export const App: React.FC = () => {
@@ -91,6 +92,7 @@ export const App: React.FC = () => {
   const gifOverlayRef = useRef<GifOverlayManager | null>(null);
   const weatherParticlesRef = useRef<WeatherParticleSystem | null>(null);
   const cloudSystemRef = useRef<CloudSystem | null>(null);
+  const lightningSystemRef = useRef<LightningSystem | null>(null);
   const lastStateSyncRef = useRef({ time: 0, fps: 0, subLineId: '' });
 
   // Default Initial Village Props with unique IDs and initial positions
@@ -278,6 +280,7 @@ export const App: React.FC = () => {
     playerControllerRef.current = new PlayerController();
     weatherParticlesRef.current = new WeatherParticleSystem(renderer.scene);
     cloudSystemRef.current = new CloudSystem(renderer.scene);
+    lightningSystemRef.current = new LightningSystem(renderer.scene);
 
     if (isFreeCamRef.current) {
       renderer.setFreeCam(true);
@@ -566,6 +569,44 @@ export const App: React.FC = () => {
           ? (envOverrideRef.current.rain_intensity ?? 0)
           : (activeScene.environment.weather?.rain ?? 0);
 
+        const lightningFrequency = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.lightning_frequency ?? 0)
+          : 0;
+
+        const lightningCloudIntensity = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.lightning_cloud_intensity ?? 1.0)
+          : 1.0;
+
+        const lightningStrikeIntensity = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.lightning_strike_intensity ?? 1.0)
+          : 1.0;
+
+        let cloudFlashIntensity = 0;
+        let sceneFlashIntensity = 0;
+        let strikeOrigin: THREE.Vector3 | undefined;
+
+        if (lightningSystemRef.current) {
+          const res = lightningSystemRef.current.update(
+            delta,
+            renderer.camera.position,
+            rainIntensity,
+            cloudAltitude * 90,
+            lightningFrequency,
+            lightningCloudIntensity,
+            lightningStrikeIntensity
+          );
+          cloudFlashIntensity = res.cloudFlashIntensity;
+          sceneFlashIntensity = res.sceneFlashIntensity;
+          strikeOrigin = res.strikeOrigin;
+        }
+
+        if (lightingRef.current) {
+          lightingRef.current.updateManual(
+            envOverrideRef.current.enabled ? envOverrideRef.current : undefined,
+            sceneFlashIntensity
+          );
+        }
+
         cloudSystemRef.current.update(
           delta,
           renderer.camera.position,
@@ -577,7 +618,9 @@ export const App: React.FC = () => {
           cloudAltitude,
           cloudLayers,
           lightingRef.current?.sunLight.position,
-          rainIntensity
+          rainIntensity,
+          cloudFlashIntensity,
+          strikeOrigin
         );
       }
     });
@@ -587,6 +630,7 @@ export const App: React.FC = () => {
       playerControllerRef.current?.dispose();
       weatherParticlesRef.current?.dispose();
       cloudSystemRef.current?.dispose();
+      lightningSystemRef.current?.dispose();
     };
   }, []);
 

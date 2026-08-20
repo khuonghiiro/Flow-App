@@ -61,6 +61,9 @@ export interface EnvironmentOverride {
   skybox_rotation?: number;      // 0 to 360 degrees
   skybox_exposure?: number;      // 0.2 to 2.5
   skybox_blur?: number;          // 0.0 to 1.0
+  lightning_frequency?: number;        // 0.5 to 15.0s (Khoảng thời gian ngẫu nhiên sấm chớp, 0 = auto)
+  lightning_cloud_intensity?: number;  // 0.0 to 2.0 (Nhịp & độ sáng chớp trong mây)
+  lightning_strike_intensity?: number; // 0.0 to 2.0 (Tỉ lệ & cường độ tia sét đánh xuống đất)
 }
 
 export interface SubtitlesConfig {

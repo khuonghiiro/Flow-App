@@ -94,18 +94,18 @@ export class SceneLighting {
     this.applyLightingState(progress);
   }
 
-  public updateManual(override: EnvironmentOverride): void {
-    let progress = override.sun_position !== undefined ? override.sun_position : 0.5;
+  public updateManual(override?: EnvironmentOverride, flashIntensity: number = 0): void {
+    let progress = override?.sun_position !== undefined ? override.sun_position : 0.5;
     
-    if (override.sky_time === 'sunrise' && override.sun_position === undefined) progress = 0.15;
-    if (override.sky_time === 'noon' && override.sun_position === undefined) progress = 0.5;
-    if (override.sky_time === 'sunset' && override.sun_position === undefined) progress = 0.8;
-    if (override.sky_time === 'night' && override.sun_position === undefined) progress = 0.95;
+    if (override?.sky_time === 'sunrise' && override.sun_position === undefined) progress = 0.15;
+    if (override?.sky_time === 'noon' && override.sun_position === undefined) progress = 0.5;
+    if (override?.sky_time === 'sunset' && override.sun_position === undefined) progress = 0.8;
+    if (override?.sky_time === 'night' && override.sun_position === undefined) progress = 0.95;
 
-    this.applyLightingState(progress, override);
+    this.applyLightingState(progress, override, flashIntensity);
   }
 
-  private applyLightingState(progress: number, overrideEnv?: EnvironmentOverride): void {
+  private applyLightingState(progress: number, overrideEnv?: EnvironmentOverride, flashIntensity: number = 0): void {
     // Celestial Sphere Sun Trajectory: High above the entire cloud deck (Y = 140m - 240m)
     // progress 0.0 (East Dawn) -> 0.5 (Zenith Noon High) -> 0.85 (West Dusk) -> 1.0 (Night Below Horizon)
     const angle = Math.PI * (0.06 + progress * 0.88);
@@ -212,34 +212,52 @@ export class SceneLighting {
     // Rain factor
     const rain = overrideEnv?.rain_intensity ?? this.currentEnv.weather?.rain ?? 0;
     if (rain > 0.05) {
-      const rainFactor = Math.min(1, rain * 1.2);
-      targetSunIntensity *= (1.0 - rainFactor * 0.55);
-      targetAmbIntensity *= (1.0 - rainFactor * 0.35);
+      const rainFactor = Math.min(1, rain * 1.25);
+      // Direct sunlight drops to 0 under heavy rain (no harsh sun glares)
+      targetSunIntensity *= Math.max(0.0, 1.0 - rainFactor * 1.1);
 
-      const rainSkyColor = new THREE.Color(0x334155).lerp(new THREE.Color(0x1e293b), rainFactor);
-      targetBgColor.lerp(rainSkyColor, rainFactor * 0.7);
-      targetFogColor.lerp(rainSkyColor, rainFactor * 0.7);
-      this.fog.density = Math.max(this.fog.density, 0.012 + rainFactor * 0.018);
+      // Ambient light stays vibrant and readable (atmospheric diffuse scattering)
+      const rainAmbTint = new THREE.Color(0x768fae);
+      targetAmbColor.lerp(rainAmbTint, rainFactor * 0.65);
+      targetAmbIntensity = THREE.MathUtils.lerp(targetAmbIntensity, 0.88, rainFactor * 0.45);
+
+      const rainSkyColor = new THREE.Color(0x1e293b).lerp(new THREE.Color(0x121b2b), rainFactor);
+      targetBgColor.lerp(rainSkyColor, rainFactor * 0.85);
+      targetFogColor.lerp(rainSkyColor, rainFactor * 0.85);
+      this.fog.density = Math.max(this.fog.density, 0.010 + rainFactor * 0.020);
     }
 
-    // Cloud coverage & layer sunlight occlusion (Darkens terrain, buildings, characters under cloud cover)
+    // Cloud coverage & layer sunlight occlusion (Diffuses sunlight into soft atmospheric daylight)
     const cloudCov = overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage ?? 0.0;
     const cloudLayers = overrideEnv?.cloud_layers ?? this.currentEnv.weather?.cloud_layers ?? 1;
     if (cloudCov > 0.03) {
       // Direct sunlight diminishes as clouds become thicker and more layered
-      const cloudDimming = Math.min(0.82, cloudCov * 0.70 + (cloudLayers - 1) * 0.03);
-      targetSunIntensity *= (1.0 - cloudDimming);
+      const cloudDimming = Math.min(1.0, cloudCov * 0.85 + (cloudLayers - 1) * 0.04);
+      targetSunIntensity *= Math.max(0.0, 1.0 - cloudDimming);
 
-      // Ambient light softens and scatters through cloud layer
-      targetAmbIntensity = targetAmbIntensity * (0.88 + cloudCov * 0.35);
+      // Ambient light remains clear and luminous (scattering through cloud ceiling)
+      targetAmbIntensity = Math.max(0.85, targetAmbIntensity * (0.95 + cloudCov * 0.15));
 
       // Sunlight color shifts towards soft atmospheric daylight
       const overcastTint = new THREE.Color(0x94a3b8);
       targetSunColor.lerp(overcastTint, cloudCov * 0.55);
-      targetAmbColor.lerp(new THREE.Color(0x64748b), cloudCov * 0.40);
+      targetAmbColor.lerp(new THREE.Color(0x7c94b3), cloudCov * 0.45);
 
       // Procedural sun sprite dims when hidden behind clouds
-      targetSpriteOpacity *= Math.max(0.0, 1.0 - cloudCov * 1.2);
+      targetSpriteOpacity *= Math.max(0.0, 1.0 - cloudCov * 1.3);
+    }
+
+    // Atomic lightning flash applied on top of clean base frame lighting (No whiteout accumulation)
+    if (flashIntensity > 0.005) {
+      targetAmbIntensity += flashIntensity * 2.2;
+      targetAmbColor.lerp(new THREE.Color(0xdbeafe), flashIntensity * 0.85);
+      this.hemiLight.intensity = 0.85 + flashIntensity * 1.8;
+      this.hemiLight.color.copy(new THREE.Color(0xffffff).lerp(new THREE.Color(0xb0e0ff), flashIntensity));
+    } else {
+      // Balanced hemisphere sky-to-ground fill keeps all 3D characters, houses, and roofs clearly readable
+      this.hemiLight.intensity = 0.85;
+      this.hemiLight.color.set(0xecf3fc);
+      this.hemiLight.groundColor.set(0x64748b);
     }
 
     // Apply lights & sprite

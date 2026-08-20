@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   CloudRain, Sun, Wind, CloudFog, Compass, Droplets, 
   Cloud, CloudSun, CloudLightning, Sunset, Sunrise, Moon, Layers,
-  Image, RotateCw, Upload
+  Image, RotateCw, Upload, Zap
 } from 'lucide-react';
 import { EnvironmentOverride } from '../types/scene';
 
@@ -21,6 +21,9 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
   const cloudType = override.cloud_type || 'multi_layered';
   const cloudLayers = override.cloud_layers ?? 3;
   const cloudAltitude = override.cloud_altitude ?? 1.0;
+  const lightningFrequency = override.lightning_frequency ?? 0;
+  const lightningCloudIntensity = override.lightning_cloud_intensity ?? 1.0;
+  const lightningStrikeIntensity = override.lightning_strike_intensity ?? 1.0;
 
   // Helper text for Rain Level
   const getRainLevelText = (val: number) => {
@@ -666,6 +669,85 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
               <span>30% Mưa nhỏ</span>
               <span>65% Mưa vừa</span>
               <span>100% Mưa to bão</span>
+            </div>
+          </div>
+
+          {/* 4. SẤM CHỚP & TIA SÉT 3D CHIẾU RỌI VẬT THỂ (LIGHTNING & THUNDER ENGINE) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(234, 179, 8, 0.05)', padding: 10, borderRadius: 8, border: '1px solid rgba(234, 179, 8, 0.18)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: '11px', color: '#facc15', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Zap size={13} /> SẤM CHỚP & TIA SÉT 3D
+              </label>
+              <span style={{ fontSize: '10px', color: '#fef08a', fontWeight: 600 }}>
+                {lightningFrequency === 0 ? 'Tự động theo mưa' : `${lightningFrequency.toFixed(1)}s (±25%)`}
+              </span>
+            </div>
+
+            {/* Slider 1: Thời gian ngẫu nhiên sấm chớp */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                <span>Thời gian ngẫu nhiên xuất hiện sấm sét:</span>
+                <span style={{ color: '#facc15', fontWeight: 600 }}>
+                  {lightningFrequency === 0 ? 'Tự động theo mưa' : `${lightningFrequency.toFixed(1)}s`}
+                </span>
+              </div>
+              <input 
+                type="range" 
+                min="0" max="15" step="0.5"
+                value={lightningFrequency}
+                onChange={(e) => onChange({ ...override, lightning_frequency: parseFloat(e.target.value) })}
+                style={{ width: '100%', accentColor: '#facc15', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#94a3b8' }}>
+                <span>0s (Tự động)</span>
+                <span>1s (Dồn dập)</span>
+                <span>5s (Vừa phải)</span>
+                <span>15s (Thưa thớt)</span>
+              </div>
+            </div>
+
+            {/* Slider 2: Nhịp & Độ sáng sấm chớp trên mây */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                <span>Nhịp & Ánh chớp trong mây (Cloud Sheet):</span>
+                <span style={{ color: '#facc15', fontWeight: 600 }}>
+                  {Math.round(lightningCloudIntensity * 100)}%
+                </span>
+              </div>
+              <input 
+                type="range" 
+                min="0" max="2" step="0.05"
+                value={lightningCloudIntensity}
+                onChange={(e) => onChange({ ...override, lightning_cloud_intensity: parseFloat(e.target.value) })}
+                style={{ width: '100%', accentColor: '#facc15', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#94a3b8' }}>
+                <span>0% Tắt chớp mây</span>
+                <span>100% Tiêu chuẩn</span>
+                <span>200% Cực sáng</span>
+              </div>
+            </div>
+
+            {/* Slider 3: Tia sét đánh xuống dưới & Chiếu sáng vật thể 3D */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                <span>Tia sét đánh xuống & Rọi sáng vật thể 3D:</span>
+                <span style={{ color: '#facc15', fontWeight: 600 }}>
+                  {Math.round(lightningStrikeIntensity * 100)}%
+                </span>
+              </div>
+              <input 
+                type="range" 
+                min="0" max="2" step="0.05"
+                value={lightningStrikeIntensity}
+                onChange={(e) => onChange({ ...override, lightning_strike_intensity: parseFloat(e.target.value) })}
+                style={{ width: '100%', accentColor: '#facc15', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#94a3b8' }}>
+                <span>0% Chỉ chớp mây</span>
+                <span>100% Sét đánh 3D</span>
+                <span>200% Sấm sét cực mạnh</span>
+              </div>
             </div>
           </div>
 
