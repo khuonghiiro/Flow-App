@@ -558,6 +558,40 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
               <span>100% Phủ kín</span>
             </div>
 
+            {/* Cloud Shape Tags */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+              <label style={{ fontSize: '10px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CloudSun size={11} color="#38bdf8" /> Kiểu dáng mây:
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {[
+                  { key: 'cumulus', label: '☁ Bồng Bềnh (Cumulus)', desc: 'Phồng cuộn, mềm mại tự nhiên' },
+                  { key: 'cumulonimbus', label: '⛈ Vũ Tích (Cumulonimbus)', desc: 'Dày đặc, mây giông bão' },
+                  { key: 'multi_layered', label: '☁️ Đa Tầng Sâu', desc: 'Các lớp mây đan xen' },
+                  { key: 'sunset_glow', label: '🌅 Rực Rỡ Hoàng Hôn', desc: 'Đậm đà đón ánh nắng' },
+                ].map(ct => (
+                  <button
+                    key={ct.key}
+                    title={ct.desc}
+                    onClick={() => onChange({ ...override, cloud_type: ct.key as EnvironmentOverride['cloud_type'] })}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '9px',
+                      borderRadius: 12,
+                      border: `1px solid ${cloudType === ct.key ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`,
+                      background: cloudType === ct.key ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.04)',
+                      color: cloudType === ct.key ? '#7dd3fc' : '#94a3b8',
+                      cursor: 'pointer',
+                      fontWeight: cloudType === ct.key ? 700 : 400,
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {ct.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* SỐ LƯỢNG TẦNG MÂY KHÍ QUYỂN (SLIDER 1 ĐẾN 6 TẦNG) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

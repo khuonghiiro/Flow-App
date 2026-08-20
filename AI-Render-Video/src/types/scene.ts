@@ -31,7 +31,7 @@ export interface EnvironmentConfig {
     rain?: number;                 // 0.0 to 1.0 (Rain intensity)
     wind_direction?: number;        // 0 to 360 degrees
     cloud_coverage?: number;       // 0.0 to 1.0 (0 = clear, 1 = heavy overcast)
-    cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
+    cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow' | 'cumulonimbus';
     cloud_layers?: number;         // 1, 2, or 3 layers
     cloud_altitude?: number;       // altitude multiplier
     skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
@@ -53,7 +53,7 @@ export interface EnvironmentOverride {
   rain_intensity?: number;         // 0.0 to 1.0 (Rain intensity)
   wind_direction?: number;         // 0 to 360 degrees
   cloud_coverage?: number;         // 0.0 to 1.0 (Cloud coverage)
-  cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
+  cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow' | 'cumulonimbus';
   cloud_layers?: number;         // 1, 2, or 3 layers
   cloud_altitude?: number;
   skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';

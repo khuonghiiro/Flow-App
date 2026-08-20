@@ -28,19 +28,19 @@ export class SceneLighting {
 
     // Directional Sun Light with Shadows
     this.sunLight = new THREE.DirectionalLight(0xfffaed, 2.6);
-    this.sunLight.position.set(25, 120, 25);
+    this.sunLight.position.set(25, 180, 25);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 1024;
-    this.sunLight.shadow.mapSize.height = 1024;
-    this.sunLight.shadow.camera.near = 0.5;
-    this.sunLight.shadow.camera.far = 250;
-    const d = 35;
+    this.sunLight.shadow.mapSize.width = 2048;
+    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.camera.near = 1.0;
+    this.sunLight.shadow.camera.far = 550;
+    const d = 140;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
     this.sunLight.shadow.bias = -0.0003;
-    this.sunLight.shadow.normalBias = 0.02;
+    this.sunLight.shadow.normalBias = 0.03;
     this.scene.add(this.sunLight);
 
     // Fog
@@ -220,6 +220,26 @@ export class SceneLighting {
       targetBgColor.lerp(rainSkyColor, rainFactor * 0.7);
       targetFogColor.lerp(rainSkyColor, rainFactor * 0.7);
       this.fog.density = Math.max(this.fog.density, 0.012 + rainFactor * 0.018);
+    }
+
+    // Cloud coverage & layer sunlight occlusion (Darkens terrain, buildings, characters under cloud cover)
+    const cloudCov = overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage ?? 0.0;
+    const cloudLayers = overrideEnv?.cloud_layers ?? this.currentEnv.weather?.cloud_layers ?? 1;
+    if (cloudCov > 0.03) {
+      // Direct sunlight diminishes as clouds become thicker and more layered
+      const cloudDimming = Math.min(0.82, cloudCov * 0.70 + (cloudLayers - 1) * 0.03);
+      targetSunIntensity *= (1.0 - cloudDimming);
+
+      // Ambient light softens and scatters through cloud layer
+      targetAmbIntensity = targetAmbIntensity * (0.88 + cloudCov * 0.35);
+
+      // Sunlight color shifts towards soft atmospheric daylight
+      const overcastTint = new THREE.Color(0x94a3b8);
+      targetSunColor.lerp(overcastTint, cloudCov * 0.55);
+      targetAmbColor.lerp(new THREE.Color(0x64748b), cloudCov * 0.40);
+
+      // Procedural sun sprite dims when hidden behind clouds
+      targetSpriteOpacity *= Math.max(0.0, 1.0 - cloudCov * 1.2);
     }
 
     // Apply lights & sprite

@@ -36,7 +36,7 @@ export interface MapPresetConfig {
     rain?: number;
     wind_direction?: number;
     cloud_coverage?: number;
-    cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow';
+    cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow' | 'cumulonimbus';
     cloud_layers?: number;
     cloud_altitude?: number;
   };

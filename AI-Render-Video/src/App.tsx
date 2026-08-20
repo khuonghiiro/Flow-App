@@ -178,7 +178,7 @@ export const App: React.FC = () => {
 
         mapModel.position.set(0, 0, 0);
         mapGroupRef.current.add(mapModel);
-        
+
         if (mapModel.animations && mapModel.animations.length > 0) {
           mapMixerRef.current = new THREE.AnimationMixer(mapModel);
           mapModel.animations.forEach((clip: any) => {
@@ -361,13 +361,13 @@ export const App: React.FC = () => {
             (m) => m.action === 'climb' && t >= m.start && t <= m.end
           );
           if (isClimbing) continue;
-          
+
           const isPlayer = id === playerControllerRef.current?.controlledActorId;
           const pos = runtime.avatar.rootObject.position;
 
           raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
           const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
-          
+
           let validGroundY: number | null = null;
           for (const hit of hits) {
             if (hit.face) {
@@ -382,7 +382,7 @@ export const App: React.FC = () => {
 
           if (validGroundY !== null) {
             const groundY = validGroundY;
-            
+
             if (isPlayer && playerControllerRef.current) {
               if (pos.y <= groundY + 0.05) {
                 pos.y = groundY;
@@ -738,11 +738,11 @@ export const App: React.FC = () => {
   // Place Prop from Asset Browser into Scene
   const handlePlaceProp = (asset: any) => {
     if (!rendererRef.current) return;
-    
+
     // Find active actor or camera center
-    const activeActor = actorsMapRef.current.get(playerControllerRef.current?.controlledActorId || '') 
+    const activeActor = actorsMapRef.current.get(playerControllerRef.current?.controlledActorId || '')
       || Array.from(actorsMapRef.current.values())[0];
-    
+
     let targetPos: [number, number, number] = [0, 0, 0];
     if (activeActor && activeActor.avatar.rootObject) {
       const p = activeActor.avatar.rootObject.position;
@@ -1030,7 +1030,7 @@ export const App: React.FC = () => {
         (time: number) => {
           const delta = 1 / targetFps;
           const activeScene = sceneRef.current;
-          
+
           // Explicitly update engine for this timestamp and render
           if (trackEvaluatorRef.current) {
             trackEvaluatorRef.current.evaluate(
@@ -1050,7 +1050,7 @@ export const App: React.FC = () => {
               playerControllerRef.current.update(delta, controlledRuntime.avatar, controlledRuntime.animator, rendererRef.current.camera, mapCollidersRef.current);
             }
           }
-          
+
           // Ground Snapping (Physics) with Fast Spatial Filter
           if (mapCollidersRef.current.length > 0) {
             const raycaster = new THREE.Raycaster();
@@ -1061,12 +1061,12 @@ export const App: React.FC = () => {
                 (m) => m.action === 'climb' && time >= m.start && time <= m.end
               );
               if (isClimbing) continue;
-              
+
               const pos = runtime.avatar.rootObject.position;
-              
+
               raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
               const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
-              
+
               let validGroundY: number | null = null;
               for (const hit of hits) {
                 if (hit.face) {
@@ -1100,7 +1100,7 @@ export const App: React.FC = () => {
           if (!isFreeCamRef.current && cameraDirectorRef.current) {
             cameraDirectorRef.current.update(activeScene, time, actorStates as any, delta);
           }
-          
+
           // Post processing
           if (!isFreeCamRef.current && postProcessorRef.current && rendererRef.current) {
             postProcessorRef.current.applyToCamera(rendererRef.current.camera, time);
@@ -1118,12 +1118,12 @@ export const App: React.FC = () => {
               lightingRef.current.update(time, activeScene.duration);
             }
           }
-          
+
           // Update map animation
           if (mapMixerRef.current) {
             mapMixerRef.current.update(delta);
           }
-          
+
           rendererRef.current?.renderDirect();
         },
         (p) => {

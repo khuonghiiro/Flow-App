@@ -1,289 +1,226 @@
 import * as THREE from 'three';
 
 /**
- * Volumetric 3D Cloud System & Physically Projected Ground Shadow
+ * Advanced Multi-Layered Volumetric Particle Cloud System
  *
  * Features:
- * 1. Infinite-feeling Horizon Cloud Deck (Mặt phẳng biển mây 3D bao quanh chân trời):
- *    - Large 800m x 800m volume following camera XZ.
- *    - Flat cumulus cloud base with organic billowy tops (Sea of Clouds).
- *    - Smooth radial distance fade to blend seamlessly into the horizon atmosphere.
- *    - 4-octave 3D FBM procedural noise with quintic interpolation.
- *
- * 2. True Dynamic Projected Ground Shadows (Đổ bóng mây thời gian thực theo độ dày):
- *    - Ground shadow projector plane centered on camera at ground level (Y ≈ 0.04m).
- *    - Shader samples identical cloud noise field offset by sunlight vector & cloud altitude.
- *    - Shadow darkness on the ground is physically proportional to cloud thickness:
- *      * Thick dense clouds -> Deep dark shadows.
- *      * Thin/wispy cloud edges -> Faint soft shadows.
- *      * Clear sky gaps -> Zero shadow (full sunlight).
- *    - Lowering cloud altitude or tilting sun angle naturally stretches/moves the ground shadows.
- *    - Wind smoothly drifts the clouds and ground shadows in perfect sync.
+ * 1. Layered Fluffy 3D Sprites: 6 distinct vertical layers spaced between 65m – 120m.
+ * 2. Coverage Slider Behavior: At max coverage (100%), layers form a contiguous blanket
+ *    of soft, organic "mây bồng".
+ * 3. Dynamic Real-Time Wind Drift: 2D incremental accumulation ensures instant reactivity
+ *    to wind strength (0 to 32 m/s) and wind direction (0° to 360°) with parallax drift.
+ * 4. Ultra-Smooth Simplex Atmospheric Ground Shadow: Uses isotropic Simplex noise with
+ *    wide smoothstep penumbra to project silky-smooth, organic cloud shadows on terrain.
+ * 5. Beer-Lambert Atmospheric Darkening: Lower layers darken realistically when covered
+ *    by upper cloud decks.
  */
 export class CloudSystem {
   private scene: THREE.Scene;
-  
-  // Cloud Volume
-  private mesh: THREE.Mesh | null = null;
-  private material: THREE.ShaderMaterial | null = null;
-  private boxScale = new THREE.Vector3(800, 60, 800);
+  private cloudGroup: THREE.Group;
+  private sprites: SpriteData[] = [];
+  private cloudTextures: THREE.Texture[] = [];
 
-  // Dynamic Ground Shadow Plane
+  // Random altitudes per layer within 65m – 120m
+  private layerAltitudes: number[] = [];
+  // Parallax speed multiplier per layer
+  private layerSpeedMults: number[] = [1.0, 1.12, 1.25, 1.38, 1.52, 1.68];
+
+  // Ground Shadow Mesh & Material
   private shadowMesh: THREE.Mesh | null = null;
   private shadowMaterial: THREE.ShaderMaterial | null = null;
-  
+
   private animTimer = 0;
+  // Accumulated 2D wind drift offsets (meters)
+  private windDriftX = 0;
+  private windDriftZ = 0;
+
+  private readonly toneColors = {
+    sun: new THREE.Color(),
+    sky: new THREE.Color(),
+    ambient: new THREE.Color(),
+  };
+
+  /** Half-extent of the cloud simulation box (meters from camera) */
+  private static readonly RANGE = 500;
+  /** Number of puffy sprites per layer deck for dense sky coverage */
+  private static readonly SPRITES_PER_LAYER = 64;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.buildVolume();
+    this.cloudGroup = new THREE.Group();
+    this.cloudGroup.name = 'volumetric_clouds';
+    this.cloudGroup.renderOrder = 100;
+    this.scene.add(this.cloudGroup);
+
+    this.generateLayerAltitudes();
+    this.generateCloudTextures();
+    this.createCloudDecks();
     this.buildDynamicShadow();
   }
 
   // ══════════════════════════════════════════════════
-  // 1. Volumetric Cloud Mesh Construction
+  // 1. Layer Altitude Generation (65m – 120m with jitter)
   // ══════════════════════════════════════════════════
 
-  private buildVolume(): void {
-    const geom = new THREE.BoxGeometry(1, 1, 1);
+  private generateLayerAltitudes(): void {
+    let seed = 74123;
+    const rng = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
 
-    this.material = new THREE.ShaderMaterial({
-      uniforms: {
-        uCamLocal: { value: new THREE.Vector3(0, -1, 0) },
-        uSunDirLocal: { value: new THREE.Vector3(0, 1, 0) },
-        uSunColor: { value: new THREE.Color(0xfffaf0) },
-        uSkyColor: { value: new THREE.Color(0x93c5fd) },
-        uAmbientColor: { value: new THREE.Color(0x385c88) },
-        uCoverage: { value: 0.5 },
-        uTime: { value: 0 },
-        uWindOffset: { value: new THREE.Vector2(0, 0) },
-        uWorldOffset: { value: new THREE.Vector2(0, 0) },
-        uLayerCount: { value: 3.0 },
-      },
-      vertexShader: /* glsl */ `
-        uniform vec3 uCamLocal;
-        varying vec3 vOrigin;
-        varying vec3 vDirection;
+    const minAlt = 65;
+    const maxAlt = 120;
+    const step = (maxAlt - minAlt) / 5; // ~11m between layers
 
-        void main() {
-          vOrigin = uCamLocal;
-          vDirection = position - uCamLocal;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        precision highp float;
-
-        varying vec3 vOrigin;
-        varying vec3 vDirection;
-
-        uniform vec3 uSunDirLocal;
-        uniform vec3 uSunColor;
-        uniform vec3 uSkyColor;
-        uniform vec3 uAmbientColor;
-        uniform float uCoverage;
-        uniform float uTime;
-        uniform vec2 uWindOffset;
-        uniform vec2 uWorldOffset;
-        uniform float uLayerCount;
-
-        #define STEPS 28
-        #define LIGHT_STEPS 4
-        #define PI 3.14159265
-
-        // ── 3D Value Noise with Quintic Interpolation ──
-        float hash3(vec3 p) {
-          p = fract(p * vec3(0.1031, 0.1030, 0.0973));
-          p += dot(p, p.yxz + 33.33);
-          return fract((p.x + p.y) * p.z);
-        }
-
-        float noise3D(vec3 p) {
-          vec3 i = floor(p);
-          vec3 f = fract(p);
-          // Quintic Hermite curve for smooth, organic clouds
-          f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-
-          float n000 = hash3(i);
-          float n100 = hash3(i + vec3(1.0, 0.0, 0.0));
-          float n010 = hash3(i + vec3(0.0, 1.0, 0.0));
-          float n110 = hash3(i + vec3(1.0, 1.0, 0.0));
-          float n001 = hash3(i + vec3(0.0, 0.0, 1.0));
-          float n101 = hash3(i + vec3(1.0, 0.0, 1.0));
-          float n011 = hash3(i + vec3(0.0, 1.0, 1.0));
-          float n111 = hash3(i + vec3(1.0, 1.0, 1.0));
-
-          return mix(
-            mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
-            mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
-            f.z
-          );
-        }
-
-        // 4-octave FBM for rich, fluffy volumetric details
-        float fbm4(vec3 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 4; i++) {
-            v += a * noise3D(p);
-            p = p * 2.02 + vec3(1.7, 3.1, 2.3);
-            a *= 0.5;
-          }
-          return v;
-        }
-
-        // Henyey-Greenstein light scattering phase function
-        float hg(float cosT, float g) {
-          float g2 = g * g;
-          return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * cosT, 1.5));
-        }
-
-        // Ray-box intersection with epsilon safety
-        vec2 hitBox(vec3 orig, vec3 dir) {
-          vec3 d = dir;
-          if (abs(d.x) < 1e-5) d.x = 1e-5;
-          if (abs(d.y) < 1e-5) d.y = 1e-5;
-          if (abs(d.z) < 1e-5) d.z = 1e-5;
-
-          vec3 inv = 1.0 / d;
-          vec3 t1 = (-0.5 - orig) * inv;
-          vec3 t2 = (0.5 - orig) * inv;
-          vec3 tNear = min(t1, t2);
-          vec3 tFar = max(t1, t2);
-          float near = max(tNear.x, max(tNear.y, tNear.z));
-          float far = min(tFar.x, min(tFar.y, tFar.z));
-          return vec2(near, far);
-        }
-
-        // Sample cloud density at local position p ∈ [-0.5, 0.5]
-        float sampleDensity(vec3 p) {
-          // 1. Cloud Deck Height Gradient:
-          // Flat distinct base at bottom (cumulus deck look), billowy fluffy tops
-          float h = p.y + 0.5; // 0 = bottom, 1 = top
-
-          float maxH = 0.35 + (uLayerCount - 1.0) * 0.13;
-          maxH = clamp(maxH, 0.35, 1.0);
-          
-          // Sharp flat bottom, soft undulating top
-          float hGrad = smoothstep(0.02, 0.18, h) * smoothstep(maxH, maxH - 0.22, h);
-          if (hGrad < 0.005) return 0.0;
-
-          // 2. Horizon Radial Distance Falloff:
-          // Eliminates square box edges -> creates an infinite circular cloud blanket
-          float radialDist = length(p.xz);
-          float radialFade = smoothstep(0.5, 0.25, radialDist);
-          if (radialFade < 0.005) return 0.0;
-
-          // 3. World-Space 3D FBM Sampling:
-          // Clouds stay anchored in the world while wind offset blows them naturally
-          vec3 noiseP;
-          noiseP.x = p.x * 5.0 + uWorldOffset.x * 0.008 + uWindOffset.x;
-          noiseP.y = p.y * 3.5;
-          noiseP.z = p.z * 5.0 + uWorldOffset.y * 0.008 + uWindOffset.y;
-
-          float n = fbm4(noiseP);
-
-          // 4. Coverage Threshold with soft density transitions
-          float threshold = 0.51 - uCoverage * 0.38;
-          float d = smoothstep(threshold, threshold + 0.18, n);
-          d *= hGrad * radialFade * 2.3;
-
-          return max(0.0, d);
-        }
-
-        // March towards sun to calculate inner self-shadowing / light extinction
-        float lightMarch(vec3 pos) {
-          float totalD = 0.0;
-          float stepLen = 0.07;
-          for (int i = 0; i < LIGHT_STEPS; i++) {
-            vec3 p = pos + uSunDirLocal * stepLen * (float(i) + 1.0);
-            if (any(greaterThan(abs(p), vec3(0.5)))) break;
-            totalD += sampleDensity(p) * stepLen;
-          }
-          return exp(-totalD * 4.5);
-        }
-
-        void main() {
-          vec3 rd = normalize(vDirection);
-          vec2 bounds = hitBox(vOrigin, rd);
-          if (bounds.x >= bounds.y) discard;
-          bounds.x = max(bounds.x, 0.0);
-
-          float rayLen = bounds.y - bounds.x;
-          if (rayLen < 0.001) discard;
-          float stepSize = rayLen / float(STEPS);
-
-          vec3 accColor = vec3(0.0);
-          float transmittance = 1.0;
-          float cosA = dot(rd, uSunDirLocal);
-          // Dual-lobe Henyey-Greenstein for silver lining & backscatter
-          float phase = mix(hg(cosA, -0.2), hg(cosA, 0.65), 0.72);
-
-          for (int i = 0; i < STEPS; i++) {
-            vec3 p = vOrigin + rd * (bounds.x + (float(i) + 0.5) * stepSize);
-
-            float d = sampleDensity(p);
-            if (d > 0.001) {
-              float light = lightMarch(p);
-              float h = p.y + 0.5;
-
-              // Sunlit highlight vs ambient underside / horizon tone
-              vec3 sunLit = uSunColor * light * phase * 1.7;
-              vec3 ambient = mix(uAmbientColor * 0.55, uSkyColor * 0.35, h);
-              vec3 sampleCol = sunLit + ambient;
-
-              // Beer-Lambert absorption
-              float absorption = exp(-d * stepSize * 6.5);
-              float contrib = (1.0 - absorption) * transmittance;
-              accColor += sampleCol * contrib;
-              transmittance *= absorption;
-
-              if (transmittance < 0.015) break;
-            }
-          }
-
-          float alpha = 1.0 - transmittance;
-          if (alpha < 0.005) discard;
-
-          gl_FragColor = vec4(accColor, alpha);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-      side: THREE.BackSide,
-    });
-
-    this.mesh = new THREE.Mesh(geom, this.material);
-    this.mesh.scale.copy(this.boxScale);
-    this.mesh.position.set(0, 65, 0);
-    this.mesh.name = 'volumetric_clouds';
-    this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 100;
-    this.scene.add(this.mesh);
+    this.layerAltitudes = [];
+    for (let i = 0; i < 6; i++) {
+      const base = minAlt + i * step;
+      const jitter = (rng() - 0.5) * 5.0; // +/- 2.5m jitter
+      this.layerAltitudes.push(Math.max(62, Math.min(125, base + jitter)));
+    }
   }
 
   // ══════════════════════════════════════════════════
-  // 2. Dynamic Projected Ground Shadow Shader
+  // 2. High-Quality Cloud Texture Generation (Soft 3D Puffs)
+  // ══════════════════════════════════════════════════
+
+  private generateCloudTextures(): void {
+    for (let v = 0; v < 4; v++) {
+      const s = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = s;
+      canvas.height = s;
+      const ctx = canvas.getContext('2d')!;
+      ctx.clearRect(0, 0, s, s);
+
+      let seed = v * 8191 + 57;
+      const rng = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed / 0x7fffffff;
+      };
+
+      const cx = s / 2;
+      const cy = s / 2;
+
+      // Outer smooth atmospheric envelope
+      const baseGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 0.46);
+      baseGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
+      baseGrad.addColorStop(0.28, 'rgba(255,255,255,0.65)');
+      baseGrad.addColorStop(0.55, 'rgba(255,255,255,0.25)');
+      baseGrad.addColorStop(0.85, 'rgba(255,255,255,0.05)');
+      baseGrad.addColorStop(1.0, 'rgba(255,255,255,0.0)');
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(0, 0, s, s);
+
+      // Multiple dense overlapping organic lobes ("mây bồng")
+      const puffCount = 8 + v * 3;
+      for (let i = 0; i < puffCount; i++) {
+        const px = cx + (rng() - 0.5) * s * 0.48;
+        const py = cy + (rng() - 0.5) * s * 0.32;
+        const r = s * (0.12 + rng() * 0.18);
+        const alpha = 0.35 + rng() * 0.35;
+
+        const puffGrad = ctx.createRadialGradient(px, py, 0, px, py, r);
+        puffGrad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+        puffGrad.addColorStop(0.45, `rgba(255,255,255,${alpha * 0.5})`);
+        puffGrad.addColorStop(1, 'rgba(255,255,255,0.0)');
+        ctx.fillStyle = puffGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.needsUpdate = true;
+      this.cloudTextures.push(tex);
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  // 3. Cloud Deck Creation (Each Layer is a Full Sky Blanket)
+  // ══════════════════════════════════════════════════
+
+  private createCloudDecks(): void {
+    let seed = 31415;
+    const rng = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+
+    const R = CloudSystem.RANGE;
+    const perLayer = CloudSystem.SPRITES_PER_LAYER;
+    const gridSize = Math.ceil(Math.sqrt(perLayer)); // 8x8 grid
+    const cellWidth = (R * 2) / gridSize;
+
+    for (let layer = 0; layer < 6; layer++) {
+      for (let i = 0; i < perLayer; i++) {
+        const gx = i % gridSize;
+        const gz = Math.floor(i / gridSize);
+
+        // Jittered grid placement guarantees uniform distribution with organic randomness
+        const posX = -R + (gx + 0.5) * cellWidth + (rng() - 0.5) * cellWidth * 0.85;
+        const posZ = -R + (gz + 0.5) * cellWidth + (rng() - 0.5) * cellWidth * 0.85;
+        const posY = (rng() - 0.5) * 6.0; // Local layer variation
+
+        // Randomly choose one of the soft cloud puff textures
+        const texIdx = Math.floor(rng() * this.cloudTextures.length);
+        const mat = new THREE.SpriteMaterial({
+          map: this.cloudTextures[texIdx],
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          sizeAttenuation: true,
+        });
+
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.set(posX, posY, posZ);
+
+        // Large puffy clouds that easily overlap and create solid blankets at 100%
+        const w = 140 + rng() * 160; // 140m – 300m width
+        const h = 45 + rng() * 60;   // 45m – 105m height
+        sprite.scale.set(w, h, 1);
+
+        // Activation threshold: lower threshold = cloud appears earlier as coverage slider increases
+        const activationThreshold = (i / perLayer) * 0.85;
+
+        this.sprites.push({
+          sprite,
+          baseX: posX,
+          baseZ: posZ,
+          baseY: posY,
+          scaleW: w,
+          scaleH: h,
+          baseOpacity: 0.45 + rng() * 0.35,
+          activationThreshold,
+          windPhase: rng() * Math.PI * 2,
+          densityWeight: 0.5 + rng() * 0.5,
+          layer,
+        });
+
+        this.cloudGroup.add(sprite);
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  // 4. Ultra-Smooth Simplex Ground Cloud Shadow
   // ══════════════════════════════════════════════════
 
   private buildDynamicShadow(): void {
-    // 600m ground projection plane
-    const geom = new THREE.PlaneGeometry(600, 600, 1, 1);
-
+    const geom = new THREE.PlaneGeometry(1600, 1600, 1, 1);
     this.shadowMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uWorldOffset: { value: new THREE.Vector2(0, 0) },
         uWindOffset: { value: new THREE.Vector2(0, 0) },
         uSunDir: { value: new THREE.Vector3(0.3, 0.85, 0.25).normalize() },
-        uCloudAltitude: { value: 65.0 },
+        uCloudAltitude: { value: 90.0 },
         uCoverage: { value: 0.5 },
         uLayerCount: { value: 3.0 },
-        uShadowDarkness: { value: 0.55 },
-        uSkyTime: { value: 0 }, // 0: noon, 1: sunrise/sunset, 2: overcast, 3: night
+        uShadowDarkness: { value: 0.75 },
       },
       vertexShader: /* glsl */ `
         varying vec2 vWorldXZ;
-
         void main() {
           vec4 worldPos = modelMatrix * vec4(position, 1.0);
           vWorldXZ = worldPos.xz;
@@ -291,10 +228,8 @@ export class CloudSystem {
         }
       `,
       fragmentShader: /* glsl */ `
-        precision highp float;
-
+        precision mediump float;
         varying vec2 vWorldXZ;
-
         uniform vec2 uWorldOffset;
         uniform vec2 uWindOffset;
         uniform vec3 uSunDir;
@@ -302,91 +237,78 @@ export class CloudSystem {
         uniform float uCoverage;
         uniform float uLayerCount;
         uniform float uShadowDarkness;
-        uniform float uSkyTime;
 
-        // ── Same 2D/3D Noise used by clouds for 100% coherence ──
-        float hash3(vec3 p) {
-          p = fract(p * vec3(0.1031, 0.1030, 0.0973));
-          p += dot(p, p.yxz + 33.33);
-          return fract((p.x + p.y) * p.z);
+        // ── 2D Simplex Noise (Zero grid artifacts, perfectly smooth curves) ──
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
+
+        float snoise(vec2 v) {
+          const vec4 C = vec4(0.211324865405187,
+                              0.366025403784439,
+                             -0.577350269189626,
+                              0.024390243902439);
+          vec2 i  = floor(v + dot(v, C.yy));
+          vec2 x0 = v - i + dot(i, C.xx);
+          vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+          vec4 x12 = x0.xyxy + C.xxzz;
+          x12.xy -= i1;
+          i = mod289(i);
+          vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+          vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+          m = m * m;
+          m = m * m;
+          vec3 x = 2.0 * fract(p * C.www) - 1.0;
+          vec3 h = abs(x) - 0.5;
+          vec3 ox = floor(x + 0.5);
+          vec3 a0 = x - ox;
+          m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+          vec3 g;
+          g.x  = a0.x  * x0.x  + h.x  * x0.y;
+          g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+          return 130.0 * dot(m, g);
         }
 
-        float noise3D(vec3 p) {
-          vec3 i = floor(p);
-          vec3 f = fract(p);
-          f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-
-          float n000 = hash3(i);
-          float n100 = hash3(i + vec3(1.0, 0.0, 0.0));
-          float n010 = hash3(i + vec3(0.0, 1.0, 0.0));
-          float n110 = hash3(i + vec3(1.0, 1.0, 0.0));
-          float n001 = hash3(i + vec3(0.0, 0.0, 1.0));
-          float n101 = hash3(i + vec3(1.0, 0.0, 1.0));
-          float n011 = hash3(i + vec3(0.0, 1.0, 1.0));
-          float n111 = hash3(i + vec3(1.0, 1.0, 1.0));
-
-          return mix(
-            mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
-            mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
-            f.z
-          );
-        }
-
-        float fbm4(vec3 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 4; i++) {
-            v += a * noise3D(p);
-            p = p * 2.02 + vec3(1.7, 3.1, 2.3);
-            a *= 0.5;
-          }
-          return v;
+        // Multi-octave organic cumulus cloud FBM
+        float cloudFBM(vec2 p) {
+          float f = 0.52 * (snoise(p) * 0.5 + 0.5);
+          f += 0.28 * (snoise(p * 2.03 + vec2(1.7, 3.1)) * 0.5 + 0.5);
+          f += 0.14 * (snoise(p * 4.08 + vec2(5.2, 2.8)) * 0.5 + 0.5);
+          f += 0.06 * (snoise(p * 8.15 + vec2(8.4, 4.3)) * 0.5 + 0.5);
+          return f;
         }
 
         void main() {
-          // 1. Ray trace from ground point up towards sun intersection with cloud deck
-          float sunY = max(uSunDir.y, 0.12);
-          vec2 sunOffset = (uSunDir.xz / sunY) * (uCloudAltitude - 0.04);
-          vec2 cloudWorldPos = vWorldXZ - sunOffset;
-
-          // 2. Sample multiple vertical slices to compute true optical cloud thickness
-          vec2 noiseCoord = cloudWorldPos * 0.008 + uWindOffset;
-          
-          float threshold = 0.51 - uCoverage * 0.38;
-          
-          // Sample bottom, middle, and upper cloud layers
-          float nBase = fbm4(vec3(noiseCoord, -0.3));
-          float nMid  = fbm4(vec3(noiseCoord * 1.05 + vec2(0.5, 0.8), 0.0));
-          float nTop  = fbm4(vec3(noiseCoord * 1.1 - vec2(0.7, 0.4), 0.3));
-
-          float dBase = smoothstep(threshold, threshold + 0.18, nBase);
-          float dMid  = smoothstep(threshold, threshold + 0.18, nMid);
-          float dTop  = smoothstep(threshold, threshold + 0.18, nTop);
-
-          // Weight by layer count (thicker clouds with more layers)
-          float layerFactor = clamp(uLayerCount / 3.0, 0.6, 1.6);
-          float opticalThickness = (dBase * 0.45 + dMid * 0.40 + dTop * 0.25) * layerFactor;
-
-          if (opticalThickness < 0.01) discard;
-
-          // 3. Distance fade near the edges of the ground projector plane
           vec2 localPos = vWorldXZ - uWorldOffset;
-          float distToCenter = length(localPos) / 300.0;
-          float groundFade = smoothstep(1.0, 0.7, distToCenter);
-          opticalThickness *= groundFade;
+          float dc = length(localPos) / 750.0;
+          if (dc > 1.0) discard;
+          // Smooth radial fade to edge
+          float fade = smoothstep(1.0, 0.60, dc);
 
-          if (opticalThickness < 0.005) discard;
+          // Sunlight projection offset
+          float sunY = max(uSunDir.y, 0.12);
+          vec2 sunOff = (uSunDir.xz / sunY) * (uCloudAltitude - 0.08);
+          // Coordinates moving synchronously with wind
+          vec2 cp = (vWorldXZ - sunOff) * 0.0028 + uWindOffset;
 
-          // 4. Physical Shadow Alpha based on Cloud Thickness & Height
-          // Low clouds create crisper, darker shadows; high clouds create softer ambient shadows
-          float heightFactor = clamp(100.0 / max(uCloudAltitude, 30.0), 0.7, 1.4);
-          float shadowAlpha = opticalThickness * uShadowDarkness * heightFactor;
-          shadowAlpha = clamp(shadowAlpha, 0.0, 0.75);
+          // Multi-layer organic cloud density sample
+          float n1 = cloudFBM(cp * 2.8);
+          float n2 = cloudFBM(cp * 3.1 + vec2(3.7, 6.1));
 
-          // Deep ambient tone (slate / cool navy shadow color for realism)
-          vec3 shadowColor = vec3(0.04, 0.07, 0.14);
+          // Soft feathered threshold (feather width = 0.32 for ultra-soft, fluffy cloud edges)
+          float thr = 0.56 - uCoverage * 0.38;
+          float d1 = smoothstep(thr, thr + 0.32, n1);
+          float d2 = smoothstep(thr, thr + 0.32, n2);
 
-          gl_FragColor = vec4(shadowColor, shadowAlpha);
+          float layerMultiplier = clamp(uLayerCount / 2.0, 0.8, 2.0);
+          float thickness = (d1 * 0.58 + d2 * 0.42) * layerMultiplier * fade;
+          if (thickness < 0.005) discard;
+
+          // Smooth gradient shadow opacity (feathered from 0% to 75%)
+          float shadowAlpha = clamp(thickness * uShadowDarkness * 1.35, 0.0, 0.75);
+
+          // Soft atmospheric blue-slate shadow tint
+          gl_FragColor = vec4(0.02, 0.04, 0.10, shadowAlpha);
         }
       `,
       transparent: true,
@@ -400,7 +322,7 @@ export class CloudSystem {
 
     this.shadowMesh = new THREE.Mesh(geom, this.shadowMaterial);
     this.shadowMesh.rotation.x = -Math.PI / 2;
-    this.shadowMesh.position.set(0, 0.04, 0); // slightly above ground to prevent z-fighting
+    this.shadowMesh.position.set(0, 0.08, 0);
     this.shadowMesh.name = 'dynamic_cloud_ground_shadow';
     this.shadowMesh.frustumCulled = false;
     this.shadowMesh.renderOrder = 990;
@@ -408,14 +330,23 @@ export class CloudSystem {
   }
 
   // ══════════════════════════════════════════════════
-  // 3. Animation & Simulation Update Loop
+  // 5. Wrap Coordinate for Seamless Infinite Movement
+  // ══════════════════════════════════════════════════
+
+  private static wrapCoord(val: number, range: number): number {
+    const d = range * 2;
+    return ((val % d) + d + range) % d - range;
+  }
+
+  // ══════════════════════════════════════════════════
+  // 6. Simulation & Update Loop
   // ══════════════════════════════════════════════════
 
   public update(
     delta: number,
     cameraPos: THREE.Vector3,
     coverage: number = 0.5,
-    _cloudShape: string = 'cumulus',
+    cloudShape: string = 'cumulus',
     windIntensity: number = 0.3,
     windDirectionDeg: number = 45,
     skyTime: string = 'noon',
@@ -423,105 +354,178 @@ export class CloudSystem {
     layerCount: number = 3,
     sunLightPos?: THREE.Vector3
   ): void {
-    if (!this.mesh || !this.material) return;
-
     this.animTimer += delta;
     const cov = Math.max(0, Math.min(1, coverage));
-    const layers = Math.max(1, Math.min(6, Math.round(layerCount)));
+    const activeLayers = Math.max(1, Math.min(6, Math.round(layerCount)));
+    const R = CloudSystem.RANGE;
 
-    // ── Box height based on layer count (25m -> 110m depth) ──
-    const heightMap = [25, 42, 60, 78, 95, 115];
-    this.boxScale.y = heightMap[layers - 1];
-    this.mesh.scale.copy(this.boxScale);
+    // ── 1. Wind Movement: Direct 2D vector accumulation ──
+    const windRad = (windDirectionDeg * Math.PI) / 180;
+    // Speed: 0 m/s when wind = 0; up to 32 m/s when wind = 100%
+    const windSpeed = windIntensity * 32.0;
 
-    // ── Cloud Deck Position: follow camera XZ ──
-    const cloudAltitudeY = 65 * altitudeMult;
-    this.mesh.position.set(cameraPos.x, cloudAltitudeY, cameraPos.z);
+    // Continuous 2D accumulation allows real-time direction and speed changes without jumping
+    this.windDriftX += Math.sin(windRad) * windSpeed * delta;
+    this.windDriftZ += Math.cos(windRad) * windSpeed * delta;
 
-    // ── Camera in volume local space ──
-    const localCamY = (cameraPos.y - cloudAltitudeY) / this.boxScale.y;
-    this.material.uniforms.uCamLocal.value.set(0, localCamY, 0);
+    // ── 2. Atmospheric Lighting & Tone Colors ──
+    this.applyTones(skyTime);
+    const shape = this.getShapeConfig(cloudShape);
 
-    // ── Sun Direction in World & Local Space ──
+    // Calculate normalized sunlight direction
     let worldSunDir: THREE.Vector3;
     if (sunLightPos) {
       worldSunDir = sunLightPos.clone().normalize();
     } else {
       worldSunDir = skyTime === 'sunset' ? new THREE.Vector3(0.9, 0.35, 0.2).normalize()
         : skyTime === 'sunrise' ? new THREE.Vector3(-0.9, 0.35, 0.2).normalize()
-        : skyTime === 'night' ? new THREE.Vector3(0.1, 0.8, 0.1).normalize()
-        : new THREE.Vector3(0.3, 0.85, 0.25).normalize();
+          : skyTime === 'night' ? new THREE.Vector3(0.1, 0.8, 0.1).normalize()
+            : new THREE.Vector3(0.3, 0.85, 0.25).normalize();
     }
 
-    const localSun = new THREE.Vector3(
-      worldSunDir.x / this.boxScale.x,
-      worldSunDir.y / this.boxScale.y,
-      worldSunDir.z / this.boxScale.z
-    ).normalize();
-    this.material.uniforms.uSunDirLocal.value.copy(localSun);
+    // Sunlit bright cloud color
+    const sunlitColor = this.toneColors.sun.clone().lerp(this.toneColors.sky, 0.2);
 
-    // ── Wind Simulation ──
-    const windRad = (windDirectionDeg * Math.PI) / 180;
-    const windSpeed = 0.3 + windIntensity * 2.0;
-    const windX = Math.sin(windRad) * windSpeed * this.animTimer * 0.035;
-    const windZ = Math.cos(windRad) * windSpeed * this.animTimer * 0.035;
-    this.material.uniforms.uWindOffset.value.set(windX, windZ);
+    // Deep dark cloud color for dense multi-layered underbellies
+    const darkUnderbellyColor = new THREE.Color(0x182230);
 
-    // ── World Offset for Camera Anchor ──
-    this.material.uniforms.uWorldOffset.value.set(cameraPos.x, cameraPos.z);
+    // Center altitude of active layers
+    let avgAlt = 0;
+    for (let i = 0; i < activeLayers; i++) {
+      avgAlt += this.layerAltitudes[i];
+    }
+    avgAlt = (avgAlt / activeLayers) * altitudeMult;
 
-    // ── Atmosphere Uniforms ──
-    this.material.uniforms.uCoverage.value = cov;
-    this.material.uniforms.uTime.value = this.animTimer;
-    this.material.uniforms.uLayerCount.value = layers;
+    // ── 3. Update Every Cloud Sprite in Every Active Layer ──
+    for (const sd of this.sprites) {
+      // Layer culling: Only render layers within the active layerCount slider
+      if (sd.layer >= activeLayers) {
+        sd.sprite.visible = false;
+        continue;
+      }
 
-    // ── Atmospheric Colors ──
-    const tones = this.getTones(skyTime);
-    this.material.uniforms.uSunColor.value.copy(tones.sun);
-    this.material.uniforms.uSkyColor.value.copy(tones.sky);
-    this.material.uniforms.uAmbientColor.value.copy(tones.ambient);
+      // Coverage activation:
+      // When coverage = 1.0, all sprites are 100% active.
+      // When coverage is lower, sprites fade out according to their activationThreshold.
+      let spriteActivity = 0;
+      if (cov > sd.activationThreshold) {
+        spriteActivity = Math.min(1.0, (cov - sd.activationThreshold) / 0.2);
+      }
 
-    this.mesh.visible = cov > 0.02;
+      if (spriteActivity <= 0.005 || cov < 0.01) {
+        sd.sprite.visible = false;
+        continue;
+      }
 
-    // ══════════════════════════════════════════════════
-    // Dynamic Ground Shadow Projection Update
-    // ══════════════════════════════════════════════════
+      sd.sprite.visible = true;
+
+      // Parallax wind drift: Higher layers move slightly faster for depth
+      const layerSpeed = this.layerSpeedMults[sd.layer];
+      const layerDriftX = this.windDriftX * layerSpeed;
+      const layerDriftZ = this.windDriftZ * layerSpeed;
+
+      // Subtle organic floating wobble
+      const wobbleX = Math.sin(this.animTimer * 0.12 + sd.windPhase) * 4.0;
+      const wobbleZ = Math.cos(this.animTimer * 0.09 + sd.windPhase) * 3.5;
+      const wobbleY = Math.sin(this.animTimer * 0.07 + sd.windPhase * 2.0) * 2.0;
+
+      // Wrap positions seamlessly within [-R, +R] around camera
+      const localX = CloudSystem.wrapCoord(sd.baseX + layerDriftX + wobbleX, R);
+      const localZ = CloudSystem.wrapCoord(sd.baseZ + layerDriftZ + wobbleZ, R);
+
+      // Relative Y from group center (avgAlt)
+      const layerAlt = this.layerAltitudes[sd.layer] * altitudeMult;
+      const localY = (layerAlt - avgAlt) + sd.baseY * shape.heightMult + wobbleY;
+
+      sd.sprite.position.set(localX, localY, localZ);
+
+      // ── 4. Dynamic Scale & Density Expansion ──
+      // At higher coverage, clouds expand horizontally to merge into a seamless blanket
+      const coverageScaleMult = 0.75 + cov * 0.55;
+      sd.sprite.scale.set(
+        sd.scaleW * shape.widthMult * coverageScaleMult,
+        sd.scaleH * shape.heightScale * coverageScaleMult,
+        1
+      );
+
+      // Distance-to-edge fade so clouds wrap seamlessly without popping
+      const distFromCenter = Math.sqrt(localX * localX + localZ * localZ);
+      const edgeFade = 1.0 - smoothstep(R * 0.75, R * 0.98, distFromCenter);
+
+      // ── 5. Opacity & Darkness (Beer-Lambert Absorption Model) ──
+      // Lower layers (underneath other layers) get darkened because upper layers block sunlight
+      const layersAbove = (activeLayers - 1) - sd.layer;
+      // Stacking absorption factor: higher coverage + more layers above = MUCH darker
+      const absorptionFactor = Math.min(1.0, (layersAbove * 0.22 + cov * 0.35) * (cov * 1.1));
+
+      const mat = sd.sprite.material as THREE.SpriteMaterial;
+
+      // Opacity: high coverage + dense deck = solid opaque feel
+      const targetOpacity = (sd.baseOpacity + cov * 0.35) * spriteActivity * edgeFade * shape.opacityMult;
+      mat.opacity = Math.min(0.92, Math.max(0.0, targetOpacity));
+
+      // Color interpolation: Sunlit white -> Deep moody dark gray/slate
+      const finalColor = sunlitColor.clone().lerp(darkUnderbellyColor, absorptionFactor);
+      mat.color.copy(finalColor);
+    }
+
+    // Set cloud group to follow camera position and current average altitude
+    this.cloudGroup.position.set(cameraPos.x, avgAlt, cameraPos.z);
+    this.cloudGroup.visible = cov > 0.01;
+
+    // ── 6. Ground Atmospheric Shadow Projection ──
     if (this.shadowMesh && this.shadowMaterial) {
       const isNight = skyTime === 'night';
-      const shadowVisible = cov > 0.05 && !isNight;
-      this.shadowMesh.visible = shadowVisible;
+      this.shadowMesh.visible = cov > 0.04 && !isNight;
 
-      if (shadowVisible) {
-        // Shadow plane follows camera on the ground
-        this.shadowMesh.position.set(cameraPos.x, 0.04, cameraPos.z);
-
+      if (this.shadowMesh.visible) {
+        // Place shadow plane right above ground plane
+        this.shadowMesh.position.set(cameraPos.x, 0.08, cameraPos.z);
         const su = this.shadowMaterial.uniforms;
         su.uWorldOffset.value.set(cameraPos.x, cameraPos.z);
-        su.uWindOffset.value.set(windX, windZ);
+        // Ground shadow coordinates move in direct lockstep with clouds overhead
+        su.uWindOffset.value.set(-this.windDriftX * 0.0028, -this.windDriftZ * 0.0028);
         su.uSunDir.value.copy(worldSunDir);
-        su.uCloudAltitude.value = cloudAltitudeY;
+        su.uCloudAltitude.value = avgAlt;
         su.uCoverage.value = cov;
-        su.uLayerCount.value = layers;
-        
-        // Overcast skies diffuse shadows; clear sunny skies make crisp darker shadows
-        const baseDarkness = skyTime === 'overcast' ? 0.35 : 0.65;
-        su.uShadowDarkness.value = baseDarkness;
+        su.uLayerCount.value = activeLayers;
+        su.uShadowDarkness.value = skyTime === 'overcast' ? 0.6 : 0.85;
       }
     }
   }
 
-  private getTones(skyTime: string): {
-    sun: THREE.Color; sky: THREE.Color; ambient: THREE.Color;
-  } {
-    if (skyTime === 'overcast')
-      return { sun: new THREE.Color(0x94a3b8), sky: new THREE.Color(0x64748b), ambient: new THREE.Color(0x475569) };
-    if (skyTime === 'sunset')
-      return { sun: new THREE.Color(0xff8c42), sky: new THREE.Color(0xc4856e), ambient: new THREE.Color(0x8b4513) };
-    if (skyTime === 'sunrise')
-      return { sun: new THREE.Color(0xffbc75), sky: new THREE.Color(0xd4a882), ambient: new THREE.Color(0x6b4226) };
-    if (skyTime === 'night')
-      return { sun: new THREE.Color(0x6b88b0), sky: new THREE.Color(0x1a2744), ambient: new THREE.Color(0x0f172a) };
-    return { sun: new THREE.Color(0xfffaf0), sky: new THREE.Color(0x93c5fd), ambient: new THREE.Color(0x5a7fa8) };
+  private applyTones(skyTime: string): void {
+    const { sun, sky } = this.toneColors;
+    if (skyTime === 'overcast') {
+      sun.set(0x94a3b8); sky.set(0x64748b);
+    } else if (skyTime === 'sunset') {
+      sun.set(0xff9a4d); sky.set(0xc87d65);
+    } else if (skyTime === 'sunrise') {
+      sun.set(0xffc585); sky.set(0xdbad87);
+    } else if (skyTime === 'night') {
+      sun.set(0x5c79a0); sky.set(0x18243e);
+    } else {
+      sun.set(0xffffff); sky.set(0xa0c8f0);
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  // Helper: Cloud Shape Profiles
+  // ══════════════════════════════════════════════════
+
+  private getShapeConfig(shapeType: string): ShapeConfig {
+    switch (shapeType) {
+      case 'cumulonimbus':
+      case 'storm':
+        return { widthMult: 1.35, heightScale: 1.6, heightMult: 1.25, opacityMult: 1.2 };
+      case 'sunset_glow':
+        return { widthMult: 1.2, heightScale: 0.85, heightMult: 1.0, opacityMult: 0.95 };
+      case 'multi_layered':
+        return { widthMult: 1.15, heightScale: 1.1, heightMult: 1.1, opacityMult: 1.05 };
+      case 'cumulus':
+      default:
+        return { widthMult: 1.0, heightScale: 1.0, heightMult: 1.0, opacityMult: 1.0 };
+    }
   }
 
   // ══════════════════════════════════════════════════
@@ -529,15 +533,15 @@ export class CloudSystem {
   // ══════════════════════════════════════════════════
 
   public dispose(): void {
-    if (this.mesh) {
-      this.scene.remove(this.mesh);
-      this.mesh.geometry.dispose();
-      this.mesh = null;
+    this.scene.remove(this.cloudGroup);
+
+    for (const sd of this.sprites) {
+      (sd.sprite.material as THREE.SpriteMaterial).dispose();
     }
-    if (this.material) {
-      this.material.dispose();
-      this.material = null;
-    }
+    this.sprites = [];
+    for (const tex of this.cloudTextures) tex.dispose();
+    this.cloudTextures = [];
+
     if (this.shadowMesh) {
       this.scene.remove(this.shadowMesh);
       this.shadowMesh.geometry.dispose();
@@ -548,4 +552,30 @@ export class CloudSystem {
       this.shadowMaterial = null;
     }
   }
+}
+
+function smoothstep(min: number, max: number, value: number): number {
+  const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  return x * x * (3 - 2 * x);
+}
+
+interface ShapeConfig {
+  widthMult: number;
+  heightScale: number;
+  heightMult: number;
+  opacityMult: number;
+}
+
+interface SpriteData {
+  sprite: THREE.Sprite;
+  baseX: number;
+  baseZ: number;
+  baseY: number;
+  scaleW: number;
+  scaleH: number;
+  baseOpacity: number;
+  activationThreshold: number;
+  windPhase: number;
+  densityWeight: number;
+  layer: number;
 }
