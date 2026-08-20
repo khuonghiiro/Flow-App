@@ -352,10 +352,18 @@ export class CloudSystem {
     skyTime: string = 'noon',
     altitudeMult: number = 1.0,
     layerCount: number = 3,
-    sunLightPos?: THREE.Vector3
+    sunLightPos?: THREE.Vector3,
+    rainIntensity: number = 0
   ): void {
     this.animTimer += delta;
-    const cov = Math.max(0, Math.min(1, coverage));
+
+    // ── Rain-to-Cloud Integration ──
+    // Rain dynamically affects cloud coverage, cloud darkness, and cloud size:
+    // - Light rain (0.1 - 0.3): small, sparse, dark-gray clouds
+    // - Heavy rain/storm (0.7 - 1.0): massive, dense, pitch-black/charcoal storm clouds covering the whole sky
+    const rain = Math.max(0, Math.min(1, rainIntensity));
+    const effectiveCoverage = Math.max(coverage, rain * 0.92);
+    const cov = Math.max(0, Math.min(1, effectiveCoverage));
     const activeLayers = Math.max(1, Math.min(6, Math.round(layerCount)));
     const R = CloudSystem.RANGE;
 
@@ -383,11 +391,13 @@ export class CloudSystem {
             : new THREE.Vector3(0.3, 0.85, 0.25).normalize();
     }
 
-    // Sunlit bright cloud color
-    const sunlitColor = this.toneColors.sun.clone().lerp(this.toneColors.sky, 0.2);
+    // Base sunlit color dims to stormy gray when raining
+    const rainDarkness = Math.min(1.0, rain * 1.35);
+    const baseSunlit = this.toneColors.sun.clone().lerp(this.toneColors.sky, 0.2);
+    const sunlitColor = baseSunlit.lerp(new THREE.Color(0x3b4859), rainDarkness * 0.85);
 
-    // Deep dark cloud color for dense multi-layered underbellies
-    const darkUnderbellyColor = new THREE.Color(0x182230);
+    // Deep storm cloud black/charcoal underbelly
+    const darkUnderbellyColor = new THREE.Color(0x182230).lerp(new THREE.Color(0x0c121d), rainDarkness);
 
     // Center altitude of active layers
     let avgAlt = 0;
@@ -405,11 +415,11 @@ export class CloudSystem {
       }
 
       // Coverage activation:
-      // When coverage = 1.0, all sprites are 100% active.
+      // When coverage = 1.0 (or heavy rain), all sprites are 100% active.
       // When coverage is lower, sprites fade out according to their activationThreshold.
       let spriteActivity = 0;
       if (cov > sd.activationThreshold) {
-        spriteActivity = Math.min(1.0, (cov - sd.activationThreshold) / 0.2);
+        spriteActivity = Math.min(1.0, (cov - sd.activationThreshold) / 0.18);
       }
 
       if (spriteActivity <= 0.005 || cov < 0.01) {
@@ -440,8 +450,9 @@ export class CloudSystem {
       sd.sprite.position.set(localX, localY, localZ);
 
       // ── 4. Dynamic Scale & Density Expansion ──
-      // At higher coverage, clouds expand horizontally to merge into a seamless blanket
-      const coverageScaleMult = 0.75 + cov * 0.55;
+      // At light rain: clouds are smaller and sparser; at heavy rain: clouds billow and expand
+      const rainScaleFactor = rain > 0 ? (0.85 + rain * 0.45) : 1.0;
+      const coverageScaleMult = (0.75 + cov * 0.55) * rainScaleFactor;
       sd.sprite.scale.set(
         sd.scaleW * shape.widthMult * coverageScaleMult,
         sd.scaleH * shape.heightScale * coverageScaleMult,
@@ -452,20 +463,21 @@ export class CloudSystem {
       const distFromCenter = Math.sqrt(localX * localX + localZ * localZ);
       const edgeFade = 1.0 - smoothstep(R * 0.75, R * 0.98, distFromCenter);
 
-      // ── 5. Opacity & Darkness (Beer-Lambert Absorption Model) ──
-      // Lower layers (underneath other layers) get darkened because upper layers block sunlight
+      // ── 5. Opacity & Darkness (Beer-Lambert Absorption + Rain Storm Darkening) ──
+      // Lower layers + heavy rain create pitch-black stormy undersides
       const layersAbove = (activeLayers - 1) - sd.layer;
-      // Stacking absorption factor: higher coverage + more layers above = MUCH darker
       const absorptionFactor = Math.min(1.0, (layersAbove * 0.22 + cov * 0.35) * (cov * 1.1));
+      const totalDarkness = Math.min(1.0, absorptionFactor + rainDarkness * 0.75);
 
       const mat = sd.sprite.material as THREE.SpriteMaterial;
 
-      // Opacity: high coverage + dense deck = solid opaque feel
-      const targetOpacity = (sd.baseOpacity + cov * 0.35) * spriteActivity * edgeFade * shape.opacityMult;
-      mat.opacity = Math.min(0.92, Math.max(0.0, targetOpacity));
+      // Opacity: heavy rain + dense deck = solid dark storm cloud feel
+      const rainOpacityBoost = rain * 0.25;
+      const targetOpacity = (sd.baseOpacity + cov * 0.35 + rainOpacityBoost) * spriteActivity * edgeFade * shape.opacityMult;
+      mat.opacity = Math.min(0.95, Math.max(0.0, targetOpacity));
 
-      // Color interpolation: Sunlit white -> Deep moody dark gray/slate
-      const finalColor = sunlitColor.clone().lerp(darkUnderbellyColor, absorptionFactor);
+      // Color interpolation: Sunlit white/gray -> Pitch-black stormy charcoal
+      const finalColor = sunlitColor.clone().lerp(darkUnderbellyColor, totalDarkness);
       mat.color.copy(finalColor);
     }
 
@@ -489,7 +501,7 @@ export class CloudSystem {
         su.uCloudAltitude.value = avgAlt;
         su.uCoverage.value = cov;
         su.uLayerCount.value = activeLayers;
-        su.uShadowDarkness.value = skyTime === 'overcast' ? 0.6 : 0.85;
+        su.uShadowDarkness.value = Math.min(0.95, 0.70 + rain * 0.22);
       }
     }
   }

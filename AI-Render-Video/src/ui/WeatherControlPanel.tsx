@@ -116,10 +116,10 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           rain_intensity: 0.25,
           wind_intensity: 0.35,
           wind_direction: 45,
-          cloud_coverage: 0.6,
+          cloud_coverage: 0.40,
           cloud_type: 'cumulus',
           cloud_layers: 2,
-          fog_density: 0.018,
+          fog_density: 0.016,
         });
         break;
       case 'heavy_rain':
@@ -128,13 +128,13 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           enabled: true,
           sky_time: 'overcast',
           sun_position: 0.4,
-          rain_intensity: 0.65,
-          wind_intensity: 0.6,
+          rain_intensity: 0.70,
+          wind_intensity: 0.65,
           wind_direction: 60,
-          cloud_coverage: 0.9,
-          cloud_type: 'storm',
-          cloud_layers: 3,
-          fog_density: 0.024,
+          cloud_coverage: 0.88,
+          cloud_type: 'cumulonimbus',
+          cloud_layers: 4,
+          fog_density: 0.026,
         });
         break;
       case 'storm':
@@ -147,9 +147,9 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           wind_intensity: 0.95,
           wind_direction: 75,
           cloud_coverage: 1.0,
-          cloud_type: 'storm',
-          cloud_layers: 3,
-          fog_density: 0.035,
+          cloud_type: 'cumulonimbus',
+          cloud_layers: 6,
+          fog_density: 0.038,
         });
         break;
     }

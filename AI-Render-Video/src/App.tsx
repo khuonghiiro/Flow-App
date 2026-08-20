@@ -562,6 +562,10 @@ export const App: React.FC = () => {
           ? (envOverrideRef.current.wind_direction ?? 45)
           : (activeScene.environment.weather?.wind_direction ?? 45);
 
+        const rainIntensity = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_intensity ?? 0)
+          : (activeScene.environment.weather?.rain ?? 0);
+
         cloudSystemRef.current.update(
           delta,
           renderer.camera.position,
@@ -572,7 +576,8 @@ export const App: React.FC = () => {
           skyTime,
           cloudAltitude,
           cloudLayers,
-          lightingRef.current?.sunLight.position
+          lightingRef.current?.sunLight.position,
+          rainIntensity
         );
       }
     });
