@@ -58,10 +58,6 @@ export class CloudSystem {
     this.generateLayerAltitudes();
     this.generateCloudTextures();
     this.createCloudDecks();
-
-    if (this.cloudTextures.length > 0) {
-      VolumetricCloudLighting.setShadowMap(this.cloudTextures[0]);
-    }
   }
 
   // ══════════════════════════════════════════════════
@@ -220,7 +216,9 @@ export class CloudSystem {
     rainIntensity: number = 0,
     lightningFlash: number = 0,
     lightningOrigin?: THREE.Vector3,
-    customRainDarkness?: number
+    customRainDarkness?: number,
+    customShadowDarkness?: number,
+    customShadowScale?: number
   ): void {
     this.animTimer += delta;
 
@@ -360,13 +358,22 @@ export class CloudSystem {
 
     // ── 5. Volumetric Physical Beer-Lambert Light Extinction on ALL 3D Scene Geometry ──
     const isNight = skyTime === 'night';
+    const defaultDarkness = customRainDarkness !== undefined
+      ? Math.max(0.70, 0.75 + effectiveDarkness * 0.22)
+      : (skyTime === 'overcast' ? 0.90 : 0.82);
+
+    const shadowDarkness = customShadowDarkness !== undefined ? customShadowDarkness : defaultDarkness;
+    const shadowScale = customShadowScale !== undefined ? customShadowScale : 1.0;
+
     VolumetricCloudLighting.update({
       sunDirection: worldSunDir,
-      coverage: isNight ? 0 : cov,
+      coverage: cov,
       altitude: avgAlt,
-      shadowDarkness: 0.85,
+      shadowDarkness,
+      shadowScale,
       centerXZ: new THREE.Vector2(cameraPos.x, cameraPos.z),
       windOffset: new THREE.Vector2(this.windDriftX, this.windDriftZ),
+      time: this.animTimer,
       scene: this.scene,
     });
   }

@@ -52,15 +52,9 @@ export class AssetLoaderRegistry {
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.FrontSide; // Enable GPU backface culling for high FPS
-                  mat.depthWrite = true;
-                  // Enable Early-Z depth testing on transparent materials to eliminate heavy overdraw
-                  if (mat.transparent) {
-                    mat.alphaTest = 0.05;
-                  }
+                  mat.side = THREE.FrontSide;
                   if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                     const stdMat = mat as THREE.MeshStandardMaterial;
-                    // If map is missing but emissiveMap exists (common Sketchfab unlit conversion)
                     if (stdMat.emissiveMap && !stdMat.map) {
                       stdMat.map = stdMat.emissiveMap;
                     }
@@ -106,21 +100,20 @@ export class AssetLoaderRegistry {
 
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              mesh.castShadow = true;
+              mesh.castShadow = false;
               mesh.receiveShadow = true;
               mesh.frustumCulled = false;
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.DoubleSide;
-                  mat.depthWrite = true;
-                  mat.needsUpdate = true;
+                  mat.side = THREE.FrontSide;
                   if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                     const stdMat = mat as THREE.MeshStandardMaterial;
                     if (stdMat.emissiveMap && !stdMat.map) {
                       stdMat.map = stdMat.emissiveMap;
-                      stdMat.needsUpdate = true;
                     }
+                    stdMat.roughness = Math.max(0.6, stdMat.roughness || 0.6);
+                    stdMat.metalness = Math.min(0.2, stdMat.metalness || 0.0);
                   }
                 });
               }
@@ -134,6 +127,72 @@ export class AssetLoaderRegistry {
           reject(err);
         }
       );
+    });
+  }
+
+  /**
+   * Toggle between Dynamic Real-time Sun Lighting & Shadows vs Original Baked Lightmap
+   */
+  public static applyMapLightingMode(mapGroup: THREE.Object3D, dynamicLighting: boolean = true): void {
+    if (!mapGroup) return;
+
+    mapGroup.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.receiveShadow = dynamicLighting;
+        mesh.castShadow = dynamicLighting;
+
+        if (mesh.material) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          mats.forEach((mat) => {
+            if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+              const stdMat = mat as THREE.MeshStandardMaterial;
+
+              // Store original emissive values on first encounter
+              if (stdMat.userData.origEmissive === undefined) {
+                stdMat.userData.origEmissive = stdMat.emissive ? stdMat.emissive.clone() : new THREE.Color(0xffffff);
+                stdMat.userData.origEmissiveIntensity = stdMat.emissiveIntensity !== undefined ? stdMat.emissiveIntensity : 1.0;
+                stdMat.userData.origEmissiveMap = stdMat.emissiveMap;
+                stdMat.userData.origMap = stdMat.map;
+              }
+
+              const isTransparent = stdMat.name === 'transparent' || stdMat.transparent || Boolean((mat as any).alphaMode === 'BLEND');
+
+              if (dynamicLighting) {
+                // Dynamic Sun Lighting & Shadows Mode:
+                // Make base surfaces reactive to real-time sun angle and volumetric cloud shadows
+                if (!isTransparent) {
+                  if (stdMat.emissiveMap && !stdMat.map) {
+                    stdMat.map = stdMat.emissiveMap;
+                  }
+                  stdMat.emissive.setHex(0x000000);
+                  stdMat.emissiveIntensity = 0.0;
+                } else {
+                  // Transparent materials (stained glass, lanterns, chandeliers): keep rich glowing colors
+                  stdMat.emissive.setHex(0x444444);
+                  stdMat.emissiveIntensity = 0.4;
+                }
+                stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
+                stdMat.metalness = Math.min(0.15, stdMat.metalness || 0.0);
+              } else {
+                // Original Baked Lightmap Mode:
+                // Restore original authored full-bright self-illumination
+                if (stdMat.userData.origEmissive) {
+                  stdMat.emissive.copy(stdMat.userData.origEmissive);
+                  stdMat.emissiveIntensity = stdMat.userData.origEmissiveIntensity;
+                  if (stdMat.userData.origEmissiveMap) {
+                    stdMat.emissiveMap = stdMat.userData.origEmissiveMap;
+                  }
+                } else {
+                  stdMat.emissive.setHex(0xffffff);
+                  stdMat.emissiveIntensity = 1.0;
+                }
+              }
+              stdMat.needsUpdate = true;
+            }
+          });
+        }
+      }
     });
   }
 

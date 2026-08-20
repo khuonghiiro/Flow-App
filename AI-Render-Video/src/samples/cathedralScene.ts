@@ -9,8 +9,14 @@ export const cathedralScene: MasterSceneConfig = {
     map: 'assets/maps/cathedral.glb',
     sky_time: 'night',
     weather: {
-      fog: 0.000,
-      wind: 0.05,
+      fog: 0.005,
+      wind: 0.25,
+      wind_direction: 45,
+      cloud_coverage: 0.65,
+      cloud_type: 'cumulus',
+      cloud_layers: 3,
+      cloud_altitude: 1.0,
+      cloud_shadow_darkness: 0.85,
     },
   },
   subtitles_config: {

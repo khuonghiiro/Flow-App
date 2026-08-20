@@ -98,6 +98,7 @@ export const App: React.FC = () => {
   const cloudSystemRef = useRef<CloudSystem | null>(null);
   const lightningSystemRef = useRef<LightningSystem | null>(null);
   const lastStateSyncRef = useRef({ time: 0, fps: 0, subLineId: '' });
+  const lastMapLightingModeRef = useRef<boolean | undefined>(undefined);
 
   // Default Initial Village Props with unique IDs and initial positions
   const defaultVillageProps: PlacedProp[] = [
@@ -278,6 +279,14 @@ export const App: React.FC = () => {
     if (occlusionFoliageRef.current) {
       occlusionFoliageRef.current.registerSceneFoliage(scene3D);
     }
+
+    // Ensure all environment meshes and props receive cloud shadow lighting hooks
+    VolumetricCloudLighting.applyToScene(mapGroupRef.current);
+
+    const mapDynamicLighting = envOverrideRef.current.enabled
+      ? (envOverrideRef.current.map_dynamic_lighting ?? true)
+      : (newScene.environment.weather?.map_dynamic_lighting ?? true);
+    AssetLoaderRegistry.applyMapLightingMode(mapGroupRef.current, mapDynamicLighting);
   };
 
   // Setup 3D Scene once
@@ -560,6 +569,16 @@ export const App: React.FC = () => {
         lightingRef.current.updateShadowTarget(renderer.camera.position);
       }
 
+      // Sync map real-time dynamic lighting mode
+      const mapDynamicLighting = envOverrideRef.current.enabled
+        ? (envOverrideRef.current.map_dynamic_lighting ?? true)
+        : (activeScene.environment.weather?.map_dynamic_lighting ?? true);
+
+      if (lastMapLightingModeRef.current !== mapDynamicLighting && mapGroupRef.current) {
+        lastMapLightingModeRef.current = mapDynamicLighting;
+        AssetLoaderRegistry.applyMapLightingMode(mapGroupRef.current, mapDynamicLighting);
+      }
+
       // 3D Rain & Wind Weather Particle Simulation Update (with 3D Collision Occlusion & Splash VFX)
       if (weatherParticlesRef.current) {
         const isRainActive = envOverrideRef.current.enabled
@@ -683,6 +702,14 @@ export const App: React.FC = () => {
           ? envOverrideRef.current.rain_darkness
           : undefined;
 
+        const customShadowDarkness = envOverrideRef.current.enabled
+          ? envOverrideRef.current.cloud_shadow_darkness
+          : activeScene.environment.weather?.cloud_shadow_darkness;
+
+        const customShadowScale = envOverrideRef.current.enabled
+          ? envOverrideRef.current.cloud_shadow_scale
+          : activeScene.environment.weather?.cloud_shadow_scale;
+
         cloudSystemRef.current.update(
           delta,
           renderer.camera.position,
@@ -697,7 +724,9 @@ export const App: React.FC = () => {
           rainIntensity,
           cloudFlashIntensity,
           strikeOrigin,
-          customRainDarkness
+          customRainDarkness,
+          customShadowDarkness,
+          customShadowScale
         );
       }
     });
@@ -750,6 +779,9 @@ export const App: React.FC = () => {
         lookAt,
       });
     }
+
+    // Ensure newly created actors receive cloud shadow lighting hooks
+    VolumetricCloudLighting.applyToScene(scene3D);
   };
 
   const handleTogglePlay = () => {

@@ -23,6 +23,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
   const cloudType = override.cloud_type || 'cumulus';
   const cloudLayers = override.cloud_layers ?? 3;
   const cloudAltitude = override.cloud_altitude ?? 1.0;
+  const cloudShadowDarkness = override.cloud_shadow_darkness ?? 0.85;
   
   // Lightning State
   const isLightningEnabled = override.lightning_enabled ?? (override.lightning_preset !== 'none');
@@ -323,6 +324,34 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
               </label>
             </div>
 
+            {/* Real-time Sun Lighting & Shadows on Map Toggle */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              background: (override.map_dynamic_lighting ?? true) ? 'rgba(245, 158, 11, 0.12)' : 'rgba(30, 41, 59, 0.5)', 
+              padding: '7px 9px', 
+              borderRadius: 6, 
+              border: `1px solid ${(override.map_dynamic_lighting ?? true) ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)'}` 
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: (override.map_dynamic_lighting ?? true) ? '#fef08a' : '#cbd5e1' }}>
+                  Ánh sáng & Bóng đổ thời gian thực trên Map
+                </span>
+                <span style={{ fontSize: 9, color: (override.map_dynamic_lighting ?? true) ? '#fed7aa' : '#64748b' }}>
+                  {(override.map_dynamic_lighting ?? true) ? '● Bật: Nhận hướng mặt trời & bóng râm mây' : '○ Tắt: Giữ ánh sáng nướng sẵn gốc của Map'}
+                </span>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={override.map_dynamic_lighting ?? true}
+                  onChange={(e) => onChange({ ...override, map_dynamic_lighting: e.target.checked })}
+                  style={{ accentColor: '#f59e0b', width: 15, height: 15, cursor: 'pointer' }}
+                />
+              </label>
+            </div>
+
             {/* Sky Time Tags */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {[
@@ -546,6 +575,36 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
                 onChange={(e) => onChange({ ...override, cloud_altitude: parseFloat(e.target.value), weather_preset: 'custom' })}
                 style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
               />
+            </div>
+
+            {/* Cloud Shadow Darkness on 3D Objects Slider */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                <span>Độ đậm bóng râm mây (Bóng râm trên vật thể 3D):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 600 }}>{Math.round(cloudShadowDarkness * 100)}%</span>
+              </div>
+              <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                {cloudShadowDarkness <= 0.2
+                  ? '🌤️ Rất dịu / Thoang thoảng (Tia nắng chiếu xuyên qua)'
+                  : cloudShadowDarkness <= 0.55
+                    ? '⛅ Bóng râm nhẹ tự nhiên (Dịu mát cảnh quan)'
+                    : cloudShadowDarkness <= 0.88
+                      ? '☁️ Bóng râm điện ảnh chân thực (Tương phản rõ nét - Mặc định)'
+                      : '⛈️ Bóng râm sâu đậm (Tương phản gắt / Trời râm mát đậm)'}
+              </div>
+              <input 
+                type="range" 
+                min="0" max="1" step="0.02"
+                value={cloudShadowDarkness}
+                onChange={(e) => onChange({ ...override, cloud_shadow_darkness: parseFloat(e.target.value), weather_preset: 'custom' })}
+                style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#64748b' }}>
+                <span>0% Tắt bóng râm</span>
+                <span>40% Nhẹ nhàng</span>
+                <span>85% Mặc định</span>
+                <span>100% Đậm sâu</span>
+              </div>
             </div>
           </div>
 

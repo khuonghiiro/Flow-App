@@ -34,6 +34,9 @@ export interface EnvironmentConfig {
     cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow' | 'cumulonimbus';
     cloud_layers?: number;         // 1, 2, or 3 layers
     cloud_altitude?: number;       // altitude multiplier
+    cloud_shadow_darkness?: number;// 0.0 to 1.0 (Cloud shadow darkness on 3D objects)
+    cloud_shadow_scale?: number;   // 0.5 to 2.0 (Scale of cloud shadow patches)
+    map_dynamic_lighting?: boolean;// Bật/tắt chế độ nhận ánh sáng mặt trời động & bóng mây trên Map
     skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
     skybox_url?: string;
     skybox_rotation?: number;      // 0 to 360 degrees
@@ -59,6 +62,9 @@ export interface EnvironmentOverride {
   cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow' | 'cumulonimbus';
   cloud_layers?: number;         // 1, 2, or 3 layers
   cloud_altitude?: number;
+  cloud_shadow_darkness?: number;  // 0.0 to 1.0 (Độ đậm bóng râm mây trôi trên vật thể 3D)
+  cloud_shadow_scale?: number;     // 0.5 to 2.0 (Kích thước mảng bóng mây)
+  map_dynamic_lighting?: boolean;  // Bật/tắt chế độ nhận ánh sáng mặt trời động & bóng mây trên Map
   skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
   skybox_url?: string;
   skybox_rotation?: number;      // 0 to 360 degrees

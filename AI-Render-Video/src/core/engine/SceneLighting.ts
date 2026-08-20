@@ -234,11 +234,10 @@ export class SceneLighting {
       }
     }
 
-    // Cloud coverage maintains direct sunlight intensity for vivid sunlight patches between cloud gaps
+    // Cloud coverage maintains clear contrast between sunny patches and cloud shadows
     const cloudCov = overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage ?? 0.0;
-    if (cloudCov > 0.03) {
-      // Atmospheric ambient fill balances indirect sky scattering
-      targetAmbIntensity = Math.max(0.95, targetAmbIntensity * (0.95 + cloudCov * 0.15));
+    if (cloudCov > 0.03 && explicitMode !== 'overcast') {
+      targetAmbIntensity = Math.min(0.55, targetAmbIntensity * (1.0 + cloudCov * 0.10));
     }
 
     // Atomic lightning flash applied on top of clean base frame lighting (No whiteout accumulation)
