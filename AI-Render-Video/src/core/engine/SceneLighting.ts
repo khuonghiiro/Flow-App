@@ -212,19 +212,20 @@ export class SceneLighting {
     // Rain factor
     const rain = overrideEnv?.rain_intensity ?? this.currentEnv.weather?.rain ?? 0;
     if (rain > 0.05) {
-      const rainFactor = Math.min(1, rain * 1.25);
-      // Direct sunlight drops to 0 under heavy rain (no harsh sun glares)
-      targetSunIntensity *= Math.max(0.0, 1.0 - rainFactor * 1.1);
+      // Light rain (<= 0.35): sunlight still gently pierces through fluffy clouds with warm soft rays
+      // Heavy rain (> 0.35 to 1.0): sunlight smoothly dims and extinguishes during intense storms
+      const rainSunDimming = rain <= 0.35 ? (rain * 0.55) : (0.19 + (rain - 0.35) * 1.25);
+      targetSunIntensity *= Math.max(0.0, 1.0 - rainSunDimming);
 
       // Ambient light stays vibrant and readable (atmospheric diffuse scattering)
       const rainAmbTint = new THREE.Color(0x768fae);
-      targetAmbColor.lerp(rainAmbTint, rainFactor * 0.65);
-      targetAmbIntensity = THREE.MathUtils.lerp(targetAmbIntensity, 0.88, rainFactor * 0.45);
+      targetAmbColor.lerp(rainAmbTint, rain * 0.65);
+      targetAmbIntensity = THREE.MathUtils.lerp(targetAmbIntensity, 0.88, rain * 0.40);
 
-      const rainSkyColor = new THREE.Color(0x1e293b).lerp(new THREE.Color(0x121b2b), rainFactor);
-      targetBgColor.lerp(rainSkyColor, rainFactor * 0.85);
-      targetFogColor.lerp(rainSkyColor, rainFactor * 0.85);
-      this.fog.density = Math.max(this.fog.density, 0.010 + rainFactor * 0.020);
+      const rainSkyColor = new THREE.Color(0x1e293b).lerp(new THREE.Color(0x121b2b), Math.min(1.0, rain * 1.2));
+      targetBgColor.lerp(rainSkyColor, Math.min(1.0, rain * 0.85));
+      targetFogColor.lerp(rainSkyColor, Math.min(1.0, rain * 0.85));
+      this.fog.density = Math.max(this.fog.density, 0.008 + rain * 0.020);
     }
 
     // Cloud coverage & layer sunlight occlusion (Diffuses sunlight into soft atmospheric daylight)

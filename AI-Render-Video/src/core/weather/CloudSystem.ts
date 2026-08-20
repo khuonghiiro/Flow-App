@@ -357,17 +357,13 @@ export class CloudSystem {
     sunLightPos?: THREE.Vector3,
     rainIntensity: number = 0,
     lightningFlash: number = 0,
-    lightningOrigin?: THREE.Vector3
+    lightningOrigin?: THREE.Vector3,
+    customRainDarkness?: number
   ): void {
     this.animTimer += delta;
 
-    // ── Rain-to-Cloud Integration ──
-    // Rain dynamically affects cloud coverage, cloud darkness, and cloud size:
-    // - Light rain (0.1 - 0.3): small, sparse, dark-gray clouds
-    // - Max rain/storm (0.7 - 1.0): massive, pitch-black storm clouds covering the whole sky
     const rain = Math.max(0, Math.min(1, rainIntensity));
-    const effectiveCoverage = Math.max(coverage, rain * 0.94);
-    const cov = Math.max(0, Math.min(1, effectiveCoverage));
+    const cov = Math.max(0, Math.min(1, coverage));
     const activeLayers = Math.max(1, Math.min(6, Math.round(layerCount)));
     const R = CloudSystem.RANGE;
 
@@ -395,13 +391,19 @@ export class CloudSystem {
             : new THREE.Vector3(0.3, 0.85, 0.25).normalize();
     }
 
-    // Base sunlit color dims to stormy pitch-dark when raining
-    const rainDarkness = Math.min(1.0, rain * 1.4);
-    const baseSunlit = this.toneColors.sun.clone().lerp(this.toneColors.sky, 0.2);
-    const sunlitColor = baseSunlit.lerp(new THREE.Color(0x18202c), rainDarkness * 0.92);
+    // Dynamic Cloud Darkness according to rain intensity or custom slider:
+    // - 0.0: Crisp white / soft sunlit fluffy clouds
+    // - 0.5: Moody storm slate-gray clouds
+    // - 1.0: Pitch-black ominous storm obsidian clouds (#03050a)
+    const autoRainDarkness = rain > 0 ? Math.min(1.0, Math.pow(rain, 1.3) * 1.2) : 0;
+    const rainDarkness = customRainDarkness !== undefined ? customRainDarkness : autoRainDarkness;
 
-    // Deep pitch-black storm cloud underbelly (near black obsidian #03050a at max rain)
-    const darkUnderbellyColor = new THREE.Color(0x182230).lerp(new THREE.Color(0x03050a), rainDarkness);
+    const baseSunlit = this.toneColors.sun.clone().lerp(this.toneColors.sky, 0.2);
+    // Base sunlit color: directly darkens with rainDarkness down to pitch dark storm charcoal (#0c1017)
+    const sunlitColor = baseSunlit.lerp(new THREE.Color(0x0c1017), rainDarkness * 0.94);
+
+    // Dark underbelly: deep obsidian black (#020306) at max rainDarkness
+    const darkUnderbellyColor = new THREE.Color(0x2d3748).lerp(new THREE.Color(0x020306), rainDarkness);
 
     // Center altitude of active layers
     let avgAlt = 0;
@@ -422,7 +424,7 @@ export class CloudSystem {
       }
 
       // Coverage activation:
-      // When coverage = 1.0 (or heavy rain), all sprites are 100% active.
+      // When coverage = 1.0, all sprites are 100% active.
       // When coverage is lower, sprites fade out according to their activationThreshold.
       let spriteActivity = 0;
       if (cov > sd.activationThreshold) {
@@ -457,8 +459,8 @@ export class CloudSystem {
       sd.sprite.position.set(localX, localY, localZ);
 
       // ── 4. Dynamic Scale & Density Expansion ──
-      // At light rain: clouds are smaller and sparser; at heavy rain: clouds billow and expand
-      const rainScaleFactor = rain > 0 ? (0.85 + rain * 0.45) : 1.0;
+      // At light rain: clouds are fluffy; at heavy rain: clouds billow and expand
+      const rainScaleFactor = rain > 0 ? (0.92 + rain * 0.35) : 1.0;
       const coverageScaleMult = (0.75 + cov * 0.55) * rainScaleFactor;
       sd.sprite.scale.set(
         sd.scaleW * shape.widthMult * coverageScaleMult,
@@ -471,20 +473,26 @@ export class CloudSystem {
       const edgeFade = 1.0 - smoothstep(R * 0.75, R * 0.98, distFromCenter);
 
       // ── 5. Opacity & Darkness (Beer-Lambert Absorption + Storm Darkening) ──
-      // Lower layers + heavy rain create pitch-black stormy undersides
+      // Lower layers + heavy rain create realistic stormy undersides
       const layersAbove = (activeLayers - 1) - sd.layer;
       const absorptionFactor = Math.min(1.0, (layersAbove * 0.22 + cov * 0.35) * (cov * 1.1));
-      const totalDarkness = Math.min(1.0, absorptionFactor + rainDarkness * 0.85);
+      const totalDarkness = Math.min(1.0, absorptionFactor * 0.50 + rainDarkness * 0.90);
 
       const mat = sd.sprite.material as THREE.SpriteMaterial;
 
-      // Opacity: heavy rain + dense deck = solid dark storm cloud feel
-      const rainOpacityBoost = rain * 0.30;
+      // Opacity: soft and breathable when light rain, dense when heavy rain
+      const rainOpacityBoost = rain * 0.22;
       const targetOpacity = (sd.baseOpacity + cov * 0.35 + rainOpacityBoost) * spriteActivity * edgeFade * shape.opacityMult;
       mat.opacity = Math.min(0.96, Math.max(0.0, targetOpacity));
 
       // Color interpolation: Sunlit white/gray -> Pitch-black stormy charcoal
       let finalColor = sunlitColor.clone().lerp(darkUnderbellyColor, totalDarkness);
+
+      // Bold global storm obsidian tinting so clouds are visibly deep black when rainDarkness is high
+      if (rainDarkness > 0.01) {
+        const stormObsidian = new THREE.Color(0x03050a);
+        finalColor.lerp(stormObsidian, rainDarkness * 0.88);
+      }
 
       // ── 6. Intra-Cloud Lightning Flash Illumination ──
       if (lightningFlash > 0.01) {
@@ -525,7 +533,7 @@ export class CloudSystem {
         su.uCloudAltitude.value = avgAlt;
         su.uCoverage.value = cov;
         su.uLayerCount.value = activeLayers;
-        su.uShadowDarkness.value = Math.min(0.95, 0.70 + rain * 0.22);
+        su.uShadowDarkness.value = 0.85;
       }
     }
   }

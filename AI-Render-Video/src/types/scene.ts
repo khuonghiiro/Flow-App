@@ -46,11 +46,14 @@ export interface EnvironmentConfig {
 
 export interface EnvironmentOverride {
   enabled: boolean;
+  weather_preset?: 'sunny' | 'sunset' | 'night' | 'drizzle' | 'heavy_rain' | 'storm' | 'custom';
   sky_time: 'sunrise' | 'noon' | 'sunset' | 'night' | 'overcast' | 'manual';
   sun_position?: number;
   fog_density?: number;
   wind_intensity?: number;
-  rain_intensity?: number;         // 0.0 to 1.0 (Rain intensity)
+  rain_enabled?: boolean;          // Bật/tắt chế độ mưa
+  rain_intensity?: number;         // 0.0 to 1.0 (Cường độ mưa)
+  rain_darkness?: number;          // 0.0 to 1.0 (Độ đen của mây khi mưa)
   wind_direction?: number;         // 0 to 360 degrees
   cloud_coverage?: number;         // 0.0 to 1.0 (Cloud coverage)
   cloud_type?: 'giant_cumulus' | 'cumulus' | 'multi_layered' | 'stratus' | 'cirrus' | 'storm' | 'sunset_glow' | 'cumulonimbus';
@@ -61,6 +64,8 @@ export interface EnvironmentOverride {
   skybox_rotation?: number;      // 0 to 360 degrees
   skybox_exposure?: number;      // 0.2 to 2.5
   skybox_blur?: number;          // 0.0 to 1.0
+  lightning_enabled?: boolean;         // Bật/tắt sấm chớp
+  lightning_preset?: 'none' | 'sheet_only' | 'scattered_strikes' | 'heavy_storm' | 'custom'; // Tag preset sấm sét
   lightning_frequency?: number;        // 0.5 to 15.0s (Khoảng thời gian ngẫu nhiên sấm chớp, 0 = auto)
   lightning_cloud_intensity?: number;  // 0.0 to 2.0 (Nhịp & độ sáng chớp trong mây)
   lightning_strike_intensity?: number; // 0.0 to 2.0 (Tỉ lệ & cường độ tia sét đánh xuống đất)

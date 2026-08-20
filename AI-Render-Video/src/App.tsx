@@ -565,9 +565,21 @@ export const App: React.FC = () => {
           ? (envOverrideRef.current.wind_direction ?? 45)
           : (activeScene.environment.weather?.wind_direction ?? 45);
 
-        const rainIntensity = envOverrideRef.current.enabled
-          ? (envOverrideRef.current.rain_intensity ?? 0)
-          : (activeScene.environment.weather?.rain ?? 0);
+        const isRainActive = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_enabled ?? (envOverrideRef.current.rain_intensity !== undefined && envOverrideRef.current.rain_intensity > 0.01))
+          : ((activeScene.environment.weather?.rain ?? 0) > 0.01);
+
+        const rainIntensity = isRainActive
+          ? (envOverrideRef.current.enabled
+              ? (envOverrideRef.current.rain_intensity ?? 0)
+              : (activeScene.environment.weather?.rain ?? 0))
+          : 0;
+
+        const isLightningActive = isRainActive && (
+          envOverrideRef.current.enabled
+            ? (envOverrideRef.current.lightning_enabled !== false && envOverrideRef.current.lightning_preset !== 'none')
+            : true
+        );
 
         const lightningFrequency = envOverrideRef.current.enabled
           ? (envOverrideRef.current.lightning_frequency ?? 0)
@@ -585,7 +597,7 @@ export const App: React.FC = () => {
         let sceneFlashIntensity = 0;
         let strikeOrigin: THREE.Vector3 | undefined;
 
-        if (lightningSystemRef.current) {
+        if (lightningSystemRef.current && isLightningActive) {
           const res = lightningSystemRef.current.update(
             delta,
             renderer.camera.position,
@@ -607,6 +619,10 @@ export const App: React.FC = () => {
           );
         }
 
+        const customRainDarkness = envOverrideRef.current.enabled
+          ? envOverrideRef.current.rain_darkness
+          : undefined;
+
         cloudSystemRef.current.update(
           delta,
           renderer.camera.position,
@@ -620,7 +636,8 @@ export const App: React.FC = () => {
           lightingRef.current?.sunLight.position,
           rainIntensity,
           cloudFlashIntensity,
-          strikeOrigin
+          strikeOrigin,
+          customRainDarkness
         );
       }
     });
