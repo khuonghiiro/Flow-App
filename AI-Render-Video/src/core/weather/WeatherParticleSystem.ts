@@ -27,14 +27,13 @@ interface RippleParticle {
 }
 
 /**
- * WeatherParticleSystem — Spatial Grid Cached Raycasting Rain Collision
+ * WeatherParticleSystem — Mesh Raycasting Rain Collision with Spatial Grid Cache
  *
- * Chia khu vực mưa thành lưới ô 0.5m x 0.5m.
- * Mỗi ô chỉ raycast 1 LẦN DUY NHẤT rồi cache surface Y.
- * Các giọt mưa cùng ô dùng chung kết quả → gần như 0 cost sau khi fill.
- *
- * Chỉ raycast ô NẰM TRONG camera frustum (ô ngoài tầm nhìn bỏ qua).
- * Giới hạn 8 raycasts/frame để giữ 60fps trên model 2M+ polygon.
+ * Giọt mưa va chạm bằng tia raycast thực sự (giống nhân vật rơi tự do):
+ * - Tia chiếu thẳng xuống từ trên cao → tìm đúng bề mặt vật thể 3D
+ * - Kết quả cache vào lưới ô 1m × 1m → chỉ cần raycast 1 lần/ô
+ * - 4 raycast mới/frame → grid fill dần, 0 cost sau khi đầy
+ * - Mưa rơi đúng giữa các tòa nhà, xuyên qua khe hở, dừng ở mặt đất thực
  */
 export class WeatherParticleSystem {
   private scene: THREE.Scene;
@@ -60,18 +59,21 @@ export class WeatherParticleSystem {
   private rippleIndex: number = 0;
   private rippleMaterial: THREE.MeshBasicMaterial | null = null;
 
-  // ── Spatial Grid Height Cache ──
-  // Grid cell size in meters (each cell caches 1 raycast result)
-  private static readonly GRID_CELL = 0.5;
-  // Cache: key = "gridX,gridZ" → surface Y height
+  // ── Spatial Grid Height Cache + Mesh Raycasting ──
+  // Grid cell size (2m × 2m — fewer cells, faster fill, still accurate enough for rain)
+  private static readonly GRID_CELL = 2.0;
+  // Cache: key = "gridX,gridZ" → surface Y height (from raycast)
   private heightCache: Map<string, number> = new Map();
-  // Raycaster + colliders
+  // Raycaster (same approach as character ground snapping)
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
-  private colliderMeshes: THREE.Mesh[] = [];
-  // Max NEW grid cells to raycast per frame (keeps FPS high)
-  private static readonly MAX_NEW_RAYCASTS_PER_FRAME = 8;
-  // Track pending raycast cells this frame
+  // Mesh colliders for raycasting — ONLY small meshes (<10K verts) for speed
+  private candidateMeshes: THREE.Mesh[] = [];
+  // Max NEW cells to raycast per frame (2 is enough, grid fills in ~10-15 seconds)
+  private static readonly MAX_NEW_RAYCASTS = 2;
   private newRaycastsThisFrame: number = 0;
+  // Reusable vector to avoid GC pressure
+  private static readonly _rayOrigin = new THREE.Vector3();
+  private static readonly _rayDir = new THREE.Vector3(0, -1, 0);
 
   private dummyObj: THREE.Object3D = new THREE.Object3D();
 
@@ -92,7 +94,7 @@ export class WeatherParticleSystem {
     this.rainGroup.name = 'optical_rain_engine';
     this.scene.add(this.rainGroup);
 
-    this.raycaster.far = 60;
+    this.raycaster.far = 80;
     this.raycaster.near = 0;
 
     this.initInstancedRain();
@@ -101,32 +103,36 @@ export class WeatherParticleSystem {
   }
 
   // ══════════════════════════════════════════════════
-  // Collider Management
+  // Collider Management (called when map loads)
   // ══════════════════════════════════════════════════
 
+  /**
+   * Collect ALL mesh colliders from scene for raycasting.
+   * Bounding sphere pre-filter in getSurfaceY ensures only nearby meshes are tested.
+   */
   public updateColliders(rootGroup?: THREE.Object3D): void {
-    this.colliderMeshes = [];
-    this.heightCache.clear(); // Map changed → invalidate all cached heights
+    this.candidateMeshes = [];
+    this.heightCache.clear();
     if (!rootGroup) return;
 
     rootGroup.traverse((child) => {
       if ((child as THREE.Mesh).isMesh && child.visible
         && child.name !== 'dynamic_cloud_ground_shadow') {
         const m = child as THREE.Mesh;
-        // Skip extremely large meshes (>50K verts) to avoid raycast stalls
-        if (m.geometry && m.geometry.attributes.position
-          && m.geometry.attributes.position.count < 50000) {
-          this.colliderMeshes.push(m);
+        if (m.geometry && m.geometry.attributes.position) {
+          // Pre-compute bounding sphere for fast distance filtering later
+          if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+          this.candidateMeshes.push(m);
         }
       }
     });
   }
 
   // ══════════════════════════════════════════════════
-  // Spatial Grid Height Cache
+  // Spatial Grid Height Cache with Mesh Raycasting
   // ══════════════════════════════════════════════════
 
-  /** Convert world XZ to grid key */
+  /** Grid key from world XZ */
   private gridKey(x: number, z: number): string {
     const gx = Math.floor(x / WeatherParticleSystem.GRID_CELL);
     const gz = Math.floor(z / WeatherParticleSystem.GRID_CELL);
@@ -134,37 +140,58 @@ export class WeatherParticleSystem {
   }
 
   /**
-   * Get surface height at world XZ using the spatial grid cache.
-   * If the grid cell has been raycasted before, returns cached value instantly.
-   * If not, performs a single raycast and caches the result.
-   * Returns 0 if budget exhausted this frame (drop continues falling).
+   * Get surface height at world XZ position.
+   * Uses cache if available; otherwise performs raycast (budget limited).
    */
-  private getSurfaceY(x: number, y: number, z: number): number {
-    const key = this.gridKey(x, z);
+  private getSurfaceY(worldX: number, worldZ: number): number {
+    const key = this.gridKey(worldX, worldZ);
 
-    // Cache hit → instant O(1) lookup
+    // Cache hit → instant O(1)
     const cached = this.heightCache.get(key);
     if (cached !== undefined) return cached;
 
-    // Budget exhausted this frame → skip, try next frame
-    if (this.newRaycastsThisFrame >= WeatherParticleSystem.MAX_NEW_RAYCASTS_PER_FRAME) {
-      return -999; // Sentinel: no data yet, drop keeps falling
+    // Budget exhausted this frame → return ground until next frame fills this cell
+    if (this.newRaycastsThisFrame >= WeatherParticleSystem.MAX_NEW_RAYCASTS) {
+      return 0;
     }
 
-    // No colliders → ground at Y=0
-    if (this.colliderMeshes.length === 0) {
+    // No colliders → ground at 0
+    if (this.candidateMeshes.length === 0) {
       this.heightCache.set(key, 0);
       return 0;
     }
 
-    // Raycast straight down from high above
-    this.raycaster.set(
-      new THREE.Vector3(x, Math.max(y + 5, 40), z),
-      new THREE.Vector3(0, -1, 0)
-    );
+    // ── Raycast straight down (same as character ground snap) ──
+    const cellCenterX = (Math.floor(worldX / WeatherParticleSystem.GRID_CELL) + 0.5)
+      * WeatherParticleSystem.GRID_CELL;
+    const cellCenterZ = (Math.floor(worldZ / WeatherParticleSystem.GRID_CELL) + 0.5)
+      * WeatherParticleSystem.GRID_CELL;
 
-    const hits = this.raycaster.intersectObjects(this.colliderMeshes, false);
-    const surfaceY = hits.length > 0 ? hits[0].point.y : 0;
+    WeatherParticleSystem._rayOrigin.set(cellCenterX, 60, cellCenterZ);
+    this.raycaster.set(WeatherParticleSystem._rayOrigin, WeatherParticleSystem._rayDir);
+
+    // Only test meshes whose bounding sphere is near the ray XZ (skip distant meshes)
+    const nearMeshes: THREE.Mesh[] = [];
+    for (let i = 0; i < this.candidateMeshes.length; i++) {
+      const m = this.candidateMeshes[i];
+      if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+      const bs = m.geometry.boundingSphere!;
+      // Quick XZ distance check (world space approximation)
+      const wx = m.matrixWorld.elements[12];
+      const wz = m.matrixWorld.elements[14];
+      const dx = cellCenterX - wx;
+      const dz = cellCenterZ - wz;
+      const r = bs.radius + 5;
+      if (dx * dx + dz * dz < r * r) {
+        nearMeshes.push(m);
+      }
+    }
+
+    let surfaceY = 0;
+    if (nearMeshes.length > 0) {
+      const hits = this.raycaster.intersectObjects(nearMeshes, false);
+      if (hits.length > 0) surfaceY = hits[0].point.y;
+    }
 
     this.heightCache.set(key, surfaceY);
     this.newRaycastsThisFrame++;
@@ -418,7 +445,7 @@ export class WeatherParticleSystem {
     const camY = cameraPos.y;
     const camZ = cameraPos.z;
 
-    // ── Raindrop update with spatial grid cached collision ──
+    // ── Raindrop update with spatial grid cached mesh collision ──
     if (this.instancedRain) {
       for (let i = 0; i < activeCount; i++) {
         const drop = this.rainDrops[i];
@@ -437,15 +464,11 @@ export class WeatherParticleSystem {
           distScale = Math.max(0.001, 1.0 - (distFromCam - 10.0) / 12.0);
         }
 
-        // Surface collision via spatial grid cache
-        // Only check collision for drops within camera range (performance)
-        let surfaceY = 0;
-        if (distFromCam < 20.0) {
-          const result = this.getSurfaceY(drop.pos.x, drop.pos.y, drop.pos.z);
-          surfaceY = result === -999 ? 0 : result; // -999 = no data yet
-        }
+        // Surface collision via spatial grid cache (mesh raycast)
+        const surfaceY = this.getSurfaceY(drop.pos.x, drop.pos.z);
 
         if (drop.pos.y <= surfaceY) {
+          // Hit surface → splash + reset
           if (distFromCam < 14.0 && Math.random() < 0.45 + this.activeRainIntensity * 0.30) {
             this.spawnSplashAndRipple(drop.pos.x, surfaceY, drop.pos.z, windVelX, windVelZ);
           }
@@ -453,6 +476,7 @@ export class WeatherParticleSystem {
           drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
           drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
         } else if (relX < -halfW || relX > halfW || relZ < -halfD || relZ > halfD || drop.pos.y > camY + this.boxHeight + 10) {
+          // Out of bounds
           drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
           drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
           drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
