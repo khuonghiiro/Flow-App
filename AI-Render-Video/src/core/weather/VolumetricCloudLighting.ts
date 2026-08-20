@@ -27,7 +27,7 @@ export class VolumetricCloudLighting {
     uCloudSunDir: { value: new THREE.Vector3(0.3, 0.85, 0.25).normalize() },
     uCloudWindOffset: { value: new THREE.Vector2(0, 0) },
     uCloudCoverage: { value: 0.5 },
-    uCloudAltitude: { value: 85.0 },
+    uCloudAltitude: { value: 225.0 },
     uCloudShadowDarkness: { value: 0.85 },
     uCloudCenter: { value: new THREE.Vector2(0, 0) },
     uCloudScale: { value: 1.0 },
@@ -123,33 +123,33 @@ export class VolumetricCloudLighting {
         float sunY = max(uCloudSunDir.y, 0.08);
         vec2 sunDirXZ = uCloudSunDir.xz;
 
-        // ── Deck 1: Main Fluffy Cumulus Cloud Layer (Scale ~24m wavelength) ──
+        // ── Deck 1: Main Fluffy Cumulus Cloud Layer (High Altitude 150m-300m) ──
         float rayDist1 = max(0.0, uCloudAltitude - worldPos.y) / sunY;
         vec2 hitPos1 = worldPos.xz + sunDirXZ * rayDist1;
-        vec2 samplePos1 = (hitPos1 - uCloudWindOffset) * (0.042 * uCloudScale);
+        vec2 samplePos1 = (hitPos1 - uCloudWindOffset) * (0.038 * uCloudScale);
 
         float n1 = cloudFBM_shader(samplePos1);
 
-        // Linear coverage response (0% = 0 shade, 50% = 50% shade, 100% = 100% shade)
-        float threshold1 = 0.74 - uCloudCoverage * 0.48;
-        float d1 = smoothstep(threshold1 - 0.14, threshold1 + 0.14, n1);
+        // Linear coverage response with high contrast
+        float threshold1 = 0.72 - uCloudCoverage * 0.44;
+        float d1 = smoothstep(threshold1 - 0.12, threshold1 + 0.12, n1);
 
-        // ── Deck 2: Higher Altitude Wispy Clouds (Parallax Drift, Scale ~13m) ──
-        float alt2 = uCloudAltitude * 1.35 + 20.0;
+        // ── Deck 2: Higher Altitude Wispy Clouds (Parallax Drift) ──
+        float alt2 = uCloudAltitude * 1.30 + 15.0;
         float rayDist2 = max(0.0, alt2 - worldPos.y) / sunY;
         vec2 hitPos2 = worldPos.xz + sunDirXZ * rayDist2;
-        vec2 samplePos2 = (hitPos2 - uCloudWindOffset * 1.35 + vec2(45.0, -30.0)) * (0.075 * uCloudScale);
+        vec2 samplePos2 = (hitPos2 - uCloudWindOffset * 1.25 + vec2(45.0, -30.0)) * (0.065 * uCloudScale);
 
         float n2 = cloudFBM_shader(samplePos2);
-        float threshold2 = 0.76 - uCloudCoverage * 0.45;
-        float d2 = smoothstep(threshold2 - 0.12, threshold2 + 0.12, n2) * 0.45;
+        float threshold2 = 0.74 - uCloudCoverage * 0.42;
+        float d2 = smoothstep(threshold2 - 0.10, threshold2 + 0.10, n2);
 
         // Composite optical density across both cloud decks
-        float totalDensity = clamp(d1 + d2 * (1.0 - d1 * 0.6), 0.0, 1.0);
+        float totalDensity = clamp(d1 * 1.1 + d2 * 0.65, 0.0, 1.0);
         if (totalDensity <= 0.005) return 1.0;
 
         // Beer-Lambert Exponential Light Extinction
-        float optTau = totalDensity * (1.5 + uCloudCoverage * 3.2);
+        float optTau = totalDensity * (1.8 + uCloudCoverage * 3.5);
         float transmittance = exp(-optTau);
 
         // Modulate with user shadow darkness factor

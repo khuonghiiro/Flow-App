@@ -1,19 +1,36 @@
 import * as THREE from 'three';
 import { VolumetricCloudLighting } from './VolumetricCloudLighting';
 
+export interface SpriteData {
+  sprite: THREE.Sprite;
+  baseX: number;
+  baseZ: number;
+  baseY: number;
+  scaleW: number;
+  scaleH: number;
+  baseOpacity: number;
+  activationThreshold: number;
+  windPhase: number;
+  densityWeight: number;
+  layer: number;
+  clusterOffset: number;
+}
+
+function smoothstep(min: number, max: number, value: number): number {
+  const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  return x * x * (3 - 2 * x);
+}
+
 /**
- * Advanced Multi-Layered Volumetric Particle Cloud System
+ * Advanced Multi-Layered Volumetric Cloud System
  *
  * Features:
- * 1. Layered Fluffy 3D Sprites: 6 distinct vertical layers spaced between 65m – 120m.
- * 2. Coverage Slider Behavior: At max coverage (100%), layers form a contiguous blanket
- *    of soft, organic "mây bồng".
- * 3. Dynamic Real-Time Wind Drift: 2D incremental accumulation ensures instant reactivity
- *    to wind strength (0 to 32 m/s) and wind direction (0° to 360°) with parallax drift.
- * 4. Ultra-Smooth Simplex Atmospheric Ground Shadow: Uses isotropic Simplex noise with
- *    wide smoothstep penumbra to project silky-smooth, organic cloud shadows on terrain.
- * 5. Beer-Lambert Atmospheric Darkening: Lower layers darken realistically when covered
- *    by upper cloud decks.
+ * 1. Stratified Random Altitudes: 6 distinct layers spanning 150m – 300m.
+ * 2. Randomized Fractal Cloud Distribution: As coverage increases, random organic
+ *    cloud clusters appear naturally across different quadrants of the sky.
+ * 3. Expansive Skybox Radius (1500m): High-altitude clouds stretch gracefully to horizon.
+ * 4. Dynamic Real-Time Wind Drift & Parallax Speeds.
+ * 5. Ground Shadow Projection from 150m-300m Altitude Decks.
  */
 export class CloudSystem {
   private scene: THREE.Scene;
@@ -21,18 +38,15 @@ export class CloudSystem {
   private sprites: SpriteData[] = [];
   private cloudTextures: THREE.Texture[] = [];
 
-  // Random altitudes per layer within 65m – 120m
+  // Random altitudes per layer within 150m – 300m
   private layerAltitudes: number[] = [];
   // Parallax speed multiplier per layer
-  private layerSpeedMults: number[] = [1.0, 1.12, 1.25, 1.38, 1.52, 1.68];
-
-  // Dual-Layer 3D Cloud Shadow Casters removed in favor of 1:1 per-sprite shadow meshes
+  private layerSpeedMults: number[] = [0.85, 0.98, 1.12, 1.28, 1.45, 1.65];
 
   private animTimer = 0;
   // Accumulated 2D wind drift offsets (meters)
   private windDriftX: number = 0;
   private windDriftZ: number = 0;
-  private baseGlobalTime: number = 0;
 
   private readonly toneColors = {
     sun: new THREE.Color(),
@@ -41,9 +55,9 @@ export class CloudSystem {
   };
 
   /** Half-extent of the cloud simulation box (meters from camera) */
-  private static readonly RANGE = 500;
-  /** Number of puffy sprites per layer deck for dense sky coverage */
-  private static readonly SPRITES_PER_LAYER = 64;
+  private static readonly RANGE = 1500;
+  /** Number of puffy sprites per layer deck for dense, rich sky coverage */
+  private static readonly SPRITES_PER_LAYER = 80;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -61,7 +75,7 @@ export class CloudSystem {
   }
 
   // ══════════════════════════════════════════════════
-  // 1. Layer Altitude Generation (65m – 120m with jitter)
+  // 1. Layer Altitude Generation (150m – 300m with natural jitter)
   // ══════════════════════════════════════════════════
 
   private generateLayerAltitudes(): void {
@@ -71,15 +85,16 @@ export class CloudSystem {
       return seed / 0x7fffffff;
     };
 
-    const minAlt = 65;
-    const maxAlt = 120;
-    const step = (maxAlt - minAlt) / 5; // ~11m between layers
+    const minAlt = 150;
+    const maxAlt = 300;
+    const numLayers = 6;
+    const step = (maxAlt - minAlt) / (numLayers - 1); // ~30m between layer decks
 
     this.layerAltitudes = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < numLayers; i++) {
       const base = minAlt + i * step;
-      const jitter = (rng() - 0.5) * 5.0; // +/- 2.5m jitter
-      this.layerAltitudes.push(Math.max(62, Math.min(125, base + jitter)));
+      const jitter = (rng() - 0.5) * 12.0; // +/- 6m natural jitter
+      this.layerAltitudes.push(Math.max(145, Math.min(310, base + jitter)));
     }
   }
 
@@ -97,13 +112,14 @@ export class CloudSystem {
       ctx.clearRect(0, 0, s, s);
 
       const puffs: Array<{ x: number; y: number; r: number; a: number }> = [
-        { x: 128, y: 128, r: 85, a: 0.95 },
-        { x: 92, y: 135, r: 65, a: 0.85 },
-        { x: 165, y: 130, r: 68, a: 0.88 },
-        { x: 110, y: 95, r: 58, a: 0.78 },
-        { x: 148, y: 92, r: 62, a: 0.82 },
-        { x: 75, y: 115, r: 48, a: 0.65 },
-        { x: 182, y: 110, r: 50, a: 0.68 },
+        { x: 128, y: 128, r: 88, a: 0.95 },
+        { x: 92, y: 135, r: 68, a: 0.88 },
+        { x: 165, y: 130, r: 72, a: 0.90 },
+        { x: 110, y: 95, r: 62, a: 0.82 },
+        { x: 148, y: 92, r: 66, a: 0.85 },
+        { x: 75, y: 115, r: 52, a: 0.70 },
+        { x: 182, y: 110, r: 55, a: 0.72 },
+        { x: 130, y: 160, r: 58, a: 0.65 },
       ];
 
       for (const p of puffs) {
@@ -128,7 +144,7 @@ export class CloudSystem {
   }
 
   // ══════════════════════════════════════════════════
-  // 3. Multi-Deck Cloud Sprites
+  // 3. Multi-Deck Cloud Sprites with Random Cluster Activation
   // ══════════════════════════════════════════════════
 
   private createCloudDecks(): void {
@@ -143,7 +159,7 @@ export class CloudSystem {
     const R = CloudSystem.RANGE;
 
     for (let layer = 0; layer < numLayers; layer++) {
-      const baseAlt = this.layerAltitudes[layer] ?? (65 + layer * 11);
+      const baseAlt = this.layerAltitudes[layer] ?? (150 + layer * 30);
 
       for (let i = 0; i < perLayer; i++) {
         const mat = new THREE.SpriteMaterial({
@@ -156,19 +172,24 @@ export class CloudSystem {
 
         const sprite = new THREE.Sprite(mat);
 
+        // Circular cloud distribution across high altitude dome
         const r = Math.sqrt(rng()) * R;
         const theta = rng() * Math.PI * 2;
         const posX = Math.cos(theta) * r;
         const posZ = Math.sin(theta) * r;
-        const posY = baseAlt + (rng() - 0.5) * 8.0;
+        const posY = baseAlt + (rng() - 0.5) * 16.0;
 
-        const w = 45 + rng() * 55;
-        const h = 22 + rng() * 28;
+        // Proportional scale for high altitude (150m - 300m)
+        const w = 150 + rng() * 180;
+        const h = 70 + rng() * 80;
 
         sprite.position.set(posX, posY, posZ);
         sprite.scale.set(w, h, 1);
 
-        const activationThreshold = (i / perLayer) * 0.85;
+        // Randomized organic threshold: scattered clusters appear progressively
+        const clusterNoise = Math.sin(posX * 0.0025) * Math.cos(posZ * 0.0025);
+        const randomBase = rng() * 0.75;
+        const activationThreshold = Math.max(0.02, Math.min(0.88, randomBase + clusterNoise * 0.15));
 
         this.sprites.push({
           sprite,
@@ -182,6 +203,7 @@ export class CloudSystem {
           windPhase: rng() * Math.PI * 2,
           densityWeight: 0.5 + rng() * 0.5,
           layer,
+          clusterOffset: clusterNoise,
         });
 
         this.cloudGroup.add(sprite);
@@ -199,6 +221,71 @@ export class CloudSystem {
   }
 
   // ══════════════════════════════════════════════════
+  // 5. Sky Color Palettes
+  // ══════════════════════════════════════════════════
+
+  private applyTones(skyTime: string): void {
+    switch (skyTime) {
+      case 'dawn':
+        this.toneColors.sun.set('#ffd1a4');
+        this.toneColors.sky.set('#7e6382');
+        this.toneColors.ambient.set('#ffb088');
+        break;
+      case 'dusk':
+        this.toneColors.sun.set('#ff914d');
+        this.toneColors.sky.set('#4a3b69');
+        this.toneColors.ambient.set('#ff6b6b');
+        break;
+      case 'sunset':
+        this.toneColors.sun.set('#ff5722');
+        this.toneColors.sky.set('#311b92');
+        this.toneColors.ambient.set('#e91e63');
+        break;
+      case 'night':
+        this.toneColors.sun.set('#1a243b');
+        this.toneColors.sky.set('#060913');
+        this.toneColors.ambient.set('#0e1526');
+        break;
+      case 'overcast':
+        this.toneColors.sun.set('#a0aab8');
+        this.toneColors.sky.set('#687588');
+        this.toneColors.ambient.set('#526074');
+        break;
+      default: // noon
+        this.toneColors.sun.set('#ffffff');
+        this.toneColors.sky.set('#93c5fd');
+        this.toneColors.ambient.set('#dbeafe');
+        break;
+    }
+  }
+
+  private getShapeConfig(shape: string): {
+    widthMult: number;
+    heightMult: number;
+    heightScale: number;
+    opacityMult: number;
+  } {
+    switch (shape) {
+      case 'multi_layered':
+        // Broad, stratified cloud decks with multi-tier overlapping coverage
+        return { widthMult: 2.2, heightMult: 0.75, heightScale: 0.8, opacityMult: 1.05 };
+      case 'sunset_glow':
+        // Long, dramatic horizontal sunset clouds with vibrant glowing edges
+        return { widthMult: 2.6, heightMult: 0.55, heightScale: 0.6, opacityMult: 0.92 };
+      case 'cumulonimbus':
+        // Towering, dramatic storm clouds
+        return { widthMult: 1.35, heightMult: 1.85, heightScale: 1.7, opacityMult: 1.35 };
+      case 'stratus':
+        return { widthMult: 1.8, heightMult: 0.6, heightScale: 0.7, opacityMult: 0.9 };
+      case 'cirrus':
+        return { widthMult: 2.0, heightMult: 0.4, heightScale: 0.5, opacityMult: 0.6 };
+      default: // cumulus
+        // Standard fluffy puffy 3D cloud formation
+        return { widthMult: 1.0, heightMult: 1.0, heightScale: 1.0, opacityMult: 1.0 };
+    }
+  }
+
+  // ══════════════════════════════════════════════════
   // 6. Simulation & Update Loop
   // ══════════════════════════════════════════════════
 
@@ -211,7 +298,7 @@ export class CloudSystem {
     windDirectionDeg: number = 45,
     skyTime: string = 'noon',
     altitudeMult: number = 1.0,
-    layerCount: number = 3,
+    layerCount: number = 4,
     sunLightPos?: THREE.Vector3,
     rainIntensity: number = 0,
     lightningFlash: number = 0,
@@ -254,7 +341,7 @@ export class CloudSystem {
 
     let sumAlt = 0;
     for (let l = 0; l < activeLayers; l++) {
-      sumAlt += (this.layerAltitudes[l] ?? 70) * altitudeMult;
+      sumAlt += (this.layerAltitudes[l] ?? 200) * altitudeMult;
     }
     const avgAlt = sumAlt / activeLayers;
 
@@ -292,7 +379,8 @@ export class CloudSystem {
       }
 
       const edgeFade = smoothstep(R * 0.98, R * 0.70, distFromCenter);
-      const activation = smoothstep(sd.activationThreshold, sd.activationThreshold + 0.15, cov);
+      // Dynamic random activation: as slider increases, more random clusters awaken
+      const activation = smoothstep(sd.activationThreshold, sd.activationThreshold + 0.16, cov);
 
       if (activation <= 0.001 || edgeFade <= 0.001) {
         sd.sprite.visible = false;
@@ -302,13 +390,13 @@ export class CloudSystem {
       sd.sprite.visible = true;
 
       const baseOpacity = sd.baseOpacity * shape.opacityMult;
-      const blanketBoost = smoothstep(0.70, 1.0, cov) * 0.35;
+      const blanketBoost = smoothstep(0.65, 1.0, cov) * 0.35;
       const finalOpacity = Math.min(1.0, (baseOpacity + blanketBoost) * activation * edgeFade);
 
       const mat = sd.sprite.material as THREE.SpriteMaterial;
       mat.opacity = finalOpacity;
 
-      const expansionProgress = smoothstep(0.40, 1.0, cov);
+      const expansionProgress = smoothstep(0.35, 1.0, cov);
       const coverageWidthMult = 1.0 + expansionProgress * 0.65;
       const coverageHeightMult = 1.0 + expansionProgress * 0.40;
 
@@ -322,7 +410,6 @@ export class CloudSystem {
         cameraPos.z + localZ
       );
 
-      // Ensure lighting colors are passed to standard sprite shading
       const dotSun = Math.max(0, spriteWorldPos.clone().sub(cameraPos).normalize().dot(worldSunDir));
       
       const beerLambertShadow = smoothstep(0, 0.4, sd.densityWeight * (1.0 - effectiveDarkness));
@@ -356,7 +443,7 @@ export class CloudSystem {
     this.cloudGroup.position.set(cameraPos.x, avgAlt, cameraPos.z);
     this.cloudGroup.visible = cov > 0.01;
 
-    // ── 5. Volumetric Physical Beer-Lambert Light Extinction on ALL 3D Scene Geometry ──
+    // ── 4. Volumetric Physical Beer-Lambert Light Extinction on ALL 3D Scene Geometry ──
     const isNight = skyTime === 'night';
     const defaultDarkness = customRainDarkness !== undefined
       ? Math.max(0.70, 0.75 + effectiveDarkness * 0.22)
@@ -378,78 +465,16 @@ export class CloudSystem {
     });
   }
 
-  private applyTones(skyTime: string): void {
-    const { sun, sky } = this.toneColors;
-    if (skyTime === 'overcast') {
-      sun.set(0x94a3b8); sky.set(0x64748b);
-    } else if (skyTime === 'sunset') {
-      sun.set(0xff9a4d); sky.set(0xc87d65);
-    } else if (skyTime === 'sunrise') {
-      sun.set(0xffc585); sky.set(0xdbad87);
-    } else if (skyTime === 'night') {
-      sun.set(0x5c79a0); sky.set(0x18243e);
-    } else {
-      sun.set(0xffffff); sky.set(0xa0c8f0);
-    }
-  }
-
-  // ══════════════════════════════════════════════════
-  // Helper: Cloud Shape Profiles
-  // ══════════════════════════════════════════════════
-
-  private getShapeConfig(shapeType: string): ShapeConfig {
-    switch (shapeType) {
-      case 'cumulonimbus':
-      case 'storm':
-        return { widthMult: 1.35, heightScale: 1.6, heightMult: 1.25, opacityMult: 1.2 };
-      case 'sunset_glow':
-        return { widthMult: 1.2, heightScale: 0.85, heightMult: 1.0, opacityMult: 0.95 };
-      case 'multi_layered':
-        return { widthMult: 1.15, heightScale: 1.1, heightMult: 1.1, opacityMult: 1.05 };
-      case 'cumulus':
-      default:
-        return { widthMult: 1.0, heightScale: 1.0, heightMult: 1.0, opacityMult: 1.0 };
-    }
-  }
-
-  // ══════════════════════════════════════════════════
-  // Disposal
-  // ══════════════════════════════════════════════════
-
   public dispose(): void {
-    this.scene.remove(this.cloudGroup);
-
     for (const sd of this.sprites) {
-      (sd.sprite.material as THREE.SpriteMaterial).dispose();
+      sd.sprite.geometry.dispose();
+      (sd.sprite.material as THREE.Material).dispose();
     }
-    
-    for (const tex of this.cloudTextures) tex.dispose();
-    this.cloudTextures = [];
+    for (const tex of this.cloudTextures) {
+      tex.dispose();
+    }
+    if (this.cloudGroup.parent) {
+      this.cloudGroup.parent.remove(this.cloudGroup);
+    }
   }
-}
-
-function smoothstep(min: number, max: number, value: number): number {
-  const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  return x * x * (3 - 2 * x);
-}
-
-interface ShapeConfig {
-  widthMult: number;
-  heightScale: number;
-  heightMult: number;
-  opacityMult: number;
-}
-
-interface SpriteData {
-  sprite: THREE.Sprite;
-  baseX: number;
-  baseZ: number;
-  baseY: number;
-  scaleW: number;
-  scaleH: number;
-  baseOpacity: number;
-  activationThreshold: number;
-  windPhase: number;
-  densityWeight: number;
-  layer: number;
 }

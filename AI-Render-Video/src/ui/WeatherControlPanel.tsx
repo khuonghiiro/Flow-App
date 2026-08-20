@@ -529,12 +529,32 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
 
             {/* Cloud Type Tags */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {[
-                { key: 'cumulus', label: '☁️ Mây Bồng Bềnh', desc: 'Cụm mây tích 3D tự nhiên' },
-                { key: 'cumulonimbus', label: '⛈️ Mây Vũ Tích', desc: 'Mây bão dày cuồn cuộn' },
-                { key: 'multi_layered', label: '⛅ Mây Đa Tầng', desc: 'Nhiều tầng mây đan xen' },
-                { key: 'sunset_glow', label: '🌅 Mây Hoàng Hôn', desc: 'Mây ráng hồng trải rộng' },
-              ].map((c) => {
+              {([
+                { 
+                  key: 'cumulus', 
+                  label: '☁️ Mây Bồng Bềnh', 
+                  desc: 'Cụm mây tích 3D tự nhiên bồng bềnh',
+                  preset: { cloud_type: 'cumulus', cloud_coverage: 0.50, cloud_layers: 3, cloud_altitude: 1.0 }
+                },
+                { 
+                  key: 'cumulonimbus', 
+                  label: '⛈️ Mây Vũ Tích', 
+                  desc: 'Mây dông bão tầng cao dày cuồn cuộn',
+                  preset: { cloud_type: 'cumulonimbus', cloud_coverage: 0.85, cloud_layers: 6, cloud_altitude: 1.2 }
+                },
+                { 
+                  key: 'multi_layered', 
+                  label: '⛅ Mây Đa Tầng', 
+                  desc: 'Nhiều tầng mây 150m-300m đan xen đa tốc độ',
+                  preset: { cloud_type: 'multi_layered', cloud_coverage: 0.75, cloud_layers: 6, cloud_altitude: 1.1 }
+                },
+                { 
+                  key: 'sunset_glow', 
+                  label: '🌅 Mây Hoàng Hôn', 
+                  desc: 'Mây ráng chiều rực rỡ chân trời hoàng hôn',
+                  preset: { cloud_type: 'sunset_glow', sky_time: 'sunset', sun_position: 0.85, cloud_coverage: 0.65, cloud_layers: 4, cloud_altitude: 1.0 }
+                },
+              ] as Array<{ key: string; label: string; desc: string; preset: Partial<EnvironmentOverride> }>).map((c) => {
                 const isActive = cloudType === c.key;
                 return (
                   <button
@@ -552,7 +572,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
                       boxShadow: isActive ? '0 0 8px rgba(56, 189, 248, 0.3)' : 'none',
                       cursor: 'pointer',
                     }}
-                    onClick={() => onChange({ ...override, cloud_type: c.key as any })}
+                    onClick={() => onChange({ ...override, ...c.preset, weather_preset: 'custom' })}
                     title={c.desc}
                   >
                     <span>{c.label}</span>
@@ -588,7 +608,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
             {/* Cloud Layers Slider */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
-                <span>Số tầng mây (65m – 120m):</span>
+                <span>Số tầng mây (150m – 300m):</span>
                 <span style={{ color: '#38bdf8', fontWeight: 600 }}>{cloudLayers} Tầng</span>
               </div>
               <input 
@@ -612,7 +632,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8' }}>
                 <span>Độ cao trần mây:</span>
-                <span>{Math.round(cloudAltitude * 100)}% ({Math.round(cloudAltitude * 90)}m)</span>
+                <span>{Math.round(cloudAltitude * 100)}% ({Math.round(cloudAltitude * 225)}m)</span>
               </div>
               <input 
                 type="range" 

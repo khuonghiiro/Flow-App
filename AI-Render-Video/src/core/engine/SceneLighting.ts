@@ -26,15 +26,15 @@ export class SceneLighting {
     this.hemiLight.position.set(0, 50, 0);
     this.scene.add(this.hemiLight);
 
-    // Directional Sun Light with Shadows (high above clouds to cast true 3D shadows)
+    // Directional Sun Light with Shadows (high celestial dome far above 150m-300m clouds)
     this.sunLight = new THREE.DirectionalLight(0xfff1d2, 3.2);
-    this.sunLight.position.set(40, 350, 40);
+    this.sunLight.position.set(100, 3500, 100);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;
     this.sunLight.shadow.camera.near = 10.0;
-    this.sunLight.shadow.camera.far = 900;
-    const d = 160;
+    this.sunLight.shadow.camera.far = 10000;
+    const d = 250;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
@@ -58,8 +58,8 @@ export class SceneLighting {
       depthWrite: false,
     });
     this.sunSprite = new THREE.Sprite(sunMat);
-    this.sunSprite.scale.set(65, 65, 1);
-    this.sunSprite.renderOrder = 50; // Below 3D clouds (renderOrder 100) so clouds pass in front of the sun
+    this.sunSprite.scale.set(380, 380, 1);
+    this.sunSprite.renderOrder = 1; // Behind 3D clouds (renderOrder 100) so clouds pass in front of the sun
     this.scene.add(this.sunSprite);
   }
 
@@ -110,13 +110,13 @@ export class SceneLighting {
   }
 
   private applyLightingState(progress: number, overrideEnv?: EnvironmentOverride, flashIntensity: number = 0): void {
-    // Celestial Sphere Sun Trajectory: High above the entire cloud deck (Y = 140m - 240m)
+    // Celestial Sphere Sun Trajectory: High celestial dome (Y = 1500m - 5000m)
     // progress 0.0 (East Dawn) -> 0.5 (Zenith Noon High) -> 0.85 (West Dusk) -> 1.0 (Night Below Horizon)
     const angle = Math.PI * (0.06 + progress * 0.88);
-    const sunDist = 420; // High in the celestial hemisphere (far above clouds)
-    const sunX = -Math.cos(angle) * sunDist; // East (-X) to West (+X)
-    const sunY = Math.sin(angle) * 350 + 80; // Always above clouds (Y = 180m - 430m at daytime)
-    const sunZ = -55 + Math.sin(progress * Math.PI) * 55;
+    const sunDist = 4500; // Far in the outer celestial dome
+    const sunX = -Math.cos(angle) * (sunDist * 0.85); // East (-X) to West (+X)
+    const sunY = Math.sin(angle) * 3500 + 1500; // Always far above clouds (Y = 1500m - 5000m at daytime)
+    const sunZ = -350 + Math.sin(progress * Math.PI) * 350;
 
     this.sunSprite.position.set(sunX, sunY, sunZ);
     // Sun light source follows high celestial position
