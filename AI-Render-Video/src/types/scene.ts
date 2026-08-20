@@ -69,6 +69,7 @@ export interface EnvironmentOverride {
   lightning_frequency?: number;        // 0.5 to 15.0s (Khoảng thời gian ngẫu nhiên sấm chớp, 0 = auto)
   lightning_cloud_intensity?: number;  // 0.0 to 2.0 (Nhịp & độ sáng chớp trong mây)
   lightning_strike_intensity?: number; // 0.0 to 2.0 (Tỉ lệ & cường độ tia sét đánh xuống đất)
+  rain_collision_quality?: number;     // 0 to 10 (Chất lượng va chạm mưa: 0=tắt, 10=max raycasts/frame)
 }
 
 export interface SubtitlesConfig {

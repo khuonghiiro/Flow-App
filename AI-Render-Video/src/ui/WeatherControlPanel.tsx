@@ -691,6 +691,36 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
                   </div>
                 </div>
 
+                {/* 3.2b Rain Collision Quality Slider (Performance) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                    <span>⚡ Chất lượng va chạm mưa:</span>
+                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>{override.rain_collision_quality ?? 2}/10</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                    {(override.rain_collision_quality ?? 2) === 0
+                      ? '🚀 Tắt va chạm — FPS cao nhất, mưa xuyên qua mọi vật'
+                      : (override.rain_collision_quality ?? 2) <= 2
+                        ? '⚖️ Tiết kiệm — 2 raycasts/frame, đủ mượt cho card yếu'
+                        : (override.rain_collision_quality ?? 2) <= 5
+                          ? '🎯 Cân bằng — grid fill nhanh, mưa chính xác hơn'
+                          : '💎 Chất lượng cao — 10 raycasts/frame, cần card khỏe'}
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="10" step="1"
+                    value={override.rain_collision_quality ?? 2}
+                    onChange={(e) => onChange({ ...override, rain_collision_quality: parseInt(e.target.value), weather_preset: 'custom' })}
+                    style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#64748b' }}>
+                    <span>0 Tắt (nhanh nhất)</span>
+                    <span>2 Mặc định</span>
+                    <span>5 Cân bằng</span>
+                    <span>10 Max (card khỏe)</span>
+                  </div>
+                </div>
+
                 {/* 3.3 SẤM CHỚP & TIA SÉT (LIGHTNING PRESETS & FINE-TUNING) */}
                 <div style={{ 
                   display: 'flex', 

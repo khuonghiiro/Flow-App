@@ -68,8 +68,8 @@ export class WeatherParticleSystem {
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   // Mesh colliders for raycasting — ONLY small meshes (<10K verts) for speed
   private candidateMeshes: THREE.Mesh[] = [];
-  // Max NEW cells to raycast per frame (2 is enough, grid fills in ~10-15 seconds)
-  private static readonly MAX_NEW_RAYCASTS = 2;
+  // Max NEW cells to raycast per frame — set dynamically from collisionQuality slider
+  private maxNewRaycasts: number = 2;
   private newRaycastsThisFrame: number = 0;
   // Reusable vector to avoid GC pressure
   private static readonly _rayOrigin = new THREE.Vector3();
@@ -151,7 +151,7 @@ export class WeatherParticleSystem {
     if (cached !== undefined) return cached;
 
     // Budget exhausted this frame → return ground until next frame fills this cell
-    if (this.newRaycastsThisFrame >= WeatherParticleSystem.MAX_NEW_RAYCASTS) {
+    if (this.newRaycastsThisFrame >= this.maxNewRaycasts) {
       return 0;
     }
 
@@ -405,12 +405,16 @@ export class WeatherParticleSystem {
     rainIntensity: number = 0,
     windIntensity: number = 0.3,
     windDirectionDeg: number = 45,
-    _sceneObstaclesGroup?: THREE.Object3D
+    _sceneObstaclesGroup?: THREE.Object3D,
+    collisionQuality: number = 2
   ): void {
     this.activeRainIntensity = Math.max(0, Math.min(1, rainIntensity));
     this.activeWindIntensity = Math.max(0, Math.min(1, windIntensity));
     this.activeWindDirection = windDirectionDeg;
     this.gustTimer += delta * (1.1 + this.activeWindIntensity * 2.2);
+
+    // Dynamic raycast budget from slider (0 = no collision, 10 = max quality)
+    this.maxNewRaycasts = Math.max(0, Math.min(10, Math.round(collisionQuality)));
 
     // Reset per-frame raycast budget
     this.newRaycastsThisFrame = 0;

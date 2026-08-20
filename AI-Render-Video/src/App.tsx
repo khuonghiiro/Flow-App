@@ -575,13 +575,18 @@ export const App: React.FC = () => {
           ? (envOverrideRef.current.wind_direction ?? 45)
           : (activeScene.environment.weather?.wind_direction ?? 45);
 
+        const collisionQuality = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_collision_quality ?? 2)
+          : 2;
+
         weatherParticlesRef.current.update(
           delta,
           renderer.camera.position,
           rainIntensity,
           windIntensity,
           windDirection,
-          mapGroupRef.current
+          mapGroupRef.current,
+          collisionQuality
         );
       }
 
