@@ -132,7 +132,8 @@ export class WeatherParticleSystem {
 
     rootGroup.traverse((child) => {
       if ((child as THREE.Mesh).isMesh && child.visible
-        && child.name !== 'dynamic_cloud_ground_shadow') {
+        && child.name !== 'dynamic_cloud_ground_shadow'
+        && child.name !== 'cloud_shadow_caster_3d') {
         const m = child as THREE.Mesh;
         if (m.geometry && m.geometry.attributes.position) {
           // Pre-compute bounding sphere for fast distance filtering later

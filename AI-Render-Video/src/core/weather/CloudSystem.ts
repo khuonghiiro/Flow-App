@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { VolumetricCloudLighting } from './VolumetricCloudLighting';
 
 /**
  * Advanced Multi-Layered Volumetric Particle Cloud System
@@ -25,14 +26,13 @@ export class CloudSystem {
   // Parallax speed multiplier per layer
   private layerSpeedMults: number[] = [1.0, 1.12, 1.25, 1.38, 1.52, 1.68];
 
-  // Ground Shadow Mesh & Material
-  private shadowMesh: THREE.Mesh | null = null;
-  private shadowMaterial: THREE.ShaderMaterial | null = null;
+  // Dual-Layer 3D Cloud Shadow Casters removed in favor of 1:1 per-sprite shadow meshes
 
   private animTimer = 0;
   // Accumulated 2D wind drift offsets (meters)
-  private windDriftX = 0;
-  private windDriftZ = 0;
+  private windDriftX: number = 0;
+  private windDriftZ: number = 0;
+  private baseGlobalTime: number = 0;
 
   private readonly toneColors = {
     sun: new THREE.Color(),
@@ -53,10 +53,15 @@ export class CloudSystem {
     this.cloudGroup.renderOrder = 100;
     this.scene.add(this.cloudGroup);
 
+    VolumetricCloudLighting.init();
+
     this.generateLayerAltitudes();
     this.generateCloudTextures();
     this.createCloudDecks();
-    this.buildDynamicShadow();
+
+    if (this.cloudTextures.length > 0) {
+      VolumetricCloudLighting.setShadowMap(this.cloudTextures[0]);
+    }
   }
 
   // ══════════════════════════════════════════════════
@@ -189,126 +194,7 @@ export class CloudSystem {
   }
 
   // ══════════════════════════════════════════════════
-  // 4. Ultra-Smooth Simplex Ground Cloud Shadow
-  // ══════════════════════════════════════════════════
-
-  private buildDynamicShadow(): void {
-    const geom = new THREE.PlaneGeometry(1600, 1600, 1, 1);
-    this.shadowMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uWorldOffset: { value: new THREE.Vector2(0, 0) },
-        uWindOffset: { value: new THREE.Vector2(0, 0) },
-        uSunDir: { value: new THREE.Vector3(0.3, 0.85, 0.25).normalize() },
-        uCloudAltitude: { value: 90.0 },
-        uCoverage: { value: 0.5 },
-        uLayerCount: { value: 3.0 },
-        uShadowDarkness: { value: 0.75 },
-      },
-      vertexShader: /* glsl */ `
-        varying vec2 vWorldXZ;
-        void main() {
-          vec4 worldPos = modelMatrix * vec4(position, 1.0);
-          vWorldXZ = worldPos.xz;
-          gl_Position = projectionMatrix * viewMatrix * worldPos;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        precision mediump float;
-        varying vec2 vWorldXZ;
-        uniform vec2 uWorldOffset;
-        uniform vec2 uWindOffset;
-        uniform vec3 uSunDir;
-        uniform float uCloudAltitude;
-        uniform float uCoverage;
-        uniform float uLayerCount;
-        uniform float uShadowDarkness;
-
-        // 2D Simplex Noise for Ultra-Smooth Organic Cloud Shadows
-        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
-
-        float snoise(vec2 v) {
-          const vec4 C = vec4(0.211324865405187,
-                              0.366025403784439,
-                             -0.577350269189626,
-                              0.024390243902439);
-          vec2 i  = floor(v + dot(v, C.yy));
-          vec2 x0 = v - i + dot(i, C.xx);
-          vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-          vec4 x12 = x0.xyxy + C.xxzz;
-          x12.xy -= i1;
-          i = mod289(i);
-          vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-          vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
-          m = m * m;
-          m = m * m;
-          vec3 x = 2.0 * fract(p * C.www) - 1.0;
-          vec3 h = abs(x) - 0.5;
-          vec3 ox = floor(x + 0.5);
-          vec3 a0 = x - ox;
-          m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
-          vec3 g;
-          g.x  = a0.x  * x0.x  + h.x  * x0.y;
-          g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-          return 130.0 * dot(m, g);
-        }
-
-        // Multi-octave organic cumulus cloud FBM
-        float cloudFBM(vec2 p) {
-          float f = 0.52 * (snoise(p) * 0.5 + 0.5);
-          f += 0.28 * (snoise(p * 2.03 + vec2(1.7, 3.1)) * 0.5 + 0.5);
-          f += 0.14 * (snoise(p * 4.08 + vec2(5.2, 2.8)) * 0.5 + 0.5);
-          f += 0.06 * (snoise(p * 8.15 + vec2(8.4, 4.3)) * 0.5 + 0.5);
-          return f;
-        }
-
-        void main() {
-          vec2 localPos = vWorldXZ - uWorldOffset;
-          float dc = length(localPos) / 750.0;
-          if (dc > 1.0) discard;
-          float fade = smoothstep(1.0, 0.60, dc);
-
-          float sunY = max(uSunDir.y, 0.12);
-          vec2 sunOff = (uSunDir.xz / sunY) * (uCloudAltitude - 0.08);
-          vec2 cp = (vWorldXZ - sunOff) * 0.0028 + uWindOffset;
-
-          float n1 = cloudFBM(cp * 2.8);
-          float n2 = cloudFBM(cp * 3.1 + vec2(3.7, 6.1));
-
-          float thr = 0.56 - uCoverage * 0.50;
-          float d1 = smoothstep(thr, thr + 0.32, n1);
-          float d2 = smoothstep(thr, thr + 0.32, n2);
-
-          float layerMultiplier = clamp(uLayerCount / 2.0, 0.8, 2.2);
-          float solidBlanket = smoothstep(0.70, 0.98, uCoverage);
-          float thickness = mix((d1 * 0.58 + d2 * 0.42) * layerMultiplier, 1.0, solidBlanket) * fade;
-          if (thickness < 0.005) discard;
-
-          float shadowAlpha = clamp(thickness * uShadowDarkness * 0.52, 0.0, 0.40);
-          gl_FragColor = vec4(0.03, 0.06, 0.14, shadowAlpha);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
-      side: THREE.DoubleSide,
-    });
-
-    this.shadowMesh = new THREE.Mesh(geom, this.shadowMaterial);
-    this.shadowMesh.rotation.x = -Math.PI / 2;
-    this.shadowMesh.position.set(0, 0.05, 0);
-    this.shadowMesh.name = 'dynamic_cloud_ground_shadow';
-    this.shadowMesh.frustumCulled = false;
-    this.shadowMesh.renderOrder = 900;
-    this.scene.add(this.shadowMesh);
-  }
-
-  // ══════════════════════════════════════════════════
-  // 5. Wrap Coordinate for Seamless Infinite Movement
+  // 4. Wrap Coordinate for Seamless Infinite Movement
   // ══════════════════════════════════════════════════
 
   private static wrapCoord(val: number, range: number): number {
@@ -375,7 +261,8 @@ export class CloudSystem {
     const avgAlt = sumAlt / activeLayers;
 
     // ── 3. Update Each Sprite Deck ──
-    for (const sd of this.sprites) {
+    for (let i = 0; i < this.sprites.length; i++) {
+      const sd = this.sprites[i];
       if (sd.layer >= activeLayers) {
         sd.sprite.visible = false;
         continue;
@@ -430,18 +317,17 @@ export class CloudSystem {
       const curW = sd.scaleW * shape.widthMult * coverageWidthMult;
       const curH = sd.scaleH * shape.heightMult * shape.heightScale * coverageHeightMult;
       sd.sprite.scale.set(curW, curH, 1);
-
+      
       const spriteWorldPos = new THREE.Vector3(
         cameraPos.x + localX,
         avgAlt + localY,
         cameraPos.z + localZ
       );
-      const toSun = worldSunDir.clone();
-      const dotSun = Math.max(0, toSun.dot(new THREE.Vector3(0, 1, 0)));
 
-      const layerDepthFactor = (sd.layer / Math.max(1, activeLayers - 1));
-      const beerLambertShadow = Math.exp(-layerDepthFactor * cov * 1.8);
-
+      // Ensure lighting colors are passed to standard sprite shading
+      const dotSun = Math.max(0, spriteWorldPos.clone().sub(cameraPos).normalize().dot(worldSunDir));
+      
+      const beerLambertShadow = smoothstep(0, 0.4, sd.densityWeight * (1.0 - effectiveDarkness));
       const litColor = sunColor.clone().multiplyScalar(0.85 + dotSun * 0.35);
       const shadeColor = skyColor.clone().multiplyScalar(0.45);
       let finalColor = shadeColor.lerp(litColor, beerLambertShadow);
@@ -472,23 +358,17 @@ export class CloudSystem {
     this.cloudGroup.position.set(cameraPos.x, avgAlt, cameraPos.z);
     this.cloudGroup.visible = cov > 0.01;
 
-    // ── 4. Ground Atmospheric Shadow Projection ──
-    if (this.shadowMesh && this.shadowMaterial) {
-      const isNight = skyTime === 'night';
-      this.shadowMesh.visible = cov > 0.04 && !isNight;
-
-      if (this.shadowMesh.visible) {
-        this.shadowMesh.position.set(cameraPos.x, 0.05, cameraPos.z);
-        const su = this.shadowMaterial.uniforms;
-        su.uWorldOffset.value.set(cameraPos.x, cameraPos.z);
-        su.uWindOffset.value.set(-this.windDriftX * 0.0028, -this.windDriftZ * 0.0028);
-        su.uSunDir.value.copy(worldSunDir);
-        su.uCloudAltitude.value = avgAlt;
-        su.uCoverage.value = cov;
-        su.uLayerCount.value = activeLayers;
-        su.uShadowDarkness.value = 0.85;
-      }
-    }
+    // ── 5. Volumetric Physical Beer-Lambert Light Extinction on ALL 3D Scene Geometry ──
+    const isNight = skyTime === 'night';
+    VolumetricCloudLighting.update({
+      sunDirection: worldSunDir,
+      coverage: isNight ? 0 : cov,
+      altitude: avgAlt,
+      shadowDarkness: 0.85,
+      centerXZ: new THREE.Vector2(cameraPos.x, cameraPos.z),
+      windOffset: new THREE.Vector2(this.windDriftX, this.windDriftZ),
+      scene: this.scene,
+    });
   }
 
   private applyTones(skyTime: string): void {
@@ -535,19 +415,9 @@ export class CloudSystem {
     for (const sd of this.sprites) {
       (sd.sprite.material as THREE.SpriteMaterial).dispose();
     }
-    this.sprites = [];
+    
     for (const tex of this.cloudTextures) tex.dispose();
     this.cloudTextures = [];
-
-    if (this.shadowMesh) {
-      this.scene.remove(this.shadowMesh);
-      this.shadowMesh.geometry.dispose();
-      this.shadowMesh = null;
-    }
-    if (this.shadowMaterial) {
-      this.shadowMaterial.dispose();
-      this.shadowMaterial = null;
-    }
   }
 }
 

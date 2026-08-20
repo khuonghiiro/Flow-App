@@ -33,7 +33,11 @@ import { SelectedSceneObject } from './ui/TransformInspector';
 import { WeatherParticleSystem } from './core/weather/WeatherParticleSystem';
 import { CloudSystem } from './core/weather/CloudSystem';
 import { LightningSystem } from './core/weather/LightningSystem';
+import { VolumetricCloudLighting } from './core/weather/VolumetricCloudLighting';
 import { getSavedViewportSettings, saveViewportSetting } from './core/storage/ViewportSettingsStorage';
+
+// Early initialization of volumetric cloud shader chunks
+VolumetricCloudLighting.init();
 
 export const App: React.FC = () => {
 
@@ -243,7 +247,7 @@ export const App: React.FC = () => {
     // Collect Map Colliders for Ground Snapping (custom GLB terrain/stairs/buildings or default village ground)
     mapCollidersRef.current = groundPlane ? [groundPlane] : [];
     mapGroupRef.current.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh && child !== groundPlane && child.name !== 'dynamic_cloud_ground_shadow') {
+      if ((child as THREE.Mesh).isMesh && child !== groundPlane && child.name !== 'dynamic_cloud_ground_shadow' && child.name !== 'cloud_shadow_caster_3d') {
         const m = child as THREE.Mesh;
         if (m.geometry && (!m.geometry.attributes.position || m.geometry.attributes.position.count < 45000)) {
           mapCollidersRef.current.push(m);
@@ -553,6 +557,7 @@ export const App: React.FC = () => {
         } else {
           lightingRef.current.update(t, activeScene.duration);
         }
+        lightingRef.current.updateShadowTarget(renderer.camera.position);
       }
 
       // 3D Rain & Wind Weather Particle Simulation Update (with 3D Collision Occlusion & Splash VFX)

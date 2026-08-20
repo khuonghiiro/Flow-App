@@ -26,15 +26,15 @@ export class SceneLighting {
     this.hemiLight.position.set(0, 50, 0);
     this.scene.add(this.hemiLight);
 
-    // Directional Sun Light with Shadows
-    this.sunLight = new THREE.DirectionalLight(0xfffaed, 2.6);
-    this.sunLight.position.set(25, 180, 25);
+    // Directional Sun Light with Shadows (high above clouds to cast true 3D shadows)
+    this.sunLight = new THREE.DirectionalLight(0xfff1d2, 3.2);
+    this.sunLight.position.set(40, 350, 40);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.camera.near = 1.0;
-    this.sunLight.shadow.camera.far = 550;
-    const d = 140;
+    this.sunLight.shadow.camera.near = 10.0;
+    this.sunLight.shadow.camera.far = 900;
+    const d = 160;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
@@ -42,6 +42,7 @@ export class SceneLighting {
     this.sunLight.shadow.bias = -0.0003;
     this.sunLight.shadow.normalBias = 0.03;
     this.scene.add(this.sunLight);
+    this.scene.add(this.sunLight.target);
 
     // Fog
     this.fog = new THREE.FogExp2(0x93c5fd, 0.012);
@@ -58,6 +59,7 @@ export class SceneLighting {
     });
     this.sunSprite = new THREE.Sprite(sunMat);
     this.sunSprite.scale.set(65, 65, 1);
+    this.sunSprite.renderOrder = 50; // Below 3D clouds (renderOrder 100) so clouds pass in front of the sun
     this.scene.add(this.sunSprite);
   }
 
@@ -67,11 +69,13 @@ export class SceneLighting {
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
 
-    const grad = ctx.createRadialGradient(128, 128, 8, 128, 128, 128);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    grad.addColorStop(0.2, 'rgba(255, 248, 210, 0.95)');
-    grad.addColorStop(0.5, 'rgba(255, 200, 100, 0.45)');
-    grad.addColorStop(1, 'rgba(255, 140, 40, 0)');
+    // Rayleigh scattering solar disk: warm golden core with amber corona and atmospheric flare
+    const grad = ctx.createRadialGradient(128, 128, 6, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(255, 252, 205, 1.0)');
+    grad.addColorStop(0.20, 'rgba(255, 220, 90, 0.98)');
+    grad.addColorStop(0.45, 'rgba(255, 175, 40, 0.65)');
+    grad.addColorStop(0.75, 'rgba(255, 130, 20, 0.25)');
+    grad.addColorStop(1, 'rgba(255, 90, 0, 0)');
 
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -109,14 +113,14 @@ export class SceneLighting {
     // Celestial Sphere Sun Trajectory: High above the entire cloud deck (Y = 140m - 240m)
     // progress 0.0 (East Dawn) -> 0.5 (Zenith Noon High) -> 0.85 (West Dusk) -> 1.0 (Night Below Horizon)
     const angle = Math.PI * (0.06 + progress * 0.88);
-    const sunDist = 260; // High in the celestial hemisphere
+    const sunDist = 420; // High in the celestial hemisphere (far above clouds)
     const sunX = -Math.cos(angle) * sunDist; // East (-X) to West (+X)
-    const sunY = Math.sin(angle) * (sunDist * 0.82) + 25; // Always above clouds (Y = 80m - 240m at daytime)
-    const sunZ = -45 + Math.sin(progress * Math.PI) * 40;
+    const sunY = Math.sin(angle) * 350 + 80; // Always above clouds (Y = 180m - 430m at daytime)
+    const sunZ = -55 + Math.sin(progress * Math.PI) * 55;
 
     this.sunSprite.position.set(sunX, sunY, sunZ);
-    // Sun light source follows high celestial angle
-    this.sunLight.position.set(sunX * 0.65, Math.max(75, sunY * 0.65), sunZ * 0.65);
+    // Sun light source follows high celestial position
+    this.sunLight.position.set(sunX, sunY, sunZ);
 
     const altitude = Math.max(0, (sunY - 25) / (sunDist * 0.82));
 
@@ -130,14 +134,14 @@ export class SceneLighting {
     const skyboxType = overrideEnv?.skybox_type ?? this.currentEnv.weather?.skybox_type ?? 'none';
     const isSkyboxActive = skyboxType !== 'none';
 
-    // ── 1. Calculate lighting & colors based on time/mode ──
+    // ── 1. Calculate lighting & colors based on time/mode (Rayleigh & Mie Scattering) ──
     let targetBgColor = new THREE.Color(0x5ea5fb);
     let targetFogColor = new THREE.Color(0x93c5fd);
-    let targetSunColor = new THREE.Color(0xffffff);
-    let targetSunIntensity = 2.8;
-    let targetAmbColor = new THREE.Color(0xffffff);
-    let targetAmbIntensity = 1.25;
-    let targetSpriteColor = new THREE.Color(0xffee88);
+    let targetSunColor = new THREE.Color(0xfff1d2); // Warm golden sunlight (Rayleigh filtered)
+    let targetSunIntensity = 3.2;                   // Radiant direct sunlight for crisp contrast
+    let targetAmbColor = new THREE.Color(0x6b8cb8); // Cool blue sky diffuse scatter
+    let targetAmbIntensity = 0.42;                  // Balanced ambient floor for rich shadow contrast
+    let targetSpriteColor = new THREE.Color(0xffe888); // Radiant golden solar core
     let targetSpriteOpacity = isSkyboxActive ? 0.0 : 1.0; // Hide 2D procedural sun when using photo skybox
 
     if (explicitMode === 'overcast') {
@@ -230,24 +234,11 @@ export class SceneLighting {
       }
     }
 
-    // Cloud coverage & layer sunlight occlusion (Diffuses sunlight into soft atmospheric daylight)
+    // Cloud coverage maintains direct sunlight intensity for vivid sunlight patches between cloud gaps
     const cloudCov = overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage ?? 0.0;
-    const cloudLayers = overrideEnv?.cloud_layers ?? this.currentEnv.weather?.cloud_layers ?? 1;
     if (cloudCov > 0.03) {
-      // Direct sunlight diminishes as clouds become thicker and more layered
-      const cloudDimming = Math.min(1.0, cloudCov * 0.85 + (cloudLayers - 1) * 0.04);
-      targetSunIntensity *= Math.max(0.0, 1.0 - cloudDimming);
-
-      // Ambient light remains clear and luminous (scattering through cloud ceiling)
-      targetAmbIntensity = Math.max(0.85, targetAmbIntensity * (0.95 + cloudCov * 0.15));
-
-      // Sunlight color shifts towards soft atmospheric daylight
-      const overcastTint = new THREE.Color(0x94a3b8);
-      targetSunColor.lerp(overcastTint, cloudCov * 0.55);
-      targetAmbColor.lerp(new THREE.Color(0x7c94b3), cloudCov * 0.45);
-
-      // Procedural sun sprite dims when hidden behind clouds
-      targetSpriteOpacity *= Math.max(0.0, 1.0 - cloudCov * 1.3);
+      // Atmospheric ambient fill balances indirect sky scattering
+      targetAmbIntensity = Math.max(0.95, targetAmbIntensity * (0.95 + cloudCov * 0.15));
     }
 
     // Atomic lightning flash applied on top of clean base frame lighting (No whiteout accumulation)
@@ -258,9 +249,9 @@ export class SceneLighting {
       this.hemiLight.color.copy(new THREE.Color(0xffffff).lerp(new THREE.Color(0xb0e0ff), flashIntensity));
     } else {
       // Balanced hemisphere sky-to-ground fill keeps all 3D characters, houses, and roofs clearly readable
-      this.hemiLight.intensity = 0.85;
-      this.hemiLight.color.set(0xecf3fc);
-      this.hemiLight.groundColor.set(0x64748b);
+      this.hemiLight.intensity = 0.45;
+      this.hemiLight.color.set(0x8bc0f8);
+      this.hemiLight.groundColor.set(0x38424e);
     }
 
     // Apply lights & sprite
@@ -355,5 +346,10 @@ export class SceneLighting {
     this.scene.backgroundIntensity = exposure;
     this.scene.backgroundBlurriness = blur;
     this.scene.environmentIntensity = exposure * 0.85;
+  }
+
+  public updateShadowTarget(cameraPos: THREE.Vector3): void {
+    this.sunLight.target.position.set(cameraPos.x, 0, cameraPos.z);
+    this.sunLight.target.updateMatrixWorld();
   }
 }
