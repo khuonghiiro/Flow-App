@@ -26,12 +26,42 @@ function getFiles(folderPath, allowedExts) {
     } else if (allowedExts.includes(path.extname(entry.name).toLowerCase())) {
       const stats = fs.statSync(full);
       const rel = path.relative(rootDir, full).replace(/\\/g, '/');
+      const baseName = path.parse(entry.name).name;
+
+      // Look for companion reference photo
+      let previewUrl = '';
+      for (const imgExt of ['.png', '.jpg', '.jpeg', '.webp', '.svg']) {
+        const candidateImg = path.join(folderPath, `${baseName}${imgExt}`);
+        const candidatePreview = path.join(folderPath, `${baseName}.preview${imgExt}`);
+        if (fs.existsSync(candidateImg)) {
+          previewUrl = path.relative(rootDir, candidateImg).replace(/\\/g, '/');
+          break;
+        } else if (fs.existsSync(candidatePreview)) {
+          previewUrl = path.relative(rootDir, candidatePreview).replace(/\\/g, '/');
+          break;
+        }
+      }
+      if (!previewUrl) {
+        for (const imgExt of ['.png', '.jpg', '.jpeg', '.webp', '.svg']) {
+          const folderThumb = path.join(folderPath, `preview${imgExt}`);
+          const folderThumb2 = path.join(folderPath, `thumbnail${imgExt}`);
+          if (fs.existsSync(folderThumb)) {
+            previewUrl = path.relative(rootDir, folderThumb).replace(/\\/g, '/');
+            break;
+          } else if (fs.existsSync(folderThumb2)) {
+            previewUrl = path.relative(rootDir, folderThumb2).replace(/\\/g, '/');
+            break;
+          }
+        }
+      }
+
       results.push({
-        id: path.parse(entry.name).name,
+        id: baseName,
         name: entry.name,
         relPath: rel,
         format: path.extname(entry.name).replace('.', '').toUpperCase(),
-        sizeMB: (stats.size / (1024 * 1024)).toFixed(2)
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        previewUrl: previewUrl ? `assets/${previewUrl}` : undefined
       });
     }
   }
@@ -39,6 +69,20 @@ function getFiles(folderPath, allowedExts) {
 }
 
 console.log('Scanning assets directory:', rootDir);
+
+// Characters (Male, Female, Man, Woman, Base bodies, Parts)
+const maleChars = [
+  ...getFiles(path.join(rootDir, 'characters/male'), modelExts),
+  ...getFiles(path.join(rootDir, 'characters/man'), modelExts),
+];
+// De-duplicate by id
+const uniqueMaleChars = Array.from(new Map(maleChars.map(c => [c.id, c])).values());
+
+const femaleChars = [
+  ...getFiles(path.join(rootDir, 'characters/female'), modelExts),
+  ...getFiles(path.join(rootDir, 'characters/woman'), modelExts),
+];
+const uniqueFemaleChars = Array.from(new Map(femaleChars.map(c => [c.id, c])).values());
 
 const baseBodies = getFiles(path.join(rootDir, 'characters/base_bodies'), modelExts);
 const faces = getFiles(path.join(rootDir, 'characters/faces'), modelExts);
@@ -53,12 +97,22 @@ const rootCharFiles = fs.existsSync(path.join(rootDir, 'characters'))
       .filter(e => !e.isDirectory() && modelExts.includes(path.extname(e.name).toLowerCase()))
       .map(e => {
         const full = path.join(rootDir, 'characters', e.name);
+        const baseName = path.parse(e.name).name;
+        let previewUrl = '';
+        for (const imgExt of ['.png', '.jpg', '.jpeg', '.webp']) {
+          const candidateImg = path.join(rootDir, 'characters', `${baseName}${imgExt}`);
+          if (fs.existsSync(candidateImg)) {
+            previewUrl = `assets/characters/${baseName}${imgExt}`;
+            break;
+          }
+        }
         return {
-          id: path.parse(e.name).name,
+          id: baseName,
           name: e.name,
           relPath: `characters/${e.name}`,
           format: path.extname(e.name).replace('.', '').toUpperCase(),
-          sizeMB: (fs.statSync(full).size / (1024 * 1024)).toFixed(2)
+          sizeMB: (fs.statSync(full).size / (1024 * 1024)).toFixed(2),
+          previewUrl: previewUrl || undefined
         };
       })
   : [];
@@ -87,6 +141,7 @@ const rootProps = fs.existsSync(path.join(rootDir, 'props'))
   : [];
 
 const maps = getFiles(path.join(rootDir, 'maps'), modelExts);
+const skyboxes = getFiles(path.join(rootDir, 'SkyBoxs'), imageExts);
 
 // Scan Saved Map Presets (.json)
 const mapPresetsFolder = path.join(rootDir, 'maps/presets');
@@ -128,9 +183,9 @@ const animLocomotion = getFiles(path.join(rootDir, 'animations/locomotion'), ani
 const vfx = getFiles(path.join(rootDir, 'vfx'), imageExts);
 
 const allAssets = [
-  ...baseBodies, ...faces, ...hairstyles, ...beards, ...costumes, ...accessories, ...rootCharFiles,
+  ...uniqueMaleChars, ...uniqueFemaleChars, ...baseBodies, ...faces, ...hairstyles, ...beards, ...costumes, ...accessories, ...rootCharFiles,
   ...weapons, ...tools, ...consumables, ...furniture, ...buildings, ...nature, ...vehicles, ...rootProps,
-  ...maps, ...bgm, ...sfxCombat, ...sfxInteract, ...sfxAmbient,
+  ...maps, ...skyboxes, ...bgm, ...sfxCombat, ...sfxInteract, ...sfxAmbient,
   ...animCombat, ...animInteract, ...animXianxia, ...animLocomotion, ...vfx
 ];
 
@@ -139,11 +194,22 @@ const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
 function makeTable(items, fallback) {
   if (!items || items.length === 0) return `*${fallback}*\n`;
-  let table = '| ID | Path | Format | Size |\n|:---|:---|:---|---:|\n';
+  let table = '| ID | Path | Format | Size | Ref Image |\n|:---|:---|:---|---:|:---|\n';
   for (const item of items) {
-    table += `| \`${item.id}\` | \`${item.relPath}\` | ${item.format} | ${item.sizeMB} MB |\n`;
+    const preview = item.previewUrl ? `\`${item.previewUrl}\`` : '—';
+    table += `| \`${item.id}\` | \`${item.relPath}\` | ${item.format} | ${item.sizeMB} MB | ${preview} |\n`;
   }
-  return table;
+  return table + '\n';
+}
+
+function makeTableVi(items, fallback) {
+  if (!items || items.length === 0) return `*${fallback}*\n`;
+  let table = '| Mã ID | Đường Dẫn (Path) | Định Dạng | Dung Lượng | Ảnh Tham Chiếu (Preview) |\n|:---|:---|:---|---:|:---|\n';
+  for (const item of items) {
+    const preview = item.previewUrl ? `\`${item.previewUrl}\`` : '—';
+    table += `| \`${item.id}\` | \`${item.relPath}\` | ${item.format} | ${item.sizeMB} MB | ${preview} |\n`;
+  }
+  return table + '\n';
 }
 
 function makePresetsEn(presets) {
@@ -270,6 +336,12 @@ ${makePresetsEn(mapPresets)}
 
 ## 3. Available Raw Asset Catalog
 
+### Characters — Male (Nam)
+${makeTable(uniqueMaleChars, 'No male character models found. Add .glb/.vrm with companion .png to characters/male/ or characters/man/')}
+
+### Characters — Female (Nữ)
+${makeTable(uniqueFemaleChars, 'No female character models found. Add .glb/.vrm with companion .png to characters/female/ or characters/woman/')}
+
 ### Characters — Base Bodies
 ${makeTable([...baseBodies, ...rootCharFiles], 'No base body assets found. Add .vrm/.glb to characters/base_bodies/')}
 
@@ -287,6 +359,9 @@ ${makeTable(costumes, 'No costume assets found. Add .glb to characters/costumes/
 
 ### Characters — Accessories
 ${makeTable(accessories, 'No accessory assets found. Add .glb to characters/accessories/')}
+
+### SkyBoxs 360° Panoramas
+${makeTable(skyboxes, 'No skybox textures found. Add equirectangular 360 images to SkyBoxs/')}
 
 ### Props — Weapons
 ${makeTable(weapons, 'No weapon assets found. Add .glb to props/weapons/')}
@@ -312,46 +387,46 @@ ${makeTable(vehicles, 'No vehicle assets found. Add .glb to props/vehicles/')}
 ### Props — Legacy Root
 ${makeTable(rootProps, 'No legacy root props.')}
 
-### Maps & Environments
-${makeTable(maps, 'No map assets found. Add .glb/.gltf to maps/')}
+### Maps — Environments
+${makeTable(maps, 'No raw map models found. Add .glb to maps/')}
 
 ### Audio — Background Music (BGM)
-${makeTable(bgm, 'No BGM tracks found.')}
+${makeTable(bgm, 'No BGM audio found. Add .mp3/.wav to audio/bgm/')}
 
-### Audio — Combat Sound Effects
-${makeTable(sfxCombat, 'No combat sound effects found.')}
+### Audio — Combat SFX
+${makeTable(sfxCombat, 'No combat SFX found. Add .mp3 to audio/sfx/combat/')}
 
-### Audio — Interaction Sound Effects
-${makeTable(sfxInteract, 'No interaction sound effects found.')}
+### Audio — Interaction SFX
+${makeTable(sfxInteract, 'No interaction SFX found. Add .mp3 to audio/sfx/interaction/')}
 
-### Audio — Ambient Sounds
-${makeTable(sfxAmbient, 'No ambient sounds found.')}
+### Audio — Ambient SFX
+${makeTable(sfxAmbient, 'No ambient SFX found. Add .mp3 to audio/sfx/ambient/')}
 
 ### Animations — Combat
-${makeTable(animCombat, 'Procedural animations active. Optional mocap clips in animations/combat/')}
+${makeTable(animCombat, 'Procedural combat animation system active.')}
 
-### Animations — Interactions
-${makeTable(animInteract, 'Procedural animations active. Optional mocap clips in animations/interaction/')}
+### Animations — Interaction
+${makeTable(animInteract, 'Procedural interaction animation system active.')}
 
-### Animations — Xianxia Cultivation
-${makeTable(animXianxia, 'Procedural poses active via XianxiaPoseLibrary. Optional clips in animations/xianxia/')}
+### Animations — Xianxia
+${makeTable(animXianxia, 'XianxiaPoseLibrary 13 poses active.')}
 
 ### Animations — Locomotion
-${makeTable(animLocomotion, 'Procedural locomotion active. Optional clips in animations/locomotion/')}
+${makeTable(animLocomotion, 'Procedural locomotion active.')}
 
-### VFX Textures
-${makeTable(vfx, 'Procedural VFX shaders active.')}
+### VFX — Visual Effects
+${makeTable(vfx, 'Internal particle shader VFX active.')}
 
 ---
 
 ## 4. Supported Actions & Expressions Reference
 
-### Locomotion & Body Actions (40 Actions)
-- **Basic:** \`idle\`, \`walk\`, \`run\`, \`sit\`, \`climb\`
-- **Advanced Locomotion:** \`fly_to\`, \`dash_to\`, \`teleport\`, \`kneel\`, \`bow\`, \`meditate\`
+### Body Actions (40 Actions)
+- **Locomotion:** \`idle\`, \`walk\`, \`run\`, \`sit\`, \`climb\`
+- **Special:** \`fly_to\`, \`dash_to\`, \`teleport\`, \`kneel\`, \`bow\`, \`meditate\`
 - **Combat:** \`heavy_slash_combo\`, \`fast_slash\`, \`magic_blast\`, \`punch_kick\`, \`fly_back_knockdown\`, \`stagger_back\`, \`block_defend\`, \`dodge\`
 - **Xianxia Poses:** \`arms_crossed\`, \`hands_behind_back\`, \`fist_salute\`, \`finger_spell\`, \`power_charge\`, \`flying_stance\`
-- **Object Interactions:** \`pickup_right\`, \`carry_two_hands\`, \`drink\`, \`pour\`, \`dig\`, \`water_plants\`, \`plant_seed\`, \`harvest\`, \`wave\`, \`dance\`, \`throw\`
+- **Life Interactions:** \`pickup_right\`, \`carry_two_hands\`, \`drink\`, \`pour\`, \`dig\`, \`water_plants\`, \`plant_seed\`, \`harvest\`, \`wave\`, \`dance\`, \`throw\`
 
 ### Facial Expressions (21 Expressions)
 - **Standard:** \`neutral\`, \`angry\`, \`pain\`, \`smile\`, \`smirk\`, \`sad\`, \`serious\`, \`surprised\`, \`shock\`
@@ -383,22 +458,13 @@ Bạn có thể trỏ trực tiếp tới bản đồ đã lưu để tận dụ
 }
 \`\`\`
 
-### Bước 2: Lắp Ráp Ngoại Hình Nhân Vật (Modular Assembly)
-Bạn có thể tự do kết hợp khuôn mặt, mái tóc, trang phục, râu và phụ kiện cho từng nhân vật bằng khối \`assembly\`:
+### Bước 2: Chọn Nhân Vật & Lắp Ráp Ngoại Hình (Modular Assembly)
+Bạn có thể chọn model có sẵn trong thư mục \`characters/male/\`, \`characters/female/\` hoặc lắp ráp bằng khối \`assembly\`:
 \`\`\`json
 {
   "id": "actor_cultivator",
   "name": "Lý Tiên Sinh",
-  "model": "characters/sample_avatar.vrm",
-  "assembly": {
-    "base_body": "characters/base_bodies/male_warrior.vrm",
-    "face": "characters/faces/face_male_young.glb",
-    "hairstyle": "characters/hairstyles/hair_topknot.glb",
-    "costume": "characters/costumes/costume_xianxia_white.glb",
-    "accessories": ["characters/accessories/acc_headband.glb"],
-    "skin_color": "#ffd1b3",
-    "hair_color": "#1a1a2e"
-  },
+  "model": "characters/male/sample_avatar.vrm",
   "spawn_point": [-3.5, 0, -1.8]
 }
 \`\`\`
@@ -417,77 +483,86 @@ ${makePresetsVi(mapPresets)}
 
 ## 3. Bảng Danh Mục Tài Nguyên Chi Tiết
 
+### 🧑 Nhân Vật — Nam (Male / Man)
+${makeTableVi(uniqueMaleChars, 'Chưa có model nhân vật nam. Thả tệp .glb/.vrm kèm ảnh .png vào characters/male/ hoặc characters/man/')}
+
+### 👩 Nhân Vật — Nữ (Female / Woman)
+${makeTableVi(uniqueFemaleChars, 'Chưa có model nhân vật nữ. Thả tệp .glb/.vrm kèm ảnh .png vào characters/female/ hoặc characters/woman/')}
+
 ### 👤 Nhân Vật — Thân Hình Cơ Bản (Base Bodies)
-${makeTable([...baseBodies, ...rootCharFiles], 'Chưa có thân hình cơ bản. Thả tệp .vrm/.glb vào characters/base_bodies/')}
+${makeTableVi([...baseBodies, ...rootCharFiles], 'Chưa có thân hình cơ bản. Thả tệp .vrm/.glb vào characters/base_bodies/')}
 
 ### 👤 Nhân Vật — Khuôn Mặt (Faces)
-${makeTable(faces, 'Chưa có khuôn mặt rời. Thả tệp .glb vào characters/faces/')}
+${makeTableVi(faces, 'Chưa có khuôn mặt rời. Thả tệp .glb vào characters/faces/')}
 
 ### 👤 Nhân Vật — Kiểu Tóc (Hairstyles)
-${makeTable(hairstyles, 'Chưa có kiểu tóc. Thả tệp .glb vào characters/hairstyles/')}
+${makeTableVi(hairstyles, 'Chưa có kiểu tóc. Thả tệp .glb vào characters/hairstyles/')}
 
 ### 👤 Nhân Vật — Kiểu Râu (Beards)
-${makeTable(beards, 'Chưa có kiểu râu. Thả tệp .glb vào characters/beards/')}
+${makeTableVi(beards, 'Chưa có kiểu râu. Thả tệp .glb vào characters/beards/')}
 
 ### 👤 Nhân Vật — Trang Phục (Costumes)
-${makeTable(costumes, 'Chưa có trang phục. Thả tệp .glb vào characters/costumes/')}
+${makeTableVi(costumes, 'Chưa có trang phục. Thả tệp .glb vào characters/costumes/')}
 
 ### 👤 Nhân Vật — Phụ Kiện (Accessories)
-${makeTable(accessories, 'Chưa có phụ kiện. Thả tệp .glb vào characters/accessories/')}
+${makeTableVi(accessories, 'Chưa có phụ kiện. Thả tệp .glb vào characters/accessories/')}
+
+### 🌌 Bầu Trời & Môi Trường (SkyBoxs 360°)
+${makeTableVi(skyboxes, 'Chưa có ảnh Skybox. Thả ảnh 360 độ vào SkyBoxs/')}
 
 ### ⚔️ Đạo Cụ — Vũ Khí (Weapons)
-${makeTable(weapons, 'Chưa có vũ khí. Thả tệp .glb vào props/weapons/')}
+${makeTableVi(weapons, 'Chưa có vũ khí. Thả tệp .glb vào props/weapons/')}
 
 ### 🔧 Đạo Cụ — Dụng Cụ (Tools)
-${makeTable(tools, 'Chưa có dụng cụ tương tác. Thả tệp .glb vào props/tools/')}
+${makeTableVi(tools, 'Chưa có dụng cụ tương tác. Thả tệp .glb vào props/tools/')}
 
 ### 🍵 Đạo Cụ — Đồ Tiêu Hao (Consumables)
-${makeTable(consumables, 'Chưa có đồ tiêu hao. Thả tệp .glb vào props/consumables/')}
+${makeTableVi(consumables, 'Chưa có đồ tiêu hao. Thả tệp .glb vào props/consumables/')}
 
 ### 🪑 Đạo Cụ — Nội Thất (Furniture)
-${makeTable(furniture, 'Chưa có đồ nội thất. Thả tệp .glb vào props/furniture/')}
+${makeTableVi(furniture, 'Chưa có đồ nội thất. Thả tệp .glb vào props/furniture/')}
 
 ### 🏠 Đạo Cụ — Công Trình (Buildings)
-${makeTable(buildings, 'Chưa có công trình xây dựng. Thả tệp .glb vào props/buildings/')}
+${makeTableVi(buildings, 'Chưa có công trình xây dựng. Thả tệp .glb vào props/buildings/')}
 
 ### 🌳 Đạo Cụ — Thiên Nhiên (Nature)
-${makeTable(nature, 'Chưa có cây cối, đá cảnh. Thả tệp .glb vào props/nature/')}
+${makeTableVi(nature, 'Chưa có cây cối, đá cảnh. Thả tệp .glb vào props/nature/')}
 
 ### 🐴 Đạo Cụ — Phương Tiện & Thú Cưỡi (Vehicles)
-${makeTable(vehicles, 'Chưa có thú cưỡi/kiếm bay. Thả tệp .glb vào props/vehicles/')}
+${makeTableVi(vehicles, 'Chưa có thú cưỡi/kiếm bay. Thả tệp .glb vào props/vehicles/')}
 
 ### 🪑 Đạo Cụ — Thư Mục Gốc Cũ (Legacy Props)
-${makeTable(rootProps, 'Không có đạo cụ ở thư mục gốc.')}
+${makeTableVi(rootProps, 'Không có đạo cụ ở thư mục gốc.')}
 
 ### 🗺️ Bản Đồ Bối Cảnh (Maps)
-${makeTable(maps, 'Chưa có bản đồ. Thả tệp .glb/.gltf vào maps/')}
+${makeTableVi(maps, 'Chưa có bản đồ. Thả tệp .glb/.gltf vào maps/')}
 
 ### 🎵 Âm Thanh — Nhạc Nền (BGM)
-${makeTable(bgm, 'Chưa có bản nhạc nền nào.')}
+${makeTableVi(bgm, 'Chưa có bản nhạc nền nào.')}
 
 ### ⚔️ Âm Thanh — Hiệu Ứng Chiến Đấu (Combat SFX)
-${makeTable(sfxCombat, 'Chưa có âm thanh chiến đấu.')}
+${makeTableVi(sfxCombat, 'Chưa có âm thanh chiến đấu.')}
 
 ### 🔔 Âm Thanh — Hiệu Ứng Tương Tác (Interaction SFX)
-${makeTable(sfxInteract, 'Chưa có âm thanh tương tác.')}
+${makeTableVi(sfxInteract, 'Chưa có âm thanh tương tác.')}
 
 ### 🌧️ Âm Thanh — Hiệu Ứng Môi Trường (Ambient SFX)
-${makeTable(sfxAmbient, 'Chưa có âm thanh môi trường.')}
+${makeTableVi(sfxAmbient, 'Chưa có âm thanh môi trường.')}
 
 ### 🎬 Hoạt Ảnh — Chiến Đấu (Combat Animations)
-${makeTable(animCombat, 'Đang sử dụng hệ thống diễn hoạt procedural nội tại.')}
+${makeTableVi(animCombat, 'Đang sử dụng hệ thống diễn hoạt procedural nội tại.')}
 
 ### 🎬 Hoạt Ảnh — Tương Tác (Interaction Animations)
-${makeTable(animInteract, 'Đang sử dụng hệ thống diễn hoạt procedural nội tại.')}
+${makeTableVi(animInteract, 'Đang sử dụng hệ thống diễn hoạt procedural nội tại.')}
 
 ### 🎬 Hoạt Ảnh — Tiên Hiệp (Xianxia Poses)
-${makeTable(animXianxia, 'Hệ thống XianxiaPoseLibrary 13 tư thế đang kích hoạt.')}
+${makeTableVi(animXianxia, 'Hệ thống XianxiaPoseLibrary 13 tư thế đang kích hoạt.')}
 
 ### 🎬 Hoạt Ảnh — Di Chuyển (Locomotion)
-${makeTable(animLocomotion, 'Đang sử dụng hệ thống di chuyển nội tại.')}
+${makeTableVi(animLocomotion, 'Đang sử dụng hệ thống di chuyển nội tại.')}
 
 ### ✨ Hiệu Ứng Hình Ảnh (VFX Textures)
-${makeTable(vfx, 'Shader hiệu ứng hạt nội tại đang kích hoạt.')}
+${makeTableVi(vfx, 'Shader hiệu ứng hạt nội tại đang kích hoạt.')}
 
 ---
 
@@ -514,6 +589,8 @@ const manifest = {
   total_size_mb: parseFloat(totalSize),
   map_presets: mapPresets,
   characters: {
+    male: uniqueMaleChars,
+    female: uniqueFemaleChars,
     base_bodies: [...baseBodies, ...rootCharFiles],
     faces,
     hairstyles,

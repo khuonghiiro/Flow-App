@@ -81,6 +81,66 @@ export class AssetLoaderRegistry {
     });
   }
 
+  /**
+   * Tải mô hình nhân vật hoặc bộ phận modular (quần áo, mặt, tóc, thân người)
+   * Tự động bật castShadow/receiveShadow và DoubleSide material để không bị mất mặt trong.
+   */
+  public static async loadCharacterPart(url: string): Promise<THREE.Group> {
+    const cleanUrl = url.startsWith('http://') || url.startsWith('https://') 
+      ? url 
+      : (url.startsWith('/') ? url : `/${url}`);
+
+    if (this.modelCache.has(cleanUrl)) {
+      const cached = this.modelCache.get(cleanUrl)!;
+      const clone = cached.clone(true);
+      clone.animations = cached.animations;
+      return clone;
+    }
+
+    const loader = this.getGLTFLoader();
+    return new Promise((resolve, reject) => {
+      loader.load(
+        cleanUrl,
+        (gltf) => {
+          const model = gltf.scene;
+
+          model.traverse((child) => {
+            if (child.matrix && !child.matrixAutoUpdate) {
+              child.position.setFromMatrixPosition(child.matrix);
+              child.quaternion.setFromRotationMatrix(child.matrix);
+              child.scale.setFromMatrixScale(child.matrix);
+              child.matrixAutoUpdate = true;
+            }
+
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              mesh.frustumCulled = false;
+              if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach((mat) => {
+                  mat.side = THREE.DoubleSide; // Trang phục không bị tàng hình mặt trong
+                });
+              }
+            }
+          });
+
+          model.animations = gltf.animations || [];
+          this.modelCache.set(cleanUrl, model);
+          const initialClone = model.clone(true);
+          initialClone.animations = model.animations;
+          resolve(initialClone);
+        },
+        undefined,
+        (err) => {
+          console.warn(`[AssetLoaderRegistry] Lỗi tải modular character part từ ${cleanUrl}:`, err);
+          reject(err);
+        }
+      );
+    });
+  }
+
   public static async loadGLTFFromBuffer(buffer: ArrayBuffer): Promise<THREE.Group> {
     const loader = this.getGLTFLoader();
     return new Promise((resolve, reject) => {

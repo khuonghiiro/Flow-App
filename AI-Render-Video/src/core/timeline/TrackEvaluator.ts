@@ -56,7 +56,7 @@ export class TrackEvaluator {
       // Check if this actor is currently targeted by an active combat hit
       const isTargetOfCombatHit = scene.actors.some((a) =>
         (a.tracks.combat_actions || []).some(
-          (cb) => cb.target.actor_id === actorConfig.id && currentTime >= cb.impact_time
+          (cb) => cb.target?.actor_id === actorConfig.id && currentTime >= cb.impact_time
         )
       );
 
@@ -68,7 +68,8 @@ export class TrackEvaluator {
         for (const mov of tracks.movement) {
           if (currentTime >= mov.start && currentTime <= mov.end) {
             movementHandled = true;
-            const progress = (currentTime - mov.start) / Math.max(0.01, mov.end - mov.start);
+            const duration = mov.end - mov.start;
+            const progress = duration > 0 ? (currentTime - mov.start) / duration : 1.0;
 
             if (mov.action === 'walk' && mov.destination) {
               const path = this.pathNavigator.findPath(actorConfig.spawn_point, mov.destination);
@@ -84,7 +85,7 @@ export class TrackEvaluator {
               ClimbingInteraction.executeClimb(avatar, animator, mov.target_object, progress, currentTime);
             } else {
               animator.setAction(mov.action);
-              animator.update(currentTime);
+              animator.update(currentTime, progress);
             }
 
             // LookAt tracking
@@ -150,22 +151,23 @@ export class TrackEvaluator {
       if (!runtime || !actorConfig.tracks.combat_actions) continue;
 
       for (const action of actorConfig.tracks.combat_actions) {
-        const targetRuntime = actorsMap.get(action.target.actor_id);
-        const targetConfig = scene.actors.find((a) => a.id === action.target.actor_id);
+        const targetActorId = action.target?.actor_id;
+        const targetRuntime = targetActorId ? actorsMap.get(targetActorId) : undefined;
+        const targetConfig = targetActorId ? scene.actors.find((a) => a.id === targetActorId) : undefined;
 
-        if (targetRuntime && targetConfig) {
-          this.combatSync.evaluateCombat(
-            action,
-            { config: actorConfig, avatar: runtime.avatar, animator: runtime.animator },
-            {
-              config: targetConfig,
-              avatar: targetRuntime.avatar,
-              animator: targetRuntime.animator,
-              morph: targetRuntime.morph,
-            },
-            currentTime
-          );
-        }
+        this.combatSync.evaluateCombat(
+          action,
+          { config: actorConfig, avatar: runtime.avatar, animator: runtime.animator },
+          targetRuntime && targetConfig
+            ? {
+                config: targetConfig,
+                avatar: targetRuntime.avatar,
+                animator: targetRuntime.animator,
+                morph: targetRuntime.morph,
+              }
+            : undefined,
+          currentTime
+        );
       }
     }
 

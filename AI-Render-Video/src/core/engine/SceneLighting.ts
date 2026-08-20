@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EnvironmentConfig, EnvironmentOverride } from '../../types/scene';
+import { SkyboxManager } from '../assets/SkyboxManager';
 
 export class SceneLighting {
   public ambientLight: THREE.AmbientLight;
@@ -301,7 +302,34 @@ export class SceneLighting {
     const exposure = overrideEnv?.skybox_exposure ?? this.currentEnv.weather?.skybox_exposure ?? 1.0;
     const blur = overrideEnv?.skybox_blur ?? this.currentEnv.weather?.skybox_blur ?? 0.0;
 
-    const targetUrl = skyboxType === 'custom' ? customUrl : (SceneLighting.SKYBOX_PRESETS[skyboxType] || '');
+    if (skyboxType === 'none') {
+      if (this.activeSkyboxKey !== 'none') {
+        this.activeSkyboxKey = 'none';
+        this.scene.background = null;
+        this.scene.environment = null;
+      }
+      return;
+    }
+
+    let targetUrl = '';
+    if (skyboxType === 'auto') {
+      const matched = SkyboxManager.getMatchingSkybox({
+        skyTime: overrideEnv?.sky_time ?? this.currentEnv.sky_time,
+        sunPosition: overrideEnv?.sun_position,
+        cloudCoverage: overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage,
+        rainIntensity: overrideEnv?.rain_intensity ?? this.currentEnv.weather?.rain,
+      });
+      targetUrl = matched?.url || '';
+    } else if (skyboxType === 'custom') {
+      targetUrl = customUrl;
+    } else if (SceneLighting.SKYBOX_PRESETS[skyboxType]) {
+      targetUrl = SceneLighting.SKYBOX_PRESETS[skyboxType];
+    } else {
+      // Check if skyboxType is a direct URL or catalog item
+      const fromCatalog = SkyboxManager.CATALOG.find((item) => item.id === skyboxType || item.url === skyboxType);
+      targetUrl = fromCatalog ? fromCatalog.url : (skyboxType.startsWith('/') || skyboxType.startsWith('blob:') || skyboxType.startsWith('http') ? skyboxType : '');
+    }
+
     if (!targetUrl) return;
 
     this.activeSkyboxKey = targetUrl;

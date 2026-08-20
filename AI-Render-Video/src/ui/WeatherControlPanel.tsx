@@ -5,6 +5,7 @@ import {
   Image, RotateCw, Upload, Zap, Sparkles, Check
 } from 'lucide-react';
 import { EnvironmentOverride } from '../types/scene';
+import { SkyboxControlSection } from './SkyboxControlSection';
 
 interface WeatherControlPanelProps {
   override: EnvironmentOverride;
@@ -476,42 +477,8 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
               />
             </div>
 
-            {/* 360° Skybox Texture Presets */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: '#94a3b8' }}>Skybox 360° Môi Trường:</span>
-                <span style={{ fontSize: 9, color: '#64748b' }}>{override.skybox_type || 'none'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
-                {[
-                  { key: 'none', label: 'Thủ Công' },
-                  { key: 'day', label: 'Nắng Ngày' },
-                  { key: 'morning', label: 'Bình Minh' },
-                  { key: 'night', label: 'Đêm Sao' },
-                ].map((sb) => {
-                  const isSbActive = (override.skybox_type || 'none') === sb.key;
-                  return (
-                    <button
-                      key={sb.key}
-                      type="button"
-                      style={{
-                        padding: '4px',
-                        fontSize: 9,
-                        borderRadius: 4,
-                        border: `1px solid ${isSbActive ? '#f59e0b' : 'rgba(255,255,255,0.08)'}`,
-                        background: isSbActive ? 'rgba(245, 158, 11, 0.2)' : 'rgba(0,0,0,0.3)',
-                        color: isSbActive ? '#fef08a' : '#94a3b8',
-                        boxShadow: isSbActive ? '0 0 6px rgba(245, 158, 11, 0.25)' : 'none',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => onChange({ ...override, skybox_type: sb.key as any })}
-                    >
-                      {sb.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* 360° Skybox Section with Local Import & Hierarchy Explorer */}
+            <SkyboxControlSection override={override} onChange={onChange} />
           </div>
 
           {/* ══════════════════════════════════════════════════ */}

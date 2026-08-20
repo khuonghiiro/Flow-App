@@ -21,7 +21,9 @@ assets/
 ├── ASSET_CATALOG_VI.md          # ⭐ Bản tiếng Việt (cho bạn đọc)
 ├── asset_manifest.json          # JSON cho code runtime load
 ├── characters/
-│   ├── base_bodies/             # Thân hình cơ bản (.vrm, .glb)
+│   ├── male/                    # 🧑 Nhân vật Nam (.glb, .vrm + ảnh tham chiếu .png)
+│   ├── female/                  # 👩 Nhân vật Nữ (.glb, .vrm + ảnh tham chiếu .png)
+│   ├── base_bodies/             # Thân hình cơ bản / manekin (.vrm, .glb)
 │   ├── faces/                   # Khuôn mặt thay đổi được (.glb)
 │   ├── hairstyles/              # Kiểu tóc (.glb)
 │   ├── beards/                  # Râu (.glb)
@@ -36,6 +38,13 @@ assets/
 │   ├── nature/                  # Cây cối, đá, bụi hoa (.glb)
 │   └── vehicles/                # Phương tiện (kiếm bay, cưỡi mây,...) (.glb)
 ├── maps/                        # Bản đồ môi trường (.glb, .gltf)
+├── SkyBoxs/                     # 🌌 Ảnh toàn cảnh 360° theo thời gian & độ phủ mây
+│   ├── binh_minh/               # Bình minh (khong_may, it_may, nhieu_may)
+│   ├── buoi_sang/               # Buổi sáng (khong_may, it_may, nhieu_may)
+│   ├── buoi_trua/               # Buổi trưa (khong_may, it_may, nhieu_may)
+│   ├── buoi_chieu/              # Buổi chiều/hoàng hôn (khong_may, it_may, nhieu_may)
+│   ├── buoi_toi/                # Buổi tối/đêm (khong_may, it_may, nhieu_may)
+│   └── giong_bao/               # Giông bão/mưa lớn (it_may, nhieu_may)
 ├── audio/
 │   ├── bgm/                     # Nhạc nền (.mp3, .wav)
 │   ├── sfx/

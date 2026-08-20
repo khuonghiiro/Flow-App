@@ -176,7 +176,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
                     key={`${a.id}_cb_${idx}`}
                     className="timeline-block combat"
                     style={{ left: `${left}%`, width: `${width}%` }}
-                    title={`Impact at ${cb.impact_time}s -> ${cb.target.reaction_anim}`}
+                    title={`Impact at ${cb.impact_time}s -> ${cb.target?.reaction_anim || 'solo'}`}
                   >
                     💥 {cb.anim} (Hit {cb.impact_time}s)
                   </div>

@@ -1,22 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
-  Folder, FolderOpen, Box, User, Map, Music, Sparkles, Film, 
+  Folder, FolderOpen, Box, User, Map as MapIcon, Music, Sparkles, Film, 
   Search, Plus, Check, ChevronRight, Upload, Play, Eye, Maximize2, Minimize2,
   Layers, RefreshCw
 } from 'lucide-react';
 import { PlacedProp } from '../types/map_preset';
+import { fetchLiveAssetManifest } from '../core/assets/AssetManifestLoader';
 
 export interface AssetItem {
   id: string;
   name: string;
   path: string;
   folder: string;
-  type: 'prop' | 'character' | 'map' | 'audio' | 'vfx' | 'animation';
+  type: 'prop' | 'character' | 'map' | 'audio' | 'vfx' | 'animation' | 'skybox';
   format: string;
   size?: string;
   tags?: string[];
   description?: string;
   previewColor?: string;
+  previewUrl?: string;
+  gender?: 'male' | 'female';
   // Specific data
   propData?: Partial<PlacedProp>;
   mapId?: string;
@@ -219,32 +222,67 @@ const DEFAULT_ASSET_DATABASE: AssetItem[] = [
     mapId: 'game_pirate_adventure_map.glb'
   },
 
-  // --- CHARACTERS ---
+  // --- CHARACTERS: MALE (NAM) ---
   {
-    id: 'char_warrior',
-    name: 'Chiến Binh Kiếm Khách',
-    path: 'Assets/Characters/sample_avatar.vrm',
-    folder: 'Assets/Characters',
+    id: 'char_warrior_male',
+    name: 'Nam Kiếm Khách (Sample Avatar)',
+    path: 'Assets/Characters/Male/sample_avatar.vrm',
+    folder: 'Assets/Characters/Male',
     type: 'character',
     format: 'VRM 1.0',
-    size: '10.7 MB',
-    tags: ['chiến binh', 'kiếm khách', 'nam', 'vrm'],
-    description: 'Avatar chiến binh giáp da tóc bạc đầy dũng mãnh',
+    size: '10.3 MB',
+    gender: 'male',
+    tags: ['nam', 'chiến binh', 'kiếm khách', 'vrm'],
+    description: 'Avatar nam kiếm khách tóc bạc dũng mãnh, kèm ảnh tham chiếu 2D',
     previewColor: '#38bdf8',
-    vrmUrl: '/assets/characters/sample_avatar.vrm'
+    previewUrl: '/assets/characters/male/sample_avatar.png',
+    vrmUrl: '/assets/characters/male/sample_avatar.vrm'
   },
   {
-    id: 'char_villager',
+    id: 'char_manekin_male',
+    name: 'Nam Manekin (Precision Strike)',
+    path: 'Assets/Characters/Male/precision_strike_manekin.glb',
+    folder: 'Assets/Characters/Male',
+    type: 'character',
+    format: 'GLB 3D',
+    size: '1.2 MB',
+    gender: 'male',
+    tags: ['nam', 'manekin', 'xương chuẩn', 'glb'],
+    description: 'Model nam manekin gắn sẵn xương animation, kèm ảnh tham chiếu',
+    previewColor: '#0284c7',
+    previewUrl: '/assets/characters/male/precision_strike_manekin.png',
+    vrmUrl: '/assets/characters/male/precision_strike_manekin.glb'
+  },
+
+  // --- CHARACTERS: FEMALE (NỮ) ---
+  {
+    id: 'char_female_tzitzimitl',
+    name: 'Nữ Chiến Binh (Tzitzimitl)',
+    path: 'Assets/Characters/Female/tzitzimitl_female.glb',
+    folder: 'Assets/Characters/Female',
+    type: 'character',
+    format: 'GLB 3D',
+    size: '3.6 MB',
+    gender: 'female',
+    tags: ['nữ', 'chiến binh', 'xương chuẩn', 'glb'],
+    description: 'Model nữ chiến binh ma pháp gắn sẵn xương animation, kèm ảnh tham chiếu',
+    previewColor: '#ec4899',
+    previewUrl: '/assets/characters/female/tzitzimitl_female.png',
+    vrmUrl: '/assets/characters/female/tzitzimitl_female.glb'
+  },
+  {
+    id: 'char_villager_female',
     name: 'Nữ Thần Dân Làng',
-    path: 'Assets/Characters/female_villager.vrm',
-    folder: 'Assets/Characters',
+    path: 'Assets/Characters/Female/female_villager.vrm',
+    folder: 'Assets/Characters/Female',
     type: 'character',
     format: 'VRM',
     size: '11.2 MB',
+    gender: 'female',
     tags: ['dân làng', 'nữ', 'trang phục truyền thống'],
     description: 'Avatar thiếu nữ thôn quê hiền hòa đáng yêu',
     previewColor: '#a855f7',
-    vrmUrl: '/assets/characters/sample_avatar.vrm'
+    vrmUrl: '/assets/characters/male/sample_avatar.vrm'
   },
 
   // --- ANIMATIONS ---
@@ -329,6 +367,53 @@ const FOLDER_TREE = [
     path: 'Assets',
     children: [
       {
+        name: 'Characters',
+        path: 'Assets/Characters',
+        children: [
+          { name: 'Male (Nam)', path: 'Assets/Characters/Male' },
+          { name: 'Female (Nữ)', path: 'Assets/Characters/Female' },
+          {
+            name: 'Base Bodies',
+            path: 'Assets/Characters/Base_Bodies',
+            children: [
+              { name: 'Male (Nam)', path: 'Assets/Characters/Base_Bodies/Male' },
+              { name: 'Female (Nữ)', path: 'Assets/Characters/Base_Bodies/Female' },
+            ]
+          },
+          {
+            name: 'Costumes (Trang Phục)',
+            path: 'Assets/Characters/Costumes',
+            children: [
+              { name: 'Male (Nam)', path: 'Assets/Characters/Costumes/Male' },
+              { name: 'Female (Nữ)', path: 'Assets/Characters/Costumes/Female' },
+            ]
+          },
+          {
+            name: 'Faces (Khuôn Mặt)',
+            path: 'Assets/Characters/Faces',
+            children: [
+              { name: 'Male (Nam)', path: 'Assets/Characters/Faces/Male' },
+              { name: 'Female (Nữ)', path: 'Assets/Characters/Faces/Female' },
+            ]
+          },
+          { name: 'Hairstyles (Mái Tóc)', path: 'Assets/Characters/Hairstyles' },
+          { name: 'Beards (Râu)', path: 'Assets/Characters/Beards' },
+          { name: 'Accessories (Phụ Kiện)', path: 'Assets/Characters/Accessories' },
+        ]
+      },
+      {
+        name: 'SkyBoxs 360°',
+        path: 'Assets/SkyBoxs',
+        children: [
+          { name: 'Bình Minh', path: 'Assets/SkyBoxs/Binh_Minh' },
+          { name: 'Buổi Sáng', path: 'Assets/SkyBoxs/Buoi_Sang' },
+          { name: 'Buổi Trưa', path: 'Assets/SkyBoxs/Buoi_Trua' },
+          { name: 'Buổi Chiều', path: 'Assets/SkyBoxs/Buoi_Chieu' },
+          { name: 'Buổi Tối', path: 'Assets/SkyBoxs/Buoi_Toi' },
+          { name: 'Giông Bão', path: 'Assets/SkyBoxs/Giong_Bao' },
+        ]
+      },
+      {
         name: 'Props',
         path: 'Assets/Props',
         children: [
@@ -338,7 +423,6 @@ const FOLDER_TREE = [
         ]
       },
       { name: 'Maps & Presets', path: 'Assets/Maps' },
-      { name: 'Characters', path: 'Assets/Characters' },
       { name: 'Animations', path: 'Assets/Animations' },
       { name: 'VFX', path: 'Assets/VFX' },
       { name: 'Audio', path: 'Assets/Audio' },
@@ -361,11 +445,38 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [spawnNotification, setSpawnNotification] = useState<string | null>(null);
+  const [assetDatabase, setAssetDatabase] = useState<AssetItem[]>(DEFAULT_ASSET_DATABASE);
+  const [isLoadingManifest, setIsLoadingManifest] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Load live assets from /assets/asset_manifest.json on mount
+  const refreshAssets = useCallback(async () => {
+    setIsLoadingManifest(true);
+    try {
+      const liveItems = await fetchLiveAssetManifest();
+      if (liveItems && liveItems.length > 0) {
+        // Merge with preset custom demo items for props that have smart sockets
+        const mergedMap = new Map<string, AssetItem>();
+        // Add default sample items
+        DEFAULT_ASSET_DATABASE.forEach((item) => mergedMap.set(item.id, item));
+        // Overwrite or append with live disk assets from manifest
+        liveItems.forEach((item) => mergedMap.set(item.id, item));
+        setAssetDatabase(Array.from(mergedMap.values()));
+      }
+    } catch (e) {
+      console.warn('Failed to load asset manifest:', e);
+    } finally {
+      setIsLoadingManifest(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAssets();
+  }, [refreshAssets]);
 
   // Filtered Assets
   const filteredAssets = useMemo(() => {
-    return DEFAULT_ASSET_DATABASE.filter((asset) => {
+    return assetDatabase.filter((asset) => {
       // Folder filter (if not Assets root, match prefix)
       if (selectedFolder !== 'Assets' && !asset.folder.startsWith(selectedFolder)) {
         return false;
@@ -384,11 +495,11 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
       }
       return true;
     });
-  }, [selectedFolder, filterType, searchQuery]);
+  }, [assetDatabase, selectedFolder, filterType, searchQuery]);
 
   const selectedAsset = useMemo(() => {
-    return DEFAULT_ASSET_DATABASE.find((a) => a.id === selectedAssetId) || null;
-  }, [selectedAssetId]);
+    return assetDatabase.find((a) => a.id === selectedAssetId) || null;
+  }, [assetDatabase, selectedAssetId]);
 
   const handleAction = (asset: AssetItem) => {
     if (asset.type === 'prop') {
@@ -511,6 +622,14 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
 
           <button
             className="unity-btn"
+            title="Quét lại toàn bộ tài nguyên từ asset_manifest.json"
+            onClick={refreshAssets}
+          >
+            <RefreshCw size={12} style={{ animation: isLoadingManifest ? 'spin 1s linear infinite' : 'none' }} /> Quét lại
+          </button>
+
+          <button
+            className="unity-btn"
             title="Import file .glb / .vrm từ máy"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -552,7 +671,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                 const isSelected = selectedAssetId === asset.id;
                 let Icon = Box;
                 if (asset.type === 'character') Icon = User;
-                if (asset.type === 'map') Icon = Map;
+                if (asset.type === 'map') Icon = MapIcon;
                 if (asset.type === 'audio') Icon = Music;
                 if (asset.type === 'vfx') Icon = Sparkles;
                 if (asset.type === 'animation') Icon = Film;
@@ -568,10 +687,20 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                       className="asset-icon-box"
                       style={{
                         backgroundColor: asset.previewColor ? `${asset.previewColor}18` : 'rgba(255,255,255,0.05)',
-                        borderColor: isSelected ? '#38bdf8' : 'rgba(255,255,255,0.08)'
+                        borderColor: isSelected ? '#38bdf8' : 'rgba(255,255,255,0.08)',
+                        overflow: 'hidden',
+                        position: 'relative'
                       }}
                     >
-                      <Icon size={24} color={asset.previewColor || '#94a3b8'} />
+                      {asset.previewUrl ? (
+                        <img
+                          src={asset.previewUrl}
+                          alt={asset.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Icon size={24} color={asset.previewColor || '#94a3b8'} />
+                      )}
                       <span className="asset-format-badge">{asset.format}</span>
                     </div>
 
@@ -606,7 +735,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                         </>
                       ) : asset.type === 'map' ? (
                         <>
-                          <Map size={11} /> Tải Map
+                          <MapIcon size={11} /> Tải Map
                         </>
                       ) : asset.type === 'character' ? (
                         <>
@@ -635,18 +764,33 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                 className="preview-icon-large"
                 style={{
                   backgroundColor: selectedAsset.previewColor ? `${selectedAsset.previewColor}22` : '#1e293b',
-                  borderColor: selectedAsset.previewColor || '#38bdf8'
+                  borderColor: selectedAsset.previewColor || '#38bdf8',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
-                {selectedAsset.type === 'character' && <User size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                {selectedAsset.type === 'map' && <Map size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                {selectedAsset.type === 'prop' && <Box size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                {selectedAsset.type === 'audio' && <Music size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                {selectedAsset.type === 'vfx' && <Sparkles size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                {selectedAsset.type === 'animation' && <Film size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                {selectedAsset.previewUrl ? (
+                  <img
+                    src={selectedAsset.previewUrl}
+                    alt={selectedAsset.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <>
+                    {selectedAsset.type === 'character' && <User size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                    {selectedAsset.type === 'map' && <MapIcon size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                    {selectedAsset.type === 'prop' && <Box size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                    {selectedAsset.type === 'audio' && <Music size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                    {selectedAsset.type === 'vfx' && <Sparkles size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                    {selectedAsset.type === 'animation' && <Film size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
+                  </>
+                )}
               </div>
               <div className="preview-title">{selectedAsset.name}</div>
-              <div className="preview-type-badge">{selectedAsset.format} • {selectedAsset.type.toUpperCase()}</div>
+              <div className="preview-type-badge">{selectedAsset.format} • {selectedAsset.type.toUpperCase()}{selectedAsset.gender ? ` • ${selectedAsset.gender === 'male' ? 'NAM' : 'NỮ'}` : ''}</div>
             </div>
 
             <div className="inspector-details">
@@ -680,7 +824,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                 onClick={() => handleAction(selectedAsset)}
               >
                 {selectedAsset.type === 'prop' && <><Plus size={14} /> Chèn vào Scene Ngay</>}
-                {selectedAsset.type === 'map' && <><Map size={14} /> Kích Hoạt Bản Đồ Này</>}
+                {selectedAsset.type === 'map' && <><MapIcon size={14} /> Kích Hoạt Bản Đồ Này</>}
                 {selectedAsset.type === 'character' && <><User size={14} /> Gán Cho Nhân Vật</>}
                 {selectedAsset.type === 'animation' && <><Play size={14} /> Chạy Thử Động Tác</>}
                 {selectedAsset.type === 'vfx' && <><Sparkles size={14} /> Xem Thử Hiệu Ứng</>}

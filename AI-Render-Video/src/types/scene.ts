@@ -40,7 +40,7 @@ export interface EnvironmentConfig {
     map_dynamic_lighting?: boolean;// Bật/tắt chế độ nhận ánh sáng mặt trời động & bóng mây trên Map
     point_lights_enabled?: boolean;// Bật/tắt toàn bộ nguồn sáng cục bộ (PointLights / SpotLights) trong Map
     custom_lights?: PropLightConfig[]; // Custom 3D Point Lights in the environment (e.g. chandeliers, altars)
-    skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
+    skybox_type?: 'none' | 'auto' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom' | string;
     skybox_url?: string;
     skybox_rotation?: number;      // 0 to 360 degrees
     skybox_exposure?: number;      // 0.2 to 2.5
@@ -70,7 +70,7 @@ export interface EnvironmentOverride {
   map_dynamic_lighting?: boolean;  // Bật/tắt chế độ nhận ánh sáng mặt trời động & bóng mây trên Map
   point_lights_enabled?: boolean;  // Bật/tắt nguồn sáng 3D cục bộ (Đèn lồng, đuốc, đèn chùm)
   point_lights_intensity?: number; // Hệ số nhân cường độ sáng của tất cả các đèn (0.0 đến 3.0)
-  skybox_type?: 'none' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom';
+  skybox_type?: 'none' | 'auto' | 'day' | 'morning' | 'night' | 'space' | 'alien' | 'custom' | string;
   skybox_url?: string;
   skybox_rotation?: number;      // 0 to 360 degrees
   skybox_exposure?: number;      // 0.2 to 2.5

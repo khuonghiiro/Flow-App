@@ -57,9 +57,13 @@ export const CombatDebugger: React.FC<CombatDebuggerProps> = ({
 
             <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div>⚔️ Tấn công: <strong style={{ color: '#eab308' }}>{cb.attackerName}</strong></div>
-              <div>🎯 Mục tiêu: <strong style={{ color: '#a855f7' }}>{cb.target.actor_id}</strong></div>
-              <div>💥 Phản lực lùi: <strong>{cb.target.knockback_distance}m</strong> ({cb.target.reaction_anim})</div>
-              <div>📳 Rung Camera: <strong>{cb.target.screen_shake.intensity} intensity</strong></div>
+              <div>🎯 Mục tiêu: <strong style={{ color: '#a855f7' }}>{cb.target?.actor_id || 'Tự do / Solo'}</strong></div>
+              {cb.target && (
+                <>
+                  <div>💥 Phản lực lùi: <strong>{cb.target.knockback_distance}m</strong> ({cb.target.reaction_anim})</div>
+                  <div>📳 Rung Camera: <strong>{cb.target.screen_shake?.intensity || 0} intensity</strong></div>
+                </>
+              )}
             </div>
 
             {/* Combat Phase Meter */}

@@ -1002,12 +1002,36 @@ export const App: React.FC = () => {
     handleUpdateScene(updatedScene);
   };
 
-  // Switch Avatar from Asset Browser
+  // Switch Avatar or Modular Part (Quần áo, Mặt, Tóc, Thân) from Asset Browser
   const handleSelectAvatar = async (actorId: string, vrmUrl: string) => {
     const targetActor = sceneRef.current.actors.find((a) => a.id === actorId) || sceneRef.current.actors[0];
     if (!targetActor) return;
 
-    targetActor.model = vrmUrl;
+    if (vrmUrl.includes('/costumes/')) {
+      targetActor.assembly = {
+        ...(targetActor.assembly || { base_body: targetActor.model }),
+        costume: vrmUrl,
+      };
+    } else if (vrmUrl.includes('/faces/')) {
+      targetActor.assembly = {
+        ...(targetActor.assembly || { base_body: targetActor.model }),
+        face: vrmUrl,
+      };
+    } else if (vrmUrl.includes('/hairstyles/')) {
+      targetActor.assembly = {
+        ...(targetActor.assembly || { base_body: targetActor.model }),
+        hairstyle: vrmUrl,
+      };
+    } else if (vrmUrl.includes('/base_bodies/')) {
+      targetActor.assembly = {
+        ...(targetActor.assembly || {}),
+        base_body: vrmUrl,
+      };
+      targetActor.model = vrmUrl;
+    } else {
+      targetActor.model = vrmUrl;
+    }
+
     const updatedScene = { ...sceneRef.current };
     handleUpdateScene(updatedScene);
   };

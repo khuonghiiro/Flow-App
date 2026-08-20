@@ -1,10 +1,13 @@
 import * as THREE from 'three';
-import { ActorConfig } from '../../types/scene';
+import { ActorConfig, CharacterAssembly } from '../../types/scene';
 import { SocketAttacher } from '../assets/SocketAttacher';
+import { AssetLoaderRegistry } from '../assets/AssetLoaderRegistry';
 
 export class VRMAvatar {
   public config: ActorConfig;
   public rootObject: THREE.Group;
+  public proceduralGroup: THREE.Group;
+  public modularGroup: THREE.Group;
   public headBone: THREE.Object3D;
   public neckBone: THREE.Object3D;
   public spineBone: THREE.Object3D;
@@ -35,6 +38,14 @@ export class VRMAvatar {
       this.rootObject.rotation.y = config.rotation_y;
     }
 
+    this.proceduralGroup = new THREE.Group();
+    this.proceduralGroup.name = 'procedural_body_group';
+    this.rootObject.add(this.proceduralGroup);
+
+    this.modularGroup = new THREE.Group();
+    this.modularGroup.name = 'modular_character_group';
+    this.rootObject.add(this.modularGroup);
+
     const isKnight = config.id.includes('warrior') || config.model.includes('knight');
     const isAnime = config.id.includes('anime') || config.name.includes('Tiểu Vũ') || config.model.includes('sample_avatar') || config.id.includes('girl');
 
@@ -42,7 +53,7 @@ export class VRMAvatar {
     this.spineBone = new THREE.Group();
     this.spineBone.name = 'spine';
     this.spineBone.position.y = 0.9;
-    this.rootObject.add(this.spineBone);
+    this.proceduralGroup.add(this.spineBone);
 
     // Torso / Dress Body
     let torsoColor = 0x221333;
@@ -289,7 +300,7 @@ export class VRMAvatar {
     this.leftFoot.castShadow = true;
     this.leftKnee.add(this.leftFoot);
     this.leftLeg.add(this.leftKnee);
-    this.rootObject.add(this.leftLeg);
+    this.proceduralGroup.add(this.leftLeg);
 
     // Right Leg
     this.rightLeg = new THREE.Group();
@@ -313,7 +324,7 @@ export class VRMAvatar {
     this.rightFoot.castShadow = true;
     this.rightKnee.add(this.rightFoot);
     this.rightLeg.add(this.rightKnee);
-    this.rootObject.add(this.rightLeg);
+    this.proceduralGroup.add(this.rightLeg);
 
     // Attach Default Weapon
     if (isKnight) {
@@ -325,6 +336,65 @@ export class VRMAvatar {
     } else {
       const staff = SocketAttacher.createWeapon('magic_staff');
       this.weaponSocketR.add(staff);
+    }
+
+    // Automatically trigger modular 3D character loading
+    this.loadModularAssembly(config.assembly, config.model);
+  }
+
+  /**
+   * Nạp động mô hình 3D thực tế và ghép các bộ phận Modular (Thân + Quần Áo + Mặt + Tóc + Phụ Kiện)
+   */
+  public async loadModularAssembly(assembly?: CharacterAssembly, modelPath?: string): Promise<void> {
+    const resolvePath = (p?: string): string => {
+      if (!p) return '';
+      if (p.startsWith('http://') || p.startsWith('https://')) return p;
+      return p.startsWith('/') ? p : `/${p}`;
+    };
+
+    // Clean previous modular parts
+    while (this.modularGroup.children.length > 0) {
+      this.modularGroup.remove(this.modularGroup.children[0]);
+    }
+
+    if (assembly && (assembly.base_body || assembly.costume || assembly.face)) {
+      const partsToLoad: { key: string; path: string }[] = [];
+      if (assembly.base_body) partsToLoad.push({ key: 'base_body', path: resolvePath(assembly.base_body) });
+      if (assembly.costume) partsToLoad.push({ key: 'costume', path: resolvePath(assembly.costume) });
+      if (assembly.face) partsToLoad.push({ key: 'face', path: resolvePath(assembly.face) });
+      if (assembly.hairstyle) partsToLoad.push({ key: 'hairstyle', path: resolvePath(assembly.hairstyle) });
+      if (assembly.beard) partsToLoad.push({ key: 'beard', path: resolvePath(assembly.beard) });
+      if (assembly.accessories) {
+        assembly.accessories.forEach((acc, idx) => {
+          partsToLoad.push({ key: `acc_${idx}`, path: resolvePath(acc) });
+        });
+      }
+
+      let loadedCount = 0;
+      for (const item of partsToLoad) {
+        try {
+          const modelGroup = await AssetLoaderRegistry.loadCharacterPart(item.path);
+          modelGroup.name = `part_${item.key}`;
+          this.modularGroup.add(modelGroup);
+          loadedCount++;
+        } catch (err) {
+          console.warn(`[VRMAvatar] Không thể nạp modular part ${item.key} (${item.path}):`, err);
+        }
+      }
+
+      if (loadedCount > 0) {
+        // Successfully loaded real 3D modular meshes, hide procedural placeholder
+        this.proceduralGroup.visible = false;
+      }
+    } else if (modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf') || modelPath.endsWith('.vrm'))) {
+      try {
+        const fullModel = await AssetLoaderRegistry.loadCharacterPart(resolvePath(modelPath));
+        fullModel.name = 'full_character_model';
+        this.modularGroup.add(fullModel);
+        this.proceduralGroup.visible = false;
+      } catch (err) {
+        console.warn(`[VRMAvatar] Không thể nạp full model ${modelPath}:`, err);
+      }
     }
   }
 

@@ -41,6 +41,8 @@ function Get-RelPath {
 }
 
 Write-Host "  [1/6] Scanning characters..." -ForegroundColor Cyan
+$maleChars   = @(Get-AssetFiles (Join-Path $RootDir "characters\male") $ModelExts) + @(Get-AssetFiles (Join-Path $RootDir "characters\man") $ModelExts)
+$femaleChars = @(Get-AssetFiles (Join-Path $RootDir "characters\female") $ModelExts) + @(Get-AssetFiles (Join-Path $RootDir "characters\woman") $ModelExts)
 $baseBodies  = Get-AssetFiles (Join-Path $RootDir "characters\base_bodies") $ModelExts
 $faces       = Get-AssetFiles (Join-Path $RootDir "characters\faces") $ModelExts
 $hairstyles  = Get-AssetFiles (Join-Path $RootDir "characters\hairstyles") $ModelExts
@@ -61,8 +63,9 @@ $vehicles    = Get-AssetFiles (Join-Path $RootDir "props\vehicles") $ModelExts
 $legacyProps = Get-AssetFiles (Join-Path $RootDir "props") $ModelExts |
     Where-Object { $_.DirectoryName -eq (Join-Path $RootDir "props") }
 
-Write-Host "  [3/6] Scanning maps..." -ForegroundColor Cyan
-$maps = Get-AssetFiles (Join-Path $RootDir "maps") $ModelExts
+Write-Host "  [3/6] Scanning maps & skyboxes..." -ForegroundColor Cyan
+$maps     = Get-AssetFiles (Join-Path $RootDir "maps") $ModelExts
+$skyboxes = Get-AssetFiles (Join-Path $RootDir "SkyBoxs") $ImageExts
 
 Write-Host "  [4/6] Scanning audio..." -ForegroundColor Cyan
 $bgm        = Get-AssetFiles (Join-Path $RootDir "audio\bgm") $AudioExts
@@ -79,11 +82,11 @@ $animLocomotion = Get-AssetFiles (Join-Path $RootDir "animations\locomotion") $A
 Write-Host "  [6/6] Scanning VFX..." -ForegroundColor Cyan
 $vfxAssets = Get-AssetFiles (Join-Path $RootDir "vfx") $ImageExts
 
-$allFiles = @($baseBodies) + @($faces) + @($hairstyles) + @($beards) +
+$allFiles = @($maleChars) + @($femaleChars) + @($baseBodies) + @($faces) + @($hairstyles) + @($beards) +
     @($costumes) + @($accessories) + @($legacyChars) +
     @($weapons) + @($tools) + @($consumables) + @($furniture) +
     @($buildings) + @($nature) + @($vehicles) + @($legacyProps) +
-    @($maps) + @($bgm) + @($sfxCombat) + @($sfxInteract) + @($sfxAmbient) +
+    @($maps) + @($skyboxes) + @($bgm) + @($sfxCombat) + @($sfxInteract) + @($sfxAmbient) +
     @($animCombat) + @($animInteract) + @($animXianxia) + @($animLocomotion) +
     @($vfxAssets)
 
@@ -93,17 +96,32 @@ if ($null -eq $totalSizeBytes) { $totalSizeBytes = 0 }
 $totalSizeMB = [math]::Round($totalSizeBytes / 1048576, 1)
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
+function Get-PreviewPath {
+    param([System.IO.FileInfo]$File, [string]$Root)
+    $dir = $File.DirectoryName
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($File.Name)
+    foreach ($ext in @(".png", ".jpg", ".jpeg", ".webp", ".svg")) {
+        $p1 = Join-Path $dir "$baseName$ext"
+        $p2 = Join-Path $dir "$baseName.preview$ext"
+        if (Test-Path $p1) { return "assets/" + (Get-RelPath $p1 $Root) }
+        if (Test-Path $p2) { return "assets/" + (Get-RelPath $p2 $Root) }
+    }
+    return ""
+}
+
 function Format-TableRow {
     param([System.IO.FileInfo]$File, [string]$Root)
     $id   = Get-AssetId $File.Name
     $rel  = Get-RelPath $File.FullName $Root
     $ext  = $File.Extension.ToUpper().TrimStart(".")
     $size = "$(Get-SizeMB $File.Length) MB"
-    return "| ``$id`` | ``$rel`` | $ext | $size |"
+    $prev = Get-PreviewPath $File $Root
+    $prevCell = if ($prev) { "``$prev``" } else { "—" }
+    return "| ``$id`` | ``$rel`` | $ext | $size | $prevCell |"
 }
 
-$tableHeader = "| ID | Path | Format | Size |"
-$tableSep    = "|:---|:---|:---|---:|"
+$tableHeader = "| ID | Path | Format | Size | Ref Image |"
+$tableSep    = "|:---|:---|:---|---:|:---|"
 
 # ============================================================
 # 1. Generate ASSET_CATALOG.md (English for AI)
