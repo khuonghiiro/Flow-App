@@ -164,6 +164,129 @@ export class ThreeRenderer {
     this.renderer.render(this.scene, this.camera);
   };
 
+  public is2DMode: boolean = false;
+
+  public set2DMode(enabled: boolean): void {
+    this.is2DMode = enabled;
+    if (!this.controls) return;
+
+    if (enabled) {
+      // Switch to 2D Top-Down View
+      const target = this.controls.target;
+      this.camera.position.set(target.x, target.y + 22.0, target.z + 0.0001);
+      this.camera.lookAt(target);
+      this.controls.maxPolarAngle = 0.01;
+      this.controls.minPolarAngle = 0.00;
+      this.controls.update();
+    } else {
+      // Switch to 3D Perspective View
+      const target = this.controls.target;
+      this.camera.position.set(target.x, target.y + 6.0, target.z + 14.0);
+      this.camera.lookAt(target);
+      this.controls.maxPolarAngle = Math.PI - 0.05;
+      this.controls.minPolarAngle = 0.0;
+      this.controls.update();
+    }
+  }
+
+  public setCameraPresetView(view: 'top' | 'front' | 'right' | 'perspective'): void {
+    if (!this.controls) return;
+    const target = this.controls.target;
+
+    this.controls.maxPolarAngle = Math.PI - 0.01;
+    this.controls.minPolarAngle = 0.0;
+
+    switch (view) {
+      case 'top':
+        this.camera.position.set(target.x, target.y + 25.0, target.z + 0.0001);
+        break;
+      case 'front':
+        this.camera.position.set(target.x, target.y + 2.0, target.z + 18.0);
+        break;
+      case 'right':
+        this.camera.position.set(target.x + 18.0, target.y + 2.0, target.z);
+        break;
+      case 'perspective':
+        this.camera.position.set(target.x + 10.0, target.y + 8.0, target.z + 14.0);
+        break;
+    }
+    this.camera.lookAt(target);
+    this.controls.update();
+  }
+
+  /**
+   * Rotate / Look around 360 in-place from the current camera position
+   * (Like a person standing still at the camera location and looking around 360 degrees)
+   */
+  public rotateCameraInPlace(deltaYawDeg: number, deltaPitchDeg: number = 0): void {
+    if (!this.controls) return;
+
+    // Current forward vector from camera position towards look target
+    const forward = this.controls.target.clone().sub(this.camera.position);
+    const dist = Math.max(1.0, forward.length());
+
+    // Rotate forward direction around world Y-axis (Yaw)
+    const yawRad = (deltaYawDeg * Math.PI) / 180;
+    forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad);
+
+    // If pitch delta is provided, rotate around camera local right axis
+    if (deltaPitchDeg !== 0) {
+      const pitchRad = (deltaPitchDeg * Math.PI) / 180;
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion).normalize();
+      forward.applyAxisAngle(right, pitchRad);
+    }
+
+    forward.normalize().multiplyScalar(dist);
+
+    // Update target point in front of the camera
+    this.controls.target.copy(this.camera.position).add(forward);
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
+  }
+
+  public orbitCamera(deltaYawDeg: number, deltaPitchDeg: number = 0): void {
+    if (!this.controls) return;
+    const target = this.controls.target;
+    const offset = this.camera.position.clone().sub(target);
+
+    // Spherical rotation
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.theta += (deltaYawDeg * Math.PI) / 180;
+    spherical.phi = THREE.MathUtils.clamp(
+      spherical.phi + (deltaPitchDeg * Math.PI) / 180,
+      0.05,
+      Math.PI - 0.05
+    );
+
+    offset.setFromSpherical(spherical);
+    this.camera.position.copy(target).add(offset);
+    this.camera.lookAt(target);
+    this.controls.update();
+  }
+
+  public panCamera(deltaX: number, deltaY: number): void {
+    if (!this.controls) return;
+    const matrix = new THREE.Matrix4().extractRotation(this.camera.matrix);
+    const right = new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).normalize();
+    const up = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).normalize();
+
+    const panOffset = right.multiplyScalar(deltaX).add(up.multiplyScalar(deltaY));
+    this.camera.position.add(panOffset);
+    this.controls.target.add(panOffset);
+    this.controls.update();
+  }
+
+  public zoomCamera(deltaZoom: number): void {
+    if (!this.controls) return;
+    const target = this.controls.target;
+    const dir = this.camera.position.clone().sub(target);
+    const dist = dir.length();
+    const newDist = THREE.MathUtils.clamp(dist + deltaZoom, 2.0, 150.0);
+    dir.normalize().multiplyScalar(newDist);
+    this.camera.position.copy(target).add(dir);
+    this.controls.update();
+  }
+
   public renderDirect(): void {
     this.renderer.render(this.scene, this.camera);
   }

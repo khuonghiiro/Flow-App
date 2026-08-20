@@ -16,6 +16,25 @@ export interface PropLightConfig {
   target_direction?: Vec3Tuple;        // Direction vector for SpotLight [dx, dy, dz]
   spot_angle?: number;                 // Angle in radians for SpotLight (default Math.PI / 3)
   spot_penumbra?: number;              // Soft edge factor for SpotLight (0.0 to 1.0)
+  
+  // Dynamic Timeline & Animation
+  start_time?: number;                 // Timeline time (seconds) when light turns on
+  end_time?: number;                   // Timeline time (seconds) when light turns off
+  fade_in?: number;                    // Fade in transition duration in seconds (e.g. 1.0s)
+  fade_out?: number;                   // Fade out transition duration in seconds (e.g. 1.0s)
+  timeline_keyframes?: Array<{
+    time: number;                      // Timeline timestamp
+    intensity: number;                 // Target luminous intensity
+    color?: string;                    // Optional target color
+  }>;
+
+  // Proximity Triggers (Auto-lights up when character is near)
+  proximity_trigger?: {
+    actor_id?: string;                 // Target actor ID ('all' or specific e.g. 'actor_hero')
+    radius: number;                    // Detection distance in meters (e.g. 5.0m)
+    base_intensity?: number;           // Intensity when actor is far away (default 0 or low)
+    active_intensity: number;          // Intensity when actor is within radius (e.g. 4.0)
+  };
 }
 
 /**

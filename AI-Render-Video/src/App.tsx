@@ -594,14 +594,20 @@ export const App: React.FC = () => {
         AssetLoaderRegistry.applyMapLightingMode(mapGroupRef.current, mapDynamicLighting);
       }
 
-      // Sync 3D local point lights / spot lights
+      // Sync 3D local point lights / spot lights (with timeline keyframes & proximity triggers)
       const pointLightsEnabled = envOverrideRef.current.enabled
         ? (envOverrideRef.current.point_lights_enabled ?? true)
         : (activeScene.environment.weather?.point_lights_enabled ?? true);
       const pointLightsMultiplier = envOverrideRef.current.enabled
         ? (envOverrideRef.current.point_lights_intensity ?? 1.0)
         : 1.0;
-      lightManagerRef.current?.update(delta, pointLightsMultiplier, pointLightsEnabled);
+
+      const actorPositions = new Map<string, THREE.Vector3>();
+      for (const [id, state] of actorStates.entries()) {
+        actorPositions.set(id, state.position);
+      }
+
+      lightManagerRef.current?.update(delta, pointLightsMultiplier, pointLightsEnabled, t, actorPositions);
 
       // 3D Rain & Wind Weather Particle Simulation Update (with 3D Collision Occlusion & Splash VFX)
       if (weatherParticlesRef.current) {
@@ -1314,14 +1320,20 @@ export const App: React.FC = () => {
             }
           }
 
-          // Sync 3D local point lights in export
+          // Sync 3D local point lights in export (with timeline keyframes & proximity triggers)
           const pointLightsEnabled = envOverrideRef.current.enabled
             ? (envOverrideRef.current.point_lights_enabled ?? true)
             : (activeScene.environment.weather?.point_lights_enabled ?? true);
           const pointLightsMultiplier = envOverrideRef.current.enabled
             ? (envOverrideRef.current.point_lights_intensity ?? 1.0)
             : 1.0;
-          lightManagerRef.current?.update(delta, pointLightsMultiplier, pointLightsEnabled);
+
+          const exportActorPositions = new Map<string, THREE.Vector3>();
+          for (const [id, state] of actorStates.entries()) {
+            exportActorPositions.set(id, state.position);
+          }
+
+          lightManagerRef.current?.update(delta, pointLightsMultiplier, pointLightsEnabled, time, exportActorPositions);
 
           // Update map animation
           if (mapMixerRef.current) {

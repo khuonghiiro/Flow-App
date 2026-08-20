@@ -262,9 +262,15 @@ export class LightSourceManager {
   }
 
   /**
-   * Per-frame update: organic flame flickering, intensity multiplier, and master enable switch
+   * Per-frame update: organic flame flickering, timeline keyframes, proximity triggers, intensity multiplier
    */
-  public update(delta: number, masterMultiplier: number = 1.0, enabled: boolean = true): void {
+  public update(
+    delta: number,
+    masterMultiplier: number = 1.0,
+    enabled: boolean = true,
+    currentTime: number = 0,
+    actorPositions: Map<string, THREE.Vector3> = new Map()
+  ): void {
     this.animTimer += delta;
 
     for (const item of this.managedLights.values()) {
@@ -274,21 +280,89 @@ export class LightSourceManager {
         continue;
       }
 
-      item.light.visible = true;
-      let currentIntensity = item.baseIntensity * masterMultiplier;
+      const cfg = item.config;
+      let targetIntensity = item.baseIntensity;
 
-      // Natural organic flame flicker for torches/lanterns
-      if (item.config.flicker) {
+      // 1. Timeline Keyframes (Interpolation over time)
+      if (cfg.timeline_keyframes && cfg.timeline_keyframes.length > 0) {
+        const kfs = [...cfg.timeline_keyframes].sort((a, b) => a.time - b.time);
+        if (currentTime <= kfs[0].time) {
+          targetIntensity = kfs[0].intensity;
+        } else if (currentTime >= kfs[kfs.length - 1].time) {
+          targetIntensity = kfs[kfs.length - 1].intensity;
+        } else {
+          for (let i = 0; i < kfs.length - 1; i++) {
+            if (currentTime >= kfs[i].time && currentTime <= kfs[i + 1].time) {
+              const span = kfs[i + 1].time - kfs[i].time;
+              const alpha = span > 0 ? (currentTime - kfs[i].time) / span : 0;
+              targetIntensity = THREE.MathUtils.lerp(kfs[i].intensity, kfs[i + 1].intensity, alpha);
+              break;
+            }
+          }
+        }
+      } else if (cfg.start_time !== undefined || cfg.end_time !== undefined) {
+        // 2. Timeline Start Time / End Time with smooth Fade In / Fade Out
+        const start = cfg.start_time ?? 0;
+        const end = cfg.end_time ?? 999999;
+        const fadeIn = Math.max(0.01, cfg.fade_in ?? 0.5);
+        const fadeOut = Math.max(0.01, cfg.fade_out ?? 0.5);
+
+        if (currentTime < start - fadeIn || currentTime > end + fadeOut) {
+          targetIntensity = 0;
+        } else if (currentTime < start) {
+          const alpha = (currentTime - (start - fadeIn)) / fadeIn;
+          targetIntensity = item.baseIntensity * THREE.MathUtils.clamp(alpha, 0, 1);
+        } else if (currentTime > end) {
+          const alpha = 1 - (currentTime - end) / fadeOut;
+          targetIntensity = item.baseIntensity * THREE.MathUtils.clamp(alpha, 0, 1);
+        } else {
+          targetIntensity = item.baseIntensity;
+        }
+      }
+
+      // 3. Proximity Triggers (Auto-lights up when character is within distance)
+      if (cfg.proximity_trigger && targetIntensity > 0) {
+        const prox = cfg.proximity_trigger;
+        const lightWorldPos = new THREE.Vector3();
+        item.light.getWorldPosition(lightWorldPos);
+
+        let minActorDist = Infinity;
+        for (const [actorId, pos] of actorPositions.entries()) {
+          if (!prox.actor_id || prox.actor_id === 'all' || prox.actor_id === actorId) {
+            const dist = lightWorldPos.distanceTo(pos);
+            if (dist < minActorDist) {
+              minActorDist = dist;
+            }
+          }
+        }
+
+        const baseInt = prox.base_intensity !== undefined ? prox.base_intensity : 0.0;
+        const actInt = prox.active_intensity !== undefined ? prox.active_intensity : item.baseIntensity;
+        const rad = Math.max(0.1, prox.radius || 5.0);
+
+        if (minActorDist < rad) {
+          const factor = 1.0 - (minActorDist / rad);
+          const smoothFactor = factor * factor * (3 - 2 * factor); // Smoothstep curve
+          targetIntensity = THREE.MathUtils.lerp(baseInt, actInt, smoothFactor);
+        } else {
+          targetIntensity = baseInt;
+        }
+      }
+
+      // 4. Natural organic flame flicker for torches/lanterns
+      if (cfg.flicker && targetIntensity > 0.01) {
         const seed = item.flickerSeed;
         const t = this.animTimer * 9.0 + seed;
         const f1 = Math.sin(t * 1.3) * 0.12;
         const f2 = Math.sin(t * 3.7 + 1.2) * 0.08;
         const f3 = Math.sin(t * 7.1 + 2.8) * 0.05;
         const flickerFactor = 1.0 + f1 + f2 + f3;
-        currentIntensity *= Math.max(0.65, Math.min(1.4, flickerFactor));
+        targetIntensity *= Math.max(0.65, Math.min(1.4, flickerFactor));
       }
 
-      item.light.intensity = currentIntensity;
+      const finalIntensity = targetIntensity * masterMultiplier;
+      item.light.intensity = finalIntensity;
+      item.light.visible = finalIntensity > 0.001;
     }
   }
 

@@ -9,6 +9,7 @@ import { SubtitleOverlay } from './SubtitleOverlay';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
 import { SubtitlesConfig, MasterSceneConfig } from '../types/scene';
 import { SelectedSceneObject } from './TransformInspector';
+import { CameraNavigationWidget } from './CameraNavigationWidget';
 import { getSavedViewportSettings, saveViewportSetting } from '../core/storage/ViewportSettingsStorage';
 
 interface ProjectedMarker {
@@ -74,6 +75,8 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   const [showUI, setShowUI] = useState(() => getSavedViewportSettings().showUI);
   const [showControlsGuide, setShowControlsGuide] = useState(() => getSavedViewportSettings().showControlsGuide);
   const [showCoordinates, setShowCoordinates] = useState(() => getSavedViewportSettings().showCoordinates);
+  const [is2DMode, setIs2DMode] = useState(false);
+  const [showNavWidget, setShowNavWidget] = useState(true);
   const [projectedMarkers, setProjectedMarkers] = useState<ProjectedMarker[]>([]);
 
   useEffect(() => {
@@ -529,6 +532,36 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
               CC
             </button>
 
+            {/* 2D / 3D Mode Toggle Button (Unity-Style) */}
+            <button
+              id="toggle-2d-3d-mode-btn"
+              className={is2DMode ? "btn-primary" : "btn-secondary"}
+              style={{
+                borderRadius: 8,
+                width: 32,
+                height: 32,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: is2DMode ? 'rgba(234, 179, 8, 0.95)' : 'rgba(30, 41, 59, 0.7)',
+                borderColor: is2DMode ? '#f59e0b' : '#475569',
+                color: is2DMode ? '#000000' : '#e2e8f0',
+                cursor: 'pointer',
+                fontWeight: 900,
+                fontSize: 10,
+                boxShadow: is2DMode ? '0 0 12px rgba(245, 158, 11, 0.6)' : 'none',
+              }}
+              onClick={() => {
+                const next = !is2DMode;
+                setIs2DMode(next);
+                renderer?.set2DMode(next);
+              }}
+              title={is2DMode ? "Đang ở chế độ 2D (Top-Down). Bấm để quay lại 3D Perspective" : "Đang ở chế độ 3D. Bấm để chuyển sang chế độ 2D (Top-Down)"}
+            >
+              {is2DMode ? '2D' : '3D'}
+            </button>
+
             {/* 360 Cam Toggle */}
             <button
               id="toggle-free-cam-btn"
@@ -578,10 +611,39 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 const next = !showCoordinates;
                 setShowCoordinates(next);
                 saveViewportSetting('showCoordinates', next);
+                if (!next) {
+                  renderer?.gizmo?.detach();
+                  onDeselectObject?.();
+                }
               }}
-              title={showCoordinates ? "Tắt nhãn tọa độ trên Scene" : "Bật hiển thị nhãn tọa độ XYZ của các đối tượng"}
+              title={showCoordinates ? "Tắt nhãn tọa độ trên Scene & Ẩn trục Gizmo" : "Bật hiển thị nhãn tọa độ XYZ của các đối tượng"}
             >
               XYZ
+            </button>
+            {/* Camera Navigation Widget Toggle Button */}
+            <button
+              id="toggle-nav-widget-btn"
+              className={showNavWidget ? "btn-primary" : "btn-secondary"}
+              style={{
+                borderRadius: 8,
+                width: 32,
+                height: 32,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: showNavWidget ? 'rgba(56, 189, 248, 0.9)' : 'rgba(30, 41, 59, 0.7)',
+                borderColor: showNavWidget ? '#38bdf8' : '#475569',
+                color: showNavWidget ? '#ffffff' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: 9,
+                boxShadow: showNavWidget ? '0 0 12px rgba(56, 189, 248, 0.5)' : 'none',
+              }}
+              onClick={() => setShowNavWidget(!showNavWidget)}
+              title={showNavWidget ? "Ẩn bảng điều hướng camera" : "Bật bảng điều hướng camera (Xoay 360, Pan, Zoom)"}
+            >
+              <Compass size={14} />
             </button>
           </div>
 
@@ -611,6 +673,9 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
           )}
         </div>
       </div>
+
+      {/* Unity-Style Camera Quick Navigation Widget (Bottom-Right of Viewport with Long-Press Repeat) */}
+      <CameraNavigationWidget renderer={renderer} visible={showUI && showNavWidget} />
 
       {/* Subtitles Overlay Layer */}
       {showCC && activeSubtitle && (

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Sun, Zap, Flame, Lightbulb, Trash2, Plus, Copy, Check, 
   Eye, Sliders, Target, Sparkles, Compass, ShieldAlert,
-  Flashlight, Lamp, Trees, Radio, Palette
+  Flashlight, Lamp, Trees, Radio, Palette, Clock, UserCheck
 } from 'lucide-react';
 import { MasterSceneConfig, PropLightConfig } from '../types/scene';
 import { PlacedProp } from '../types/map_preset';
@@ -295,7 +295,7 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
               </span>
             </div>
             <div style={{ fontSize: '10px', color: '#94a3b8' }}>
-              Gắn hào quang cây, đèn pin chiếu xa, cột đèn đường, đuốc lửa bập bùng & nguồn sáng tự do
+              Hào quang cây, đèn pin chiếu xa, cột đèn, hẹn giờ timeline & tự động sáng khi nhân vật đến gần
             </div>
           </div>
         </div>
@@ -397,7 +397,7 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
         {activeTab === 'prop_lights' && (
           <>
             <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(30, 41, 59, 0.4)', padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-              💡 <b>Hướng dẫn:</b> Bạn có thể chọn bất kỳ cây cối, đèn lồng, đuốc, ghế hay vật thể 3D nào bên dưới để bật phát sáng. Khi di chuyển vật thể trong 3D, ánh sáng sẽ tự động bám theo và rọi sáng môi trường xung quanh.
+              💡 <b>Hướng dẫn:</b> Chọn bất kỳ cây cối, đèn lồng, đuốc, hoặc vật thể 3D bên dưới để bật phát sáng, cài đặt hẹn giờ timeline hoặc tự động sáng bừng khi nhân vật đi đến gần.
             </div>
 
             {placedProps.map((prop) => {
@@ -424,6 +424,9 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
                 flicker: true,
                 offset: [0, 1.8, 0],
               });
+
+              const isProximityActive = Boolean(light.proximity_trigger);
+              const isTimelineActive = light.start_time !== undefined || light.end_time !== undefined;
 
               return (
                 <div
@@ -567,8 +570,9 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
                         </div>
                       </div>
 
-                      {/* Toggles */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* Toggles & Advanced Features */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        {/* Flicker */}
                         <label style={{
                           display: 'flex', alignItems: 'center', gap: 5, fontSize: '10px', cursor: 'pointer',
                           padding: '3px 8px', borderRadius: 4,
@@ -585,7 +589,192 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
                           <Flame size={12} color={light.flicker ? '#ea580c' : '#94a3b8'} />
                           {light.flicker ? '🔥 Bập Bùng Lửa Thật' : 'Sáng Đều'}
                         </label>
+
+                        {/* Proximity Toggle */}
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 5, fontSize: '10px', cursor: 'pointer',
+                          padding: '3px 8px', borderRadius: 4,
+                          background: isProximityActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${isProximityActive ? '#10b981' : 'rgba(255, 255, 255, 0.1)'}`,
+                          color: isProximityActive ? '#6ee7b7' : '#94a3b8',
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={isProximityActive}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                handleUpdatePropLight(prop.id, {
+                                  ...light,
+                                  proximity_trigger: {
+                                    actor_id: 'all',
+                                    radius: 5.0,
+                                    base_intensity: 0.0,
+                                    active_intensity: light.intensity ?? 3.5,
+                                  },
+                                });
+                              } else {
+                                const { proximity_trigger, ...rest } = light;
+                                handleUpdatePropLight(prop.id, rest);
+                              }
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <UserCheck size={12} color={isProximityActive ? '#10b981' : '#94a3b8'} />
+                          {isProximityActive ? '🚶 Sáng Khi Lại Gần (Bật)' : '🚶 Kích Hoạt Khi Lại Gần'}
+                        </label>
+
+                        {/* Timeline Trigger Toggle */}
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 5, fontSize: '10px', cursor: 'pointer',
+                          padding: '3px 8px', borderRadius: 4,
+                          background: isTimelineActive ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${isTimelineActive ? '#a855f7' : 'rgba(255, 255, 255, 0.1)'}`,
+                          color: isTimelineActive ? '#d8b4fe' : '#94a3b8',
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={isTimelineActive}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                handleUpdatePropLight(prop.id, {
+                                  ...light,
+                                  start_time: 0,
+                                  end_time: scene.duration || 10,
+                                  fade_in: 1.0,
+                                  fade_out: 1.0,
+                                });
+                              } else {
+                                const { start_time, end_time, fade_in, fade_out, ...rest } = light;
+                                handleUpdatePropLight(prop.id, rest);
+                              }
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <Clock size={12} color={isTimelineActive ? '#a855f7' : '#94a3b8'} />
+                          {isTimelineActive ? '⏱️ Hẹn Giờ Timeline (Bật)' : '⏱️ Hẹn Giờ Timeline'}
+                        </label>
                       </div>
+
+                      {/* Proximity Trigger Configuration Box */}
+                      {isProximityActive && light.proximity_trigger && (
+                        <div style={{
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          borderRadius: 6,
+                          padding: 8,
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: 8,
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#6ee7b7' }}>Bán kính kích hoạt (m):</span>
+                            <input
+                              type="number" step="0.5" min="0.5" max="30"
+                              value={light.proximity_trigger.radius}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 5;
+                                handleUpdatePropLight(prop.id, {
+                                  ...light,
+                                  proximity_trigger: { ...light.proximity_trigger!, radius: val },
+                                });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#6ee7b7' }}>Sáng khi ở xa (Lux):</span>
+                            <input
+                              type="number" step="0.1" min="0" max="5"
+                              value={light.proximity_trigger.base_intensity ?? 0}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                handleUpdatePropLight(prop.id, {
+                                  ...light,
+                                  proximity_trigger: { ...light.proximity_trigger!, base_intensity: val },
+                                });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#6ee7b7' }}>Sáng khi lại gần (Lux):</span>
+                            <input
+                              type="number" step="0.5" min="0.5" max="10"
+                              value={light.proximity_trigger.active_intensity}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 4;
+                                handleUpdatePropLight(prop.id, {
+                                  ...light,
+                                  proximity_trigger: { ...light.proximity_trigger!, active_intensity: val },
+                                });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Timeline Configuration Box */}
+                      {isTimelineActive && (
+                        <div style={{
+                          background: 'rgba(168, 85, 247, 0.1)',
+                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                          borderRadius: 6,
+                          padding: 8,
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(4, 1fr)',
+                          gap: 8,
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Giây Bật Sáng:</span>
+                            <input
+                              type="number" step="0.5" min="0" max={scene.duration}
+                              value={light.start_time ?? 0}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                handleUpdatePropLight(prop.id, { ...light, start_time: val });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Giây Tắt Sáng:</span>
+                            <input
+                              type="number" step="0.5" min="0" max={scene.duration}
+                              value={light.end_time ?? scene.duration}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || scene.duration;
+                                handleUpdatePropLight(prop.id, { ...light, end_time: val });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Fade In (s):</span>
+                            <input
+                              type="number" step="0.2" min="0.1" max="5"
+                              value={light.fade_in ?? 1.0}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 1.0;
+                                handleUpdatePropLight(prop.id, { ...light, fade_in: val });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Fade Out (s):</span>
+                            <input
+                              type="number" step="0.2" min="0.1" max="5"
+                              value={light.fade_out ?? 1.0}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 1.0;
+                                handleUpdatePropLight(prop.id, { ...light, fade_out: val });
+                              }}
+                              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -628,6 +817,9 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
             ) : (
               customLights.map((light, idx) => {
                 const pos = light.offset || [0, 3, 0];
+                const isProximityActive = Boolean(light.proximity_trigger);
+                const isTimelineActive = light.start_time !== undefined || light.end_time !== undefined;
+
                 return (
                   <div
                     key={idx}
@@ -758,8 +950,8 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
                       </div>
                     </div>
 
-                    {/* Position XYZ & Toggles */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: 8, alignItems: 'center' }}>
+                    {/* Position XYZ */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'center' }}>
                       {['X', 'Y', 'Z'].map((axis, aIdx) => (
                         <div key={axis} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0, 0, 0, 0.3)', padding: '3px 6px', borderRadius: 4 }}>
                           <span style={{ fontSize: '10px', color: aIdx === 0 ? '#f87171' : aIdx === 1 ? '#4ade80' : '#60a5fa', fontWeight: 700 }}>
@@ -780,7 +972,10 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
                           />
                         </div>
                       ))}
+                    </div>
 
+                    {/* Toggles: Flicker, Proximity, Timeline */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       {/* Flicker Flame Toggle */}
                       <label style={{
                         display: 'flex', alignItems: 'center', gap: 5, fontSize: '10px', cursor: 'pointer',
@@ -798,7 +993,192 @@ export const LightingStudioPanel: React.FC<LightingStudioPanelProps> = ({
                         <Flame size={12} color={light.flicker ? '#ea580c' : '#94a3b8'} />
                         {light.flicker ? 'Bập Bùng Lửa' : 'Sáng Đều'}
                       </label>
+
+                      {/* Proximity Toggle */}
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 5, fontSize: '10px', cursor: 'pointer',
+                        padding: '4px 8px', borderRadius: 4,
+                        background: isProximityActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${isProximityActive ? '#10b981' : 'rgba(255, 255, 255, 0.1)'}`,
+                        color: isProximityActive ? '#6ee7b7' : '#94a3b8',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={isProximityActive}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleUpdateCustomLight(idx, {
+                                ...light,
+                                proximity_trigger: {
+                                  actor_id: 'all',
+                                  radius: 5.0,
+                                  base_intensity: 0.0,
+                                  active_intensity: light.intensity ?? 3.5,
+                                },
+                              });
+                            } else {
+                              const { proximity_trigger, ...rest } = light;
+                              handleUpdateCustomLight(idx, rest);
+                            }
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                        <UserCheck size={12} color={isProximityActive ? '#10b981' : '#94a3b8'} />
+                        {isProximityActive ? '🚶 Sáng Khi Lại Gần (Bật)' : '🚶 Kích Hoạt Khi Lại Gần'}
+                      </label>
+
+                      {/* Timeline Trigger Toggle */}
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 5, fontSize: '10px', cursor: 'pointer',
+                        padding: '4px 8px', borderRadius: 4,
+                        background: isTimelineActive ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${isTimelineActive ? '#a855f7' : 'rgba(255, 255, 255, 0.1)'}`,
+                        color: isTimelineActive ? '#d8b4fe' : '#94a3b8',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={isTimelineActive}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleUpdateCustomLight(idx, {
+                                ...light,
+                                start_time: 0,
+                                end_time: scene.duration || 10,
+                                fade_in: 1.0,
+                                fade_out: 1.0,
+                              });
+                            } else {
+                              const { start_time, end_time, fade_in, fade_out, ...rest } = light;
+                              handleUpdateCustomLight(idx, rest);
+                            }
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                        <Clock size={12} color={isTimelineActive ? '#a855f7' : '#94a3b8'} />
+                        {isTimelineActive ? '⏱️ Hẹn Giờ Timeline (Bật)' : '⏱️ Hẹn Giờ Timeline'}
+                      </label>
                     </div>
+
+                    {/* Proximity Trigger Details */}
+                    {isProximityActive && light.proximity_trigger && (
+                      <div style={{
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        borderRadius: 6,
+                        padding: 8,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 8,
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#6ee7b7' }}>Bán kính kích hoạt (m):</span>
+                          <input
+                            type="number" step="0.5" min="0.5" max="30"
+                            value={light.proximity_trigger.radius}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 5;
+                              handleUpdateCustomLight(idx, {
+                                ...light,
+                                proximity_trigger: { ...light.proximity_trigger!, radius: val },
+                              });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#6ee7b7' }}>Sáng khi ở xa (Lux):</span>
+                          <input
+                            type="number" step="0.1" min="0" max="5"
+                            value={light.proximity_trigger.base_intensity ?? 0}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              handleUpdateCustomLight(idx, {
+                                ...light,
+                                proximity_trigger: { ...light.proximity_trigger!, base_intensity: val },
+                              });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#6ee7b7' }}>Sáng khi lại gần (Lux):</span>
+                          <input
+                            type="number" step="0.5" min="0.5" max="10"
+                            value={light.proximity_trigger.active_intensity}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 4;
+                              handleUpdateCustomLight(idx, {
+                                ...light,
+                                proximity_trigger: { ...light.proximity_trigger!, active_intensity: val },
+                              });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timeline Details */}
+                    {isTimelineActive && (
+                      <div style={{
+                        background: 'rgba(168, 85, 247, 0.1)',
+                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                        borderRadius: 6,
+                        padding: 8,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: 8,
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Giây Bật Sáng:</span>
+                          <input
+                            type="number" step="0.5" min="0" max={scene.duration}
+                            value={light.start_time ?? 0}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              handleUpdateCustomLight(idx, { ...light, start_time: val });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Giây Tắt Sáng:</span>
+                          <input
+                            type="number" step="0.5" min="0" max={scene.duration}
+                            value={light.end_time ?? scene.duration}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || scene.duration;
+                              handleUpdateCustomLight(idx, { ...light, end_time: val });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Fade In (s):</span>
+                          <input
+                            type="number" step="0.2" min="0.1" max="5"
+                            value={light.fade_in ?? 1.0}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 1.0;
+                              handleUpdateCustomLight(idx, { ...light, fade_in: val });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: '#d8b4fe' }}>Fade Out (s):</span>
+                          <input
+                            type="number" step="0.2" min="0.1" max="5"
+                            value={light.fade_out ?? 1.0}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 1.0;
+                              handleUpdateCustomLight(idx, { ...light, fade_out: val });
+                            }}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', fontSize: '11px', borderRadius: 4, padding: '2px 4px' }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
