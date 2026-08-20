@@ -371,10 +371,60 @@ export class VRMAvatar {
       }
 
       let loadedCount = 0;
+      const hasFace = partsToLoad.some((p) => p.key === 'face');
+
       for (const item of partsToLoad) {
         try {
           const modelGroup = await AssetLoaderRegistry.loadCharacterPart(item.path);
           modelGroup.name = `part_${item.key}`;
+
+          // Smooth texture filtering and pure layer overwrite
+          modelGroup.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+
+              const nodeName = mesh.name.toLowerCase();
+              const parentName = (mesh.parent?.name || '').toLowerCase();
+              const matName = Array.isArray(mesh.material)
+                ? mesh.material.map((m) => m.name.toLowerCase()).join(' ')
+                : (mesh.material?.name || '').toLowerCase();
+
+              const isFaceDetail =
+                nodeName.includes('face') ||
+                parentName.includes('face') ||
+                matName.includes('face') ||
+                nodeName.includes('pupil') ||
+                parentName.includes('pupil') ||
+                matName.includes('pupil') ||
+                nodeName.includes('eyebrow') ||
+                parentName.includes('eyebrow') ||
+                matName.includes('eyebrow');
+
+              // Lớp trước đè lớp sau: Khi chọn Face mới, ẩn triệt để mặt và mắt/mày của thân gốc
+              if (hasFace && item.key === 'base_body' && isFaceDetail) {
+                mesh.visible = false;
+              }
+
+              if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach((mat) => {
+                  const m = mat as any;
+                  m.depthTest = true;
+                  m.depthWrite = true;
+                  m.side = THREE.FrontSide; // FrontSide prevents seeing inside the mouth cavity/tongue
+
+                  if (m.map) {
+                    m.map.minFilter = THREE.LinearMipmapLinearFilter;
+                    m.map.magFilter = THREE.LinearFilter;
+                    m.map.anisotropy = 16;
+                  }
+                });
+              }
+            }
+          });
+
           this.modularGroup.add(modelGroup);
           loadedCount++;
         } catch (err) {
@@ -387,13 +437,15 @@ export class VRMAvatar {
         this.proceduralGroup.visible = false;
       }
     } else if (modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf') || modelPath.endsWith('.vrm'))) {
-      try {
-        const fullModel = await AssetLoaderRegistry.loadCharacterPart(resolvePath(modelPath));
-        fullModel.name = 'full_character_model';
-        this.modularGroup.add(fullModel);
-        this.proceduralGroup.visible = false;
-      } catch (err) {
-        console.warn(`[VRMAvatar] Không thể nạp full model ${modelPath}:`, err);
+      if (!modelPath.includes('dark_mage') && !modelPath.includes('warrior.vrm')) {
+        try {
+          const fullModel = await AssetLoaderRegistry.loadCharacterPart(resolvePath(modelPath));
+          fullModel.name = 'full_character_model';
+          this.modularGroup.add(fullModel);
+          this.proceduralGroup.visible = false;
+        } catch (err) {
+          console.warn(`[VRMAvatar] Không thể nạp full model ${modelPath}:`, err);
+        }
       }
     }
   }

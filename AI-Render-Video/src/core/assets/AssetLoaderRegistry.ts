@@ -120,7 +120,9 @@ export class AssetLoaderRegistry {
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.DoubleSide; // Trang phục không bị tàng hình mặt trong
+                  mat.side = THREE.FrontSide; // FrontSide enables backface culling to hide inner mouth/tongue/teeth
+                  mat.depthTest = true;
+                  mat.depthWrite = true;
                 });
               }
             }

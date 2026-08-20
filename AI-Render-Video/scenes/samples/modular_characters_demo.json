@@ -1,0 +1,273 @@
+{
+  "scene_id": "scene_modular_characters_demo",
+  "title": "🎭 Trình Diễn Nhân Vật & Trang Phục (Modular Characters)",
+  "fps": 60,
+  "duration": 20.0,
+  "environment": {
+    "map": "assets/maps/cathedral.glb",
+    "sky_time": "noon",
+    "weather": {
+      "fog": 0.002,
+      "wind": 0.3,
+      "wind_direction": 90,
+      "cloud_coverage": 0.45,
+      "cloud_type": "cumulus",
+      "cloud_layers": 2,
+      "cloud_altitude": 1.0,
+      "cloud_shadow_darkness": 0.75,
+      "point_lights_enabled": true,
+      "custom_lights": [
+        {
+          "type": "point",
+          "color": "#38bdf8",
+          "intensity": 2.5,
+          "distance": 15.0,
+          "decay": 2.0,
+          "flicker": false,
+          "offset": [0, 4.0, 0]
+        }
+      ]
+    }
+  },
+  "subtitles_config": {
+    "enable_overlay": true,
+    "burn_in_export": true,
+    "font_size": 22,
+    "show_speaker_name": true,
+    "position": "bottom",
+    "text_color": "#ffffff"
+  },
+  "dialogues_manifest": [
+    {
+      "line_id": "dlg_01",
+      "speaker_id": "actor_nam_amber",
+      "speaker_name": "Lý Tiên Sinh (Amber Nectar)",
+      "speaker_color": "#f59e0b",
+      "text": "Bộ trang phục Hổ Phách này rất vừa vặn cho chuyến xuất hành!",
+      "voice_config": {
+        "voice_id": "vi-VN-NamMinhNeural",
+        "speed": 1.0,
+        "emotion": "confident"
+      },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
+      "status": "pending_tts",
+      "start_time": 1.0,
+      "estimated_duration": 3.8
+    },
+    {
+      "line_id": "dlg_02",
+      "speaker_id": "actor_nam_precision",
+      "speaker_name": "Võ Khách Precision",
+      "speaker_color": "#38bdf8",
+      "text": "Ta đã luyện thành chiêu thức Precision Strike, sẵn sàng xuất kích!",
+      "voice_config": {
+        "voice_id": "vi-VN-NamMinhNeural",
+        "speed": 1.0,
+        "emotion": "heroic"
+      },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
+      "status": "pending_tts",
+      "start_time": 5.2,
+      "estimated_duration": 4.0
+    },
+    {
+      "line_id": "dlg_03",
+      "speaker_id": "actor_nu_tzitzimitl",
+      "speaker_name": "Tzitzimitl Nữ Ma Pháp",
+      "speaker_color": "#ec4899",
+      "text": "Tuyệt vời, ma pháp và kiếm thuật kết hợp sẽ bách chiến bách thắng!",
+      "voice_config": {
+        "voice_id": "vi-VN-HoaiMyNeural",
+        "speed": 1.0,
+        "emotion": "smile"
+      },
+      "audio_path": null,
+      "audio_naming_rule": "audio/dialogues/{scene_id}_{speaker_id}_{line_id}.mp3",
+      "status": "pending_tts",
+      "start_time": 9.5,
+      "estimated_duration": 4.5
+    }
+  ],
+  "camera_tracks": [
+    {
+      "id": "cam_trio",
+      "name": "Toàn Cảnh 3 Nhân Vật",
+      "start_time": 0.0,
+      "end_time": 5.0,
+      "mode": "orbit",
+      "follow_target": "actor_nam_precision",
+      "distance": 5.5,
+      "height": 1.8,
+      "fov": 55
+    },
+    {
+      "id": "cam_precision_focus",
+      "name": "Cận Cảnh Võ Khách Precision",
+      "start_time": 5.0,
+      "end_time": 9.5,
+      "mode": "follow",
+      "follow_target": "actor_nam_precision",
+      "distance": 3.2,
+      "height": 1.5,
+      "fov": 45
+    },
+    {
+      "id": "cam_female_focus",
+      "name": "Cận Cảnh Nữ Ma Pháp",
+      "start_time": 9.5,
+      "end_time": 20.0,
+      "mode": "follow",
+      "follow_target": "actor_nu_tzitzimitl",
+      "distance": 3.0,
+      "height": 1.5,
+      "fov": 45
+    }
+  ],
+  "actors": [
+    {
+      "id": "actor_nam_precision",
+      "name": "Võ Khách Precision",
+      "model": "assets/characters/base_bodies/male/body_base_-_manekina.glb",
+      "assembly": {
+        "base_body": "assets/characters/base_bodies/male/body_base_-_manekina.glb",
+        "costume": "assets/characters/costumes/male/precision_strike_-_manekina.glb",
+        "face": "assets/characters/faces/male/starlight_fragments_-_manekin.glb"
+      },
+      "spawn_point": [0.0, 0, 1.8],
+      "rotation_y": 0.0,
+      "tracks": {
+        "movement": [
+          {
+            "start": 0.0,
+            "end": 5.0,
+            "action": "idle"
+          },
+          {
+            "start": 5.0,
+            "end": 9.5,
+            "action": "talk_gesture",
+            "look_at": "actor_nam_amber.head"
+          },
+          {
+            "start": 9.5,
+            "end": 14.0,
+            "action": "idle",
+            "look_at": "actor_nu_tzitzimitl.head"
+          },
+          {
+            "start": 14.0,
+            "end": 20.0,
+            "action": "block_defend"
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_02",
+            "expressions": [
+              {
+                "time_offset": 0.0,
+                "type": "serious",
+                "weight": 0.9
+              }
+            ]
+          }
+        ],
+        "combat_actions": [
+          {
+            "start_time": 14.2,
+            "impact_time": 14.8,
+            "anim": "heavy_slash_combo",
+            "weapon_vfx": {
+              "type": "sword_slash_fire",
+              "start": 14.2,
+              "end": 15.2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "actor_nam_amber",
+      "name": "Lý Tiên Sinh",
+      "model": "assets/characters/base_bodies/man/body_base_-_manekin.glb",
+      "assembly": {
+        "base_body": "assets/characters/base_bodies/man/body_base_-_manekin.glb",
+        "costume": "assets/characters/costumes/man/amber_nectar_-_manekin.glb",
+        "face": "assets/characters/faces/man/dawnbreaker_-_manekin.glb"
+      },
+      "spawn_point": [-2.0, 0, 1.0],
+      "rotation_y": 0.35,
+      "tracks": {
+        "movement": [
+          {
+            "start": 0.0,
+            "end": 5.0,
+            "action": "talk_gesture",
+            "look_at": "actor_nam_precision.head"
+          },
+          {
+            "start": 5.0,
+            "end": 20.0,
+            "action": "idle",
+            "look_at": "actor_nam_precision.head"
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_01",
+            "expressions": [
+              {
+                "time_offset": 0.0,
+                "type": "happy",
+                "weight": 0.8
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "actor_nu_tzitzimitl",
+      "name": "Tzitzimitl Nữ Ma Pháp",
+      "model": "assets/characters/woman/tzitzimitl_female.glb",
+      "spawn_point": [2.0, 0, 1.0],
+      "rotation_y": -0.35,
+      "tracks": {
+        "movement": [
+          {
+            "start": 0.0,
+            "end": 9.5,
+            "action": "idle",
+            "look_at": "actor_nam_precision.head"
+          },
+          {
+            "start": 9.5,
+            "end": 14.5,
+            "action": "talk_gesture",
+            "look_at": "actor_nam_precision.head"
+          },
+          {
+            "start": 14.5,
+            "end": 20.0,
+            "action": "sit",
+            "look_at": "actor_nam_precision.head"
+          }
+        ],
+        "speech": [
+          {
+            "line_ref": "dlg_03",
+            "expressions": [
+              {
+                "time_offset": 0.0,
+                "type": "smile",
+                "weight": 0.85
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

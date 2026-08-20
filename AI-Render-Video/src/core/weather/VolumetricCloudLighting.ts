@@ -169,8 +169,7 @@ export class VolumetricCloudLighting {
       'getDirectionalLightInfo( directionalLight, directLight );',
       /* glsl */ `
         getDirectionalLightInfo( directionalLight, directLight );
-        float vCloudShadowTransmittance = computeCloudTransmittance(vCloudWorldPos);
-        directLight.color *= vCloudShadowTransmittance;
+        directLight.color *= computeCloudTransmittance(vCloudWorldPos);
       `
     );
 

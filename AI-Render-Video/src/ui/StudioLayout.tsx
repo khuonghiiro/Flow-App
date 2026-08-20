@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -15,6 +15,7 @@ import { DialogueEditorModal } from './DialogueEditorModal';
 import { WeatherControlPanel } from './WeatherControlPanel';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
 import { LightingStudioPanel } from './LightingStudioPanel';
+import { CharacterWorkbenchPanel } from './CharacterWorkbenchPanel';
 import { TransformInspector, SelectedSceneObject } from './TransformInspector';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
@@ -109,10 +110,11 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 }) => {
   const [leftTab, setLeftTab] = useState<'dialogue' | 'combat' | 'weather'>('dialogue');
   const [rightTab, setRightTab] = useState<'director' | 'radar' | 'inspector'>('inspector');
-  const [bottomTab, setBottomTab] = useState<'timeline' | 'assets' | 'lighting'>('timeline');
+  const [bottomTab, setBottomTab] = useState<'timeline' | 'assets' | 'lighting' | 'workbench'>('timeline');
   const [isBottomMaximized, setIsBottomMaximized] = useState<boolean>(false);
   const [showCC, setShowCC] = useState(() => getSavedViewportSettings().showCC);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
+  const [showWorkbenchModal, setShowWorkbenchModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
   const [gizmoMode, setGizmoMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   const [gizmoSpace, setGizmoSpace] = useState<'world' | 'local'>('world');
@@ -313,6 +315,27 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               }}
             >
               <Layers size={12} /> GLB
+            </button>
+            <button
+              onClick={() => setShowWorkbenchModal(true)}
+              title="Mở Xưởng Lắp Ghép Nhân Vật, Auto-Rig & Thiết Kế Map 3D"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 6,
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1))',
+                color: '#fbbf24',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
+              }}
+            >
+              <Wrench size={12} /> 🛠️ Xưởng 3D & Auto-Rig
             </button>
             <button
               onClick={() => {
@@ -528,6 +551,12 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 >
                   <Lightbulb size={13} /> Studio Ánh Sáng & Nguồn Sáng 3D
                 </button>
+                <button
+                  className={`dock-tab-btn ${bottomTab === 'workbench' ? 'active' : ''}`}
+                  onClick={() => setBottomTab('workbench')}
+                >
+                  <Wrench size={13} /> 🛠️ Xưởng Nhân Vật & Auto-Rig
+                </button>
               </div>
 
               <div className="dock-tabs-right">
@@ -566,12 +595,19 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                   isMaximized={isBottomMaximized}
                   onToggleMaximize={() => setIsBottomMaximized(!isBottomMaximized)}
                 />
-              ) : (
+              ) : bottomTab === 'lighting' ? (
                 <LightingStudioPanel
                   scene={scene}
                   onUpdateScene={onUpdateScene}
                   selectedObjectId={selectedObject?.id}
                   onFocusObject={onFocusObject}
+                />
+              ) : (
+                <CharacterWorkbenchPanel
+                  scene={scene}
+                  onUpdateScene={onUpdateScene}
+                  onSelectAvatar={onSelectAvatar}
+                  onSelectMap={onSelectMap}
                 />
               )}
             </div>
@@ -628,6 +664,48 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         onClose={() => setShowDialogueModal(false)}
         onUpdateScene={onUpdateScene}
       />
+
+      {/* 3D Character Workbench & Auto-Rig Studio Full Modal Window */}
+      {showWorkbenchModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(2, 6, 23, 0.85)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: '88vw',
+              maxWidth: '1240px',
+              height: '84vh',
+              maxHeight: '820px',
+              background: '#090d16',
+              borderRadius: 14,
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 30px rgba(56, 189, 248, 0.15)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <CharacterWorkbenchPanel
+              scene={scene}
+              onUpdateScene={onUpdateScene}
+              onSelectAvatar={onSelectAvatar}
+              onSelectMap={onSelectMap}
+              onClose={() => setShowWorkbenchModal(false)}
+              isModal={true}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
