@@ -73,7 +73,8 @@ export class TrackEvaluator {
             if (mov.action === 'walk' && mov.destination) {
               const path = this.pathNavigator.findPath(actorConfig.spawn_point, mov.destination);
               const sampled = this.pathNavigator.samplePathPosition(path, progress);
-              avatar.rootObject.position.set(...sampled.position);
+              avatar.rootObject.position.x = sampled.position[0];
+              avatar.rootObject.position.z = sampled.position[2];
               avatar.rootObject.rotation.y = sampled.rotationY;
               animator.setAction('walk');
               animator.update(currentTime);

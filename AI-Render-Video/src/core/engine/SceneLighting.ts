@@ -96,7 +96,7 @@ export class SceneLighting {
 
   public updateManual(override?: EnvironmentOverride, flashIntensity: number = 0): void {
     let progress = override?.sun_position !== undefined ? override.sun_position : 0.5;
-    
+
     if (override?.sky_time === 'sunrise' && override.sun_position === undefined) progress = 0.15;
     if (override?.sky_time === 'noon' && override.sun_position === undefined) progress = 0.5;
     if (override?.sky_time === 'sunset' && override.sun_position === undefined) progress = 0.8;
@@ -129,7 +129,7 @@ export class SceneLighting {
     const explicitMode = overrideEnv ? overrideEnv.sky_time : this.currentEnv.sky_time;
     const skyboxType = overrideEnv?.skybox_type ?? this.currentEnv.weather?.skybox_type ?? 'none';
     const isSkyboxActive = skyboxType !== 'none';
-    
+
     // ── 1. Calculate lighting & colors based on time/mode ──
     let targetBgColor = new THREE.Color(0x5ea5fb);
     let targetFogColor = new THREE.Color(0x93c5fd);
@@ -225,7 +225,9 @@ export class SceneLighting {
       const rainSkyColor = new THREE.Color(0x1e293b).lerp(new THREE.Color(0x121b2b), Math.min(1.0, rain * 1.2));
       targetBgColor.lerp(rainSkyColor, Math.min(1.0, rain * 0.85));
       targetFogColor.lerp(rainSkyColor, Math.min(1.0, rain * 0.85));
-      this.fog.density = Math.max(this.fog.density, 0.008 + rain * 0.020);
+      if (overrideEnv?.fog_density === undefined) {
+        this.fog.density = 0.005 + rain * 0.008;
+      }
     }
 
     // Cloud coverage & layer sunlight occlusion (Diffuses sunlight into soft atmospheric daylight)
@@ -329,7 +331,7 @@ export class SceneLighting {
           tex.minFilter = THREE.LinearMipmapLinearFilter;
           tex.magFilter = THREE.LinearFilter;
           this.skyboxCache.set(targetUrl, tex);
-          
+
           if (this.activeSkyboxKey === targetUrl) {
             this.applySkyboxTexture(tex, rotationDeg, exposure, blur);
           }

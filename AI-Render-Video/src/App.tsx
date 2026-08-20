@@ -227,28 +227,49 @@ export const App: React.FC = () => {
       );
     }
 
-    // Always ensure a fast ground collision plane at y = 0 matching the map size (80x80 for farming village)
-    const mapGroundSize = isCustomMap ? 180 : 80;
-    const groundPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(mapGroundSize, mapGroundSize),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
-    groundPlane.rotation.x = -Math.PI / 2;
-    groundPlane.position.y = 0;
-    groundPlane.name = 'fast_physics_ground_plane';
-    mapGroupRef.current.add(groundPlane);
+    // For procedural village without custom GLB, provide the default physics ground plane
+    let groundPlane: THREE.Mesh | null = null;
+    if (!isCustomMap) {
+      groundPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(80, 80),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      groundPlane.rotation.x = -Math.PI / 2;
+      groundPlane.position.y = 0;
+      groundPlane.name = 'fast_physics_ground_plane';
+      mapGroupRef.current.add(groundPlane);
+    }
 
-    // Collect Map Colliders for Ground Snapping (fast ground plane + lightweight props only)
-    mapCollidersRef.current = [groundPlane];
+    // Collect Map Colliders for Ground Snapping (custom GLB terrain/stairs/buildings or default village ground)
+    mapCollidersRef.current = groundPlane ? [groundPlane] : [];
     mapGroupRef.current.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh && child !== groundPlane) {
-        const mesh = child as THREE.Mesh;
-        // High-poly environment meshes (>10,000 vertices) are excluded from CPU physics raycast to maintain 60-120 FPS
-        if (mesh.geometry && mesh.geometry.attributes.position && mesh.geometry.attributes.position.count < 10000) {
-          mapCollidersRef.current.push(child);
+      if ((child as THREE.Mesh).isMesh && child !== groundPlane && child.name !== 'dynamic_cloud_ground_shadow') {
+        const m = child as THREE.Mesh;
+        if (m.geometry && (!m.geometry.attributes.position || m.geometry.attributes.position.count < 45000)) {
+          mapCollidersRef.current.push(m);
         }
       }
     });
+
+    // Update 3D rain collision obstacles directly from true map geometry
+    if (weatherParticlesRef.current) {
+      weatherParticlesRef.current.updateColliders(mapGroupRef.current);
+    }
+
+    // Immediately snap all existing actors to the newly loaded terrain surface
+    const snapRay = new THREE.Raycaster();
+    snapRay.far = 60.0;
+    for (const [, runtime] of actorsMapRef.current.entries()) {
+      const pos = runtime.avatar.rootObject.position;
+      snapRay.set(new THREE.Vector3(pos.x, 35.0, pos.z), new THREE.Vector3(0, -1, 0));
+      const hits = snapRay.intersectObjects(mapCollidersRef.current, false);
+      for (const hit of hits) {
+        if (hit.face && hit.point.y > -5.0 && hit.point.y < 30.0) {
+          pos.y = hit.point.y;
+          break;
+        }
+      }
+    }
 
     if (occlusionFoliageRef.current) {
       occlusionFoliageRef.current.registerSceneFoliage(scene3D);
@@ -357,7 +378,7 @@ export const App: React.FC = () => {
       // Ground Snapping (Physics)
       if (mapCollidersRef.current.length > 0) {
         const raycaster = new THREE.Raycaster();
-        raycaster.far = 4.0;
+        raycaster.far = 30.0;
 
         for (const [id, runtime] of actorsMapRef.current.entries()) {
           const isClimbing = (runtime.avatar.config.tracks.movement || []).some(
@@ -368,7 +389,7 @@ export const App: React.FC = () => {
           const isPlayer = id === playerControllerRef.current?.controlledActorId;
           const pos = runtime.avatar.rootObject.position;
 
-          raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
+          raycaster.set(new THREE.Vector3(pos.x, Math.max(pos.y + 12.0, 16.0), pos.z), new THREE.Vector3(0, -1, 0));
           const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
 
           let validGroundY: number | null = null;
@@ -376,7 +397,7 @@ export const App: React.FC = () => {
             if (hit.face) {
               const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
               const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-              if (worldNormal.y > 0.6 && hit.point.y <= pos.y + 0.6) {
+              if (worldNormal.y > 0.25 && hit.point.y > -10.0 && hit.point.y < 35.0) {
                 validGroundY = hit.point.y;
                 break;
               }
@@ -387,19 +408,41 @@ export const App: React.FC = () => {
             const groundY = validGroundY;
 
             if (isPlayer && playerControllerRef.current) {
-              if (pos.y <= groundY + 0.05) {
+              if (Math.abs(pos.y - groundY) <= 0.08) {
                 pos.y = groundY;
                 playerControllerRef.current.isGrounded = true;
                 playerControllerRef.current.velocityY = 0;
-              } else {
+              } else if (pos.y > groundY + 0.08) {
                 playerControllerRef.current.isGrounded = false;
+                // Realistic gravity falling when in mid-air
+                playerControllerRef.current.velocityY -= 20.0 * delta;
+                pos.y += playerControllerRef.current.velocityY * delta;
+                if (pos.y <= groundY) {
+                  pos.y = groundY;
+                  playerControllerRef.current.isGrounded = true;
+                  playerControllerRef.current.velocityY = 0;
+                }
+              } else {
+                // Stepping up to elevated terrain/stairs
+                pos.y = THREE.MathUtils.lerp(pos.y, groundY, 1 - Math.exp(-22 * delta));
+                playerControllerRef.current.isGrounded = true;
+                playerControllerRef.current.velocityY = 0;
               }
             } else {
-              // Smooth ground snapping for non-player actors to prevent vertical camera jitter on bumpy terrain
-              pos.y = THREE.MathUtils.lerp(pos.y, groundY, 1 - Math.exp(-15 * delta));
+              // Natural gravity drop & snap to ground surface for all actors
+              if (Math.abs(pos.y - groundY) > 2.0) {
+                pos.y = groundY;
+              } else {
+                pos.y = THREE.MathUtils.lerp(pos.y, groundY, 1 - Math.exp(-22 * delta));
+              }
             }
           } else {
-            // Out of map bounds: Character loses ground support and falls into void
+            // Out of map bounds: fallback to y = 0
+            if (pos.y > 0.05) {
+              pos.y = Math.max(0, THREE.MathUtils.lerp(pos.y, 0, 1 - Math.exp(-22 * delta)));
+            } else if (pos.y < 0) {
+              pos.y = 0;
+            }
             if (isPlayer && playerControllerRef.current) {
               playerControllerRef.current.isGrounded = false;
             }
@@ -512,11 +555,17 @@ export const App: React.FC = () => {
         }
       }
 
-      // 3D Rain & Wind Weather Particle Simulation Update
+      // 3D Rain & Wind Weather Particle Simulation Update (with 3D Collision Occlusion & Splash VFX)
       if (weatherParticlesRef.current) {
-        const rainIntensity = envOverrideRef.current.enabled
-          ? (envOverrideRef.current.rain_intensity ?? 0)
-          : (activeScene.environment.weather?.rain ?? 0);
+        const isRainActive = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_enabled ?? (envOverrideRef.current.rain_intensity !== undefined && envOverrideRef.current.rain_intensity > 0.01))
+          : ((activeScene.environment.weather?.rain ?? 0) > 0.01);
+
+        const rainIntensity = isRainActive
+          ? (envOverrideRef.current.enabled
+            ? (envOverrideRef.current.rain_intensity ?? 0)
+            : (activeScene.environment.weather?.rain ?? 0))
+          : 0;
 
         const windIntensity = envOverrideRef.current.enabled
           ? (envOverrideRef.current.wind_intensity ?? 0.3)
@@ -531,7 +580,8 @@ export const App: React.FC = () => {
           renderer.camera.position,
           rainIntensity,
           windIntensity,
-          windDirection
+          windDirection,
+          mapGroupRef.current
         );
       }
 
@@ -571,8 +621,8 @@ export const App: React.FC = () => {
 
         const rainIntensity = isRainActive
           ? (envOverrideRef.current.enabled
-              ? (envOverrideRef.current.rain_intensity ?? 0)
-              : (activeScene.environment.weather?.rain ?? 0))
+            ? (envOverrideRef.current.rain_intensity ?? 0)
+            : (activeScene.environment.weather?.rain ?? 0))
           : 0;
 
         const isLightningActive = isRainActive && (
@@ -659,12 +709,27 @@ export const App: React.FC = () => {
     }
     actorsMapRef.current.clear();
 
+    const snapRay = new THREE.Raycaster();
+    snapRay.far = 60.0;
+
     for (const actorConfig of newScene.actors) {
       const avatar = new VRMAvatar(actorConfig);
       const animator = new ActorAnimator(avatar);
       const morph = new ActorMorphController(avatar);
       const lipSync = new ActorLipSync(avatar);
       const lookAt = new ActorLookAt(avatar);
+
+      // Snap newly instantiated avatar directly onto the terrain surface
+      if (mapCollidersRef.current.length > 0) {
+        snapRay.set(new THREE.Vector3(avatar.rootObject.position.x, 35.0, avatar.rootObject.position.z), new THREE.Vector3(0, -1, 0));
+        const hits = snapRay.intersectObjects(mapCollidersRef.current, false);
+        for (const hit of hits) {
+          if (hit.face && hit.point.y > -5.0 && hit.point.y < 30.0) {
+            avatar.rootObject.position.y = hit.point.y;
+            break;
+          }
+        }
+      }
 
       scene3D.add(avatar.rootObject);
       actorsMapRef.current.set(actorConfig.id, {
@@ -715,15 +780,9 @@ export const App: React.FC = () => {
       // Toggle on: seek to dialogue timestamp without overriding pause state
       setIsFreeCam(false);
       isFreeCamRef.current = false;
-      if (rendererRef.current) rendererRef.current.setFreeCam(false);
-
-      clockRef.current.seek(dlg.start_time);
-      setCurrentTime(dlg.start_time);
-
-      if (cameraDirectorRef.current) {
-        cameraDirectorRef.current.setInspectMode(dlg.speaker_id, inspectAngle);
-        setInspectingActorId(dlg.speaker_id);
-      }
+      rendererRef.current?.setFreeCam(false);
+      cameraDirectorRef.current?.setInspectMode(dlg.speaker_id, inspectAngle);
+      setInspectingActorId(dlg.speaker_id);
     }
   };
 
@@ -742,7 +801,6 @@ export const App: React.FC = () => {
     setIsFreeCam(next);
     isFreeCamRef.current = next;
     saveViewportSetting('isFreeCam', next);
-    setInspectingActorId(null);
     if (rendererRef.current) {
       rendererRef.current.setFreeCam(next);
     }
@@ -759,7 +817,7 @@ export const App: React.FC = () => {
     clockRef.current.seek(dlg.start_time);
   };
 
-  const handleUpdateScene = (newScene: MasterSceneConfig) => {
+  const handleUpdateScene = async (newScene: MasterSceneConfig) => {
     const safeScene: MasterSceneConfig = {
       ...newScene,
       subtitles_config: newScene.subtitles_config || {
@@ -787,7 +845,7 @@ export const App: React.FC = () => {
       lightingRef.current.update(0, newScene.duration);
     }
     if (rendererRef.current) {
-      initEnvironment(newScene, rendererRef.current.scene);
+      await initEnvironment(newScene, rendererRef.current.scene);
       initActors(newScene, rendererRef.current.scene);
       if (trackEvaluatorRef.current) {
         trackEvaluatorRef.current.evaluate(
@@ -1120,7 +1178,7 @@ export const App: React.FC = () => {
           // Ground Snapping (Physics) with Fast Spatial Filter
           if (mapCollidersRef.current.length > 0) {
             const raycaster = new THREE.Raycaster();
-            raycaster.far = 4.0;
+            raycaster.far = 30.0;
 
             for (const [id, runtime] of actorsMapRef.current.entries()) {
               const isClimbing = (runtime.avatar.config.tracks.movement || []).some(
@@ -1130,7 +1188,7 @@ export const App: React.FC = () => {
 
               const pos = runtime.avatar.rootObject.position;
 
-              raycaster.set(new THREE.Vector3(pos.x, pos.y + 2.0, pos.z), new THREE.Vector3(0, -1, 0));
+              raycaster.set(new THREE.Vector3(pos.x, pos.y + 6.0, pos.z), new THREE.Vector3(0, -1, 0));
               const hits = raycaster.intersectObjects(mapCollidersRef.current, false);
 
               let validGroundY: number | null = null;
@@ -1138,7 +1196,7 @@ export const App: React.FC = () => {
                 if (hit.face) {
                   const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
                   const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-                  if (worldNormal.y > 0.6 && hit.point.y <= pos.y + 0.6) {
+                  if (worldNormal.y > 0.35 && hit.point.y <= pos.y + 5.5 && hit.point.y > -5.0) {
                     validGroundY = hit.point.y;
                     break;
                   }
