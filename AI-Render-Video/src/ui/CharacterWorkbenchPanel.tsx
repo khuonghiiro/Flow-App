@@ -8,30 +8,20 @@ import {
   Pause,
   RotateCcw,
   Sparkles,
-  UserCheck,
-  UserPlus,
   Eye,
   EyeOff,
-  Layers,
-  Save,
   CheckCircle,
-  HelpCircle,
-  Lightbulb,
   X,
   Loader,
-  Plus,
-  Trash2,
-  Check,
   Grid,
   Box,
-  Sliders,
 } from 'lucide-react';
-import { MasterSceneConfig, ActorConfig, CharacterAssembly } from '../types/scene';
+import { MasterSceneConfig } from '../types/scene';
 import { AutoRigEngine, AutoRigResult } from '../core/actors/AutoRigEngine';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
-import { fetchLiveAssetManifest } from '../core/assets/AssetManifestLoader';
-import { AssetItem } from './AssetBrowserPanel';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { ModularOutfitVerticalTabs } from './ModularOutfitVerticalTabs';
+import { FaceSliderConfig, DEFAULT_FACE_SLIDERS } from './CharacterAssetRegistry';
 
 interface CharacterWorkbenchPanelProps {
   scene: MasterSceneConfig;
@@ -42,122 +32,6 @@ interface CharacterWorkbenchPanelProps {
   isModal?: boolean;
 }
 
-interface CustomPreset {
-  id: string;
-  name: string;
-  body: string;
-  costume: string;
-  face: string;
-  gender: 'male' | 'female';
-}
-
-const DEFAULT_PRESETS: CustomPreset[] = [
-  {
-    id: 'preset_amber_nectar',
-    name: '🧑 Nam: Lý Tiên Sinh (Amber Nectar)',
-    body: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/man/amber_nectar_-_manekin.glb',
-    face: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
-    gender: 'male',
-  },
-  {
-    id: 'preset_precision_strike',
-    name: '👩 Nữ: Võ Khách (Precision Strike)',
-    body: 'assets/characters/base_bodies/male/body_base_-_manekina.glb',
-    costume: 'assets/characters/costumes/male/precision_strike_-_manekina.glb',
-    face: '',
-    gender: 'female',
-  },
-  {
-    id: 'preset_scary_cat',
-    name: '🐱 Nam: Hắc Miêu Hiệp Sĩ (Scary Cat)',
-    body: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/man/scary_cat_-_manekin.glb',
-    face: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
-    gender: 'male',
-  },
-  {
-    id: 'preset_sleuth_verdict',
-    name: '🕵️ Nam: Thám Tử (Sleuth Verdict)',
-    body: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/man/sleuths_verdict_-_manekin.glb',
-    face: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
-    gender: 'male',
-  },
-];
-
-// Card definition items
-const BASE_BODY_ITEMS = [
-  {
-    id: 'body_male',
-    name: 'Manekin Body Base (Nam)',
-    path: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    preview: '/assets/characters/base_bodies/man/body_base_-_manekin.png',
-    gender: 'male' as const,
-  },
-  {
-    id: 'body_female',
-    name: 'Manekina Body Base (Nữ)',
-    path: 'assets/characters/base_bodies/male/body_base_-_manekina.glb',
-    preview: '/assets/characters/base_bodies/male/body_base_-_manekina.png',
-    gender: 'female' as const,
-  },
-];
-
-const COSTUME_ITEMS = [
-  {
-    id: 'costume_amber_man',
-    name: 'Amber Nectar (Hổ Phách Nam)',
-    path: 'assets/characters/costumes/man/amber_nectar_-_manekin.glb',
-    preview: '/assets/characters/costumes/man/amber_nectar_-_manekin.png',
-    gender: 'male' as const,
-  },
-  {
-    id: 'costume_precision_female',
-    name: 'Precision Strike (Tinh Nhuệ Nữ)',
-    path: 'assets/characters/costumes/male/precision_strike_-_manekina.glb',
-    preview: '/assets/characters/costumes/male/precision_strike_-_manekina.png',
-    gender: 'female' as const,
-  },
-  {
-    id: 'costume_scary_cat_man',
-    name: 'Scary Cat (Hắc Miêu Nam)',
-    path: 'assets/characters/costumes/man/scary_cat_-_manekin.glb',
-    preview: '/assets/characters/costumes/man/scary_cat_-_manekin.png',
-    gender: 'male' as const,
-  },
-  {
-    id: 'costume_sleuth_man',
-    name: 'Sleuth\'s Verdict (Thám Tử Nam)',
-    path: 'assets/characters/costumes/man/sleuths_verdict_-_manekin.glb',
-    preview: '/assets/characters/costumes/man/sleuths_verdict_-_manekin.png',
-    gender: 'male' as const,
-  },
-];
-
-const FACE_ITEMS = [
-  {
-    id: 'face_default_base',
-    name: 'Khuôn Mặt Gốc (Thân Liền)',
-    path: '',
-    preview: '/assets/characters/base_bodies/man/body_base_-_manekin.png',
-    gender: 'male' as const,
-  },
-  {
-    id: 'face_dawnbreaker_man',
-    name: 'Dawnbreaker (Bình Minh Nam)',
-    path: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
-    preview: '/assets/characters/faces/man/dawnbreaker_-_manekin.png',
-    gender: 'male' as const,
-  },
-  {
-    id: 'face_starlight_female',
-    name: 'Starlight Fragments (Tinh Tú)',
-    path: 'assets/characters/faces/male/starlight_fragments_-_manekin.glb',
-    preview: '/assets/characters/faces/male/starlight_fragments_-_manekin.png',
-    gender: 'female' as const,
-  },
-];
 
 export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = ({
   scene,
@@ -169,24 +43,11 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   const [activeTab, setActiveTab] = useState<'rigging' | 'modular' | 'map'>('modular');
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
 
-  // --- 1. MODULAR OUTFIT STATE ---
-  const [selectedActorId, setSelectedActorId] = useState<string>(scene.actors[0]?.id || '');
+  // --- 1. MODULAR OUTFIT STATE (lifted for 3D preview sync) ---
   const [baseBody, setBaseBody] = useState<string>('assets/characters/base_bodies/man/body_base_-_manekin.glb');
   const [costume, setCostume] = useState<string>('assets/characters/costumes/man/amber_nectar_-_manekin.glb');
   const [face, setFace] = useState<string>('assets/characters/faces/man/dawnbreaker_-_manekin.glb');
   const [hairstyle, setHairstyle] = useState<string>('');
-  const [newActorName, setNewActorName] = useState<string>('Lý Tiên Sinh');
-  const [isAppliedSuccess, setIsAppliedSuccess] = useState<boolean>(false);
-
-  // Custom Presets
-  const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => {
-    try {
-      const saved = localStorage.getItem('custom_character_presets');
-      return saved ? JSON.parse(saved) : DEFAULT_PRESETS;
-    } catch {
-      return DEFAULT_PRESETS;
-    }
-  });
 
   // --- 2. AUTO-RIG STATE ---
   const [modelToRig, setModelToRig] = useState<string>('assets/characters/base_bodies/man/body_base_-_manekin.glb');
@@ -200,6 +61,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   // --- 3. MAP BUILDER STATE ---
   const [selectedMapPath, setSelectedMapPath] = useState<string>(scene.environment?.map || 'assets/maps/cathedral.glb');
   const [selectedSkyTime, setSelectedSkyTime] = useState<string>(scene.environment?.sky_time || 'noon');
+  const [isAppliedSuccess, setIsAppliedSuccess] = useState<boolean>(false);
 
   // Three.js Preview Canvas Refs
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -211,16 +73,16 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   const currentPreviewGroupRef = useRef<THREE.Group | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
-  const [presetSavedToast, setPresetSavedToast] = useState<string>('');
   const [showFloorGrid, setShowFloorGrid] = useState<boolean>(true);
   const [showWireframe, setShowWireframe] = useState<boolean>(false);
-  const [baseFaceOpacity, setBaseFaceOpacity] = useState<number>(1.0);
-  const [eyebrowOpacity, setEyebrowOpacity] = useState<number>(1.0);
-  const [pupilOpacity, setPupilOpacity] = useState<number>(1.0);
-  const [noseOpacity, setNoseOpacity] = useState<number>(1.0);
-  const [mouthOpacity, setMouthOpacity] = useState<number>(1.0);
-  const [skinSmoothness, setSkinSmoothness] = useState<number>(0.75);
-  const [costumeOpacity, setCostumeOpacity] = useState<number>(1.0);
+
+  // Facial slider state (lifted — used by both 3D preview and ModularOutfitVerticalTabs)
+  const [faceSliders, setFaceSliders] = useState<FaceSliderConfig>({ ...DEFAULT_FACE_SLIDERS });
+  const { baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity } = faceSliders;
+
+  const handleFaceSlidersChange = (updated: FaceSliderConfig) => {
+    setFaceSliders(updated);
+  };
 
   const floorGridRef = useRef<THREE.GridHelper | null>(null);
 
@@ -306,63 +168,29 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       });
     }
   }, [showWireframe, baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity]);
-
   // Khi chọn face mới: Tự động cho mặt cũ, mắt, mũi, miệng, lông mày gốc về 0% để dùng trọn vẹn Face mới
   const handleSelectFace = (newFacePath: string) => {
     if (face === newFacePath || newFacePath === '') {
-      // Bỏ chọn hoặc chọn mặt mặc định gốc -> khôi phục 100% face cũ, mắt, mũi, miệng, lông mày
       setFace('');
-      setBaseFaceOpacity(1.0);
-      setEyebrowOpacity(1.0);
-      setPupilOpacity(1.0);
-      setNoseOpacity(1.0);
-      setMouthOpacity(1.0);
+      setFaceSliders((prev) => ({
+        ...prev,
+        baseFaceOpacity: 1.0,
+        eyebrowOpacity: 1.0,
+        pupilOpacity: 1.0,
+        noseOpacity: 1.0,
+        mouthOpacity: 1.0,
+      }));
     } else {
-      // Chọn face mới -> đặt các chi tiết mặt cũ về 0% để dùng hẳn face mới
       setFace(newFacePath);
-      setBaseFaceOpacity(0.0);
-      setEyebrowOpacity(0.0);
-      setPupilOpacity(0.0);
-      setNoseOpacity(0.0);
-      setMouthOpacity(0.0);
+      setFaceSliders((prev) => ({
+        ...prev,
+        baseFaceOpacity: 0.0,
+        eyebrowOpacity: 0.0,
+        pupilOpacity: 0.0,
+        noseOpacity: 0.0,
+        mouthOpacity: 0.0,
+      }));
     }
-  };
-
-  // Save Custom Preset
-  const handleSaveCustomPreset = () => {
-    let name = '';
-    try {
-      name = prompt('Nhập tên cho mẫu phối đồ này:', newActorName) || '';
-    } catch {}
-    if (!name) {
-      name = newActorName || (baseBody.includes('manekina') ? 'Nữ Võ Khách' : 'Nam Hiệp Sĩ');
-    }
-
-    const newPreset: CustomPreset = {
-      id: `preset_${Date.now()}`,
-      name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${name}`,
-      body: baseBody,
-      costume,
-      face,
-      gender: baseBody.includes('manekina') ? 'female' : 'male',
-    };
-
-    const updated = [newPreset, ...customPresets];
-    setCustomPresets(updated);
-    try {
-      localStorage.setItem('custom_character_presets', JSON.stringify(updated));
-    } catch {}
-    setPresetSavedToast(`Đã lưu mẫu "${name}" thành công!`);
-    setTimeout(() => setPresetSavedToast(''), 3500);
-  };
-
-  const handleDeletePreset = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = customPresets.filter((p) => p.id !== id);
-    setCustomPresets(updated);
-    try {
-      localStorage.setItem('custom_character_presets', JSON.stringify(updated));
-    } catch {}
   };
 
   // Initialize Three.js 3D Preview Canvas
@@ -686,62 +514,6 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     }
   };
 
-  // Apply Modular Character to Active Scene Actor
-  const handleApplyToCurrentActor = () => {
-    const targetActor = scene.actors.find((a) => a.id === selectedActorId) || scene.actors[0];
-    if (!targetActor) return;
-
-    const assembly: CharacterAssembly = {
-      base_body: baseBody,
-      costume: costume,
-      face: face,
-      hairstyle: hairstyle || undefined,
-    };
-
-    targetActor.model = baseBody;
-    targetActor.assembly = assembly;
-
-    const updatedScene: MasterSceneConfig = {
-      ...scene,
-      actors: scene.actors.map((a) => (a.id === targetActor.id ? { ...targetActor } : a)),
-    };
-
-    onUpdateScene(updatedScene);
-    setIsAppliedSuccess(true);
-    setTimeout(() => setIsAppliedSuccess(false), 3000);
-  };
-
-  // Add As New Actor into Scene
-  const handleAddNewActor = () => {
-    const newId = `actor_${Math.random().toString(36).substring(2, 7)}`;
-    const newActor: ActorConfig = {
-      id: newId,
-      name: newActorName || 'Võ Hiệp Mới',
-      model: baseBody,
-      assembly: {
-        base_body: baseBody,
-        costume: costume,
-        face: face,
-        hairstyle: hairstyle || undefined,
-      },
-      spawn_point: [0.0, 0, 1.5],
-      rotation_y: 0,
-      tracks: {
-        movement: [{ start: 0, end: 10, action: 'idle' }],
-        speech: [],
-      },
-    };
-
-    const updatedScene: MasterSceneConfig = {
-      ...scene,
-      actors: [...scene.actors, newActor],
-    };
-
-    onUpdateScene(updatedScene);
-    setSelectedActorId(newId);
-    setIsAppliedSuccess(true);
-    setTimeout(() => setIsAppliedSuccess(false), 3000);
-  };
 
   // Apply Map Preset
   const handleApplyMapPreset = () => {
@@ -777,7 +549,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       {/* 1. LEFT: 3D PREVIEW CANVAS */}
       <div
         style={{
-          flex: '0 0 420px',
+          flex: '0 0 520px',
           borderRight: '1px solid rgba(255,255,255,0.08)',
           display: 'flex',
           flexDirection: 'column',
@@ -1075,616 +847,23 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         </div>
 
         {/* Tab Content Container */}
-        <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
-          {/* TAB 1: MODULAR OUTFIT WORKBENCH WITH VISUAL CARDS */}
+        <div style={{ flex: 1, padding: activeTab === 'modular' ? 0 : 16, overflowY: activeTab === 'modular' ? 'hidden' : 'auto', overflow: activeTab === 'modular' ? 'hidden' : undefined }}>
+          {/* TAB 1: MODULAR OUTFIT — VERTICAL TABS */}
           {activeTab === 'modular' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 850 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8' }}>
-                  Xưởng Lắp Ráp & Phối Đồ Nhân Vật (Visual Item Cards)
-                </span>
-                {isAppliedSuccess && (
-                  <span style={{ fontSize: 12, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <CheckCircle size={14} /> Đã áp dụng thành công vào Scene!
-                  </span>
-                )}
-              </div>
-
-              {/* Quick Presets Bar with Custom Save Button */}
-              <div style={{ background: 'rgba(56, 189, 248, 0.05)', padding: 12, borderRadius: 10, border: '1px solid rgba(56, 189, 248, 0.2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Sparkles size={14} /> Bộ Phối Mẫu Sẵn (Character Presets):
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {presetSavedToast && (
-                      <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600 }}>
-                        {presetSavedToast}
-                      </span>
-                    )}
-                    <button
-                      onClick={handleSaveCustomPreset}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '4px 10px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        borderRadius: 6,
-                        background: 'rgba(34, 197, 94, 0.2)',
-                        border: '1px solid rgba(34, 197, 94, 0.4)',
-                        color: '#4ade80',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Plus size={13} /> Lưu Bộ Hiện Tại Thành Mẫu Mới
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {customPresets.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => {
-                        setBaseBody(p.body);
-                        setCostume(p.costume);
-                        setFace(p.face);
-                        setNewActorName(p.name.replace(/^[^\s]+\s+/, ''));
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '4px 10px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        borderRadius: 6,
-                        border: costume === p.costume ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                        background: costume === p.costume ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.04)',
-                        color: costume === p.costume ? '#38bdf8' : '#cbd5e1',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <span>{p.name}</span>
-                      {!DEFAULT_PRESETS.some((dp) => dp.id === p.id) && (
-                        <span
-                          onClick={(e) => handleDeletePreset(p.id, e)}
-                          title="Xóa mẫu này"
-                          style={{ marginLeft: 4, display: 'flex', alignItems: 'center' }}
-                        >
-                          <Trash2 size={12} color="#f87171" />
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 1. VISUAL CARDS: THÂN NGƯỜI CƠ BẢN (BASE BODIES) */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <label style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 13 }}>
-                    1. Thân Người Cơ Bản (Base Body)
-                  </label>
-                  {baseBody && (
-                    <button
-                      onClick={() => setBaseBody('')}
-                      style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Bỏ chọn thân
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-                  {BASE_BODY_ITEMS.map((item) => {
-                    const isSelected = baseBody === item.path;
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => setBaseBody(baseBody === item.path ? '' : item.path)}
-                        title={isSelected ? 'Nhấn để bỏ chọn' : 'Nhấn để chọn'}
-                        style={{
-                          background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.03)',
-                          border: isSelected ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
-                          borderRadius: 8,
-                          padding: 8,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          position: 'relative',
-                          transition: 'all 0.15s',
-                          boxShadow: isSelected ? '0 0 14px rgba(56, 189, 248, 0.3)' : 'none',
-                        }}
-                      >
-                        {isSelected && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 4,
-                              right: 4,
-                              background: '#38bdf8',
-                              color: '#000',
-                              borderRadius: '50%',
-                              width: 16,
-                              height: 16,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                        )}
-                        <img
-                          src={item.preview}
-                          alt={item.name}
-                          style={{ width: '100%', height: 90, objectFit: 'contain', borderRadius: 4 }}
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                        <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
-                          {item.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. VISUAL CARDS: BỘ TRANG PHỤC / GIÁP CHIẾN (COSTUMES) */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <label style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 13 }}>
-                    2. Trang Phục & Giáp Chiến (Costumes)
-                  </label>
-                  {costume && (
-                    <button
-                      onClick={() => setCostume('')}
-                      style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Bỏ chọn trang phục
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-                  {/* None Costume Card */}
-                  <div
-                    onClick={() => setCostume('')}
-                    style={{
-                      background: costume === '' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.03)',
-                      border: costume === '' ? '2px solid #f87171' : '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 8,
-                      padding: 8,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: 125,
-                      gap: 8,
-                      position: 'relative',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <X size={20} color={costume === '' ? '#f87171' : '#94a3b8'} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', color: costume === '' ? '#f87171' : '#94a3b8' }}>
-                      Không Dùng Trang Phục
-                    </span>
-                  </div>
-
-                  {COSTUME_ITEMS.map((item) => {
-                    const isSelected = costume === item.path;
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => setCostume(costume === item.path ? '' : item.path)}
-                        title={isSelected ? 'Nhấn để bỏ chọn' : 'Nhấn để chọn'}
-                        style={{
-                          background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.03)',
-                          border: isSelected ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
-                          borderRadius: 8,
-                          padding: 8,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          position: 'relative',
-                          transition: 'all 0.15s',
-                          boxShadow: isSelected ? '0 0 14px rgba(56, 189, 248, 0.3)' : 'none',
-                        }}
-                      >
-                        {isSelected && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 4,
-                              right: 4,
-                              background: '#38bdf8',
-                              color: '#000',
-                              borderRadius: '50%',
-                              width: 16,
-                              height: 16,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                        )}
-                        <img
-                          src={item.preview}
-                          alt={item.name}
-                          style={{ width: '100%', height: 90, objectFit: 'contain', borderRadius: 4 }}
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                        <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
-                          {item.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. VISUAL CARDS: KHUÔN MẶT & BIỂU CẢM (FACES) */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <label style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 13 }}>
-                    3. Khuôn Mặt & Biểu Cảm (Faces)
-                  </label>
-                  {face && (
-                    <button
-                      onClick={() => setFace('')}
-                      style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Dùng mặt mặc định
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-                  {/* None Face Card */}
-                  <div
-                    onClick={() => handleSelectFace('')}
-                    style={{
-                      background: face === '' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.03)',
-                      border: face === '' ? '2px solid #f87171' : '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 8,
-                      padding: 8,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: 125,
-                      gap: 8,
-                      position: 'relative',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <X size={20} color={face === '' ? '#f87171' : '#94a3b8'} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', color: face === '' ? '#f87171' : '#94a3b8' }}>
-                      Khuôn Mặt Mặc Định (Thân Gốc)
-                    </span>
-                  </div>
-
-                  {FACE_ITEMS.filter((item) => item.path !== '').map((item) => {
-                    const isSelected = face === item.path;
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => handleSelectFace(item.path)}
-                        title={isSelected ? 'Nhấn để bỏ chọn' : 'Nhấn để chọn'}
-                        style={{
-                          background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.03)',
-                          border: isSelected ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
-                          borderRadius: 8,
-                          padding: 8,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          position: 'relative',
-                          transition: 'all 0.15s',
-                          boxShadow: isSelected ? '0 0 14px rgba(56, 189, 248, 0.3)' : 'none',
-                        }}
-                      >
-                        {isSelected && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 4,
-                              right: 4,
-                              background: '#38bdf8',
-                              color: '#000',
-                              borderRadius: '50%',
-                              width: 16,
-                              height: 16,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                        )}
-                        <img
-                          src={item.preview}
-                          alt={item.name}
-                          style={{ width: '100%', height: 90, objectFit: 'contain', borderRadius: 4 }}
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                        <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', color: isSelected ? '#38bdf8' : '#e2e8f0' }}>
-                          {item.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 4. FACIAL & DETAIL SLIDERS (CẤU HÌNH CHI TIẾT KHUÔN MẶT & ĐỘ MỊN) */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <label style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Sliders size={14} color="#38bdf8" /> 4. Cấu Hình Chi Tiết Khuôn Mặt & Độ Mịn Da
-                  </label>
-                  <button
-                    onClick={() => {
-                      setBaseFaceOpacity(1.0);
-                      setEyebrowOpacity(1.0);
-                      setPupilOpacity(1.0);
-                      setNoseOpacity(1.0);
-                      setMouthOpacity(1.0);
-                      setSkinSmoothness(0.75);
-                      setCostumeOpacity(1.0);
-                    }}
-                    style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                  >
-                    Khôi phục mặc định
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-                  {/* Face Opacity Slider (Kéo về 0 ẩn hoàn toàn face cũ) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>🎭 Độ Hiện Face Cũ / Mặt Gốc:</span>
-                      <span style={{ fontWeight: 700, color: baseFaceOpacity <= 0.05 ? '#f87171' : '#38bdf8' }}>
-                        {Math.round(baseFaceOpacity * 100)}% {baseFaceOpacity <= 0.05 ? '(Ẩn Face Cũ)' : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={baseFaceOpacity}
-                      onChange={(e) => setBaseFaceOpacity(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-                  {/* Eyebrow Opacity Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>👁️ Độ Đậm Lông Mày:</span>
-                      <span style={{ fontWeight: 700, color: eyebrowOpacity <= 0.05 ? '#f87171' : '#38bdf8' }}>
-                        {Math.round(eyebrowOpacity * 100)}% {eyebrowOpacity <= 0.05 ? '(Ẩn)' : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={eyebrowOpacity}
-                      onChange={(e) => setEyebrowOpacity(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-
-                  {/* Pupil Opacity Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>✨ Độ Sáng Tròng Mắt:</span>
-                      <span style={{ fontWeight: 700, color: pupilOpacity <= 0.05 ? '#f87171' : '#38bdf8' }}>
-                        {Math.round(pupilOpacity * 100)}% {pupilOpacity <= 0.05 ? '(Ẩn)' : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={pupilOpacity}
-                      onChange={(e) => setPupilOpacity(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-
-                  {/* Nose Opacity Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>👃 Độ Nổi Mũi:</span>
-                      <span style={{ fontWeight: 700, color: noseOpacity <= 0.05 ? '#f87171' : '#38bdf8' }}>
-                        {Math.round(noseOpacity * 100)}% {noseOpacity <= 0.05 ? '(Ẩn)' : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={noseOpacity}
-                      onChange={(e) => setNoseOpacity(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-
-                  {/* Mouth Opacity Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>👄 Độ Rõ Miệng & Môi:</span>
-                      <span style={{ fontWeight: 700, color: mouthOpacity <= 0.05 ? '#f87171' : '#38bdf8' }}>
-                        {Math.round(mouthOpacity * 100)}% {mouthOpacity <= 0.05 ? '(Ẩn)' : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={mouthOpacity}
-                      onChange={(e) => setMouthOpacity(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-
-                  {/* Skin Smoothness Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>🌸 Độ Mịn & Bóng Da Mặt:</span>
-                      <span style={{ fontWeight: 700, color: '#38bdf8' }}>
-                        {Math.round(skinSmoothness * 100)}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="1"
-                      step="0.05"
-                      value={skinSmoothness}
-                      onChange={(e) => setSkinSmoothness(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-
-                  {/* Costume Opacity Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#cbd5e1' }}>🥋 Độ Đậm Trang Phục:</span>
-                      <span style={{ fontWeight: 700, color: costumeOpacity <= 0.05 ? '#f87171' : '#38bdf8' }}>
-                        {Math.round(costumeOpacity * 100)}% {costumeOpacity <= 0.05 ? '(Ẩn)' : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={costumeOpacity}
-                      onChange={(e) => setCostumeOpacity(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 5. Action Bar with Character Name Textbox */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10, background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <label style={{ fontWeight: 700, color: '#38bdf8', fontSize: 12, minWidth: 100, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    🏷️ Tên Nhân Vật:
-                  </label>
-                  <input
-                    type="text"
-                    value={newActorName}
-                    onChange={(e) => setNewActorName(e.target.value)}
-                    placeholder="Nhập tên nhân vật (ví dụ: Lý Tiên Sinh, Nữ Hiệp Sĩ...)"
-                    style={{
-                      flex: 1,
-                      padding: '8px 14px',
-                      borderRadius: 6,
-                      background: '#0f172a',
-                      border: '1px solid rgba(56, 189, 248, 0.4)',
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <div style={{ flex: 1, display: 'flex', gap: 8 }}>
-                    <select
-                      value={selectedActorId}
-                      onChange={(e) => setSelectedActorId(e.target.value)}
-                      style={{
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        background: '#1e293b',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        color: '#fff',
-                        outline: 'none',
-                        fontSize: 12,
-                      }}
-                    >
-                      {scene.actors.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name || a.id}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      onClick={handleApplyToCurrentActor}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        padding: '10px 16px',
-                        borderRadius: 6,
-                        background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                        color: '#fff',
-                        fontWeight: 700,
-                        border: 'none',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)',
-                      }}
-                    >
-                      <UserCheck size={15} /> Gán Cho Nhân Vật Này
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={handleAddNewActor}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '10px 18px',
-                      borderRadius: 6,
-                      background: 'rgba(34, 197, 94, 0.2)',
-                      border: '1px solid rgba(34, 197, 94, 0.4)',
-                      color: '#4ade80',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <UserPlus size={15} /> Thêm Vào Cảnh Mới
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ModularOutfitVerticalTabs
+              scene={scene}
+              onUpdateScene={onUpdateScene}
+              baseBody={baseBody}
+              costume={costume}
+              face={face}
+              hairstyle={hairstyle}
+              onBaseBodyChange={setBaseBody}
+              onCostumeChange={setCostume}
+              onFaceChange={(newFace) => handleSelectFace(newFace)}
+              onHairstyleChange={setHairstyle}
+              sliders={faceSliders}
+              onSlidersChange={handleFaceSlidersChange}
+            />
           )}
 
           {/* TAB 2: AUTO-RIG STUDIO */}

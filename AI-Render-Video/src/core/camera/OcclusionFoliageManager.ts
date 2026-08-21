@@ -10,16 +10,11 @@ export interface FoliageFocusActor {
   id: string;
   headPosition: THREE.Vector3;
   isClimbingOrOnTree: boolean;
-  isFocused: boolean; // is being inspected, is speaking, or is camera target
+  isFocused: boolean;
 }
 
 export class OcclusionFoliageManager {
   private occludables: OccludableMesh[] = [];
-  private raycaster: THREE.Raycaster;
-
-  constructor() {
-    this.raycaster = new THREE.Raycaster();
-  }
 
   public registerSceneFoliage(scene3D: THREE.Scene): void {
     this.occludables = [];
@@ -28,15 +23,22 @@ export class OcclusionFoliageManager {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         const name = mesh.name.toLowerCase();
+        const parentName = (mesh.parent?.name || '').toLowerCase();
 
-        // ONLY leaf clusters/foliage can become translucent!
-        // Solid wood trunks and wooden branches are NEVER foliage and stay 100% solid/opaque!
-        const isFoliage =
-          (name.includes('leaves') || name.includes('foliage') || name.includes('leaf')) &&
-          !name.includes('trunk') &&
-          !name.includes('branch');
+        // Exclude ground terrain, sky, helpers, and actors
+        const isExcluded =
+          name.includes('ground') ||
+          name.includes('terrain') ||
+          name.includes('floor') ||
+          name.includes('actor_') ||
+          name.includes('avatar') ||
+          name.includes('skybox') ||
+          name.includes('helper') ||
+          name.includes('grid') ||
+          parentName.includes('actor_') ||
+          parentName.includes('avatar');
 
-        if (isFoliage && mesh.material) {
+        if (!isExcluded && mesh.material) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           mats.forEach((mat) => {
             mat.transparent = true;
@@ -60,51 +62,64 @@ export class OcclusionFoliageManager {
   ): void {
     if (this.occludables.length === 0) return;
 
-    // Default: All foliage is 100% solid/opaque (che kín cây tự nhiên)
+    // Default: 100% solid opacity to preserve natural foreground framing, trees, pillars, and cinematic depth
     for (const item of this.occludables) {
       item.targetOpacity = 1.0;
     }
 
     const camPos = camera.position;
+    const tempBox = new THREE.Box3();
+    const tempVec = new THREE.Vector3();
 
-    // ONLY activate X-Ray transparency on leaves if the actor is on the tree AND currently focused/speaking/inspected
-    const activeTreeClimbers = actors.filter((a) => a.isClimbingOrOnTree && a.isFocused);
+    // 1. Proximity Check: ONLY fade objects that are EXTREMELY close to camera (< 0.65m) and blocking the lens
+    const PROXIMITY_THRESHOLD = 0.65;
 
-    for (const actor of activeTreeClimbers) {
-      const targetPos = actor.headPosition;
-      const dir = targetPos.clone().sub(camPos);
-      const dist = dir.length();
-      if (dist < 0.1) continue;
+    for (const item of this.occludables) {
+      // Compute bounding box distance to camera for accurate mesh proximity
+      if (!item.mesh.geometry) continue;
 
-      dir.normalize();
-      this.raycaster.set(camPos, dir);
-      this.raycaster.far = dist;
-
-      const meshes = this.occludables.map((o) => o.mesh);
-      const hits = this.raycaster.intersectObjects(meshes, false);
-
-      for (const hit of hits) {
-        const item = this.occludables.find((o) => o.mesh === hit.object);
-        if (item) {
-          // Fade occluding foliage to 0.22 transparency smoothly
-          item.targetOpacity = 0.22;
-        }
+      if (!item.mesh.geometry.boundingBox) {
+        item.mesh.geometry.computeBoundingBox();
       }
 
-      // Proximity check: Fade leaves immediately enveloping the climber or in front of climber's camera POV
-      for (const item of this.occludables) {
-        const meshPos = new THREE.Vector3();
-        item.mesh.getWorldPosition(meshPos);
-        const nearClimber = meshPos.distanceTo(targetPos) < 2.0;
-        const nearCameraPOV = camPos.distanceTo(targetPos) < 2.2 && meshPos.distanceTo(camPos) < 1.8;
-        if (nearClimber || nearCameraPOV) {
-          item.targetOpacity = Math.min(item.targetOpacity, 0.25);
+      if (item.mesh.geometry.boundingBox) {
+        tempBox.copy(item.mesh.geometry.boundingBox).applyMatrix4(item.mesh.matrixWorld);
+        tempBox.clampPoint(camPos, tempVec);
+        const dist = tempVec.distanceTo(camPos);
+
+        if (dist < PROXIMITY_THRESHOLD) {
+          // Object is right in front of camera lens: fade it out smoothly so camera can pass through without clipping
+          const factor = THREE.MathUtils.clamp(dist / PROXIMITY_THRESHOLD, 0.15, 0.4);
+          item.targetOpacity = Math.min(item.targetOpacity, factor);
+        }
+      } else {
+        // Fallback: world position distance
+        item.mesh.getWorldPosition(tempVec);
+        const dist = tempVec.distanceTo(camPos);
+        if (dist < PROXIMITY_THRESHOLD) {
+          item.targetOpacity = 0.25;
         }
       }
     }
 
-    // Smoothly lerp opacities
-    const lerpSpeed = delta * 6;
+    // 2. Climbing Tree Leaves Special Case (only if actor is actively on a tree canopy and focused)
+    const treeClimbers = actors.filter((a) => a.isClimbingOrOnTree && a.isFocused);
+    if (treeClimbers.length > 0) {
+      for (const actor of treeClimbers) {
+        for (const item of this.occludables) {
+          const name = item.mesh.name.toLowerCase();
+          if (name.includes('leaves') || name.includes('foliage') || name.includes('leaf')) {
+            item.mesh.getWorldPosition(tempVec);
+            if (tempVec.distanceTo(actor.headPosition) < 1.8) {
+              item.targetOpacity = Math.min(item.targetOpacity, 0.3);
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Smoothly lerp opacities
+    const lerpSpeed = Math.min(1.0, delta * 10.0);
     for (const item of this.occludables) {
       const mats = Array.isArray(item.mesh.material)
         ? item.mesh.material
@@ -114,7 +129,7 @@ export class OcclusionFoliageManager {
         mat.opacity = THREE.MathUtils.lerp(
           mat.opacity,
           item.targetOpacity,
-          Math.min(1, lerpSpeed)
+          lerpSpeed
         );
       });
     }

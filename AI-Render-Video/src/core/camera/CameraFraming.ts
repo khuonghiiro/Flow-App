@@ -18,7 +18,8 @@ export interface ActorVisualState {
 
 export class CameraFraming {
   /**
-   * Evaluate camera pose based on shot type and timeline progress
+   * Evaluate camera pose based on shot type and timeline progress.
+   * All face and head framing positions use stable avatar world anchors to prevent bone shaking.
    */
   public static evaluatePose(
     track: CameraTrack,
@@ -70,33 +71,34 @@ export class CameraFraming {
         break;
       }
 
-      // 3. Face Close-up (Soi toàn bộ khuôn mặt & khẩu hình)
+      // 3. Face Close-up (Soi toàn bộ khuôn mặt & khẩu hình - CỐ ĐỊNH CHUẨN XÁC KHÔNG RUNG)
       case 'face_close_up': {
         const targetId = track.follow_target || 'actor_warrior';
         const actorState = actorStates.get(targetId);
 
         if (actorState) {
-          // Exact head & face center height in avatar world coordinates (Y = 1.77m)
+          // Stable eye/face height based on actor world position (Y = basePos.y + 1.68)
+          // NEVER follow animated head bone micro-shakes
           const basePos = actorState.position;
-          const stableHeadY = basePos.y + 1.77;
+          const eyeHeight = 1.68;
+          const stableHeadY = basePos.y + eyeHeight;
           const facingY = actorState.rotationY;
 
           let angleOffset = 0;
-          let dist = 0.95;
-          let heightOffset = 0.0;
+          let dist = track.distance !== undefined ? track.distance : 0.85;
+          let heightOffset = track.height !== undefined ? track.height : 0.0;
 
           if (inspectAngle === 'three_quarter') {
             angleOffset = Math.PI * 0.22;
-            dist = 1.05;
-            heightOffset = 0.02;
+            dist = track.distance !== undefined ? track.distance : 0.95;
+            heightOffset += 0.02;
           } else if (inspectAngle === 'side') {
             angleOffset = Math.PI * 0.5;
-            dist = 0.95;
-            heightOffset = 0.0;
+            dist = track.distance !== undefined ? track.distance : 0.85;
           } else if (inspectAngle === 'low_angle') {
             angleOffset = Math.PI * 0.08;
-            dist = 1.15;
-            heightOffset = -0.22;
+            dist = track.distance !== undefined ? track.distance : 1.05;
+            heightOffset -= 0.20;
           }
 
           const totalAngle = facingY + angleOffset;
@@ -105,12 +107,12 @@ export class CameraFraming {
             stableHeadY + heightOffset,
             basePos.z + Math.cos(totalAngle) * dist
           );
-          target.set(basePos.x, stableHeadY, basePos.z);
+          target.set(basePos.x, stableHeadY + (heightOffset * 0.3), basePos.z);
         } else {
-          pos.set(0, 1.77, 0.95);
-          target.set(0, 1.77, 0);
+          pos.set(0, 1.68, 0.85);
+          target.set(0, 1.68, 0);
         }
-        fov = 32;
+        fov = track.fov || 30; // portrait close-up FOV
         break;
       }
 
@@ -138,12 +140,12 @@ export class CameraFraming {
         const targetId = track.follow_target || 'actor_warrior';
         const actorState = actorStates.get(targetId);
         const basePos = actorState ? actorState.position : new THREE.Vector3(0, 0, 0);
-        const stableHeadY = basePos.y + 1.77;
+        const stableHeadY = basePos.y + 1.68;
 
         // Exponential snap in the first 0.35 fraction of track
         const zoomProgress = Math.min(1, Math.pow(progress * 2.8, 3));
         const startDist = track.distance || 4.0;
-        const endDist = 0.95;
+        const endDist = 0.85;
         const currentDist = THREE.MathUtils.lerp(startDist, endDist, zoomProgress);
 
         const facingY = actorState ? actorState.rotationY : 0;
@@ -163,11 +165,11 @@ export class CameraFraming {
       // 6. Over-the-Shoulder Dialogue (OTS)
       case 'over_the_shoulder': {
         const speakerA = actorStates.get(track.follow_target || '');
-        const speakerB = actorStates.get(track.second_target || track.look_at as string || '');
+        const speakerB = actorStates.get(track.second_target || (track.look_at as string) || '');
 
         if (speakerA && speakerB) {
-          const headA = new THREE.Vector3(speakerA.position.x, speakerA.position.y + 1.77, speakerA.position.z);
-          const headB = new THREE.Vector3(speakerB.position.x, speakerB.position.y + 1.77, speakerB.position.z);
+          const headA = new THREE.Vector3(speakerA.position.x, speakerA.position.y + 1.68, speakerA.position.z);
+          const headB = new THREE.Vector3(speakerB.position.x, speakerB.position.y + 1.68, speakerB.position.z);
           const dir = new THREE.Vector3().subVectors(headB, headA).normalize();
           const right = new THREE.Vector3(-dir.z, 0, dir.x);
 
@@ -179,8 +181,8 @@ export class CameraFraming {
 
           target.copy(headB);
         } else if (speakerA) {
-          pos.set(speakerA.position.x + 0.35, speakerA.position.y + 1.72, speakerA.position.z - 0.7);
-          target.set(speakerA.position.x, speakerA.position.y + 1.77, speakerA.position.z + 2.0);
+          pos.set(speakerA.position.x + 0.35, speakerA.position.y + 1.68, speakerA.position.z - 0.7);
+          target.set(speakerA.position.x, speakerA.position.y + 1.68, speakerA.position.z + 2.0);
         }
         fov = track.fov || 38;
         break;
@@ -216,7 +218,7 @@ export class CameraFraming {
 
         if (typeof track.look_at === 'string') {
           const actorState = actorStates.get(track.look_at.replace('.head', ''));
-          if (actorState) target.copy(actorState.headPosition);
+          if (actorState) target.set(actorState.position.x, actorState.position.y + 1.68, actorState.position.z);
         } else {
           target.set(0, 1.2, 0);
         }
@@ -238,7 +240,7 @@ export class CameraFraming {
             actorState.position.y + (track.height || 1.3),
             actorState.position.z + Math.cos(facingY) * dist
           );
-          target.copy(actorState.headPosition);
+          target.set(actorState.position.x, actorState.position.y + 1.68, actorState.position.z);
         }
         fov = track.fov || 52;
         break;
@@ -253,7 +255,11 @@ export class CameraFraming {
           const smoothP = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
           const midPos = new THREE.Vector3().lerpVectors(targetA.position, targetB.position, 0.5);
           pos.set(midPos.x, midPos.y + (track.height || 1.8), midPos.z + (track.distance || 4.5));
-          target.lerpVectors(targetA.headPosition, targetB.headPosition, smoothP);
+          target.lerpVectors(
+            new THREE.Vector3(targetA.position.x, targetA.position.y + 1.68, targetA.position.z),
+            new THREE.Vector3(targetB.position.x, targetB.position.y + 1.68, targetB.position.z),
+            smoothP
+          );
         }
         break;
       }

@@ -504,7 +504,7 @@ export const App: React.FC = () => {
       for (const [id, runtime] of actorsMapRef.current.entries()) {
         const p = new THREE.Vector3();
         runtime.avatar.rootObject.getWorldPosition(p);
-        const head = runtime.avatar.getHeadPosition();
+        const head = new THREE.Vector3(p.x, p.y + 1.68, p.z);
         const rotY = runtime.avatar.rootObject.rotation.y;
 
         actorStates.set(id, { position: p, headPosition: head, rotationY: rotY });
@@ -1316,7 +1316,7 @@ export const App: React.FC = () => {
           for (const [id, runtime] of actorsMapRef.current.entries()) {
             const p = new THREE.Vector3();
             runtime.avatar.rootObject.getWorldPosition(p);
-            const head = runtime.avatar.getHeadPosition();
+            const head = new THREE.Vector3(p.x, p.y + 1.68, p.z);
             const rotY = runtime.avatar.rootObject.rotation.y;
             actorStates.set(id, { position: p, headPosition: head, rotationY: rotY });
           }

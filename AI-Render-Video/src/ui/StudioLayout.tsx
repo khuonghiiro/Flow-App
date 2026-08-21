@@ -133,7 +133,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
       renderer.gizmo.setSpace(next);
     }
   };
-  
+
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
     return sceneCategories.find(c => c.scenes.some(s => s.scene_id === scene.scene_id))?.id || sceneCategories[0]?.id || '';
   });
@@ -217,7 +217,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         {/* Center: Scene Selection */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Mẫu cảnh:</span>
-          
+
           <select
             style={{
               padding: '2px 8px',
@@ -335,7 +335,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
               }}
             >
-              <Wrench size={12} /> 🛠️ Xưởng 3D & Auto-Rig
+              <Wrench size={12} /> Xưởng 3D & Auto-Rig
             </button>
             <button
               onClick={() => {
@@ -343,7 +343,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 if (!mapId) return;
                 const name = prompt('Nhập tên hiển thị của Map:', 'Bản Đồ Tùy Chỉnh') || mapId;
                 const desc = prompt('Nhập mô tả bối cảnh (để AI đọc hiểu):', 'Bản đồ tùy chỉnh gồm các vật thể và điểm xuất hiện.') || '';
-                
+
                 const placedProps = scene.environment.placed_props || [
                   { id: 'tree_main', asset_path: 'props/nature/tree_sakura.glb', position: [4, 0, -3] as [number, number, number], type: 'nature' as const },
                   { id: 'bench_rest', asset_path: 'props/furniture/chair_wooden.glb', position: [-4, 0, -2] as [number, number, number], type: 'furniture' as const, smart_socket: { socket_type: 'sit' as const } },
@@ -399,7 +399,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             </button>
 
             <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }}></div>
-            
+
             <select
               style={{
                 padding: '4px 8px',
@@ -491,9 +491,9 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               />
             )}
             {leftTab === 'weather' && (
-              <WeatherControlPanel 
-                override={envOverride} 
-                onChange={onUpdateEnvOverride} 
+              <WeatherControlPanel
+                override={envOverride}
+                onChange={onUpdateEnvOverride}
               />
             )}
           </div>
@@ -677,15 +677,15 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 20,
+            padding: 10,
           }}
         >
           <div
             style={{
-              width: '88vw',
-              maxWidth: '1240px',
-              height: '84vh',
-              maxHeight: '820px',
+              width: '96vw',
+              maxWidth: '1800px',
+              height: '92vh',
+              maxHeight: '960px',
               background: '#090d16',
               borderRadius: 14,
               border: '1px solid rgba(56, 189, 248, 0.3)',

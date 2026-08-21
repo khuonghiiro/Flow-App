@@ -16,7 +16,7 @@ export class PostProcessor {
     this.activeShakes.push({
       intensity,
       duration,
-      startTime: timeStamp !== undefined ? timeStamp : performance.now() / 1000,
+      startTime: timeStamp !== undefined ? timeStamp : (performance.now() / 1000),
     });
   }
 
@@ -29,10 +29,16 @@ export class PostProcessor {
       return this.shakeOffset;
     }
 
+    const nowRealTime = performance.now() / 1000;
+
     // Filter and accumulate active screen shakes
     this.activeShakes = this.activeShakes.filter((shake) => {
-      const elapsed = currentTimeSeconds - shake.startTime;
-      if (elapsed < shake.duration && elapsed >= 0) {
+      const isTimelineTime = shake.startTime < 1000.0;
+      const elapsed = isTimelineTime
+        ? currentTimeSeconds - shake.startTime
+        : nowRealTime - shake.startTime;
+
+      if (elapsed >= 0 && elapsed < shake.duration) {
         const decay = 1 - elapsed / shake.duration;
         const currentIntensity = shake.intensity * decay;
         this.shakeOffset.x += (Math.random() - 0.5) * 2 * currentIntensity;
