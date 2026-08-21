@@ -147,6 +147,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           rain_enabled: true,
           rain_intensity: 0.25,
           rain_darkness: 0.18,
+          rain_area_coverage: 0.50,
           wind_intensity: 0.35,
           wind_direction: 45,
           cloud_coverage: 0.55,
@@ -168,6 +169,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           rain_enabled: true,
           rain_intensity: 0.70,
           rain_darkness: 0.65,
+          rain_area_coverage: 0.90,
           wind_intensity: 0.65,
           wind_direction: 60,
           cloud_coverage: 0.88,
@@ -191,6 +193,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           rain_enabled: true,
           rain_intensity: 1.0,
           rain_darkness: 1.0,
+          rain_area_coverage: 1.0,
           wind_intensity: 0.95,
           wind_direction: 75,
           cloud_coverage: 1.0,
@@ -783,7 +786,6 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
                     <span>100% Đen kịt giông bão</span>
                   </div>
                 </div>
-
                 {/* 3.2b Rain Collision Quality Slider (Performance) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
@@ -814,17 +816,44 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
                   </div>
                 </div>
 
-                {/* 3.2c Rain Splash View Distance Slider */}
+                {/* 3.2c Rain Area Coverage Slider (Vùng mưa / Mưa xen kẽ theo đợt) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
-                    <span>👁️ Bán kính tầm nhìn va chạm & sóng nước:</span>
-                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>{override.rain_splash_distance ?? 45}m</span>
+                    <span>🌧️ Diện tích vùng mưa (Vùng mưa & Đợt mưa):</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>{Math.round((override.rain_area_coverage ?? 1.0) * 100)}%</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                    {(override.rain_area_coverage ?? 1.0) <= 0.35
+                      ? '🌤️ Mưa rào cục bộ — Từng đợt mưa nhỏ di chuyển ngẫu nhiên theo gió'
+                      : (override.rain_area_coverage ?? 1.0) <= 0.75
+                        ? '🌦️ Mưa dải rộng xen kẽ — Các luồng mưa trôi qua tự nhiên'
+                        : '🌧️ Mưa bao phủ toàn map — Cả không gian chìm trong mưa liên tục'}
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0.10" max="1.0" step="0.05"
+                    value={override.rain_area_coverage ?? 1.0}
+                    onChange={(e) => onChange({ ...override, rain_area_coverage: parseFloat(e.target.value), weather_preset: 'custom' })}
+                    style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#64748b' }}>
+                    <span>10% Cục bộ từng đợt</span>
+                    <span>50% Xen kẽ</span>
+                    <span>100% Phủ kín toàn map</span>
+                  </div>
+                </div>
+
+                {/* 3.2d Rain Simulation View Radius (Camera Performance) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                    <span>👁️ Bán kính mô phỏng quanh Camera (Tối ưu GPU):</span>
+                    <span style={{ color: '#60a5fa', fontWeight: 600 }}>{override.rain_splash_distance ?? 45}m</span>
                   </div>
                   <div style={{ fontSize: 9, color: '#94a3b8' }}>
                     {(override.rain_splash_distance ?? 45) <= 15
-                      ? '🔍 Cận cảnh — Chỉ hiển thị tóe nước sát camera'
+                      ? '🔍 Cận cảnh — Chỉ tính toán hạt mưa & va chạm sát camera (rất nhẹ máy)'
                       : (override.rain_splash_distance ?? 45) <= 50
-                        ? '📐 Toàn cảnh Studio — Nhìn rõ toàn bộ đường phố & sân khấu'
+                        ? '📐 Toàn cảnh Studio — Mô phỏng đầy đủ khu vực diễn biến chính'
                         : '🌐 Toàn cảnh Cinematic — Bao quát toàn bộ map rộng lớn'}
                   </div>
                   <input 
@@ -832,7 +861,7 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
                     min="5" max="100" step="5"
                     value={override.rain_splash_distance ?? 45}
                     onChange={(e) => onChange({ ...override, rain_splash_distance: parseInt(e.target.value), weather_preset: 'custom' })}
-                    style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                    style={{ width: '100%', accentColor: '#60a5fa', cursor: 'pointer' }}
                   />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#64748b' }}>
                     <span>5m (cận cảnh)</span>
@@ -854,39 +883,30 @@ export const WeatherControlPanel: React.FC<WeatherControlPanelProps> = ({ overri
           {/* ══════════════════════════════════════════════════ */}
           {/* 4. SỨC GIÓ & HƯỚNG GIÓ THỔI (WIND DYNAMICS)         */}
           {/* ══════════════════════════════════════════════════ */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(168, 85, 247, 0.04)', padding: 10, borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.15)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(255, 255, 255, 0.02)', padding: 10, borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: '11px', color: '#c084fc', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Wind size={13} color="#a855f7" /> 4. SỨC GIÓ & HƯỚNG GIÓ THỔI
-              </label>
-              <span style={{ fontSize: '10px', fontWeight: 700, color: '#c084fc' }}>
-                {Math.round(windIntensity * 100)}% ({getWindDirectionText(windDirection)})
-              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#cbd5e1', fontSize: 11 }}><Wind size={12}/> 4. GIÓ & HƯỚNG GIÓ</span>
+              <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600 }}>{Math.round((override.wind_intensity ?? 0.3) * 100)}% ({Math.round(override.wind_direction ?? 45)}°)</span>
             </div>
 
-            {/* Wind Intensity Slider */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
-                <span>Sức gió (Tốc độ mây trôi & Mưa tạt xiên):</span>
-                <span style={{ color: '#c084fc', fontWeight: 600 }}>{Math.round(windIntensity * 100)}%</span>
-              </div>
-              <div style={{ fontSize: 9, color: '#e9d5ff', fontStyle: 'italic' }}>
-                {getWindLevelText(windIntensity)} (Vận tốc ~{Math.round(windIntensity * 32)} m/s)
+                <span>Cường độ gió:</span>
+                <span>{Math.round((override.wind_intensity ?? 0.3) * 100)}%</span>
               </div>
               <input 
                 type="range" 
-                min="0" max="1" step="0.01"
-                value={windIntensity}
+                min="0" max="1" step="0.05"
+                value={override.wind_intensity ?? 0.3}
                 onChange={(e) => onChange({ ...override, wind_intensity: parseFloat(e.target.value) })}
                 style={{ width: '100%', accentColor: '#a855f7', cursor: 'pointer' }}
               />
             </div>
 
-            {/* Wind Direction Slider */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Compass size={11} /> Hướng gió (Góc 360°):</span>
-                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{getWindDirectionText(windDirection)}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0' }}>
+                <span>Hướng gió thổi (0-360°):</span>
+                <span>{Math.round(override.wind_direction ?? 45)}°</span>
               </div>
               <input 
                 type="range" 

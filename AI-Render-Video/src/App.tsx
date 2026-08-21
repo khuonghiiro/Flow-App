@@ -639,6 +639,18 @@ export const App: React.FC = () => {
           ? (envOverrideRef.current.rain_splash_distance ?? (activeScene.environment.weather?.rain_splash_distance ?? 45))
           : (activeScene.environment.weather?.rain_splash_distance ?? 45);
 
+        const cloudCoverage = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.cloud_coverage ?? 0.5)
+          : (activeScene.environment.weather?.cloud_coverage ?? 0.5);
+
+        const cloudLayers = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.cloud_layers ?? 1)
+          : (activeScene.environment.weather?.cloud_layers ?? 1);
+
+        const rainAreaCoverage = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_area_coverage ?? (activeScene.environment.weather?.rain_area_coverage ?? 1.0))
+          : (activeScene.environment.weather?.rain_area_coverage ?? 1.0);
+
         weatherParticlesRef.current.update(
           delta,
           renderer.camera.position,
@@ -647,7 +659,10 @@ export const App: React.FC = () => {
           windDirection,
           mapGroupRef.current,
           collisionQuality,
-          splashDistance
+          splashDistance,
+          cloudCoverage,
+          cloudLayers,
+          rainAreaCoverage
         );
       }
 

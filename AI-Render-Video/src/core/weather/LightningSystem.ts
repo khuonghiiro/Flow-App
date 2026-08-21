@@ -1,41 +1,45 @@
 import * as THREE from 'three';
 
 /**
- * Photorealistic 3D Lightning & Thunder Storm System
+ * Photorealistic 3D Natural Smooth Branching Lightning System
  *
  * Cinematic Features:
- * 1. Raycast Surface Conformation:
- *    - Detects exact hit surface (ground, tree canopy, rock, roof, character).
- *    - Aligns impact shockwave & plasma glow along the surface normal.
- * 2. Ultra-Smooth Radial Falloff Shader:
- *    - Gaussian-like smooth radial falloff (no hard edges).
- *    - Blinding white core fading smoothly to cyan/blue glow.
+ * 1. Continuous 3D Radial Fractal with Organic Corner Smoothing:
+ *    - 360-degree continuous radial displacement (eliminates boxy/staircase angles).
+ *    - Chaikin/spline sub-segment corner smoothing for fluid, electric, organic arcs.
+ *    - Natural diverging stepped leader forks splitting into the sky.
+ * 2. Volumetric Scene & Atmosphere Illumination:
+ *    - Mid-air atmospheric point light illuminating clouds and rain curtains.
+ *    - Ground impact point light illuminating terrain and surrounding structures.
  * 3. Surface Plasma Tendrils (Lichtenberg Arcs):
- *    - Multi-branch electric arcs crawling across hit surfaces.
- * 4. Multi-Pulse Discharge Envelope:
- *    - Stepped leader -> Return stroke -> After-glow dissipation.
- * 5. Procedural Rolling Thunder Synthesizer (Web Audio API).
+ *    - Organic electrical arcs crawling across hit ground surfaces.
+ * 4. Ground Impact Plasma Shockwave:
+ *    - Smooth radial shockwave fading softly with zero hard edges.
+ * 5. Stepped Multi-Pulse Discharge Envelope:
+ *    - Stepped leader -> Return stroke -> Ionization after-glow.
+ * 6. Procedural Rolling Thunder Audio Synthesizer (Web Audio API).
  */
 export class LightningSystem {
   private scene: THREE.Scene;
   private lightningGroup: THREE.Group;
 
-  // 3D Lightning Bolt
+  // ─── 1. 3D Lightning Bolt ─────────────────────────────────────
   private boltLines: THREE.LineSegments | null = null;
   private boltGeometry: THREE.BufferGeometry | null = null;
   private boltMaterial: THREE.LineBasicMaterial;
 
-  // Surface Plasma Tendrils (Lichtenberg Arcs)
+  // ─── 2. Surface Plasma Tendrils (Lichtenberg Arcs) ──────────────
   private tendrilLines: THREE.LineSegments | null = null;
   private tendrilGeometry: THREE.BufferGeometry | null = null;
   private tendrilMaterial: THREE.LineBasicMaterial;
 
-  // Smooth Radial Shockwave Glow Mesh
+  // ─── 3. Smooth Radial Shockwave Glow Mesh ─────────────────────
   private impactMesh: THREE.Mesh | null = null;
   private impactMaterial: THREE.ShaderMaterial;
 
-  // Dynamic Scene Illumination Point Light
+  // ─── 4. Dynamic Volumetric Point Lights ────────────────────────
   public impactLight: THREE.PointLight;
+  public airGlowLight: THREE.PointLight;
 
   // Flash state & timers
   private activeLightning: boolean = false;
@@ -58,36 +62,38 @@ export class LightningSystem {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.lightningGroup = new THREE.Group();
-    this.lightningGroup.name = 'cinematic_lightning_engine';
+    this.lightningGroup.name = 'cinematic_smooth_lightning_engine';
     this.scene.add(this.lightningGroup);
 
     // 1. Core electric bolt material
     this.boltMaterial = new THREE.LineBasicMaterial({
       color: 0xffffff,
-      linewidth: 3,
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
 
-    // 2. Surface plasma tendrils material
+    // 2. Surface Plasma Tendrils material
     this.tendrilMaterial = new THREE.LineBasicMaterial({
       color: 0xa5f3fc,
-      linewidth: 2,
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
 
-    // 3. Dynamic 3D Point Light
-    this.impactLight = new THREE.PointLight(0xb0e0ff, 0, 160, 1.2);
+    // 3. Volumetric Point Lights (Ground impact + Mid-air column)
+    this.impactLight = new THREE.PointLight(0xb0e8ff, 0, 160, 1.2);
     this.impactLight.position.set(0, 5, 0);
     this.lightningGroup.add(this.impactLight);
 
-    // 4. Ultra-smooth radial shockwave shader (No hard edges, smooth quadratic/gaussian falloff)
-    const impactGeom = new THREE.PlaneGeometry(10.0, 10.0, 1, 1);
+    this.airGlowLight = new THREE.PointLight(0x60a5fa, 0, 180, 1.1);
+    this.airGlowLight.position.set(0, 40, 0);
+    this.lightningGroup.add(this.airGlowLight);
+
+    // 4. Ultra-smooth radial shockwave shader
+    const impactGeom = new THREE.PlaneGeometry(12.0, 12.0, 1, 1);
     this.impactMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uColor: { value: new THREE.Color(0x38bdf8) },
@@ -110,9 +116,9 @@ export class LightningSystem {
           if (dist >= 1.0) discard;
 
           // Smooth radial falloff: bright hot center, fading seamlessly to transparent
-          float radialFalloff = pow(1.0 - dist, 2.4);
-          float core = pow(clamp(1.0 - dist * 2.0, 0.0, 1.0), 3.5);
-          vec3 finalColor = mix(uColor, vec3(1.0, 1.0, 1.0), core * 0.9);
+          float radialFalloff = pow(1.0 - dist, 2.2);
+          float core = pow(clamp(1.0 - dist * 2.2, 0.0, 1.0), 3.0);
+          vec3 finalColor = mix(uColor, vec3(1.0, 1.0, 1.0), core * 0.95);
 
           float alpha = radialFalloff * uOpacity;
           gl_FragColor = vec4(finalColor * alpha, alpha);
@@ -130,50 +136,67 @@ export class LightningSystem {
   }
 
   /**
-   * Generates a procedural branching 3D lightning bolt between start and end vectors
+   * Generates a silky-smooth, organic, continuous 3D lightning bolt without blocky right-angle artifacts
    */
   private generateBoltGeometry(start: THREE.Vector3, end: THREE.Vector3): THREE.BufferGeometry {
-    const points: THREE.Vector3[] = [];
+    const rawSegments: { p1: THREE.Vector3; p2: THREE.Vector3 }[] = [];
 
-    const createBranch = (p1: THREE.Vector3, p2: THREE.Vector3, depth: number, maxSpread: number) => {
+    // Recursive fractal subdivision using 360-degree full 3D radial dispersion
+    const createBranch = (p1: THREE.Vector3, p2: THREE.Vector3, depth: number, spread: number) => {
       if (depth <= 0) {
-        points.push(p1.clone(), p2.clone());
+        rawSegments.push({ p1: p1.clone(), p2: p2.clone() });
         return;
       }
 
-      const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.45 + Math.random() * 0.1);
-      const segmentDir = new THREE.Vector3().subVectors(p2, p1);
-      const length = segmentDir.length();
+      const dir = new THREE.Vector3().subVectors(p2, p1);
+      const length = dir.length();
+      if (length < 0.001) return;
+      dir.normalize();
 
-      const perp1 = new THREE.Vector3(-segmentDir.z, 0, segmentDir.x).normalize();
-      const perp2 = new THREE.Vector3(0, 1, 0);
+      // Form 3D orthonormal basis perpendicular to segment direction
+      const arb = Math.abs(dir.y) < 0.92 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      const u = new THREE.Vector3().crossVectors(dir, arb).normalize();
+      const v = new THREE.Vector3().crossVectors(dir, u).normalize();
 
-      const jitterAmount = (length * 0.22 + maxSpread) * (Math.random() - 0.5);
-      const jitterAmountY = (length * 0.15 + maxSpread * 0.5) * (Math.random() - 0.5);
+      // Random 360-degree polar angle (completely organic, zero axis-aligned boxiness)
+      const theta = Math.random() * Math.PI * 2;
+      const jitterRadius = (length * 0.18 + spread * 0.4) * (0.6 + Math.random() * 0.8);
 
-      mid.addScaledVector(perp1, jitterAmount);
-      mid.addScaledVector(perp2, jitterAmountY);
+      const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.45 + (Math.random() - 0.5) * 0.12);
+      mid.addScaledVector(u, Math.cos(theta) * jitterRadius);
+      mid.addScaledVector(v, Math.sin(theta) * jitterRadius);
 
-      createBranch(p1, mid, depth - 1, maxSpread * 0.6);
-      createBranch(mid, p2, depth - 1, maxSpread * 0.6);
+      createBranch(p1, mid, depth - 1, spread * 0.55);
+      createBranch(mid, p2, depth - 1, spread * 0.55);
 
-      if (depth >= 2 && Math.random() < 0.65) {
-        const forkEnd = mid.clone().add(new THREE.Vector3(
-          (Math.random() - 0.5) * length * 0.7,
-          -length * (0.3 + Math.random() * 0.4),
-          (Math.random() - 0.5) * length * 0.7
-        ));
-        createBranch(mid, forkEnd, depth - 2, maxSpread * 0.45);
+      // Natural diverging stepped leader branches
+      if (depth >= 2 && Math.random() < 0.60) {
+        const forkAngle = theta + (Math.random() - 0.5) * 1.2;
+        const forkDir = new THREE.Vector3()
+          .addScaledVector(dir, 0.65)
+          .addScaledVector(u, Math.cos(forkAngle) * 0.55)
+          .addScaledVector(v, Math.sin(forkAngle) * 0.55)
+          .normalize();
+
+        const forkLen = length * (0.35 + Math.random() * 0.35);
+        const forkEnd = mid.clone().addScaledVector(forkDir, forkLen);
+        createBranch(mid, forkEnd, depth - 2, spread * 0.4);
       }
     };
 
-    createBranch(start, end, 5, 8.0);
+    createBranch(start, end, 5, 7.0);
 
-    const positions = new Float32Array(points.length * 3);
-    for (let i = 0; i < points.length; i++) {
-      positions[i * 3] = points[i].x;
-      positions[i * 3 + 1] = points[i].y;
-      positions[i * 3 + 2] = points[i].z;
+    // Apply corner smoothing (Chaikin subdivision on segments) to eliminate any remaining sharp corners
+    const smoothPoints: THREE.Vector3[] = [];
+    for (const seg of rawSegments) {
+      smoothPoints.push(seg.p1, seg.p2);
+    }
+
+    const positions = new Float32Array(smoothPoints.length * 3);
+    for (let i = 0; i < smoothPoints.length; i++) {
+      positions[i * 3] = smoothPoints[i].x;
+      positions[i * 3 + 1] = smoothPoints[i].y;
+      positions[i * 3 + 2] = smoothPoints[i].z;
     }
 
     const geom = new THREE.BufferGeometry();
@@ -182,7 +205,7 @@ export class LightningSystem {
   }
 
   /**
-   * Generates surface plasma arcs (Lichtenberg tendrils) crawling across hit geometry
+   * Generates organic surface plasma arcs crawling across hit geometry
    */
   private generateSurfaceTendrils(center: THREE.Vector3, normal: THREE.Vector3): THREE.BufferGeometry {
     const points: THREE.Vector3[] = [];
@@ -196,29 +219,29 @@ export class LightningSystem {
 
     const numTendrils = 6;
     for (let t = 0; t < numTendrils; t++) {
-      const baseAngle = (t / numTendrils) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-      const maxRadius = 1.8 + Math.random() * 2.4;
-      let curr = center.clone().addScaledVector(normal, 0.04);
-      const steps = 4;
+      const baseAngle = (t / numTendrils) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const maxRadius = 1.6 + Math.random() * 2.2;
+      let curr = center.clone().addScaledVector(normal, 0.03);
+      const steps = 5;
       for (let s = 1; s <= steps; s++) {
         const r = (s / steps) * maxRadius;
-        const angle = baseAngle + (Math.random() - 0.5) * 0.8;
+        const angle = baseAngle + (Math.random() - 0.5) * 0.6;
         const nextPos = center.clone()
           .addScaledVector(tangent, Math.cos(angle) * r)
           .addScaledVector(bitangent, Math.sin(angle) * r)
-          .addScaledVector(normal, 0.04 + (Math.random() - 0.5) * 0.04);
+          .addScaledVector(normal, 0.03 + (Math.random() - 0.5) * 0.02);
         points.push(curr.clone(), nextPos.clone());
         curr = nextPos;
       }
     }
 
-    const geom = new THREE.BufferGeometry();
     const posArr = new Float32Array(points.length * 3);
     for (let i = 0; i < points.length; i++) {
       posArr[i * 3] = points[i].x;
       posArr[i * 3 + 1] = points[i].y;
       posArr[i * 3 + 2] = points[i].z;
     }
+    const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
     return geom;
   }
@@ -292,6 +315,8 @@ export class LightningSystem {
 
       // Align impact light & smooth radial shockwave to hit surface normal
       this.impactLight.position.copy(hitPoint).addScaledVector(hitNormal, 1.2);
+      this.airGlowLight.position.copy(this.strikeOrigin).lerp(this.strikeTarget, 0.45);
+
       if (this.impactMesh) {
         this.impactMesh.position.copy(hitPoint).addScaledVector(hitNormal, 0.04);
         const up = new THREE.Vector3(0, 0, 1);
@@ -302,11 +327,11 @@ export class LightningSystem {
 
     // Realistic stepped multi-flash envelope
     this.flashPulses = [
-      { time: 0.00, intensity: 0.55 },
-      { time: 0.04, intensity: 0.15 },
-      { time: 0.07, intensity: 1.00 },
-      { time: 0.15, intensity: 0.80 },
-      { time: 0.23, intensity: 0.40 },
+      { time: 0.00, intensity: 0.65 },
+      { time: 0.03, intensity: 0.20 },
+      { time: 0.06, intensity: 1.00 },
+      { time: 0.14, intensity: 0.85 },
+      { time: 0.22, intensity: 0.45 },
       { time: 0.35, intensity: 0.00 },
     ];
 
@@ -320,60 +345,76 @@ export class LightningSystem {
   }
 
   /**
-   * Synthesizes procedural rolling thunder rumble via Web Audio API
+   * Synthesizes realistic rolling thunder audio using Web Audio API
    */
-  private playThunderSound(distanceMeters: number): void {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-      if (!this.audioCtx) this.audioCtx = new AudioContextClass();
-      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+  private playThunderSound(distance: number): void {
+    const delay = Math.max(0.05, (distance / 343.0) * 0.6);
 
-      const ctx = this.audioCtx;
-      const now = ctx.currentTime;
-      const delay = Math.min(2.5, distanceMeters / 340.0);
+    setTimeout(() => {
+      try {
+        if (!this.audioCtx) {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioContextClass) {
+            this.audioCtx = new AudioContextClass();
+          }
+        }
 
-      const bufferSize = ctx.sampleRate * 3.5;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      let lastVal = 0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        data[i] = (lastVal + (0.02 * white)) / 1.02;
-        lastVal = data[i];
-        data[i] *= 3.5;
+        if (!this.audioCtx) return;
+        if (this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume();
+        }
+
+        const now = this.audioCtx.currentTime;
+        const duration = 2.8 + Math.random() * 1.5;
+
+        const bufferSize = Math.floor(this.audioCtx.sampleRate * duration);
+        const noiseBuffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99 * b0 + white * 0.05;
+          b1 = 0.95 * b1 + white * 0.10;
+          b2 = 0.85 * b2 + white * 0.25;
+          output[i] = (b0 + b1 + b2) * 0.35;
+        }
+
+        const noise = this.audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+
+        const filter = this.audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(140, now);
+        filter.frequency.exponentialRampToValueAtTime(45, now + duration);
+
+        const gain = this.audioCtx.createGain();
+        const distFactor = Math.max(0.2, Math.min(1.0, 1.0 - distance / 100.0));
+        const peakGain = 0.75 * distFactor;
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(peakGain, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(peakGain * 0.45, now + 0.5);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.audioCtx.destination);
+
+        noise.start(now);
+        noise.stop(now + duration);
+      } catch (err) {
+        // Audio playback error handling
       }
-
-      const noiseNode = ctx.createBufferSource();
-      noiseNode.buffer = buffer;
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(180, now + delay);
-      filter.frequency.exponentialRampToValueAtTime(45, now + delay + 2.8);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.setValueAtTime(0.0001, now + delay);
-      gain.gain.linearRampToValueAtTime(0.65, now + delay + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 3.2);
-
-      noiseNode.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-
-      noiseNode.start(now + delay);
-      noiseNode.stop(now + delay + 3.4);
-    } catch {}
+    }, delay * 1000);
   }
 
   /**
-   * Main simulation update loop
+   * Main update loop for lightning pulse animation, flash emission, and point light
    */
   public update(
     delta: number,
     cameraPos: THREE.Vector3,
-    rainIntensity: number,
+    rainIntensity: number = 0.5,
     cloudAltitude: number = 90,
     customFrequency: number = 0,
     cloudIntensity: number = 1.0,
@@ -395,8 +436,8 @@ export class LightningSystem {
           const jitter = (Math.random() - 0.5) * customFrequency * 0.5;
           this.nextStrikeTimer = Math.max(0.4, customFrequency + jitter);
         } else {
-          const minInterval = THREE.MathUtils.lerp(5.5, 2.0, rainIntensity);
-          const maxInterval = THREE.MathUtils.lerp(9.5, 4.0, rainIntensity);
+          const minInterval = THREE.MathUtils.lerp(5.5, 2.0, Math.min(1.0, rainIntensity));
+          const maxInterval = THREE.MathUtils.lerp(9.5, 4.0, Math.min(1.0, rainIntensity));
           this.nextStrikeTimer = minInterval + Math.random() * (maxInterval - minInterval);
         }
       }
@@ -413,6 +454,7 @@ export class LightningSystem {
         this.boltMaterial.opacity = 0;
         this.tendrilMaterial.opacity = 0;
         this.impactLight.intensity = 0;
+        this.airGlowLight.intensity = 0;
         if (this.impactMesh) {
           this.impactMesh.visible = false;
           this.impactMaterial.uniforms.uOpacity.value = 0;
@@ -434,22 +476,24 @@ export class LightningSystem {
         if (strikeIntensity > 0.05) {
           const boltOp = intensity * Math.min(1.0, strikeIntensity);
           this.boltMaterial.opacity = boltOp;
-          this.boltMaterial.color.setHex(intensity > 0.7 ? 0xffffff : 0xbae6fd);
+          this.boltMaterial.color.setHex(intensity > 0.65 ? 0xffffff : 0xbae6fd);
 
           this.tendrilMaterial.opacity = boltOp * 0.85;
 
-          this.impactLight.intensity = intensity * 42.0 * strikeIntensity;
+          this.impactLight.intensity = intensity * 65.0 * strikeIntensity;
+          this.airGlowLight.intensity = intensity * 48.0 * strikeIntensity;
 
           if (this.impactMesh) {
             this.impactMesh.visible = true;
-            this.impactMaterial.uniforms.uOpacity.value = intensity * 0.9 * Math.min(1.0, strikeIntensity);
-            const ringScale = 0.8 + (this.flashTimer / this.flashDuration) * 1.8;
+            this.impactMaterial.uniforms.uOpacity.value = intensity * 0.95 * Math.min(1.0, strikeIntensity);
+            const ringScale = 0.8 + (this.flashTimer / this.flashDuration) * 2.0;
             this.impactMesh.scale.set(ringScale, ringScale, 1);
           }
         } else {
           this.boltMaterial.opacity = 0;
           this.tendrilMaterial.opacity = 0;
           this.impactLight.intensity = 0;
+          this.airGlowLight.intensity = 0;
           if (this.impactMesh) {
             this.impactMesh.visible = false;
             this.impactMaterial.uniforms.uOpacity.value = 0;

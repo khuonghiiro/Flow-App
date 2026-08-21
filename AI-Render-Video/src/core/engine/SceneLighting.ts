@@ -214,8 +214,12 @@ export class SceneLighting {
       targetAmbIntensity = 1.15;
     }
 
-    // Rain factor
+    // Rain & Cloud Darkness factor
     const rain = overrideEnv?.rain_intensity ?? this.currentEnv.weather?.rain ?? 0;
+    const rainDarkness = overrideEnv?.rain_darkness ?? 0.5;
+    const cloudShadowDarkness = overrideEnv?.cloud_shadow_darkness ?? this.currentEnv.weather?.cloud_shadow_darkness ?? 0.4;
+    const cloudCov = overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage ?? 0.0;
+
     if (rain > 0.05) {
       // Light rain (<= 0.35): sunlight still gently pierces through fluffy clouds with warm soft rays
       // Heavy rain (> 0.35 to 1.0): sunlight smoothly dims and extinguishes during intense storms
@@ -227,18 +231,23 @@ export class SceneLighting {
       targetAmbColor.lerp(rainAmbTint, rain * 0.65);
       targetAmbIntensity = THREE.MathUtils.lerp(targetAmbIntensity, 0.88, rain * 0.40);
 
-      const rainSkyColor = new THREE.Color(0x1e293b).lerp(new THREE.Color(0x121b2b), Math.min(1.0, rain * 1.2));
-      targetBgColor.lerp(rainSkyColor, Math.min(1.0, rain * 0.85));
-      targetFogColor.lerp(rainSkyColor, Math.min(1.0, rain * 0.85));
+      // Dark storm clouds: dynamically darken fog from soft slate to deep charcoal black
+      const darkStormColor = new THREE.Color(0x1e293b).lerp(new THREE.Color(0x0a0f1d), rainDarkness * 0.95);
+      targetBgColor.lerp(darkStormColor, Math.min(1.0, rain * 0.88));
+      targetFogColor.lerp(darkStormColor, Math.min(1.0, rain * 0.92));
+
       if (overrideEnv?.fog_density === undefined) {
         this.fog.density = 0.005 + rain * 0.008;
       }
     }
 
-    // Cloud coverage maintains clear contrast between sunny patches and cloud shadows
-    const cloudCov = overrideEnv?.cloud_coverage ?? this.currentEnv.weather?.cloud_coverage ?? 0.0;
+    // Cloud coverage and shadow darkness dynamically tint atmospheric fog
     if (cloudCov > 0.03 && explicitMode !== 'overcast') {
       targetAmbIntensity = Math.min(0.55, targetAmbIntensity * (1.0 + cloudCov * 0.10));
+      
+      // When clouds are thick and dark, tint fog towards cloud shadow color
+      const overcastFogTint = new THREE.Color(0x334155).lerp(new THREE.Color(0x0f172a), cloudShadowDarkness * 0.8);
+      targetFogColor.lerp(overcastFogTint, cloudCov * 0.45 * (0.3 + cloudShadowDarkness * 0.7));
     }
 
     // Atomic lightning flash applied on top of clean base frame lighting (No whiteout accumulation)
@@ -247,6 +256,7 @@ export class SceneLighting {
       targetAmbColor.lerp(new THREE.Color(0xdbeafe), flashIntensity * 0.85);
       this.hemiLight.intensity = 0.85 + flashIntensity * 1.8;
       this.hemiLight.color.copy(new THREE.Color(0xffffff).lerp(new THREE.Color(0xb0e0ff), flashIntensity));
+      targetFogColor.lerp(new THREE.Color(0xb0e0ff), flashIntensity * 0.65);
     } else {
       // Balanced hemisphere sky-to-ground fill keeps all 3D characters, houses, and roofs clearly readable
       this.hemiLight.intensity = 0.45;

@@ -49,20 +49,20 @@ export class WeatherParticleSystem {
 
   // Instanced Rain Streaks
   private instancedRain: THREE.InstancedMesh | null = null;
-  private maxRainCount: number = 4000;
+  private maxRainCount: number = 7000;
   private rainDrops: RainDropData[] = [];
   private rainMaterial: THREE.MeshBasicMaterial | null = null;
 
   // Instanced Water Splashes
   private instancedSplashes: THREE.InstancedMesh | null = null;
-  private maxSplashCount: number = 600;
+  private maxSplashCount: number = 700;
   private splashParticles: SplashParticle[] = [];
   private splashIndex: number = 0;
   private splashMaterial: THREE.MeshBasicMaterial | null = null;
 
   // Instanced Water Ripples
   private instancedRipples: THREE.InstancedMesh | null = null;
-  private maxRippleCount: number = 400;
+  private maxRippleCount: number = 500;
   private rippleParticles: RippleParticle[] = [];
   private rippleIndex: number = 0;
   private rippleMaterial: THREE.MeshBasicMaterial | null = null;
@@ -329,16 +329,17 @@ export class WeatherParticleSystem {
     this.instancedRain.visible = false;
     this.rainGroup.add(this.instancedRain);
 
+    // Fully randomized 3D pseudo-random spatial distribution (zero sequential/grid bias)
     for (let i = 0; i < this.maxRainCount; i++) {
       this.rainDrops.push({
         pos: new THREE.Vector3(
           (Math.random() - 0.5) * this.boxWidth,
-          Math.random() * (this.boxHeight + 10),
+          Math.random() * (this.boxHeight + 12),
           (Math.random() - 0.5) * this.boxDepth
         ),
-        speed: 24 + Math.random() * 16,
-        length: 0.95 + Math.random() * 0.55,
-        width: 0.95 + Math.random() * 0.45,
+        speed: 22.0 + Math.random() * 18.0,
+        length: 0.85 + Math.random() * 0.65,
+        width: 0.85 + Math.random() * 0.55,
         phase: Math.random() * Math.PI * 2,
       });
       this.dummyObj.position.set(0, -9999, 0);
@@ -350,12 +351,13 @@ export class WeatherParticleSystem {
   }
 
   private initInstancedSplashes(): void {
-    const geom = new THREE.SphereGeometry(0.024, 6, 4);
+    // Micro water droplet bead (tiny realistic size, physical normal blending)
+    const geom = new THREE.SphereGeometry(0.009, 6, 4);
     this.splashMaterial = new THREE.MeshBasicMaterial({
-      color: 0xd6eeff,
+      color: 0xf1f8ff,
       transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
+      opacity: 0.65,
+      blending: THREE.NormalBlending,
       depthWrite: false,
     });
 
@@ -367,7 +369,7 @@ export class WeatherParticleSystem {
     for (let i = 0; i < this.maxSplashCount; i++) {
       this.splashParticles.push({
         pos: new THREE.Vector3(0, -9999, 0), vel: new THREE.Vector3(),
-        scale: 0.2, life: 0, maxLife: 0.22, active: false,
+        scale: 0.15, life: 0, maxLife: 0.15, active: false,
       });
       this.dummyObj.position.set(0, -9999, 0);
       this.dummyObj.scale.set(0, 0, 0);
@@ -396,17 +398,18 @@ export class WeatherParticleSystem {
           float r = length(p);
           if (r > 1.0) discard;
           
-          // Soft single circular water drop ripple ring
-          float ring = smoothstep(0.12, 0.0, abs(r - 0.78));
-          float alpha = ring * 0.45 * pow(1.0 - r, 0.5);
-          if (alpha < 0.008) discard;
+          // Ultra-thin, crisp, natural water refraction ring
+          float ring = smoothstep(0.07, 0.0, abs(r - 0.88));
+          float innerMist = smoothstep(0.35, 0.0, r) * 0.10;
+          float alpha = (ring * 0.32 + innerMist) * pow(1.0 - r, 0.5);
+          if (alpha < 0.005) discard;
           
-          vec3 col = vec3(0.72, 0.88, 1.0);
+          vec3 col = vec3(0.80, 0.92, 1.0);
           gl_FragColor = vec4(col * alpha, alpha);
         }
       `,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
     }) as any;
@@ -420,10 +423,10 @@ export class WeatherParticleSystem {
       this.rippleParticles.push({
         pos: new THREE.Vector3(0, -9999, 0),
         quaternion: new THREE.Quaternion(),
-        currentScale: 0.05,
-        maxScale: 0.28,
+        currentScale: 0.02,
+        maxScale: 0.16,
         life: 0,
-        maxLife: 0.22,
+        maxLife: 0.20,
         active: false,
       });
       this.dummyObj.position.set(0, -9999, 0);
@@ -443,7 +446,8 @@ export class WeatherParticleSystem {
     nx: number, ny: number, nz: number,
     wX: number, wZ: number,
     rainIntensity: number = 0.5,
-    windIntensity: number = 0.3
+    windIntensity: number = 0.3,
+    collisionQuality: number = 2
   ): void {
     WeatherParticleSystem._tempNormal.set(nx, ny, nz);
     if (WeatherParticleSystem._tempNormal.lengthSq() < 0.01) {
@@ -461,35 +465,35 @@ export class WeatherParticleSystem {
     }
     WeatherParticleSystem._tangent2.crossVectors(norm, WeatherParticleSystem._tangent1).normalize();
 
-    // 1. Splash droplets: quantity, ejection speed & wind blow scaled with rain & wind intensity
-    const count = Math.min(6, 2 + Math.floor(rainIntensity * 4.0));
+    // 1. Splash micro-droplets: quantity directly scaled by collisionQuality (1 to 5 droplets)
+    const count = Math.min(5, Math.max(1, Math.round(1 + (collisionQuality / 10.0) * 3.5 * rainIntensity)));
     for (let s = 0; s < count; s++) {
       const sp = this.splashParticles[this.splashIndex];
       this.splashIndex = (this.splashIndex + 1) % this.maxSplashCount;
 
       // Position slightly offset along normal to avoid surface clipping
       sp.pos.set(
-        x + (Math.random() - 0.5) * 0.08 + norm.x * 0.03,
-        y + (Math.random() - 0.5) * 0.08 + norm.y * 0.03,
-        z + (Math.random() - 0.5) * 0.08 + norm.z * 0.03
+        x + (Math.random() - 0.5) * 0.04 + norm.x * 0.015,
+        y + (Math.random() - 0.5) * 0.04 + norm.y * 0.015,
+        z + (Math.random() - 0.5) * 0.04 + norm.z * 0.015
       );
 
       const sprayAngle = Math.random() * Math.PI * 2;
-      const normalSpeed = (2.2 + rainIntensity * 3.5) * (0.8 + Math.random() * 0.4);
-      const tangentSpeed = (1.2 + rainIntensity * 2.2) * (0.8 + Math.random() * 0.4);
+      const normalSpeed = (0.45 + rainIntensity * 0.75) * (0.8 + Math.random() * 0.4);
+      const tangentSpeed = (0.35 + rainIntensity * 0.55) * (0.8 + Math.random() * 0.4);
 
       sp.vel.set(0, 0, 0)
         .addScaledVector(norm, normalSpeed)
         .addScaledVector(WeatherParticleSystem._tangent1, Math.cos(sprayAngle) * tangentSpeed)
         .addScaledVector(WeatherParticleSystem._tangent2, Math.sin(sprayAngle) * tangentSpeed);
 
-      // Strong lateral wind push on flying droplets
-      const windPush = 0.15 + windIntensity * 0.45;
+      // Subtle lateral wind push on flying droplets
+      const windPush = 0.06 + windIntensity * 0.15;
       sp.vel.x += wX * windPush;
       sp.vel.z += wZ * windPush;
 
-      sp.scale = 0.20 + rainIntensity * 0.20;
-      sp.maxLife = 0.22 + rainIntensity * 0.12;
+      sp.scale = 0.12;
+      sp.maxLife = 0.10 + rainIntensity * 0.06;
       sp.life = sp.maxLife;
       sp.active = true;
     }
@@ -501,16 +505,16 @@ export class WeatherParticleSystem {
 
       // Offset slightly along normal to avoid Z-fighting
       rp.pos.set(
-        x + norm.x * 0.012,
-        y + 0.012,
-        z + norm.z * 0.012
+        x + norm.x * 0.008,
+        y + 0.008,
+        z + norm.z * 0.008
       );
 
       rp.quaternion.setFromUnitVectors(WeatherParticleSystem._planeDefaultNormal, norm);
 
-      rp.currentScale = 0.04;
-      rp.maxScale = (0.12 + rainIntensity * 0.18) * (0.85 + Math.random() * 0.3);
-      rp.maxLife = 0.20 + rainIntensity * 0.10;
+      rp.currentScale = 0.02;
+      rp.maxScale = (0.06 + rainIntensity * 0.09) * (0.85 + Math.random() * 0.3);
+      rp.maxLife = 0.16 + rainIntensity * 0.08;
       rp.life = rp.maxLife;
       rp.active = true;
     }
@@ -528,16 +532,24 @@ export class WeatherParticleSystem {
     windDirectionDeg: number = 45,
     _sceneObstaclesGroup?: THREE.Object3D,
     collisionQuality: number = 2,
-    splashDistance: number = 45
+    splashDistance: number = 45,
+    cloudCoverage: number = 0.5,
+    cloudLayers: number = 1,
+    rainAreaCoverage: number = 1.0
   ): void {
     this.activeRainIntensity = Math.max(0, Math.min(1, rainIntensity));
     this.activeWindIntensity = Math.max(0, Math.min(1, windIntensity));
     this.activeWindDirection = windDirectionDeg;
-    this.gustTimer += delta * (1.1 + this.activeWindIntensity * 2.2);
+    this.gustTimer += delta * (0.8 + this.activeWindIntensity * 1.6);
+
+    // Stable Cinematic Camera Rain Volume (constant volumetric density, prevents flying artifacts & dilution)
+    this.boxWidth = 42.0;
+    this.boxDepth = 42.0;
+    this.boxHeight = 28.0;
 
     const isCollisionEnabled = collisionQuality > 0;
-    // Dynamic raycast budget (0 = disabled, 1 to 10 = 3 to 35 raycasts/frame)
-    this.maxNewRaycasts = isCollisionEnabled ? Math.max(3, Math.round(collisionQuality * 3.5)) : 0;
+    // Dynamic raycast budget (0 = disabled, 1 to 10 = 4 to 40 raycasts/frame)
+    this.maxNewRaycasts = isCollisionEnabled ? Math.max(4, Math.round(collisionQuality * 4)) : 0;
     this.newRaycastsThisFrame = 0;
 
     if (this.activeRainIntensity <= 0.01) {
@@ -551,12 +563,24 @@ export class WeatherParticleSystem {
     if (this.instancedSplashes) this.instancedSplashes.visible = isCollisionEnabled;
     if (this.instancedRipples) this.instancedRipples.visible = isCollisionEnabled;
 
-    const activeCount = Math.floor(this.maxRainCount * this.activeRainIntensity);
+    // Dynamically modulate rain streak material opacity for realistic soft drizzle vs heavy downpour
+    if (this.rainMaterial) {
+      this.rainMaterial.opacity = 0.35 + this.activeRainIntensity * 0.58;
+    }
+
+    // Uniform spatial distribution: keep a rich base particle grid (min 55% = ~3850 drops) so space is never empty or patchy
+    const densityRatio = 0.55 + this.activeRainIntensity * 0.45;
+    const coverageFactor = THREE.MathUtils.clamp(0.60 + cloudCoverage * 0.40, 0.60, 1.0);
+    const activeCount = Math.min(
+      this.maxRainCount,
+      Math.floor(this.maxRainCount * densityRatio * coverageFactor)
+    );
     if (this.instancedRain) this.instancedRain.count = activeCount;
 
-    // Wind velocity & Rain Fall Acceleration
+    // Wind velocity & Rain Fall Acceleration with multi-layer turbulence
     const windRad = (this.activeWindDirection * Math.PI) / 180;
-    const gustWave = 1.0 + Math.sin(this.gustTimer) * 0.25 + Math.cos(this.gustTimer * 0.75) * 0.15;
+    const gustSpread = (1.0 - cloudCoverage * 0.55);
+    const gustWave = 1.0 + (Math.sin(this.gustTimer * 1.2) * 0.18 + Math.cos(this.gustTimer * 0.7) * 0.10) * gustSpread;
     const effectiveWind = this.activeWindIntensity * gustWave;
     const windVelX = Math.sin(windRad) * (effectiveWind * 30.0);
     const windVelZ = Math.cos(windRad) * (effectiveWind * 30.0);
@@ -570,24 +594,69 @@ export class WeatherParticleSystem {
     const camY = cameraPos.y;
     const camZ = cameraPos.z;
 
-    const hitChance = isCollisionEnabled
-      ? (0.40 + (collisionQuality / 10) * 0.45) * (0.6 + this.activeRainIntensity * 0.4)
-      : 0;
+    // Direct proportional hit chance: 1 = 10% (sparse), 5 = 50% (balanced), 10 = 100% (max dense)
+    const hitChance = isCollisionEnabled ? (collisionQuality / 10.0) : 0;
+    const intensityScale = 0.65 + this.activeRainIntensity * 0.35;
 
     // ── Raindrop update with spatial grid cached mesh collision ──
     if (this.instancedRain) {
       for (let i = 0; i < activeCount; i++) {
         const drop = this.rainDrops[i];
 
+        // Individual fall speed and micro-flutter
         drop.pos.y -= drop.speed * fallAccel * delta;
         drop.pos.x += windVelX * delta;
         drop.pos.z += windVelZ * delta;
 
-        // Wrap around camera
-        if (drop.pos.x < camX - halfW) drop.pos.x += this.boxWidth;
-        if (drop.pos.x > camX + halfW) drop.pos.x -= this.boxWidth;
-        if (drop.pos.z < camZ - halfD) drop.pos.z += this.boxDepth;
-        if (drop.pos.z > camZ + halfD) drop.pos.z -= this.boxDepth;
+        // Wrap around camera smoothly with dynamic lateral shuffling
+        if (drop.pos.x < camX - halfW) {
+          drop.pos.x = camX + halfW - Math.random() * 2.0;
+          drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+        }
+        if (drop.pos.x > camX + halfW) {
+          drop.pos.x = camX - halfW + Math.random() * 2.0;
+          drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+        }
+        if (drop.pos.z < camZ - halfD) {
+          drop.pos.z = camZ + halfD - Math.random() * 2.0;
+          drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
+        }
+        if (drop.pos.z > camZ + halfD) {
+          drop.pos.z = camZ - halfD + Math.random() * 2.0;
+          drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
+        }
+
+        // Multi-zone harmonic weather interference:
+        // When rainAreaCoverage >= 0.98 (100%): 100% drops are full strength across entire map, zero holes.
+        // When rainAreaCoverage < 0.98: Heavy rain cells transition into soft floating micro-mist/drizzle in the outer zones!
+        let cellDensity = 1.0;
+        if (rainAreaCoverage < 0.98) {
+          const cellScale = 0.035;
+          const wx = drop.pos.x * cellScale - windVelX * 0.012 * this.gustTimer;
+          const wz = drop.pos.z * cellScale - windVelZ * 0.012 * this.gustTimer;
+
+          const wave1 = Math.sin(wx * 0.9 + wz * 0.5) * 0.5 + 0.5;
+          const wave2 = Math.sin(-wx * 0.7 + wz * 0.8 + 2.1) * 0.5 + 0.5;
+          const wave3 = Math.cos(wx * 1.3 - wz * 0.6 + 4.2) * 0.5 + 0.5;
+
+          const weatherField = wave1 * 0.45 + wave2 * 0.35 + wave3 * 0.20;
+          const threshold = (1.0 - rainAreaCoverage) * 0.80;
+
+          if (weatherField >= threshold) {
+            // Main heavy rain front
+            cellDensity = 1.0;
+          } else {
+            // Infill with fine atmospheric micro-drizzle (bù hạt mưa nhỏ mờ vi mô, zero empty holes!)
+            cellDensity = 0.28 + ((weatherField / Math.max(0.01, threshold)) * 0.35);
+          }
+        }
+
+        // Respawn uniformly at randomized top coordinates when reaching ground
+        const resetDropToTop = () => {
+          drop.pos.y = camY + (this.boxHeight * 0.5) + Math.random() * (this.boxHeight * 0.35);
+          drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
+          drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+        };
 
         if (isCollisionEnabled) {
           const hitInfo = this.getSurfaceInfo(drop.pos.x, drop.pos.z);
@@ -596,7 +665,8 @@ export class WeatherParticleSystem {
               (drop.pos.x - camX) * (drop.pos.x - camX) +
               (drop.pos.z - camZ) * (drop.pos.z - camZ);
 
-            if (distToCamSq < splashDistance * splashDistance && Math.random() < hitChance) {
+            // Only full/active rain drops trigger splashes
+            if (distToCamSq <= splashDistance * splashDistance && Math.random() < hitChance * cellDensity) {
               this.spawnSplashAndRipple(
                 drop.pos.x,
                 hitInfo.y,
@@ -606,16 +676,17 @@ export class WeatherParticleSystem {
                 hitInfo.nz,
                 windVelX,
                 windVelZ,
-                this.activeRainIntensity,
-                this.activeWindIntensity
+                this.activeRainIntensity * cellDensity,
+                this.activeWindIntensity,
+                collisionQuality
               );
             }
-            drop.pos.y = camY + (this.boxHeight * 0.5) + Math.random() * 8.0;
+            resetDropToTop();
           }
         } else {
-          // Free fall without collision check (max performance)
+          // Free fall without collision check
           if (drop.pos.y < camY - 2.0) {
-            drop.pos.y = camY + (this.boxHeight * 0.5) + Math.random() * 8.0;
+            resetDropToTop();
           }
         }
 
@@ -624,8 +695,8 @@ export class WeatherParticleSystem {
         this.dummyObj.position.copy(drop.pos);
         this.dummyObj.rotation.set(slantAngleX, 0, slantAngleZ);
         this.dummyObj.scale.set(
-          drop.width * distScale,
-          drop.length * (1.0 + this.activeWindIntensity * 0.65) * distScale,
+          drop.width * distScale * intensityScale * cellDensity,
+          drop.length * (1.0 + this.activeWindIntensity * 0.65) * distScale * intensityScale * cellDensity,
           1.0
         );
         this.dummyObj.updateMatrix();
@@ -648,9 +719,11 @@ export class WeatherParticleSystem {
           this.instancedSplashes.setMatrixAt(i, this.dummyObj.matrix);
           continue;
         }
-        sp.vel.y -= 14.0 * delta;
+        sp.vel.y -= 9.8 * delta;
+        sp.vel.x *= Math.max(0.01, 1.0 - 4.0 * delta);
+        sp.vel.z *= Math.max(0.01, 1.0 - 4.0 * delta);
         sp.pos.addScaledVector(sp.vel, delta);
-        const s = (sp.life / sp.maxLife);
+        const s = Math.pow(sp.life / sp.maxLife, 0.6) * 0.85;
         this.dummyObj.position.copy(sp.pos);
         this.dummyObj.rotation.set(0, 0, 0);
         this.dummyObj.scale.set(s, s, s);
@@ -681,7 +754,8 @@ export class WeatherParticleSystem {
           continue;
         }
         const progress = 1.0 - (rp.life / rp.maxLife);
-        const scale = rp.currentScale + progress * (rp.maxScale - rp.currentScale);
+        const fade = Math.pow(rp.life / rp.maxLife, 0.7);
+        const scale = (rp.currentScale + progress * (rp.maxScale - rp.currentScale)) * Math.min(1.0, fade * 1.8);
         this.dummyObj.position.copy(rp.pos);
         this.dummyObj.quaternion.copy(rp.quaternion);
         this.dummyObj.scale.set(scale, 1.0, scale);
