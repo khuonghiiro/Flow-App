@@ -157,7 +157,7 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
   // Track image filenames in this folder used as companion previews to prevent duplication
   const consumedCompanionImages = new Set();
 
-  // ─── 1. Scan Subdirectories as Model Bundles ─────────────────
+  // ─── 1. Scan Subdirectories ──────────────────────────────────
   for (const dir of dirs) {
     // Ignore hidden or system folders
     if (dir.name.startsWith('.') || dir.name === 'node_modules' || dir.name === 'presets') continue;
@@ -167,20 +167,22 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
     const allSubFiles = getAllFilesInDir(subDirPath);
     const subModelFiles = allSubFiles.filter(f => allowedModelExts.includes(path.extname(f.name).toLowerCase()));
 
-    if (subModelFiles.length > 0) {
-      // Find main entry model file
-      // Priority: scene.gltf/glb > main.gltf/glb > index.gltf/glb > [dirName].gltf/glb > any .gltf > any .glb > first
+    // Check if this subfolder is a single GLTF/GLB bundle (e.g. scene.gltf + textures/)
+    const hasSceneEntry = subModelFiles.some(f => {
+      const lower = f.name.toLowerCase();
+      return lower === 'scene.gltf' || lower === 'scene.glb' || lower === 'main.gltf' || lower === 'main.glb' || lower === 'index.gltf';
+    });
+
+    const isTrueBundle = hasSceneEntry || (subModelFiles.length === 1 && allSubFiles.length > 1);
+
+    if (isTrueBundle && subModelFiles.length > 0) {
       let mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'scene.gltf' || f.name.toLowerCase() === 'scene.glb');
       if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'main.gltf' || f.name.toLowerCase() === 'main.glb');
       if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === `${dir.name.toLowerCase()}.gltf` || f.name.toLowerCase() === `${dir.name.toLowerCase()}.glb`);
-      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase().endsWith('.gltf'));
-      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase().endsWith('.glb'));
       if (!mainModel) mainModel = subModelFiles[0];
 
-      // Total size of entire bundle
       const totalBundleSize = allSubFiles.reduce((acc, f) => acc + (f.size || 0), 0);
 
-      // Find companion preview image for bundle
       let bundlePreviewUrl = '';
       const subImages = allSubFiles.filter(f => imageExts.includes(path.extname(f.name).toLowerCase()));
       const previewImg = subImages.find(f => {
@@ -191,7 +193,6 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
       if (previewImg) {
         bundlePreviewUrl = path.relative(rootDir, previewImg.fullPath).replace(/\\/g, '/');
       } else {
-        // Look in parent folder for [dirName].png
         for (const imgExt of imageExts) {
           const candidate = `${dir.name}${imgExt}`;
           const candidateFull = path.join(folderPath, candidate);
@@ -204,8 +205,9 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
       }
 
       const relModelPath = path.relative(rootDir, mainModel.fullPath).replace(/\\/g, '/');
+      const uniqueId = relModelPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
       results.push({
-        id: dir.name,
+        id: uniqueId,
         name: formatDisplayName(dir.name),
         filename: dir.name,
         relPath: relModelPath,
@@ -218,6 +220,9 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
         previewUrl: bundlePreviewUrl ? (bundlePreviewUrl.startsWith('assets/') ? bundlePreviewUrl : `assets/${bundlePreviewUrl}`) : undefined,
         description: `${formatDisplayName(dir.name)} (Model Bundle: ${path.extname(mainModel.name).toUpperCase()})`
       });
+    } else {
+      // Not a single bundle - recursively scan individual items inside this subfolder!
+      results.push(...scanLeafFolder(subDirPath, allowedModelExts, options));
     }
   }
 
@@ -252,8 +257,9 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
         }
       }
 
+      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
       results.push({
-        id: baseName,
+        id: uniqueId,
         name: formatDisplayName(file.name),
         filename: file.name,
         relPath: relPath,
@@ -279,11 +285,11 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
 
       const fullPath = path.join(folderPath, file.name);
       const stats = fs.statSync(fullPath);
-      const baseName = path.parse(file.name).name;
       const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
 
       results.push({
-        id: baseName,
+        id: uniqueId,
         name: formatDisplayName(file.name),
         filename: file.name,
         relPath: relPath,
@@ -301,11 +307,11 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
     if (audioExts.includes(ext)) {
       const fullPath = path.join(folderPath, file.name);
       const stats = fs.statSync(fullPath);
-      const baseName = path.parse(file.name).name;
       const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
 
       results.push({
-        id: baseName,
+        id: uniqueId,
         name: formatDisplayName(file.name),
         filename: file.name,
         relPath: relPath,
@@ -474,17 +480,19 @@ const furniture = scanFolderAliases(['dao_cu/noi_that', 'props/noi_that', 'props
 const buildings = scanFolderAliases(['dao_cu/cong_trinh', 'props/cong_trinh', 'props/buildings'], modelExts);
 const vehicles = scanFolderAliases(['dao_cu/phuong_tien', 'props/phuong_tien', 'props/vehicles'], modelExts);
 
-// Skybox images
+// Skybox images - scan specific subcategories cleanly
 const skyboxDawn = scanFolderAliases(['bau_troi/binh_minh', 'SkyBoxs/binh_minh'], imageExts);
 const skyboxMorning = scanFolderAliases(['bau_troi/buoi_sang', 'SkyBoxs/buoi_sang'], imageExts);
 const skyboxNoon = scanFolderAliases(['bau_troi/buoi_trua', 'SkyBoxs/buoi_trua'], imageExts);
 const skyboxAfternoon = scanFolderAliases(['bau_troi/buoi_chieu', 'SkyBoxs/buoi_chieu'], imageExts);
 const skyboxNight = scanFolderAliases(['bau_troi/buoi_toi', 'SkyBoxs/buoi_toi'], imageExts);
 const skyboxStorm = scanFolderAliases(['bau_troi/giong_bao', 'SkyBoxs/giong_bao'], imageExts);
-const allSkyboxes = scanFolderAliases(['bau_troi', 'SkyBoxs'], imageExts);
+const allSkyboxes = [...skyboxDawn, ...skyboxMorning, ...skyboxNoon, ...skyboxAfternoon, ...skyboxNight, ...skyboxStorm];
 
-// VFX
-const vfxProps = scanFolderAliases(['hieu_ung', 'vfx', 'props/hieu_ung'], [...modelExts, ...imageExts]);
+// VFX - scan specific subcategories cleanly
+const vfxCamXuc = scanFolderAliases(['hieu_ung/cam_xuc', 'vfx/cam_xuc'], [...modelExts, ...imageExts]);
+const vfxBaoPhu = scanFolderAliases(['hieu_ung/bao_phu', 'vfx/bao_phu'], [...modelExts, ...imageExts]);
+const vfxProps = [...vfxCamXuc, ...vfxBaoPhu];
 
 // Audio & Animations
 const bgm = scanFolderAliases(['audio/bgm'], audioExts);

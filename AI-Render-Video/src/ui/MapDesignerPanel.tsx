@@ -656,35 +656,60 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   };
 
   // ─── Current Active Category & Subcategory Items ──────────────
-  const visibleCategories = hideEmptyCategories
-    ? categories.filter((cat) => cat.items.length > 0)
-    : categories;
+  const visibleCategories = React.useMemo(() => {
+    return hideEmptyCategories
+      ? categories.filter((cat) => cat.items.length > 0)
+      : categories;
+  }, [categories, hideEmptyCategories]);
 
-  const currentCategory = categories.find((c) => c.id === activeCategoryId);
-  const rawSubCategories = currentCategory?.subCategories || [];
-  const subCategories = hideEmptyCategories
-    ? rawSubCategories.filter((s) => s.items.length > 0)
-    : rawSubCategories;
+  const currentCategory = React.useMemo(() => {
+    return categories.find((c) => c.id === activeCategoryId) || categories[0] || null;
+  }, [categories, activeCategoryId]);
+
+  const rawSubCategories = React.useMemo(() => {
+    return currentCategory?.subCategories || [];
+  }, [currentCategory]);
+
+  const subCategories = React.useMemo(() => {
+    return hideEmptyCategories
+      ? rawSubCategories.filter((s) => s.items.length > 0)
+      : rawSubCategories;
+  }, [rawSubCategories, hideEmptyCategories]);
+
   const hasSubCategories = subCategories.length > 0;
 
   useEffect(() => {
-    const isCurrentCatVisible = visibleCategories.some((c) => c.id === activeCategoryId);
-    if (!isCurrentCatVisible && visibleCategories.length > 0) {
+    if (visibleCategories.length > 0 && !visibleCategories.some((c) => c.id === activeCategoryId)) {
       setActiveCategoryId(visibleCategories[0].id);
       setActiveSubCategoryId('all');
     }
-  }, [hideEmptyCategories, categories, visibleCategories, activeCategoryId]);
+  }, [visibleCategories, activeCategoryId]);
 
-  const rawItems =
-    activeSubCategoryId === 'all' || !hasSubCategories
-      ? currentCategory?.items || []
-      : subCategories.find((s) => s.id === activeSubCategoryId)?.items || [];
+  const rawItems = React.useMemo(() => {
+    if (!currentCategory) return [];
+    if (activeSubCategoryId === 'all' || !hasSubCategories) {
+      return currentCategory.items || [];
+    }
+    const targetSub = subCategories.find((s) => s.id === activeSubCategoryId);
+    return targetSub?.items || [];
+  }, [currentCategory, activeSubCategoryId, hasSubCategories, subCategories]);
 
-  const displayItems = rawItems.filter((item) => {
-    if (!searchQuery.trim()) return true;
+  const displayItems = React.useMemo(() => {
+    const seen = new Set<string>();
+    const unique: MapAssetItem[] = [];
+    for (const item of rawItems) {
+      const key = item.path || item.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
+    }
+    if (!searchQuery.trim()) return unique;
     const q = searchQuery.toLowerCase();
-    return item.name.toLowerCase().includes(q) || item.path.toLowerCase().includes(q);
-  });
+    return unique.filter(
+      (item) => item.name.toLowerCase().includes(q) || item.path.toLowerCase().includes(q)
+    );
+  }, [rawItems, searchQuery]);
 
   const selectedObject = placedObjects.find((o) => o.instanceId === selectedInstanceId);
 
@@ -1535,12 +1560,12 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                     alignItems: 'stretch',
                   }}
                 >
-                  {displayItems.map((item) => {
+                  {displayItems.map((item, idx) => {
                     const isAlreadyPlaced = placedObjects.some((o) => o.path === item.path);
 
                     return (
                       <div
-                        key={item.id}
+                        key={`${item.id}_${item.path || idx}`}
                         draggable={true}
                         onDragStart={(e) => {
                           e.dataTransfer.setData('application/json', JSON.stringify(item));

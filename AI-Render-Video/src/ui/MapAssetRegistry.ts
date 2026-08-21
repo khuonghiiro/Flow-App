@@ -190,21 +190,49 @@ export async function fetchLiveMapCategories(): Promise<MapCategory[]> {
     const manifestData = await res.json();
     const structure = manifestData.structure?.world_and_props_structure;
 
-    const parseItem = (p: any, cat: string, sub?: string): MapAssetItem => ({
-      id: p.id || p.name,
-      name: p.name || formatDisplayName(p.filename || p.relPath),
-      path: p.relPath ? (p.relPath.startsWith('assets/') ? p.relPath : `assets/${p.relPath}`) : '',
-      format: p.format || 'GLB',
-      sizeMB: p.sizeMB || '0.5',
-      previewUrl: p.previewUrl ? (p.previewUrl.startsWith('/') ? p.previewUrl : `/${p.previewUrl}`) : undefined,
-      category: cat,
-      subCategory: sub,
-      description: p.description,
-    });
+    const deduplicateItems = (list: MapAssetItem[]): MapAssetItem[] => {
+      const map = new Map<string, MapAssetItem>();
+      for (const item of list) {
+        const key = item.path || item.id;
+        if (!map.has(key)) {
+          map.set(key, item);
+        }
+      }
+      return Array.from(map.values());
+    };
+
+    const parseItem = (p: any, cat: string, sub?: string): MapAssetItem => {
+      const rel = p.relPath || p.path || '';
+      const cleanPath = rel ? (rel.startsWith('assets/') ? rel : `assets/${rel}`) : '';
+      const uniqueId = p.id
+        ? `${cat}_${sub ? sub + '_' : ''}${p.id}`
+        : cleanPath
+        ? cleanPath.replace(/[/\\ \-_.]/g, '_')
+        : `${cat}_${sub ? sub + '_' : ''}${p.name || Math.random().toString(36).substr(2, 6)}`;
+
+      const isImg = cleanPath.endsWith('.png') || cleanPath.endsWith('.jpg') || cleanPath.endsWith('.webp');
+      const resolvedPreview = p.previewUrl
+        ? (p.previewUrl.startsWith('/') ? p.previewUrl : `/${p.previewUrl}`)
+        : isImg
+        ? (cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`)
+        : undefined;
+
+      return {
+        id: uniqueId,
+        name: p.name || formatDisplayName(p.filename || p.relPath),
+        path: cleanPath,
+        format: p.format || (cleanPath.endsWith('.png') ? 'PNG' : 'GLB'),
+        sizeMB: p.sizeMB || '0.5',
+        previewUrl: resolvedPreview,
+        category: cat,
+        subCategory: sub,
+        description: p.description,
+      };
+    };
 
     const parseItemList = (list: any[], cat: string, sub?: string): MapAssetItem[] => {
       if (!Array.isArray(list)) return [];
-      return list.map(item => parseItem(item, cat, sub));
+      return deduplicateItems(list.map(item => parseItem(item, cat, sub)));
     };
 
     // If structure is defined in root JSON, build dynamically from schema
@@ -257,7 +285,7 @@ export async function fetchLiveMapCategories(): Promise<MapCategory[]> {
 
             if (subRaw.length === 0) {
               subRaw = rawItems.filter((it: any) => {
-                const p = (it.relPath || '').toLowerCase();
+                const p = (it.relPath || it.path || '').toLowerCase();
                 return subAliases.some(alias => p.includes(`/${alias}/`) || p.includes(`_${alias}`));
               });
             }
@@ -272,13 +300,13 @@ export async function fetchLiveMapCategories(): Promise<MapCategory[]> {
           });
 
           // All items in category is combination of sub-items or raw items
-          const allSubItems = subCategories.flatMap(s => s.items);
-          items = allSubItems.length > 0 ? allSubItems : parseItemList(rawItems, catId);
+          const allSubItems = deduplicateItems(subCategories.flatMap(s => s.items));
+          items = allSubItems.length > 0 ? allSubItems : deduplicateItems(parseItemList(rawItems, catId));
 
           // Add default fallback if maps or skyboxes empty
           if (items.length === 0) {
-            if (catId === 'ban_do') items = DEFAULT_MAPS;
-            else if (catId === 'bau_troi') items = DEFAULT_SKYBOXES;
+            if (catId === 'ban_do') items = [...DEFAULT_MAPS];
+            else if (catId === 'bau_troi') items = [...DEFAULT_SKYBOXES];
           }
 
           return {
@@ -291,9 +319,9 @@ export async function fetchLiveMapCategories(): Promise<MapCategory[]> {
         }
 
         // Category without subcategories
-        items = parseItemList(rawItems, catId);
+        items = deduplicateItems(parseItemList(rawItems, catId));
         if (items.length === 0) {
-          if (catId === 'ban_do') items = DEFAULT_MAPS;
+          if (catId === 'ban_do') items = [...DEFAULT_MAPS];
           else if (catId === 'noi_that') items = DEFAULT_PROPS.filter(p => p.category === 'noi_that');
         }
 

@@ -1,8 +1,8 @@
 {
   "version": "2.0.0",
-  "last_scanned": "2026-08-21T18:13:02.172Z",
-  "total_assets": 16,
-  "total_size_mb": 193.26,
+  "last_scanned": "2026-08-21T18:29:03.462Z",
+  "total_assets": 36,
+  "total_size_mb": 192.97,
   "structure": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "version": "2.0.0",
@@ -985,7 +985,7 @@
     "female": [],
     "base_bodies": [
       {
-        "id": "nam",
+        "id": "nhan_vat_than_co_ban_nam_body_base___manekin",
         "name": "Nam",
         "filename": "nam",
         "relPath": "nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
@@ -998,7 +998,7 @@
         "description": "Nam (Model Bundle: .GLB)"
       },
       {
-        "id": "nu",
+        "id": "nhan_vat_than_co_ban_nu_body_base___manekina",
         "name": "Nữ",
         "filename": "nu",
         "relPath": "nhan_vat/than_co_ban/nu/body_base_-_manekina.glb",
@@ -1013,7 +1013,7 @@
     ],
     "faces": [
       {
-        "id": "nam",
+        "id": "nhan_vat_khuon_mat_nam_dawnbreaker___manekin",
         "name": "Nam",
         "filename": "nam",
         "relPath": "nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
@@ -1026,7 +1026,7 @@
         "description": "Nam (Model Bundle: .GLB)"
       },
       {
-        "id": "nu",
+        "id": "nhan_vat_khuon_mat_nu_starlight_fragments___manekin",
         "name": "Nữ",
         "filename": "nu",
         "relPath": "nhan_vat/khuon_mat/nu/starlight_fragments_-_manekin.glb",
@@ -1043,30 +1043,88 @@
     "beards": [],
     "costumes": [
       {
-        "id": "nam",
-        "name": "Nam",
-        "filename": "nam",
+        "id": "nhan_vat_trang_phuc_nam_amber_nectar___manekin",
+        "name": "Amber Nectar Manekin",
+        "filename": "amber_nectar_-_manekin.glb",
         "relPath": "nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
         "path": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
-        "bundleDir": "nhan_vat/trang_phuc/nam",
-        "isFolderBundle": true,
         "format": "GLB",
-        "sizeMB": "8.86",
+        "sizeMB": "3.43",
         "gender": "male",
-        "description": "Nam (Model Bundle: .GLB)"
+        "previewUrl": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.png",
+        "description": "Amber Nectar Manekin (GLB)"
       },
       {
-        "id": "nu",
-        "name": "Nữ",
-        "filename": "nu",
+        "id": "nhan_vat_trang_phuc_nam_precision_strike___manekin",
+        "name": "Precision Strike Manekin",
+        "filename": "precision_strike_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/precision_strike_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/precision_strike_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "1.15",
+        "gender": "male",
+        "previewUrl": "assets/nhan_vat/trang_phuc/nam/precision_strike_-_manekin.png",
+        "description": "Precision Strike Manekin (GLB)"
+      },
+      {
+        "id": "nhan_vat_trang_phuc_nam_scary_cat___manekin",
+        "name": "Scary Cat Manekin",
+        "filename": "scary_cat_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/scary_cat_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/scary_cat_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "0.90",
+        "gender": "male",
+        "previewUrl": "assets/nhan_vat/trang_phuc/nam/scary_cat_-_manekin.png",
+        "description": "Scary Cat Manekin (GLB)"
+      },
+      {
+        "id": "nhan_vat_trang_phuc_nam_sleuths_verdict___manekin",
+        "name": "Sleuths Verdict Manekin",
+        "filename": "sleuths_verdict_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "3.19",
+        "gender": "male",
+        "previewUrl": "assets/nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.png",
+        "description": "Sleuths Verdict Manekin (GLB)"
+      },
+      {
+        "id": "nhan_vat_trang_phuc_nu_amber_nectar___manekina",
+        "name": "Amber Nectar Manekina",
+        "filename": "amber_nectar_-_manekina.glb",
         "relPath": "nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.glb",
         "path": "assets/nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.glb",
-        "bundleDir": "nhan_vat/trang_phuc/nu",
-        "isFolderBundle": true,
         "format": "GLB",
-        "sizeMB": "5.86",
+        "sizeMB": "3.37",
         "gender": "female",
-        "description": "Nữ (Model Bundle: .GLB)"
+        "previewUrl": "assets/nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.png",
+        "description": "Amber Nectar Manekina (GLB)"
+      },
+      {
+        "id": "nhan_vat_trang_phuc_nu_precision_strike___manekina",
+        "name": "Precision Strike Manekina",
+        "filename": "precision_strike_-_manekina.glb",
+        "relPath": "nhan_vat/trang_phuc/nu/precision_strike_-_manekina.glb",
+        "path": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.glb",
+        "format": "GLB",
+        "sizeMB": "0.99",
+        "gender": "female",
+        "previewUrl": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
+        "description": "Precision Strike Manekina (GLB)"
+      },
+      {
+        "id": "nhan_vat_trang_phuc_nu_scary_cat___manekina",
+        "name": "Scary Cat Manekina",
+        "filename": "scary_cat_-_manekina.glb",
+        "relPath": "nhan_vat/trang_phuc/nu/scary_cat_-_manekina.glb",
+        "path": "assets/nhan_vat/trang_phuc/nu/scary_cat_-_manekina.glb",
+        "format": "GLB",
+        "sizeMB": "1.37",
+        "gender": "female",
+        "previewUrl": "assets/nhan_vat/trang_phuc/nu/scary_cat_-_manekina.png",
+        "description": "Scary Cat Manekina (GLB)"
       }
     ],
     "accessories": [],
@@ -1099,344 +1157,517 @@
     "vehicles": [],
     "vfx": [
       {
-        "id": "bao_phu",
-        "name": "Lớp Phủ Overlay",
-        "filename": "bao_phu",
+        "id": "hieu_ung_bao_phu_duck_prop",
+        "name": "Duck Prop",
+        "filename": "duck_prop.glb",
         "relPath": "hieu_ung/bao_phu/duck_prop.glb",
         "path": "assets/hieu_ung/bao_phu/duck_prop.glb",
-        "bundleDir": "hieu_ung/bao_phu",
-        "isFolderBundle": true,
         "format": "GLB",
-        "sizeMB": "9.53",
+        "sizeMB": "0.11",
         "gender": "unisex",
-        "description": "Lớp Phủ Overlay (Model Bundle: .GLB)"
+        "description": "Duck Prop (GLB)"
+      },
+      {
+        "id": "hieu_ung_bao_phu_lantern_prop",
+        "name": "Lantern Prop",
+        "filename": "lantern_prop.glb",
+        "relPath": "hieu_ung/bao_phu/lantern_prop.glb",
+        "path": "assets/hieu_ung/bao_phu/lantern_prop.glb",
+        "format": "GLB",
+        "sizeMB": "9.42",
+        "gender": "unisex",
+        "description": "Lantern Prop (GLB)"
       }
     ]
   },
   "skyboxes": {
     "all": [
       {
-        "id": "binh_minh",
-        "name": "Bình Minh",
-        "filename": "binh_minh",
+        "id": "bau_troi_binh_minh_it_may_binh_minh_it_may_1",
+        "name": "Binh Minh It May 1",
+        "filename": "binh_minh_it_may_1.png",
         "relPath": "bau_troi/binh_minh/it_may/binh_minh_it_may_1.png",
         "path": "assets/bau_troi/binh_minh/it_may/binh_minh_it_may_1.png",
-        "bundleDir": "bau_troi/binh_minh",
-        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "2.57",
+        "sizeMB": "0.86",
         "gender": "unisex",
         "previewUrl": "assets/bau_troi/binh_minh/it_may/binh_minh_it_may_1.png",
-        "description": "Bình Minh (Model Bundle: .PNG)"
+        "description": "Binh Minh It May 1 (PNG)"
       },
       {
-        "id": "buoi_chieu",
-        "name": "Buổi Chiều",
-        "filename": "buoi_chieu",
-        "relPath": "bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
-        "path": "assets/bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_chieu",
-        "isFolderBundle": true,
+        "id": "bau_troi_binh_minh_khong_may_binh_minh_khong_may_1",
+        "name": "Binh Minh Khong May 1",
+        "filename": "binh_minh_khong_may_1.png",
+        "relPath": "bau_troi/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "path": "assets/bau_troi/binh_minh/khong_may/binh_minh_khong_may_1.png",
         "format": "PNG",
-        "sizeMB": "3.06",
+        "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
-        "description": "Buổi Chiều (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "description": "Binh Minh Khong May 1 (PNG)"
       },
       {
-        "id": "buoi_sang",
-        "name": "Buổi Sáng",
-        "filename": "buoi_sang",
+        "id": "bau_troi_binh_minh_nhieu_may_binh_minh_nhieu_may_1",
+        "name": "Binh Minh Nhieu May 1",
+        "filename": "binh_minh_nhieu_may_1.png",
+        "relPath": "bau_troi/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "path": "assets/bau_troi/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "description": "Binh Minh Nhieu May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_sang_it_may_buoi_sang_it_may_1",
+        "name": "Buoi Sang It May 1",
+        "filename": "buoi_sang_it_may_1.png",
         "relPath": "bau_troi/buoi_sang/it_may/buoi_sang_it_may_1.png",
         "path": "assets/bau_troi/buoi_sang/it_may/buoi_sang_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_sang",
-        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "6.09",
+        "sizeMB": "0.86",
         "gender": "unisex",
         "previewUrl": "assets/bau_troi/buoi_sang/it_may/buoi_sang_it_may_1.png",
-        "description": "Buổi Sáng (Model Bundle: .PNG)"
+        "description": "Buoi Sang It May 1 (PNG)"
       },
       {
-        "id": "buoi_toi",
-        "name": "Buổi Tối",
-        "filename": "buoi_toi",
-        "relPath": "bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
-        "path": "assets/bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_toi",
-        "isFolderBundle": true,
+        "id": "bau_troi_buoi_sang_khong_may_buoi_sang_khong_may_1",
+        "name": "Buoi Sang Khong May 1",
+        "filename": "buoi_sang_khong_may_1.png",
+        "relPath": "bau_troi/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "path": "assets/bau_troi/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
         "format": "PNG",
-        "sizeMB": "2.36",
+        "sizeMB": "1.00",
         "gender": "unisex",
-        "previewUrl": "assets/bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
-        "description": "Buổi Tối (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "description": "Buoi Sang Khong May 1 (PNG)"
       },
       {
-        "id": "buoi_trua",
-        "name": "Buổi Trưa",
-        "filename": "buoi_trua",
+        "id": "bau_troi_buoi_sang_nhieu_may_3",
+        "name": "3",
+        "filename": "3.png",
+        "relPath": "bau_troi/buoi_sang/nhieu_may/3.png",
+        "path": "assets/bau_troi/buoi_sang/nhieu_may/3.png",
+        "format": "PNG",
+        "sizeMB": "1.63",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_sang/nhieu_may/3.png",
+        "description": "3 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_sang_nhieu_may_buoi_sang_2",
+        "name": "Buoi Sang 2",
+        "filename": "buoi_sang_2.png",
+        "relPath": "bau_troi/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "path": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "format": "PNG",
+        "sizeMB": "1.59",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "description": "Buoi Sang 2 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_sang_nhieu_may_buoi_sang_nhieu_may_1",
+        "name": "Buoi Sang Nhieu May 1",
+        "filename": "buoi_sang_nhieu_may_1.png",
+        "relPath": "bau_troi/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "path": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "description": "Buoi Sang Nhieu May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_trua_it_may_buoi_trua_it_may_1",
+        "name": "Buoi Trua It May 1",
+        "filename": "buoi_trua_it_may_1.png",
         "relPath": "bau_troi/buoi_trua/it_may/buoi_trua_it_may_1.png",
         "path": "assets/bau_troi/buoi_trua/it_may/buoi_trua_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_trua",
-        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "3.01",
+        "sizeMB": "1.00",
         "gender": "unisex",
         "previewUrl": "assets/bau_troi/buoi_trua/it_may/buoi_trua_it_may_1.png",
-        "description": "Buổi Trưa (Model Bundle: .PNG)"
+        "description": "Buoi Trua It May 1 (PNG)"
       },
       {
-        "id": "giong_bao",
-        "name": "Giông Bão",
-        "filename": "giong_bao",
+        "id": "bau_troi_buoi_trua_khong_may_buoi_trua_khong_may_1",
+        "name": "Buoi Trua Khong May 1",
+        "filename": "buoi_trua_khong_may_1.png",
+        "relPath": "bau_troi/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "path": "assets/bau_troi/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "description": "Buoi Trua Khong May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_trua_nhieu_may_buoi_trua_nhieu_may_1",
+        "name": "Buoi Trua Nhieu May 1",
+        "filename": "buoi_trua_nhieu_may_1.png",
+        "relPath": "bau_troi/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "path": "assets/bau_troi/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "description": "Buoi Trua Nhieu May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_chieu_it_may_buoi_chieu_it_may_1",
+        "name": "Buoi Chieu It May 1",
+        "filename": "buoi_chieu_it_may_1.png",
+        "relPath": "bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "path": "assets/bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "description": "Buoi Chieu It May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_chieu_khong_may_buoi_chieu_khong_may_1",
+        "name": "Buoi Chieu Khong May 1",
+        "filename": "buoi_chieu_khong_may_1.png",
+        "relPath": "bau_troi/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "path": "assets/bau_troi/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "description": "Buoi Chieu Khong May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_chieu_nhieu_may_buoi_chieu_nhieu_may_1",
+        "name": "Buoi Chieu Nhieu May 1",
+        "filename": "buoi_chieu_nhieu_may_1.png",
+        "relPath": "bau_troi/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "path": "assets/bau_troi/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "description": "Buoi Chieu Nhieu May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_toi_it_may_buoi_toi_it_may_1",
+        "name": "Buoi Toi It May 1",
+        "filename": "buoi_toi_it_may_1.png",
+        "relPath": "bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "path": "assets/bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.27",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "description": "Buoi Toi It May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_toi_khong_may_buoi_toi_khong_may_1",
+        "name": "Buoi Toi Khong May 1",
+        "filename": "buoi_toi_khong_may_1.png",
+        "relPath": "bau_troi/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "path": "assets/bau_troi/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "description": "Buoi Toi Khong May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_toi_nhieu_may_buoi_toi_nhieu_may_1",
+        "name": "Buoi Toi Nhieu May 1",
+        "filename": "buoi_toi_nhieu_may_1.png",
+        "relPath": "bau_troi/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "path": "assets/bau_troi/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "description": "Buoi Toi Nhieu May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_giong_bao_it_may_giong_bao_it_may_1",
+        "name": "Giong Bao It May 1",
+        "filename": "giong_bao_it_may_1.png",
         "relPath": "bau_troi/giong_bao/it_may/giong_bao_it_may_1.png",
         "path": "assets/bau_troi/giong_bao/it_may/giong_bao_it_may_1.png",
-        "bundleDir": "bau_troi/giong_bao",
-        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "2.69",
+        "sizeMB": "1.35",
         "gender": "unisex",
         "previewUrl": "assets/bau_troi/giong_bao/it_may/giong_bao_it_may_1.png",
-        "description": "Giông Bão (Model Bundle: .PNG)"
+        "description": "Giong Bao It May 1 (PNG)"
+      },
+      {
+        "id": "bau_troi_giong_bao_nhieu_may_giong_bao_nhieu_may_1",
+        "name": "Giong Bao Nhieu May 1",
+        "filename": "giong_bao_nhieu_may_1.png",
+        "relPath": "bau_troi/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "path": "assets/bau_troi/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "description": "Giong Bao Nhieu May 1 (PNG)"
       }
     ],
     "binh_minh": [
       {
-        "id": "it_may",
-        "name": "It May",
-        "filename": "it_may",
+        "id": "bau_troi_binh_minh_it_may_binh_minh_it_may_1",
+        "name": "Binh Minh It May 1",
+        "filename": "binh_minh_it_may_1.png",
         "relPath": "bau_troi/binh_minh/it_may/binh_minh_it_may_1.png",
         "path": "assets/bau_troi/binh_minh/it_may/binh_minh_it_may_1.png",
-        "bundleDir": "bau_troi/binh_minh/it_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "description": "It May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/binh_minh/it_may/binh_minh_it_may_1.png",
+        "description": "Binh Minh It May 1 (PNG)"
       },
       {
-        "id": "khong_may",
-        "name": "Khong May",
-        "filename": "khong_may",
+        "id": "bau_troi_binh_minh_khong_may_binh_minh_khong_may_1",
+        "name": "Binh Minh Khong May 1",
+        "filename": "binh_minh_khong_may_1.png",
         "relPath": "bau_troi/binh_minh/khong_may/binh_minh_khong_may_1.png",
         "path": "assets/bau_troi/binh_minh/khong_may/binh_minh_khong_may_1.png",
-        "bundleDir": "bau_troi/binh_minh/khong_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "description": "Khong May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "description": "Binh Minh Khong May 1 (PNG)"
       },
       {
-        "id": "nhieu_may",
-        "name": "Nhieu May",
-        "filename": "nhieu_may",
+        "id": "bau_troi_binh_minh_nhieu_may_binh_minh_nhieu_may_1",
+        "name": "Binh Minh Nhieu May 1",
+        "filename": "binh_minh_nhieu_may_1.png",
         "relPath": "bau_troi/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
         "path": "assets/bau_troi/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
-        "bundleDir": "bau_troi/binh_minh/nhieu_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "description": "Nhieu May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "description": "Binh Minh Nhieu May 1 (PNG)"
       }
     ],
     "buoi_sang": [
       {
-        "id": "it_may",
-        "name": "It May",
-        "filename": "it_may",
+        "id": "bau_troi_buoi_sang_it_may_buoi_sang_it_may_1",
+        "name": "Buoi Sang It May 1",
+        "filename": "buoi_sang_it_may_1.png",
         "relPath": "bau_troi/buoi_sang/it_may/buoi_sang_it_may_1.png",
         "path": "assets/bau_troi/buoi_sang/it_may/buoi_sang_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_sang/it_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "description": "It May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "description": "Buoi Sang It May 1 (PNG)"
       },
       {
-        "id": "khong_may",
-        "name": "Khong May",
-        "filename": "khong_may",
+        "id": "bau_troi_buoi_sang_khong_may_buoi_sang_khong_may_1",
+        "name": "Buoi Sang Khong May 1",
+        "filename": "buoi_sang_khong_may_1.png",
         "relPath": "bau_troi/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
         "path": "assets/bau_troi/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
-        "bundleDir": "bau_troi/buoi_sang/khong_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "description": "Khong May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "description": "Buoi Sang Khong May 1 (PNG)"
       },
       {
-        "id": "nhieu_may",
-        "name": "Nhieu May",
-        "filename": "nhieu_may",
+        "id": "bau_troi_buoi_sang_nhieu_may_3",
+        "name": "3",
+        "filename": "3.png",
         "relPath": "bau_troi/buoi_sang/nhieu_may/3.png",
         "path": "assets/bau_troi/buoi_sang/nhieu_may/3.png",
-        "bundleDir": "bau_troi/buoi_sang/nhieu_may",
-        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "4.23",
+        "sizeMB": "1.63",
         "gender": "unisex",
-        "description": "Nhieu May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_sang/nhieu_may/3.png",
+        "description": "3 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_sang_nhieu_may_buoi_sang_2",
+        "name": "Buoi Sang 2",
+        "filename": "buoi_sang_2.png",
+        "relPath": "bau_troi/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "path": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "format": "PNG",
+        "sizeMB": "1.59",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "description": "Buoi Sang 2 (PNG)"
+      },
+      {
+        "id": "bau_troi_buoi_sang_nhieu_may_buoi_sang_nhieu_may_1",
+        "name": "Buoi Sang Nhieu May 1",
+        "filename": "buoi_sang_nhieu_may_1.png",
+        "relPath": "bau_troi/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "path": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/bau_troi/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "description": "Buoi Sang Nhieu May 1 (PNG)"
       }
     ],
     "buoi_trua": [
       {
-        "id": "it_may",
-        "name": "It May",
-        "filename": "it_may",
+        "id": "bau_troi_buoi_trua_it_may_buoi_trua_it_may_1",
+        "name": "Buoi Trua It May 1",
+        "filename": "buoi_trua_it_may_1.png",
         "relPath": "bau_troi/buoi_trua/it_may/buoi_trua_it_may_1.png",
         "path": "assets/bau_troi/buoi_trua/it_may/buoi_trua_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_trua/it_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "description": "It May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "description": "Buoi Trua It May 1 (PNG)"
       },
       {
-        "id": "khong_may",
-        "name": "Khong May",
-        "filename": "khong_may",
+        "id": "bau_troi_buoi_trua_khong_may_buoi_trua_khong_may_1",
+        "name": "Buoi Trua Khong May 1",
+        "filename": "buoi_trua_khong_may_1.png",
         "relPath": "bau_troi/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
         "path": "assets/bau_troi/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
-        "bundleDir": "bau_troi/buoi_trua/khong_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "description": "Khong May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "description": "Buoi Trua Khong May 1 (PNG)"
       },
       {
-        "id": "nhieu_may",
-        "name": "Nhieu May",
-        "filename": "nhieu_may",
+        "id": "bau_troi_buoi_trua_nhieu_may_buoi_trua_nhieu_may_1",
+        "name": "Buoi Trua Nhieu May 1",
+        "filename": "buoi_trua_nhieu_may_1.png",
         "relPath": "bau_troi/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
         "path": "assets/bau_troi/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
-        "bundleDir": "bau_troi/buoi_trua/nhieu_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "description": "Nhieu May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "description": "Buoi Trua Nhieu May 1 (PNG)"
       }
     ],
     "buoi_chieu": [
       {
-        "id": "it_may",
-        "name": "It May",
-        "filename": "it_may",
+        "id": "bau_troi_buoi_chieu_it_may_buoi_chieu_it_may_1",
+        "name": "Buoi Chieu It May 1",
+        "filename": "buoi_chieu_it_may_1.png",
         "relPath": "bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
         "path": "assets/bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_chieu/it_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "description": "It May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "description": "Buoi Chieu It May 1 (PNG)"
       },
       {
-        "id": "khong_may",
-        "name": "Khong May",
-        "filename": "khong_may",
+        "id": "bau_troi_buoi_chieu_khong_may_buoi_chieu_khong_may_1",
+        "name": "Buoi Chieu Khong May 1",
+        "filename": "buoi_chieu_khong_may_1.png",
         "relPath": "bau_troi/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
         "path": "assets/bau_troi/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
-        "bundleDir": "bau_troi/buoi_chieu/khong_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "description": "Khong May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "description": "Buoi Chieu Khong May 1 (PNG)"
       },
       {
-        "id": "nhieu_may",
-        "name": "Nhieu May",
-        "filename": "nhieu_may",
+        "id": "bau_troi_buoi_chieu_nhieu_may_buoi_chieu_nhieu_may_1",
+        "name": "Buoi Chieu Nhieu May 1",
+        "filename": "buoi_chieu_nhieu_may_1.png",
         "relPath": "bau_troi/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
         "path": "assets/bau_troi/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
-        "bundleDir": "bau_troi/buoi_chieu/nhieu_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "description": "Nhieu May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "description": "Buoi Chieu Nhieu May 1 (PNG)"
       }
     ],
     "buoi_toi": [
       {
-        "id": "it_may",
-        "name": "It May",
-        "filename": "it_may",
+        "id": "bau_troi_buoi_toi_it_may_buoi_toi_it_may_1",
+        "name": "Buoi Toi It May 1",
+        "filename": "buoi_toi_it_may_1.png",
         "relPath": "bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
         "path": "assets/bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
-        "bundleDir": "bau_troi/buoi_toi/it_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.27",
         "gender": "unisex",
-        "description": "It May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "description": "Buoi Toi It May 1 (PNG)"
       },
       {
-        "id": "khong_may",
-        "name": "Khong May",
-        "filename": "khong_may",
+        "id": "bau_troi_buoi_toi_khong_may_buoi_toi_khong_may_1",
+        "name": "Buoi Toi Khong May 1",
+        "filename": "buoi_toi_khong_may_1.png",
         "relPath": "bau_troi/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
         "path": "assets/bau_troi/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
-        "bundleDir": "bau_troi/buoi_toi/khong_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.05",
         "gender": "unisex",
-        "description": "Khong May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "description": "Buoi Toi Khong May 1 (PNG)"
       },
       {
-        "id": "nhieu_may",
-        "name": "Nhieu May",
-        "filename": "nhieu_may",
+        "id": "bau_troi_buoi_toi_nhieu_may_buoi_toi_nhieu_may_1",
+        "name": "Buoi Toi Nhieu May 1",
+        "filename": "buoi_toi_nhieu_may_1.png",
         "relPath": "bau_troi/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
         "path": "assets/bau_troi/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
-        "bundleDir": "bau_troi/buoi_toi/nhieu_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.05",
         "gender": "unisex",
-        "description": "Nhieu May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "description": "Buoi Toi Nhieu May 1 (PNG)"
       }
     ],
     "giong_bao": [
       {
-        "id": "it_may",
-        "name": "It May",
-        "filename": "it_may",
+        "id": "bau_troi_giong_bao_it_may_giong_bao_it_may_1",
+        "name": "Giong Bao It May 1",
+        "filename": "giong_bao_it_may_1.png",
         "relPath": "bau_troi/giong_bao/it_may/giong_bao_it_may_1.png",
         "path": "assets/bau_troi/giong_bao/it_may/giong_bao_it_may_1.png",
-        "bundleDir": "bau_troi/giong_bao/it_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "description": "It May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/giong_bao/it_may/giong_bao_it_may_1.png",
+        "description": "Giong Bao It May 1 (PNG)"
       },
       {
-        "id": "nhieu_may",
-        "name": "Nhieu May",
-        "filename": "nhieu_may",
+        "id": "bau_troi_giong_bao_nhieu_may_giong_bao_nhieu_may_1",
+        "name": "Giong Bao Nhieu May 1",
+        "filename": "giong_bao_nhieu_may_1.png",
         "relPath": "bau_troi/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
         "path": "assets/bau_troi/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
-        "bundleDir": "bau_troi/giong_bao/nhieu_may",
-        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "description": "Nhieu May (Model Bundle: .PNG)"
+        "previewUrl": "assets/bau_troi/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "description": "Giong Bao Nhieu May 1 (PNG)"
       }
     ]
   },
   "maps": [
     {
-      "id": "cathedral",
+      "id": "ban_do_medieval_fantasy_book_textures_book_tittle_basecolor",
+      "name": "Book Tittle BaseColor",
+      "filename": "Book-tittle_baseColor.png",
+      "relPath": "ban_do/medieval_fantasy_book/textures/Book-tittle_baseColor.png",
+      "path": "assets/ban_do/medieval_fantasy_book/textures/Book-tittle_baseColor.png",
+      "format": "PNG",
+      "sizeMB": "0.01",
+      "gender": "unisex",
+      "previewUrl": "assets/ban_do/medieval_fantasy_book/textures/Book-tittle_baseColor.png",
+      "isStandaloneImage": true,
+      "description": "Tài nguyên Hình Ảnh/Texture: Book Tittle BaseColor (PNG)"
+    },
+    {
+      "id": "ban_do_cathedral",
       "name": "Cathedral",
       "filename": "cathedral.glb",
       "relPath": "ban_do/cathedral.glb",
@@ -1447,7 +1678,7 @@
       "description": "Cathedral (GLB)"
     },
     {
-      "id": "game_pirate_adventure_map",
+      "id": "ban_do_game_pirate_adventure_map",
       "name": "Game Pirate Adventure Map",
       "filename": "game_pirate_adventure_map.glb",
       "relPath": "ban_do/game_pirate_adventure_map.glb",
@@ -1458,7 +1689,7 @@
       "description": "Game Pirate Adventure Map (GLB)"
     },
     {
-      "id": "zone9_real_light",
+      "id": "ban_do_zone9_real_light",
       "name": "Zone9 Real Light",
       "filename": "zone9_real_light.glb",
       "relPath": "ban_do/zone9_real_light.glb",
@@ -1483,17 +1714,26 @@
   },
   "vfx": [
     {
-      "id": "bao_phu",
-      "name": "Lớp Phủ Overlay",
-      "filename": "bao_phu",
+      "id": "hieu_ung_bao_phu_duck_prop",
+      "name": "Duck Prop",
+      "filename": "duck_prop.glb",
       "relPath": "hieu_ung/bao_phu/duck_prop.glb",
       "path": "assets/hieu_ung/bao_phu/duck_prop.glb",
-      "bundleDir": "hieu_ung/bao_phu",
-      "isFolderBundle": true,
       "format": "GLB",
-      "sizeMB": "9.53",
+      "sizeMB": "0.11",
       "gender": "unisex",
-      "description": "Lớp Phủ Overlay (Model Bundle: .GLB)"
+      "description": "Duck Prop (GLB)"
+    },
+    {
+      "id": "hieu_ung_bao_phu_lantern_prop",
+      "name": "Lantern Prop",
+      "filename": "lantern_prop.glb",
+      "relPath": "hieu_ung/bao_phu/lantern_prop.glb",
+      "path": "assets/hieu_ung/bao_phu/lantern_prop.glb",
+      "format": "GLB",
+      "sizeMB": "9.42",
+      "gender": "unisex",
+      "description": "Lantern Prop (GLB)"
     }
   ],
   "available_actions": [
