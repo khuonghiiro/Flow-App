@@ -279,6 +279,7 @@ export interface CharacterProfileJSON {
   gender: 'male' | 'female';
   face_sliders: FaceSliderConfig;
   ai_description: string;
+  preview_image?: string;
   created_at: string;
 }
 

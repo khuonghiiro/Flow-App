@@ -41,20 +41,23 @@ function getSharedRenderer(): {
     });
     sharedRenderer.setSize(160, 110);
     sharedRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    sharedRenderer.toneMappingExposure = 1.35;
+    sharedRenderer.toneMappingExposure = 1.4;
 
     sharedScene = new THREE.Scene();
 
-    // Lighting setup for crisp, studio-quality 3D thumbnail preview
-    const amb = new THREE.AmbientLight(0xffffff, 1.4);
+    // Studio lighting setup for crisp, vivid 3D thumbnail preview
+    const amb = new THREE.AmbientLight(0xffffff, 1.5);
     sharedScene.add(amb);
 
-    const dir1 = new THREE.DirectionalLight(0xfffbeb, 2.2);
-    dir1.position.set(10, 15, 12);
+    const hemi = new THREE.HemisphereLight(0xbae6fd, 0x1e293b, 1.2);
+    sharedScene.add(hemi);
+
+    const dir1 = new THREE.DirectionalLight(0xfffbeb, 2.5);
+    dir1.position.set(12, 18, 15);
     sharedScene.add(dir1);
 
-    const dir2 = new THREE.DirectionalLight(0x38bdf8, 1.0);
-    dir2.position.set(-10, -5, -8);
+    const dir2 = new THREE.DirectionalLight(0x38bdf8, 1.2);
+    dir2.position.set(-12, -6, -10);
     sharedScene.add(dir2);
 
     sharedCamera = new THREE.PerspectiveCamera(45, 160 / 110, 0.01, 1000);
@@ -71,12 +74,13 @@ function getSharedRenderer(): {
  * Capture a 3D model snapshot as a lightweight base64 image URL
  */
 async function capture3DModelSnapshot(assetPath: string): Promise<string> {
-  if (snapshotCache.has(assetPath)) {
-    return snapshotCache.get(assetPath)!;
+  const cleanKey = assetPath.trim();
+  if (snapshotCache.has(cleanKey)) {
+    return snapshotCache.get(cleanKey)!;
   }
 
-  if (loadingPromises.has(assetPath)) {
-    return loadingPromises.get(assetPath)!;
+  if (loadingPromises.has(cleanKey)) {
+    return loadingPromises.get(cleanKey)!;
   }
 
   const promise = (async () => {
@@ -84,7 +88,22 @@ async function capture3DModelSnapshot(assetPath: string): Promise<string> {
       const { renderer, scene, camera } = getSharedRenderer();
 
       // Load model clone via registry
-      const model = await AssetLoaderRegistry.loadCharacterPart(assetPath);
+      const model = await AssetLoaderRegistry.loadCharacterPart(cleanKey);
+
+      // Force DoubleSide and proper visibility on all child meshes
+      model.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          mesh.frustumCulled = false;
+          if (mesh.material) {
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            mats.forEach((m) => {
+              m.side = THREE.DoubleSide;
+              m.needsUpdate = true;
+            });
+          }
+        }
+      });
 
       // Create isolated preview container
       const container = new THREE.Group();
@@ -92,26 +111,26 @@ async function capture3DModelSnapshot(assetPath: string): Promise<string> {
       scene.add(container);
 
       // Compute bounding box and auto-center
-      const bbox = new THREE.Box3().setFromObject(model);
+      const bbox = new THREE.Box3().setFromObject(model, true);
       const size = new THREE.Vector3();
       bbox.getSize(size);
       const center = new THREE.Vector3();
       bbox.getCenter(center);
 
-      // Center model
+      // Center model at origin
       model.position.x = -center.x;
       model.position.y = -center.y;
       model.position.z = -center.z;
 
       // Slight natural 3D isometric angle
-      container.rotation.y = Math.PI / 5;
+      container.rotation.y = Math.PI / 5.5;
       container.rotation.x = Math.PI / 16;
 
       // Fit camera distance to bounding sphere
-      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const maxDim = Math.max(size.x, size.y, size.z, 0.5);
       const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2)) * 1.35;
-      cameraZ = Math.max(cameraZ, 0.2);
+      let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2)) * 1.45;
+      if (!isFinite(cameraZ) || cameraZ < 0.2) cameraZ = 1.5;
 
       camera.position.set(0, 0, cameraZ);
       camera.lookAt(0, 0, 0);
@@ -125,17 +144,17 @@ async function capture3DModelSnapshot(assetPath: string): Promise<string> {
       scene.remove(container);
       container.remove(model);
 
-      snapshotCache.set(assetPath, dataUrl);
-      loadingPromises.delete(assetPath);
+      snapshotCache.set(cleanKey, dataUrl);
+      loadingPromises.delete(cleanKey);
       return dataUrl;
     } catch (err) {
-      console.warn(`Could not generate 3D preview snapshot for ${assetPath}:`, err);
-      loadingPromises.delete(assetPath);
+      console.warn(`Could not generate 3D preview snapshot for ${cleanKey}:`, err);
+      loadingPromises.delete(cleanKey);
       throw err;
     }
   })();
 
-  loadingPromises.set(assetPath, promise);
+  loadingPromises.set(cleanKey, promise);
   return promise;
 }
 
@@ -156,36 +175,40 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
   format = 'GLB',
   height = 85,
 }) => {
-  const [imgSrc, setImgSrc] = useState<string | undefined>(previewUrl);
+  const [imgSrc, setImgSrc] = useState<string | undefined>(previewUrl || undefined);
   const [isGenerating3D, setIsGenerating3D] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // If explicit preview URL is provided and valid, use it
-    if (previewUrl && !hasFailed) {
+    // Reset state if asset changes
+    setHasFailed(false);
+  }, [assetPath, previewUrl]);
+
+  useEffect(() => {
+    // If explicit preview URL is provided and has not failed, use it
+    if (previewUrl && previewUrl.trim() !== '' && !hasFailed) {
       setImgSrc(previewUrl);
       return;
     }
 
     // Check if snapshot is already cached
-    if (assetPath && snapshotCache.has(assetPath)) {
-      setImgSrc(snapshotCache.get(assetPath));
+    if (assetPath && snapshotCache.has(assetPath.trim())) {
+      setImgSrc(snapshotCache.get(assetPath.trim()));
       return;
     }
 
-    // Only generate for 3D formats
+    // Only generate for 3D model formats
+    const p = (assetPath || '').toLowerCase();
     const is3DModel =
-      assetPath &&
-      (assetPath.endsWith('.glb') ||
-        assetPath.endsWith('.gltf') ||
-        assetPath.endsWith('.vrm') ||
-        assetPath.endsWith('.fbx') ||
-        assetPath.endsWith('.obj'));
+      p.endsWith('.glb') ||
+      p.endsWith('.gltf') ||
+      p.endsWith('.vrm') ||
+      p.endsWith('.fbx') ||
+      p.endsWith('.obj');
 
     if (!is3DModel) return;
 
-    // Use IntersectionObserver to lazily load when scrolled into view
     let isMounted = true;
     let observer: IntersectionObserver | null = null;
 
@@ -207,12 +230,15 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
     };
 
     if (containerRef.current && window.IntersectionObserver) {
-      observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          triggerSnapshot();
-          if (containerRef.current) observer?.unobserve(containerRef.current);
-        }
-      }, { rootMargin: '100px' });
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            triggerSnapshot();
+            if (containerRef.current) observer?.unobserve(containerRef.current);
+          }
+        },
+        { rootMargin: '120px' }
+      );
 
       observer.observe(containerRef.current);
     } else {

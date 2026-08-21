@@ -210,6 +210,89 @@ const shoes = scanFolderAliases(['nhan_vat/giay_dep', 'characters/giay_dep'], mo
 const wings = scanFolderAliases(['nhan_vat/canh', 'characters/canh'], modelExts);
 const tails = scanFolderAliases(['nhan_vat/duoi', 'characters/duoi'], modelExts);
 
+// 2.1 Assembled Characters (_lap_rap)
+const assembledChars = [];
+const lapRapDir = path.join(rootDir, 'nhan_vat/_lap_rap');
+if (fs.existsSync(lapRapDir)) {
+  const files = fs.readdirSync(lapRapDir);
+  for (const file of files) {
+    const full = path.join(lapRapDir, file);
+    const baseName = path.parse(file).name;
+    if (file.endsWith('.json')) {
+      try {
+        const json = JSON.parse(fs.readFileSync(full, 'utf-8'));
+        const pngCandidate = path.join(lapRapDir, `${baseName}.png`);
+        let previewUrl = fs.existsSync(pngCandidate)
+          ? `assets/nhan_vat/_lap_rap/${baseName}.png`
+          : (json.preview_image || undefined);
+
+        assembledChars.push({
+          id: json.id || baseName,
+          name: json.name || formatDisplayName(baseName),
+          filename: file,
+          relPath: `nhan_vat/_lap_rap/${file}`,
+          path: `assets/nhan_vat/_lap_rap/${file}`,
+          format: 'JSON',
+          sizeMB: '0.01',
+          gender: json.gender || 'unisex',
+          previewUrl,
+          character_data: json
+        });
+      } catch (err) {
+        console.warn(`Lỗi đọc nhân vật lắp ráp ${file}:`, err.message);
+      }
+    } else if (modelExts.includes(path.extname(file).toLowerCase())) {
+      const stats = fs.statSync(full);
+      const pngCandidate = path.join(lapRapDir, `${baseName}.png`);
+      assembledChars.push({
+        id: baseName,
+        name: formatDisplayName(file),
+        filename: file,
+        relPath: `nhan_vat/_lap_rap/${file}`,
+        path: `assets/nhan_vat/_lap_rap/${file}`,
+        format: path.extname(file).replace('.', '').toUpperCase(),
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        gender: detectGender(file),
+        previewUrl: fs.existsSync(pngCandidate) ? `assets/nhan_vat/_lap_rap/${baseName}.png` : undefined
+      });
+    }
+  }
+}
+
+// 2.2 Custom Maps (_custom_ban_do)
+const customMaps = [];
+const customMapDir = path.join(rootDir, 'ban_do/_custom_ban_do');
+if (fs.existsSync(customMapDir)) {
+  const files = fs.readdirSync(customMapDir);
+  for (const file of files) {
+    const full = path.join(customMapDir, file);
+    const baseName = path.parse(file).name;
+    if (file.endsWith('.json')) {
+      try {
+        const json = JSON.parse(fs.readFileSync(full, 'utf-8'));
+        const pngCandidate = path.join(customMapDir, `${baseName}.png`);
+        let previewUrl = fs.existsSync(pngCandidate)
+          ? `assets/ban_do/_custom_ban_do/${baseName}.png`
+          : undefined;
+
+        customMaps.push({
+          id: json.id || baseName,
+          name: json.name || formatDisplayName(baseName),
+          filename: file,
+          relPath: `ban_do/_custom_ban_do/${file}`,
+          path: `assets/ban_do/_custom_ban_do/${file}`,
+          format: 'JSON',
+          sizeMB: '0.02',
+          previewUrl,
+          map_data: json
+        });
+      } catch (err) {
+        console.warn(`Lỗi đọc map tùy chỉnh ${file}:`, err.message);
+      }
+    }
+  }
+}
+
 // Legacy root character files
 const rootCharFiles = [
   ...getFiles(path.join(rootDir, 'characters'), modelExts).filter(f => !f.relPath.includes('/')),
@@ -312,9 +395,12 @@ const manifest = {
     hats,
     shoes,
     wings,
-    tails
+    tails,
+    _lap_rap: assembledChars
   },
   props: {
+    _custom_ban_do: customMaps,
+    nhan_vat_da_rap: assembledChars,
     trees,
     rocks,
     animals: {

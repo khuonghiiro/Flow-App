@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "last_scanned": "2026-08-21T05:22:38.056Z",
+  "last_scanned": "2026-08-21T06:20:51.633Z",
   "total_assets": 26,
   "total_size_mb": 28.06,
   "structure": {
@@ -245,6 +245,20 @@
           "icon": "🦊",
           "supports_gender": true,
           "default_gender": "unisex"
+        },
+        {
+          "id": "_lap_rap",
+          "folder": "_lap_rap",
+          "folder_aliases": [
+            "_lap_rap",
+            "lap_rap",
+            "custom_assembled",
+            "nhan_vat_lap_rap"
+          ],
+          "label": "Nhân Vật Đã Lắp Ráp",
+          "icon": "✨",
+          "supports_gender": true,
+          "default_gender": "unisex"
         }
       ]
     },
@@ -257,7 +271,9 @@
         "bau_troi",
         "SkyBoxs",
         "hieu_ung",
-        "vfx"
+        "vfx",
+        "nhan_vat/_lap_rap",
+        "ban_do/_custom_ban_do"
       ],
       "categories": [
         {
@@ -270,6 +286,31 @@
           ],
           "label": "Bản Đồ 3D",
           "icon": "🗺️",
+          "subcategories": []
+        },
+        {
+          "id": "_custom_ban_do",
+          "folder": "_custom_ban_do",
+          "folder_aliases": [
+            "_custom_ban_do",
+            "custom_ban_do",
+            "custom_maps",
+            "presets"
+          ],
+          "label": "Bản Đồ Tự Thiết Kế",
+          "icon": "🏰",
+          "subcategories": []
+        },
+        {
+          "id": "nhan_vat_da_rap",
+          "folder": "_lap_rap",
+          "folder_aliases": [
+            "_lap_rap",
+            "lap_rap",
+            "nhan_vat_da_rap"
+          ],
+          "label": "Nhân Vật Đã Ráp",
+          "icon": "🧑",
           "subcategories": []
         },
         {
@@ -1044,9 +1085,12 @@
     "hats": [],
     "shoes": [],
     "wings": [],
-    "tails": []
+    "tails": [],
+    "_lap_rap": []
   },
   "props": {
+    "_custom_ban_do": [],
+    "nhan_vat_da_rap": [],
     "trees": [],
     "rocks": [],
     "animals": {

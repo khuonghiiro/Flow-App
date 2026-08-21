@@ -62,6 +62,10 @@ export interface MapPresetJSON {
   name: string;
   description?: string;
   sky_time: string;
+  time_of_day?: number;
+  sun_direction?: number;
+  sun_elevation?: number;
+  preview_image?: string;
   placed_objects: PlacedObject[];
   created_at: string;
 }
@@ -84,10 +88,15 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingManifest, setIsLoadingManifest] = useState(true);
 
-  // ─── Environment State ────────────────────────────────────────
+  // ─── Environment, Astronomical Time & Sun/Shadow State ───────
   const [selectedSkyTime, setSelectedSkyTime] = useState<string>(
     scene.environment?.sky_time || 'noon'
   );
+  const [timeOfDay, setTimeOfDay] = useState<number>(12.0); // 5.0 (05:00) to 23.0 (23:00)
+  const [sunDirection, setSunDirection] = useState<number>(180); // 0° - 360° (180 = South at noon)
+  const [sunElevation, setSunElevation] = useState<number>(65); // 5° - 85°
+  const [sunIntensity, setSunIntensity] = useState<number>(2.6); // 0.5x - 5.0x
+  const [showSunControls, setShowSunControls] = useState<boolean>(false);
   const [showFloorGrid, setShowFloorGrid] = useState(true);
   const [isAppliedSuccess, setIsAppliedSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -130,6 +139,9 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   const controlsRef = useRef<OrbitControls | null>(null);
   const objectsGroupRef = useRef<THREE.Group | null>(null);
   const floorGridRef = useRef<THREE.GridHelper | null>(null);
+  const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const sunMeshRef = useRef<THREE.Mesh | null>(null);
+  const sunHaloRef = useRef<THREE.Mesh | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const loadedMeshesMapRef = useRef<Map<string, THREE.Object3D>>(new Map());
 
@@ -185,21 +197,46 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
     controls.maxPolarAngle = Math.PI / 2 + 0.05;
     controlsRef.current = controls;
 
-    // ─── Lighting Setup (Natural Sunlight) ──────────────────────
+    // ─── Lighting Setup (Natural Sunlight & Dynamic Shadows) ───
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
     previewScene.add(ambientLight);
 
     const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x1e293b, 1.4);
     previewScene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfffbeb, 2.6);
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, sunIntensity);
     sunLight.position.set(35, 55, 40);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 400;
+    sunLight.shadow.camera.far = 500;
+    sunLight.shadow.camera.left = -75;
+    sunLight.shadow.camera.right = 75;
+    sunLight.shadow.camera.top = 75;
+    sunLight.shadow.camera.bottom = -75;
+    sunLight.shadow.bias = -0.0004;
+    sunLightRef.current = sunLight;
     previewScene.add(sunLight);
+
+    // ─── 3D Visible Glowing Sun Sphere with Corona Halo ────────
+    const sunGeo = new THREE.SphereGeometry(5.0, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb, fog: false });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+
+    const haloGeo = new THREE.SphereGeometry(9.5, 32, 32);
+    const haloMat = new THREE.MeshBasicMaterial({
+      color: 0xfde047,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.BackSide,
+      fog: false,
+    });
+    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+    sunMesh.add(haloMesh);
+    sunMeshRef.current = sunMesh;
+    sunHaloRef.current = haloMesh;
+    previewScene.add(sunMesh);
 
     // ─── Floor Grid (Cyan / Slate) — Clean without gray plane ───
     const grid = new THREE.GridHelper(120, 60, 0x38bdf8, 0x334155);
@@ -242,6 +279,43 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       renderer.dispose();
     };
   }, []);
+
+  // ─── Sync Sun Mesh, Direction, Sky Color & Real-time Shadows ──
+  useEffect(() => {
+    if (!sunLightRef.current || !sceneRef.current) return;
+    const radAzimuth = (sunDirection * Math.PI) / 180;
+    const radElevation = (sunElevation * Math.PI) / 180;
+    const distance = 160; // Position high in sky dome
+    const x = distance * Math.cos(radElevation) * Math.sin(radAzimuth);
+    const y = distance * Math.sin(radElevation);
+    const z = distance * Math.cos(radElevation) * Math.cos(radAzimuth);
+
+    sunLightRef.current.position.set(x, Math.max(2, y), z);
+    sunLightRef.current.intensity = sunIntensity;
+
+    if (sunMeshRef.current) {
+      sunMeshRef.current.position.set(x, y, z);
+      sunMeshRef.current.visible = y > -15;
+    }
+
+    // Dynamic sky and sun color palette based on elevation & time
+    if (sunElevation <= 12) {
+      // Dawn / Sunset golden-red glow
+      sceneRef.current.background = new THREE.Color(0xf43f5e);
+      if (sunMeshRef.current) (sunMeshRef.current.material as THREE.MeshBasicMaterial).color.set(0xf97316);
+      if (sunHaloRef.current) (sunHaloRef.current.material as THREE.MeshBasicMaterial).color.set(0xef4444);
+    } else if (sunElevation <= 30) {
+      // Warm Morning / Afternoon
+      sceneRef.current.background = new THREE.Color(0x7dd3fc);
+      if (sunMeshRef.current) (sunMeshRef.current.material as THREE.MeshBasicMaterial).color.set(0xfef08a);
+      if (sunHaloRef.current) (sunHaloRef.current.material as THREE.MeshBasicMaterial).color.set(0xf59e0b);
+    } else {
+      // Bright Blue Day
+      sceneRef.current.background = new THREE.Color(0x38bdf8);
+      if (sunMeshRef.current) (sunMeshRef.current.material as THREE.MeshBasicMaterial).color.set(0xffffff);
+      if (sunHaloRef.current) (sunHaloRef.current.material as THREE.MeshBasicMaterial).color.set(0xfde047);
+    }
+  }, [sunDirection, sunElevation, sunIntensity]);
 
   // ─── Sync Floor Grid Visibility ───────────────────────────────
   useEffect(() => {
@@ -425,17 +499,45 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  // ─── Astronomical Time-of-Day Handler ───────────────────────
+  const handleTimeOfDayChange = (newHour: number) => {
+    setTimeOfDay(newHour);
+    // Day cycle from 05:00 (Dawn, 60° East) to 12:00 (Noon, 180° South) to 19:00 (Sunset, 280° West)
+    const hourFrac = Math.max(0, Math.min(1, (newHour - 5) / 14));
+    const calculatedElevation = Math.max(5, Math.sin(hourFrac * Math.PI) * 75);
+    const calculatedAzimuth = 60 + hourFrac * 220; // 60° -> 280°
+    setSunElevation(Math.round(calculatedElevation));
+    setSunDirection(Math.round(calculatedAzimuth));
+
+    if (newHour < 7.5) setSelectedSkyTime('dawn');
+    else if (newHour < 15.5) setSelectedSkyTime('noon');
+    else if (newHour < 19.5) setSelectedSkyTime('sunset');
+    else setSelectedSkyTime('night');
+  };
+
   const handleSaveMapPreset = () => {
     let name = '';
     try {
-      name = prompt('Nhập tên để lưu cấu hình Map này:', 'Bối Cảnh Tùy Chỉnh') || '';
+      name = prompt('Nhập tên để lưu cấu hình Map này:', 'Bản Đồ Bối Cảnh Mới') || '';
     } catch {}
-    if (!name) name = 'Bối Cảnh Mới';
+    if (!name) name = 'Bản Đồ Tùy Chỉnh';
 
+    // Capture high quality 3D preview snapshot
+    let snapshotDataUrl = '';
+    if (rendererRef.current && sceneRef.current && cameraRef.current) {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+      snapshotDataUrl = rendererRef.current.domElement.toDataURL('image/png');
+    }
+
+    const safeName = name.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_').toLowerCase();
     const newPreset: MapPresetJSON = {
       version: '2.0',
       name,
       sky_time: selectedSkyTime,
+      time_of_day: timeOfDay,
+      sun_direction: sunDirection,
+      sun_elevation: sunElevation,
+      preview_image: snapshotDataUrl,
       placed_objects: placedObjects,
       created_at: new Date().toISOString(),
     };
@@ -445,14 +547,41 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
     try {
       localStorage.setItem('custom_map_designer_presets', JSON.stringify(updatedList));
     } catch {}
-    triggerToast(`Đã lưu cấu hình Map "${name}" thành công!`);
+
+    // Download JSON & PNG
+    const jsonBlob = new Blob([JSON.stringify(newPreset, null, 2)], { type: 'application/json' });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    const aJson = document.createElement('a');
+    aJson.href = jsonUrl;
+    aJson.download = `${safeName}.json`;
+    aJson.click();
+    URL.revokeObjectURL(jsonUrl);
+
+    if (snapshotDataUrl) {
+      const aImg = document.createElement('a');
+      aImg.href = snapshotDataUrl;
+      aImg.download = `${safeName}.png`;
+      aImg.click();
+    }
+
+    triggerToast(`Đã lưu cấu hình Map & tải về "${safeName}.json" + "${safeName}.png" (cho thư mục assets/ban_do/_custom_ban_do/)`);
   };
 
   const handleExportJSON = () => {
+    let snapshotDataUrl = '';
+    if (rendererRef.current && sceneRef.current && cameraRef.current) {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+      snapshotDataUrl = rendererRef.current.domElement.toDataURL('image/png');
+    }
+
     const presetData: MapPresetJSON = {
       version: '2.0',
       name: 'Custom_Map_World',
       sky_time: selectedSkyTime,
+      time_of_day: timeOfDay,
+      sun_direction: sunDirection,
+      sun_elevation: sunElevation,
+      preview_image: snapshotDataUrl,
       placed_objects: placedObjects,
       created_at: new Date().toISOString(),
     };
@@ -579,6 +708,26 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
           {/* Viewport Control Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
+              onClick={() => setShowSunControls(!showSunControls)}
+              title="Bật/Tắt Thanh Điều Chỉnh Hướng Nắng & Bóng Đổ"
+              style={{
+                background: showSunControls ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${showSunControls ? 'rgba(251, 191, 36, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                color: showSunControls ? '#fbbf24' : '#94a3b8',
+                borderRadius: 4,
+                padding: '3px 8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              <Sun size={12} /> Hướng Nắng ({sunDirection}°)
+            </button>
+
+            <button
               onClick={() => setShowLayersInspector(!showLayersInspector)}
               title="Bật/Tắt Bảng Điều Chỉnh Lớp"
               style={{
@@ -672,6 +821,116 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
             <Move size={11} color="#38bdf8" />
             <span>Kéo thả tài nguyên vào đây để đặt vị trí 3D</span>
           </div>
+
+          {/* Floating Sun Direction & Shadow Sliders Panel */}
+          {showSunControls && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                width: 250,
+                background: 'rgba(15, 23, 42, 0.95)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+                borderRadius: 8,
+                padding: '10px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                zIndex: 10,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Sun size={13} /> Điều Chỉnh Hướng Nắng & Bóng
+                </span>
+                <button
+                  onClick={() => setShowSunControls(false)}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+
+              {/* Time of Day Astronomical Cycle Slider */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, background: 'rgba(255,255,255,0.04)', padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                  <span style={{ color: '#cbd5e1', fontWeight: 600 }}>⏰ Chu Kỳ Giờ (Bình Minh ➔ Đêm):</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                    {Math.floor(timeOfDay).toString().padStart(2, '0')}:{Math.round((timeOfDay % 1) * 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="5.0"
+                  max="23.0"
+                  step="0.25"
+                  value={timeOfDay}
+                  onChange={(e) => handleTimeOfDayChange(parseFloat(e.target.value))}
+                  style={{ accentColor: '#38bdf8', width: '100%', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#94a3b8' }}>
+                  <span>🌅 05:00</span>
+                  <span>☀️ 08:00</span>
+                  <span>🌞 12:00</span>
+                  <span>🌇 17:00</span>
+                  <span>🌆 19:00</span>
+                  <span>🌙 23:00</span>
+                </div>
+              </div>
+
+              {/* Sun Direction Slider */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                  <span style={{ color: '#cbd5e1' }}>☀️ Hướng Mặt Trời (Azimuth):</span>
+                  <span style={{ color: '#fbbf24', fontWeight: 700 }}>{sunDirection}°</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  value={sunDirection}
+                  onChange={(e) => setSunDirection(parseFloat(e.target.value))}
+                  style={{ accentColor: '#fbbf24', width: '100%' }}
+                />
+              </div>
+
+              {/* Sun Elevation Slider */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                  <span style={{ color: '#cbd5e1' }}>🌅 Độ Cao (Elevation):</span>
+                  <span style={{ color: '#f59e0b', fontWeight: 700 }}>{sunElevation}°</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="85"
+                  value={sunElevation}
+                  onChange={(e) => setSunElevation(parseFloat(e.target.value))}
+                  style={{ accentColor: '#f59e0b', width: '100%' }}
+                />
+              </div>
+
+              {/* Sun Intensity Slider */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                  <span style={{ color: '#cbd5e1' }}>💡 Cường Độ Ánh Sáng:</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 700 }}>{sunIntensity.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="5.0"
+                  step="0.1"
+                  value={sunIntensity}
+                  onChange={(e) => setSunIntensity(parseFloat(e.target.value))}
+                  style={{ accentColor: '#38bdf8', width: '100%' }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ─── Placed Objects / Layers Inspector Drawer ───────── */}

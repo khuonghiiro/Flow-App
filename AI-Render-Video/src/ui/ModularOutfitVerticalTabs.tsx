@@ -201,18 +201,53 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     try { localStorage.setItem('custom_character_presets', JSON.stringify(updated)); } catch {}
   };
 
-  // ─── JSON Export / Import ──────────────────────────
+  // ─── JSON Export / Import with 3D Preview Snapshot ──
   const handleExportJSON = () => {
-    const profile = buildCharacterProfile(
-      newActorName,
-      baseBody,
-      costume,
-      face,
-      hairstyle,
-      currentSliders,
-      aiDescription
-    );
-    downloadCharacterProfile(profile);
+    // Attempt to grab canvas preview from 3D viewport
+    let snapshotDataUrl = '';
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      try {
+        snapshotDataUrl = canvas.toDataURL('image/png');
+      } catch {}
+    }
+
+    const safeName = (newActorName || 'nhan_vat_lap_rap')
+      .replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_')
+      .toLowerCase();
+
+    const profile: CharacterProfileJSON = {
+      ...buildCharacterProfile(
+        newActorName,
+        baseBody,
+        costume,
+        face,
+        hairstyle,
+        currentSliders,
+        aiDescription
+      ),
+      preview_image: snapshotDataUrl,
+    };
+
+    // Download JSON
+    const jsonBlob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    const aJson = document.createElement('a');
+    aJson.href = jsonUrl;
+    aJson.download = `${safeName}.json`;
+    aJson.click();
+    URL.revokeObjectURL(jsonUrl);
+
+    // Download PNG preview
+    if (snapshotDataUrl) {
+      const aImg = document.createElement('a');
+      aImg.href = snapshotDataUrl;
+      aImg.download = `${safeName}.png`;
+      aImg.click();
+    }
+
+    setJsonImportToast(`✅ Đã xuất "${safeName}.json" + "${safeName}.png" (cho thư mục assets/nhan_vat/_lap_rap/)!`);
+    setTimeout(() => setJsonImportToast(''), 5000);
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
