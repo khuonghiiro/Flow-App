@@ -1,0 +1,336 @@
+FLOWMY ASSET FOLDERS STRUCTURE
+Generated: 2026-08-21T06:26:18.337Z
+Total Folders: 164
+
+assets/
+├── animations/
+│   ├── combat/
+│   ├── interaction/
+│   ├── interactions/
+│   ├── locomotion/
+│   └── xianxia/
+├── audio/
+│   ├── bgm/
+│   ├── dialogues/
+│   └── sfx/
+│       ├── ambient/
+│       ├── combat/
+│       ├── interaction/
+│       └── interactions/
+├── ban_do/
+│   ├── presets/
+│   └── _custom_ban_do/
+├── bau_troi/
+│   ├── binh_minh/
+│   ├── buoi_chieu/
+│   ├── buoi_sang/
+│   ├── buoi_toi/
+│   ├── buoi_trua/
+│   └── giong_bao/
+├── characters/
+│   ├── accessories/
+│   ├── base_bodies/
+│   ├── beards/
+│   ├── costumes/
+│   ├── faces/
+│   ├── giay_dep/
+│   ├── hairstyles/
+│   ├── khuon_mat/
+│   ├── kieu_rau/
+│   ├── kieu_toc/
+│   ├── long_may/
+│   ├── mat/
+│   ├── mieng/
+│   ├── mui/
+│   ├── mu_non/
+│   ├── nam/
+│   ├── nu/
+│   ├── phu_kien/
+│   ├── than_co_ban/
+│   └── trang_phuc/
+├── dao_cu/
+│   ├── cay_coi/
+│   ├── cong_trinh/
+│   ├── da_dia_hinh/
+│   ├── dong_vat/
+│   │   ├── duoi_nuoc/
+│   │   ├── tren_can/
+│   │   └── tren_troi/
+│   ├── do_tieu_hao/
+│   ├── dung_cu/
+│   ├── noi_that/
+│   ├── phuong_tien/
+│   ├── vu_khi/
+│   ├── _custom_ban_do/
+│   └── _lap_rap/
+├── hieu_ung/
+│   ├── bao_phu/
+│   └── cam_xuc/
+├── maps/
+│   ├── medieval_fantasy_book/
+│   │   └── textures/
+│   └── presets/
+├── nhan_vat/
+│   ├── canh/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── duoi/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── giay_dep/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── khuon_mat/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── kieu_rau/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── kieu_toc/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── long_may/
+│   ├── mat/
+│   ├── mieng/
+│   ├── mui/
+│   ├── mu_non/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── phu_kien/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── than_co_ban/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   ├── trang_phuc/
+│   │   ├── chung/
+│   │   ├── nam/
+│   │   └── nu/
+│   └── _lap_rap/
+│       ├── chung/
+│       ├── nam/
+│       └── nu/
+├── props/
+│   ├── buildings/
+│   ├── cay_coi/
+│   ├── cong_trinh/
+│   ├── consumables/
+│   ├── da_dia_hinh/
+│   ├── dong_vat/
+│   │   ├── duoi_nuoc/
+│   │   ├── tren_can/
+│   │   └── tren_troi/
+│   ├── do_tieu_hao/
+│   ├── dung_cu/
+│   ├── furniture/
+│   ├── hieu_ung/
+│   ├── nature/
+│   ├── noi_that/
+│   ├── phuong_tien/
+│   ├── tools/
+│   ├── vehicles/
+│   ├── vu_khi/
+│   └── weapons/
+├── SkyBoxs/
+│   ├── binh_minh/
+│   │   ├── it_may/
+│   │   ├── khong_may/
+│   │   └── nhieu_may/
+│   ├── buoi_chieu/
+│   │   ├── it_may/
+│   │   ├── khong_may/
+│   │   └── nhieu_may/
+│   ├── buoi_sang/
+│   │   ├── it_may/
+│   │   ├── khong_may/
+│   │   └── nhieu_may/
+│   ├── buoi_toi/
+│   │   ├── it_may/
+│   │   ├── khong_may/
+│   │   └── nhieu_may/
+│   ├── buoi_trua/
+│   │   ├── it_may/
+│   │   ├── khong_may/
+│   │   └── nhieu_may/
+│   └── giong_bao/
+│       ├── it_may/
+│       └── nhieu_may/
+└── vfx/
+    ├── emotes/
+    └── overlays/
+
+
+DANH SÁCH ĐƯỜNG DẪN TƯƠNG ĐỐI:
+ - assets/animations
+ - assets/animations/combat
+ - assets/animations/interaction
+ - assets/animations/interactions
+ - assets/animations/locomotion
+ - assets/animations/xianxia
+ - assets/audio
+ - assets/audio/bgm
+ - assets/audio/dialogues
+ - assets/audio/sfx
+ - assets/audio/sfx/ambient
+ - assets/audio/sfx/combat
+ - assets/audio/sfx/interaction
+ - assets/audio/sfx/interactions
+ - assets/ban_do
+ - assets/ban_do/presets
+ - assets/ban_do/_custom_ban_do
+ - assets/bau_troi
+ - assets/bau_troi/binh_minh
+ - assets/bau_troi/buoi_chieu
+ - assets/bau_troi/buoi_sang
+ - assets/bau_troi/buoi_toi
+ - assets/bau_troi/buoi_trua
+ - assets/bau_troi/giong_bao
+ - assets/characters
+ - assets/characters/accessories
+ - assets/characters/base_bodies
+ - assets/characters/beards
+ - assets/characters/costumes
+ - assets/characters/faces
+ - assets/characters/giay_dep
+ - assets/characters/hairstyles
+ - assets/characters/khuon_mat
+ - assets/characters/kieu_rau
+ - assets/characters/kieu_toc
+ - assets/characters/long_may
+ - assets/characters/mat
+ - assets/characters/mieng
+ - assets/characters/mui
+ - assets/characters/mu_non
+ - assets/characters/nam
+ - assets/characters/nu
+ - assets/characters/phu_kien
+ - assets/characters/than_co_ban
+ - assets/characters/trang_phuc
+ - assets/dao_cu
+ - assets/dao_cu/cay_coi
+ - assets/dao_cu/cong_trinh
+ - assets/dao_cu/da_dia_hinh
+ - assets/dao_cu/dong_vat
+ - assets/dao_cu/dong_vat/duoi_nuoc
+ - assets/dao_cu/dong_vat/tren_can
+ - assets/dao_cu/dong_vat/tren_troi
+ - assets/dao_cu/do_tieu_hao
+ - assets/dao_cu/dung_cu
+ - assets/dao_cu/noi_that
+ - assets/dao_cu/phuong_tien
+ - assets/dao_cu/vu_khi
+ - assets/dao_cu/_custom_ban_do
+ - assets/dao_cu/_lap_rap
+ - assets/hieu_ung
+ - assets/hieu_ung/bao_phu
+ - assets/hieu_ung/cam_xuc
+ - assets/maps
+ - assets/maps/medieval_fantasy_book
+ - assets/maps/medieval_fantasy_book/textures
+ - assets/maps/presets
+ - assets/nhan_vat
+ - assets/nhan_vat/canh
+ - assets/nhan_vat/canh/chung
+ - assets/nhan_vat/canh/nam
+ - assets/nhan_vat/canh/nu
+ - assets/nhan_vat/duoi
+ - assets/nhan_vat/duoi/chung
+ - assets/nhan_vat/duoi/nam
+ - assets/nhan_vat/duoi/nu
+ - assets/nhan_vat/giay_dep
+ - assets/nhan_vat/giay_dep/chung
+ - assets/nhan_vat/giay_dep/nam
+ - assets/nhan_vat/giay_dep/nu
+ - assets/nhan_vat/khuon_mat
+ - assets/nhan_vat/khuon_mat/chung
+ - assets/nhan_vat/khuon_mat/nam
+ - assets/nhan_vat/khuon_mat/nu
+ - assets/nhan_vat/kieu_rau
+ - assets/nhan_vat/kieu_rau/chung
+ - assets/nhan_vat/kieu_rau/nam
+ - assets/nhan_vat/kieu_rau/nu
+ - assets/nhan_vat/kieu_toc
+ - assets/nhan_vat/kieu_toc/chung
+ - assets/nhan_vat/kieu_toc/nam
+ - assets/nhan_vat/kieu_toc/nu
+ - assets/nhan_vat/long_may
+ - assets/nhan_vat/mat
+ - assets/nhan_vat/mieng
+ - assets/nhan_vat/mui
+ - assets/nhan_vat/mu_non
+ - assets/nhan_vat/mu_non/chung
+ - assets/nhan_vat/mu_non/nam
+ - assets/nhan_vat/mu_non/nu
+ - assets/nhan_vat/phu_kien
+ - assets/nhan_vat/phu_kien/chung
+ - assets/nhan_vat/phu_kien/nam
+ - assets/nhan_vat/phu_kien/nu
+ - assets/nhan_vat/than_co_ban
+ - assets/nhan_vat/than_co_ban/chung
+ - assets/nhan_vat/than_co_ban/nam
+ - assets/nhan_vat/than_co_ban/nu
+ - assets/nhan_vat/trang_phuc
+ - assets/nhan_vat/trang_phuc/chung
+ - assets/nhan_vat/trang_phuc/nam
+ - assets/nhan_vat/trang_phuc/nu
+ - assets/nhan_vat/_lap_rap
+ - assets/nhan_vat/_lap_rap/chung
+ - assets/nhan_vat/_lap_rap/nam
+ - assets/nhan_vat/_lap_rap/nu
+ - assets/props
+ - assets/props/buildings
+ - assets/props/cay_coi
+ - assets/props/cong_trinh
+ - assets/props/consumables
+ - assets/props/da_dia_hinh
+ - assets/props/dong_vat
+ - assets/props/dong_vat/duoi_nuoc
+ - assets/props/dong_vat/tren_can
+ - assets/props/dong_vat/tren_troi
+ - assets/props/do_tieu_hao
+ - assets/props/dung_cu
+ - assets/props/furniture
+ - assets/props/hieu_ung
+ - assets/props/nature
+ - assets/props/noi_that
+ - assets/props/phuong_tien
+ - assets/props/tools
+ - assets/props/vehicles
+ - assets/props/vu_khi
+ - assets/props/weapons
+ - assets/SkyBoxs
+ - assets/SkyBoxs/binh_minh
+ - assets/SkyBoxs/binh_minh/it_may
+ - assets/SkyBoxs/binh_minh/khong_may
+ - assets/SkyBoxs/binh_minh/nhieu_may
+ - assets/SkyBoxs/buoi_chieu
+ - assets/SkyBoxs/buoi_chieu/it_may
+ - assets/SkyBoxs/buoi_chieu/khong_may
+ - assets/SkyBoxs/buoi_chieu/nhieu_may
+ - assets/SkyBoxs/buoi_sang
+ - assets/SkyBoxs/buoi_sang/it_may
+ - assets/SkyBoxs/buoi_sang/khong_may
+ - assets/SkyBoxs/buoi_sang/nhieu_may
+ - assets/SkyBoxs/buoi_toi
+ - assets/SkyBoxs/buoi_toi/it_may
+ - assets/SkyBoxs/buoi_toi/khong_may
+ - assets/SkyBoxs/buoi_toi/nhieu_may
+ - assets/SkyBoxs/buoi_trua
+ - assets/SkyBoxs/buoi_trua/it_may
+ - assets/SkyBoxs/buoi_trua/khong_may
+ - assets/SkyBoxs/buoi_trua/nhieu_may
+ - assets/SkyBoxs/giong_bao
+ - assets/SkyBoxs/giong_bao/it_may
+ - assets/SkyBoxs/giong_bao/nhieu_may
+ - assets/vfx
+ - assets/vfx/emotes
+ - assets/vfx/overlays
