@@ -125,15 +125,73 @@ export class AssetLoaderRegistry {
 
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              mesh.castShadow = true;
+              mesh.castShadow = false; // Map meshes receive shadows, avoid casting 500k poly shadows for smooth 60fps
               mesh.receiveShadow = true;
-              mesh.frustumCulled = false;
+              mesh.frustumCulled = false; // Keep map visible at all times, prevent chunk culling disappearance
+
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.FrontSide;
+                  const isTransparent =
+                    mat.transparent ||
+                    mat.name === 'transparent' ||
+                    Boolean((mat as any).alphaMode === 'BLEND');
+
                   mat.depthTest = true;
-                  mat.depthWrite = true;
+                  mat.depthWrite = true; // Always write depth so geometry is 100% solid and occludes interiors
+
+                  if (isTransparent) {
+                    // Alpha cutout rendering: MUST be transparent=false + alphaTest to render in Opaque Pass
+                    // This completely eliminates triangle sorting errors and see-through artifacts from top-down angles!
+                    mat.transparent = false;
+                    mat.alphaTest = 0.5;
+                    mat.side = THREE.DoubleSide;
+                  } else {
+                    mat.transparent = false;
+                    mat.alphaTest = 0.0;
+                    mat.side = THREE.FrontSide;
+                  }
+
+                  if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+                    const stdMat = mat as THREE.MeshStandardMaterial;
+
+                    // Cache original full-bright authored state from the GLB file
+                    if (stdMat.userData.origEmissiveMap === undefined) {
+                      stdMat.userData.origEmissiveMap = stdMat.emissiveMap;
+                      stdMat.userData.origMap = stdMat.map;
+                    }
+
+                    if (isTransparent) {
+                      // Foliage, leaves, stained glass, water:
+                      // If model stored RGB color in emissiveMap (texture 2) and alpha mask in map (texture 1):
+                      if (stdMat.emissiveMap) {
+                        if (stdMat.map && stdMat.map !== stdMat.emissiveMap) {
+                          stdMat.alphaMap = stdMat.map; // Texture 1 is the Alpha Cutout Mask
+                        }
+                        stdMat.map = stdMat.emissiveMap; // Texture 2 is the true full-color RGB diffuse map!
+                      }
+                      stdMat.color.setHex(0xffffff);
+                      stdMat.transparent = false;
+                      stdMat.alphaTest = 0.5; // Hardware GPU discard on alpha < 0.5; solid pixels write to depth
+                      stdMat.depthWrite = true;
+                      stdMat.depthTest = true;
+                      stdMat.side = THREE.DoubleSide;
+                    } else {
+                      // Solid surface materials (stone walls, pillars, roofs):
+                      if (stdMat.emissiveMap && !stdMat.map) {
+                        stdMat.map = stdMat.emissiveMap;
+                      }
+                      stdMat.color.setHex(0xffffff);
+                      stdMat.transparent = false;
+                      stdMat.alphaTest = 0.0;
+                      stdMat.depthWrite = true;
+                      stdMat.depthTest = true;
+                      stdMat.side = THREE.FrontSide;
+                    }
+
+                    stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
+                    stdMat.metalness = Math.min(0.15, stdMat.metalness || 0.0);
+                  }
                 });
               }
             }
@@ -187,17 +245,56 @@ export class AssetLoaderRegistry {
               mesh.castShadow = false;
               mesh.receiveShadow = true;
               mesh.frustumCulled = false;
+
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.FrontSide;
+                  const isTransparent =
+                    mat.transparent ||
+                    mat.name === 'transparent' ||
+                    Boolean((mat as any).alphaMode === 'BLEND');
+
+                  mat.depthTest = true;
+                  mat.depthWrite = true;
+
+                  if (isTransparent) {
+                    mat.transparent = false;
+                    mat.alphaTest = 0.5;
+                    mat.side = THREE.DoubleSide;
+                  } else {
+                    mat.transparent = false;
+                    mat.alphaTest = 0.0;
+                    mat.side = THREE.FrontSide;
+                  }
+
                   if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                     const stdMat = mat as THREE.MeshStandardMaterial;
-                    if (stdMat.emissiveMap && !stdMat.map) {
-                      stdMat.map = stdMat.emissiveMap;
+                    if (stdMat.userData.origEmissiveMap === undefined) {
+                      stdMat.userData.origEmissiveMap = stdMat.emissiveMap;
+                      stdMat.userData.origMap = stdMat.map;
                     }
-                    stdMat.roughness = Math.max(0.6, stdMat.roughness || 0.6);
-                    stdMat.metalness = Math.min(0.2, stdMat.metalness || 0.0);
+                    if (isTransparent) {
+                      if (stdMat.emissiveMap) {
+                        if (stdMat.map && stdMat.map !== stdMat.emissiveMap) {
+                          stdMat.alphaMap = stdMat.map;
+                        }
+                        stdMat.map = stdMat.emissiveMap;
+                      }
+                      stdMat.color.setHex(0xffffff);
+                      stdMat.transparent = false;
+                      stdMat.alphaTest = 0.5;
+                      stdMat.side = THREE.DoubleSide;
+                    } else {
+                      if (stdMat.emissiveMap && !stdMat.map) {
+                        stdMat.map = stdMat.emissiveMap;
+                      }
+                      stdMat.color.setHex(0xffffff);
+                      stdMat.transparent = false;
+                      stdMat.alphaTest = 0.0;
+                      stdMat.side = THREE.FrontSide;
+                    }
+                    stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
+                    stdMat.metalness = Math.min(0.15, stdMat.metalness || 0.0);
                   }
                 });
               }
@@ -223,8 +320,9 @@ export class AssetLoaderRegistry {
     mapGroup.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        mesh.receiveShadow = dynamicLighting;
-        mesh.castShadow = dynamicLighting;
+        mesh.receiveShadow = true;
+        mesh.castShadow = false;
+        mesh.frustumCulled = false;
 
         if (mesh.material) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -232,44 +330,66 @@ export class AssetLoaderRegistry {
             if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
               const stdMat = mat as THREE.MeshStandardMaterial;
 
-              // Store original emissive values on first encounter
-              if (stdMat.userData.origEmissive === undefined) {
-                stdMat.userData.origEmissive = stdMat.emissive ? stdMat.emissive.clone() : new THREE.Color(0xffffff);
-                stdMat.userData.origEmissiveIntensity = stdMat.emissiveIntensity !== undefined ? stdMat.emissiveIntensity : 1.0;
+              // Store original authored emissive maps on first encounter
+              if (stdMat.userData.origEmissiveMap === undefined) {
                 stdMat.userData.origEmissiveMap = stdMat.emissiveMap;
                 stdMat.userData.origMap = stdMat.map;
               }
 
-              const isTransparent = stdMat.name === 'transparent' || stdMat.transparent || Boolean((mat as any).alphaMode === 'BLEND');
+              const isTransparent =
+                stdMat.name === 'transparent' ||
+                stdMat.transparent ||
+                Boolean((mat as any).alphaMode === 'BLEND');
 
-              if (dynamicLighting) {
-                // Dynamic Sun Lighting & Shadows Mode:
-                // Make base surfaces reactive to real-time sun angle and volumetric cloud shadows
-                if (!isTransparent) {
-                  if (stdMat.emissiveMap && !stdMat.map) {
-                    stdMat.map = stdMat.emissiveMap;
+              stdMat.depthTest = true;
+              stdMat.depthWrite = true;
+
+              if (isTransparent) {
+                // Transparent materials (foliage, leaves, stained glass, water)
+                if (stdMat.emissiveMap) {
+                  if (stdMat.map && stdMat.map !== stdMat.emissiveMap) {
+                    stdMat.alphaMap = stdMat.map;
                   }
+                  stdMat.map = stdMat.emissiveMap;
+                }
+                stdMat.color.setHex(0xffffff);
+                stdMat.transparent = false; // Render in Opaque Pass with Alpha Cutout (eliminates top-down see-through!)
+                stdMat.alphaTest = 0.5;
+                stdMat.side = THREE.DoubleSide;
+
+                if (dynamicLighting) {
+                  // Dynamic Sunlight & Weather Shadow Mode
                   stdMat.emissive.setHex(0x000000);
                   stdMat.emissiveIntensity = 0.0;
                 } else {
-                  // Transparent materials (stained glass, lanterns, chandeliers): keep rich glowing colors
-                  stdMat.emissive.setHex(0x444444);
-                  stdMat.emissiveIntensity = 0.4;
-                }
-                stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
-                stdMat.metalness = Math.min(0.15, stdMat.metalness || 0.0);
-              } else {
-                // Original Baked Lightmap Mode:
-                // Restore original authored full-bright self-illumination
-                if (stdMat.userData.origEmissive) {
-                  stdMat.emissive.copy(stdMat.userData.origEmissive);
-                  stdMat.emissiveIntensity = stdMat.userData.origEmissiveIntensity;
-                  if (stdMat.userData.origEmissiveMap) {
-                    stdMat.emissiveMap = stdMat.userData.origEmissiveMap;
-                  }
-                } else {
+                  // Original Baked Lightmap Mode (as configured in .glb): Full-bright self-illumination
                   stdMat.emissive.setHex(0xffffff);
                   stdMat.emissiveIntensity = 1.0;
+                  stdMat.roughness = 1.0;
+                  stdMat.metalness = 0.0;
+                }
+              } else {
+                // Solid surface materials (stone walls, pillars, floors, roofs)
+                if (stdMat.emissiveMap && !stdMat.map) {
+                  stdMat.map = stdMat.emissiveMap;
+                }
+                stdMat.color.setHex(0xffffff);
+                stdMat.transparent = false;
+                stdMat.alphaTest = 0.0;
+                stdMat.side = THREE.FrontSide;
+
+                if (dynamicLighting) {
+                  // Dynamic Sunlight & Weather Shadow Mode
+                  stdMat.emissive.setHex(0x000000);
+                  stdMat.emissiveIntensity = 0.0;
+                  stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
+                  stdMat.metalness = Math.min(0.15, stdMat.metalness || 0.0);
+                } else {
+                  // Original Baked Lightmap Mode (as configured in .glb): Full-bright self-illumination
+                  stdMat.emissive.setHex(0xffffff);
+                  stdMat.emissiveIntensity = 1.0;
+                  stdMat.roughness = 1.0;
+                  stdMat.metalness = 0.0;
                 }
               }
               stdMat.needsUpdate = true;

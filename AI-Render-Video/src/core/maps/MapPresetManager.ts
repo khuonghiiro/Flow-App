@@ -128,6 +128,20 @@ export class MapPresetManager {
       objGroup.add(mesh);
       targetGroup.add(objGroup);
 
+      // If prop is a 3D model file (.glb / .gltf), asynchronously load real high-fidelity model & materials
+      if (prop.asset_path.endsWith('.glb') || prop.asset_path.endsWith('.gltf')) {
+        AssetLoaderRegistry.loadGLTF(prop.asset_path)
+          .then((loadedModel) => {
+            while (objGroup.children.length > 0) {
+              objGroup.remove(objGroup.children[0]);
+            }
+            objGroup.add(loadedModel);
+          })
+          .catch((err) => {
+            console.warn(`[MapPresetManager] Lỗi tải prop 3D từ ${prop.asset_path}:`, err);
+          });
+      }
+
       if (sceneObjectsRef) {
         sceneObjectsRef.set(`props.${prop.id}`, objGroup);
       }

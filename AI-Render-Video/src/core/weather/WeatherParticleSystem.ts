@@ -136,9 +136,12 @@ export class WeatherParticleSystem {
         && child.name !== 'cloud_shadow_caster_3d') {
         const m = child as THREE.Mesh;
         if (m.geometry && m.geometry.attributes.position) {
-          // Pre-compute bounding sphere for fast distance filtering later
-          if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
-          this.candidateMeshes.push(m);
+          // Performance guard: Only test terrain & low-poly obstacle colliders (< 10000 verts)
+          // Heavy interior / decorative meshes (> 10k verts) will fall back to fast ground plane level
+          if (m.geometry.attributes.position.count <= 10000) {
+            if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+            this.candidateMeshes.push(m);
+          }
         }
       }
     });
