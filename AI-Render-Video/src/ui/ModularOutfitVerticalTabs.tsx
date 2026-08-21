@@ -39,6 +39,7 @@ import {
   downloadCharacterProfile,
 } from './CharacterAssetRegistry';
 import { MasterSceneConfig, ActorConfig, CharacterAssembly } from '../types/scene';
+import { Live3DThumbnail } from './Live3DThumbnail';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -628,36 +629,15 @@ function ItemsGrid({ items, categoryId, selectedPath, onSelect, categoryLabel, c
                   <Check size={11} strokeWidth={3} />
                 </div>
               )}
-              <div
-                style={{
-                  width: '100%',
-                  height: 90,
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  background: 'rgba(0,0,0,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {item.preview ? (
-                  <img
-                    src={item.preview}
-                    alt={item.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 28 }}>{categoryIcon}</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', padding: '1px 6px', borderRadius: 4 }}>
-                      .GLB
-                    </span>
-                  </div>
-                )}
-              </div>
+              {/* Live 3D Thumbnail / 2D Companion Preview */}
+              <Live3DThumbnail
+                assetPath={item.path}
+                previewUrl={item.preview}
+                altText={item.name}
+                fallbackIcon={categoryIcon}
+                format={item.format || 'GLB'}
+                height={90}
+              />
               <span style={{
                 fontSize: 11, fontWeight: 600, textAlign: 'center',
                 color: isSelected ? '#38bdf8' : '#e2e8f0',

@@ -43,6 +43,7 @@ import {
   MapCategory,
   fetchLiveMapCategories,
 } from './MapAssetRegistry';
+import { Live3DThumbnail } from './Live3DThumbnail';
 
 export interface PlacedObject {
   instanceId: string;
@@ -1306,37 +1307,15 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                           <Plus size={12} strokeWidth={3} />
                         </button>
 
-                        {/* Thumbnail or Fallback Badge */}
-                        <div
-                          style={{
-                            width: '100%',
-                            height: 85,
-                            borderRadius: 6,
-                            overflow: 'hidden',
-                            background: 'rgba(0,0,0,0.35)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {item.previewUrl ? (
-                            <img
-                              src={item.previewUrl}
-                              alt={item.name}
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 28 }}>{currentCategory?.icon || '📦'}</span>
-                              <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '1px 6px', borderRadius: 4 }}>
-                                {item.format}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        {/* Live 3D Thumbnail / 2D Companion Preview */}
+                        <Live3DThumbnail
+                          assetPath={item.path}
+                          previewUrl={item.previewUrl}
+                          altText={item.name}
+                          fallbackIcon={currentCategory?.icon || '📦'}
+                          format={item.format}
+                          height={85}
+                        />
 
                         {/* Item Title & Info */}
                         <span
